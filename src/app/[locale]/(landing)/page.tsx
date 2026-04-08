@@ -29,6 +29,7 @@ import { BentoGrid, type BentoItem } from '@/components/landing/bento-grid';
 import { AnimatedSection, AnimatedStagger, AnimatedItem } from '@/components/shared/animated-section';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
+import { AuthHeaderButtons } from '@/components/landing/auth-header-buttons';
 
 export default function LandingPage() {
   const t = useTranslations('landing');
@@ -145,12 +146,7 @@ export default function LandingPage() {
           <nav className="flex items-center gap-2">
             <LanguageSwitcher />
             <AnimatedThemeToggle />
-            <Link href="/login" className={cn(buttonVariants({ size: 'sm', variant: 'ghost' }))}>
-              {ta('signIn')}
-            </Link>
-            <Link href="/register" className={cn(buttonVariants({ size: 'sm' }))}>
-              {ta('signUp')}
-            </Link>
+            <AuthHeaderButtons />
           </nav>
         </div>
       </header>

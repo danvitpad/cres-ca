@@ -48,9 +48,10 @@ export default function LoginPage() {
     try {
       const saved = localStorage.getItem(REMEMBER_KEY);
       if (saved) {
-        const { email: savedEmail, remember } = JSON.parse(saved);
-        if (remember && savedEmail) {
-          setEmail(savedEmail);
+        const parsed = JSON.parse(saved);
+        if (parsed.remember && parsed.email) {
+          setEmail(parsed.email);
+          if (parsed.password) setPassword(parsed.password);
           setRememberMe(true);
         }
       }
@@ -59,7 +60,7 @@ export default function LoginPage() {
 
   function saveRemember() {
     if (rememberMe && email) {
-      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, remember: true }));
+      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password, remember: true }));
     } else {
       localStorage.removeItem(REMEMBER_KEY);
     }
@@ -120,7 +121,7 @@ export default function LoginPage() {
   }
 
   async function handleVerifyResetOTP() {
-    if (otpValue.length !== 6) return;
+    if (otpValue.length !== 8) return;
     setStep('new-password');
   }
 
@@ -217,7 +218,7 @@ export default function LoginPage() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pb-2">
                   <Checkbox
                     id="remember"
                     checked={rememberMe}
@@ -310,7 +311,7 @@ export default function LoginPage() {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
               <InputOTP
-                maxLength={6}
+                maxLength={8}
                 pattern={REGEXP_ONLY_DIGITS}
                 value={otpValue}
                 onChange={setOtpValue}
@@ -320,19 +321,21 @@ export default function LoginPage() {
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
                   <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
                 </InputOTPGroup>
                 <InputOTPSeparator />
                 <InputOTPGroup>
-                  <InputOTPSlot index={3} />
                   <InputOTPSlot index={4} />
                   <InputOTPSlot index={5} />
+                  <InputOTPSlot index={6} />
+                  <InputOTPSlot index={7} />
                 </InputOTPGroup>
               </InputOTP>
 
               <Button
                 className="w-full"
                 onClick={handleVerifyResetOTP}
-                disabled={otpValue.length !== 6}
+                disabled={otpValue.length !== 8}
               >
                 {tc('next')}
               </Button>
