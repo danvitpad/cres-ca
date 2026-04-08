@@ -18,8 +18,10 @@ import {
   Loader2,
   Trash2,
   BarChart3,
+  Users,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/stores/auth-store';
 import { useMaster } from '@/hooks/use-master';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +29,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +45,11 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+
+interface TeamMaster {
+  id: string;
+  profile: { full_name: string } | null;
+}
 
 type Period = 'today' | 'week' | 'month';
 
@@ -69,12 +83,18 @@ export default function FinancePage() {
   const td = useTranslations('dashboard');
   const tc = useTranslations('common');
   const { master, loading: masterLoading } = useMaster();
+  const { role } = useAuthStore();
 
+  const isSalonAdmin = role === 'salon_admin';
   const [period, setPeriod] = useState<Period>('month');
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [serviceBreakdown, setServiceBreakdown] = useState<ServiceRevenue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Salon-wide: team masters list + filter
+  const [teamMasters, setTeamMasters] = useState<TeamMaster[]>([]);
+  const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
 
   // Expense form
   const [expDesc, setExpDesc] = useState('');
@@ -99,11 +119,37 @@ export default function FinancePage() {
     return { start, end };
   }, []);
 
+  // Load salon team masters for admin filter
+  useEffect(() => {
+    if (!isSalonAdmin || !master?.salon_id) return;
+    const supabase = createClient();
+    supabase
+      .from('masters')
+      .select('id, profile:profiles(full_name)')
+      .eq('salon_id', master.salon_id)
+      .order('created_at')
+      .then(({ data }) => {
+        if (data) setTeamMasters(data as unknown as TeamMaster[]);
+      });
+  }, [isSalonAdmin, master?.salon_id]);
+
   const loadData = useCallback(async () => {
     if (!master) return;
     setIsLoading(true);
     const supabase = createClient();
     const { start, end } = getDateRange(period);
+
+    // Determine which master IDs to query
+    const masterIds: string[] = [];
+    if (isSalonAdmin && !selectedMasterId && master.salon_id) {
+      // "All" selected — use all team master IDs
+      masterIds.push(...teamMasters.map((m) => m.id));
+      if (masterIds.length === 0) masterIds.push(master.id);
+    } else if (selectedMasterId) {
+      masterIds.push(selectedMasterId);
+    } else {
+      masterIds.push(master.id);
+    }
 
     // Fetch payments (revenue)
     const { data: payData } = await supabase
@@ -130,20 +176,27 @@ export default function FinancePage() {
       Array.from(breakdown.values()).sort((a, b) => b.total - a.total),
     );
 
-    // Fetch expenses
+    // Fetch expenses — for salon admin with "all", use salon_id; otherwise use specific master
     const startDate = start.split('T')[0];
     const endDate = end.split('T')[0];
-    const { data: expData } = await supabase
+    let expQuery = supabase
       .from('expenses')
       .select('*')
-      .eq('master_id', master.id)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: false });
 
+    if (isSalonAdmin && !selectedMasterId && master.salon_id) {
+      expQuery = expQuery.eq('salon_id', master.salon_id);
+    } else {
+      const targetMasterId = selectedMasterId || master.id;
+      expQuery = expQuery.eq('master_id', targetMasterId);
+    }
+
+    const { data: expData } = await expQuery;
     setExpenses((expData as ExpenseRow[]) || []);
     setIsLoading(false);
-  }, [master, period, getDateRange]);
+  }, [master, period, getDateRange, isSalonAdmin, selectedMasterId, teamMasters]);
 
   useEffect(() => {
     loadData();
@@ -194,23 +247,45 @@ export default function FinancePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-2xl font-bold tracking-tight">{td('finance')}</h2>
-        <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
-          {(['today', 'week', 'month'] as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium rounded-lg transition-all',
-                period === p
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
+        <div className="flex items-center gap-3">
+          {/* Salon admin: master filter */}
+          {isSalonAdmin && teamMasters.length > 1 && (
+            <Select
+              value={selectedMasterId || 'all'}
+              onValueChange={(val: string | null) => setSelectedMasterId(val === 'all' ? null : val)}
             >
-              {td(p === 'today' ? 'today' : p === 'week' ? 'thisWeek' : 'thisMonth')}
-            </button>
-          ))}
+              <SelectTrigger className="w-[160px] h-8 text-xs gap-1">
+                <Users className="size-3.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">{tc('all')}</SelectItem>
+                {teamMasters.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="text-xs">
+                    {m.profile?.full_name || m.id.slice(0, 8)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <div className="flex gap-1 rounded-xl bg-muted/50 p-1">
+            {(['today', 'week', 'month'] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-all',
+                  period === p
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {td(p === 'today' ? 'today' : p === 'week' ? 'thisWeek' : 'thisMonth')}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
