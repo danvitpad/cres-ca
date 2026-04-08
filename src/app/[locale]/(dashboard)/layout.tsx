@@ -23,6 +23,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { cn } from '@/lib/utils';
 import { Dock, DockIcon, DockSeparator } from '@/components/ui/dock';
+import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 
 const navItems = [
   { key: 'calendar', icon: CalendarDays, href: '/calendar' },
@@ -98,6 +99,9 @@ export default function DashboardLayout({
       <main className="flex-1 overflow-auto p-4 lg:p-6 pb-24 lg:pb-28">
         {children}
       </main>
+
+      {/* Onboarding for new masters */}
+      <OnboardingDialog />
 
       {/* Bottom dock */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">

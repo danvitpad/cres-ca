@@ -9,10 +9,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -20,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { User, Phone, RefreshCw, XCircle, AlertTriangle } from 'lucide-react';
+import { User, Phone, RefreshCw, XCircle, AlertTriangle, CheckCircle2, Clock, DollarSign, Briefcase } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
 import type { AppointmentStatus } from '@/types';
 
@@ -135,36 +137,92 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
     onUpdated();
   }
 
-  const time = `${new Date(appointment.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${new Date(appointment.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const timeStart = new Date(appointment.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeEnd = new Date(appointment.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateStr = new Date(appointment.starts_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  const durationMin = Math.round((new Date(appointment.ends_at).getTime() - new Date(appointment.starts_at).getTime()) / 60000);
+  const isCompleted = appointment.status === 'completed';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{appointment.service?.name ?? '—'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            {isCompleted && <CheckCircle2 className="size-5 text-emerald-500" />}
+            {appointment.service?.name ?? '—'}
+          </DialogTitle>
         </DialogHeader>
+
         <div className="space-y-4">
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
+          {/* Client info */}
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+              <User className="size-5 text-primary" />
+            </div>
+            <div>
               <button
-                className="text-primary hover:underline"
+                className="text-sm font-medium text-primary hover:underline flex items-center gap-1.5"
                 onClick={() => { onOpenChange(false); router.push(`/clients/${appointment.client_id}`); }}
               >
                 {appointment.client?.full_name ?? '—'}
+                {appointment.client?.has_health_alert && <AlertTriangle className="size-3.5 text-red-500" />}
               </button>
-              {appointment.client?.has_health_alert && <AlertTriangle className="h-4 w-4 text-red-500" />}
+              {appointment.client?.phone && (
+                <a href={`tel:${appointment.client.phone}`} className="text-xs text-muted-foreground hover:underline flex items-center gap-1">
+                  <Phone className="size-3" />
+                  {appointment.client.phone}
+                </a>
+              )}
             </div>
-            {appointment.client?.phone && (
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${appointment.client.phone}`} className="hover:underline">{appointment.client.phone}</a>
-              </div>
-            )}
-            <div className="text-muted-foreground">{time}</div>
-            <div className="font-medium">{appointment.price} {appointment.currency}</div>
-            <Badge variant="outline">{t(`status.${appointment.status}`)}</Badge>
           </div>
+
+          <Separator />
+
+          {/* Visit details grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="size-4 text-muted-foreground" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('time') || 'Time'}</p>
+                <p className="font-medium">{timeStart} — {timeEnd}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Briefcase className="size-4 text-muted-foreground" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Duration</p>
+                <p className="font-medium">{durationMin} min</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <DollarSign className="size-4 text-muted-foreground" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('price') || 'Price'}</p>
+                <p className="font-medium">{appointment.price} {appointment.currency}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="size-4 flex items-center justify-center">
+                <div className={`size-2.5 rounded-full ${
+                  appointment.status === 'completed' ? 'bg-emerald-500' :
+                  appointment.status === 'cancelled' ? 'bg-red-500' :
+                  appointment.status === 'in_progress' ? 'bg-blue-500' :
+                  'bg-amber-500'
+                }`} />
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Status</p>
+                <p className="font-medium">{t(`status.${appointment.status}`)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Date line */}
+          <div className="rounded-lg bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
+            {dateStr}
+          </div>
+
+          <Separator />
 
           {/* Status selector */}
           <div className="space-y-2">
@@ -178,10 +236,12 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
             </Select>
           </div>
 
+          {/* Action buttons */}
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="flex-1"
               onClick={() => { onOpenChange(false); onRepeat(appointment); }}
             >
               <RefreshCw className="h-3 w-3 mr-1" />
@@ -199,7 +259,7 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
             <Button
               variant="outline"
               size="sm"
-              className="text-red-500"
+              className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
               onClick={() => updateStatus('no_show')}
               disabled={updating || appointment.status === 'no_show'}
             >

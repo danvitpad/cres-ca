@@ -23,10 +23,29 @@ import {
   CalendarDays,
   Clock,
   TrendingUp,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
 type ViewMode = 'day' | 'week';
+
+/** Generate smooth SVG path from data points */
+function generateSparklinePath(points: number[], width: number, height: number): string {
+  if (!points || points.length < 2) return `M 0 ${height}`;
+  const max = Math.max(...points, 1);
+  const xStep = width / (points.length - 1);
+  const coords = points.map((p, i) => [
+    i * xStep,
+    height - (p / max) * (height * 0.8) - (height * 0.1),
+  ]);
+  let path = `M ${coords[0][0]} ${coords[0][1]}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const midX = (coords[i][0] + coords[i + 1][0]) / 2;
+    path += ` C ${midX},${coords[i][1]} ${midX},${coords[i + 1][1]} ${coords[i + 1][0]},${coords[i + 1][1]}`;
+  }
+  return path;
+}
 
 function StatCard({
   icon: Icon,
@@ -34,28 +53,62 @@ function StatCard({
   value,
   sub,
   accent,
+  sparkData,
+  delta,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   sub?: string;
   accent?: string;
+  sparkData?: number[];
+  delta?: number;
 }) {
+  const svgW = 120;
+  const svgH = 40;
+  const linePath = sparkData ? generateSparklinePath(sparkData, svgW, svgH) : '';
+  const areaPath = linePath ? `${linePath} L ${svgW} ${svgH} L 0 ${svgH} Z` : '';
+  const isPositive = (delta ?? 0) >= 0;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
-      className="flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-sm"
+      className="flex items-center justify-between rounded-2xl border bg-card p-4 shadow-sm overflow-hidden"
     >
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent ?? 'bg-primary/10 text-primary'}`}>
-        <Icon className="h-5 w-5" />
+      <div className="flex items-center gap-4 min-w-0">
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${accent ?? 'bg-primary/10 text-primary'}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            {delta !== undefined && (
+              <span className={`flex items-center text-[10px] font-semibold ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+                {Math.abs(delta)}%
+                {isPositive ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
+              </span>
+            )}
+          </div>
+          <p className="text-xl font-bold leading-tight tracking-tight">{value}</p>
+          {sub && <p className="truncate text-xs text-muted-foreground mt-0.5">{sub}</p>}
+        </div>
       </div>
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-xl font-bold leading-tight tracking-tight">{value}</p>
-        {sub && <p className="truncate text-xs text-muted-foreground mt-0.5">{sub}</p>}
-      </div>
+      {sparkData && sparkData.length >= 2 && (
+        <div className="w-24 h-10 shrink-0 ml-2">
+          <svg viewBox={`0 0 ${svgW} ${svgH}`} className="w-full h-full" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id={`spark-grad-${label.replace(/\s/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={isPositive ? '#10b981' : '#ef4444'} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <path d={areaPath} fill={`url(#spark-grad-${label.replace(/\s/g, '')})`} />
+            <path d={linePath} fill="none" stroke={isPositive ? '#10b981' : '#ef4444'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -149,13 +202,33 @@ export default function CalendarPage() {
       }
     }
 
+    // Generate sparkline data — last 7 hours appointment counts
+    const hourlyData: number[] = [];
+    for (let h = workStart; h <= workEnd; h++) {
+      hourlyData.push(
+        todayAppts.filter((a) => new Date(a.starts_at).getHours() === h).length,
+      );
+    }
+
+    // Revenue sparkline — cumulative by hour
+    const revenueByHour: number[] = [];
+    let cumulative = 0;
+    for (let h = workStart; h <= workEnd; h++) {
+      cumulative += todayAppts
+        .filter((a) => a.status === 'completed' && new Date(a.starts_at).getHours() === h)
+        .reduce((s, a) => s + (a.price || 0), 0);
+      revenueByHour.push(cumulative);
+    }
+
     return {
       total: todayAppts.length,
       revenue,
       nextClient: next?.client?.full_name ?? t('noUpcoming'),
       nextSub,
+      hourlyData,
+      revenueByHour,
     };
-  }, [appointments, t]);
+  }, [appointments, t, workStart, workEnd]);
 
   function navigate(delta: number) {
     const d = new Date(currentDate);
@@ -226,6 +299,7 @@ export default function CalendarPage() {
           value={String(todayStats.total)}
           sub={!dayHours ? t('freeDay') : undefined}
           accent="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          sparkData={todayStats.hourlyData}
         />
         <StatCard
           icon={Clock}
@@ -237,8 +311,9 @@ export default function CalendarPage() {
         <StatCard
           icon={TrendingUp}
           label={t('todayRevenue')}
-          value={`${todayStats.revenue.toLocaleString()} ${master?.city ? '₴' : '₴'}`}
+          value={`${todayStats.revenue.toLocaleString()} ₴`}
           accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          sparkData={todayStats.revenueByHour}
         />
       </div>
 

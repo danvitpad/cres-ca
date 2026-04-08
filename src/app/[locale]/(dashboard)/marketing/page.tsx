@@ -18,6 +18,10 @@ import {
   Trash2,
   Megaphone,
   TicketPercent,
+  Link2,
+  UserPlus,
+  Star,
+  Share2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -175,6 +179,88 @@ export default function MarketingPage() {
           {td('marketing')}
         </h2>
       </div>
+
+      {/* Referral Card — invite link block */}
+      {master?.invite_code && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="relative overflow-hidden bg-card/60 backdrop-blur-xl border-border/40">
+            <div className="absolute -top-20 -right-20 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
+            <CardContent className="p-5">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div className="flex-1 space-y-3">
+                  <Badge variant="outline" className="text-[10px] uppercase tracking-wider gap-1 rounded-full px-2.5">
+                    <Link2 className="size-3" />
+                    Referral Program
+                  </Badge>
+                  <h3 className="text-lg font-bold tracking-tight">Invite & Earn</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Share your link — new clients get connected, you grow your base.
+                  </p>
+
+                  {/* How it works steps */}
+                  <div className="space-y-2 pt-1">
+                    {[
+                      { icon: Share2, text: 'Share your invite link with potential clients' },
+                      { icon: UserPlus, text: 'Client opens the link and registers' },
+                      { icon: Star, text: 'Client is automatically linked to you' },
+                    ].map((step, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 + i * 0.1 }}
+                        className="flex items-center gap-2.5 text-sm"
+                      >
+                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <step.icon className="size-3 text-primary" />
+                        </div>
+                        <span className="text-muted-foreground">{step.text}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Referral link copy block */}
+                <div className="sm:w-72 space-y-2">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Your invite link</Label>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+                    <code className="flex-1 text-xs truncate">{`https://cres-ca.com/invite/${master.invite_code}`}</code>
+                    <button
+                      onClick={() => copyCode(`https://cres-ca.com/invite/${master.invite_code}`)}
+                      className="shrink-0 rounded-md p-1.5 hover:bg-muted transition-colors"
+                    >
+                      {copiedCode === `https://cres-ca.com/invite/${master.invite_code}` ? (
+                        <Check className="size-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="size-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Telegram link</Label>
+                  <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-2">
+                    <code className="flex-1 text-xs truncate">{`t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CresCABot'}?start=master_${master.invite_code}`}</code>
+                    <button
+                      onClick={() => copyCode(`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CresCABot'}?start=master_${master.invite_code}`)}
+                      className="shrink-0 rounded-md p-1.5 hover:bg-muted transition-colors"
+                    >
+                      {copiedCode === `https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'CresCABot'}?start=master_${master.invite_code}` ? (
+                        <Check className="size-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="size-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl bg-muted/50 p-1 w-fit">

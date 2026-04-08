@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
+import { ImageComparisonSlider } from '@/components/ui/image-comparison-slider';
 import { ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react';
 import type { BehaviorIndicator, AppointmentStatus } from '@/types';
 
@@ -132,6 +133,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </TabsContent>
         <TabsContent value="files">
           <FileUpload clientId={id} />
+          {/* Before/After slider for Business tier */}
+          <BeforeAfterSection clientId={id} />
         </TabsContent>
       </Tabs>
     </div>
@@ -298,5 +301,45 @@ function HealthTab({ client, onSaved }: { client: ClientDetail; onSaved: () => v
         <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
       </CardContent>
     </Card>
+  );
+}
+
+function BeforeAfterSection({ clientId }: { clientId: string }) {
+  const { canUse } = useSubscription();
+  const [files, setFiles] = useState<{ id: string; file_url: string; is_before_photo: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!canUse('file_storage')) return;
+    const supabase = createClient();
+    supabase
+      .from('client_files')
+      .select('id, file_url, is_before_photo')
+      .eq('client_id', clientId)
+      .like('file_type', 'image/%')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setFiles(data);
+      });
+  }, [clientId, canUse]);
+
+  if (!canUse('file_storage') || files.length < 2) return null;
+
+  const beforeImg = files.find((f) => f.is_before_photo)?.file_url || files[1]?.file_url;
+  const afterImg = files.find((f) => !f.is_before_photo)?.file_url || files[0]?.file_url;
+
+  if (!beforeImg || !afterImg) return null;
+
+  return (
+    <div className="mt-6 space-y-2">
+      <h4 className="text-sm font-medium">Before / After</h4>
+      <div className="rounded-xl border overflow-hidden aspect-[16/10]">
+        <ImageComparisonSlider
+          leftImage={beforeImg}
+          rightImage={afterImg}
+          altLeft="До"
+          altRight="После"
+        />
+      </div>
+    </div>
   );
 }

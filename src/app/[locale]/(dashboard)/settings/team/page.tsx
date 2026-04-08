@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Plus, Copy, Check, Trash2, Mail, UserPlus } from 'lucide-react';
+import { Users, Plus, Copy, Check, Trash2, Mail, UserPlus, Search } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ export default function TeamPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [salonId, setSalonId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const loadTeam = useCallback(async () => {
     if (!userId) return;
@@ -121,6 +122,47 @@ export default function TeamPage() {
         </div>
       </div>
 
+      {/* Stacked avatars overview */}
+      {members.length > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="flex -space-x-2">
+            {members.slice(0, 5).map((m) => (
+              <div
+                key={m.id}
+                className="relative flex size-9 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-primary text-xs font-bold"
+                title={m.profile?.full_name}
+              >
+                {m.profile?.avatar_url ? (
+                  <img src={m.profile.avatar_url} alt="" className="size-full rounded-full object-cover" />
+                ) : (
+                  (m.profile?.full_name || 'M')[0].toUpperCase()
+                )}
+                <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background ${m.is_active ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+              </div>
+            ))}
+            {members.length > 5 && (
+              <div className="flex size-9 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium">
+                +{members.length - 5}
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground">{members.length} members</p>
+        </div>
+      )}
+
+      {/* Search */}
+      {members.length > 3 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search team..."
+            className="pl-9 bg-card/50"
+          />
+        </div>
+      )}
+
       {members.length === 0 ? (
         <Card className="bg-card/80 backdrop-blur border-border/50">
           <CardContent className="py-12 text-center text-muted-foreground">
@@ -131,7 +173,9 @@ export default function TeamPage() {
       ) : (
         <div className="space-y-2">
           <AnimatePresence>
-            {members.map((member, i) => (
+            {members
+              .filter((m) => !search || m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || m.specialization?.toLowerCase().includes(search.toLowerCase()))
+              .map((member, i) => (
               <motion.div
                 key={member.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -139,13 +183,20 @@ export default function TeamPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: i * 0.03 }}
               >
-                <Card className="bg-card/80 backdrop-blur border-border/50">
+                <Card className="bg-card/80 backdrop-blur border-border/50 transition-all hover:shadow-sm hover:border-border">
                   <CardContent className="py-3 px-4 flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
-                      {(member.profile?.full_name || 'M')[0].toUpperCase()}
+                    <div className="relative">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+                        {member.profile?.avatar_url ? (
+                          <img src={member.profile.avatar_url} alt="" className="size-full rounded-full object-cover" />
+                        ) : (
+                          (member.profile?.full_name || 'M')[0].toUpperCase()
+                        )}
+                      </div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-card ${member.is_active ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">{member.profile?.full_name}</h3>
+                      <h3 className="font-medium truncate text-sm">{member.profile?.full_name}</h3>
                       <p className="text-xs text-muted-foreground">{member.specialization || 'No specialization'}</p>
                     </div>
                     <Badge variant={member.is_active ? 'default' : 'secondary'} className="text-[10px]">

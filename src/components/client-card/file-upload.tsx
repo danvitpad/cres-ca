@@ -5,13 +5,15 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useSubscription } from '@/hooks/use-subscription';
 import { Button } from '@/components/ui/button';
-import { Upload, FileText, Image, Trash2 } from 'lucide-react';
+import { UploadCloud, FileText, Image, Trash2, CheckCircle2, File as FileIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ClientFile {
   id: string;
@@ -44,7 +46,47 @@ export function FileUpload({ clientId }: { clientId: string }) {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    processFile(file);
+  }
 
+  async function handleDelete(fileId: string, fileUrl: string) {
+    const supabase = createClient();
+    // Extract path from URL
+    const path = fileUrl.split('/client-files/')[1];
+    if (path) await supabase.storage.from('client-files').remove([path]);
+    await supabase.from('client_files').delete().eq('id', fileId);
+    loadFiles();
+  }
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    if (droppedFiles.length > 0) {
+      processFile(droppedFiles[0]);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function processFile(file: File) {
     setUploading(true);
     const supabase = createClient();
     const path = `${clientId}/${Date.now()}_${file.name}`;
@@ -70,52 +112,79 @@ export function FileUpload({ clientId }: { clientId: string }) {
     loadFiles();
   }
 
-  async function handleDelete(fileId: string, fileUrl: string) {
-    const supabase = createClient();
-    // Extract path from URL
-    const path = fileUrl.split('/client-files/')[1];
-    if (path) await supabase.storage.from('client-files').remove([path]);
-    await supabase.from('client_files').delete().eq('id', fileId);
-    loadFiles();
-  }
-
   if (!canUse('file_storage')) return null;
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
-          <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUpload} disabled={uploading} />
-          <Upload className="h-4 w-4" />
-          {uploading ? tc('loading') : t('filesTab')}
-        </label>
+      {/* Drag-n-drop zone */}
+      <div
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className={cn(
+          'relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 transition-all cursor-pointer',
+          isDragging
+            ? 'border-primary bg-primary/5 scale-[1.01]'
+            : 'border-border/50 hover:border-border hover:bg-muted/30',
+          uploading && 'opacity-60 pointer-events-none',
+        )}
+      >
+        <input
+          type="file"
+          className="absolute inset-0 opacity-0 cursor-pointer"
+          accept="image/*,.pdf"
+          onChange={handleUpload}
+          disabled={uploading}
+        />
+        <motion.div
+          animate={isDragging ? { scale: 1.1, y: -4 } : { scale: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        >
+          <UploadCloud className={cn('size-8 mb-2', isDragging ? 'text-primary' : 'text-muted-foreground/50')} />
+        </motion.div>
+        <p className="text-sm font-medium">
+          {uploading ? tc('loading') : isDragging ? 'Drop file here' : 'Drag & drop or click to upload'}
+        </p>
+        <p className="text-[10px] text-muted-foreground mt-1">PNG, JPG, PDF up to 10MB</p>
       </div>
 
+      {/* Files grid */}
       {files.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('noClients')}</p>
+        <p className="text-sm text-muted-foreground text-center py-2">No files yet</p>
       ) : (
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-          {files.map((f) => (
-            <div key={f.id} className="relative rounded-lg border p-2 group">
-              {f.file_type.startsWith('image/') ? (
-                <a href={f.file_url} target="_blank" rel="noopener noreferrer">
-                  <Image className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-xs truncate mt-1">{f.file_name}</p>
-                </a>
-              ) : (
-                <a href={f.file_url} target="_blank" rel="noopener noreferrer">
-                  <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
-                  <p className="text-xs truncate mt-1">{f.file_name}</p>
-                </a>
-              )}
-              <button
-                onClick={() => handleDelete(f.id, f.file_url)}
-                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-destructive"
+          <AnimatePresence>
+            {files.map((f, i) => (
+              <motion.div
+                key={f.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ delay: i * 0.03 }}
+                className="relative rounded-xl border bg-card/50 p-3 group hover:shadow-sm transition-shadow"
               >
-                <Trash2 className="h-3 w-3" />
-              </button>
-            </div>
-          ))}
+                <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-2">
+                  {f.file_type.startsWith('image/') ? (
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-blue-500/10">
+                      <Image className="size-5 text-blue-500" />
+                    </div>
+                  ) : (
+                    <div className="flex size-10 items-center justify-center rounded-lg bg-amber-500/10">
+                      <FileText className="size-5 text-amber-500" />
+                    </div>
+                  )}
+                  <p className="text-[11px] truncate w-full text-center">{f.file_name}</p>
+                </a>
+                <button
+                  onClick={() => handleDelete(f.id, f.file_url)}
+                  className="absolute top-1.5 right-1.5 p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-red-500/10 transition-all"
+                >
+                  <Trash2 className="size-3 text-red-500" />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       )}
     </div>

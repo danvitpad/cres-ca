@@ -480,6 +480,8 @@ function StatCard({
   color,
   bgColor,
   loading,
+  delta,
+  description,
 }: {
   label: string;
   value: number;
@@ -487,30 +489,60 @@ function StatCard({
   color: string;
   bgColor: string;
   loading: boolean;
+  delta?: string;
+  description?: string;
 }) {
+  const isPositive = delta ? !delta.startsWith('-') : true;
+
   return (
-    <Card className="bg-card/80 backdrop-blur border-border/50 transition-all hover:shadow-md hover:-translate-y-0.5">
-      <CardContent className="pt-5">
-        <div className="flex items-center gap-3">
-          <div className={cn('flex size-10 items-center justify-center rounded-xl', bgColor)}>
-            <Icon className={cn('size-5', color)} />
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+    >
+      <Card className="relative overflow-hidden bg-card/60 backdrop-blur-xl border-border/40 transition-all hover:shadow-lg hover:-translate-y-0.5 hover:border-border/60">
+        <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-foreground/[0.02] blur-2xl" />
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn('flex size-10 items-center justify-center rounded-xl', bgColor)}>
+                <Icon className={cn('size-5', color)} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  {delta && (
+                    <span className={cn(
+                      'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
+                      isPositive
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        : 'bg-red-500/10 text-red-600 dark:text-red-400',
+                    )}>
+                      {isPositive ? <TrendingUp className="size-2.5" /> : <TrendingDown className="size-2.5" />}
+                      {delta}
+                    </span>
+                  )}
+                </div>
+                {loading ? (
+                  <Skeleton className="h-7 w-20 mt-1" />
+                ) : (
+                  <motion.p
+                    className="text-2xl font-bold tracking-tight"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {value.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">₴</span>
+                  </motion.p>
+                )}
+                {description && (
+                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">{description}</p>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">{label}</p>
-            {loading ? (
-              <Skeleton className="h-7 w-20 mt-1" />
-            ) : (
-              <motion.p
-                className="text-xl font-bold tracking-tight"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                {value.toFixed(0)} <span className="text-xs font-normal text-muted-foreground">UAH</span>
-              </motion.p>
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
