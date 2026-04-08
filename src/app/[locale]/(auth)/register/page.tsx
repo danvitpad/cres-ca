@@ -83,7 +83,7 @@ export default function RegisterPage() {
   }
 
   async function handleVerifyOTP() {
-    if (otpValue.length !== 6) return;
+    if (otpValue.length !== 8) return;
     setLoading(true);
     const supabase = createClient();
 
@@ -267,7 +267,7 @@ export default function RegisterPage() {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
               <InputOTP
-                maxLength={6}
+                maxLength={8}
                 pattern={REGEXP_ONLY_DIGITS}
                 value={otpValue}
                 onChange={setOtpValue}
@@ -277,19 +277,21 @@ export default function RegisterPage() {
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
                   <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
                 </InputOTPGroup>
                 <InputOTPSeparator />
                 <InputOTPGroup>
-                  <InputOTPSlot index={3} />
                   <InputOTPSlot index={4} />
                   <InputOTPSlot index={5} />
+                  <InputOTPSlot index={6} />
+                  <InputOTPSlot index={7} />
                 </InputOTPGroup>
               </InputOTP>
 
               <Button
                 className="w-full"
                 onClick={handleVerifyOTP}
-                disabled={loading || otpValue.length !== 6}
+                disabled={loading || otpValue.length !== 8}
               >
                 {loading ? tc('loading') : tc('confirm')}
               </Button>

@@ -49,7 +49,7 @@
     "emailAlreadyRegistered": "Цей email вже зареєстровано. Спробуйте увійти.",
     "createAccountDesc": "Створіть акаунт, щоб розпочати",
     "enterOTP": "Введіть код підтвердження",
-    "otpSentTo": "Ми надіслали 6-значний код на",
+    "otpSentTo": "Ми надіслали 8-значний код на",
     "invalidOTP": "Невірний код. Спробуйте ще раз.",
     "verificationSuccess": "Email підтверджено!",
     "resendOTP": "Надіслати код повторно",

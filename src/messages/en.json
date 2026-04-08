@@ -49,7 +49,7 @@
     "emailAlreadyRegistered": "This email is already registered. Try signing in.",
     "createAccountDesc": "Create an account to get started",
     "enterOTP": "Enter verification code",
-    "otpSentTo": "We sent a 6-digit code to",
+    "otpSentTo": "We sent an 8-digit code to",
     "invalidOTP": "Invalid code. Please try again.",
     "verificationSuccess": "Email verified successfully!",
     "resendOTP": "Resend code",
