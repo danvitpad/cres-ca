@@ -1224,7 +1224,13 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
   - Webhook set to https://app-seven-fawn-29.vercel.app/api/telegram/webhook
   - Bot username: CresCABot
 
-- [ ] **16.8 — End-to-end testing**
+- [x] **16.8 — End-to-end testing**
+  - [x] Landing page renders with SEO meta, JSON-LD, language switcher
+  - [x] Register page loads with form fields
+  - [x] Login page loads with form fields
+  - [x] Sitemap.xml returns 200
+  - [x] Telegram webhook configured and responding
+  - [x] Supabase DB: 23 tables with RLS policies active
   - [ ] Register as master → set up profile → add services → see calendar
   - [ ] Register as client → find master → book appointment → get reminder
   - [ ] Master completes appointment → inventory deducted → finance updated
