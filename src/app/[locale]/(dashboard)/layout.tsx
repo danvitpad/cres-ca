@@ -22,7 +22,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { cn } from '@/lib/utils';
-import { Dock, DockIcon } from '@/components/ui/dock';
+import { Dock, DockIcon, DockSeparator } from '@/components/ui/dock';
 
 const navItems = [
   { key: 'calendar', icon: CalendarDays, href: '/calendar' },
@@ -101,25 +101,26 @@ export default function DashboardLayout({
 
       {/* Bottom dock */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-        <Dock iconSize={48}>
-          {navItems.map(({ key, icon: Icon, href }) => {
-            const isActive = pathname.includes(href);
-            return (
-              <DockIcon
-                key={key}
-                name={t(key)}
-                isActive={isActive}
-                onClick={() => router.push(href)}
-              >
-                <Icon
-                  className={cn(
-                    'h-5 w-5 transition-colors',
-                    isActive ? 'text-primary' : 'text-muted-foreground'
-                  )}
-                />
-              </DockIcon>
-            );
-          })}
+        <Dock>
+          {navItems.slice(0, 5).map(({ key, icon, href }) => (
+            <DockIcon
+              key={key}
+              icon={icon}
+              label={t(key)}
+              isActive={pathname.includes(href)}
+              onClick={() => router.push(href)}
+            />
+          ))}
+          <DockSeparator />
+          {navItems.slice(5).map(({ key, icon, href }) => (
+            <DockIcon
+              key={key}
+              icon={icon}
+              label={t(key)}
+              isActive={pathname.includes(href)}
+              onClick={() => router.push(href)}
+            />
+          ))}
         </Dock>
       </div>
     </div>

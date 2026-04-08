@@ -1,205 +1,81 @@
 /** --- YAML
  * name: Dock
- * description: macOS-style dock navigation with magnification effect on hover
- * source: badtz-ui
+ * description: Sleek dark dock navigation with hover-halo effect and tooltips
+ * source: 21st.dev hero-dock
  * --- */
 
-"use client"
+'use client';
 
-import * as React from "react"
-import { useRef } from "react"
-
-import { cn } from "@/lib/utils"
+import React from 'react';
+import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
 
 interface DockProps {
-  className?: string
-  children: React.ReactNode
-  maxAdditionalSize?: number
-  iconSize?: number
+  children: React.ReactNode;
+  className?: string;
 }
 
 interface DockIconProps {
-  className?: string
-  src?: string
-  href?: string
-  name: string
-  onClick?: () => void
-  handleIconHover?: (e: React.MouseEvent<HTMLLIElement>) => void
-  children?: React.ReactNode
-  iconSize?: number
-  isActive?: boolean
+  icon: LucideIcon;
+  label: string;
+  badge?: string;
+  isActive?: boolean;
+  onClick?: () => void;
 }
 
-type ScaleValueParams = [number, number]
-
-export const scaleValue = function (
-  value: number,
-  from: ScaleValueParams,
-  to: ScaleValueParams
-): number {
-  const scale = (to[1] - to[0]) / (from[1] - from[0])
-  const capped = Math.min(from[1], Math.max(from[0], value)) - from[0]
-  return Math.floor(capped * scale + to[0])
-}
-
-export function DockIcon({
-  className,
-  src,
-  href,
-  name,
-  onClick,
-  handleIconHover,
-  children,
-  iconSize,
-  isActive,
-}: DockIconProps) {
-  const ref = useRef<HTMLLIElement | null>(null)
-
-  const content = src ? (
-    <img
-      src={src}
-      alt={name}
-      className="h-full w-full rounded-[inherit]"
-    />
-  ) : (
-    children
-  )
-
+export function Dock({ children, className }: DockProps) {
   return (
-    <>
-      <style jsx>
-        {`
-          .dock-icon:hover + .dock-icon {
-            width: calc(
-              var(--icon-size) * 1.33 + var(--dock-offset-right, 0px)
-            );
-            height: calc(
-              var(--icon-size) * 1.33 + var(--dock-offset-right, 0px)
-            );
-            margin-bottom: calc(
-              var(--icon-size) * -0.33 + var(--dock-offset-right, 0) * -1
-            );
-          }
-
-          .dock-icon:hover + .dock-icon + .dock-icon {
-            width: calc(
-              var(--icon-size) * 1.17 + var(--dock-offset-right, 0px)
-            );
-            height: calc(
-              var(--icon-size) * 1.17 + var(--dock-offset-right, 0px)
-            );
-            margin-bottom: calc(
-              var(--icon-size) * -0.17 + var(--dock-offset-right, 0) * -1
-            );
-          }
-
-          .dock-icon:has(+ .dock-icon:hover) {
-            width: calc(var(--icon-size) * 1.33 + var(--dock-offset-left, 0px));
-            height: calc(
-              var(--icon-size) * 1.33 + var(--dock-offset-left, 0px)
-            );
-            margin-bottom: calc(
-              var(--icon-size) * -0.33 + var(--dock-offset-left, 0) * -1
-            );
-          }
-
-          .dock-icon:has(+ .dock-icon + .dock-icon:hover) {
-            width: calc(var(--icon-size) * 1.17 + var(--dock-offset-left, 0px));
-            height: calc(
-              var(--icon-size) * 1.17 + var(--dock-offset-left, 0px)
-            );
-            margin-bottom: calc(
-              var(--icon-size) * -0.17 + var(--dock-offset-left, 0) * -1
-            );
-          }
-        `}
-      </style>
-      <li
-        ref={ref}
-        style={
-          {
-            transition:
-              "width, height, margin-bottom, cubic-bezier(0.25, 1, 0.5, 1) 150ms",
-            "--icon-size": `${iconSize}px`,
-          } as React.CSSProperties
-        }
-        onMouseMove={handleIconHover}
-        className={cn(
-          "dock-icon group/li flex h-[var(--icon-size)] w-[var(--icon-size)] cursor-pointer items-center justify-center px-[calc(var(--icon-size)*0.075)] hover:-mb-[calc(var(--icon-size)/2)] hover:h-[calc(var(--icon-size)*1.5)] hover:w-[calc(var(--icon-size)*1.5)] [&_img]:object-contain",
-          className
-        )}
-      >
-        <button
-          onClick={onClick}
-          className={cn(
-            "group/a relative flex items-center justify-center aspect-square w-full rounded-[12px] border p-1.5 transition-colors",
-            "border-border/50 bg-gradient-to-t from-muted/80 to-background shadow-sm",
-            "after:absolute after:inset-0 after:rounded-[inherit] after:shadow-md after:shadow-zinc-800/5",
-            isActive && "ring-2 ring-primary/40 border-primary/30"
-          )}
-        >
-          <span className="absolute bottom-[calc(100%+8px)] left-1/2 -translate-x-1/2 rounded-md border border-border bg-popover px-2 py-1 text-xs whitespace-nowrap text-popover-foreground opacity-0 transition-opacity duration-200 group-hover/li:opacity-100 shadow-lg z-50">
-            {name}
-          </span>
-          {content}
-          {isActive && (
-            <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary" />
-          )}
-        </button>
-      </li>
-    </>
-  )
-}
-
-export function Dock({
-  className,
-  children,
-  maxAdditionalSize = 5,
-  iconSize = 48,
-}: DockProps) {
-  const dockRef = useRef<HTMLDivElement | null>(null)
-
-  const handleIconHover = (e: React.MouseEvent<HTMLLIElement>) => {
-    if (!dockRef.current) return
-    const mousePos = e.clientX
-    const iconPosLeft = e.currentTarget.getBoundingClientRect().left
-    const iconWidth = e.currentTarget.getBoundingClientRect().width
-
-    const cursorDistance = (mousePos - iconPosLeft) / iconWidth
-    const offsetPixels = scaleValue(
-      cursorDistance,
-      [0, 1],
-      [maxAdditionalSize * -1, maxAdditionalSize]
-    )
-
-    dockRef.current.style.setProperty(
-      "--dock-offset-left",
-      `${offsetPixels * -1}px`
-    )
-
-    dockRef.current.style.setProperty(
-      "--dock-offset-right",
-      `${offsetPixels}px`
-    )
-  }
-
-  return (
-    <nav ref={dockRef} role="navigation" aria-label="Main Dock">
-      <ul
-        className={cn(
-          "flex items-end rounded-2xl border border-border/60 bg-background/95 backdrop-blur-2xl p-1.5 shadow-lg",
-          className
-        )}
-      >
-        {React.Children.map(children, (child) =>
-          React.isValidElement<DockIconProps>(child)
-            ? React.cloneElement(child as React.ReactElement<DockIconProps>, {
-                handleIconHover,
-                iconSize,
-              })
-            : child
-        )}
-      </ul>
+    <nav role="navigation" aria-label="Main Dock">
+      <div className={cn('relative flex items-center', className)}>
+        <div className="flex items-center gap-3 rounded-[28px] bg-neutral-900/80 px-3 py-2 shadow-2xl ring-1 ring-white/10 backdrop-blur-lg sm:gap-4 sm:rounded-[48px] sm:px-5 sm:py-3">
+          {children}
+        </div>
+      </div>
+      <style>{`
+        .hover-halo{position:relative}
+        .hover-halo::after{content:"";position:absolute;inset:-2px;border-radius:inherit;opacity:0;transition:opacity .25s,transform .25s;box-shadow:0 0 0 0 rgba(255,255,255,.18),0 12px 30px -10px rgba(0,0,0,.7)}
+        .hover-halo:hover::after{opacity:1}
+        .dock-tooltip{opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s}
+        .group:hover .dock-tooltip{opacity:1;transform:translateY(0)}
+      `}</style>
     </nav>
-  )
+  );
+}
+
+export function DockSeparator() {
+  return (
+    <span className="mx-0.5 hidden h-6 w-px bg-white/10 sm:block" aria-hidden="true" />
+  );
+}
+
+export function DockIcon({ icon: Icon, label, badge, isActive, onClick }: DockIconProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'hover-halo group relative grid h-11 w-11 place-items-center rounded-xl ring-1 ring-white/10 bg-gradient-to-b from-neutral-800/60 to-neutral-900/70 backdrop-blur-xl shadow-lg transition-transform duration-200 hover:-translate-y-1 hover:scale-[1.05] sm:h-[52px] sm:w-[52px]',
+        isActive && 'ring-white/30 from-neutral-700/80 to-neutral-800/90',
+      )}
+      aria-label={label}
+    >
+      <Icon
+        className={cn(
+          'h-5 w-5 transition-transform duration-200 group-hover:scale-110',
+          isActive ? 'text-white' : 'text-white/70',
+        )}
+        strokeWidth={2.1}
+      />
+      {badge && (
+        <span className="absolute -right-1.5 -top-1.5 grid h-4.5 w-4.5 place-items-center rounded-full bg-white text-[9px] font-semibold text-neutral-900 ring-1 ring-white/80 sm:h-5 sm:w-5 sm:text-[10px]">
+          {badge}
+        </span>
+      )}
+      {isActive && (
+        <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-white" />
+      )}
+      <span className="dock-tooltip pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] tracking-wide text-white/80 whitespace-nowrap shadow-lg ring-1 ring-white/10">
+        {label}
+      </span>
+    </button>
+  );
 }
