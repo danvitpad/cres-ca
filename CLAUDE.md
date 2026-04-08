@@ -1051,7 +1051,7 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
 ### PHASE 12: AI FEATURES (Business tier)
 > Voice notes, smart scheduling, auto-recommendations
 
-- [ ] **12.1 — OpenRouter integration**
+- [x] **12.1 — OpenRouter integration**
   - **Create:** `src/lib/ai/openrouter.ts`
   - **What:** Function to call OpenRouter API:
     ```tsx
@@ -1075,7 +1075,7 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
     }
     ```
 
-- [ ] **12.2 — Voice notes transcription**
+- [x] **12.2 — Voice notes transcription**
   - **Create:** `src/app/api/ai/transcribe/route.ts`
   - **What:** Accept audio blob from client. Use OpenRouter/free Whisper API to transcribe. Parse transcription into structured data (client name, service, notes, inventory items).
   - **System prompt:**
@@ -1085,18 +1085,18 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
     Return JSON only.
     ```
 
-- [ ] **12.3 — Smart scheduling suggestions**
+- [x] **12.3 — Smart scheduling suggestions**
   - **Create:** `src/app/api/ai/suggest-booking/route.ts`
   - **What:** For each client, calculate their usual visit interval. If overdue, generate a personalized reminder message.
   - **Logic:** Query appointment history, calculate avg days between visits, compare with days since last visit.
   - **Used by:** retention cron (9.6) to generate personalized messages
 
-- [ ] **12.4 — Post-visit auto-recommendation**
+- [x] **12.4 — Post-visit auto-recommendation**
   - **Create:** `src/app/api/cron/recommendations/route.ts`
   - **What:** 2 hours after visit, send personalized product/service recommendation based on what was done.
   - **Uses AI to generate message** based on service performed and client history.
 
-- [ ] **12.5 — Verify Phase 12**
+- [x] **12.5 — Verify Phase 12**
   - AI API works. Voice transcription parses. Recommendations generate.
   - `npm run build` passes
 
