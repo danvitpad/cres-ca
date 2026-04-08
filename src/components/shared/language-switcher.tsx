@@ -5,16 +5,9 @@
 
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Globe } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 const LOCALES = [
   { code: 'uk', label: 'UA', flag: '🇺🇦' },
@@ -25,30 +18,53 @@ const LOCALES = [
 export function LanguageSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   const segments = pathname.split('/');
   const currentLocale = LOCALES.find((l) => l.code === segments[1])?.code || 'uk';
+  const current = LOCALES.find((l) => l.code === currentLocale)!;
 
-  function switchLocale(newLocale: string | null) {
-    if (!newLocale) return;
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function switchLocale(newLocale: string) {
     const newSegments = [...segments];
     newSegments[1] = newLocale;
     router.push(newSegments.join('/'));
+    setOpen(false);
   }
 
   return (
-    <Select value={currentLocale} onValueChange={switchLocale}>
-      <SelectTrigger className="w-[70px] h-8 text-xs gap-1">
-        <Globe className="size-3.5" />
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {LOCALES.map((l) => (
-          <SelectItem key={l.code} value={l.code} className="text-xs">
-            {l.flag} {l.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <Globe className="size-4" />
+        <span className="text-xs font-medium">{current.label}</span>
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-border/50 bg-popover/95 backdrop-blur-xl shadow-lg py-1 z-50">
+          {LOCALES.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => switchLocale(l.code)}
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:bg-accent/50 ${
+                l.code === currentLocale ? 'text-foreground font-medium' : 'text-muted-foreground'
+              }`}
+            >
+              <span>{l.flag}</span>
+              <span>{l.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
