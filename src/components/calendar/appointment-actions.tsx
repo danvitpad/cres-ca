@@ -51,12 +51,43 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
 
     if (error) { toast.error(error.message); setUpdating(false); return; }
 
-    // On completion: update client stats
+    // On completion: update client stats + auto-deduct inventory
     if (newStatus === 'completed') {
       await supabase.rpc('increment_client_stats', {
         p_client_id: appointment.client_id,
         p_amount: appointment.price,
       }).then(() => {}, () => {}); // Ignore if RPC doesn't exist yet
+
+      // Auto-deduct inventory based on service recipe
+      if (appointment.service_id) {
+        const { data: svc } = await supabase
+          .from('services')
+          .select('inventory_recipe')
+          .eq('id', appointment.service_id)
+          .single();
+
+        if (svc?.inventory_recipe && Array.isArray(svc.inventory_recipe)) {
+          for (const item of svc.inventory_recipe as { item_id: string; quantity: number }[]) {
+            // Deduct from inventory
+            const { data: inv } = await supabase
+              .from('inventory_items')
+              .select('quantity')
+              .eq('id', item.item_id)
+              .single();
+            if (inv) {
+              await supabase.from('inventory_items').update({
+                quantity: Math.max(0, inv.quantity - item.quantity),
+              }).eq('id', item.item_id);
+              // Log usage
+              await supabase.from('inventory_usage').insert({
+                item_id: item.item_id,
+                appointment_id: appointment.id,
+                quantity_used: item.quantity,
+              });
+            }
+          }
+        }
+      }
     }
 
     // On cancel: increment cancellation count
