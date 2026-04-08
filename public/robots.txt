@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://cres-ca.com/sitemap.xml

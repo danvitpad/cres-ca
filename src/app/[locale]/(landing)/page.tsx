@@ -115,8 +115,29 @@ export default function LandingPage() {
     { icon: <Heart className="size-6" />, title: t('step3Title'), desc: t('step3Desc') },
   ];
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'CRES-CA',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    description: 'Universal CRM platform for service industry — booking, clients, finance, and marketing.',
+    url: 'https://cres-ca.com',
+    offers: {
+      '@type': 'AggregateOffer',
+      lowPrice: '12',
+      highPrice: '49',
+      priceCurrency: 'USD',
+      offerCount: 3,
+    },
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* ═══════════════════ HEADER ═══════════════════ */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-2xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">

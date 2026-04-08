@@ -1193,17 +1193,17 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
 ### PHASE 16: FINAL POLISH & DEPLOYMENT
 > SEO, performance, deployment, testing
 
-- [ ] **16.1 — SEO optimization**
+- [x] **16.1 — SEO optimization**
   - **Add:** Open Graph tags, structured data (JSON-LD for LocalBusiness), sitemap.xml, robots.txt
   - **Modify:** Root layout metadata
 
-- [ ] **16.2 — PWA manifest**
+- [x] **16.2 — PWA manifest**
   - **Create:** `public/manifest.json` — for Add to Home Screen on mobile
 
-- [ ] **16.3 — Error boundaries**
+- [x] **16.3 — Error boundaries**
   - **Create:** `src/app/[locale]/error.tsx` and `src/app/[locale]/not-found.tsx`
 
-- [ ] **16.4 — Loading states**
+- [x] **16.4 — Loading states**
   - **Create:** `src/app/[locale]/(dashboard)/loading.tsx` and `src/app/[locale]/(client)/loading.tsx`
   - **What:** Skeleton screens using shadcn Skeleton component
 
@@ -1234,7 +1234,7 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
   - [ ] AI voice note → transcription → auto-deduction
   - [ ] Referral link → new client → bonus points
 
-- [ ] **16.9 — Final build and deploy**
+- [x] **16.9 — Final build and deploy**
   - `npm run build` passes with 0 errors
   - All pages render correctly
   - All API routes respond
