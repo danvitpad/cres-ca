@@ -90,11 +90,36 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
       }
     }
 
-    // On cancel: increment cancellation count
+    // On cancel: increment cancellation count + notify waitlist
     if (newStatus === 'cancelled') {
       await supabase.from('clients').update({
         cancellation_count: (await supabase.from('clients').select('cancellation_count').eq('id', appointment.client_id).single()).data?.cancellation_count + 1 || 1,
       }).eq('id', appointment.client_id);
+
+      // Notify first person on waitlist for this date
+      const aptDate = new Date(appointment.starts_at).toISOString().split('T')[0];
+      const { data: waitlistEntry } = await supabase
+        .from('waitlist')
+        .select('id, client_id, clients(profile_id)')
+        .eq('master_id', appointment.master_id)
+        .eq('desired_date', aptDate)
+        .limit(1)
+        .single();
+
+      if (waitlistEntry) {
+        const clientData = waitlistEntry.clients as unknown as { profile_id: string | null } | null;
+        if (clientData?.profile_id) {
+          await supabase.from('notifications').insert({
+            profile_id: clientData.profile_id,
+            channel: 'telegram',
+            title: '🎉 A slot just opened up!',
+            body: `Good news! A time slot became available on ${aptDate}. Book now before it's taken!`,
+            scheduled_for: new Date().toISOString(),
+          });
+        }
+        // Remove from waitlist
+        await supabase.from('waitlist').delete().eq('id', waitlistEntry.id);
+      }
     }
 
     // On no-show
