@@ -16,7 +16,6 @@ import {
   ArrowRight,
   Sparkles,
   Star,
-  Clock,
   Shield,
   Zap,
   Heart,
@@ -30,11 +29,12 @@ import { AnimatedShinyText } from '@/components/landing/animated-shiny-text';
 import { BentoGrid, type BentoItem } from '@/components/landing/bento-grid';
 import { AnimatedSection, AnimatedStagger, AnimatedItem } from '@/components/shared/animated-section';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
-import { ThemeToggle } from '@/components/shared/theme-toggle';
+import { AnimatedThemeToggle } from '@/components/ui/animated-theme-toggle';
 
 export default function LandingPage() {
   const t = useTranslations('landing');
   const tp = useTranslations('pricing');
+  const ta = useTranslations('auth');
 
   const bentoItems: BentoItem[] = [
     {
@@ -43,7 +43,7 @@ export default function LandingPage() {
       icon: <CalendarDays className="size-5 text-blue-500" />,
       status: 'Core',
       tags: ['Drag&Drop', 'Auto'],
-      colSpan: 2,
+      colSpan: 1,
       hasPersistentHover: true,
     },
     {
@@ -142,20 +142,14 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-2xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <span className="text-xl font-bold tracking-tight">CRES-CA</span>
-          <nav className="flex items-center gap-4">
-            <Link href="#features" className="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">
-              {t('features')}
-            </Link>
-            <Link href="#pricing" className="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">
-              {t('pricing')}
-            </Link>
+          <nav className="flex items-center gap-2">
             <LanguageSwitcher />
-            <ThemeToggle />
+            <AnimatedThemeToggle />
             <Link href="/login" className={cn(buttonVariants({ size: 'sm', variant: 'ghost' }))}>
-              {tp('subscribe')}
+              {ta('signIn')}
             </Link>
             <Link href="/register" className={cn(buttonVariants({ size: 'sm' }))}>
-              {t('getStarted')}
+              {ta('signUp')}
             </Link>
           </nav>
         </div>
@@ -207,24 +201,18 @@ export default function LandingPage() {
               </p>
             </AnimatedSection>
 
-            {/* CTA buttons */}
+            {/* CTA button */}
             <AnimatedSection delay={0.3}>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="flex items-center justify-center">
                 <Link
                   href="/register"
                   className={cn(
                     buttonVariants({ size: 'lg' }),
-                    'px-8 gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-shadow',
+                    'px-10 gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-shadow',
                   )}
                 >
                   {t('getStarted')}
                   <ArrowRight className="size-4" />
-                </Link>
-                <Link
-                  href="#features"
-                  className={cn(buttonVariants({ size: 'lg', variant: 'outline' }), 'px-8')}
-                >
-                  {t('learnMore')}
                 </Link>
               </div>
             </AnimatedSection>
@@ -398,7 +386,7 @@ function PricingCard({
 }) {
   return (
     <Card className={cn(
-      'h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card/80 backdrop-blur',
+      'h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card/80 backdrop-blur',
       highlighted && 'border-primary ring-2 ring-primary/20 relative scale-[1.03]',
     )}>
       {badge && (
@@ -410,13 +398,15 @@ function PricingCard({
         <CardTitle className="text-lg">{title}</CardTitle>
         <p className="text-3xl font-bold tracking-tight">{price}</p>
       </CardHeader>
-      <CardContent className="space-y-2.5">
-        {features.map((f) => (
-          <div key={f} className="flex items-center gap-2.5 text-sm">
-            <Check className="size-4 text-emerald-500 shrink-0" />
-            <span>{tp(f)}</span>
-          </div>
-        ))}
+      <CardContent className="flex flex-col flex-1 space-y-2.5">
+        <div className="flex-1 space-y-2.5">
+          {features.map((f) => (
+            <div key={f} className="flex items-center gap-2.5 text-sm">
+              <Check className="size-4 text-emerald-500 shrink-0" />
+              <span>{tp(f)}</span>
+            </div>
+          ))}
+        </div>
         <Link
           href="/register"
           className={cn(
