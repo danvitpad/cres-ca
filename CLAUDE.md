@@ -807,13 +807,13 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
 ### PHASE 6: MAP + MASTER SEARCH
 > OpenStreetMap integration, geolocation, master search
 
-- [ ] **6.1 — Leaflet map component (dynamic import)**
+- [x] **6.1 — Leaflet map component (dynamic import)**
   - **Create:** `src/components/shared/map-view.tsx`
   - **What:** Leaflet map wrapped in `dynamic(() => import(...), { ssr: false })` because Leaflet doesn't support SSR.
   - **Props:** `markers: Array<{ lat, lng, name, rating, masterId }>`, `center`, `zoom`
   - **Important:** Must import Leaflet CSS: `import 'leaflet/dist/leaflet.css'`
 
-- [ ] **6.2 — Map page with nearby masters**
+- [x] **6.2 — Map page with nearby masters**
   - **Modify:** `src/app/[locale]/(client)/map/page.tsx`
   - **What:**
     1. Request user's geolocation via `navigator.geolocation`
@@ -828,12 +828,12 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
     AND is_active = true
     ```
 
-- [ ] **6.3 — Master search page**
+- [x] **6.3 — Master search page**
   - **Modify:** `src/app/[locale]/(client)/masters/page.tsx`
   - **What:** Search input (by name, phone, or invite code) + results list as cards.
   - **Each card:** Avatar, name, specialization, rating stars, city, distance (if geo available), "View" button
 
-- [ ] **6.4 — Verify Phase 6**
+- [x] **6.4 — Verify Phase 6**
   - Map shows markers, geolocation works, search finds masters.
   - `npm run build` passes
 
