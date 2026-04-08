@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  compress: true,
+  poweredByHeader: false,
+  reactStrictMode: true,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'motion', 'date-fns', 'recharts'],
+  },
 };
 
 export default withNextIntl(nextConfig);

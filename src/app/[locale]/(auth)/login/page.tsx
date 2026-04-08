@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -17,15 +17,18 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
   InputOTPSeparator,
 } from '@/components/ui/input-otp';
-import { ArrowLeft, KeyRound, Mail } from 'lucide-react';
+import { ArrowLeft, KeyRound, Mail, Eye, EyeOff } from 'lucide-react';
 
 type Step = 'login' | 'forgot' | 'reset-otp' | 'new-password';
+
+const REMEMBER_KEY = 'cres-ca-remember';
 
 export default function LoginPage() {
   const t = useTranslations('auth');
@@ -35,12 +38,37 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY);
+      if (saved) {
+        const { email: savedEmail, remember } = JSON.parse(saved);
+        if (remember && savedEmail) {
+          setEmail(savedEmail);
+          setRememberMe(true);
+        }
+      }
+    } catch {}
+  }, []);
+
+  function saveRemember() {
+    if (rememberMe && email) {
+      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, remember: true }));
+    } else {
+      localStorage.removeItem(REMEMBER_KEY);
+    }
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    saveRemember();
     const supabase = createClient();
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -102,7 +130,6 @@ export default function LoginPage() {
     setLoading(true);
     const supabase = createClient();
 
-    // First verify OTP
     const { error: verifyError } = await supabase.auth.verifyOtp({
       email,
       token: otpValue,
@@ -117,7 +144,6 @@ export default function LoginPage() {
       return;
     }
 
-    // Then update password
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
 
@@ -172,13 +198,34 @@ export default function LoginPage() {
                       {t('forgotPassword')}
                     </button>
                   </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="remember"
+                    checked={rememberMe}
+                    onCheckedChange={(v) => setRememberMe(v === true)}
                   />
+                  <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                    {t('rememberMe')}
+                  </Label>
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-4">
@@ -314,15 +361,26 @@ export default function LoginPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-password">{t('password')}</Label>
-                  <Input
-                    id="new-password"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    autoFocus
-                  />
+                  <div className="relative">
+                    <Input
+                      id="new-password"
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      autoFocus
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter>
