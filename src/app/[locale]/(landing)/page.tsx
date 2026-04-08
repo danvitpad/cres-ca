@@ -29,6 +29,8 @@ import { Spotlight } from '@/components/landing/spotlight';
 import { AnimatedShinyText } from '@/components/landing/animated-shiny-text';
 import { BentoGrid, type BentoItem } from '@/components/landing/bento-grid';
 import { AnimatedSection, AnimatedStagger, AnimatedItem } from '@/components/shared/animated-section';
+import { LanguageSwitcher } from '@/components/shared/language-switcher';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 
 export default function LandingPage() {
   const t = useTranslations('landing');
@@ -119,13 +121,15 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-2xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <span className="text-xl font-bold tracking-tight">CRES-CA</span>
-          <nav className="flex items-center gap-6">
+          <nav className="flex items-center gap-4">
             <Link href="#features" className="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">
               {t('features')}
             </Link>
             <Link href="#pricing" className="hidden sm:block text-sm text-muted-foreground hover:text-foreground transition-colors">
               {t('pricing')}
             </Link>
+            <LanguageSwitcher />
+            <ThemeToggle />
             <Link href="/login" className={cn(buttonVariants({ size: 'sm', variant: 'ghost' }))}>
               {tp('subscribe')}
             </Link>
