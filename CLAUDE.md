@@ -1208,29 +1208,23 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
   - **What:** Skeleton screens using shadcn Skeleton component
 
 - [x] **16.5 — Deploy to Vercel**
-  - Push to GitHub → connect to Vercel → set environment variables → deploy
   - Production URL: https://app-seven-fawn-29.vercel.app
   - GitHub auto-deploy connected
-  - Environment variables configured (Supabase, Telegram, App URL, Cron Secret)
+  - 7 environment variables configured
 
 - [x] **16.6 — Supabase production setup**
-  - All 3 migrations executed (schema, auth trigger, expenses)
-  - 23 tables created with indexes and RLS policies
-  - Storage buckets created (client-files private, avatars public)
-  - Auth trigger configured for auto profile/master/salon creation
+  - All 3 migrations executed (23 tables, indexes, RLS policies)
+  - Auth trigger for auto profile/master/salon creation
+  - Storage buckets: client-files (private), avatars (public)
 
 - [x] **16.7 — Telegram Bot registration**
-  - Bot token configured and added to Vercel env
-  - Webhook set to https://app-seven-fawn-29.vercel.app/api/telegram/webhook
-  - Bot username: CresCABot
+  - Bot token added to Vercel env
+  - Webhook: https://app-seven-fawn-29.vercel.app/api/telegram/webhook
 
 - [x] **16.8 — End-to-end testing**
-  - [x] Landing page renders with SEO meta, JSON-LD, language switcher
-  - [x] Register page loads with form fields
-  - [x] Login page loads with form fields
+  - [x] Landing, register, login pages render correctly
   - [x] Sitemap.xml returns 200
   - [x] Telegram webhook configured and responding
-  - [x] Supabase DB: 23 tables with RLS policies active
   - [ ] Register as master → set up profile → add services → see calendar
   - [ ] Register as client → find master → book appointment → get reminder
   - [ ] Master completes appointment → inventory deducted → finance updated
