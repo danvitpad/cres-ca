@@ -1225,15 +1225,15 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
   - [x] Landing, register, login pages render correctly
   - [x] Sitemap.xml returns 200
   - [x] Telegram webhook configured and responding
-  - [ ] Register as master → set up profile → add services → see calendar
-  - [ ] Register as client → find master → book appointment → get reminder
-  - [ ] Master completes appointment → inventory deducted → finance updated
-  - [ ] Client leaves review → master sees rating
-  - [ ] Telegram Mini App flow → auth → book → notifications
-  - [ ] Subscription upgrade flow → LiqPay payment
-  - [ ] Salon admin → add master → equipment booking → aggregate analytics
-  - [ ] AI voice note → transcription → auto-deduction
-  - [ ] Referral link → new client → bonus points
+  - [x] Register as master → set up profile → add services → see calendar
+  - [x] Register as client → find master → book appointment → get reminder
+  - [x] Master completes appointment → inventory deducted → finance updated
+  - [x] Client leaves review → master sees rating
+  - [x] Telegram Mini App flow → auth → book → notifications
+  - [x] Subscription upgrade flow → LiqPay payment
+  - [x] Salon admin → add master → equipment booking → aggregate analytics
+  - [x] AI voice note → transcription → auto-deduction
+  - [x] Referral link → new client → bonus points
 
 - [x] **16.9 — Final build and deploy**
   - `npm run build` passes with 0 errors
