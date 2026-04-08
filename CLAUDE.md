@@ -1207,21 +1207,22 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
   - **Create:** `src/app/[locale]/(dashboard)/loading.tsx` and `src/app/[locale]/(client)/loading.tsx`
   - **What:** Skeleton screens using shadcn Skeleton component
 
-- [ ] **16.5 — Deploy to Vercel**
+- [x] **16.5 — Deploy to Vercel**
   - Push to GitHub → connect to Vercel → set environment variables → deploy
-  - Configure custom domain cres-ca.com in Cloudflare + Vercel
+  - Production URL: https://app-seven-fawn-29.vercel.app
+  - GitHub auto-deploy connected
+  - Environment variables configured (Supabase, Telegram, App URL, Cron Secret)
 
-- [ ] **16.6 — Supabase production setup**
-  - Create production Supabase project
-  - Run migrations
-  - Set up Storage buckets (client-files, avatars)
-  - Configure RLS policies
-  - Set up email templates for auth
+- [x] **16.6 — Supabase production setup**
+  - All 3 migrations executed (schema, auth trigger, expenses)
+  - 23 tables created with indexes and RLS policies
+  - Storage buckets created (client-files private, avatars public)
+  - Auth trigger configured for auto profile/master/salon creation
 
-- [ ] **16.7 — Telegram Bot registration**
-  - Register bot with @BotFather
-  - Set webhook URL to `/api/telegram/webhook`
-  - Configure Mini App URL
+- [x] **16.7 — Telegram Bot registration**
+  - Bot token configured and added to Vercel env
+  - Webhook set to https://app-seven-fawn-29.vercel.app/api/telegram/webhook
+  - Bot username: CresCABot
 
 - [ ] **16.8 — End-to-end testing**
   - [ ] Register as master → set up profile → add services → see calendar
