@@ -1,19 +1,470 @@
 /** --- YAML
  * name: Booking Page
- * description: Client booking flow — select service, date, time, confirm. Shows only free slots.
+ * description: Multi-step client booking flow — select service, date, time, confirm
  * --- */
 
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/stores/auth-store';
+import { useSubscription } from '@/hooks/use-subscription';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { WaitlistButton } from '@/components/booking/waitlist-button';
+import { ArrowLeft, Clock, Check, Plus } from 'lucide-react';
+
+type Step = 'service' | 'date' | 'time' | 'confirm';
+
+interface ServiceItem {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price: number;
+  currency: string;
+  color: string;
+  requires_prepayment: boolean;
+  prepayment_amount: number;
+  upsell_services: string[];
+  category: { name: string } | null;
+}
+
+interface MasterInfo {
+  id: string;
+  working_hours: Record<string, { start: string; end: string; break_start?: string; break_end?: string } | null>;
+  profile: { full_name: string };
+}
 
 export default function BookPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const t = useTranslations('booking');
+  const tc = useTranslations('common');
+  const { userId } = useAuthStore();
+  const { canUse } = useSubscription();
+
+  const preselectedMasterId = searchParams.get('master_id');
+  const preselectedServiceId = searchParams.get('service_id');
+
+  const [step, setStep] = useState<Step>('service');
+  const [master, setMaster] = useState<MasterInfo | null>(null);
+  const [services, setServices] = useState<ServiceItem[]>([]);
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [selectedUpsells, setSelectedUpsells] = useState<ServiceItem[]>([]);
+  const [upsellOptions, setUpsellOptions] = useState<ServiceItem[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Load master + services
+  useEffect(() => {
+    if (!preselectedMasterId) return;
+    async function load() {
+      const supabase = createClient();
+      const { data: masterData } = await supabase
+        .from('masters')
+        .select('id, working_hours, profile:profiles(full_name)')
+        .eq('id', preselectedMasterId!)
+        .single();
+
+      if (masterData) {
+        setMaster(masterData as unknown as MasterInfo);
+      }
+
+      const { data: serviceData } = await supabase
+        .from('services')
+        .select('id, name, duration_minutes, price, currency, color, requires_prepayment, prepayment_amount, upsell_services, category:service_categories(name)')
+        .eq('master_id', preselectedMasterId!)
+        .eq('is_active', true)
+        .order('name');
+
+      if (serviceData) {
+        const typed = serviceData as unknown as ServiceItem[];
+        setServices(typed);
+        if (preselectedServiceId) {
+          const pre = typed.find((s) => s.id === preselectedServiceId);
+          if (pre) {
+            setSelectedService(pre);
+            setStep('date');
+          }
+        }
+      }
+      setLoading(false);
+    }
+    load();
+  }, [preselectedMasterId, preselectedServiceId]);
+
+  // Load upsell options when service selected
+  useEffect(() => {
+    if (!selectedService?.upsell_services?.length) {
+      setUpsellOptions([]);
+      return;
+    }
+    const ups = services.filter((s) => selectedService.upsell_services.includes(s.id));
+    setUpsellOptions(ups);
+  }, [selectedService, services]);
+
+  // Load slots when date selected
+  const loadSlots = useCallback(async () => {
+    if (!selectedDate || !selectedService || !preselectedMasterId) return;
+    setSlotsLoading(true);
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const res = await fetch(
+      `/api/slots?master_id=${preselectedMasterId}&date=${dateStr}&service_id=${selectedService.id}`,
+    );
+    const data = await res.json();
+    setSlots(data.slots ?? []);
+    setSlotsLoading(false);
+  }, [selectedDate, selectedService, preselectedMasterId]);
+
+  useEffect(() => {
+    if (selectedDate && selectedService) {
+      setSelectedTime(null);
+      loadSlots();
+    }
+  }, [selectedDate, selectedService, loadSlots]);
+
+  // Determine which weekdays are off
+  const disabledDays = useCallback(
+    (date: Date) => {
+      if (!master?.working_hours) return false;
+      if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
+      const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayName = weekdays[date.getDay()];
+      return !master.working_hours[dayName];
+    },
+    [master],
+  );
+
+  function handleSelectService(service: ServiceItem) {
+    setSelectedService(service);
+    setSelectedUpsells([]);
+    setSelectedDate(undefined);
+    setSelectedTime(null);
+    setStep('date');
+  }
+
+  function toggleUpsell(upsell: ServiceItem) {
+    setSelectedUpsells((prev) =>
+      prev.some((u) => u.id === upsell.id)
+        ? prev.filter((u) => u.id !== upsell.id)
+        : [...prev, upsell],
+    );
+  }
+
+  function handleSelectDate(date: Date | undefined) {
+    setSelectedDate(date);
+    if (date) setStep('time');
+  }
+
+  function handleSelectTime(time: string) {
+    setSelectedTime(time);
+    setStep('confirm');
+  }
+
+  function goBack() {
+    if (step === 'confirm') setStep('time');
+    else if (step === 'time') setStep('date');
+    else if (step === 'date') setStep('service');
+  }
+
+  async function handleConfirm() {
+    if (!selectedService || !selectedDate || !selectedTime || !preselectedMasterId || !userId) return;
+    setSubmitting(true);
+
+    const supabase = createClient();
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const startsAt = `${dateStr}T${selectedTime}:00`;
+    const totalDuration = selectedService.duration_minutes + selectedUpsells.reduce((s, u) => s + u.duration_minutes, 0);
+    const [h, m] = selectedTime.split(':').map(Number);
+    const endMinutes = h * 60 + m + totalDuration;
+    const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0');
+    const endM = (endMinutes % 60).toString().padStart(2, '0');
+    const endsAt = `${dateStr}T${endH}:${endM}:00`;
+    const totalPrice = Number(selectedService.price) + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
+
+    // Find or create client record for this user under this master
+    let clientId: string | null = null;
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('profile_id', userId)
+      .eq('master_id', preselectedMasterId)
+      .single();
+
+    if (existingClient) {
+      clientId = existingClient.id;
+    } else {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', userId)
+        .single();
+      const { data: newClient } = await supabase
+        .from('clients')
+        .insert({
+          profile_id: userId,
+          master_id: preselectedMasterId,
+          full_name: profile?.full_name ?? '',
+          phone: profile?.phone ?? null,
+        })
+        .select('id')
+        .single();
+      clientId = newClient?.id ?? null;
+    }
+
+    if (!clientId) {
+      toast.error(tc('error'));
+      setSubmitting(false);
+      return;
+    }
+
+    const { error } = await supabase.from('appointments').insert({
+      client_id: clientId,
+      master_id: preselectedMasterId,
+      service_id: selectedService.id,
+      starts_at: startsAt,
+      ends_at: endsAt,
+      status: 'booked',
+      price: totalPrice,
+      currency: selectedService.currency,
+    });
+
+    if (error) {
+      toast.error(tc('error'));
+      setSubmitting(false);
+      return;
+    }
+
+    toast.success(t('bookingSuccess'));
+    router.push('/history');
+  }
+
+  if (!preselectedMasterId) {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        <p>{t('selectService')}</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="p-4 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
+  }
+
+  const totalPrice = (selectedService ? Number(selectedService.price) : 0)
+    + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
+  const totalDuration = (selectedService?.duration_minutes ?? 0)
+    + selectedUpsells.reduce((s, u) => s + u.duration_minutes, 0);
 
   return (
-    <div className="p-4 space-y-6">
-      <h2 className="text-2xl font-bold">{t('selectService')}</h2>
-      <div className="rounded-lg border p-8 text-center text-muted-foreground">
-        {t('noSlots')}
+    <div className="p-4 space-y-4 pb-24">
+      {/* Header */}
+      {step !== 'service' && (
+        <button onClick={goBack} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+          {tc('back')}
+        </button>
+      )}
+
+      {master && (
+        <p className="text-sm text-muted-foreground">{master.profile.full_name}</p>
+      )}
+
+      {/* Step indicator */}
+      <div className="flex items-center gap-2">
+        {(['service', 'date', 'time', 'confirm'] as Step[]).map((s, i) => (
+          <div
+            key={s}
+            className={cn(
+              'h-1 flex-1 rounded-full transition-colors',
+              i <= ['service', 'date', 'time', 'confirm'].indexOf(step)
+                ? 'bg-primary'
+                : 'bg-muted',
+            )}
+          />
+        ))}
       </div>
+
+      {/* Step 1: Service */}
+      {step === 'service' && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold">{t('selectService')}</h2>
+          {services.map((service) => (
+            <Card
+              key={service.id}
+              size="sm"
+              className={cn('cursor-pointer transition-colors hover:bg-muted/50', selectedService?.id === service.id && 'ring-2 ring-primary')}
+              onClick={() => handleSelectService(service)}
+            >
+              <CardContent className="flex items-center justify-between gap-3 pt-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: service.color }} />
+                    <span className="font-medium">{service.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3" />
+                      {service.duration_minutes} {t('min')}
+                    </span>
+                    <span className="font-medium text-foreground">
+                      {Number(service.price).toFixed(0)} {service.currency}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Step 2: Date + Upsell */}
+      {step === 'date' && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">{t('selectDate')}</h2>
+
+          {/* Upsell options */}
+          {upsellOptions.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">{t('addUpsell')}</p>
+              {upsellOptions.map((upsell) => {
+                const isSelected = selectedUpsells.some((u) => u.id === upsell.id);
+                return (
+                  <Card
+                    key={upsell.id}
+                    size="sm"
+                    className={cn('cursor-pointer', isSelected && 'ring-2 ring-primary')}
+                    onClick={() => toggleUpsell(upsell)}
+                  >
+                    <CardContent className="flex items-center justify-between pt-3">
+                      <div>
+                        <span className="text-sm font-medium">{upsell.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          +{upsell.duration_minutes} {t('min')} · +{Number(upsell.price).toFixed(0)} {upsell.currency}
+                        </span>
+                      </div>
+                      {isSelected ? <Check className="size-4 text-primary" /> : <Plus className="size-4 text-muted-foreground" />}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleSelectDate}
+            disabled={disabledDays}
+          />
+        </div>
+      )}
+
+      {/* Step 3: Time */}
+      {step === 'time' && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">{t('selectTime')}</h2>
+          <p className="text-sm text-muted-foreground">
+            {selectedDate?.toLocaleDateString()}
+          </p>
+          {slotsLoading ? (
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 rounded-md" />
+              ))}
+            </div>
+          ) : slots.length > 0 ? (
+            <div className="grid grid-cols-4 gap-2">
+              {slots.map((time) => (
+                <Button
+                  key={time}
+                  variant={selectedTime === time ? 'default' : 'outline'}
+                  onClick={() => handleSelectTime(time)}
+                  className="text-sm"
+                >
+                  {time}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <p className="text-sm text-muted-foreground text-center">{t('noSlots')}</p>
+              {preselectedMasterId && selectedDate && (
+                <WaitlistButton
+                  masterId={preselectedMasterId}
+                  desiredDate={selectedDate.toISOString().split('T')[0]}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 4: Confirm */}
+      {step === 'confirm' && selectedService && selectedDate && selectedTime && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">{t('confirmBooking')}</h2>
+          <Card>
+            <CardContent className="pt-4 space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">{t('service')}</span>
+                <span className="text-sm font-medium">{selectedService.name}</span>
+              </div>
+              {selectedUpsells.map((u) => (
+                <div key={u.id} className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">+ {u.name}</span>
+                  <span className="text-sm">+{Number(u.price).toFixed(0)} {u.currency}</span>
+                </div>
+              ))}
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">{t('date')}</span>
+                <span className="text-sm font-medium">{selectedDate.toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">{t('time')}</span>
+                <span className="text-sm font-medium">{selectedTime}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">{t('duration')}</span>
+                <span className="text-sm font-medium">{totalDuration} {t('min')}</span>
+              </div>
+              <div className="border-t pt-2 flex justify-between">
+                <span className="font-medium">{t('price')}</span>
+                <span className="font-bold">{totalPrice.toFixed(0)} {selectedService.currency}</span>
+              </div>
+              {selectedService.requires_prepayment && (
+                <Badge variant="secondary">{t('prepaymentRequired')}: {Number(selectedService.prepayment_amount).toFixed(0)} {selectedService.currency}</Badge>
+              )}
+            </CardContent>
+          </Card>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={handleConfirm}
+            disabled={submitting}
+          >
+            {submitting ? tc('loading') : t('confirmBooking')}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
