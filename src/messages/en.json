@@ -308,5 +308,19 @@
     "color": "Color",
     "editService": "Edit Service",
     "deleteConfirm": "Are you sure you want to delete this?"
+  },
+  "consent": {
+    "title": "Digital Consent Form",
+    "agreeText": "I have read and agree to the terms described above",
+    "agree": "I Agree",
+    "decline": "Decline",
+    "allergyWarning": "Known allergies/contraindications:",
+    "formHeader": "INFORMED CONSENT FORM\nDate: {date}\nClient: {clientName}",
+    "formService": "Service: {serviceName}",
+    "formMaster": "Specialist: {masterName}",
+    "formAllergies": "Known allergies/contraindications: {allergies}",
+    "formBody": "I, the undersigned, confirm that:\n1. I have been informed about the nature of the procedure.\n2. I have disclosed all known allergies and medical conditions.\n3. I understand the potential risks and expected outcomes.\n4. I consent to proceed with the service described above.",
+    "formSignature": "Digitally signed on {date}",
+    "consentRequired": "This service requires your consent before booking"
   }
 }

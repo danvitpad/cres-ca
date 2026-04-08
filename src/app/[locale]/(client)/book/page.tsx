@@ -21,9 +21,11 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { WaitlistButton } from '@/components/booking/waitlist-button';
 import { LiqPayButton } from '@/components/booking/liqpay-button';
+import { ConsentForm, getConsentFormText } from '@/components/shared/consent-form';
+import { format } from 'date-fns';
 import { ArrowLeft, Clock, Check, Plus } from 'lucide-react';
 
-type Step = 'service' | 'date' | 'time' | 'confirm';
+type Step = 'service' | 'date' | 'time' | 'consent' | 'confirm';
 
 interface ServiceItem {
   id: string;
@@ -68,6 +70,9 @@ export default function BookPage() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [paymentData, setPaymentData] = useState<{ data: string; signature: string } | null>(null);
+  const [masterTier, setMasterTier] = useState<string | null>(null);
+  const [clientAllergies, setClientAllergies] = useState<string[]>([]);
+  const [clientName, setClientName] = useState('');
 
   // Load master + services
   useEffect(() => {
@@ -82,6 +87,20 @@ export default function BookPage() {
 
       if (masterData) {
         setMaster(masterData as unknown as MasterInfo);
+        // Get master's subscription tier for consent gating
+        const { data: masterRow } = await supabase
+          .from('masters')
+          .select('profile_id')
+          .eq('id', preselectedMasterId!)
+          .single();
+        if (masterRow?.profile_id) {
+          const { data: sub } = await supabase
+            .from('subscriptions')
+            .select('tier')
+            .eq('profile_id', masterRow.profile_id)
+            .single();
+          if (sub) setMasterTier(sub.tier);
+        }
       }
 
       const { data: serviceData } = await supabase
@@ -106,6 +125,29 @@ export default function BookPage() {
     }
     load();
   }, [preselectedMasterId, preselectedServiceId]);
+
+  // Load client info for consent form
+  useEffect(() => {
+    if (!userId || !preselectedMasterId) return;
+    async function loadClientInfo() {
+      const supabase = createClient();
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId!)
+        .single();
+      if (profile?.full_name) setClientName(profile.full_name);
+
+      const { data: client } = await supabase
+        .from('clients')
+        .select('allergies')
+        .eq('profile_id', userId!)
+        .eq('master_id', preselectedMasterId!)
+        .single();
+      if (client?.allergies) setClientAllergies(client.allergies);
+    }
+    loadClientInfo();
+  }, [userId, preselectedMasterId]);
 
   // Load upsell options when service selected
   useEffect(() => {
@@ -170,15 +212,56 @@ export default function BookPage() {
     if (date) setStep('time');
   }
 
+  const consentRequired = masterTier === 'pro' || masterTier === 'business' || masterTier === 'trial';
+
   function handleSelectTime(time: string) {
     setSelectedTime(time);
-    setStep('confirm');
+    if (consentRequired) {
+      setStep('consent');
+    } else {
+      setStep('confirm');
+    }
   }
 
   function goBack() {
-    if (step === 'confirm') setStep('time');
+    if (step === 'confirm') setStep(consentRequired ? 'consent' : 'time');
+    else if (step === 'consent') setStep('time');
     else if (step === 'time') setStep('date');
     else if (step === 'date') setStep('service');
+  }
+
+  async function handleConsentAgree() {
+    if (!selectedService || !preselectedMasterId || !userId) return;
+    // Save consent form to DB
+    const supabase = createClient();
+    const today = format(new Date(), 'dd.MM.yyyy');
+    const formText = getConsentFormText({
+      serviceName: selectedService.name,
+      masterName: master?.profile.full_name ?? '',
+      clientName,
+      allergies: clientAllergies,
+      date: today,
+    });
+
+    // Get client ID if exists
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('profile_id', userId)
+      .eq('master_id', preselectedMasterId)
+      .single();
+
+    if (existingClient) {
+      await supabase.from('consent_forms').insert({
+        client_id: existingClient.id,
+        master_id: preselectedMasterId,
+        form_text: formText,
+        client_agreed: true,
+        agreed_at: new Date().toISOString(),
+      });
+    }
+
+    setStep('confirm');
   }
 
   async function handleConfirm() {
@@ -342,12 +425,15 @@ export default function BookPage() {
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">
-        {(['service', 'date', 'time', 'confirm'] as Step[]).map((s, i) => (
+        {(consentRequired
+          ? ['service', 'date', 'time', 'consent', 'confirm'] as Step[]
+          : ['service', 'date', 'time', 'confirm'] as Step[]
+        ).map((s, i, arr) => (
           <div
             key={s}
             className={cn(
               'h-1 flex-1 rounded-full transition-colors',
-              i <= ['service', 'date', 'time', 'confirm'].indexOf(step)
+              i <= arr.indexOf(step)
                 ? 'bg-primary'
                 : 'bg-muted',
             )}
@@ -467,6 +553,20 @@ export default function BookPage() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Step 3.5: Consent (Pro+ tier) */}
+      {step === 'consent' && selectedService && master && (
+        <div className="space-y-4">
+          <ConsentForm
+            serviceName={selectedService.name}
+            masterName={master.profile.full_name}
+            clientName={clientName}
+            allergies={clientAllergies}
+            onAgree={handleConsentAgree}
+            onDecline={goBack}
+          />
         </div>
       )}
 
