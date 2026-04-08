@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { WaitlistButton } from '@/components/booking/waitlist-button';
+import { LiqPayButton } from '@/components/booking/liqpay-button';
 import { ArrowLeft, Clock, Check, Plus } from 'lucide-react';
 
 type Step = 'service' | 'date' | 'time' | 'confirm';
@@ -66,6 +67,7 @@ export default function BookPage() {
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentData, setPaymentData] = useState<{ data: string; signature: string } | null>(null);
 
   // Load master + services
   useEffect(() => {
@@ -245,6 +247,38 @@ export default function BookPage() {
       toast.error(tc('error'));
       setSubmitting(false);
       return;
+    }
+
+    // If prepayment required, get LiqPay form data
+    if (selectedService.requires_prepayment && Number(selectedService.prepayment_amount) > 0) {
+      const { data: apt } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('master_id', preselectedMasterId)
+        .eq('service_id', selectedService.id)
+        .eq('starts_at', startsAt)
+        .single();
+
+      if (apt) {
+        const res = await fetch('/api/payments/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'prepayment',
+            appointmentId: apt.id,
+            amount: Number(selectedService.prepayment_amount),
+            currency: selectedService.currency,
+            description: `${selectedService.name} - prepayment`,
+          }),
+        });
+        if (res.ok) {
+          const formData = await res.json();
+          setPaymentData(formData);
+          setSubmitting(false);
+          return;
+        }
+      }
     }
 
     toast.success(t('bookingSuccess'));
@@ -455,14 +489,23 @@ export default function BookPage() {
               )}
             </CardContent>
           </Card>
-          <Button
-            className="w-full"
-            size="lg"
-            onClick={handleConfirm}
-            disabled={submitting}
-          >
-            {submitting ? tc('loading') : t('confirmBooking')}
-          </Button>
+          {paymentData ? (
+            <LiqPayButton
+              data={paymentData.data}
+              signature={paymentData.signature}
+              label={`${t('prepaymentRequired')} — ${Number(selectedService.prepayment_amount).toFixed(0)} ${selectedService.currency}`}
+              className="w-full"
+            />
+          ) : (
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={handleConfirm}
+              disabled={submitting}
+            >
+              {submitting ? tc('loading') : t('confirmBooking')}
+            </Button>
+          )}
         </div>
       )}
     </div>
