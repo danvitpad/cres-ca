@@ -28,7 +28,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { ArrowLeft, Mail, Shield, Eye, EyeOff } from 'lucide-react';
 
@@ -198,7 +197,7 @@ export default function RegisterPage() {
                   <Label>{t('selectRole')}</Label>
                   <Select value={role} onValueChange={(v) => v && setRole(v)}>
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <span>{role === 'client' ? t('roleClient') : role === 'master' ? t('roleMaster') : t('roleSalon')}</span>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="client">{t('roleClient')}</SelectItem>
@@ -208,7 +207,7 @@ export default function RegisterPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 pb-2">
                   <Label htmlFor="phone">
                     {t('phone')}{' '}
                     <span className="text-muted-foreground text-xs">({tc('optional')})</span>
