@@ -59,7 +59,7 @@ export default function RegisterPage() {
     setLoading(true);
     const supabase = createClient();
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -71,6 +71,11 @@ export default function RegisterPage() {
 
     if (error) {
       toast.error(error.message);
+      return;
+    }
+
+    if (data.user && data.user.identities?.length === 0) {
+      toast.error(t('emailAlreadyRegistered'));
       return;
     }
 

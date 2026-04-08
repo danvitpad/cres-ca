@@ -46,6 +46,7 @@
     "checkEmail": "Check your email",
     "checkEmailDescription": "We sent a confirmation link to your email. Click it to activate your account.",
     "passwordMismatch": "Passwords do not match",
+    "emailAlreadyRegistered": "This email is already registered. Try signing in.",
     "createAccountDesc": "Create an account to get started",
     "enterOTP": "Enter verification code",
     "otpSentTo": "We sent a 6-digit code to",
