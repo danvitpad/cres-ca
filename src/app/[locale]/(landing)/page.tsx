@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Landing Page
- * description: Premium landing page with spotlight hero, bento features, glassmorphism pricing, animated metrics
+ * description: Premium landing page — dual audience (clients + professionals), spotlight hero, bento features, pricing
  * --- */
 
 import { useTranslations } from 'next-intl';
@@ -18,7 +18,6 @@ import {
   Star,
   Shield,
   Zap,
-  Heart,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -112,7 +111,7 @@ export default function LandingPage() {
   const howItWorks = [
     { icon: <Sparkles className="size-6" />, title: t('step1Title'), desc: t('step1Desc') },
     { icon: <CalendarDays className="size-6" />, title: t('step2Title'), desc: t('step2Desc') },
-    { icon: <Heart className="size-6" />, title: t('step3Title'), desc: t('step3Desc') },
+    { icon: <Star className="size-6" />, title: t('step3Title'), desc: t('step3Desc') },
   ];
 
   const jsonLd = {
@@ -121,11 +120,11 @@ export default function LandingPage() {
     name: 'CRES-CA',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
-    description: 'Universal CRM platform for service industry — booking, clients, finance, and marketing.',
+    description: 'Universal service platform for booking, client management, finance and marketing.',
     url: 'https://cres-ca.com',
     offers: {
       '@type': 'AggregateOffer',
-      lowPrice: '12',
+      lowPrice: '0',
       highPrice: '49',
       priceCurrency: 'USD',
       offerCount: 3,
@@ -138,6 +137,7 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+
       {/* ═══════════════════ HEADER ═══════════════════ */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/60 backdrop-blur-2xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -155,28 +155,24 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* ═══════════════════ HERO — SPOTLIGHT ═══════════════════ */}
+      {/* ═══════════════════ HERO ═══════════════════ */}
       <section className="relative overflow-hidden bg-background">
-        {/* Spotlight effect */}
         <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" />
 
-        {/* Radial glow layers */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute left-1/4 top-0 h-[500px] w-[500px] rounded-full bg-primary/[0.07] blur-[150px]" />
           <div className="absolute right-1/3 bottom-0 h-[400px] w-[400px] rounded-full bg-violet-500/[0.05] blur-[120px]" />
         </div>
 
-        {/* Light ray lines */}
         <div aria-hidden className="absolute inset-0 pointer-events-none isolate opacity-50 hidden lg:block">
           <div className="w-[35rem] h-[80rem] -translate-y-[87.5%] absolute left-0 top-0 -rotate-45 rounded-full bg-[radial-gradient(68.54%_68.72%_at_55.02%_31.46%,hsla(0,0%,85%,.08)_0,hsla(0,0%,55%,.02)_50%,hsla(0,0%,45%,0)_80%)]" />
           <div className="h-[80rem] absolute left-0 top-0 w-56 -rotate-45 rounded-full bg-[radial-gradient(50%_50%_at_50%_50%,hsla(0,0%,85%,.06)_0,hsla(0,0%,45%,.02)_80%,transparent_100%)] [translate:5%_-50%]" />
         </div>
 
-        <div className="relative mx-auto max-w-5xl px-6 py-32 lg:py-40">
+        <div className="relative mx-auto max-w-5xl px-6 py-28 lg:py-36">
           <div className="relative z-10 mx-auto max-w-3xl text-center">
-            {/* Shiny badge */}
             <AnimatedSection>
-              <div className="mb-8 flex justify-center">
+              <div className="mb-6 flex justify-center">
                 <div className="group rounded-full border border-border/50 bg-muted/50 text-sm backdrop-blur transition-all ease-in hover:bg-muted">
                   <AnimatedShinyText className="inline-flex items-center justify-center px-5 py-1.5 transition ease-out hover:text-foreground hover:duration-300">
                     <Sparkles className="mr-2 size-3.5" />
@@ -187,21 +183,18 @@ export default function LandingPage() {
               </div>
             </AnimatedSection>
 
-            {/* Title */}
             <AnimatedSection delay={0.1}>
               <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
                 {t('heroTitle')}
               </h1>
             </AnimatedSection>
 
-            {/* Subtitle */}
             <AnimatedSection delay={0.2}>
-              <p className="mx-auto my-8 max-w-2xl text-lg text-muted-foreground leading-relaxed">
+              <p className="mx-auto mt-6 mb-10 max-w-2xl text-lg text-muted-foreground leading-relaxed">
                 {t('heroSubtitle')}
               </p>
             </AnimatedSection>
 
-            {/* CTA button */}
             <AnimatedSection delay={0.3}>
               <div className="flex items-center justify-center">
                 <Link
@@ -220,7 +213,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════ METRICS STRIP ═══════════════════ */}
+      {/* ═══════════════════ METRICS ═══════════════════ */}
       <section className="border-y bg-muted/20">
         <div className="container mx-auto px-4">
           <AnimatedStagger className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border/50">
@@ -237,14 +230,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══════════════════ FEATURES — BENTO GRID ═══════════════════ */}
-      <section id="features" className="relative py-28 px-4">
+      {/* ═══════════════════ FEATURES ═══════════════════ */}
+      <section id="features" className="relative py-24 px-4">
         <div className="absolute inset-0 -z-10">
           <div className="absolute right-0 top-1/4 h-[350px] w-[350px] rounded-full bg-primary/[0.04] blur-[120px]" />
         </div>
         <div className="container mx-auto">
           <AnimatedSection>
-            <div className="text-center mb-16">
+            <div className="text-center mb-14">
               <Badge variant="outline" className="mb-4 rounded-full px-4 py-1.5 text-xs uppercase tracking-widest">
                 <Zap className="mr-1.5 size-3" />
                 {t('features')}
@@ -264,7 +257,7 @@ export default function LandingPage() {
       <section className="py-24 px-4 bg-muted/20">
         <div className="container mx-auto max-w-5xl">
           <AnimatedSection>
-            <div className="text-center mb-16">
+            <div className="text-center mb-14">
               <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight">{t('howItWorksTitle')}</h2>
             </div>
           </AnimatedSection>
@@ -272,7 +265,7 @@ export default function LandingPage() {
           <AnimatedStagger className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {howItWorks.map((step, i) => (
               <AnimatedItem key={i}>
-                <div className="group relative rounded-2xl border bg-card/80 backdrop-blur p-6 text-center transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-primary/30">
+                <div className="group relative rounded-2xl border bg-card/80 backdrop-blur p-6 text-center transition-all duration-300 hover:shadow-lg hover:border-primary/30">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
                     {i + 1}
                   </div>
@@ -287,13 +280,13 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════ PRICING ═══════════════════ */}
-      <section id="pricing" className="relative py-28 px-4">
+      <section id="pricing" className="relative py-24 px-4">
         <div className="absolute inset-0 -z-10">
           <div className="absolute left-1/4 bottom-0 h-[400px] w-[400px] rounded-full bg-violet-500/[0.04] blur-[120px]" />
         </div>
         <div className="container mx-auto">
           <AnimatedSection>
-            <div className="text-center mb-16">
+            <div className="text-center mb-14">
               <Badge variant="outline" className="mb-4 rounded-full px-4 py-1.5 text-xs uppercase tracking-widest">
                 <Shield className="mr-1.5 size-3" />
                 {t('pricing')}
@@ -303,7 +296,7 @@ export default function LandingPage() {
             </div>
           </AnimatedSection>
 
-          <AnimatedStagger className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <AnimatedStagger className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
             <AnimatedItem>
               <PricingCard
                 title={tp('starter')}
@@ -398,7 +391,7 @@ function PricingCard({
         <CardTitle className="text-lg">{title}</CardTitle>
         <p className="text-3xl font-bold tracking-tight">{price}</p>
       </CardHeader>
-      <CardContent className="flex flex-col flex-1 space-y-2.5">
+      <CardContent className="flex flex-col flex-1">
         <div className="flex-1 space-y-2.5">
           {features.map((f) => (
             <div key={f} className="flex items-center gap-2.5 text-sm">

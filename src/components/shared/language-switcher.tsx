@@ -10,9 +10,9 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Globe } from 'lucide-react';
 
 const LOCALES = [
-  { code: 'uk', label: 'UA', flag: '🇺🇦' },
-  { code: 'ru', label: 'RU', flag: '🇷🇺' },
-  { code: 'en', label: 'EN', flag: '🇬🇧' },
+  { code: 'uk', label: 'Українська' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'en', label: 'English' },
 ];
 
 export function LanguageSwitcher() {
@@ -50,16 +50,15 @@ export function LanguageSwitcher() {
         <span className="text-xs font-medium">{current.label}</span>
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-1 min-w-[100px] rounded-lg border border-border/50 bg-popover/95 backdrop-blur-xl shadow-lg py-1 z-50">
+        <div className="absolute right-0 top-full mt-1 min-w-[140px] rounded-lg border border-border/50 bg-popover/95 backdrop-blur-xl shadow-lg py-1 z-50">
           {LOCALES.map((l) => (
             <button
               key={l.code}
               onClick={() => switchLocale(l.code)}
-              className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm transition-colors hover:bg-accent/50 ${
+              className={`flex w-full items-center px-3 py-1.5 text-sm transition-colors hover:bg-accent/50 ${
                 l.code === currentLocale ? 'text-foreground font-medium' : 'text-muted-foreground'
               }`}
             >
-              <span>{l.flag}</span>
               <span>{l.label}</span>
             </button>
           ))}
