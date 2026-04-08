@@ -163,6 +163,13 @@
     "weekView": "Тиждень",
     "newAppointment": "Нова запис",
     "noAppointments": "Немає записів",
+    "todayAppointments": "Записів сьогодні",
+    "nextClient": "Наступний клієнт",
+    "todayRevenue": "Виручка за день",
+    "noUpcoming": "Немає записів",
+    "in": "через",
+    "min": "хв",
+    "freeDay": "Вільний день",
     "status": {
       "booked": "Заброньовано",
       "confirmed": "Підтверджено",

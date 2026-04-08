@@ -163,6 +163,13 @@
     "weekView": "Неделя",
     "newAppointment": "Новая запись",
     "noAppointments": "Нет записей",
+    "todayAppointments": "Записей сегодня",
+    "nextClient": "Следующий клиент",
+    "todayRevenue": "Выручка за день",
+    "noUpcoming": "Нет записей",
+    "in": "через",
+    "min": "мин",
+    "freeDay": "Свободный день",
     "status": {
       "booked": "Забронировано",
       "confirmed": "Подтверждено",

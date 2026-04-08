@@ -163,6 +163,13 @@
     "weekView": "Week",
     "newAppointment": "New Appointment",
     "noAppointments": "No appointments",
+    "todayAppointments": "Today's appointments",
+    "nextClient": "Next client",
+    "todayRevenue": "Today's revenue",
+    "noUpcoming": "No upcoming",
+    "in": "in",
+    "min": "min",
+    "freeDay": "Free day",
     "status": {
       "booked": "Booked",
       "confirmed": "Confirmed",
