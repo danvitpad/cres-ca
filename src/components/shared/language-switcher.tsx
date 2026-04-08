@@ -36,7 +36,7 @@ export function LanguageSwitcher() {
   function switchLocale(newLocale: string) {
     const newSegments = [...segments];
     newSegments[1] = newLocale;
-    router.push(newSegments.join('/'));
+    router.replace(newSegments.join('/'), { scroll: false });
     setOpen(false);
   }
 

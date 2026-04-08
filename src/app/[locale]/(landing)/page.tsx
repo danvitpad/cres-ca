@@ -296,7 +296,7 @@ export default function LandingPage() {
             </div>
           </AnimatedSection>
 
-          <AnimatedStagger className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch">
+          <AnimatedStagger className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto items-stretch pt-4">
             <AnimatedItem>
               <PricingCard
                 title={tp('starter')}
@@ -379,7 +379,7 @@ function PricingCard({
 }) {
   return (
     <Card className={cn(
-      'h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card/80 backdrop-blur',
+      'h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-1 bg-card/80 backdrop-blur overflow-visible',
       highlighted && 'border-primary ring-2 ring-primary/20 relative scale-[1.03]',
     )}>
       {badge && (
