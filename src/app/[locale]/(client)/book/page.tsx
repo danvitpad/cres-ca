@@ -249,6 +249,24 @@ export default function BookPage() {
       return;
     }
 
+    // Notify master about new booking
+    if (master) {
+      const { data: masterProfile } = await supabase
+        .from('masters')
+        .select('profile_id')
+        .eq('id', preselectedMasterId)
+        .single();
+      if (masterProfile?.profile_id) {
+        await supabase.from('notifications').insert({
+          profile_id: masterProfile.profile_id,
+          channel: 'telegram',
+          title: '🆕 New booking!',
+          body: `${selectedService.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime}`,
+          scheduled_for: new Date().toISOString(),
+        });
+      }
+    }
+
     // If prepayment required, get LiqPay form data
     if (selectedService.requires_prepayment && Number(selectedService.prepayment_amount) > 0) {
       const { data: apt } = await supabase
