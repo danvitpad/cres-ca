@@ -24,8 +24,18 @@ export default function TelegramEntryPage() {
         return;
       }
 
+      // Fullscreen + native optimizations
       webapp.ready();
       webapp.expand();
+      try { webapp.requestFullscreen(); } catch { /* older clients */ }
+      try { webapp.disableVerticalSwipes(); } catch { /* older clients */ }
+      try { webapp.enableClosingConfirmation(); } catch { /* older clients */ }
+      try { webapp.lockOrientation(); } catch { /* older clients */ }
+      try {
+        webapp.setHeaderColor('#000000');
+        webapp.setBackgroundColor('#000000');
+        webapp.setBottomBarColor('#000000');
+      } catch { /* older clients */ }
 
       const initData = webapp.initData;
       if (!initData) {

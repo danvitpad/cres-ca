@@ -55,32 +55,63 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.488 0.243 264.376);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
+  --accent: oklch(0.97 0.01 264);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --ring: oklch(0.488 0.243 264.376);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.6 0.2 264);
+  --chart-3: oklch(0.7 0.15 264);
+  --chart-4: oklch(0.55 0.18 300);
+  --chart-5: oklch(0.45 0.2 280);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent: oklch(0.97 0.01 264);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.488 0.243 264.376);
+
+  /* Design system — Surfaces */
+  --surface-primary: oklch(1 0 0);
+  --surface-secondary: oklch(0.985 0 0);
+  --surface-elevated: oklch(1 0 0);
+  --surface-overlay: oklch(1 0 0 / 80%);
+
+  /* Design system — Accent */
+  --ds-accent: oklch(0.488 0.243 264.376);
+  --ds-accent-soft: oklch(0.95 0.04 264);
+  --ds-accent-hover: oklch(0.42 0.243 264.376);
+
+  /* Design system — Semantic */
+  --ds-success: oklch(0.65 0.2 155);
+  --ds-warning: oklch(0.75 0.18 75);
+  --ds-danger: oklch(0.577 0.245 27.325);
+
+  /* Design system — Spacing */
+  --space-page: 1.5rem;
+  --space-section: 2rem;
+  --space-card: 1rem;
+
+  /* Design system — Radius */
+  --radius-card: 1rem;
+  --radius-button: 0.625rem;
+  --radius-avatar: 9999px;
+
+  /* Design system — Shadows */
+  --shadow-card: 0 1px 3px oklch(0 0 0 / 4%), 0 1px 2px oklch(0 0 0 / 6%);
+  --shadow-elevated: 0 4px 12px oklch(0 0 0 / 8%);
+  --shadow-overlay: 0 8px 30px oklch(0 0 0 / 12%);
 }
 
 .dark {
@@ -90,31 +121,47 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.65 0.22 264.376);
+  --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: oklch(0.269 0.02 264);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
+  --ring: oklch(0.65 0.22 264.376);
+  --chart-1: oklch(0.65 0.22 264.376);
+  --chart-2: oklch(0.55 0.2 264);
+  --chart-3: oklch(0.7 0.15 264);
+  --chart-4: oklch(0.6 0.18 300);
+  --chart-5: oklch(0.5 0.2 280);
+  --sidebar: oklch(0.17 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.65 0.22 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent: oklch(0.269 0.02 264);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.65 0.22 264.376);
+
+  /* Design system — Surfaces (dark) */
+  --surface-primary: oklch(0.145 0 0);
+  --surface-secondary: oklch(0.17 0 0);
+  --surface-elevated: oklch(0.205 0 0);
+  --surface-overlay: oklch(0 0 0 / 70%);
+
+  /* Design system — Accent (dark) */
+  --ds-accent: oklch(0.65 0.22 264.376);
+  --ds-accent-soft: oklch(0.25 0.06 264);
+  --ds-accent-hover: oklch(0.72 0.2 264.376);
+
+  /* Design system — Shadows (dark) */
+  --shadow-card: 0 1px 3px oklch(0 0 0 / 30%);
+  --shadow-elevated: 0 4px 12px oklch(0 0 0 / 40%);
+  --shadow-overlay: 0 8px 30px oklch(0 0 0 / 50%);
 }
 
 @layer base {
@@ -154,4 +201,97 @@
 
 .animate-shiny-text {
   animation: shiny-text 8s infinite;
+}
+
+/* Design system — Animation keyframes */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, oklch(0.9 0 0 / 40%) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, oklch(0.3 0 0 / 40%) 50%, transparent 100%);
+  background-size: 200% 100%;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Glass morphism utility */
+.glass {
+  background: var(--surface-overlay);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Scrollbar styling */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.7 0 0 / 30%) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: oklch(0.7 0 0 / 30%);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.7 0 0 / 50%);
+}
+
+/* Telegram Mini App safe areas */
+.tg-app {
+  padding-top: var(--tg-content-safe-area-inset-top, 0px);
+  padding-bottom: var(--tg-safe-area-inset-bottom, 0px);
+  padding-left: var(--tg-safe-area-inset-left, 0px);
+  padding-right: var(--tg-safe-area-inset-right, 0px);
+  min-height: var(--tg-viewport-stable-height, 100vh);
 }

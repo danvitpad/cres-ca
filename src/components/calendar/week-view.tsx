@@ -66,8 +66,8 @@ export function WeekView({
           <div
             key={i}
             className={cn(
-              'rounded-2xl border bg-card shadow-sm min-h-[220px] flex flex-col overflow-hidden transition-shadow hover:shadow-md',
-              isToday && 'ring-2 ring-primary/30',
+              'rounded-[var(--radius-card)] border bg-card shadow-[var(--shadow-card)] min-h-[220px] flex flex-col overflow-hidden transition-all duration-200 hover:shadow-[var(--shadow-elevated)]',
+              isToday && 'ring-2 ring-[var(--ds-accent)]/30',
             )}
           >
             {/* Day header */}
@@ -88,7 +88,7 @@ export function WeekView({
                 className={cn(
                   'mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-lg font-bold',
                   isToday
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-[var(--ds-accent)] text-white'
                     : 'text-foreground',
                 )}
               >

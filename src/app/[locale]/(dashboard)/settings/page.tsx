@@ -59,6 +59,7 @@ export default function SettingsPage() {
           <TabsTrigger value="hours">{t('workingHours')}</TabsTrigger>
           <TabsTrigger value="subscription">{t('subscription')}</TabsTrigger>
           <TabsTrigger value="invite">{t('inviteLink')}</TabsTrigger>
+          <TabsTrigger value="policies">{t('policies')}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -72,6 +73,9 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="invite">
           <InviteLinkTab master={master} />
+        </TabsContent>
+        <TabsContent value="policies">
+          <PoliciesTab master={master} onSaved={refetch} />
         </TabsContent>
       </Tabs>
     </div>
@@ -283,6 +287,81 @@ function InviteLinkTab({ master }: { master: NonNullable<ReturnType<typeof useMa
             </Button>
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const t = useTranslations('profile');
+  const tc = useTranslations('common');
+  const [saving, setSaving] = useState(false);
+
+  const policy = (master as unknown as Record<string, unknown>).cancellation_policy as { free_hours: number; partial_hours: number; partial_percent: number } | null;
+  const [freeHours, setFreeHours] = useState(policy?.free_hours ?? 24);
+  const [partialHours, setPartialHours] = useState(policy?.partial_hours ?? 12);
+  const [partialPercent, setPartialPercent] = useState(policy?.partial_percent ?? 50);
+
+  const [birthdayGreet, setBirthdayGreet] = useState((master as unknown as Record<string, unknown>).birthday_auto_greet as boolean ?? false);
+  const [birthdayDiscount, setBirthdayDiscount] = useState((master as unknown as Record<string, unknown>).birthday_discount_percent as number ?? 0);
+
+  async function handleSave() {
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('masters')
+      .update({
+        cancellation_policy: { free_hours: freeHours, partial_hours: partialHours, partial_percent: partialPercent },
+        birthday_auto_greet: birthdayGreet,
+        birthday_discount_percent: birthdayDiscount,
+      })
+      .eq('id', master.id);
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else { toast.success(t('profileSaved')); onSaved(); }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('policies')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold">{t('cancellationPolicy')}</h4>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <Label>{t('freeCancelHours')}</Label>
+              <Input type="number" min={0} max={168} value={freeHours} onChange={(e) => setFreeHours(Number(e.target.value))} />
+            </div>
+            <div>
+              <Label>{t('partialHours')}</Label>
+              <Input type="number" min={0} max={freeHours} value={partialHours} onChange={(e) => setPartialHours(Number(e.target.value))} />
+            </div>
+            <div>
+              <Label>{t('partialPercent')}</Label>
+              <Input type="number" min={0} max={100} value={partialPercent} onChange={(e) => setPartialPercent(Number(e.target.value))} />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold">{t('birthdaySettings')}</h4>
+          <div className="flex items-center gap-3">
+            <Switch checked={birthdayGreet} onCheckedChange={setBirthdayGreet} />
+            <Label>{t('autoGreet')}</Label>
+          </div>
+          {birthdayGreet && (
+            <div className="max-w-xs">
+              <Label>{t('birthdayDiscount')}</Label>
+              <Input type="number" min={0} max={50} value={birthdayDiscount} onChange={(e) => setBirthdayDiscount(Number(e.target.value))} />
+            </div>
+          )}
+        </div>
+
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? tc('loading') : tc('save')}
+        </Button>
       </CardContent>
     </Card>
   );

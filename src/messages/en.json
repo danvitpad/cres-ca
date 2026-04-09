@@ -156,7 +156,11 @@
     "revenue": "Revenue",
     "appointments": "Appointments",
     "newClients": "New Clients",
-    "avgCheck": "Avg Check"
+    "avgCheck": "Avg Check",
+    "searchPlaceholder": "Search pages, clients, actions...",
+    "noResults": "No results found",
+    "newAppointment": "New Appointment",
+    "addClient": "Add Client"
   },
   "calendar": {
     "dayView": "Day",
@@ -252,7 +256,20 @@
     "byService": "By Service",
     "byPeriod": "By Period",
     "addExpense": "Add Expense",
-    "materialCost": "Material Cost"
+    "materialCost": "Material Cost",
+    "aiInsights": "AI Revenue Insights",
+    "aiInsightsDescription": "Personalized recommendations to grow your revenue",
+    "noInsights": "Not enough data for insights yet",
+    "profitability": "Profitability",
+    "margin": "margin",
+    "profitabilityRanking": "Service Profitability"
+  },
+  "reports": {
+    "title": "Financial Reports",
+    "upcoming": "Upcoming",
+    "jan": "January", "feb": "February", "mar": "March", "apr": "April",
+    "may": "May", "jun": "June", "jul": "July", "aug": "August",
+    "sep": "September", "oct": "October", "nov": "November", "dec": "December"
   },
   "inventory": {
     "addItem": "Add Material",
@@ -276,6 +293,13 @@
     "searchArea": "Search this area",
     "showOnMap": "Show on Map",
     "distance": "Distance"
+  },
+  "clientNav": {
+    "feed": "Home",
+    "calendar": "Calendar",
+    "book": "Book",
+    "masters": "Masters",
+    "profile": "Profile"
   },
   "profile": {
     "editProfile": "Edit Profile",
@@ -318,7 +342,15 @@
     "prepaymentAmount": "Prepayment amount",
     "color": "Color",
     "editService": "Edit Service",
-    "deleteConfirm": "Are you sure you want to delete this?"
+    "deleteConfirm": "Are you sure you want to delete this?",
+    "policies": "Policies",
+    "cancellationPolicy": "Cancellation Policy",
+    "freeCancelHours": "Free cancel (hours before)",
+    "partialHours": "Partial refund (hours before)",
+    "partialPercent": "Partial refund (%)",
+    "birthdaySettings": "Birthday Greetings",
+    "autoGreet": "Auto-greet clients on birthday",
+    "birthdayDiscount": "Birthday discount (%)"
   },
   "consent": {
     "title": "Digital Consent Form",
@@ -333,5 +365,181 @@
     "formBody": "I, the undersigned, confirm that:\n1. I have been informed about the nature of the procedure.\n2. I have disclosed all known allergies and medical conditions.\n3. I understand the potential risks and expected outcomes.\n4. I consent to proceed with the service described above.",
     "formSignature": "Digitally signed on {date}",
     "consentRequired": "This service requires your consent before booking"
+  },
+  "feed": {
+    "title": "Feed",
+    "discover": "Discover",
+    "emptyTitle": "No posts yet",
+    "emptyDescription": "Follow masters to see their updates here",
+    "newService": "New Service",
+    "promotion": "Promotion",
+    "beforeAfter": "Before / After",
+    "burningSlot": "Hot Deal",
+    "update": "Update",
+    "bookNow": "Book",
+    "share": "Share",
+    "save": "Save",
+    "expiresIn": "Expires in {hours}h",
+    "pullToRefresh": "Pull to refresh",
+    "loadMore": "Load more",
+    "topMasters": "Top Masters"
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "We're here to help. Send us a message and we'll get back to you.",
+    "name": "Your Name",
+    "email": "Email",
+    "subject": "Subject",
+    "subjectBug": "Bug Report",
+    "subjectFeature": "Feature Request",
+    "subjectBilling": "Billing",
+    "subjectPartnership": "Partnership",
+    "subjectOther": "Other",
+    "message": "Message",
+    "send": "Send Message",
+    "success": "Message sent! We'll get back to you soon.",
+    "error": "Failed to send. Please try again.",
+    "telegramSupport": "Or contact us via Telegram",
+    "emailSupport": "Email us directly"
+  },
+  "footer": {
+    "about": "About",
+    "pricing": "Pricing",
+    "contact": "Contact",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "rights": "All rights reserved"
+  },
+  "nav": {
+    "helpSupport": "Help & Support",
+    "support": "Support"
+  },
+  "family": {
+    "title": "My Family",
+    "addMember": "Add Family Member",
+    "name": "Name",
+    "relationship": "Relationship",
+    "child": "Child",
+    "spouse": "Spouse",
+    "parent": "Parent",
+    "other": "Other",
+    "empty": "No family members added yet",
+    "emptyDescription": "Add family members to book appointments on their behalf",
+    "bookingFor": "Booking for",
+    "bookingForMe": "Myself",
+    "remove": "Remove",
+    "added": "Family member added",
+    "removed": "Family member removed"
+  },
+  "queue": {
+    "title": "Live Queue",
+    "addWalkIn": "Add Walk-in",
+    "next": "Next",
+    "clientName": "Client name",
+    "position": "Position #{position}",
+    "waiting": "Waiting",
+    "inService": "In Service",
+    "estimatedWait": "Est. wait: ~{minutes} min",
+    "empty": "Queue is empty",
+    "emptyDescription": "Add walk-in clients or enable remote queue join",
+    "timer": "In service for {minutes} min",
+    "complete": "Complete",
+    "cancel": "Cancel",
+    "youAreNext": "You're next!"
+  },
+  "recurring": {
+    "makeRecurring": "Make this recurring?",
+    "everyWeek": "Every week",
+    "every2Weeks": "Every 2 weeks",
+    "every3Weeks": "Every 3 weeks",
+    "everyMonth": "Every month",
+    "confirm": "Set Recurring",
+    "created": "Recurring booking created",
+    "active": "Recurring booking active"
+  },
+  "tips": {
+    "title": "Leave a tip for {name}?",
+    "customAmount": "Custom amount",
+    "send": "Send Tip",
+    "skip": "Not now",
+    "thankYou": "Thank you for the tip!"
+  },
+  "clientCalendar": {
+    "title": "My Calendar",
+    "noAppointments": "No appointments this day",
+    "addToCalendar": "Add to Calendar",
+    "upcoming": "Upcoming",
+    "today": "Today"
+  },
+  "products": {
+    "title": "Products",
+    "addProduct": "Add Product",
+    "editProduct": "Edit Product",
+    "productName": "Product name",
+    "productDescription": "Description",
+    "price": "Price",
+    "imageUrl": "Image URL",
+    "save": "Save",
+    "create": "Create",
+    "created": "Product created",
+    "updated": "Product updated",
+    "deleted": "Product deleted",
+    "active": "Active",
+    "inactive": "Inactive",
+    "emptyTitle": "No products yet",
+    "emptyDescription": "Add products to your storefront"
+  },
+  "shop": {
+    "title": "Shop",
+    "all": "All",
+    "buy": "Buy",
+    "orderPlaced": "Order placed!",
+    "loginRequired": "Please sign in to order",
+    "followFirst": "Follow this master first to order",
+    "emptyTitle": "No products available",
+    "emptyDescription": "Products from masters you follow will appear here"
+  },
+  "revenueGoal": {
+    "monthlyGoal": "Monthly Revenue Goal",
+    "needClients": "~{count} more clients at avg {avgCheck}",
+    "freeSlots": "{count} free slots remaining",
+    "onTrack": "On track to hit your goal!",
+    "slightlyBehind": "Slightly behind pace",
+    "behind": "Significantly behind target"
+  },
+  "locations": {
+    "title": "My Locations",
+    "addLocation": "Add Location",
+    "editLocation": "Edit Location",
+    "locationName": "Location name (e.g. Downtown Studio)",
+    "address": "Address",
+    "city": "City",
+    "save": "Save",
+    "create": "Create",
+    "created": "Location added",
+    "updated": "Location updated",
+    "deleted": "Location removed",
+    "default": "Default",
+    "setDefault": "Set as default",
+    "emptyTitle": "No locations yet",
+    "emptyDescription": "Add your work locations to let clients choose where to visit"
+  },
+  "qrCode": {
+    "copyLink": "Copy Link",
+    "copied": "Copied!",
+    "share": "Share"
+  },
+  "notifications": {
+    "enablePush": "Enable Notifications",
+    "enablePushDescription": "Get reminders about appointments, promotions, and updates",
+    "enable": "Enable",
+    "enabling": "Enabling..."
+  },
+  "telegram": {
+    "addToHome": "Add to Home Screen",
+    "addToHomeDescription": "Quick access without opening Telegram",
+    "add": "Add",
+    "biometricReason": "Verify your identity",
+    "scanQR": "Scan QR"
   }
 }

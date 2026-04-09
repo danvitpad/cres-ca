@@ -164,7 +164,7 @@ export function DayView({
 
   return (
     <div
-      className="relative rounded-2xl border bg-card shadow-sm overflow-hidden"
+      className="relative rounded-[var(--radius-card)] border bg-card shadow-[var(--shadow-card)] overflow-hidden"
       ref={containerRef}
     >
       {/* Time grid */}
@@ -179,12 +179,16 @@ export function DayView({
             <div
               key={i}
               className={cn(
-                'absolute left-0 right-0 flex items-start cursor-pointer transition-colors hover:bg-muted/40',
+                'group absolute left-0 right-0 flex items-start cursor-pointer transition-colors hover:bg-[var(--ds-accent-soft)]/30',
                 isHour ? 'border-t border-border' : 'border-t border-border/30',
               )}
               style={{ top: i * SLOT_HEIGHT, height: SLOT_HEIGHT }}
               onClick={() => handleSlotClick(i)}
             >
+              {/* Hover "+" indicator for empty slots */}
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 pointer-events-none hidden sm:block">
+                +
+              </span>
               <span
                 className={cn(
                   'w-16 pl-3 -mt-[8px] select-none text-right pr-3',
@@ -252,6 +256,7 @@ export function DayView({
                 height: Math.max(32, height),
                 zIndex: 10,
                 borderLeftColor: appt.service?.color ?? undefined,
+                backgroundColor: appt.service?.color ? `${appt.service.color}12` : undefined,
               }}
             >
               <div className="flex items-center gap-1.5">

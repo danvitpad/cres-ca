@@ -167,7 +167,9 @@ D:/Claude.cres-ca/app/          ← project root (run all commands here)
 │   │   ├── [locale]/           ← i18n dynamic segment (uk/ru/en)
 │   │   │   ├── layout.tsx      ← NextIntlClientProvider wrapper
 │   │   │   ├── (landing)/      ← Public pages (no auth required)
-│   │   │   │   └── page.tsx    ← Landing page [DONE]
+│   │   │   │   ├── page.tsx    ← Landing page [DONE]
+│   │   │   │   ├── contact/page.tsx  ← Contact / Support form
+│   │   │   │   └── layout.tsx  ← Landing layout with footer (About|Pricing|Contact|Terms|Privacy)
 │   │   │   ├── (auth)/         ← Login/Register pages
 │   │   │   │   ├── login/page.tsx
 │   │   │   │   ├── register/page.tsx
@@ -182,12 +184,15 @@ D:/Claude.cres-ca/app/          ← project root (run all commands here)
 │   │   │   │   ├── marketing/page.tsx  [STUB]
 │   │   │   │   └── settings/page.tsx   [STUB]
 │   │   │   └── (client)/      ← Client-facing pages (auth required)
-│   │   │       ├── layout.tsx  ← Bottom nav [DONE]
-│   │   │       ├── book/page.tsx       [STUB]
+│   │   │       ├── layout.tsx  ← Bottom tab bar (5 tabs: Feed|Calendar|+Book|Masters|Profile) [DONE→REDESIGN in Phase 17]
+│   │   │       ├── feed/page.tsx       ← Home tab: Instagram-style feed from followed masters
+│   │   │       ├── calendar/page.tsx   ← Unified client calendar (all masters)
+│   │   │       ├── book/page.tsx       ← Booking flow (opened from center "+" tab)
 │   │   │       ├── history/page.tsx    [STUB]
-│   │   │       ├── masters/page.tsx    [STUB]
+│   │   │       ├── masters/page.tsx    ← Masters tab: search + map + followed list
 │   │   │       ├── map/page.tsx        [STUB]
-│   │   │       └── profile/page.tsx    [STUB]
+│   │   │       ├── shop/page.tsx       ← Product storefront (from followed masters)
+│   │   │       └── profile/page.tsx    ← Profile tab: settings, family, packages, referral
 │   │   └── api/               ← API Route Handlers
 │   │       ├── auth/callback/  ← Supabase auth callback
 │   │       ├── telegram/       ← Bot webhook + Mini App validation
@@ -292,6 +297,12 @@ All defined in `supabase/migrations/00001_initial_schema.sql`:
 | Currency tracking | — | — | YES |
 | Before/After slider | — | — | YES |
 | Gift certificates | — | — | YES |
+| Product storefront | — | — | YES |
+| Lost revenue AI | — | — | YES |
+| Currency tracking | — | — | YES |
+| Auto-reports | — | — | YES |
+| Family accounts | — | YES | YES |
+| Burning slots promos | — | YES | YES |
 
 **Trial = 14 days with ALL features unlocked.**
 
@@ -974,8 +985,8 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
 
 ---
 
-### PHASE 10: TELEGRAM MINI APP
-> Loading web app inside Telegram, auth via Telegram, deep links
+### PHASE 10: TELEGRAM MINI APP (Basic)
+> Loading web app inside Telegram, auth via Telegram, deep links. **Full native integration in Phase 23.**
 
 - [x] **10.1 — Telegram Mini App entry point**
   - **Create:** `src/app/telegram/page.tsx`
@@ -995,12 +1006,13 @@ NEXT_PUBLIC_DEFAULT_LOCALE=uk
 
 - [x] **10.3 — Telegram Web App SDK integration**
   - **Create:** `src/lib/telegram/webapp.ts`
-  - **What:** Helper to interact with `window.Telegram.WebApp`:
+  - **What:** Basic helper to interact with `window.Telegram.WebApp`:
     - `getTelegramUser()` → user data
     - `showMainButton(text, onClick)` → Telegram main button
     - `hapticFeedback()` → vibration
     - `close()` → close mini app
-  - **Script tag:** Add `<script src="https://telegram.org/js/telegram-web-app.js">` to Telegram entry layout
+  - **Script tag:** Add `<script src="https://telegram.org/js/telegram-web-app.js?62">` to Telegram entry layout
+  - **NOTE:** This is a minimal version. Phase 23 rewrites this with full typed SDK covering fullscreen, safe areas, biometrics, CloudStorage, LocationManager, payments, etc.
 
 - [x] **10.4 — Deep link handling**
   - **What:** When user opens `t.me/CresCABot?start=master_ABC123`:
@@ -1371,7 +1383,969 @@ function GatedFeature() {
 
 ---
 
-## WHAT NOT TO DO
+### PHASE 17: UI/UX OVERHAUL — DESIGN SYSTEM
+> Premium visual identity. Client app = Instagram-tier social experience. Master dashboard = Linear-tier CRM.
+
+**DESIGN PHILOSOPHY:**
+The current UI is functional stubs. This phase replaces them with a cohesive, premium design system that makes users WANT to stay in the app. Two distinct but unified visual identities. **Reference:** Instagram mobile app for client UX, Linear/Raycast for master dashboard.
+
+**ANIMATION ENGINE: Framer Motion** (already installed: `framer-motion` + `motion`)
+- All page transitions: `<AnimatePresence>` with `motion.div` slide/fade
+- Gesture animations: `whileTap={{ scale: 0.95 }}` on all interactive elements
+- Layout animations: `layout` prop on lists that reorder (appointments, feed)
+- Scroll-triggered: `whileInView` for lazy-loading cards
+- Exit animations: `exit={{ opacity: 0, y: 20 }}` when removing items
+- Spring physics for natural feel: `transition={{ type: "spring", stiffness: 300, damping: 30 }}`
+
+**READY-MADE COMPONENTS** (from `D:/Claude.cres-ca/components/` — 107 files):
+Use these as reference/base when building. Key ones:
+| Component file | Use for |
+|---|---|
+| `Аватар с рамкой.txt` | Top masters story circles (gradient ring + status dot) |
+| `Слайдер сравнения До-После.txt` | Before/After photo slider in client card |
+| `Стеклянные метрики.txt` | Finance dashboard stat cards (glassmorphism + framer-motion) |
+| `Слайдер карточек.txt` | Horizontal scrollable master cards / service cards |
+| `Карточка клиента.txt` | Client card in master's CRM (avatar + info fields) |
+| `Эмодзи-рейтинг.txt` | Post-visit rating (emoji faces 1-5) |
+| `Календарь.txt` | Calendar date picker base |
+| `Прогресс-бар.txt` | Revenue goal, package visits remaining |
+| `Реферальная карточка.txt` | Referral link sharing card |
+| `Карточка продукта.txt` | Product storefront cards |
+| `Стеклянная карточка оплаты.txt` | Payment/tip confirmation |
+| `Выдвижная панель.txt` | Bottom sheet for mobile actions |
+| `Виджет статистики с графиком.txt` | Finance charts |
+| `Раскрывающийся поиск.txt` | Master search bar (expandable) |
+| `Выпадающее меню профиля.txt` | Profile dropdown in dashboard header |
+| `Таблица расширенная.txt` | Client list, appointment list, inventory table |
+| `Фон Аврора.txt` | Landing page background effect |
+| `Бенто-сетка.txt` | Dashboard overview layout (bento grid of stat cards) |
+| `Кнопка поделиться.txt` | Share master profile / referral link |
+| `Анимированный переключатель темы.txt` | Dark/light toggle |
+
+**CLIENT APP (mobile-first, social-network feel):**
+_Layout: exactly like Instagram screenshot — stories row at top, feed below, 5-tab bottom nav._
+
+- **Bottom tab bar** (5 tabs, fixed at bottom):
+  - Home (house icon) — Feed of posts from followed masters
+  - Calendar (calendar icon) — Client's unified appointment calendar
+  - **+** (center, raised circle, accent bg) — Quick book action
+  - Masters (users icon) — Search, map, followed masters list
+  - Profile (user icon) — Settings, family, packages, referral
+- **Tab behavior:** Active = filled icon + accent color + 3px dot below. Inactive = outline icon + muted. Center "+" is always accent-colored, slightly larger (56px vs 48px).
+- **Tab transitions:** Content fades + slides horizontally (200ms ease-out). Use `<AnimatePresence mode="wait">` with `motion.div` and `key={activeTab}`.
+- **Stories row** (top of Feed, horizontal scroll):
+  - Circular avatars (64px) of followed masters
+  - Gradient ring (conic-gradient pink→orange→purple) = master has new posts/promos
+  - No ring = no new content
+  - First circle = "Your story" placeholder (if master role) or "Discover" (search icon, for clients)
+  - Tap → opens master's latest promo/post as a full-screen overlay (like Instagram Story) with "Book Now" CTA at bottom
+  - Use `Аватар с рамкой.txt` component as base
+- **Feed cards** (vertical infinite scroll):
+  - Master avatar + name + specialization tag (top left)
+  - "..." menu (top right) → Unfollow, Report, Share
+  - Content area: image (if present) with rounded-xl, or text card with colored bg
+  - Post types with visual distinction:
+    - `new_service` — service card with price + "Book" button
+    - `promotion` — highlighted border (accent glow), discount badge
+    - `before_after` — slider component inline
+    - `burning_slot` — urgency: red timer badge "Expires in 3h", pulsing dot
+    - `update` — simple text post
+  - Action bar: Heart (save/favorite) | Comment (future) | Share | Book (primary, right-aligned)
+  - Use `Стеклянная карточка блога.txt` and `Слайдер карточек.txt` as base
+- **Pull-to-refresh:** Overscroll triggers spinner + haptic. Use `framer-motion` drag constraint.
+- **Glassmorphism overlays:** All modals/sheets use `backdrop-blur-xl bg-white/80 dark:bg-zinc-900/80`
+- **Safe area:** `pb-[env(safe-area-inset-bottom)]` on tab bar for iPhone notch/home indicator
+- **Hide tab bar on scroll down, show on scroll up** (like Instagram): track scroll direction, animate translateY
+
+**MASTER DASHBOARD (desktop-first, professional CRM):**
+_Layout: dark sidebar left, light content area right. Inspired by Linear + Notion but richer visually._
+
+- **Sidebar** (left, 64px collapsed / 260px expanded):
+  - Logo at top (CRES-CA wordmark when expanded, icon when collapsed)
+  - Navigation items with icons: Calendar, Clients, Services, Queue (if queue_mode), Finance, Inventory, Marketing
+  - Divider between main nav and settings
+  - Bottom: user avatar (40px) + name + subscription badge (Starter=gray, Pro=blue, Business=gold) + settings gear
+  - **Active state:** left accent bar (3px × 32px, var(--accent)), bg var(--accent-soft), text foreground
+  - **Hover state:** bg zinc-100 dark:bg-zinc-800, 150ms transition
+  - **Collapse toggle:** chevron-left/right at sidebar bottom, or auto-collapse on screens < 1024px
+  - **Mobile:** overlay drawer from left, backdrop blur, swipe-to-close
+- **Top header bar** (content area):
+  - Left: page icon + page title (h1) + breadcrumb if nested
+  - Center: global search input (Cmd+K trigger, expandable)
+  - Right: notification bell (red dot if unread) + avatar dropdown (settings, switch role, sign out)
+- **Content area patterns:**
+  - **Overview/Dashboard:** Bento grid of stat cards (use `Бенто-сетка.txt`). 2×3 grid on desktop, stack on mobile. Each card: large metric number, label, trend badge (+12% green / -5% red), sparkline.
+  - **List pages** (clients, services, inventory): search bar top + filter pills + data table with sticky header + floating action button (bottom-right, "+") for adding new items.
+  - **Detail pages** (client card): tabs header (Info | History | Health | Files) + content below.
+  - **Calendar:** Full-width, no card wrapper. Time grid left, events as colored blocks. Mini-month calendar in sidebar (below nav items on desktop).
+- **Command palette** (Cmd+K / Ctrl+K):
+  - Modal overlay with search input, categorized results: Recent, Clients, Services, Pages, Actions
+  - Keyboard navigation (arrow keys + enter)
+  - Actions: "Create appointment", "Add client", "Go to finance"
+  - Implementation: simple fuzzy match on `string.toLowerCase().includes()`, no library needed
+- **Notifications panel:** Click bell → dropdown panel (right-aligned, 380px wide, max-height 500px, scrollable). Each notification: icon + title + time ago + read/unread dot. "Mark all read" at top.
+- **Data tables:** Use `Таблица расширенная.txt` as base. Zebra striping, hover row highlight, sticky header, column sorting, inline "quick edit" (click cell → input appears).
+
+**SHARED DESIGN TOKENS:**
+- Font: system font stack (`font-sans` in Tailwind — Inter on web, SF Pro on iOS, Roboto on Android)
+- Border radius: cards 16px (`rounded-2xl`), buttons 10px (`rounded-[10px]`), avatars 9999px, inputs 8px (`rounded-lg`)
+- Shadows: cards `shadow-sm`, elevated `shadow-md`, overlays `shadow-xl`
+- Transitions: all interactive elements `transition-all duration-200 ease-out`
+- Colors: neutral base zinc, accent violet (customizable per-brand later), semantic green/amber/red for success/warning/danger
+- Spacing: 4px grid (`gap-1` = 4px, `gap-2` = 8px, `p-4` = 16px). Page padding 24px (`p-6`). Section gap 32px (`space-y-8`).
+
+- [x] **17.1 — Design tokens & theme variables**
+  - **Modify:** `src/app/globals.css`
+  - **What:** Define CSS custom properties for the design system:
+    ```css
+    :root {
+      /* Surfaces */
+      --surface-primary: theme(colors.white);
+      --surface-secondary: theme(colors.zinc.50);
+      --surface-elevated: theme(colors.white);
+      --surface-overlay: rgba(255, 255, 255, 0.8);
+
+      /* Accent */
+      --accent: theme(colors.violet.600);
+      --accent-soft: theme(colors.violet.50);
+      --accent-hover: theme(colors.violet.700);
+
+      /* Semantic */
+      --success: theme(colors.emerald.500);
+      --warning: theme(colors.amber.500);
+      --danger: theme(colors.red.500);
+
+      /* Spacing rhythm */
+      --space-page: 1.5rem;       /* page padding */
+      --space-section: 2rem;      /* between sections */
+      --space-card: 1rem;         /* card internal padding */
+
+      /* Radius */
+      --radius-card: 1rem;        /* 16px */
+      --radius-button: 0.625rem;  /* 10px */
+      --radius-avatar: 9999px;    /* full circle */
+
+      /* Shadows */
+      --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-elevated: 0 4px 12px rgba(0,0,0,0.08);
+      --shadow-overlay: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    .dark {
+      --surface-primary: theme(colors.zinc.950);
+      --surface-secondary: theme(colors.zinc.900);
+      --surface-elevated: theme(colors.zinc.800);
+      --surface-overlay: rgba(0, 0, 0, 0.7);
+      --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-elevated: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    ```
+  - **Also:** define animation keyframes: `shimmer`, `slideUp`, `slideIn`, `fadeIn`, `scaleIn`, `confetti`
+
+- [x] **17.2 — Shared primitive components**
+  - **Create:** `src/components/shared/primitives/` directory with:
+    - `stat-card.tsx` — Large number + label + trend arrow + optional sparkline. Used on finance dashboard and master profile.
+    - `avatar-ring.tsx` — Circular avatar with configurable gradient ring (for top masters) or status dot (online/busy).
+    - `bottom-sheet.tsx` — Draggable bottom sheet overlay for mobile actions (booking details, quick actions). Uses touch events, snap points (25%/50%/90% height).
+    - `empty-state.tsx` — Illustration + title + description + CTA button for empty lists/pages.
+    - `shimmer-skeleton.tsx` — Skeleton loader with animated gradient shimmer (not static gray blocks).
+    - `trend-badge.tsx` — Small pill showing "+12%" in green or "-5%" in red with arrow icon.
+    - `command-palette.tsx` — Cmd+K modal: search input + categorized results (clients, appointments, services, pages). Fuzzy search with `string.includes()` (no library needed).
+  - **All components:** use design tokens from 17.1, support dark mode, have YAML headers.
+
+- [x] **17.3 — Client bottom tab bar redesign**
+  - **Modify:** `src/app/[locale]/(client)/layout.tsx`
+  - **What:** Replace current bottom nav with Instagram-style tab bar:
+    - 5 tabs: Home (feed icon) | Calendar | + (book, center, larger) | Masters | Profile
+    - Active tab: filled icon + accent color + small dot indicator below
+    - Inactive: outline icon + muted color
+    - Center "+" button: slightly raised, accent background, rounded-full, opens booking flow
+    - Tab transitions: content slides horizontally (CSS `transform: translateX`) with 200ms ease
+    - Safe area padding on iOS (env(safe-area-inset-bottom))
+    - Hide on scroll down, show on scroll up (like Instagram)
+
+- [x] **17.4 — Client feed page (Home tab)**
+  - **Create:** `src/app/[locale]/(client)/feed/page.tsx`
+  - **What:** Vertical feed of "posts" from all masters the client follows:
+    - **Post types:** New service added, promotion/discount, before/after photo, burning slot deal, master status update
+    - **Post card layout:** Master avatar + name (top), content (middle), action buttons (bottom: Book / Share / Save)
+    - **Pull-to-refresh:** Native-feeling pull gesture → refetch feed
+    - **Infinite scroll:** Load 10 posts at a time, fetch more on scroll
+    - **Top section:** Horizontal scrollable row of followed masters' avatars (with ring = has new posts)
+  - **Data:** New `feed_posts` table or generate dynamically from recent services/promos/burning-slots for followed masters
+  - **Migration:** `supabase/migrations/00004_feed.sql`:
+    ```sql
+    create table feed_posts (
+      id uuid primary key default gen_random_uuid(),
+      master_id uuid references masters(id) on delete cascade,
+      type text not null check (type in ('new_service', 'promotion', 'before_after', 'burning_slot', 'update')),
+      title text,
+      body text,
+      image_url text,
+      linked_service_id uuid references services(id),
+      linked_product_id uuid,
+      expires_at timestamptz,
+      created_at timestamptz not null default now()
+    );
+    create index idx_feed_posts_master on feed_posts(master_id);
+    create index idx_feed_posts_created on feed_posts(created_at desc);
+    ```
+
+- [x] **17.5 — Master dashboard sidebar redesign**
+  - **Modify:** `src/app/[locale]/(dashboard)/layout.tsx`
+  - **What:** Premium sidebar:
+    - **Collapsed state** (64px): only icons, tooltip on hover showing label
+    - **Expanded state** (260px): icon + label, smooth width transition (200ms)
+    - **Toggle:** chevron button at bottom or hamburger at top
+    - **Active item:** left accent bar (3px, var(--accent)), background var(--accent-soft)
+    - **Sections:** Main (Calendar, Clients, Services), Business (Finance, Inventory, Marketing), Settings
+    - **Bottom:** avatar + name + tier badge (Starter/Pro/Business), settings gear, sign out
+    - **Desktop:** always visible. **Mobile:** overlay drawer with backdrop blur.
+    - **Cmd+K trigger:** search icon in sidebar header opens command palette
+  - **Header bar** (top of content area): page title breadcrumb + global search + notification bell (with unread count badge) + avatar dropdown
+
+- [x] **17.6 — Calendar visual overhaul**
+  - **Modify:** `src/components/calendar/day-view.tsx` and `week-view.tsx`
+  - **What:**
+    - Appointment blocks: rounded-lg, solid left border (4px) in service color, subtle background tint of service color (10% opacity)
+    - Current time indicator: red horizontal line with dot, auto-scrolls into view
+    - Drag ghost: semi-transparent clone with shadow-elevated
+    - Empty slot hover: dashed border appears, "+" icon fades in
+    - Mini-calendar in sidebar (month grid, dots on days with appointments)
+    - Smooth transitions when switching day/week, date navigation
+    - Mobile: swipe left/right to change day
+
+- [x] **17.7 — Contact / Support page + footer**
+  - **Create:** `src/app/[locale]/(landing)/contact/page.tsx`
+  - **What:** Public contact page accessible from landing footer and all dashboards. Contains:
+    - Contact form (name, email, subject dropdown [Bug/Feature/Billing/Partnership/Other], message textarea) → sends to our email via Resend API
+    - Telegram support link: `https://t.me/CresCASupport` (or bot command `/support`)
+    - Email: `support@cres-ca.com`
+    - FAQ link (anchor to landing FAQ section)
+    - Social links (Instagram, Telegram channel) if applicable
+  - **API:** `src/app/api/contact/route.ts` — receives form, sends email via Resend to admin inbox. Rate-limited: max 3 messages per hour per IP.
+  - **Landing footer:** Add persistent footer to `(landing)/layout.tsx` with links: About | Pricing | Contact | Terms | Privacy. Footer appears on all public pages.
+  - **Dashboard access:** Add `t('nav.helpSupport')` link at bottom of master sidebar (under Settings). Opens `/contact` in new tab or inline. Text depends on locale: "Допомога" / "Помощь" / "Help & Support".
+  - **Client access:** Add `t('nav.support')` item in Profile tab page (gear icon + text).
+  - **Telegram Mini App:** `t('nav.support')` in SettingsButton menu → `tg().openTelegramLink('https://t.me/CresCASupport')`
+  - **All text through i18n — NOTHING hardcoded in English:** `contact.title`, `contact.form.*`, `contact.success`, `footer.*`, `nav.helpSupport`, `nav.support`
+
+- [x] **17.8 — Verify Phase 17**
+  - Design tokens applied globally. Client tab bar is Instagram-quality. Feed page scrolls and loads. Dashboard sidebar collapses/expands. Calendar looks premium. Command palette works. Contact page and footer present.
+  - `npm run build` passes
+
+---
+
+### PHASE 18: CLIENT EXPERIENCE FEATURES
+> Family accounts, client calendar, birthday greetings, before/after slider, cancellation policy, tips
+
+- [x] **18.1 — Client unified calendar view**
+  - **Create:** `src/app/[locale]/(client)/calendar/page.tsx` (second tab in bottom nav)
+  - **What:** Monthly calendar grid. Days with appointments have colored dots (one dot per master, master's accent color). Tapping a day opens bottom sheet with appointment list. Each appointment card shows: master avatar, service name, time, status badge. "Add to phone calendar" button (generates .ics file download).
+  - **Week view toggle:** Optional strip at top showing current week with time blocks (like Google Calendar day view but horizontal scroll).
+  - **Data:** `appointments` JOIN `clients` WHERE `clients.profile_id = current_user`
+
+- [x] **18.2 — Family accounts**
+  - **Create:** `src/app/[locale]/(client)/profile/family/page.tsx`
+  - **Migration:** `supabase/migrations/00005_family.sql`:
+    ```sql
+    create table family_links (
+      id uuid primary key default gen_random_uuid(),
+      parent_profile_id uuid references profiles(id) on delete cascade,
+      member_name text not null,
+      relationship text not null default 'child',
+      linked_profile_id uuid references profiles(id),
+      created_at timestamptz not null default now()
+    );
+    ```
+  - **What:** "My Family" section in profile. Add members (name + relationship: child/spouse/parent/other). When booking, step 0: "Booking for: Me | [member name]". Appointment stores `family_member_id`. Notifications go to parent's Telegram. Family members without own account appear as separate `clients` rows linked to parent `profile_id`. If member creates own account later, link via `linked_profile_id`.
+  - **Gated by:** Pro+ tier (master must have Pro+ for family booking to be available)
+
+- [x] **18.3 — Before/After photo slider**
+  - **Create:** `src/components/client-card/before-after-slider.tsx`
+  - **What:** Two photos side by side with draggable vertical divider. Left = "before", right = "after". Divider handle: white circle with arrows icon, drags horizontally. Photos `object-fit: cover` to fill same container. Implementation: one container with two `<img>` absolutely positioned, right image clipped with `clip-path: inset(0 0 0 ${percentage}%)` controlled by pointer/touch events. No extra library.
+  - **Also:** Master can post before/after as feed_post (type: 'before_after') which shows the slider in client feed.
+  - **Gated by:** Business tier
+
+- [x] **18.4 — Birthday greetings cron**
+  - **Create:** `src/app/api/cron/birthdays/route.ts`
+  - **What:** Daily cron (08:00). Query `clients.date_of_birth` and `profiles.date_of_birth` where month+day = today. For each match:
+    - Client birthday → master gets notification "Today is {client}'s birthday! Send a greeting?" + auto-send if master enabled auto-greetings in settings. Client gets greeting from platform with optional discount code (master configures birthday_discount_percent in settings).
+    - Master birthday → platform sends greeting to master's Telegram.
+  - **Settings:** `birthday_auto_greet: boolean`, `birthday_discount_percent: number (0-50)` in master settings.
+
+- [x] **18.5 — Configurable cancellation policy**
+  - **Modify:** master settings page + booking flow
+  - **Migration:** Add columns to `masters` table:
+    ```sql
+    alter table masters add column cancellation_policy jsonb default '{"free_hours": 24, "partial_hours": 12, "partial_percent": 50}';
+    ```
+  - **What:** Master configures: free cancellation window (default 24h), partial refund window + percentage, no refund window. Client sees policy summary at booking confirmation. When client cancels:
+    - `> free_hours` before → full refund, no penalty
+    - Between `partial_hours` and `free_hours` → partial refund (e.g., 50%)
+    - `< partial_hours` → no refund, counts as cancellation in behavior stats
+  - **UI:** Clear breakdown shown to client: "Free cancellation until {datetime}. After that, {percent}% fee applies."
+
+- [x] **18.6 — Digital tips**
+  - **Create:** `src/components/shared/tip-prompt.tsx`
+  - **What:** After appointment status changes to 'completed', client receives notification (or sees modal in app): "How was your visit? Leave a tip for {master}!" with quick buttons: 5% / 10% / 15% / custom amount. Payment via LiqPay (same flow as prepayment). Tip recorded in `payments` table with `type = 'tip'`. Master sees tips separately in finance dashboard (not mixed with service revenue). Can be disabled by master in settings.
+  - **Migration:** Add `'tip'` to payments type check constraint.
+
+- [x] **18.7 — Verify Phase 18**
+  - Client calendar shows all masters' appointments. Family booking works end-to-end. Before/After slider is smooth. Birthday cron runs. Cancellation policy enforced. Tips process via LiqPay.
+  - `npm run build` passes
+
+---
+
+### PHASE 19: SERVICE TYPE ENHANCEMENTS
+> Recurring bookings, live queue, group bookings, packages, mobile masters, price variations
+
+- [x] **19.1 — Recurring bookings**
+  - **Migration:** `supabase/migrations/00006_recurring.sql`:
+    ```sql
+    create table recurring_bookings (
+      id uuid primary key default gen_random_uuid(),
+      client_id uuid references clients(id) on delete cascade,
+      master_id uuid references masters(id) on delete cascade,
+      service_id uuid references services(id) on delete cascade,
+      interval_days int not null, -- 7, 14, 21, 28, etc.
+      preferred_day_of_week int, -- 0=Mon, 6=Sun
+      preferred_time time,
+      next_booking_date date not null,
+      is_active boolean not null default true,
+      created_at timestamptz not null default now()
+    );
+    ```
+  - **Create:** `src/components/booking/recurring-toggle.tsx`
+  - **What:** After completing a booking, option appears: "Make this recurring? Every [1 week / 2 weeks / 3 weeks / month]". If enabled, system auto-creates next appointment after current one is completed. If the preferred slot is taken, system notifies client: "Your usual Thursday 14:00 is taken. Nearest available: Thursday 15:00. Confirm?" Recurring appointments shown in calendar with a "repeat" icon overlay. Client or master can cancel the recurrence anytime.
+  - **Cron:** `src/app/api/cron/recurring/route.ts` — daily, checks `recurring_bookings` where `next_booking_date <= today + 7 days` and auto-creates appointments if slot is available.
+
+- [x] **19.2 — Live queue (walk-in mode)**
+  - **Migration:** `supabase/migrations/00007_queue.sql`:
+    ```sql
+    create table queue_entries (
+      id uuid primary key default gen_random_uuid(),
+      master_id uuid references masters(id) on delete cascade,
+      client_id uuid references clients(id),
+      client_name text, -- for walk-ins without account
+      service_id uuid references services(id),
+      position int not null,
+      status text not null default 'waiting' check (status in ('waiting', 'in_service', 'completed', 'cancelled', 'no_show')),
+      estimated_start timestamptz,
+      joined_at timestamptz not null default now(),
+      started_at timestamptz,
+      completed_at timestamptz
+    );
+    ```
+  - **Create:** `src/app/[locale]/(dashboard)/queue/page.tsx` — Master view: list of queued clients, "Next" button moves top client to `in_service`, timer showing how long current client has been in service. "Add walk-in" button for clients without account.
+  - **Create:** `src/components/shared/queue-status.tsx` — Client view: "You are #4 in line. Estimated wait: ~35 min". Progress bar. Push notification when "You're next!"
+  - **Master setting:** `queue_mode: boolean` — enables queue tab in sidebar, hides calendar-based booking for this master.
+  - **Remote queue join:** Client opens master's profile, sees "Join Queue" button (instead of "Book" when master is in queue mode). Gets position and estimate.
+
+- [x] **19.3 — Group bookings**
+  - **Migration:** `supabase/migrations/00008_groups.sql`:
+    ```sql
+    alter table services add column is_group boolean not null default false;
+    alter table services add column max_participants int default 1;
+    alter table services add column min_participants int default 1;
+    alter table appointments add column group_session_id uuid;
+    create table group_sessions (
+      id uuid primary key default gen_random_uuid(),
+      master_id uuid references masters(id) on delete cascade,
+      service_id uuid references services(id) on delete cascade,
+      starts_at timestamptz not null,
+      ends_at timestamptz not null,
+      max_participants int not null,
+      current_participants int not null default 0,
+      status text not null default 'open' check (status in ('open', 'full', 'confirmed', 'cancelled', 'completed')),
+      min_participants int not null default 1,
+      auto_cancel_if_below_min boolean not null default true,
+      created_at timestamptz not null default now()
+    );
+    ```
+  - **What:** Master creates a group service (yoga class, workshop, group training) with max/min participants. Creates a group session with date/time. Clients see "3/10 spots remaining" and book individual slots. If `current_participants < min_participants` 24h before start and `auto_cancel_if_below_min = true`, auto-cancel + notify all booked clients. Each participant has their own `appointments` row linked via `group_session_id`.
+  - **UI:** On master calendar, group sessions shown as wider blocks with participant count badge. Client sees group sessions in a separate "Classes" section on master profile.
+
+- [x] **19.4 — Service packages / Subscriptions**
+  - **Migration:** `supabase/migrations/00009_packages.sql`:
+    ```sql
+    create table service_packages (
+      id uuid primary key default gen_random_uuid(),
+      master_id uuid references masters(id) on delete cascade,
+      name text not null,
+      description text,
+      service_id uuid references services(id) on delete cascade,
+      total_visits int not null, -- e.g., 10
+      bonus_visits int not null default 0, -- e.g., 1 free
+      price numeric(10,2) not null, -- discounted total price
+      currency text not null default 'UAH',
+      validity_days int not null default 90, -- package expires after N days
+      is_active boolean not null default true,
+      created_at timestamptz not null default now()
+    );
+    create table client_packages (
+      id uuid primary key default gen_random_uuid(),
+      client_id uuid references clients(id) on delete cascade,
+      package_id uuid references service_packages(id) on delete cascade,
+      visits_remaining int not null,
+      purchased_at timestamptz not null default now(),
+      expires_at timestamptz not null,
+      payment_id uuid references payments(id)
+    );
+    ```
+  - **What:** Master creates packages: "10 massages for price of 9" (total_visits=10, bonus_visits=1, price=9*single_price). Client buys package → payment via LiqPay → `client_packages` created. On each booking for that service, visits_remaining decremented. When visits_remaining = 0, package exhausted. When expires_at passed, remaining visits lost (notify client 7 days before). Master sees in client card: "Package: 6/10 visits remaining, expires 15.06".
+  - **UI for client:** On booking confirmation, if client has active package for this service, show "Use package visit (7 remaining)" instead of price.
+  - **Gated by:** Pro+ tier
+
+- [x] **19.5 — Mobile master (on-site visits)**
+  - **Migration:** Add columns:
+    ```sql
+    alter table masters add column is_mobile boolean not null default false;
+    alter table masters add column service_radius_km int default 15;
+    alter table masters add column travel_fee_fixed numeric(10,2) default 0;
+    alter table masters add column travel_fee_per_km numeric(10,2) default 0;
+    alter table appointments add column client_address text;
+    alter table appointments add column client_lat double precision;
+    alter table appointments add column client_lng double precision;
+    alter table appointments add column travel_time_minutes int;
+    ```
+  - **What:** Master marks "I travel to clients" in settings. Sets service radius (km) and travel fee. Client enters address during booking (geocode via OpenStreetMap Nominatim free API). System calculates distance, adds travel fee to price, blocks travel time in master's calendar before and after appointment (calculated as distance/avg_speed). Master sees client address on appointment card with "Open in Maps" link (`geo:` URI or Google Maps link). Clients outside service radius see "This master doesn't serve your area".
+  - **On map:** Mobile masters shown with a radius circle overlay. Client sees which masters can reach them.
+
+- [x] **19.6 — Price variations per service**
+  - **Migration:**
+    ```sql
+    create table service_variations (
+      id uuid primary key default gen_random_uuid(),
+      service_id uuid references services(id) on delete cascade,
+      name text not null, -- "Short hair", "Large dog", "2-bedroom"
+      price numeric(10,2) not null,
+      duration_minutes int not null,
+      sort_order int not null default 0
+    );
+    ```
+  - **What:** Master adds variations to a service: "Haircut → Short hair 300₴/30min | Long hair 500₴/45min". Client picks variation during booking → price and duration auto-fill. If service has variations, the base service price is hidden — only variations shown. On calendar, appointment shows which variation was booked.
+  - **UI:** In service editor, toggle "Has variations". Variations list appears below with add/edit/delete. In booking flow, radio buttons for each variation.
+
+- [x] **19.7 — Verify Phase 19**
+  - Recurring bookings auto-create. Queue works for walk-in masters. Group sessions manage participants. Packages track visits. Mobile masters show radius + travel fee. Price variations change booking flow.
+  - `npm run build` passes
+
+---
+
+### PHASE 20: ADVANCED MARKETING & ANALYTICS
+> Shared blacklist, top masters, burning slots, lost revenue AI, product storefront
+
+- [x] **20.1 — Cross-platform client blacklist**
+  - **Create:** `src/app/api/blacklist/check/route.ts`
+  - **What:** On booking creation, server-side check: aggregate `cancellation_count + no_show_count` across ALL `clients` rows with same `profile_id` (not just current master's client record). If total >= 3 in last 30 days → create warning notification for master: "Heads up: this client has cancelled/no-showed 3 times recently across the platform." Master can dismiss. Warning appears as yellow banner on the appointment card. Never reveal which masters or services — only aggregate count.
+  - **Privacy RLS:** The check runs via a server-side RPC function (service role), not exposed to client.
+
+- [x] **20.2 — Top masters ranking**
+  - **Create:** `src/components/shared/top-masters-row.tsx`
+  - **What:** Horizontal scrollable row of circular avatars with gradient ring (active = has recent activity/promo). Sorted by: `rating * ln(review_count + 1)`. Tapping opens master profile. Below avatar: name (truncated) + specialization tag.
+  - **Ring colors:** Gold gradient for top 3, accent gradient for rest. No ring if no reviews yet.
+  - **Placement:** Top of client Feed page + top of Masters search page + top of Map page.
+  - **Data:** `masters` JOIN `profiles` WHERE `is_active = true AND rating >= 4.0` ORDER BY formula, LIMIT 20.
+
+- [x] **20.3 — "Burning slots" auto-promotions**
+  - **Create:** `src/app/api/cron/burning-slots/route.ts`
+  - **What:** Daily cron (20:00). For each master with Pro+ tier:
+    1. Calculate empty slots for next 24h (compare working hours vs booked appointments)
+    2. If empty slots > 30% of total available → create feed_post (type: 'burning_slot') with discount
+    3. Send push to all clients who follow this master: "Flash deal: {service} tomorrow at {time} with {discount}% off!"
+    4. Create temporary discount that auto-expires after the slot time passes
+  - **Master settings:** `burning_slots_enabled: boolean`, `burning_slots_discount: number (5-50)`, `burning_slots_auto: boolean` (auto-publish or ask master first).
+  - **Gated by:** Pro+ tier
+
+- [x] **20.4 — AI "Lost Revenue" analytics**
+  - **Create:** `src/components/shared/lost-revenue-card.tsx`
+  - **Create:** `src/app/api/ai/lost-revenue/route.ts`
+  - **What:** Insight card on finance dashboard (Business tier). Weekly cron generates insights and stores them. Shows 2-3 actionable insights:
+    - **Schedule gaps:** "80% bookings are Sat-Sun, Mondays are 90% empty. Try a Monday discount."
+    - **Dormant clients:** "5 regular clients haven't visited in 2x their usual interval. Reach out?"
+    - **Price optimization:** "Your avg check dropped 12% since adding budget services. Your premium services have 3x the margin."
+    - **Upsell missed:** "Only 8% of clients add upsell services. Top masters in your category achieve 25%."
+  - **Implementation:** Aggregate data server-side, send summary to OpenRouter AI, get structured JSON response, render as cards with "Take Action" buttons (e.g., "Send re-engagement message" → pre-filled notification).
+  - **Gated by:** Business tier
+
+- [x] **20.5 — Product storefront**
+  - **Migration:** `supabase/migrations/00010_products.sql`:
+    ```sql
+    create table products (
+      id uuid primary key default gen_random_uuid(),
+      master_id uuid references masters(id) on delete cascade,
+      name text not null,
+      description text,
+      price numeric(10,2) not null,
+      currency text not null default 'UAH',
+      image_url text,
+      is_active boolean not null default true,
+      created_at timestamptz not null default now()
+    );
+    create table product_recommendations (
+      id uuid primary key default gen_random_uuid(),
+      product_id uuid references products(id) on delete cascade,
+      service_id uuid references services(id) on delete cascade,
+      message_template text
+    );
+    create table product_orders (
+      id uuid primary key default gen_random_uuid(),
+      client_id uuid references clients(id) on delete cascade,
+      product_id uuid references products(id) on delete cascade,
+      quantity int not null default 1,
+      total_price numeric(10,2) not null,
+      payment_id uuid references payments(id),
+      status text not null default 'pending' check (status in ('pending', 'paid', 'delivered', 'cancelled')),
+      created_at timestamptz not null default now()
+    );
+    ```
+  - **Master side:** `src/app/[locale]/(dashboard)/marketing/products/page.tsx` — CRUD for products. Link products to services (product_recommendations). Upload product photo to Supabase Storage.
+  - **Client side:** `src/app/[locale]/(client)/shop/page.tsx` — Browse products from followed masters. Filter by master. Product card: image, name, price, "Buy" button. Payment via LiqPay.
+  - **Auto-recommendation:** After visit (Phase 12.4 cron), if service has linked products, include product link in the recommendation message: "For best results after your {service}, we recommend {product}. Buy in one tap."
+  - **Feed integration:** When master adds a product, auto-create feed_post (type: 'new_product').
+  - **Gated by:** Pro+ tier with `storefront` feature flag
+
+- [x] **20.6 — Verify Phase 20**
+  - Blacklist warns on booking. Top masters row shows on feed/search/map. Burning slots auto-publish. AI insights generate weekly. Product shop works end-to-end.
+  - `npm run build` passes
+
+---
+
+### PHASE 21: FINANCE ADVANCED
+> Per-procedure cost calculator, currency tracking, auto-reports, revenue goals, recurring expenses
+
+- [x] **21.1 — Procedure cost calculator**
+  - **Create:** `src/components/shared/cost-calculator.tsx`
+  - **What:** On service edit form, expandable section "Profitability":
+    - List all `inventory_recipe` items with name × quantity × cost_per_unit = subtotal
+    - Sum = total material cost
+    - `price - material_cost = gross profit`
+    - Margin % shown as colored badge (green >60%, yellow 30-60%, red <30%)
+  - **Finance dashboard widget:** "Service profitability ranking" — bar chart of all services sorted by margin. Red highlight on services operating at a loss.
+
+- [x] **21.2 — Currency rate tracking**
+  - **Create:** `src/lib/currency/rates.ts`
+  - **What:** Fetch rates from NBU open API (`https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json`) — free, no key needed. Cache in Supabase (`currency_rates` table with date + rates JSONB). Refresh daily via cron.
+  - **Migration:** Add `purchase_currency` column to `inventory_items`.
+  - **UI:** In inventory item form, if `purchase_currency != master's default currency`, show converted cost: "Bought at 45 PLN = 495 UAH (rate: 11.0)". If rate changed >10% since purchase, show warning badge.
+  - **Gated by:** Business tier
+
+- [x] **21.3 — Financial reports export**
+  - **Create:** `src/app/api/reports/monthly/route.ts`
+  - **What:** Generate CSV (not PDF — simpler, universally importable) with:
+    - Revenue by service category
+    - Expenses by category
+    - Tax estimate (master configures `tax_rate_percent` in settings, default 5% for ФОП)
+    - Net profit
+    - Inventory usage + cost summary
+  - **Create:** `src/app/[locale]/(dashboard)/finance/reports/page.tsx` — month picker, "Generate Report" button, download link. Shows last 12 months of generated reports.
+  - **Monthly cron:** Auto-generate on 1st of each month, notify master "Your monthly report is ready".
+  - **Note:** Only financial data is exportable. Client lists, appointment history, notes are NOT exportable — this is platform-retained data.
+  - **Gated by:** Business tier
+
+- [x] **21.4 — Revenue goals**
+  - **Migration:** Add to `masters`:
+    ```sql
+    alter table masters add column monthly_revenue_goal numeric(10,2);
+    ```
+  - **Create:** `src/components/shared/revenue-goal.tsx`
+  - **What:** On finance dashboard, prominent progress bar: "April goal: 32,000 / 50,000 UAH (64%)". Below: "You need ~7 more clients at your avg check of 2,571₴. You have 14 free slots remaining this month." Color: green if on track (linear projection >= goal), yellow if behind, red if >30% behind. Master sets/edits goal in settings.
+  - **Gamification:** When goal reached, confetti animation + notification "You hit your April goal!"
+
+- [x] **21.5 — Recurring expenses**
+  - **Migration:**
+    ```sql
+    alter table expenses add column is_recurring boolean not null default false;
+    alter table expenses add column recurrence_interval text check (recurrence_interval in ('weekly', 'monthly', 'quarterly', 'yearly'));
+    alter table expenses add column next_recurrence_date date;
+    ```
+  - **What:** When adding expense, toggle "Recurring". Select interval. System auto-creates new expense record on each recurrence date. Master sees recurring expenses listed separately with "Monthly total: X₴" summary. Can pause or stop recurrence.
+  - **Cron:** `src/app/api/cron/recurring-expenses/route.ts` — daily, creates new expense records where `next_recurrence_date <= today`.
+
+- [x] **21.6 — Verify Phase 21**
+  - Cost calculator shows per-service profitability. Currency rates fetch and display. Reports generate and download. Revenue goal progress bar works. Recurring expenses auto-create.
+  - `npm run build` passes
+
+---
+
+### PHASE 22: PLATFORM INFRASTRUCTURE
+> Calendar sync, web push, QR codes, auto-translation, multi-location
+
+- [x] **22.1 — Google Calendar sync (one-way export)**
+  - **Create:** `src/lib/calendar/ics.ts`
+  - **What:** Generate .ics file for any appointment. "Add to Calendar" button on booking confirmation and appointment detail. Downloads .ics file that works with Google Calendar, Apple Calendar, Outlook.
+  - **Format:**
+    ```
+    BEGIN:VCALENDAR
+    VERSION:2.0
+    BEGIN:VEVENT
+    DTSTART:20260415T140000
+    DTEND:20260415T160000
+    SUMMARY:Manicure - Master Anna
+    LOCATION:Salon Address
+    DESCRIPTION:Service details...
+    END:VEVENT
+    END:VCALENDAR
+    ```
+  - **Subscription feed (CalDAV-like):** `src/app/api/calendar/[userId]/feed.ics/route.ts` — returns all future appointments as .ics feed. User adds this URL to Google Calendar as "Subscribe to calendar" → auto-syncs. Read-only (our calendar is primary).
+
+- [x] **22.2 — Web Push notifications**
+  - **Create:** `src/lib/notifications/web-push.ts`
+  - **What:** For users who use web app (not Telegram). Service Worker registers push subscription. Server sends via Web Push API (using `web-push` npm package — free, uses VAPID keys).
+  - **Create:** `public/sw.js` — Service Worker for push notifications.
+  - **Create:** `src/components/shared/push-permission.tsx` — "Enable notifications" prompt (shows once, remembers choice).
+  - **Migration:** Add `push_subscription` JSONB column to `profiles` (stores endpoint + keys).
+  - **Notification sender (Phase 9.3) updated:** Check notification channel preference: Telegram first, then Web Push, then email (Resend) as fallback.
+  - **Install:** `npm install web-push` + generate VAPID keys.
+
+- [x] **22.3 — QR code for instant booking**
+  - **Create:** `src/components/shared/qr-code.tsx`
+  - **What:** Generate QR code (SVG, no external API — use simple QR encoding library or canvas-based). Encodes master's booking URL: `https://cres-ca.com/{locale}/masters/{masterId}`. Master can:
+    - View QR in settings page
+    - Download as PNG (for printing on business cards, door stickers, receipts)
+    - Share QR image via Telegram
+  - **Also:** QR for specific service: `https://cres-ca.com/{locale}/book?master={id}&service={serviceId}` — scans straight to booking with service pre-selected.
+  - **Install:** `npm install qrcode` (lightweight, generates SVG/canvas).
+
+- [x] **22.4 — Auto-translation of service descriptions**
+  - **Modify:** master profile + service creation
+  - **What:** Master writes service name/description in their language (detected from locale). When client views in a different locale, system auto-translates via OpenRouter AI. Translations cached in DB to avoid repeated API calls.
+  - **Migration:**
+    ```sql
+    create table translations_cache (
+      id uuid primary key default gen_random_uuid(),
+      source_table text not null, -- 'services', 'products', etc.
+      source_id uuid not null,
+      source_field text not null, -- 'name', 'description'
+      target_locale text not null, -- 'en', 'uk', 'ru'
+      translated_text text not null,
+      created_at timestamptz not null default now(),
+      unique(source_table, source_id, source_field, target_locale)
+    );
+    ```
+  - **Logic:** On first view in different locale → check cache → if miss, call AI to translate → store in cache → return. Subsequent views use cache. Master can manually edit translations in settings if AI got it wrong.
+  - **Gated by:** Business tier (AI costs). Starter/Pro show original language only.
+
+- [x] **22.5 — Multi-location for masters**
+  - **Migration:**
+    ```sql
+    create table master_locations (
+      id uuid primary key default gen_random_uuid(),
+      master_id uuid references masters(id) on delete cascade,
+      name text not null, -- "Downtown Studio", "Home Office"
+      address text not null,
+      city text,
+      latitude double precision,
+      longitude double precision,
+      working_hours jsonb, -- same format as masters.working_hours but per-location
+      is_default boolean not null default false,
+      created_at timestamptz not null default now()
+    );
+    ```
+  - **What:** Master with multiple work locations adds each with its own address + working hours. Calendar shows which location each day. Client booking flow: after selecting service + date, if master has multiple locations, show "Location: [dropdown]". Available times depend on location's working hours. On map, each location shown as separate marker. Client can filter: "Show only masters near me" checks all locations.
+  - **UI:** Settings → "My Locations" tab. Add/edit/remove locations. Set which days each location is active. Default location used when only one exists (backward compatible — current `address` field on `masters` becomes the default location).
+  - **Gated by:** Pro+ tier
+
+- [x] **22.6 — Verify Phase 22**
+  - .ics download works. Calendar feed URL syncs to Google Calendar. Web Push notifications arrive in browser. QR codes generate and scan correctly. Auto-translations cache and display. Multi-location shows in booking flow and map.
+  - `npm run build` passes
+
+---
+
+### PHASE 23: TELEGRAM MINI APP — DEEP NATIVE INTEGRATION
+> Fullscreen mode, native haptics, Telegram payments, QR scanner, home screen, stories sharing, geolocation, biometrics, cloud storage. 99% users are on mobile — this phase makes the app feel native.
+
+**CONTEXT:** Phase 10 created a basic Telegram Mini App shell. This phase exploits EVERY capability of the Telegram Mini App API (Bot API 8.0-9.6) to deliver a native-feeling experience. Reference: https://core.telegram.org/bots/webapps
+
+- [x] **23.1 — Full Telegram SDK helper rewrite**
+  - **Rewrite:** `src/lib/telegram/webapp.ts`
+  - **What:** Complete typed wrapper around `window.Telegram.WebApp`. Must detect if running inside Telegram or browser and gracefully degrade.
+  - **Type definitions:**
+    ```tsx
+    interface TelegramWebApp {
+      initData: string;
+      initDataUnsafe: WebAppInitData;
+      version: string;
+      platform: string;
+      colorScheme: 'light' | 'dark';
+      themeParams: ThemeParams;
+      isExpanded: boolean;
+      isFullscreen: boolean;
+      isActive: boolean;
+      viewportHeight: number;
+      viewportStableHeight: number;
+      safeAreaInset: { top: number; bottom: number; left: number; right: number };
+      contentSafeAreaInset: { top: number; bottom: number; left: number; right: number };
+      MainButton: BottomButton;
+      SecondaryButton: BottomButton;
+      BackButton: { isVisible: boolean; show(): void; hide(): void; onClick(cb: () => void): void; offClick(cb: () => void): void };
+      SettingsButton: { isVisible: boolean; show(): void; hide(): void; onClick(cb: () => void): void };
+      HapticFeedback: HapticFeedback;
+      CloudStorage: CloudStorage;
+      BiometricManager: BiometricManager;
+      LocationManager: LocationManager;
+      // ... all methods
+    }
+    ```
+  - **Helper functions:**
+    ```tsx
+    export const tg = () => window.Telegram?.WebApp;
+    export const isTelegram = () => !!window.Telegram?.WebApp?.initData;
+    export const haptic = {
+      impact: (style: 'light' | 'medium' | 'heavy') => tg()?.HapticFeedback?.impactOccurred(style),
+      success: () => tg()?.HapticFeedback?.notificationOccurred('success'),
+      error: () => tg()?.HapticFeedback?.notificationOccurred('error'),
+      selection: () => tg()?.HapticFeedback?.selectionChanged(),
+    };
+    ```
+
+- [x] **23.2 — Fullscreen mode + safe areas**
+  - **Modify:** Telegram entry point (`src/app/telegram/page.tsx`)
+  - **What:** On app load:
+    1. `WebApp.requestFullscreen()` — expand to full screen (header becomes transparent)
+    2. `WebApp.disableVerticalSwipes()` — prevent accidental close when scrolling
+    3. `WebApp.enableClosingConfirmation()` — confirm before closing during booking
+    4. `WebApp.expand()` — ensure maximum height
+    5. `WebApp.ready()` — signal ready to hide loading screen
+  - **Safe areas:** Use Telegram CSS variables in layout:
+    ```css
+    .tg-app {
+      padding-top: var(--tg-content-safe-area-inset-top, 0px);
+      padding-bottom: var(--tg-safe-area-inset-bottom, 0px);
+      padding-left: var(--tg-safe-area-inset-left, 0px);
+      padding-right: var(--tg-safe-area-inset-right, 0px);
+    }
+    ```
+  - **Colors:** Match app theme to Telegram:
+    ```tsx
+    WebApp.setHeaderColor('#000000'); // or 'bg_color' for auto
+    WebApp.setBackgroundColor('#000000');
+    WebApp.setBottomBarColor('#000000'); // matches bottom tab bar
+    ```
+  - **Orientation:** Lock to portrait for client app: `WebApp.lockOrientation()`
+
+- [x] **23.3 — Telegram theme sync**
+  - **Create:** `src/hooks/use-telegram-theme.ts`
+  - **What:** Hook that reads `WebApp.themeParams` and maps to our CSS variables. Auto-switches dark/light mode to match Telegram app theme.
+  - **CSS variables from Telegram:**
+    ```
+    --tg-theme-bg-color → --surface-primary
+    --tg-theme-text-color → foreground
+    --tg-theme-hint-color → muted-foreground
+    --tg-theme-link-color → --accent
+    --tg-theme-button-color → --accent
+    --tg-theme-button-text-color → accent-foreground
+    --tg-theme-secondary-bg-color → --surface-secondary
+    --tg-theme-section-bg-color → --surface-elevated
+    --tg-theme-bottom-bar-bg-color → bottom tab bar bg
+    --tg-color-scheme → dark/light mode toggle
+    ```
+  - **Listen to** `themeChanged` event → re-apply mappings
+  - **Viewport:** Use `--tg-viewport-stable-height` for layouts instead of `100vh` (avoids keyboard resize flicker)
+
+- [x] **23.4 — Telegram MainButton + BackButton integration**
+  - **Create:** `src/hooks/use-telegram-buttons.ts`
+  - **What:** Hook for controlling Telegram native buttons from any page:
+    ```tsx
+    export function useTelegramMainButton(text: string, onClick: () => void, options?: {
+      color?: string; textColor?: string; isActive?: boolean; hasShineEffect?: boolean;
+    }) {
+      useEffect(() => {
+        if (!isTelegram()) return;
+        const btn = tg().MainButton;
+        btn.setText(text);
+        if (options?.color) btn.color = options.color;
+        if (options?.hasShineEffect) btn.hasShineEffect = true;
+        btn.onClick(onClick);
+        btn.show();
+        return () => { btn.offClick(onClick); btn.hide(); };
+      }, [text, onClick]);
+    }
+    ```
+  - **Usage across app:**
+    - Booking confirmation → MainButton: "Confirm Booking" (shine effect)
+    - Booking flow step → SecondaryButton: "Back" (left position)
+    - Client feed → MainButton hidden (no global action)
+    - Master calendar → MainButton: "New Appointment"
+    - Payment page → MainButton: "Pay {amount}" with progress spinner during payment
+  - **BackButton:** Show on all nested pages. Click → `router.back()`. Hide on root tabs (feed, calendar, masters, profile).
+
+- [x] **23.5 — Haptic feedback everywhere**
+  - **Modify:** All interactive components throughout the app
+  - **Rules:**
+    - `haptic.selection()` → on every tab switch, toggle, radio select
+    - `haptic.impact('light')` → on button tap, card tap
+    - `haptic.impact('medium')` → on drag-and-drop grab/release
+    - `haptic.impact('heavy')` → on pull-to-refresh trigger
+    - `haptic.success()` → booking confirmed, payment success, review submitted
+    - `haptic.error()` → form validation fail, booking conflict, payment fail
+  - **Wrap in helper:** `haptic.impact('light')` is a no-op outside Telegram (safe to call everywhere)
+
+- [x] **23.6 — Telegram CloudStorage for preferences**
+  - **Create:** `src/lib/telegram/cloud-storage.ts`
+  - **What:** Use Telegram CloudStorage (1024 items, persists across devices) to store user preferences:
+    - `preferred_locale` — language preference
+    - `last_viewed_tab` — which tab was active last
+    - `favorite_master_ids` — quick access list
+    - `notification_preferences` — reminder timing
+    - `theme_override` — if user chose different theme from Telegram default
+  - **Fallback:** If not in Telegram, use `localStorage`
+  - **Pattern:**
+    ```tsx
+    export async function getCloudItem(key: string): Promise<string | null> {
+      if (isTelegram()) {
+        return new Promise(resolve => tg().CloudStorage.getItem(key, (err, val) => resolve(val || null)));
+      }
+      return localStorage.getItem(key);
+    }
+    ```
+
+- [x] **23.7 — Telegram QR scanner for master codes**
+  - **Modify:** Master search flow + QR code feature (Phase 22.3)
+  - **What:** In Telegram, instead of phone camera QR reader, use native Telegram QR scanner:
+    ```tsx
+    function scanMasterQR() {
+      if (isTelegram()) {
+        tg().showScanQrPopup({ text: 'Scan master QR code' }, (result) => {
+          if (result) {
+            // result = URL like https://cres-ca.com/uk/masters/uuid
+            router.push(extractPath(result));
+            tg().closeScanQrPopup();
+          }
+        });
+      } else {
+        // Web fallback: open camera with jsQR library
+      }
+    }
+    ```
+  - **Add to:** Client masters tab — "Scan QR" button next to search bar
+
+- [x] **23.8 — Telegram geolocation for nearby masters**
+  - **Modify:** Map page + master search
+  - **What:** Use Telegram `LocationManager` instead of browser `navigator.geolocation` (more reliable on mobile, proper permission flow):
+    ```tsx
+    async function getLocation(): Promise<{lat: number, lng: number} | null> {
+      if (isTelegram()) {
+        const lm = tg().LocationManager;
+        if (!lm.isInited) await new Promise(r => lm.init(r));
+        if (!lm.isLocationAvailable) return null;
+        return new Promise(resolve => lm.getLocation((data) => {
+          resolve(data ? { lat: data.latitude, lng: data.longitude } : null);
+        }));
+      }
+      // Browser fallback
+      return new Promise(resolve => navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null)
+      ));
+    }
+    ```
+  - **Benefit:** Higher accuracy (includes altitude, speed, course), better permission UX
+
+- [x] **23.9 — Add to Home Screen prompt**
+  - **Create:** `src/components/shared/home-screen-prompt.tsx`
+  - **What:** After 3rd use (or after first booking), show a subtle banner (text through i18n: `t('tg.addToHome')`). On tap:
+    ```tsx
+    tg().addToHomeScreen();
+    ```
+  - **Track:** Store in CloudStorage `home_screen_prompted: true` so we don't ask again.
+  - **Check:** `tg().checkHomeScreenStatus()` — if already added, don't show prompt.
+
+- [x] **23.10 — Biometric auth for sensitive actions**
+  - **What:** For payments, viewing client health data, or accessing consent forms, optionally require biometric verification:
+    ```tsx
+    async function requireBiometric(reason: string): Promise<boolean> {
+      if (!isTelegram()) return true; // skip outside TG
+      const bm = tg().BiometricManager;
+      if (!bm.isInited) await new Promise(r => bm.init(r));
+      if (!bm.isBiometricAvailable) return true; // skip if not available
+      return new Promise(resolve => bm.authenticate({ reason }, (success) => resolve(success)));
+    }
+    ```
+  - **Use cases:** Confirm large payment, view client medical records (HIPAA-like protection), sign consent form
+
+- [x] **23.11 — Telegram-native popups and confirmations**
+  - **Modify:** All `sonner` toast / `confirm()` calls
+  - **What:** In Telegram, use native popups instead of web-based ones:
+    ```tsx
+    export function showConfirm(message: string): Promise<boolean> {
+      if (isTelegram()) {
+        return new Promise(resolve => tg().showConfirm(message, resolve));
+      }
+      return Promise.resolve(window.confirm(message));
+    }
+    export function showAlert(message: string): Promise<void> {
+      if (isTelegram()) {
+        return new Promise(resolve => tg().showAlert(message, resolve));
+      }
+      window.alert(message);
+      return Promise.resolve();
+    }
+    ```
+  - **Custom popups** for important actions (cancel booking, delete client):
+    ```tsx
+    tg().showPopup({
+      title: 'Cancel booking?',
+      message: 'Cancellation fee may apply.',
+      buttons: [
+        { id: 'cancel', type: 'destructive', text: 'Yes, cancel' },
+        { id: 'keep', type: 'default', text: 'Keep booking' },
+      ]
+    }, (buttonId) => { if (buttonId === 'cancel') cancelBooking(); });
+    ```
+
+- [x] **23.12 — Verify Phase 23**
+  - Mini App opens fullscreen. Safe areas correct on all devices. Haptic feedback on all interactions. Theme syncs with Telegram. MainButton shows contextually. QR scanner opens natively. Location works. Home screen prompt shows. Biometrics gate sensitive actions. Native popups replace browser confirms.
+  - Test on: iOS Telegram, Android Telegram, Telegram Desktop (graceful degradation)
+  - `npm run build` passes
+
+---
+
+## UI LIBRARIES REFERENCE
+
+**Already installed:**
+- `framer-motion` / `motion` — animation engine (spring physics, gestures, layout animations, AnimatePresence)
+- `shadcn` (base-ui) — primitive components (Button, Card, Dialog, Input, etc.)
+- `lucide-react` — icons
+
+**Ready-made components** (107 files in `D:/Claude.cres-ca/components/`):
+Reference snippets from 21st.dev. Use as building blocks — adapt to our design tokens, don't copy blindly.
+
+**Additional libraries to consider** (install only when needed):
+
+| Library | What for | Install |
+|---|---|---|
+| Aceternity UI | Premium effects: floating navbar, sidebar, 3D cards, compare slider, timeline, spotlight, bento grid, infinite cards | Copy components from https://ui.aceternity.com — no npm package, just copy-paste TSX |
+| Magic UI | Animated counters, shimmer, marquee, orbit animation, border beam, confetti | `npx magicui-cli add [component]` or copy from https://magicui.design |
+
+**Key Aceternity components for our project:**
+| Component | Use in CRES-CA |
+|---|---|
+| `Floating Navbar` | Client app — hide on scroll down, show on scroll up |
+| `Sidebar` | Master dashboard — expandable, mobile-responsive |
+| `Compare` | Before/After photo slider (already matches our need exactly) |
+| `Timeline` | Client appointment history, master activity log |
+| `Bento Grid` | Dashboard overview — stat cards in asymmetric grid |
+| `Focus Cards` | Master selection — blur non-focused cards |
+| `Infinite Moving Cards` | Landing page testimonials carousel |
+| `Animated Modal` | Booking confirmation, payment flow |
+| `Apple Cards Carousel` | Service cards horizontal scroll |
+| `Carousel` | Top masters horizontal scroll on client feed |
+| `Floating Dock` | Master dashboard — quick actions dock (new appointment, add client) |
+| `Tabs` | Client card tabs (Info, History, Health, Files) with animated transitions |
+| `3D Card Effect` | Master profile card with hover depth |
+| `Spotlight` | Featured/promoted masters highlight |
+| `Aurora Background` | Landing page hero background |
+| `Sparkles` | Confetti on booking confirmed, goal reached |
+
+**Rules for external components:**
+1. Only copy what we actually use — no installing full libraries "just in case"
+2. Adapt all copied components to use our design tokens (colors, radius, spacing)
+3. All external components MUST support dark mode
+4. All animations MUST respect `prefers-reduced-motion: reduce`
+5. Test on mobile (320px width) — if it looks broken, simplify
+
+---
 
 1. **DO NOT** install new packages without checking if existing ones cover the need
 2. **DO NOT** use `asChild` on any shadcn component — use `buttonVariants()` or `render` prop
