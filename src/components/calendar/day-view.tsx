@@ -1,300 +1,844 @@
 /** --- YAML
  * name: DayView
- * description: Premium vertical timeline calendar — 30min grid, gradient appointment blocks, current time indicator, drag-and-drop
+ * description: Fresha-exact day calendar — dark/light theme support, 10-min intervals, Fresha-style time labels with period-of-day suffix.
  * --- */
 
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { AlertTriangle, CalendarDays, Clock } from 'lucide-react';
+import { AlertTriangle, X, CalendarPlus, Users, Lock, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
-const SLOT_HEIGHT = 56; // px per 30 min — taller for breathing room
-const GRID_SNAP = 15; // snap to 15 min
+/* ─── Layout constants ─── */
+const HOUR_HEIGHT = 96;
+const TOTAL_HOURS = 24;
+const TOTAL_HEIGHT = TOTAL_HOURS * HOUR_HEIGHT; // 2304px
+const HEADER_HEIGHT = 110;
+const AVATAR_SIZE = 56;
+const SLOT_MINUTES = 10;
+const SLOTS_PER_HOUR = 6;
+const SLOT_HEIGHT = HOUR_HEIGHT / SLOTS_PER_HOUR; // 16px
+const TIME_COL_WIDTH = 80; // wider for "12:00 дня" labels
+const INTERVALS_PER_HOUR = 6; // 10-min intervals (6 per hour)
+const INTERVAL_HEIGHT = HOUR_HEIGHT / INTERVALS_PER_HOUR; // 16px
+
+const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+/* ─── Fresha theme palettes (extracted from Playwright) ─── */
+const LIGHT = {
+  pageBg: '#ffffff',
+  nonWorkingBg: '#f5f5f5',
+  gridBorder: '#e5e5e5',
+  gridBorderSub: 'rgba(229,229,229,0.4)',
+  text: '#0d0d0d',
+  timeText: '#737373',
+  timeLabelSuffix: '#a3a3a3',
+  currentTime: '#d4163a',
+  currentTimeBg: '#ffffff',
+  avatarBg: '#ebf8fe',
+  avatarBorder: '#e5e5e5',
+  avatarText: '#0d0d0d',
+  cardBg: '#a5dff8',
+  cardText: '#0d0d0d',
+  headerShadow: 'rgba(13, 22, 25, 0.06) 0px 6px 4px 0px',
+  popupBg: '#ffffff',
+  popupBorder: '#e5e5e5',
+  popupShadow: 'rgba(19,19,19,0.08) 0px 2px 8px 0px, rgba(19,19,19,0.12) 0px 4px 20px 0px',
+  textMuted: '#737373',
+  accent: '#6950f3',
+  hoverSlot: 'rgba(165,223,248,0.35)',
+  hoverPopupItem: '#f5f5f5',
+  newBlockBg: 'rgba(165,223,248,0.5)',
+  newBlockBorder: '#a5dff8',
+  newBlockTimeText: '#6950f3',
+  stripe: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.02) 4px, rgba(0,0,0,0.02) 5px)`,
+  emptyText: 'rgba(13,13,13,0.3)',
+};
+
+const DARK = {
+  pageBg: '#1a1a1a',
+  nonWorkingBg: '#111111',
+  gridBorder: '#2a2a2a',
+  gridBorderSub: 'rgba(42,42,42,0.5)',
+  text: '#e5e5e5',
+  timeText: '#8a8a8a',
+  timeLabelSuffix: '#666666',
+  currentTime: '#d4163a',
+  currentTimeBg: '#1a1a1a',
+  avatarBg: '#2a2a2a',
+  avatarBorder: '#3a3a3a',
+  avatarText: '#c4b5fd',
+  cardBg: '#6950f3',
+  cardText: '#ffffff',
+  headerShadow: 'rgba(0, 0, 0, 0.4) 0px 6px 4px 0px',
+  popupBg: '#252525',
+  popupBorder: '#3a3a3a',
+  popupShadow: 'rgba(0,0,0,0.4) 0px 2px 8px 0px, rgba(0,0,0,0.5) 0px 4px 20px 0px',
+  textMuted: '#8a8a8a',
+  accent: '#8b7cf6',
+  hoverSlot: 'rgba(105,80,243,0.15)',
+  hoverPopupItem: '#333333',
+  newBlockBg: 'rgba(105,80,243,0.25)',
+  newBlockBorder: '#6950f3',
+  newBlockTimeText: '#8b7cf6',
+  stripe: `repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.015) 4px, rgba(255,255,255,0.015) 5px)`,
+  emptyText: 'rgba(229,229,229,0.25)',
+};
+
+/* ─── Fresha-style time label: "5:00\nвечера" ─── */
+function freshaTimeLabel(hour: number): { time: string; suffix: string } {
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  let suffix: string;
+  if (hour >= 0 && hour < 5) suffix = 'ночи';
+  else if (hour >= 5 && hour < 12) suffix = 'утра';
+  else if (hour >= 12 && hour < 17) suffix = 'дня';
+  else suffix = 'вечера';
+  return { time: `${h12}:00`, suffix };
+}
+
+function freshaTimeLabelMin(hour: number, min: number): string {
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${h12}:${String(min).padStart(2, '0')}`;
+}
+
+interface BlockedTime {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  reason: string | null;
+}
 
 interface DayViewProps {
   date: Date;
   appointments: AppointmentData[];
+  blockedTimes?: BlockedTime[];
   workStart: number;
   workEnd: number;
+  masterName?: string;
+  masterAvatar?: string | null;
+  masterId?: string;
   onSlotClick: (time: string) => void;
   onAppointmentClick: (appointment: AppointmentData) => void;
   onRefetch: () => void;
+  /** When true, clears the preview block on the calendar */
+  clearSelection?: boolean;
 }
 
-const STATUS_STYLES: Record<string, { bg: string; border: string; text: string }> = {
-  booked: {
-    bg: 'bg-blue-500/10 dark:bg-blue-500/15',
-    border: 'border-l-blue-500',
-    text: 'text-blue-700 dark:text-blue-300',
-  },
-  confirmed: {
-    bg: 'bg-indigo-500/10 dark:bg-indigo-500/15',
-    border: 'border-l-indigo-500',
-    text: 'text-indigo-700 dark:text-indigo-300',
-  },
-  in_progress: {
-    bg: 'bg-amber-500/10 dark:bg-amber-500/15',
-    border: 'border-l-amber-500',
-    text: 'text-amber-700 dark:text-amber-300',
-  },
-  completed: {
-    bg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-    border: 'border-l-emerald-500',
-    text: 'text-emerald-700 dark:text-emerald-300',
-  },
-  cancelled: {
-    bg: 'bg-muted/60',
-    border: 'border-l-muted-foreground/40',
-    text: 'text-muted-foreground',
-  },
-  no_show: {
-    bg: 'bg-red-500/10 dark:bg-red-500/15',
-    border: 'border-l-red-500',
-    text: 'text-red-700 dark:text-red-300',
-  },
-};
+interface SlotPopup {
+  slotIndex: number;
+  x: number;
+  y: number;
+  time: string;
+}
+
+/* Default new-appointment block height: 3 slots = 30min */
+const NEW_BLOCK_SLOTS = 3;
 
 export function DayView({
   date,
   appointments,
+  blockedTimes = [],
   workStart,
   workEnd,
+  masterName,
+  masterAvatar,
+  masterId,
   onSlotClick,
   onAppointmentClick,
   onRefetch,
+  clearSelection,
 }: DayViewProps) {
   const t = useTranslations('calendar');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [currentMinute, setCurrentMinute] = useState(0);
+  const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
+  const [slotPopup, setSlotPopup] = useState<SlotPopup | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  const totalSlots = (workEnd - workStart) * 2;
-  const totalHeight = totalSlots * SLOT_HEIGHT;
+  useEffect(() => setMounted(true), []);
+  useEffect(() => { if (clearSelection) setSlotPopup(null); }, [clearSelection]);
 
-  // Current time tracker
+  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
   const isToday = date.toDateString() === new Date().toDateString();
 
+  /* ── Current time ── */
   useEffect(() => {
-    if (!isToday) return;
-    function update() {
+    const update = () => {
       const now = new Date();
       setCurrentMinute(now.getHours() * 60 + now.getMinutes());
-    }
+    };
     update();
-    const timer = setInterval(update, 30000);
-    return () => clearInterval(timer);
-  }, [isToday]);
+    const interval = setInterval(update, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const currentTimePosition = isToday
-    ? ((currentMinute / 60 - workStart) / (workEnd - workStart)) * totalHeight
-    : -1;
-
-  function timeToPosition(dateStr: string): number {
-    const d = new Date(dateStr);
-    const hours = d.getHours() + d.getMinutes() / 60;
-    return ((hours - workStart) / (workEnd - workStart)) * totalHeight;
-  }
-
-  function durationToHeight(startStr: string, endStr: string): number {
-    const start = new Date(startStr);
-    const end = new Date(endStr);
-    const durationHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return (durationHours / (workEnd - workStart)) * totalHeight;
-  }
-
-  function positionToTime(y: number): string {
-    const totalMinutes = (y / totalHeight) * (workEnd - workStart) * 60;
-    const snapped = Math.round(totalMinutes / GRID_SNAP) * GRID_SNAP;
-    const hours = workStart + Math.floor(snapped / 60);
-    const minutes = snapped % 60;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-  }
-
-  async function handleDrop(appointmentId: string, newY: number) {
-    const time = positionToTime(newY);
-    const [hours, minutes] = time.split(':').map(Number);
-    const appt = appointments.find((a) => a.id === appointmentId);
-    if (!appt) return;
-
-    const startDate = new Date(date);
-    startDate.setHours(hours, minutes, 0, 0);
-
-    const durationMs =
-      new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime();
-    const endDate = new Date(startDate.getTime() + durationMs);
-
-    const hasOverlap = appointments.some((a) => {
-      if (a.id === appointmentId) return false;
-      const aStart = new Date(a.starts_at).getTime();
-      const aEnd = new Date(a.ends_at).getTime();
-      return startDate.getTime() < aEnd && endDate.getTime() > aStart;
-    });
-
-    if (hasOverlap) {
-      toast.error('Time slot is occupied');
-      return;
+  /* ── Scroll to work start ── */
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = Math.max(0, workStart * HOUR_HEIGHT - HOUR_HEIGHT);
     }
+  }, [workStart, date]);
 
+  /* ── Helpers ── */
+  const currentTimeY = (currentMinute / 60) * HOUR_HEIGHT;
+  const curH = Math.floor(currentMinute / 60);
+  const curM = currentMinute % 60;
+  const currentTimeLabel = `${freshaTimeLabelMin(curH, curM)}`;
+
+  function timeToY(dateStr: string): number {
+    const d = new Date(dateStr);
+    return (d.getHours() + d.getMinutes() / 60) * HOUR_HEIGHT;
+  }
+
+  function durationToH(startStr: string, endStr: string): number {
+    const ms = new Date(endStr).getTime() - new Date(startStr).getTime();
+    return (ms / 3_600_000) * HOUR_HEIGHT;
+  }
+
+  function yToTime(y: number): string {
+    const totalMin = (y / TOTAL_HEIGHT) * TOTAL_HOURS * 60;
+    const snapped = Math.round(totalMin / 10) * 10;
+    const h = Math.floor(snapped / 60);
+    const m = snapped % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  function slotToTime(i: number): string {
+    const m = i * SLOT_MINUTES;
+    return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  }
+
+  function isSlotWorking(i: number) {
+    const h = (i * SLOT_MINUTES) / 60;
+    return h >= workStart && h < workEnd;
+  }
+
+  function isSlotOccupied(i: number) {
+    const s0 = i * SLOT_MINUTES, s1 = s0 + SLOT_MINUTES;
+    const occupiedByAppt = appointments.some((a) => {
+      const as = new Date(a.starts_at), ae = new Date(a.ends_at);
+      const am0 = as.getHours() * 60 + as.getMinutes();
+      const am1 = ae.getHours() * 60 + ae.getMinutes();
+      return s0 < am1 && s1 > am0;
+    });
+    if (occupiedByAppt) return true;
+    return blockedTimes.some((bt) => {
+      const bs = new Date(bt.starts_at), be = new Date(bt.ends_at);
+      const bm0 = bs.getHours() * 60 + bs.getMinutes();
+      const bm1 = be.getHours() * 60 + be.getMinutes();
+      return s0 < bm1 && s1 > bm0;
+    });
+  }
+
+  function handleSlotClick(i: number, e: React.MouseEvent) {
+    if (!isSlotWorking(i) || isSlotOccupied(i)) return;
+    const time = slotToTime(i);
+    // Get click position relative to grid for popup positioning
+    const rect = gridRef.current?.getBoundingClientRect();
+    const x = rect ? e.clientX - rect.left : 0;
+    const y = rect ? e.clientY - rect.top + (scrollRef.current?.scrollTop || 0) : 0;
+    setSlotPopup({ slotIndex: i, x, y, time });
+  }
+
+  async function handlePopupAction(action: string) {
+    if (!slotPopup) return;
+    if (action === 'appointment') {
+      onSlotClick(slotPopup.time);
+    } else if (action === 'block' && masterId) {
+      const [h, m] = slotPopup.time.split(':').map(Number);
+      const start = new Date(date);
+      start.setHours(h, m, 0, 0);
+      const end = new Date(start);
+      end.setMinutes(end.getMinutes() + 30); // default 30min block
+      const supabase = createClient();
+      const { error } = await supabase.from('blocked_times').insert({
+        master_id: masterId,
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        reason: null,
+      });
+      if (error) toast.error(error.message);
+      else { toast.success(t('timeBlocked') || 'Время заблокировано'); onRefetch(); }
+    }
+    setSlotPopup(null);
+  }
+
+  async function handleDrop(apptId: string, newY: number) {
+    const time = yToTime(newY);
+    const [h, m] = time.split(':').map(Number);
+    const appt = appointments.find((a) => a.id === apptId);
+    if (!appt) return;
+    const ns = new Date(date); ns.setHours(h, m, 0, 0);
+    const dur = new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime();
+    const ne = new Date(ns.getTime() + dur);
+    const overlap = appointments.some((a) => {
+      if (a.id === apptId) return false;
+      return ns.getTime() < new Date(a.ends_at).getTime() && ne.getTime() > new Date(a.starts_at).getTime();
+    });
+    if (overlap) { toast.error(t('slotOccupied')); return; }
     const supabase = createClient();
-    const { error } = await supabase
-      .from('appointments')
-      .update({
-        starts_at: startDate.toISOString(),
-        ends_at: endDate.toISOString(),
-      })
-      .eq('id', appointmentId);
-
-    if (error) toast.error(error.message);
-    else onRefetch();
+    const { error } = await supabase.from('appointments')
+      .update({ starts_at: ns.toISOString(), ends_at: ne.toISOString() }).eq('id', apptId);
+    if (error) toast.error(error.message); else onRefetch();
     setDragId(null);
   }
 
-  function handleSlotClick(index: number) {
-    const hours = workStart + Math.floor(index / 2);
-    const minutes = (index % 2) * 30;
-    onSlotClick(
-      `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`,
-    );
-  }
+  const initials = masterName
+    ? masterName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+    : '?';
+
+  const workHighlightTop = workStart * HOUR_HEIGHT;
+  const workHighlightHeight = (workEnd - workStart) * HOUR_HEIGHT;
 
   return (
-    <div
-      className="relative rounded-[var(--radius-card)] border bg-card shadow-[var(--shadow-card)] overflow-hidden"
-      ref={containerRef}
-    >
-      {/* Time grid */}
-      <div className="relative" style={{ height: totalHeight }}>
-        {Array.from({ length: totalSlots + 1 }, (_, i) => {
-          const hours = workStart + Math.floor(i / 2);
-          const minutes = (i % 2) * 30;
-          const label = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-          const isHour = minutes === 0;
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative', backgroundColor: C.pageBg }}>
 
-          return (
-            <div
-              key={i}
-              className={cn(
-                'group absolute left-0 right-0 flex items-start cursor-pointer transition-colors hover:bg-[var(--ds-accent-soft)]/30',
-                isHour ? 'border-t border-border' : 'border-t border-border/30',
+        {/* ═══ Avatar header ═══ */}
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 20,
+            height: HEADER_HEIGHT,
+            backgroundColor: C.pageBg,
+            borderBottom: `0.8px solid ${C.gridBorder}`,
+            boxShadow: C.headerShadow,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              gap: 6,
+              paddingLeft: TIME_COL_WIDTH,
+            }}
+          >
+            <div style={{ position: 'relative' }}>
+              {masterAvatar ? (
+                <img
+                  src={masterAvatar}
+                  alt={masterName || ''}
+                  style={{
+                    width: AVATAR_SIZE, height: AVATAR_SIZE,
+                    borderRadius: 999, objectFit: 'cover',
+                    border: `1px solid ${C.avatarBorder}`,
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: AVATAR_SIZE,
+                    height: AVATAR_SIZE,
+                    borderRadius: 999,
+                    backgroundColor: C.avatarBg,
+                    border: `1px solid ${C.avatarBorder}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      color: C.avatarText,
+                      fontFamily: FONT,
+                    }}
+                  >
+                    {initials}
+                  </span>
+                </div>
               )}
-              style={{ top: i * SLOT_HEIGHT, height: SLOT_HEIGHT }}
-              onClick={() => handleSlotClick(i)}
-            >
-              {/* Hover "+" indicator for empty slots */}
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground/40 pointer-events-none hidden sm:block">
-                +
-              </span>
-              <span
-                className={cn(
-                  'w-16 pl-3 -mt-[8px] select-none text-right pr-3',
-                  isHour
-                    ? 'text-xs font-medium text-muted-foreground'
-                    : 'text-[10px] text-muted-foreground/50',
-                )}
-              >
-                {label}
-              </span>
             </div>
-          );
-        })}
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: C.text,
+                fontFamily: FONT,
+                maxWidth: 120,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {masterName || '\u2014'}
+            </span>
+          </div>
+        </div>
 
-        {/* Current time indicator */}
-        {isToday &&
-          currentTimePosition >= 0 &&
-          currentTimePosition <= totalHeight && (
-            <div
-              className="absolute left-0 right-0 z-30 pointer-events-none"
-              style={{ top: currentTimePosition }}
-            >
-              <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-red-500 border-2 border-card ml-[52px] -translate-x-1/2 shadow-sm" />
-                <div className="flex-1 h-[2px] bg-red-500/80" />
+        {/* ═══ Grid container ═══ */}
+        <div ref={gridRef} style={{ position: 'relative', height: TOTAL_HEIGHT }}>
+
+          {/* Non-working background */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: TIME_COL_WIDTH,
+              right: 0,
+              backgroundColor: C.nonWorkingBg,
+              backgroundImage: C.stripe,
+            }}
+          />
+
+          {/* Time column background */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: 0,
+              width: TIME_COL_WIDTH,
+              backgroundColor: C.pageBg,
+            }}
+          />
+
+          {/* Working hours overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              top: workHighlightTop,
+              left: TIME_COL_WIDTH,
+              right: 0,
+              height: workHighlightHeight,
+              backgroundColor: C.pageBg,
+            }}
+          />
+
+          {/* ── Grid lines — 10-min intervals, labels at :00 with suffix, sub-labels at :30 ── */}
+          {Array.from({ length: TOTAL_HOURS * INTERVALS_PER_HOUR }, (_, i) => {
+            const hour = Math.floor(i / INTERVALS_PER_HOUR);
+            const minInHour = (i % INTERVALS_PER_HOUR) * SLOT_MINUTES;
+            const isHourStart = minInHour === 0;
+            const isHalfHour = minInHour === 30;
+            const isTenMin = !isHourStart && !isHalfHour;
+
+            const borderColor = isHourStart
+              ? C.gridBorder
+              : isHalfHour
+                ? C.gridBorderSub
+                : 'transparent';
+
+            const label = freshaTimeLabel(hour);
+
+            return (
+              <div
+                key={`int-${i}`}
+                style={{
+                  position: 'absolute',
+                  left: TIME_COL_WIDTH,
+                  right: 0,
+                  top: i * INTERVAL_HEIGHT,
+                  height: INTERVAL_HEIGHT,
+                  borderTop: isTenMin ? 'none' : `0.8px solid ${borderColor}`,
+                }}
+              >
+                {/* Hour label — Fresha style: "5:00\nвечера" */}
+                {isHourStart && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: '100%',
+                      top: 0,
+                      width: TIME_COL_WIDTH - 8,
+                      marginRight: 8,
+                      textAlign: 'right',
+                      transform: 'translateY(-50%)',
+                      fontFamily: FONT,
+                      userSelect: 'none',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.timeText, display: 'block' }}>
+                      {label.time}
+                    </span>
+                    <span style={{ fontSize: 10, fontWeight: 400, color: C.timeLabelSuffix, display: 'block' }}>
+                      {label.suffix}
+                    </span>
+                  </div>
+                )}
+                {/* Half-hour sub-label — "5:30" smaller */}
+                {isHalfHour && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      right: '100%',
+                      top: 0,
+                      width: TIME_COL_WIDTH - 8,
+                      marginRight: 8,
+                      textAlign: 'right',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      lineHeight: '11px',
+                      color: C.timeLabelSuffix,
+                      transform: 'translateY(-50%)',
+                      fontFamily: FONT,
+                      userSelect: 'none',
+                    }}
+                  >
+                    {freshaTimeLabelMin(hour, 30)}
+                  </span>
+                )}
               </div>
-            </div>
+            );
+          })}
+
+          {/* Vertical separator */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              bottom: 0,
+              left: TIME_COL_WIDTH,
+              borderRight: `0.8px solid ${C.gridBorder}`,
+            }}
+          />
+
+          {/* ── 10-min hover slots ── */}
+          {Array.from({ length: TOTAL_HOURS * SLOTS_PER_HOUR }, (_, i) => {
+            const working = isSlotWorking(i);
+            const occupied = isSlotOccupied(i);
+            const hovered = hoveredSlot === i;
+            const isClickable = working && !occupied;
+            const slotMin = i * SLOT_MINUTES;
+            const h = Math.floor(slotMin / 60);
+            const m = slotMin % 60;
+            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            const timeStr = `${h12}:${String(m).padStart(2, '0')}`;
+            return (
+              <div
+                key={`s-${i}`}
+                style={{
+                  position: 'absolute',
+                  left: TIME_COL_WIDTH,
+                  right: 0,
+                  top: i * SLOT_HEIGHT,
+                  height: SLOT_HEIGHT,
+                  zIndex: 5,
+                  backgroundColor: isClickable && hovered ? C.hoverSlot : undefined,
+                  transition: 'background-color 100ms',
+                  cursor: isClickable ? 'pointer' : 'default',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 6,
+                }}
+                onMouseEnter={() => isClickable && setHoveredSlot(i)}
+                onMouseLeave={() => setHoveredSlot(null)}
+                onClick={(e) => handleSlotClick(i, e)}
+              >
+                {/* Time label ON the hover strip */}
+                {isClickable && hovered && (
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: C.newBlockTimeText,
+                      fontFamily: FONT,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {timeStr}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+
+          {/* ── New appointment preview block + Fresha popup menu ── */}
+          {slotPopup && (() => {
+            const blockTop = slotPopup.slotIndex * SLOT_HEIGHT;
+            const blockHeight = NEW_BLOCK_SLOTS * SLOT_HEIGHT;
+            const slotMin = slotPopup.slotIndex * SLOT_MINUTES;
+            const h = Math.floor(slotMin / 60);
+            const m = slotMin % 60;
+            const timeStr24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+            const timeStr = `${h12}:${String(m).padStart(2, '0')}`;
+            /* Popup position: centered on click, clamped to grid bounds */
+            const popupW = 280;
+            const popupH = 220;
+            const popupLeft = Math.max(TIME_COL_WIDTH + 8, Math.min(slotPopup.x - popupW / 2, (gridRef.current?.scrollWidth || 800) - popupW - 8));
+            const popupTop = Math.max(8, blockTop - popupH - 8);
+            return (
+              <>
+                {/* Time label on the left in accent color */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: blockTop,
+                    width: TIME_COL_WIDTH - 8,
+                    height: SLOT_HEIGHT,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    paddingRight: 8,
+                    zIndex: 42,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: C.newBlockTimeText,
+                      fontFamily: FONT,
+                    }}
+                  >
+                    {timeStr}
+                  </span>
+                </div>
+                {/* Colored block on the calendar grid */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: TIME_COL_WIDTH + 1,
+                    right: 1,
+                    top: blockTop,
+                    height: blockHeight,
+                    zIndex: 38,
+                    backgroundColor: C.newBlockBg,
+                    border: `1.5px dashed ${C.newBlockBorder}`,
+                    borderRadius: 4,
+                    pointerEvents: 'none',
+                    transition: 'all 150ms',
+                  }}
+                />
+                {/* ── Fresha-style popup menu ── */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: popupLeft,
+                    top: popupTop < blockTop ? popupTop : blockTop + blockHeight + 8,
+                    width: popupW,
+                    zIndex: 100,
+                    backgroundColor: C.popupBg,
+                    border: `0.8px solid ${C.popupBorder}`,
+                    borderRadius: 12,
+                    boxShadow: C.popupShadow,
+                    fontFamily: FONT,
+                    overflow: 'hidden',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header: time + close X */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 12px 8px' }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{timeStr24}</span>
+                    <button
+                      onClick={() => setSlotPopup(null)}
+                      style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 6, border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: C.timeText }}
+                    >
+                      <X style={{ width: 16, height: 16 }} />
+                    </button>
+                  </div>
+                  {/* Actions list */}
+                  <div style={{ padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {[
+                      { key: 'appointment', icon: CalendarPlus, label: t('addAppointment') },
+                      { key: 'group', icon: Users, label: t('addGroupAppointment') },
+                      { key: 'block', icon: Lock, label: t('blockTime') },
+                      { key: 'settings', icon: Settings2, label: t('quickActionsSettings') },
+                    ].map(item => (
+                      <button
+                        key={item.key}
+                        onClick={() => handlePopupAction(item.key)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          width: '100%', padding: '10px 8px', border: 'none', borderRadius: 8,
+                          backgroundColor: 'transparent', cursor: 'pointer',
+                          fontSize: 14, fontWeight: 400, color: C.text, textAlign: 'left',
+                          transition: 'background-color 100ms',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = C.hoverPopupItem)}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <item.icon style={{ width: 18, height: 18, color: C.timeText, flexShrink: 0 }} />
+                        <span>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+
+          {/* ── Current time indicator ── */}
+          {isToday && (
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: currentTimeY,
+                  zIndex: 30,
+                  width: TIME_COL_WIDTH,
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 4,
+                    transform: 'translateY(-50%)',
+                    border: `1.6px solid ${C.currentTime}`,
+                    borderRadius: 10,
+                    backgroundColor: C.currentTimeBg,
+                    padding: '1px 4px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: C.currentTime,
+                    lineHeight: '11px',
+                    whiteSpace: 'nowrap',
+                    fontFamily: FONT,
+                  }}
+                >
+                  {currentTimeLabel}
+                </div>
+              </div>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: currentTimeY,
+                  left: TIME_COL_WIDTH - 4,
+                  right: 0,
+                  height: 0,
+                  borderBottom: `1.6px solid ${C.currentTime}`,
+                  zIndex: 25,
+                  pointerEvents: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: 8,
+                    height: 8,
+                    borderRadius: 999,
+                    backgroundColor: C.currentTime,
+                    top: -3,
+                    left: 0,
+                  }}
+                />
+              </div>
+            </>
           )}
 
-        {/* Appointment blocks */}
-        {appointments.map((appt) => {
-          const top = timeToPosition(appt.starts_at);
-          const height = durationToHeight(appt.starts_at, appt.ends_at);
-          const styles = STATUS_STYLES[appt.status] ?? STATUS_STYLES.booked;
+          {/* ── Appointment cards ── */}
+          {appointments.map((appt) => {
+            const top = timeToY(appt.starts_at);
+            const height = durationToH(appt.starts_at, appt.ends_at);
+            const color = appt.service?.color || C.cardBg;
+            const st = new Date(appt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const et = new Date(appt.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const cancelled = appt.status === 'cancelled' || appt.status === 'no_show';
 
-          const startTime = new Date(appt.starts_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-          const endTime = new Date(appt.ends_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-
-          return (
-            <div
-              key={appt.id}
-              className={cn(
-                'absolute left-16 right-3 rounded-xl border-l-[3px] px-3 py-2 cursor-pointer transition-all duration-200',
-                'hover:shadow-md hover:scale-[1.01] hover:z-20',
-                styles.bg,
-                styles.border,
-                dragId === appt.id && 'opacity-40 scale-95',
-              )}
-              onClick={() => onAppointmentClick(appt)}
-              draggable
-              onDragStart={() => setDragId(appt.id)}
-              onDragEnd={(e) => {
-                if (!containerRef.current) return;
-                const rect = containerRef.current.getBoundingClientRect();
-                handleDrop(appt.id, e.clientY - rect.top);
-              }}
-              style={{
-                top: Math.max(0, top),
-                height: Math.max(32, height),
-                zIndex: 10,
-                borderLeftColor: appt.service?.color ?? undefined,
-                backgroundColor: appt.service?.color ? `${appt.service.color}12` : undefined,
-              }}
-            >
-              <div className="flex items-center gap-1.5">
-                {appt.client?.has_health_alert && (
-                  <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            return (
+              <div
+                key={appt.id}
+                className={cn(
+                  dragId === appt.id && 'opacity-40',
+                  cancelled && 'opacity-40',
                 )}
-                <span className={cn('text-sm font-semibold truncate', styles.text)}>
-                  {appt.client?.full_name ?? '—'}
-                </span>
-              </div>
-              {height > 44 && (
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground truncate">
+                style={{
+                  position: 'absolute',
+                  left: TIME_COL_WIDTH + 1,
+                  right: 1,
+                  top: Math.max(0, top),
+                  height: Math.max(INTERVAL_HEIGHT, height),
+                  zIndex: 40,
+                  backgroundColor: color,
+                  borderRadius: 4,
+                  padding: '3px 4px 3px 8px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  transition: 'box-shadow 150ms',
+                  fontFamily: FONT,
+                }}
+                onClick={() => onAppointmentClick(appt)}
+                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)')}
+                onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
+                draggable
+                onDragStart={() => setDragId(appt.id)}
+                onDragEnd={(e) => {
+                  if (!gridRef.current) return;
+                  const rect = gridRef.current.getBoundingClientRect();
+                  handleDrop(appt.id, e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0) - HEADER_HEIGHT);
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: 'wrap' }}>
+                  {appt.client?.has_health_alert && (
+                    <AlertTriangle style={{ width: 12, height: 12, flexShrink: 0, color: C.currentTime }} />
+                  )}
+                  <span style={{ fontSize: 13, color: C.cardText, whiteSpace: 'nowrap', lineHeight: '18.57px' }}>
+                    {st} - {et}
+                  </span>
+                  <strong style={{ fontSize: 13, color: C.cardText, fontWeight: 700, lineHeight: '18.57px' }}>
+                    {appt.client?.full_name ?? '\u2014'}
+                  </strong>
+                </div>
+                {height > 40 && (
+                  <div style={{ fontSize: 13, color: C.cardText, whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: '18.57px' }}>
                     {appt.service?.name}
-                  </span>
-                </div>
-              )}
-              {height > 64 && (
-                <div className="flex items-center gap-1 mt-1">
-                  <Clock className="h-3 w-3 text-muted-foreground/60" />
-                  <span className="text-[10px] text-muted-foreground/60">
-                    {startTime} — {endTime}
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
-        {/* Empty state */}
-        {appointments.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center opacity-40">
-              <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">{t('noAppointments')}</p>
-            </div>
-          </div>
-        )}
+          {/* ── Blocked time blocks ── */}
+          {blockedTimes.map((bt) => {
+            const top = timeToY(bt.starts_at);
+            const height = durationToH(bt.starts_at, bt.ends_at);
+            const st = new Date(bt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const et = new Date(bt.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return (
+              <div
+                key={bt.id}
+                style={{
+                  position: 'absolute',
+                  left: TIME_COL_WIDTH + 1,
+                  right: 1,
+                  top: Math.max(0, top),
+                  height: Math.max(INTERVAL_HEIGHT, height),
+                  zIndex: 35,
+                  backgroundColor: C.nonWorkingBg,
+                  backgroundImage: C.stripe,
+                  borderRadius: 4,
+                  borderLeft: `3px solid ${C.accent}`,
+                  padding: '4px 8px',
+                  overflow: 'hidden',
+                  cursor: 'default',
+                  fontFamily: FONT,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Lock style={{ width: 12, height: 12, color: C.accent, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>{st} - {et}</span>
+                </div>
+                {bt.reason && height > 30 && (
+                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{bt.reason}</div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* (no empty state — clean grid like Fresha) */}
+        </div>
+
+        {/* Side panel is rendered by parent CalendarPage */}
       </div>
     </div>
   );

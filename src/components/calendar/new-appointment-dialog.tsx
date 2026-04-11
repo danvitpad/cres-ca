@@ -130,9 +130,9 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
           </div>
 
           <div className="space-y-2">
-            <Label>Client</Label>
+            <Label>{tb('selectClient')}</Label>
             <Select value={clientId} onValueChange={(v) => v && setClientId(v)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Select client" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder={tb('selectClient')} /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
@@ -142,7 +142,7 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
           </div>
 
           <div className="space-y-2">
-            <Label>{tb('selectService')} notes</Label>
+            <Label>{tb('notes')}</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 

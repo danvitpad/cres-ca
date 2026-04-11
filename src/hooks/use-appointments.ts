@@ -20,7 +20,7 @@ export interface AppointmentData {
   price: number;
   currency: string;
   notes: string | null;
-  client: { id: string; full_name: string; phone: string | null; has_health_alert: boolean } | null;
+  client: { id: string; full_name: string; phone: string | null; email: string | null; has_health_alert: boolean } | null;
   service: { id: string; name: string; color: string; duration_minutes: number } | null;
 }
 
@@ -34,7 +34,7 @@ export function useAppointments(masterId: string | undefined, startDate: Date, e
     const supabase = createClient();
     const { data } = await supabase
       .from('appointments')
-      .select('*, client:clients(id, full_name, phone, has_health_alert), service:services(id, name, color, duration_minutes)')
+      .select('*, client:clients(id, full_name, phone, email, has_health_alert), service:services(id, name, color, duration_minutes)')
       .eq('master_id', masterId)
       .gte('starts_at', startDate.toISOString())
       .lte('starts_at', endDate.toISOString())
