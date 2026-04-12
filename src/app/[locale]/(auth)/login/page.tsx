@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/input-otp';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
 
-type Step = 'email' | 'password' | 'forgot' | 'reset-otp' | 'new-password';
+type Step = 'email' | 'password' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password';
 
 const REMEMBER_KEY = 'cres-ca-remember';
 
@@ -133,8 +133,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(t('resetEmailSent'));
-    setStep('reset-otp');
+    setStep('reset-sent');
   }
 
   async function handleVerifyResetOTP() {
@@ -415,30 +414,41 @@ export default function LoginPage() {
               </motion.div>
             )}
 
-            {/* STEP: Forgot password */}
+            {/* STEP: Forgot password — Fresha-style centered card */}
             {step === 'forgot' && (
-              <motion.div key="forgot" {...slideIn} className="flex flex-col gap-6">
+              <motion.div key="forgot" {...slideIn} className="flex flex-col gap-6 text-center">
                 <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('forgotPassword')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">{t('forgotPasswordDesc')}</p>
+                  <h1 className="text-2xl font-semibold tracking-tight">{t('forgotPasswordTitle')}</h1>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {t('forgotPasswordHint')}{' '}
+                    <span className="font-medium text-foreground">{email || t('email')}</span>
+                  </p>
                 </div>
-                <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="reset-email">{t('email')}</Label>
-                    <Input
-                      id="reset-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      autoFocus
-                      className="h-11"
-                    />
-                  </div>
+                <form onSubmit={handleForgotPassword} className="flex flex-col gap-4 text-left">
+                  {!email && (
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">{t('email')}</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        autoFocus
+                        className="h-11"
+                      />
+                    </div>
+                  )}
                   <Button type="submit" className="w-full h-11" disabled={loading}>
                     {loading ? tc('loading') : t('sendResetCode')}
                   </Button>
                 </form>
+                <div className="border-t pt-4 text-sm">
+                  <p className="font-medium">{t('businessAccountQ')}</p>
+                  <Link href="/login?role=business" className="text-primary hover:underline">
+                    {t('signInAsBusiness')}
+                  </Link>
+                </div>
                 <button
                   type="button"
                   onClick={() => setStep('password')}
@@ -446,6 +456,39 @@ export default function LoginPage() {
                 >
                   <ArrowLeft className="size-3" />
                   {t('backToLogin')}
+                </button>
+              </motion.div>
+            )}
+
+            {/* STEP: Reset email sent confirmation */}
+            {step === 'reset-sent' && (
+              <motion.div key="reset-sent" {...slideIn} className="flex flex-col gap-6 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 18 }}
+                  className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10"
+                >
+                  <Mail className="size-7 text-primary" />
+                </motion.div>
+                <div>
+                  <h1 className="text-2xl font-semibold tracking-tight leading-snug">
+                    {t('resetSentTitle')}
+                  </h1>
+                  <p className="text-sm font-medium text-foreground mt-2">{email}</p>
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {t('resetSentDesc')}
+                  </p>
+                </div>
+                <Button onClick={() => setStep('email')} className="w-full h-11">
+                  {t('continueLogin')}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setStep('reset-otp')}
+                  className="text-sm text-primary hover:underline"
+                >
+                  {t('enterOTP')}
                 </button>
               </motion.div>
             )}

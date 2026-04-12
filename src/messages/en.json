@@ -93,7 +93,14 @@
     "passwordTooShort": "Password must be at least 6 characters",
     "acceptTerms": "I accept the Privacy Policy and Terms of Service",
     "createAccount": "Create Account",
-    "emailNotFound": "No account found. Let’s sign you up..."
+    "emailNotFound": "No account found. Let’s sign you up...",
+    "resetSentTitle": "Password reset email sent",
+    "resetSentDesc": "Check your inbox. If you don't see the email, check your spam folder.",
+    "continueLogin": "Continue to login",
+    "businessAccountQ": "Have a business account?",
+    "signInAsBusiness": "Sign in as a professional",
+    "forgotPasswordTitle": "Forgot your password?",
+    "forgotPasswordHint": "We will send a free link to set a new password for"
   },
   "landing": {
     "heroTitle": "Your Services, Simplified",
@@ -680,7 +687,8 @@
     "settings": "Settings",
     "myAccount": "My Account",
     "searchPlaceholder": "Search services, businesses, masters...",
-    "photos": "Before/After photos"
+    "photos": "Before/After photos",
+    "home": "Home"
   },
   "clientHeader": {
     "allServices": "All treatments",
@@ -1501,5 +1509,17 @@
     "securityDesc": "Additional security and data protection features.",
     "mobileApp": "Mobile App",
     "mobileAppDesc": "Set up a branded mobile app for your business."
+  },
+  "industries": {
+    "all": "All",
+    "beauty": "Beauty",
+    "health": "Health",
+    "wellness": "Wellness",
+    "home": "Home & Repair",
+    "auto": "Auto",
+    "education": "Learning",
+    "events": "Events",
+    "petCare": "Pet care",
+    "fitness": "Fitness"
   }
 }

@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Client Layout
- * description: Client shell — global top search header, account sidebar with 10 sections (profile/family/activity/masters/favorites/wallet/forms/reviews/notifications/settings), mobile bottom tabs
+ * description: Client shell — Fresha-style header, IG-web style hover-expand sidebar, slim profile dropdown, mobile bottom tabs
  * updated: 2026-04-12
  * --- */
 
@@ -18,32 +18,15 @@ import {
   Users,
   User,
   LogOut,
-  Heart,
   Wallet,
   Settings,
-  History,
   Search,
   MapPin,
   Clock,
-  ClipboardList,
-  Globe,
-  HelpCircle,
-  Download,
-  Building2,
   ChevronDown,
   Sparkles,
   Scissors,
-  Paintbrush,
-  Hand,
-  Flower2,
-  Smile,
-  Syringe,
-  Droplet,
   UserPlus,
-  Star,
-  Bell,
-  UsersRound,
-  Image as ImageIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -57,66 +40,54 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
-const primaryNav = [
-  { key: 'feed', icon: Home, href: '/feed' },
-  { key: 'masters', icon: Users, href: '/masters' },
+// IG-style sidebar — hover to expand. Order: profile → calendar → myMasters → wallet → settings.
+const sidebarNav = [
+  { key: 'profile', icon: User, href: '/profile' },
   { key: 'calendar', icon: CalendarDays, href: '/my-calendar' },
-  { key: 'book', icon: Plus, href: '/book' },
+  { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
+  { key: 'wallet', icon: Wallet, href: '/wallet' },
+  { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
 
-const accountNav = [
+// Profile dropdown — only Главная, Профиль, Кошелёк, Настройки, Выход.
+const dropdownNav = [
+  { key: 'home', icon: Home, href: '/feed' },
   { key: 'profile', icon: User, href: '/profile' },
-  { key: 'family', icon: UsersRound, href: '/profile/family' },
-  { key: 'photos', icon: ImageIcon, href: '/profile/photos' },
-  { key: 'activity', icon: History, href: '/history' },
-  { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
-  { key: 'favorites', icon: Heart, href: '/favorites' },
   { key: 'wallet', icon: Wallet, href: '/wallet' },
-  { key: 'forms', icon: ClipboardList, href: '/forms' },
-  { key: 'reviews', icon: Star, href: '/reviews' },
-  { key: 'notifications', icon: Bell, href: '/notifications' },
   { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
 
 const accountRoutes = [
   '/profile',
-  '/profile/photos',
-  '/history',
-  '/my-masters',
-  '/favorites',
   '/wallet',
-  '/forms',
-  '/reviews',
-  '/notifications',
   '/account-settings',
+  '/my-masters',
 ];
 
 const mobileTabs = [
-  { key: 'feed', icon: Home, href: '/feed', center: false },
+  { key: 'home', icon: Home, href: '/feed', center: false },
   { key: 'calendar', icon: CalendarDays, href: '/my-calendar', center: false },
   { key: 'book', icon: Plus, href: '/book', center: true },
-  { key: 'masters', icon: Users, href: '/masters', center: false },
+  { key: 'myMasters', icon: UserPlus, href: '/my-masters', center: false },
   { key: 'profile', icon: User, href: '/profile', center: false },
 ] as const;
 
-const serviceCategories = [
+const headerCategories = [
   { key: 'allServices', icon: Sparkles },
-  { key: 'hairStyling', icon: Scissors },
-  { key: 'nails', icon: Hand },
-  { key: 'hairRemoval', icon: Droplet },
-  { key: 'browsLashes', icon: Smile },
-  { key: 'faceSkinCare', icon: Flower2 },
-  { key: 'massage', icon: Hand },
-  { key: 'makeup', icon: Paintbrush },
-  { key: 'aestheticMedicine', icon: Syringe },
-  { key: 'barbers', icon: Scissors },
+  { key: 'beauty', icon: Sparkles },
+  { key: 'health', icon: Sparkles },
+  { key: 'wellness', icon: Sparkles },
+  { key: 'home', icon: Sparkles },
+  { key: 'auto', icon: Sparkles },
+  { key: 'fitness', icon: Sparkles },
+  { key: 'education', icon: Sparkles },
 ] as const;
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('clientNav');
-  const tSvc = useTranslations('serviceCategories');
+  const tInd = useTranslations('industries');
   const tHeader = useTranslations('clientHeader');
   const tAuth = useTranslations('auth');
   const { userId, clearAuth } = useAuthStore();
@@ -225,18 +196,21 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">
                   {tHeader('procedures')}
                 </p>
-                {serviceCategories.map(({ key, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => goSearch(key === 'allServices' ? '' : tSvc(key))}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                  >
-                    <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Icon className="size-4" />
-                    </div>
-                    <span>{tSvc(key)}</span>
-                  </button>
-                ))}
+                {headerCategories.map(({ key, icon: Icon }) => {
+                  const label = key === 'allServices' ? tHeader('allServices') : tInd(key);
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => goSearch(key === 'allServices' ? '' : label)}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+                    >
+                      <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Icon className="size-4" />
+                      </div>
+                      <span>{label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </PopoverContent>
           </Popover>
@@ -296,12 +270,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             </div>
             <ChevronDown className="size-4 text-muted-foreground" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[240px] rounded-2xl shadow-lg">
-            <div className="px-3 py-2 text-sm font-semibold truncate">
-              {displayName || t('myAccount')}
-            </div>
-            <DropdownMenuSeparator />
-            {accountNav.map(({ key, icon: Icon, href }) => (
+          <DropdownMenuContent align="end" className="w-[220px] rounded-2xl shadow-lg p-1.5">
+            {dropdownNav.map(({ key, icon: Icon, href }) => (
               <DropdownMenuItem
                 key={key}
                 render={<Link href={href} />}
@@ -316,82 +286,31 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <LogOut className="size-4" />
               <span>{tAuth('signOut')}</span>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2.5 cursor-pointer">
-              <Download className="size-4" />
-              <span>{tHeader('downloadApp')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2.5 cursor-pointer">
-              <HelpCircle className="size-4" />
-              <span>{tHeader('helpCenter')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2.5 cursor-pointer">
-              <Globe className="size-4" />
-              <span>{tHeader('language')}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              render={<Link href="/login" />}
-              className="gap-2.5 cursor-pointer"
-            >
-              <Building2 className="size-4" />
-              <span>{tHeader('forBusiness')}</span>
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — always visible on lg+ */}
-        <aside className="hidden lg:flex w-[260px] shrink-0 flex-col border-r bg-card overflow-y-auto">
-          <nav className="flex-1 px-3 pt-5 space-y-0.5">
-            {primaryNav.map(({ key, icon: Icon, href }) => {
+        {/* Desktop sidebar — IG-web style: collapsed (72px) by default, expand to 240px on hover */}
+        <aside className="group/sb hidden lg:flex w-[72px] hover:w-[240px] shrink-0 flex-col border-r bg-card overflow-hidden transition-[width] duration-200 ease-out">
+          <nav className="flex-1 px-3 pt-5 space-y-1">
+            {sidebarNav.map(({ key, icon: Icon, href }) => {
               const isActive = pathname.endsWith(href);
               return (
                 <Link
                   key={key}
                   href={href}
                   className={cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
+                    'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all whitespace-nowrap',
                     isActive
                       ? 'bg-muted font-medium text-foreground'
                       : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                   )}
                 >
-                  <Icon className="size-[18px] shrink-0" />
-                  <span>{t(key)}</span>
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="border-t mx-3 my-3" />
-
-          <div className="px-6 pb-2">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              {t('myAccount')}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-foreground truncate">
-              {displayName || ''}
-            </p>
-          </div>
-
-          <nav className="px-3 pb-6 space-y-0.5">
-            {accountNav.map(({ key, icon: Icon, href }) => {
-              const isActive = pathname.endsWith(href);
-              return (
-                <Link
-                  key={key}
-                  href={href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
-                    isActive
-                      ? 'bg-muted font-medium text-foreground'
-                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                  )}
-                >
-                  <Icon className="size-[18px] shrink-0" />
-                  <span>{t(key)}</span>
+                  <Icon className="size-[22px] shrink-0" />
+                  <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                    {t(key)}
+                  </span>
                 </Link>
               );
             })}

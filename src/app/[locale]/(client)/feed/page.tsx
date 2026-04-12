@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Scissors, Sparkles, ArrowLeftRight, Flame, MessageSquare, Heart, Share2, Search, Hand, Droplet, Smile, Flower2, Paintbrush, Syringe } from 'lucide-react';
+import { Scissors, Sparkles, ArrowLeftRight, Flame, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
@@ -71,21 +71,21 @@ const typeColors: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
-const FEED_CATEGORIES = [
-  { key: 'hairStyling', icon: Scissors },
-  { key: 'nails', icon: Hand },
-  { key: 'browsLashes', icon: Smile },
-  { key: 'massage', icon: Hand },
-  { key: 'faceSkinCare', icon: Flower2 },
-  { key: 'hairRemoval', icon: Droplet },
-  { key: 'makeup', icon: Paintbrush },
-  { key: 'aestheticMedicine', icon: Syringe },
-  { key: 'barbers', icon: Scissors },
+// Broad industry chips — beauty is just one of many categories
+const INDUSTRIES = [
+  { key: 'beauty', icon: Sparkles },
+  { key: 'health', icon: Stethoscope },
+  { key: 'wellness', icon: Leaf },
+  { key: 'home', icon: Wrench },
+  { key: 'auto', icon: Car },
+  { key: 'fitness', icon: Dumbbell },
+  { key: 'education', icon: GraduationCap },
+  { key: 'events', icon: PartyPopper },
 ] as const;
 
 export default function FeedPage() {
   const t = useTranslations('feed');
-  const tSvc = useTranslations('serviceCategories');
+  const tInd = useTranslations('industries');
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [masters, setMasters] = useState<FollowedMaster[]>([]);
   const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
@@ -202,13 +202,6 @@ export default function FeedPage() {
     <div>
       {/* Stories row */}
       <div className="flex gap-3 overflow-x-auto px-[var(--space-page)] py-3 scrollbar-thin">
-        {/* Discover button */}
-        <Link href="/masters" className="flex shrink-0 flex-col items-center gap-1">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/30 text-muted-foreground">
-            <Search className="h-5 w-5" />
-          </div>
-          <span className="text-[10px] text-muted-foreground">{t('discover')}</span>
-        </Link>
         {masters.map((m) => {
           const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
           const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
@@ -225,27 +218,23 @@ export default function FeedPage() {
         })}
       </div>
 
-      {/* Category chips */}
+      {/* Industry chips — broad categories, not just beauty */}
       <div className="flex gap-2 overflow-x-auto px-[var(--space-page)] pb-3 scrollbar-thin">
-        {FEED_CATEGORIES.map(({ key, icon: Icon }) => (
+        {INDUSTRIES.map(({ key, icon: Icon }) => (
           <Link
             key={key}
-            href={`/masters?q=${encodeURIComponent(tSvc(key))}`}
-            className="flex shrink-0 items-center gap-1.5 rounded-full border bg-card px-3.5 py-2 text-xs font-medium transition-colors hover:bg-muted"
+            href={`/masters?industry=${key}`}
+            className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-4 py-2.5 text-sm font-medium transition-all hover:bg-muted hover:-translate-y-0.5 hover:shadow-sm"
           >
-            <Icon className="size-3.5 text-[var(--ds-accent)]" />
-            <span>{tSvc(key)}</span>
+            <Icon className="size-4 text-[var(--ds-accent)]" />
+            <span>{tInd(key)}</span>
           </Link>
         ))}
       </div>
 
-      {/* Burning slots */}
+      {/* Time-limited slots — no label, no icons, just cards */}
       {burningSlots.length > 0 && (
-        <div className="space-y-2 px-[var(--space-page)] pb-3">
-          <div className="flex items-center gap-1.5">
-            <Flame className="size-4 text-red-500" />
-            <h3 className="text-sm font-semibold">{t('burningSlotsTitle')}</h3>
-          </div>
+        <div className="px-[var(--space-page)] pb-3">
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
             {burningSlots.map((slot) => {
               const name = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
