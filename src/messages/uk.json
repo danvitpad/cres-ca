@@ -636,7 +636,8 @@
     "favorite": "Зберегти",
     "inFavorites": "Збережено",
     "addFavorite": "Додати в обране",
-    "removeFavorite": "Прибрати з обраного"
+    "removeFavorite": "Прибрати з обраного",
+    "beforeAfter": "До і Після"
   },
   "map": {
     "nearbyMasters": "Майстри поблизу",

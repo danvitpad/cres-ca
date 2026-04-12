@@ -636,7 +636,8 @@
     "favorite": "Save",
     "inFavorites": "Saved",
     "addFavorite": "Add to favorites",
-    "removeFavorite": "Remove from favorites"
+    "removeFavorite": "Remove from favorites",
+    "beforeAfter": "Before & After"
   },
   "map": {
     "nearbyMasters": "Masters Nearby",

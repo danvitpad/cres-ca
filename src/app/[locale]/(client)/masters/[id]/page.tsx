@@ -19,6 +19,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { Star, Clock, MapPin, ArrowLeft, Heart, Check, Share2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
+
+type BeforeAfterPair = {
+  id: string;
+  before_url: string;
+  after_url: string;
+  caption: string | null;
+};
 
 interface MasterProfile {
   id: string;
@@ -71,6 +79,19 @@ export default function MasterProfilePage() {
   const [followBusy, setFollowBusy] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  const [beforeAfter, setBeforeAfter] = useState<BeforeAfterPair[]>([]);
+
+  useEffect(() => {
+    if (!masterId) return;
+    const supabase = createClient();
+    supabase
+      .from('before_after_photos')
+      .select('id, before_url, after_url, caption')
+      .eq('master_id', masterId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => setBeforeAfter((data as BeforeAfterPair[]) ?? []));
+  }, [masterId]);
 
   useEffect(() => {
     async function load() {
@@ -375,6 +396,17 @@ export default function MasterProfilePage() {
           <p className="text-sm text-muted-foreground text-center py-8">{t('noServicesAvailable')}</p>
         )}
       </div>
+
+      {beforeAfter.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">{t('beforeAfter')}</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {beforeAfter.map((p) => (
+              <BeforeAfterSlider key={p.id} beforeUrl={p.before_url} afterUrl={p.after_url} caption={p.caption} />
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
