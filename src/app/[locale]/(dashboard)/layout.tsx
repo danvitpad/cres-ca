@@ -125,6 +125,7 @@ const sidebarNav: SidebarNavItem[] = [
       { label: 'Лояльность клиентов', href: '/clients/loyalty' },
       { label: 'Чёрный список', href: '/clients/blacklist' },
       { label: 'Периодичность', href: '/clients/cadence' },
+      { label: 'Согласия', href: '/consents' },
     ],
   },
   {

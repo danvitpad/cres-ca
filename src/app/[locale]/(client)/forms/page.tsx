@@ -28,6 +28,15 @@ interface IntakeForm {
   contraindications: string;
 }
 
+interface ConsentItem {
+  id: string;
+  form_text: string;
+  client_agreed: boolean;
+  agreed_at: string | null;
+  created_at: string;
+  master: { display_name: string | null; profile: { full_name: string | null } | null } | { display_name: string | null; profile: { full_name: string | null } | null }[] | null;
+}
+
 export default function FormsPage() {
   const t = useTranslations('clientForms');
   const { userId } = useAuthStore();
@@ -39,6 +48,8 @@ export default function FormsPage() {
     contraindications: '',
   });
   const [saving, setSaving] = useState(false);
+  const [consents, setConsents] = useState<ConsentItem[]>([]);
+  const [signing, setSigning] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -58,9 +69,38 @@ export default function FormsPage() {
           contraindications: data.contraindications ?? '',
         });
       }
+
+      const { data: cons } = await supabase
+        .from('consent_forms')
+        .select('id, form_text, client_agreed, agreed_at, created_at, master:masters(display_name, profile:profiles(full_name))')
+        .order('created_at', { ascending: false });
+      setConsents((cons as unknown as ConsentItem[] | null) ?? []);
     }
     load();
   }, [userId]);
+
+  async function signConsent(id: string) {
+    setSigning(id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('consent_forms')
+      .update({ client_agreed: true, agreed_at: new Date().toISOString() })
+      .eq('id', id);
+    setSigning(null);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setConsents((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, client_agreed: true, agreed_at: new Date().toISOString() } : c)),
+    );
+    toast.success('Подписано');
+  }
+
+  function masterName(m: ConsentItem['master']): string {
+    const obj = Array.isArray(m) ? m[0] : m;
+    return obj?.display_name ?? obj?.profile?.full_name ?? '—';
+  }
 
   async function save() {
     if (!userId) return;
@@ -155,13 +195,53 @@ export default function FormsPage() {
         </TabsContent>
 
         <TabsContent value="consents" className="mt-6">
-          <div className="rounded-3xl border bg-card p-8">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <FileCheck2 className="size-7" />
+          <div className="rounded-3xl border bg-card p-6 sm:p-8 space-y-5">
+            <div>
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <FileCheck2 className="size-7" />
+              </div>
+              <h2 className="mt-5 text-xl font-bold">{t('consentsTitle')}</h2>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">{t('consentsDesc')}</p>
             </div>
-            <h2 className="mt-5 text-xl font-bold">{t('consentsTitle')}</h2>
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">{t('consentsDesc')}</p>
-            <p className="mt-8 text-sm text-muted-foreground">{t('noConsents')}</p>
+
+            {consents.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t('noConsents')}</p>
+            ) : (
+              <div className="space-y-3">
+                {consents.map((c) => (
+                  <div
+                    key={c.id}
+                    className={`rounded-2xl border p-4 ${
+                      c.client_agreed
+                        ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900 dark:bg-emerald-950/20'
+                        : 'border-amber-200 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/20'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        от {masterName(c.master)} • {new Date(c.created_at).toLocaleDateString()}
+                      </div>
+                      {c.client_agreed && (
+                        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                          ✓ подписано {c.agreed_at ? new Date(c.agreed_at).toLocaleDateString() : ''}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap text-sm">{c.form_text}</p>
+                    {!c.client_agreed && (
+                      <Button
+                        className="mt-4"
+                        size="sm"
+                        onClick={() => signConsent(c.id)}
+                        disabled={signing === c.id}
+                      >
+                        {signing === c.id ? '...' : 'Подписать'}
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
 
