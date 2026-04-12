@@ -8,12 +8,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
 import { BottomSheet } from '@/components/shared/primitives/bottom-sheet';
 import { ShimmerSkeleton } from '@/components/shared/primitives/shimmer-skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ClientAppointment {
   id: string;
@@ -92,6 +96,9 @@ export default function ClientCalendarPage() {
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<ClientAppointment | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const fetchAppointments = useCallback(async () => {
     const supabase = createClient();
@@ -101,7 +108,7 @@ export default function ClientCalendarPage() {
     const { data } = await supabase
       .from('appointments')
       .select(`
-        id, starts_at, ends_at, status,
+        id, starts_at, ends_at, status, master_id,
         service:services(name, color),
         master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))
       `)
@@ -112,6 +119,74 @@ export default function ClientCalendarPage() {
     setAppointments((data ?? []) as unknown as ClientAppointment[]);
     setLoading(false);
   }, [year, month]);
+
+  async function submitCancel() {
+    if (!cancelTarget) return;
+    setCancelBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        status: 'cancelled',
+        cancellation_reason: cancelReason.trim() || null,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: 'client',
+      })
+      .eq('id', cancelTarget.id);
+    if (error) {
+      toast.error(error.message);
+      setCancelBusy(false);
+      return;
+    }
+
+    const { data: masterRow } = await supabase
+      .from('masters')
+      .select('profile_id')
+      .eq('id', cancelTarget.master?.id ?? '')
+      .maybeSingle();
+    if (masterRow?.profile_id) {
+      await supabase.from('notifications').insert({
+        profile_id: masterRow.profile_id,
+        channel: 'telegram',
+        title: '❌ Client cancelled',
+        body: `${cancelTarget.service?.name ?? 'Appointment'} on ${new Date(cancelTarget.starts_at).toLocaleString()} cancelled${cancelReason.trim() ? `: ${cancelReason.trim()}` : ''}. [cancel:${cancelTarget.id}]`,
+        scheduled_for: new Date().toISOString(),
+      });
+    }
+
+    if (cancelTarget.master?.id) {
+      const aptDate = new Date(cancelTarget.starts_at).toISOString().split('T')[0];
+      const slotTime = new Date(cancelTarget.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const { data: waitlistEntries } = await supabase
+        .from('waitlist')
+        .select('id, clients(profile_id)')
+        .eq('master_id', cancelTarget.master.id)
+        .eq('desired_date', aptDate);
+      if (waitlistEntries?.length) {
+        const rows = waitlistEntries
+          .map((w) => {
+            const c = w.clients as unknown as { profile_id: string | null } | null;
+            if (!c?.profile_id) return null;
+            return {
+              profile_id: c.profile_id,
+              channel: 'telegram',
+              title: '🎉 A slot just opened up!',
+              body: `A time slot became available on ${aptDate} at ${slotTime}. [waitlist:${cancelTarget.id}]`,
+              scheduled_for: new Date().toISOString(),
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => !!x);
+        if (rows.length) await supabase.from('notifications').insert(rows);
+        await supabase.from('waitlist').delete().in('id', waitlistEntries.map((w) => w.id));
+      }
+    }
+
+    toast.success(t('cancelDone'));
+    setCancelTarget(null);
+    setCancelReason('');
+    setCancelBusy(false);
+    fetchAppointments();
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -238,6 +313,7 @@ export default function ClientCalendarPage() {
             {selectedAppts.map((appt, i) => {
               const startTime = new Date(appt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               const endTime = new Date(appt.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const isUpcoming = new Date(appt.starts_at).getTime() > Date.now() && (appt.status === 'booked' || appt.status === 'confirmed');
               return (
                 <motion.div
                   key={appt.id}
@@ -267,12 +343,50 @@ export default function ClientCalendarPage() {
                   >
                     <Download className="h-4 w-4" />
                   </button>
+                  {isUpcoming && (
+                    <button
+                      onClick={() => { setCancelTarget(appt); setCancelReason(''); }}
+                      className="shrink-0 rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
+                      title={t('cancel')}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </motion.div>
               );
             })}
           </AnimatePresence>
         </div>
       </BottomSheet>
+
+      <Dialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('cancelTitle')}</DialogTitle>
+          </DialogHeader>
+          {cancelTarget && (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {cancelTarget.service?.name} — {new Date(cancelTarget.starts_at).toLocaleString()}
+              </p>
+              <Textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder={t('cancelReasonPlaceholder')}
+                rows={3}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setCancelTarget(null)} disabled={cancelBusy}>
+                  {t('cancelKeep')}
+                </Button>
+                <Button variant="destructive" onClick={submitCancel} disabled={cancelBusy}>
+                  {cancelBusy ? '…' : t('cancelConfirm')}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

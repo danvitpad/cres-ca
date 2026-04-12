@@ -17,7 +17,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Star, Clock, MapPin, ArrowLeft, Heart, Check, Share2 } from 'lucide-react';
+import { Star, Clock, MapPin, ArrowLeft, Heart, Check, Share2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MasterProfile {
@@ -69,6 +69,8 @@ export default function MasterProfilePage() {
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -112,7 +114,19 @@ export default function MasterProfilePage() {
         .maybeSingle();
       setIsFollowing(!!data);
     }
+    async function checkFavorite() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('client_favorites')
+        .select('id')
+        .eq('profile_id', userId)
+        .eq('target_type', 'master')
+        .eq('target_id', masterId)
+        .maybeSingle();
+      setIsFavorite(!!data);
+    }
     checkFollow();
+    checkFavorite();
   }, [userId, masterId]);
 
   const toggleFollow = useCallback(async () => {
@@ -134,6 +148,29 @@ export default function MasterProfilePage() {
     }
     setFollowBusy(false);
   }, [userId, masterId, isFollowing, followBusy]);
+
+  const toggleFavorite = useCallback(async () => {
+    if (!userId || favBusy) return;
+    setFavBusy(true);
+    const supabase = createClient();
+    if (isFavorite) {
+      await supabase
+        .from('client_favorites')
+        .delete()
+        .eq('profile_id', userId)
+        .eq('target_type', 'master')
+        .eq('target_id', masterId);
+      setIsFavorite(false);
+    } else {
+      const { error } = await supabase
+        .from('client_favorites')
+        .insert({ profile_id: userId, target_type: 'master', target_id: masterId });
+      if (!error) setIsFavorite(true);
+      else if (error.code !== '23505') toast.error(error.message);
+      else setIsFavorite(true);
+    }
+    setFavBusy(false);
+  }, [userId, masterId, isFavorite, favBusy]);
 
   const handleShare = useCallback(async () => {
     let url = typeof window !== 'undefined' ? window.location.href : '';
@@ -258,6 +295,22 @@ export default function MasterProfilePage() {
               >
                 {isFollowing ? <Check className="size-4" /> : <Heart className="size-4" />}
                 {isFollowing ? t('following') : t('follow')}
+              </Button>
+            )}
+            {userId && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={favBusy}
+                onClick={toggleFavorite}
+                title={isFavorite ? t('removeFavorite') : t('addFavorite')}
+              >
+                {isFavorite ? (
+                  <BookmarkCheck className="size-4 text-amber-500" />
+                ) : (
+                  <Bookmark className="size-4" />
+                )}
+                {isFavorite ? t('inFavorites') : t('favorite')}
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={handleShare}>

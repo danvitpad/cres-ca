@@ -630,7 +630,11 @@
     "following": "Ви підписані",
     "share": "Поділитися",
     "linkCopied": "Посилання скопійовано",
-    "linkCopyFailed": "Не вдалося скопіювати посилання"
+    "linkCopyFailed": "Не вдалося скопіювати посилання",
+    "favorite": "Зберегти",
+    "inFavorites": "Збережено",
+    "addFavorite": "Додати в обране",
+    "removeFavorite": "Прибрати з обраного"
   },
   "map": {
     "nearbyMasters": "Майстри поблизу",
@@ -779,6 +783,9 @@
   "clientNotifications": {
     "title": "Сповіщення",
     "desc": "Налаштуй канали і типи сповіщень, які ти хочеш отримувати.",
+    "inboxTab": "Вхідні",
+    "settingsTab": "Налаштування",
+    "inboxEmpty": "Поки нічого немає — ми повідомимо про записи, акції та відгуки.",
     "channels": "Канали",
     "telegram": "Telegram",
     "telegramDesc": "Сповіщення від нашого бота — найшвидший спосіб",
@@ -1171,7 +1178,13 @@
     "noAppointments": "Немає записів на цей день",
     "addToCalendar": "Додати до календаря",
     "upcoming": "Найближчі",
-    "today": "Сьогодні"
+    "today": "Сьогодні",
+    "cancel": "Скасувати",
+    "cancelTitle": "Скасувати запис?",
+    "cancelReasonPlaceholder": "Причина (необов'язково) — допоможе майстру спланувати",
+    "cancelKeep": "Залишити",
+    "cancelConfirm": "Скасувати запис",
+    "cancelDone": "Запис скасовано"
   },
   "products": {
     "title": "Товари",

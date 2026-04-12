@@ -11,11 +11,21 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell } from 'lucide-react';
+import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+interface NotifRow {
+  id: string;
+  title: string | null;
+  body: string | null;
+  channel: string | null;
+  status: string | null;
+  created_at: string;
+}
 
 interface Prefs {
   telegram: boolean;
@@ -50,6 +60,8 @@ export default function NotificationsPage() {
   const { userId } = useAuthStore();
   const [prefs, setPrefs] = useState<Prefs>(defaults);
   const [dirty, setDirty] = useState(false);
+  const [feed, setFeed] = useState<NotifRow[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) return;
@@ -62,8 +74,24 @@ export default function NotificationsPage() {
         .maybeSingle();
       if (data) setPrefs({ ...defaults, ...data });
     }
+    async function loadFeed() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, title, body, channel, status, created_at')
+        .eq('profile_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      setFeed((data ?? []) as NotifRow[]);
+      setFeedLoading(false);
+    }
     load();
+    loadFeed();
   }, [userId]);
+
+  function cleanBody(body: string | null) {
+    return body?.replace(/\[(review|waitlist|burning|cancel):[^\]]+\]/gi, '').trim() ?? '';
+  }
 
   function toggle<K extends keyof Prefs>(k: K) {
     setPrefs((p) => ({ ...p, [k]: !p[k] }));
@@ -97,6 +125,43 @@ export default function NotificationsPage() {
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('desc')}</p>
       </div>
 
+      <Tabs defaultValue="inbox" className="w-full">
+        <TabsList>
+          <TabsTrigger value="inbox">{t('inboxTab')}</TabsTrigger>
+          <TabsTrigger value="settings">{t('settingsTab')}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="inbox" className="mt-6 space-y-3">
+          {feedLoading ? (
+            <p className="text-sm text-muted-foreground">…</p>
+          ) : feed.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border bg-card p-12 text-center">
+              <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <Inbox className="size-8" />
+              </div>
+              <p className="mt-4 text-sm text-muted-foreground">{t('inboxEmpty')}</p>
+            </div>
+          ) : (
+            feed.map((n) => (
+              <div key={n.id} className="rounded-2xl border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold">{n.title}</p>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">
+                    {new Date(n.created_at).toLocaleString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+                {n.body && <p className="mt-1 text-xs text-muted-foreground">{cleanBody(n.body)}</p>}
+              </div>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-6 space-y-6">
       <Section title={t('channels')}>
         <Row
           icon={Send}
@@ -141,6 +206,8 @@ export default function NotificationsPage() {
           </Button>
         </div>
       )}
+        </TabsContent>
+      </Tabs>
     </motion.div>
   );
 }

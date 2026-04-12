@@ -630,7 +630,11 @@
     "following": "Following",
     "share": "Share",
     "linkCopied": "Link copied to clipboard",
-    "linkCopyFailed": "Couldn't copy the link"
+    "linkCopyFailed": "Couldn't copy the link",
+    "favorite": "Save",
+    "inFavorites": "Saved",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites"
   },
   "map": {
     "nearbyMasters": "Masters Nearby",
@@ -779,6 +783,9 @@
   "clientNotifications": {
     "title": "Notifications",
     "desc": "Choose the channels and types of notifications you want to receive.",
+    "inboxTab": "Inbox",
+    "settingsTab": "Settings",
+    "inboxEmpty": "No notifications yet — we'll let you know about appointments, deals, and reviews.",
     "channels": "Channels",
     "telegram": "Telegram",
     "telegramDesc": "Notifications from our bot — the fastest way",
@@ -1171,7 +1178,13 @@
     "noAppointments": "No appointments this day",
     "addToCalendar": "Add to Calendar",
     "upcoming": "Upcoming",
-    "today": "Today"
+    "today": "Today",
+    "cancel": "Cancel",
+    "cancelTitle": "Cancel appointment?",
+    "cancelReasonPlaceholder": "Reason (optional) — helps your master plan",
+    "cancelKeep": "Keep",
+    "cancelConfirm": "Cancel appointment",
+    "cancelDone": "Appointment cancelled"
   },
   "products": {
     "title": "Products",

@@ -60,7 +60,16 @@ export async function GET(request: Request) {
       .eq('master_id', master.id)
       .gte('starts_at', tomorrowStart.toISOString())
       .lte('starts_at', tomorrowEnd.toISOString())
-      .in('status', ['confirmed', 'pending']);
+      .in('status', ['booked', 'confirmed', 'in_progress']);
+
+    const { data: existingPost } = await supabase
+      .from('feed_posts')
+      .select('id')
+      .eq('master_id', master.id)
+      .eq('type', 'burning_slot')
+      .gte('created_at', tomorrowStart.toISOString())
+      .limit(1);
+    if (existingPost?.length) continue;
 
     const booked = bookedCount ?? 0;
     const emptySlots = totalSlots - booked;
@@ -93,29 +102,25 @@ export async function GET(request: Request) {
       expires_at: tomorrowEnd.toISOString(),
     });
 
-    // Notify followers
     const { data: followers } = await supabase
       .from('client_master_links')
-      .select('client:clients!inner(profile_id)')
+      .select('profile_id')
       .eq('master_id', master.id);
 
-    if (followers) {
+    if (followers?.length) {
       const notifications = followers
-        .filter((f) => (f.client as unknown as { profile_id: string | null })?.profile_id)
+        .filter((f) => !!f.profile_id)
         .map((f) => ({
-          profile_id: (f.client as unknown as { profile_id: string }).profile_id,
+          profile_id: f.profile_id,
           channel: 'telegram' as const,
-          title: 'Flash Deal!',
+          title: '🔥 Flash Deal!',
           body: service
-            ? `${service.name} tomorrow with ${discount}% off!`
-            : `${discount}% off tomorrow!`,
+            ? `${service.name} tomorrow with ${discount}% off! [burning:${master.id}:${tomorrow.toISOString().split('T')[0]}]`
+            : `${discount}% off tomorrow! [burning:${master.id}:${tomorrow.toISOString().split('T')[0]}]`,
           status: 'pending' as const,
           scheduled_for: new Date().toISOString(),
         }));
-
-      if (notifications.length > 0) {
-        await supabase.from('notifications').insert(notifications);
-      }
+      if (notifications.length > 0) await supabase.from('notifications').insert(notifications);
     }
 
     postsCreated++;

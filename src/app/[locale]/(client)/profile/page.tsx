@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -23,6 +23,7 @@ interface ProfileData {
   id: string;
   full_name: string;
   phone: string | null;
+  avatar_url: string | null;
   email?: string;
   referral_code?: string;
 }
@@ -40,6 +41,9 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -47,7 +51,7 @@ export default function ProfilePage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, phone')
+        .select('id, full_name, phone, avatar_url')
         .eq('id', userId)
         .single();
 
@@ -57,6 +61,7 @@ export default function ProfilePage() {
         setProfile({ ...data, email: user?.email, referral_code: userId!.slice(0, 8) });
         setName(data.full_name || '');
         setPhone(data.phone || '');
+        setAvatarUrl(data.avatar_url || null);
       }
       setLoading(false);
     }
@@ -77,6 +82,42 @@ export default function ProfilePage() {
       setProfile((p) => p ? { ...p, full_name: name.trim(), phone: phone.trim() || null } : p);
       setEditing(false);
     }
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !userId) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(tc('error'));
+      return;
+    }
+    setAvatarBusy(true);
+    const supabase = createClient();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${userId}/${Date.now()}.${ext}`;
+    const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+    if (uploadErr) {
+      toast.error(uploadErr.message);
+      setAvatarBusy(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+    const newUrl = urlData.publicUrl;
+    const { error: updErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: newUrl })
+      .eq('id', userId);
+    if (updErr) {
+      toast.error(updErr.message);
+    } else {
+      setAvatarUrl(newUrl);
+      setProfile((p) => (p ? { ...p, avatar_url: newUrl } : p));
+      toast.success(t('profileSaved'));
+    }
+    setAvatarBusy(false);
   }
 
   async function handleSignOut() {
@@ -124,10 +165,25 @@ export default function ProfilePage() {
           {/* Avatar */}
           <div className="flex flex-col items-center gap-3 mb-8">
             <div className="relative">
-              <div className="flex size-24 items-center justify-center rounded-full bg-primary text-primary-foreground text-3xl font-bold">
-                {(name || 'U')[0].toUpperCase()}
+              <div className="flex size-24 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground text-3xl font-bold">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={name} className="size-full object-cover" />
+                ) : (
+                  (name || 'U')[0].toUpperCase()
+                )}
               </div>
-              <button className="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full bg-card border shadow-sm text-muted-foreground hover:text-foreground transition-colors">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={avatarBusy}
+                className="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full bg-card border shadow-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
                 <Camera className="size-4" />
               </button>
             </div>

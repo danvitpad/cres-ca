@@ -630,7 +630,11 @@
     "following": "Вы подписаны",
     "share": "Поделиться",
     "linkCopied": "Ссылка скопирована",
-    "linkCopyFailed": "Не удалось скопировать ссылку"
+    "linkCopyFailed": "Не удалось скопировать ссылку",
+    "favorite": "Сохранить",
+    "inFavorites": "Сохранено",
+    "addFavorite": "Добавить в избранное",
+    "removeFavorite": "Убрать из избранного"
   },
   "map": {
     "nearbyMasters": "Мастера рядом",
@@ -779,6 +783,9 @@
   "clientNotifications": {
     "title": "Уведомления",
     "desc": "Настрой каналы и типы уведомлений, которые ты хочешь получать.",
+    "inboxTab": "Входящие",
+    "settingsTab": "Настройки",
+    "inboxEmpty": "Пока ничего нет — мы напомним о записях, акциях и отзывах.",
     "channels": "Каналы",
     "telegram": "Telegram",
     "telegramDesc": "Уведомления от нашего бота — самый быстрый способ",
@@ -1171,7 +1178,13 @@
     "noAppointments": "Нет записей на этот день",
     "addToCalendar": "Добавить в календарь",
     "upcoming": "Ближайшие",
-    "today": "Сегодня"
+    "today": "Сегодня",
+    "cancel": "Отменить",
+    "cancelTitle": "Отменить запись?",
+    "cancelReasonPlaceholder": "Причина (необязательно) — поможет мастеру спланировать",
+    "cancelKeep": "Оставить",
+    "cancelConfirm": "Отменить запись",
+    "cancelDone": "Запись отменена"
   },
   "products": {
     "title": "Товары",

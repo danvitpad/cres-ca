@@ -98,29 +98,35 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
         cancellation_count: (await supabase.from('clients').select('cancellation_count').eq('id', appointment.client_id).single()).data?.cancellation_count + 1 || 1,
       }).eq('id', appointment.client_id);
 
-      // Notify first person on waitlist for this date
+      // Notify everyone on waitlist for this date (first-come wins, but all get pinged)
       const aptDate = new Date(appointment.starts_at).toISOString().split('T')[0];
-      const { data: waitlistEntry } = await supabase
+      const slotTime = new Date(appointment.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const { data: waitlistEntries } = await supabase
         .from('waitlist')
         .select('id, client_id, clients(profile_id)')
         .eq('master_id', appointment.master_id)
         .eq('desired_date', aptDate)
-        .limit(1)
-        .single();
+        .order('created_at', { ascending: true });
 
-      if (waitlistEntry) {
-        const clientData = waitlistEntry.clients as unknown as { profile_id: string | null } | null;
-        if (clientData?.profile_id) {
-          await supabase.from('notifications').insert({
-            profile_id: clientData.profile_id,
-            channel: 'telegram',
-            title: '🎉 A slot just opened up!',
-            body: `Good news! A time slot became available on ${aptDate}. Book now before it's taken!`,
-            scheduled_for: new Date().toISOString(),
-          });
-        }
-        // Remove from waitlist
-        await supabase.from('waitlist').delete().eq('id', waitlistEntry.id);
+      if (waitlistEntries?.length) {
+        const notifyRows = waitlistEntries
+          .map((w) => {
+            const c = w.clients as unknown as { profile_id: string | null } | null;
+            if (!c?.profile_id) return null;
+            return {
+              profile_id: c.profile_id,
+              channel: 'telegram',
+              title: '🎉 A slot just opened up!',
+              body: `A time slot became available on ${aptDate} at ${slotTime}. Open /book to grab it. [waitlist:${appointment.id}]`,
+              scheduled_for: new Date().toISOString(),
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => !!x);
+        if (notifyRows.length) await supabase.from('notifications').insert(notifyRows);
+        await supabase
+          .from('waitlist')
+          .delete()
+          .in('id', waitlistEntries.map((w) => w.id));
       }
     }
 
