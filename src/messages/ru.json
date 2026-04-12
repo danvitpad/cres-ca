@@ -623,7 +623,9 @@
     "reviews": "отзывов",
     "otherServices": "Другие услуги",
     "min": "мин",
-    "noServicesAvailable": "Нет доступных услуг"
+    "noServicesAvailable": "Нет доступных услуг",
+    "follow": "Подписаться",
+    "following": "Вы подписаны"
   },
   "map": {
     "nearbyMasters": "Мастера рядом",
@@ -725,6 +727,7 @@
     "findMaster": "Найти мастера",
     "nextVisit": "Следующий визит",
     "noNextVisit": "Нет запланированных визитов",
+    "latestPost": "Последний пост",
     "book": "Записаться",
     "unsubscribe": "Отписаться"
   },

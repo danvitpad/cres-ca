@@ -623,7 +623,9 @@
     "reviews": "reviews",
     "otherServices": "Other services",
     "min": "min",
-    "noServicesAvailable": "No services available"
+    "noServicesAvailable": "No services available",
+    "follow": "Follow",
+    "following": "Following"
   },
   "map": {
     "nearbyMasters": "Masters Nearby",
@@ -725,6 +727,7 @@
     "findMaster": "Find a master",
     "nextVisit": "Next visit",
     "noNextVisit": "No scheduled visits",
+    "latestPost": "Latest post",
     "book": "Book",
     "unsubscribe": "Unfollow"
   },

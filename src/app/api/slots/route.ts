@@ -15,6 +15,16 @@ interface WorkingDay {
 
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 
+const DEFAULT_WORKING_HOURS: Record<string, WorkingDay | null> = {
+  sunday: null,
+  monday: { start: '10:00', end: '19:00' },
+  tuesday: { start: '10:00', end: '19:00' },
+  wednesday: { start: '10:00', end: '19:00' },
+  thursday: { start: '10:00', end: '19:00' },
+  friday: { start: '10:00', end: '19:00' },
+  saturday: { start: '11:00', end: '18:00' },
+};
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const masterId = searchParams.get('master_id');
@@ -52,7 +62,8 @@ export async function GET(request: NextRequest) {
   const duration = service.duration_minutes;
   const dateObj = new Date(date + 'T00:00:00');
   const dayName = WEEKDAYS[dateObj.getDay()];
-  const workingHours = (master.working_hours as Record<string, WorkingDay | null>)?.[dayName];
+  const wh = (master.working_hours as Record<string, WorkingDay | null> | null) ?? DEFAULT_WORKING_HOURS;
+  const workingHours = wh[dayName] ?? DEFAULT_WORKING_HOURS[dayName];
 
   if (!workingHours) {
     return NextResponse.json({ slots: [] });

@@ -29,10 +29,12 @@ interface FeedPost {
   master: {
     id: string;
     specialization: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
     profile: {
       full_name: string;
       avatar_url: string | null;
-    };
+    } | null;
   };
 }
 
@@ -41,10 +43,12 @@ interface FollowedMaster {
   master: {
     id: string;
     specialization: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
     profile: {
       full_name: string;
       avatar_url: string | null;
-    };
+    } | null;
   };
   hasNewPosts: boolean;
 }
@@ -82,7 +86,7 @@ export default function FeedPage() {
       .from('feed_posts')
       .select(`
         id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, specialization, profile:profiles!inner(full_name, avatar_url))
+        master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url))
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -98,7 +102,7 @@ export default function FeedPage() {
       .from('client_master_links')
       .select(`
         master_id,
-        master:masters!inner(id, specialization, profile:profiles!inner(full_name, avatar_url))
+        master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url))
       `)
       .limit(20);
     return (data ?? []).map((d) => ({ ...d, hasNewPosts: false })) as unknown as FollowedMaster[];
@@ -165,23 +169,20 @@ export default function FeedPage() {
           </div>
           <span className="text-[10px] text-muted-foreground">{t('discover')}</span>
         </Link>
-        {masters.map((m) => (
-          <Link
-            key={m.master_id}
-            href={`/masters/${m.master_id}`}
-            className="flex shrink-0 flex-col items-center gap-1"
-          >
-            <AvatarRing
-              src={m.master.profile.avatar_url}
-              name={m.master.profile.full_name}
-              size={64}
-              hasNewContent={m.hasNewPosts}
-            />
-            <span className="max-w-[64px] truncate text-[10px]">
-              {m.master.profile.full_name.split(' ')[0]}
-            </span>
-          </Link>
-        ))}
+        {masters.map((m) => {
+          const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
+          const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
+          return (
+            <Link
+              key={m.master_id}
+              href={`/masters/${m.master_id}`}
+              className="flex shrink-0 flex-col items-center gap-1"
+            >
+              <AvatarRing src={avatar} name={name} size={64} hasNewContent={m.hasNewPosts} />
+              <span className="max-w-[64px] truncate text-[10px]">{name.split(' ')[0]}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* Top masters */}
@@ -247,14 +248,14 @@ function FeedCard({
       <div className="flex items-center gap-3 p-3">
         <Link href={`/masters/${post.master.id}`}>
           <AvatarRing
-            src={post.master.profile.avatar_url}
-            name={post.master.profile.full_name}
+            src={post.master.avatar_url ?? post.master.profile?.avatar_url ?? null}
+            name={post.master.display_name ?? post.master.profile?.full_name ?? '?'}
             size={40}
           />
         </Link>
         <div className="flex-1 min-w-0">
           <Link href={`/masters/${post.master.id}`} className="text-sm font-semibold hover:underline">
-            {post.master.profile.full_name}
+            {post.master.display_name ?? post.master.profile?.full_name ?? '?'}
           </Link>
           {post.master.specialization && (
             <p className="truncate text-xs text-muted-foreground">{post.master.specialization}</p>

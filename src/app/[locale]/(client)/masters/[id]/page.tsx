@@ -5,19 +5,19 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/stores/auth-store';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Star, Clock, MapPin, ArrowLeft } from 'lucide-react';
+import { Star, Clock, MapPin, ArrowLeft, Heart, Check } from 'lucide-react';
 
 interface MasterProfile {
   id: string;
@@ -27,10 +27,13 @@ interface MasterProfile {
   city: string | null;
   rating: number;
   total_reviews: number;
+  display_name: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
   profile: {
     full_name: string;
     avatar_url: string | null;
-  };
+  } | null;
   services: ServiceItem[];
 }
 
@@ -51,8 +54,11 @@ export default function MasterProfilePage() {
   const t = useTranslations('masterProfile');
   const tb = useTranslations('booking');
   const tc = useTranslations('common');
+  const userId = useAuthStore((s) => s.userId);
   const [master, setMaster] = useState<MasterProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -61,6 +67,7 @@ export default function MasterProfilePage() {
         .from('masters')
         .select(`
           id, specialization, bio, address, city, rating, total_reviews,
+          display_name, avatar_url, cover_url,
           profile:profiles(full_name, avatar_url),
           services(id, name, description, duration_minutes, price, currency, color, category:service_categories(name))
         `)
@@ -82,6 +89,41 @@ export default function MasterProfilePage() {
     }
     load();
   }, [masterId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    async function checkFollow() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('client_master_links')
+        .select('master_id')
+        .eq('profile_id', userId)
+        .eq('master_id', masterId)
+        .maybeSingle();
+      setIsFollowing(!!data);
+    }
+    checkFollow();
+  }, [userId, masterId]);
+
+  const toggleFollow = useCallback(async () => {
+    if (!userId || followBusy) return;
+    setFollowBusy(true);
+    const supabase = createClient();
+    if (isFollowing) {
+      await supabase
+        .from('client_master_links')
+        .delete()
+        .eq('profile_id', userId)
+        .eq('master_id', masterId);
+      setIsFollowing(false);
+    } else {
+      await supabase
+        .from('client_master_links')
+        .insert({ profile_id: userId, master_id: masterId });
+      setIsFollowing(true);
+    }
+    setFollowBusy(false);
+  }, [userId, masterId, isFollowing, followBusy]);
 
   if (loading) {
     return (
@@ -106,7 +148,9 @@ export default function MasterProfilePage() {
     );
   }
 
-  const initials = master.profile.full_name
+  const displayName = master.display_name ?? master.profile?.full_name ?? 'Master';
+  const displayAvatar = master.avatar_url ?? master.profile?.avatar_url ?? null;
+  const initials = displayName
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -132,6 +176,13 @@ export default function MasterProfilePage() {
         {tc('back')}
       </Link>
 
+      {/* Cover */}
+      {master.cover_url && (
+        <div className="relative aspect-[16/6] w-full overflow-hidden rounded-[var(--radius-card)] bg-muted">
+          <img src={master.cover_url} alt="" className="h-full w-full object-cover" />
+        </div>
+      )}
+
       {/* Master header */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
@@ -140,13 +191,11 @@ export default function MasterProfilePage() {
         className="flex items-start gap-4"
       >
         <Avatar size="lg" className="size-20">
-          {master.profile.avatar_url && (
-            <AvatarImage src={master.profile.avatar_url} alt={master.profile.full_name} />
-          )}
+          {displayAvatar && <AvatarImage src={displayAvatar} alt={displayName} />}
           <AvatarFallback className="text-lg">{initials}</AvatarFallback>
         </Avatar>
         <div className="flex-1 space-y-1">
-          <h1 className="text-xl font-bold">{master.profile.full_name}</h1>
+          <h1 className="text-xl font-bold">{displayName}</h1>
           {master.specialization && (
             <p className="text-sm text-muted-foreground">{master.specialization}</p>
           )}
@@ -164,6 +213,18 @@ export default function MasterProfilePage() {
               <MapPin className="size-3" />
               {master.city}{master.address ? `, ${master.address}` : ''}
             </div>
+          )}
+          {userId && (
+            <Button
+              size="sm"
+              variant={isFollowing ? 'outline' : 'default'}
+              disabled={followBusy}
+              onClick={toggleFollow}
+              className="mt-2"
+            >
+              {isFollowing ? <Check className="size-4" /> : <Heart className="size-4" />}
+              {isFollowing ? t('following') : t('follow')}
+            </Button>
           )}
         </div>
       </motion.div>

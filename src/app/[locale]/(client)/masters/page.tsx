@@ -23,10 +23,12 @@ interface MasterResult {
   city: string | null;
   is_active: boolean;
   invite_code: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
   profiles: {
     full_name: string;
     avatar_url: string | null;
-  };
+  } | null;
   services: { id: string; name: string; price: number; currency: string }[];
 }
 
@@ -53,9 +55,9 @@ export default function MastersPage() {
     // Search by name, invite code, or city
     const { data } = await supabase
       .from('masters')
-      .select('id, specialization, rating, city, is_active, invite_code, profiles(full_name, avatar_url), services(id, name, price, currency)')
+      .select('id, specialization, rating, city, is_active, invite_code, display_name, avatar_url, profiles(full_name, avatar_url), services(id, name, price, currency)')
       .eq('is_active', true)
-      .or(`invite_code.eq.${q},profiles.full_name.ilike.%${q}%,city.ilike.%${q}%`)
+      .or(`invite_code.eq.${q},display_name.ilike.%${q}%,city.ilike.%${q}%`)
       .limit(20);
 
     setMasters((data as unknown as MasterResult[]) || []);
@@ -75,7 +77,7 @@ export default function MastersPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('masters')
-        .select('id, specialization, rating, city, is_active, invite_code, profiles(full_name, avatar_url), services(id, name, price, currency)')
+        .select('id, specialization, rating, city, is_active, invite_code, display_name, avatar_url, profiles(full_name, avatar_url), services(id, name, price, currency)')
         .eq('is_active', true)
         .order('rating', { ascending: false })
         .limit(12);
@@ -154,6 +156,8 @@ function MasterCard({ master }: { master: MasterResult }) {
   const minPrice = master.services?.length
     ? Math.min(...master.services.map((s) => s.price))
     : null;
+  const name = master.display_name ?? master.profiles?.full_name ?? 'Master';
+  const avatar = master.avatar_url ?? master.profiles?.avatar_url ?? null;
 
   return (
     <Link href={`/masters/${master.id}`} className="block">
@@ -166,8 +170,12 @@ function MasterCard({ master }: { master: MasterResult }) {
         <div className="relative flex items-start gap-3">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xl group-hover:bg-primary/15 transition-colors">
-              {(master.profiles?.full_name || 'M')[0].toUpperCase()}
+            <div className="flex size-14 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary font-bold text-xl group-hover:bg-primary/15 transition-colors">
+              {avatar ? (
+                <img src={avatar} alt={name} className="size-full object-cover" />
+              ) : (
+                name[0].toUpperCase()
+              )}
             </div>
             {/* Online indicator */}
             <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 border-2 border-card" />
@@ -176,7 +184,7 @@ function MasterCard({ master }: { master: MasterResult }) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold truncate group-hover:text-primary transition-colors">
-                {master.profiles?.full_name}
+                {name}
               </h3>
               {master.rating >= 4.5 && (
                 <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 rounded-full border-amber-300 text-amber-600 dark:text-amber-400">

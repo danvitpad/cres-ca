@@ -15,6 +15,8 @@ interface TopMaster {
   rating: number;
   total_reviews: number;
   specialization: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
   profile: { full_name: string; avatar_url: string | null } | null;
 }
 
@@ -28,9 +30,8 @@ export function TopMastersRow() {
       const supabase = createClient();
       const { data } = await supabase
         .from('masters')
-        .select('id, rating, total_reviews, specialization, profile:profiles(full_name, avatar_url)')
+        .select('id, rating, total_reviews, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url)')
         .eq('is_active', true)
-        .gte('rating', 4.0)
         .order('rating', { ascending: false })
         .limit(20);
 
@@ -55,8 +56,8 @@ export function TopMastersRow() {
       <h3 className="px-1 text-sm font-semibold text-muted-foreground">{t('topMasters')}</h3>
       <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
         {masters.map((master, i) => {
-          const name = master.profile?.full_name ?? '?';
-          const avatarUrl = master.profile?.avatar_url;
+          const name = master.display_name ?? master.profile?.full_name ?? '?';
+          const avatarUrl = master.avatar_url ?? master.profile?.avatar_url;
           const isTop3 = i < 3;
           const hasReviews = (master.total_reviews ?? 0) > 0;
           const initials = name

@@ -623,7 +623,9 @@
     "reviews": "відгуків",
     "otherServices": "Інші послуги",
     "min": "хв",
-    "noServicesAvailable": "Немає доступних послуг"
+    "noServicesAvailable": "Немає доступних послуг",
+    "follow": "Підписатися",
+    "following": "Ви підписані"
   },
   "map": {
     "nearbyMasters": "Майстри поблизу",
@@ -725,6 +727,7 @@
     "findMaster": "Знайти майстра",
     "nextVisit": "Наступний візит",
     "noNextVisit": "Немає запланованих візитів",
+    "latestPost": "Останній пост",
     "book": "Записатись",
     "unsubscribe": "Відписатись"
   },

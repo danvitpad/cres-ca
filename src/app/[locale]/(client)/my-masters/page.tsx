@@ -24,6 +24,7 @@ interface MasterRow {
   rating: number | null;
   city: string | null;
   nextVisit: string | null;
+  lastPost: { title: string | null; image_url: string | null; created_at: string } | null;
 }
 
 export default function MyMastersPage() {
@@ -38,11 +39,24 @@ export default function MyMastersPage() {
       const supabase = createClient();
       const { data: links } = await supabase
         .from('client_master_links')
-        .select('master_id, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url))')
+        .select('master_id, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url))')
         .eq('profile_id', userId);
 
       if (links && links.length > 0) {
         const masterIds = links.map((l: { master_id: string }) => l.master_id);
+
+        const { data: posts } = await supabase
+          .from('feed_posts')
+          .select('master_id, title, image_url, created_at')
+          .in('master_id', masterIds)
+          .order('created_at', { ascending: false });
+
+        const lastPostByMaster = new Map<string, { title: string | null; image_url: string | null; created_at: string }>();
+        posts?.forEach((p: { master_id: string; title: string | null; image_url: string | null; created_at: string }) => {
+          if (!lastPostByMaster.has(p.master_id)) {
+            lastPostByMaster.set(p.master_id, { title: p.title, image_url: p.image_url, created_at: p.created_at });
+          }
+        });
         const { data: clientRows } = await supabase
           .from('clients')
           .select('id, master_id')
@@ -77,18 +91,21 @@ export default function MyMastersPage() {
                   specialization?: string | null;
                   rating?: number | null;
                   city?: string | null;
+                  display_name?: string | null;
+                  avatar_url?: string | null;
                   profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
                 }
               | null;
             if (!m?.id) return null;
             return {
               id: m.id,
-              full_name: m.profiles?.full_name ?? null,
-              avatar_url: m.profiles?.avatar_url ?? null,
+              full_name: m.display_name ?? m.profiles?.full_name ?? null,
+              avatar_url: m.avatar_url ?? m.profiles?.avatar_url ?? null,
               specialization: m.specialization ?? null,
               rating: m.rating ?? null,
               city: m.city ?? null,
               nextVisit: nextByMaster.get(row.master_id) ?? null,
+              lastPost: lastPostByMaster.get(row.master_id) ?? null,
             };
           })
           .filter((x): x is MasterRow => x !== null);
@@ -143,8 +160,12 @@ export default function MyMastersPage() {
           {masters.map((m) => (
             <div key={m.id} className="rounded-3xl border bg-card p-5 transition-all hover:shadow-lg">
               <Link href={`/masters/${m.id}`} className="flex items-center gap-4">
-                <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-2xl font-semibold text-primary-foreground">
-                  {(m.full_name || 'M')[0].toUpperCase()}
+                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-primary/70 text-2xl font-semibold text-primary-foreground">
+                  {m.avatar_url ? (
+                    <img src={m.avatar_url} alt={m.full_name ?? ''} className="size-full object-cover" />
+                  ) : (
+                    (m.full_name || 'M')[0].toUpperCase()
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{m.full_name}</p>
@@ -179,6 +200,28 @@ export default function MyMastersPage() {
                     : t('noNextVisit')}
                 </span>
               </div>
+              {m.lastPost && (
+                <Link
+                  href={`/masters/${m.id}`}
+                  className="mt-3 flex items-center gap-3 rounded-xl bg-muted/40 p-2 transition-colors hover:bg-muted"
+                >
+                  {m.lastPost.image_url && (
+                    <img
+                      src={m.lastPost.image_url}
+                      alt=""
+                      className="size-12 shrink-0 rounded-lg object-cover"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium">
+                      {m.lastPost.title ?? t('latestPost')}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(m.lastPost.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </Link>
+              )}
             </div>
           ))}
         </div>

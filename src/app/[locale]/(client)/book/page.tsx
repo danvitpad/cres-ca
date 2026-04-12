@@ -42,9 +42,20 @@ interface ServiceItem {
 
 interface MasterInfo {
   id: string;
-  working_hours: Record<string, { start: string; end: string; break_start?: string; break_end?: string } | null>;
-  profile: { full_name: string };
+  working_hours: Record<string, { start: string; end: string; break_start?: string; break_end?: string } | null> | null;
+  display_name: string | null;
+  profile: { full_name: string } | null;
 }
+
+const DEFAULT_WORKING_HOURS: NonNullable<MasterInfo['working_hours']> = {
+  sunday: null,
+  monday: { start: '10:00', end: '19:00' },
+  tuesday: { start: '10:00', end: '19:00' },
+  wednesday: { start: '10:00', end: '19:00' },
+  thursday: { start: '10:00', end: '19:00' },
+  friday: { start: '10:00', end: '19:00' },
+  saturday: { start: '11:00', end: '18:00' },
+};
 
 export default function BookPage() {
   const searchParams = useSearchParams();
@@ -81,7 +92,7 @@ export default function BookPage() {
       const supabase = createClient();
       const { data: masterData } = await supabase
         .from('masters')
-        .select('id, working_hours, profile:profiles(full_name)')
+        .select('id, working_hours, display_name, profile:profiles(full_name)')
         .eq('id', preselectedMasterId!)
         .single();
 
@@ -182,11 +193,11 @@ export default function BookPage() {
   // Determine which weekdays are off
   const disabledDays = useCallback(
     (date: Date) => {
-      if (!master?.working_hours) return false;
       if (date < new Date(new Date().setHours(0, 0, 0, 0))) return true;
       const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const dayName = weekdays[date.getDay()];
-      return !master.working_hours[dayName];
+      const wh = master?.working_hours ?? DEFAULT_WORKING_HOURS;
+      return !wh[dayName];
     },
     [master],
   );
@@ -237,7 +248,7 @@ export default function BookPage() {
     const today = format(new Date(), 'dd.MM.yyyy');
     const formText = getConsentFormText({
       serviceName: selectedService.name,
-      masterName: master?.profile.full_name ?? '',
+      masterName: master?.display_name ?? master?.profile?.full_name ?? '',
       clientName,
       allergies: clientAllergies,
       date: today,
@@ -420,7 +431,7 @@ export default function BookPage() {
       )}
 
       {master && (
-        <p className="text-sm text-muted-foreground">{master.profile.full_name}</p>
+        <p className="text-sm text-muted-foreground">{(master.display_name ?? master.profile?.full_name ?? '')}</p>
       )}
 
       {/* Step indicator */}
@@ -561,7 +572,7 @@ export default function BookPage() {
         <div className="space-y-4">
           <ConsentForm
             serviceName={selectedService.name}
-            masterName={master.profile.full_name}
+            masterName={master.display_name ?? master.profile?.full_name ?? ''}
             clientName={clientName}
             allergies={clientAllergies}
             onAgree={handleConsentAgree}
