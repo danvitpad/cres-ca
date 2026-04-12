@@ -466,7 +466,9 @@
     "reorder": "Изменить порядок",
     "categories": "Категории",
     "allCategories": "Все категории",
-    "hours": "ч"
+    "hours": "ч",
+    "upsellServicesLabel": "Рекомендуемые дополнения",
+    "upsellServicesHint": "Клиенты увидят их как опциональные галочки при записи на эту услугу."
   },
   "finance": {
     "revenue": "Выручка",

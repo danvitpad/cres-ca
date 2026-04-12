@@ -466,7 +466,9 @@
     "reorder": "Reorder",
     "categories": "Categories",
     "allCategories": "All categories",
-    "hours": "h"
+    "hours": "h",
+    "upsellServicesLabel": "Suggested add-ons",
+    "upsellServicesHint": "Clients will see these as optional add-ons when they book this service."
   },
   "finance": {
     "revenue": "Revenue",

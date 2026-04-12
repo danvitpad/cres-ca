@@ -66,6 +66,7 @@ const serviceSchema = z.object({
   requires_prepayment: z.boolean().default(false),
   prepayment_amount: z.number().min(0).default(0),
   color: z.string().default('#6366f1'),
+  upsell_services: z.array(z.string().uuid()).default([]),
 });
 
 interface ServiceRow {
@@ -79,6 +80,7 @@ interface ServiceRow {
   requires_prepayment: boolean;
   prepayment_amount: number;
   is_active: boolean;
+  upsell_services: string[] | null;
   category: { name: string; color: string } | null;
 }
 
@@ -456,6 +458,7 @@ export default function ServicesPage() {
           <ServiceForm
             masterId={master.id}
             categories={categories}
+            allServices={services}
             editing={editing}
             onSaved={() => { setDialogOpen(false); loadServices(); }}
             onCancel={() => setDialogOpen(false)}
@@ -469,12 +472,14 @@ export default function ServicesPage() {
 function ServiceForm({
   masterId,
   categories,
+  allServices,
   editing,
   onSaved,
   onCancel,
 }: {
   masterId: string;
   categories: Category[];
+  allServices: ServiceRow[];
   editing: ServiceRow | null;
   onSaved: () => void;
   onCancel: () => void;
@@ -491,6 +496,8 @@ function ServiceForm({
   const [color, setColor] = useState(editing?.color ?? '#6366f1');
   const [requiresPrepayment, setRequiresPrepayment] = useState(editing?.requires_prepayment ?? false);
   const [prepaymentAmount, setPrepaymentAmount] = useState(String(editing?.prepayment_amount ?? 0));
+  const [upsellServices, setUpsellServices] = useState<string[]>(editing?.upsell_services ?? []);
+  const upsellCandidates = allServices.filter((s) => s.id !== editing?.id);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -503,6 +510,7 @@ function ServiceForm({
       color,
       requires_prepayment: requiresPrepayment,
       prepayment_amount: parseFloat(prepaymentAmount) || 0,
+      upsell_services: upsellServices,
     });
 
     if (!parsed.success) {
@@ -582,6 +590,40 @@ function ServiceForm({
         <div className="space-y-2">
           <Label>{tp('prepaymentAmount')}</Label>
           <Input type="number" min={0} step="0.01" value={prepaymentAmount} onChange={(e) => setPrepaymentAmount(e.target.value)} />
+        </div>
+      )}
+
+      {upsellCandidates.length > 0 && (
+        <div className="space-y-2">
+          <Label>{t('upsellServicesLabel')}</Label>
+          <p className="text-xs text-muted-foreground">{t('upsellServicesHint')}</p>
+          <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border p-2">
+            {upsellCandidates.map((s) => {
+              const checked = upsellServices.includes(s.id);
+              return (
+                <label
+                  key={s.id}
+                  className="flex cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                >
+                  <span className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() =>
+                        setUpsellServices((prev) =>
+                          prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id],
+                        )
+                      }
+                    />
+                    <span>{s.name}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    +{s.duration_minutes}m · +{Number(s.price).toFixed(0)} {s.currency}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         </div>
       )}
 

@@ -466,7 +466,9 @@
     "reorder": "Змінити порядок",
     "categories": "Категорії",
     "allCategories": "Усі категорії",
-    "hours": "год"
+    "hours": "год",
+    "upsellServicesLabel": "Рекомендовані доповнення",
+    "upsellServicesHint": "Клієнти побачать їх як опціональні галочки під час запису на цю послугу."
   },
   "finance": {
     "revenue": "Виручка",
