@@ -48,7 +48,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -265,9 +264,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             <ChevronDown className="size-4 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[240px] rounded-2xl shadow-lg">
-            <DropdownMenuLabel className="px-3 py-2 text-sm font-semibold truncate">
+            <div className="px-3 py-2 text-sm font-semibold truncate">
               {displayName || t('myAccount')}
-            </DropdownMenuLabel>
+            </div>
             <DropdownMenuSeparator />
             {accountNav.map(({ key, icon: Icon, href }) => (
               <DropdownMenuItem

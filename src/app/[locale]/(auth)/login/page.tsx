@@ -88,7 +88,7 @@ export default function LoginPage() {
       .single();
 
     if (profile?.role === 'client') {
-      router.push('/book');
+      router.push('/feed');
     } else {
       router.push('/calendar');
     }

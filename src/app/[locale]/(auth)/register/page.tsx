@@ -123,7 +123,7 @@ export default function RegisterPage() {
     toast.success(t('verificationSuccess'));
 
     if (role === 'client') {
-      router.push('/book');
+      router.push('/feed');
     } else {
       router.push('/onboarding/account-type');
     }
