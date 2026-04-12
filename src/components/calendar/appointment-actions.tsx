@@ -89,6 +89,38 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
             }
           }
         }
+
+        // Auto-sale: recommend complementary products for this service
+        const { data: client } = await supabase
+          .from('clients')
+          .select('profile_id, full_name')
+          .eq('id', appointment.client_id)
+          .single();
+        if (client?.profile_id) {
+          const { data: recs } = await supabase
+            .from('product_recommendations')
+            .select('id, message_template, product:products(id, name, price, currency, is_active)')
+            .eq('service_id', appointment.service_id);
+          const rows = ((recs ?? []) as unknown as {
+            id: string;
+            message_template: string | null;
+            product: { id: string; name: string; price: number; currency: string; is_active: boolean } | { id: string; name: string; price: number; currency: string; is_active: boolean }[] | null;
+          }[])
+            .map((r) => {
+              const p = Array.isArray(r.product) ? r.product[0] : r.product;
+              if (!p || !p.is_active) return null;
+              const msg = r.message_template ?? `Рекомендуем для ухода: ${p.name}`;
+              return {
+                profile_id: client.profile_id,
+                channel: 'telegram',
+                title: '✨ Рекомендация после визита',
+                body: `${msg} — ${p.name}, ${p.price} ${p.currency}. [product:${p.id}:${appointment.id}]`,
+                scheduled_for: new Date().toISOString(),
+              };
+            })
+            .filter((x): x is NonNullable<typeof x> => !!x);
+          if (rows.length) await supabase.from('notifications').insert(rows);
+        }
       }
     }
 
