@@ -385,188 +385,226 @@ export default function RegisterPage() {
   }
 
   // ========================
-  // CLIENT REGISTRATION — simple card style
+  // CLIENT REGISTRATION — Fresha-style split layout
   // ========================
   return (
-    <AnimatePresence mode="wait">
-      {step === 'form' && (
-        <motion.div
-          key="form"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">{t('signUp')}</CardTitle>
-              <CardDescription className="text-center">{t('createAccountDesc')}</CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">{t('fullName')}</Label>
-                  <Input
-                    id="fullName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    required
-                    autoFocus
-                  />
+    <div className="fixed inset-0 z-50 flex bg-background">
+      {/* Left side — form */}
+      <div className="relative flex w-full flex-col justify-between overflow-y-auto p-6 md:w-1/2 md:p-10 lg:p-16">
+        <div className="shrink-0">
+          <Link
+            href="/login?role=client"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="size-4" />
+            {tc('back')}
+          </Link>
+        </div>
+
+        <div className="flex flex-col gap-6 max-w-md mx-auto w-full py-8">
+          <AnimatePresence mode="wait">
+            {step === 'form' && (
+              <motion.div key="client-form" {...slideIn} className="flex flex-col gap-6">
+                <div>
+                  <h1 className="text-2xl font-semibold tracking-tight">{t('createAccount')}</h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t('almostReady')}
+                    {emailParam && (
+                      <>
+                        {' '}
+                        <span className="font-medium text-foreground">{emailParam}</span>
+                      </>
+                    )}
+                    {emailParam ? '' : `, ${t('createAccountDesc')}`}
+                  </p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">{t('email')}</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password">{t('password')}</Label>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                    </button>
-                  </div>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                   <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>{t('firstName')} *</Label>
+                      <Input
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        autoFocus
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>{t('lastName')} *</Label>
+                      <Input
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+                  </div>
+
+                  {!emailParam && (
+                    <div className="space-y-1.5">
+                      <Label>{t('email')} *</Label>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <Label>{t('password')} *</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setConfirmPassword(e.target.value);
+                        }}
+                        required
+                        minLength={6}
+                        className="h-11 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label>{t('phone')}</Label>
                     <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      placeholder={t('password')}
-                    />
-                    <Input
-                      id="confirmPassword"
-                      type={showPassword ? 'text' : 'password'}
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required
-                      minLength={6}
-                      placeholder={t('confirmPassword')}
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+380..."
+                      className="h-11"
                     />
                   </div>
-                </div>
 
-                <div className="space-y-2 pb-2">
-                  <Label htmlFor="phone">
-                    {t('phone')}{' '}
-                    <span className="text-muted-foreground text-xs">({tc('optional')})</span>
-                  </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              </CardContent>
+                  <div className="flex items-start gap-2 pt-1">
+                    <Checkbox
+                      id="terms-client"
+                      checked={termsAccepted}
+                      onCheckedChange={(v) => setTermsAccepted(v === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="terms-client" className="text-xs text-muted-foreground font-normal leading-relaxed cursor-pointer">
+                      {t('acceptTerms')}
+                    </Label>
+                  </div>
 
-              <CardFooter className="flex flex-col gap-4">
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? tc('loading') : t('signUp')}
-                </Button>
+                  <Button
+                    type="submit"
+                    className="w-full h-11"
+                    disabled={loading || !termsAccepted}
+                  >
+                    {loading ? tc('loading') : t('continue')}
+                  </Button>
+                </form>
+
                 <p className="text-sm text-muted-foreground text-center">
                   {t('hasAccount')}{' '}
-                  <Link href="/login" className="text-primary hover:underline">
+                  <Link href="/login?role=client" className="text-primary hover:underline">
                     {t('signIn')}
                   </Link>
                 </p>
-              </CardFooter>
-            </form>
-          </Card>
-        </motion.div>
-      )}
-
-      {step === 'otp' && (
-        <motion.div
-          key="otp"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 20 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card>
-            <CardHeader className="text-center">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-                className="mx-auto mb-2 flex size-14 items-center justify-center rounded-full bg-primary/10"
-              >
-                <Shield className="size-7 text-primary" />
               </motion.div>
-              <CardTitle>{t('enterOTP')}</CardTitle>
-              <CardDescription>
-                {t('otpSentTo')} <span className="font-medium text-foreground">{email}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-6">
-              <InputOTP
-                maxLength={8}
-                pattern={REGEXP_ONLY_DIGITS}
-                value={otpValue}
-                onChange={setOtpValue}
-                onComplete={handleVerifyOTP}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-                  <InputOTPSlot index={3} />
-                </InputOTPGroup>
-                <InputOTPSeparator />
-                <InputOTPGroup>
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
-                  <InputOTPSlot index={6} />
-                  <InputOTPSlot index={7} />
-                </InputOTPGroup>
-              </InputOTP>
+            )}
 
-              <Button
-                className="w-full"
-                onClick={handleVerifyOTP}
-                disabled={loading || otpValue.length !== 8}
-              >
-                {loading ? tc('loading') : tc('confirm')}
-              </Button>
+            {step === 'otp' && (
+              <motion.div key="client-otp" {...slideIn} className="flex flex-col gap-6 items-center">
+                <div className="text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+                    className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-primary/10"
+                  >
+                    <Shield className="size-7 text-primary" />
+                  </motion.div>
+                  <h1 className="text-2xl font-semibold tracking-tight">{t('enterOTP')}</h1>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t('otpSentTo')} <span className="font-medium text-foreground">{email}</span>
+                  </p>
+                </div>
+                <InputOTP
+                  maxLength={8}
+                  pattern={REGEXP_ONLY_DIGITS}
+                  value={otpValue}
+                  onChange={setOtpValue}
+                  onComplete={handleVerifyOTP}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                    <InputOTPSlot index={6} />
+                    <InputOTPSlot index={7} />
+                  </InputOTPGroup>
+                </InputOTP>
+                <Button
+                  className="w-full h-11"
+                  onClick={handleVerifyOTP}
+                  disabled={loading || otpValue.length !== 8}
+                >
+                  {loading ? tc('loading') : tc('confirm')}
+                </Button>
+                <div className="flex items-center gap-4 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => { setStep('form'); setOtpValue(''); }}
+                    className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+                  >
+                    <ArrowLeft className="size-3" />
+                    {tc('back')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    disabled={loading}
+                    className="text-primary hover:underline flex items-center gap-1"
+                  >
+                    <Mail className="size-3" />
+                    {t('resendOTP')}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-              <div className="flex items-center gap-4 text-sm">
-                <button
-                  type="button"
-                  onClick={() => { setStep('form'); setOtpValue(''); }}
-                  className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-                >
-                  <ArrowLeft className="size-3" />
-                  {tc('back')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleResendOTP}
-                  disabled={loading}
-                  className="text-primary hover:underline flex items-center gap-1"
-                >
-                  <Mail className="size-3" />
-                  {t('resendOTP')}
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        <div className="shrink-0" />
+      </div>
+
+      {/* Right side — hero */}
+      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-amber-500/20" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center space-y-4 px-8">
+            <div className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm">
+              <span className="text-3xl font-bold text-primary">C</span>
+            </div>
+            <h2 className="text-xl font-semibold text-foreground/80">CRES-CA</h2>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">{t('platformDesc')}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
