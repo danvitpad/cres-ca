@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Scissors, Sparkles, ArrowLeftRight, Flame, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
@@ -83,9 +83,22 @@ const INDUSTRIES = [
   { key: 'events', icon: PartyPopper },
 ] as const;
 
+const INDUSTRY_PROFESSIONS: Record<string, readonly string[]> = {
+  beauty: ['hairdresser', 'colorist', 'barber', 'nailMaster', 'brows', 'makeup', 'cosmetologist', 'depilation', 'massage', 'tattoo'],
+  health: ['dentist', 'therapist', 'pediatrician', 'psychologist', 'nutritionist', 'physio'],
+  wellness: ['yoga', 'meditation', 'spa', 'sauna', 'massage'],
+  home: ['plumber', 'electrician', 'cleaner', 'handyman', 'mover', 'painter'],
+  auto: ['carWash', 'carRepair', 'tireChange', 'detailing'],
+  fitness: ['personalTrainer', 'crossfit', 'boxing', 'swim', 'pilates', 'yoga'],
+  education: ['tutor', 'languages', 'music', 'art', 'driving'],
+  events: ['photographer', 'dj', 'decorator', 'catering', 'animator', 'makeup'],
+};
+
 export default function FeedPage() {
   const t = useTranslations('feed');
   const tInd = useTranslations('industries');
+  const tProf = useTranslations('professions');
+  const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [masters, setMasters] = useState<FollowedMaster[]>([]);
   const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
@@ -218,18 +231,53 @@ export default function FeedPage() {
         })}
       </div>
 
-      {/* Industry chips — broad categories, not just beauty */}
-      <div className="flex gap-2 overflow-x-auto px-[var(--space-page)] pb-3 scrollbar-thin">
-        {INDUSTRIES.map(({ key, icon: Icon }) => (
-          <Link
-            key={key}
-            href={`/masters?industry=${key}`}
-            className="flex shrink-0 items-center gap-2 rounded-2xl border bg-card px-4 py-2.5 text-sm font-medium transition-all hover:bg-muted hover:-translate-y-0.5 hover:shadow-sm"
-          >
-            <Icon className="size-4 text-[var(--ds-accent)]" />
-            <span>{tInd(key)}</span>
-          </Link>
-        ))}
+      {/* Industry chips — click expands a profession sublist underneath */}
+      <div className="px-[var(--space-page)] pb-3">
+        <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+          {INDUSTRIES.map(({ key, icon: Icon }) => {
+            const active = activeIndustry === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setActiveIndustry(active ? null : key)}
+                className={cn(
+                  'flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium transition-all',
+                  active
+                    ? 'border-[var(--ds-accent)] bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]'
+                    : 'bg-card hover:bg-muted hover:-translate-y-0.5 hover:shadow-sm',
+                )}
+              >
+                <Icon className="size-4" />
+                <span>{tInd(key)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <AnimatePresence>
+          {activeIndustry && INDUSTRY_PROFESSIONS[activeIndustry] && (
+            <motion.div
+              key={activeIndustry}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-wrap gap-2 pt-3">
+                {INDUSTRY_PROFESSIONS[activeIndustry].map((prof) => (
+                  <Link
+                    key={prof}
+                    href={`/masters?industry=${activeIndustry}&profession=${prof}`}
+                    className="rounded-full border bg-background px-3.5 py-1.5 text-xs text-muted-foreground hover:border-[var(--ds-accent)] hover:text-foreground transition-colors"
+                  >
+                    {tProf(prof)}
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Time-limited slots — no label, no icons, just cards */}
