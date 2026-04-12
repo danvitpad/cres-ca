@@ -16,7 +16,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { CalendarDays, Clock, RefreshCw, User } from 'lucide-react';
+import { CalendarDays, Clock, RefreshCw, Star, User } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface HistoryAppointment {
   id: string;
@@ -50,11 +51,17 @@ const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'o
 export default function HistoryPage() {
   const t = useTranslations('booking');
   const tc = useTranslations('common');
+  const tr = useTranslations('clientReviews');
   const router = useRouter();
   const { userId } = useAuthStore();
   const [appointments, setAppointments] = useState<HistoryAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [reviewedApptIds, setReviewedApptIds] = useState<Set<string>>(new Set());
+  const [ratingFor, setRatingFor] = useState<HistoryAppointment | null>(null);
+  const [ratingScore, setRatingScore] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingBusy, setRatingBusy] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -96,11 +103,46 @@ export default function HistoryPage() {
           };
         });
         setAppointments(enriched);
+
+        const { data: existing } = await supabase
+          .from('reviews')
+          .select('appointment_id')
+          .eq('reviewer_id', userId)
+          .eq('target_type', 'master')
+          .in('appointment_id', enriched.map((a) => a.id));
+        if (existing) {
+          setReviewedApptIds(new Set(existing.map((r: { appointment_id: string }) => r.appointment_id)));
+        }
       }
       setLoading(false);
     }
     load();
   }, [userId]);
+
+  async function submitRating() {
+    if (!ratingFor || !userId || ratingBusy) return;
+    setRatingBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('reviews').insert({
+      appointment_id: ratingFor.id,
+      reviewer_id: userId,
+      target_type: 'master',
+      target_id: ratingFor.master_id,
+      score: ratingScore,
+      comment: ratingComment.trim() || null,
+      is_published: true,
+    });
+    setRatingBusy(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(tr('thanks'));
+    setReviewedApptIds((prev) => new Set(prev).add(ratingFor.id));
+    setRatingFor(null);
+    setRatingScore(5);
+    setRatingComment('');
+  }
 
   const now = new Date().toISOString();
   const upcoming = appointments.filter((a) => a.starts_at >= now && a.status !== 'cancelled' && a.status !== 'no_show');
@@ -234,17 +276,34 @@ export default function HistoryPage() {
                     </span>
                   </div>
 
-                  {/* Repeat button for past completed appointments */}
+                  {/* Repeat + Rate buttons for past completed appointments */}
                   {tab === 'past' && appointment.status === 'completed' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full gap-2 mt-1"
-                      onClick={() => handleRepeat(appointment)}
-                    >
-                      <RefreshCw className="size-3.5" />
-                      {t('repeatBooking') ?? tc('create')}
-                    </Button>
+                    <div className="mt-1 flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 gap-2"
+                        onClick={() => handleRepeat(appointment)}
+                      >
+                        <RefreshCw className="size-3.5" />
+                        {t('repeatBooking') ?? tc('create')}
+                      </Button>
+                      {!reviewedApptIds.has(appointment.id) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 gap-2"
+                          onClick={() => {
+                            setRatingFor(appointment);
+                            setRatingScore(5);
+                            setRatingComment('');
+                          }}
+                        >
+                          <Star className="size-3.5" />
+                          {tr('rateCta')}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -252,6 +311,62 @@ export default function HistoryPage() {
           )}
         </motion.div>
       </AnimatePresence>
+
+      {ratingFor && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          onClick={() => !ratingBusy && setRatingFor(null)}
+        >
+          <motion.div
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="w-full max-w-md space-y-4 rounded-3xl border bg-card p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div>
+              <h3 className="text-lg font-semibold">{tr('rateTitle')}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {ratingFor.service?.name} · {ratingFor.client?.master?.display_name ?? ratingFor.client?.master?.profile?.full_name ?? '—'}
+              </p>
+            </div>
+            <div className="flex justify-center gap-1">
+              {Array.from({ length: 5 }).map((_, i) => {
+                const v = i + 1;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setRatingScore(v)}
+                    className="p-1"
+                  >
+                    <Star
+                      className={cn(
+                        'size-8 transition-colors',
+                        v <= ratingScore ? 'fill-amber-400 stroke-amber-400' : 'stroke-muted-foreground/40',
+                      )}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            <textarea
+              value={ratingComment}
+              onChange={(e) => setRatingComment(e.target.value)}
+              placeholder={tr('commentPlaceholder')}
+              rows={3}
+              className="w-full resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+            <div className="flex gap-2">
+              <Button variant="ghost" className="flex-1" disabled={ratingBusy} onClick={() => setRatingFor(null)}>
+                {tc('cancel')}
+              </Button>
+              <Button className="flex-1" disabled={ratingBusy} onClick={submitRating}>
+                {tr('submit')}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

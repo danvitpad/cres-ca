@@ -762,7 +762,12 @@
     "emptyDesc": "After a visit, your master will ask for a rating — it helps other clients.",
     "rating": "Rating",
     "comment": "Comment",
-    "anonymous": "Anonymous"
+    "anonymous": "Anonymous",
+    "rateCta": "Rate",
+    "rateTitle": "Leave a review",
+    "commentPlaceholder": "Optional — share what you liked",
+    "submit": "Submit",
+    "thanks": "Thanks for your review!"
   },
   "clientNotifications": {
     "title": "Notifications",
