@@ -449,6 +449,20 @@ export default function BookPage() {
     }
 
     toast.success(t('bookingSuccess'));
+
+    // 7.12 — On first booking for self, prompt the client to fill the intake form
+    if (!bookingFor) {
+      const { data: intakeRow } = await supabase
+        .from('client_health_profiles')
+        .select('profile_id')
+        .eq('profile_id', userId)
+        .maybeSingle();
+      if (!intakeRow) {
+        router.push('/forms?prompt=intake');
+        return;
+      }
+    }
+
     router.push('/history');
   }
 

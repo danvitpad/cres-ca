@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Users } from 'lucide-react';
+import { Plus, Trash2, Users, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -23,12 +23,18 @@ interface FamilyMember {
   linked_profile_id: string | null;
 }
 
+interface BudgetRow {
+  family_link_id: string | null;
+  total_spent: number;
+}
+
 const relationships = ['child', 'spouse', 'parent', 'other'] as const;
 
 export default function FamilyPage() {
   const t = useTranslations('family');
   const { userId } = useAuthStore();
   const [members, setMembers] = useState<FamilyMember[]>([]);
+  const [budgetByMember, setBudgetByMember] = useState<Map<string | null, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -43,8 +49,24 @@ export default function FamilyPage() {
       .eq('parent_profile_id', userId)
       .order('created_at');
     setMembers((data ?? []) as FamilyMember[]);
+
+    const { data: budgetRows } = await supabase
+      .from('clients')
+      .select('family_link_id, total_spent')
+      .eq('profile_id', userId);
+    if (budgetRows) {
+      const map = new Map<string | null, number>();
+      for (const row of budgetRows as unknown as BudgetRow[]) {
+        const k = row.family_link_id;
+        map.set(k, (map.get(k) ?? 0) + Number(row.total_spent ?? 0));
+      }
+      setBudgetByMember(map);
+    }
+
     setLoading(false);
   }, [userId]);
+
+  const totalBudget = Array.from(budgetByMember.values()).reduce((s, v) => s + v, 0);
 
   useEffect(() => {
     fetchMembers();
@@ -96,6 +118,21 @@ export default function FamilyPage() {
           <Plus className="h-4 w-4" />
           {t('addMember')}
         </button>
+      </div>
+
+      {/* Family budget rollup */}
+      <div className="mb-4 flex items-center gap-3 rounded-[var(--radius-card)] border bg-[var(--ds-accent-soft)] p-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ds-accent)] text-white">
+          <Wallet className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground">{t('totalBudget')}</p>
+          <p className="text-lg font-semibold">{totalBudget.toFixed(0)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-muted-foreground">{t('myBudget')}</p>
+          <p className="text-sm font-medium">{(budgetByMember.get(null) ?? 0).toFixed(0)}</p>
+        </div>
       </div>
 
       {/* Add form */}
@@ -171,7 +208,9 @@ export default function FamilyPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold">{member.member_name}</p>
-                  <p className="text-xs text-muted-foreground">{t(member.relationship as 'child')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t(member.relationship as 'child')} • {t('spent')}: {(budgetByMember.get(member.id) ?? 0).toFixed(0)}
+                  </p>
                 </div>
                 <button
                   onClick={() => handleRemove(member.id)}

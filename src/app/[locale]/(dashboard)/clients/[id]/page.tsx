@@ -23,11 +23,12 @@ import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
 import { ImageComparisonSlider } from '@/components/ui/image-comparison-slider';
-import { ArrowLeft, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { BehaviorIndicator, AppointmentStatus } from '@/types';
 
 interface ClientDetail {
   id: string;
+  profile_id: string | null;
   full_name: string;
   phone: string | null;
   email: string | null;
@@ -44,6 +45,15 @@ interface ClientDetail {
   behavior_indicators: BehaviorIndicator[];
 }
 
+interface ClientIntake {
+  allergies: string | null;
+  chronic_conditions: string | null;
+  medications: string | null;
+  pregnancy: boolean | null;
+  contraindications: string | null;
+  updated_at: string | null;
+}
+
 interface AppointmentRow {
   id: string;
   starts_at: string;
@@ -58,6 +68,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const tc = useTranslations('common');
   const router = useRouter();
   const [client, setClient] = useState<ClientDetail | null>(null);
+  const [intake, setIntake] = useState<ClientIntake | null>(null);
+  const [blacklist, setBlacklist] = useState<{ warning: boolean; total: number } | null>(null);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -69,7 +81,32 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   async function loadClient() {
     const supabase = createClient();
     const { data } = await supabase.from('clients').select('*').eq('id', id).single();
-    if (data) setClient(data as unknown as ClientDetail);
+    if (data) {
+      const c = data as unknown as ClientDetail;
+      setClient(c);
+      if (c.profile_id) {
+        const { data: intakeRow } = await supabase
+          .from('client_health_profiles')
+          .select('allergies, chronic_conditions, medications, pregnancy, contraindications, updated_at')
+          .eq('profile_id', c.profile_id)
+          .maybeSingle();
+        setIntake((intakeRow as ClientIntake) ?? null);
+
+        try {
+          const res = await fetch('/api/blacklist/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile_id: c.profile_id }),
+          });
+          if (res.ok) setBlacklist(await res.json());
+        } catch {
+          // ignore
+        }
+      } else {
+        setIntake(null);
+        setBlacklist(null);
+      }
+    }
     setLoading(false);
   }
 
@@ -110,6 +147,18 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <BehaviorIndicators indicators={client.behavior_indicators} />
       </div>
 
+      {blacklist?.warning && (
+        <div className="flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-red-600 dark:text-red-400" />
+          <div className="space-y-1">
+            <p className="font-medium text-red-900 dark:text-red-200">{t('blacklistWarning')}</p>
+            <p className="text-sm text-red-800/80 dark:text-red-300/80">
+              {t('blacklistWarningDesc', { count: blacklist.total })}
+            </p>
+          </div>
+        </div>
+      )}
+
       <Tabs defaultValue="info">
         <TabsList>
           <TabsTrigger value="info">{t('infoTab')}</TabsTrigger>
@@ -129,7 +178,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <NotesTab client={client} onSaved={loadClient} />
         </TabsContent>
         <TabsContent value="health">
-          <HealthTab client={client} onSaved={loadClient} />
+          <HealthTab client={client} intake={intake} onSaved={loadClient} />
         </TabsContent>
         <TabsContent value="files">
           <FileUpload clientId={id} />
@@ -263,7 +312,7 @@ function NotesTab({ client, onSaved }: { client: ClientDetail; onSaved: () => vo
   );
 }
 
-function HealthTab({ client, onSaved }: { client: ClientDetail; onSaved: () => void }) {
+function HealthTab({ client, intake, onSaved }: { client: ClientDetail; intake: ClientIntake | null; onSaved: () => void }) {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const { canUse } = useSubscription();
@@ -273,9 +322,17 @@ function HealthTab({ client, onSaved }: { client: ClientDetail; onSaved: () => v
 
   if (!canUse('allergies')) return <p className="p-4 text-sm text-muted-foreground">Upgrade to Pro for health tracking.</p>;
 
+  const intakeHasContent = !!intake && (
+    !!intake.allergies?.trim() ||
+    !!intake.chronic_conditions?.trim() ||
+    !!intake.medications?.trim() ||
+    !!intake.contraindications?.trim() ||
+    intake.pregnancy === true
+  );
+
   async function handleSave() {
     setSaving(true);
-    const hasAlert = allergies.length > 0 || contraindications.length > 0;
+    const hasAlert = allergies.length > 0 || contraindications.length > 0 || intakeHasContent;
     const supabase = createClient();
     const { error } = await supabase.from('clients').update({
       allergies,
@@ -288,19 +345,61 @@ function HealthTab({ client, onSaved }: { client: ClientDetail; onSaved: () => v
   }
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-4">
-        <div className="space-y-2">
-          <Label>{t('allergies')}</Label>
-          <TagInput value={allergies} onChange={setAllergies} placeholder={t('addAllergy')} />
-        </div>
-        <div className="space-y-2">
-          <Label>{t('contraindications')}</Label>
-          <TagInput value={contraindications} onChange={setContraindications} placeholder={t('addContraindication')} />
-        </div>
-        <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            {intakeHasContent && <AlertTriangle className="h-4 w-4 text-red-500" />}
+            {t('intakeFromClient')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-3 text-sm">
+          {!intake && <p className="text-muted-foreground">{t('noIntakeYet')}</p>}
+          {intake && !intakeHasContent && <p className="text-muted-foreground">{t('intakeEmpty')}</p>}
+          {intake && intakeHasContent && (
+            <>
+              {intake.allergies?.trim() && (
+                <div><span className="text-muted-foreground">{t('allergies')}:</span> {intake.allergies}</div>
+              )}
+              {intake.chronic_conditions?.trim() && (
+                <div><span className="text-muted-foreground">{t('chronicConditions')}:</span> {intake.chronic_conditions}</div>
+              )}
+              {intake.medications?.trim() && (
+                <div><span className="text-muted-foreground">{t('medications')}:</span> {intake.medications}</div>
+              )}
+              {intake.contraindications?.trim() && (
+                <div><span className="text-muted-foreground">{t('contraindications')}:</span> {intake.contraindications}</div>
+              )}
+              {intake.pregnancy === true && (
+                <div><span className="text-muted-foreground">{t('pregnancy')}:</span> ✓</div>
+              )}
+              {intake.updated_at && (
+                <div className="text-xs text-muted-foreground pt-1">
+                  {t('intakeUpdatedAt')}: {new Date(intake.updated_at).toLocaleDateString()}
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">{t('masterNotes')}</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0 space-y-4">
+          <div className="space-y-2">
+            <Label>{t('allergies')}</Label>
+            <TagInput value={allergies} onChange={setAllergies} placeholder={t('addAllergy')} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('contraindications')}</Label>
+            <TagInput value={contraindications} onChange={setContraindications} placeholder={t('addContraindication')} />
+          </div>
+          <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

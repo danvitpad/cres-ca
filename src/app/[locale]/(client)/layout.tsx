@@ -43,6 +43,7 @@ import {
   Star,
   Bell,
   UsersRound,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -66,6 +67,7 @@ const primaryNav = [
 const accountNav = [
   { key: 'profile', icon: User, href: '/profile' },
   { key: 'family', icon: UsersRound, href: '/profile/family' },
+  { key: 'photos', icon: ImageIcon, href: '/profile/photos' },
   { key: 'activity', icon: History, href: '/history' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
   { key: 'favorites', icon: Heart, href: '/favorites' },
@@ -78,6 +80,7 @@ const accountNav = [
 
 const accountRoutes = [
   '/profile',
+  '/profile/photos',
   '/history',
   '/my-masters',
   '/favorites',

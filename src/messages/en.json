@@ -92,7 +92,8 @@
     "newPasswordPlaceholder": "Enter a new password",
     "passwordTooShort": "Password must be at least 6 characters",
     "acceptTerms": "I accept the Privacy Policy and Terms of Service",
-    "createAccount": "Create Account"
+    "createAccount": "Create Account",
+    "emailNotFound": "No account found. Let’s sign you up..."
   },
   "landing": {
     "heroTitle": "Your Services, Simplified",
@@ -421,7 +422,17 @@
     "reviews": "Reviews",
     "sales": "Sales",
     "createdDate": "Date created",
-    "showingResults": "Showing results"
+    "showingResults": "Showing results",
+    "intakeFromClient": "Client intake",
+    "noIntakeYet": "Client has not filled out the form yet",
+    "intakeEmpty": "Form filled out, no contraindications",
+    "chronicConditions": "Chronic conditions",
+    "medications": "Medications",
+    "pregnancy": "Pregnancy",
+    "intakeUpdatedAt": "Updated",
+    "masterNotes": "Master notes",
+    "blacklistWarning": "Warning: cross-master blacklist",
+    "blacklistWarningDesc": "This client has cancelled or no-showed {count} times with other masters. Consider this before confirming."
   },
   "booking": {
     "selectService": "Select a service",
@@ -668,7 +679,8 @@
     "orders": "Orders",
     "settings": "Settings",
     "myAccount": "My Account",
-    "searchPlaceholder": "Search services, businesses, masters..."
+    "searchPlaceholder": "Search services, businesses, masters...",
+    "photos": "Before/After photos"
   },
   "clientHeader": {
     "allServices": "All treatments",
@@ -772,7 +784,9 @@
     "medications": "Current medications",
     "pregnancy": "Pregnancy / nursing",
     "contraindications": "Contraindications",
-    "save": "Save"
+    "save": "Save",
+    "promptTitle": "Please fill out the intake form",
+    "promptDesc": "This is your first booking. Share allergies and contraindications so your master can prepare and keep you safe."
   },
   "clientReviews": {
     "title": "My reviews",
@@ -927,7 +941,12 @@
     "fullName": "Full name",
     "phone": "Phone",
     "currentPlan": "Current plan",
-    "specializationPlaceholder": "Nail artist, Massage therapist..."
+    "specializationPlaceholder": "Nail artist, Massage therapist...",
+    "photosTab": "Before/After photos",
+    "noPhotos": "No photos yet",
+    "photosDesc": "Before and after photos uploaded by your master will appear here",
+    "before": "Before",
+    "after": "After"
   },
   "catalogue": {
     "sectionTitle": "Catalogue",
@@ -989,7 +1008,7 @@
     "noPricing": "No pricing rules",
     "noPricingDesc": "Configure dynamic pricing rules for your services.",
     "reviews": "Reviews",
-    "reviewsDesc": "View and respond to client reviews.",
+    "reviewsDesc": "Collect and showcase authentic client reviews to attract new customers.",
     "noReviews": "No reviews",
     "noReviewsDesc": "Your client reviews will appear here.",
     "marketplaceProfile": "Marketplace Profile",
@@ -1053,7 +1072,6 @@
     "burningBullet2": "Clients receive push notifications about nearby deals",
     "burningBullet3": "Set your own discount percentage and time window",
     "reviewsTitle": "Build your reputation with client reviews",
-    "reviewsDesc": "Collect and showcase authentic client reviews to attract new customers.",
     "reviewsBullet1": "Automatic review requests sent after each visit",
     "reviewsBullet2": "Respond to reviews and build client trust",
     "reviewsBullet3": "Low ratings are kept private so you can improve",
@@ -1146,7 +1164,10 @@
     "bookingForMe": "Myself",
     "remove": "Remove",
     "added": "Family member added",
-    "removed": "Family member removed"
+    "removed": "Family member removed",
+    "totalBudget": "Family budget (total)",
+    "myBudget": "My own",
+    "spent": "spent"
   },
   "queue": {
     "title": "Live Queue",

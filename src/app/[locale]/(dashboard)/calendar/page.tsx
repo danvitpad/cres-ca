@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useMaster } from '@/hooks/use-master';
@@ -241,6 +242,20 @@ export default function CalendarPage() {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  /* Repeat-booking deep link from client card: /calendar?repeat=<apptId>&client=<id>&service=<id> */
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  useEffect(() => {
+    const repeat = searchParams.get('repeat');
+    if (!repeat) return;
+    const clientId = searchParams.get('client') ?? undefined;
+    const serviceId = searchParams.get('service') ?? undefined;
+    setNewDialogDefaults({ clientId, serviceId });
+    setNewDialogOpen(true);
+    router.replace('/calendar');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { startDate, endDate } = useMemo(() => {

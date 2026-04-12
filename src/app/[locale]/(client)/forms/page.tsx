@@ -8,6 +8,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -39,6 +40,8 @@ interface ConsentItem {
 
 export default function FormsPage() {
   const t = useTranslations('clientForms');
+  const searchParams = useSearchParams();
+  const showIntakePrompt = searchParams.get('prompt') === 'intake';
   const { userId } = useAuthStore();
   const [form, setForm] = useState<IntakeForm>({
     allergies: '',
@@ -131,6 +134,16 @@ export default function FormsPage() {
         <h1 className="text-3xl font-bold tracking-tight">{t('title')}</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('desc')}</p>
       </div>
+
+      {showIntakePrompt && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="space-y-1">
+            <p className="font-medium text-amber-900 dark:text-amber-200">{t('promptTitle')}</p>
+            <p className="text-sm text-amber-800/80 dark:text-amber-300/80">{t('promptDesc')}</p>
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="intake" className="w-full">
         <TabsList className="grid w-full grid-cols-3 max-w-[420px]">

@@ -45,6 +45,11 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
+    const urlEmail = searchParams.get('email');
+    if (urlEmail) {
+      setEmail(urlEmail);
+      return;
+    }
     try {
       const saved = localStorage.getItem(REMEMBER_KEY);
       if (saved) {
@@ -52,12 +57,30 @@ export default function LoginPage() {
         if (parsed.email) setEmail(parsed.email);
       }
     } catch {}
-  }, []);
+  }, [searchParams]);
 
   async function handleEmailContinue(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
-    setStep('password');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const json = (await res.json()) as { exists: boolean; role?: string | null };
+      if (json.exists) {
+        setStep('password');
+      } else {
+        toast.info(t('emailNotFound'));
+        router.push(`/register?role=${role ?? 'client'}&email=${encodeURIComponent(email)}`);
+      }
+    } catch {
+      setStep('password');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -228,8 +251,8 @@ export default function LoginPage() {
                       className="h-11"
                     />
                   </div>
-                  <Button type="submit" className="w-full h-11">
-                    {t('continue')}
+                  <Button type="submit" className="w-full h-11" disabled={loading}>
+                    {loading ? tc('loading') : t('continue')}
                   </Button>
                 </form>
 

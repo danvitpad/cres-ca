@@ -95,6 +95,7 @@ export default function RegisterPage() {
 
     if (data.user && data.user.identities?.length === 0) {
       toast.error(t('emailAlreadyRegistered'));
+      router.push(`/login?role=${isBusinessFlow ? 'business' : 'client'}&email=${encodeURIComponent(email)}`);
       return;
     }
 
