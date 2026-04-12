@@ -627,7 +627,10 @@
     "min": "min",
     "noServicesAvailable": "No services available",
     "follow": "Follow",
-    "following": "Following"
+    "following": "Following",
+    "share": "Share",
+    "linkCopied": "Link copied to clipboard",
+    "linkCopyFailed": "Couldn't copy the link"
   },
   "map": {
     "nearbyMasters": "Masters Nearby",

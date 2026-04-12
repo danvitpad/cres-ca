@@ -17,7 +17,8 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Star, Clock, MapPin, ArrowLeft, Heart, Check } from 'lucide-react';
+import { Star, Clock, MapPin, ArrowLeft, Heart, Check, Share2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface MasterProfile {
   id: string;
@@ -125,6 +126,25 @@ export default function MasterProfilePage() {
     setFollowBusy(false);
   }, [userId, masterId, isFollowing, followBusy]);
 
+  const handleShare = useCallback(async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const title = master?.display_name ?? master?.profile?.full_name ?? 'Master';
+    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch {
+        // user cancelled or share unsupported — fall through to clipboard
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t('linkCopied'));
+    } catch {
+      toast.error(t('linkCopyFailed'));
+    }
+  }, [master, t]);
+
   if (loading) {
     return (
       <div className="p-4 space-y-4">
@@ -214,18 +234,23 @@ export default function MasterProfilePage() {
               {master.city}{master.address ? `, ${master.address}` : ''}
             </div>
           )}
-          {userId && (
-            <Button
-              size="sm"
-              variant={isFollowing ? 'outline' : 'default'}
-              disabled={followBusy}
-              onClick={toggleFollow}
-              className="mt-2"
-            >
-              {isFollowing ? <Check className="size-4" /> : <Heart className="size-4" />}
-              {isFollowing ? t('following') : t('follow')}
+          <div className="mt-2 flex flex-wrap gap-2">
+            {userId && (
+              <Button
+                size="sm"
+                variant={isFollowing ? 'outline' : 'default'}
+                disabled={followBusy}
+                onClick={toggleFollow}
+              >
+                {isFollowing ? <Check className="size-4" /> : <Heart className="size-4" />}
+                {isFollowing ? t('following') : t('follow')}
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={handleShare}>
+              <Share2 className="size-4" />
+              {t('share')}
             </Button>
-          )}
+          </div>
         </div>
       </motion.div>
 

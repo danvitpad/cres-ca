@@ -627,7 +627,10 @@
     "min": "мин",
     "noServicesAvailable": "Нет доступных услуг",
     "follow": "Подписаться",
-    "following": "Вы подписаны"
+    "following": "Вы подписаны",
+    "share": "Поделиться",
+    "linkCopied": "Ссылка скопирована",
+    "linkCopyFailed": "Не удалось скопировать ссылку"
   },
   "map": {
     "nearbyMasters": "Мастера рядом",

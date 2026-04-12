@@ -627,7 +627,10 @@
     "min": "хв",
     "noServicesAvailable": "Немає доступних послуг",
     "follow": "Підписатися",
-    "following": "Ви підписані"
+    "following": "Ви підписані",
+    "share": "Поділитися",
+    "linkCopied": "Посилання скопійовано",
+    "linkCopyFailed": "Не вдалося скопіювати посилання"
   },
   "map": {
     "nearbyMasters": "Майстри поблизу",
