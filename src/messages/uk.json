@@ -420,6 +420,8 @@
   },
   "booking": {
     "selectService": "Оберіть послугу",
+    "bookingFor": "Кого записуємо",
+    "myself": "Себе",
     "selectDate": "Оберіть дату",
     "selectTime": "Оберіть час",
     "service": "Послуга",

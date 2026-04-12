@@ -420,6 +420,8 @@
   },
   "booking": {
     "selectService": "Select a service",
+    "bookingFor": "Booking for",
+    "myself": "Myself",
     "selectDate": "Select a date",
     "selectTime": "Select a time",
     "service": "Service",

@@ -23,9 +23,15 @@ import { WaitlistButton } from '@/components/booking/waitlist-button';
 import { LiqPayButton } from '@/components/booking/liqpay-button';
 import { ConsentForm, getConsentFormText } from '@/components/shared/consent-form';
 import { format } from 'date-fns';
-import { ArrowLeft, Clock, Check, Plus } from 'lucide-react';
+import { ArrowLeft, Clock, Check, Plus, User, Users } from 'lucide-react';
 
 type Step = 'service' | 'date' | 'time' | 'consent' | 'confirm';
+
+interface FamilyMember {
+  id: string;
+  member_name: string;
+  relationship: string;
+}
 
 interface ServiceItem {
   id: string;
@@ -84,6 +90,8 @@ export default function BookPage() {
   const [masterTier, setMasterTier] = useState<string | null>(null);
   const [clientAllergies, setClientAllergies] = useState<string[]>([]);
   const [clientName, setClientName] = useState('');
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [bookingFor, setBookingFor] = useState<FamilyMember | null>(null);
 
   // Load master + services
   useEffect(() => {
@@ -154,11 +162,27 @@ export default function BookPage() {
         .select('allergies')
         .eq('profile_id', userId!)
         .eq('master_id', preselectedMasterId!)
-        .single();
+        .is('family_link_id', null)
+        .maybeSingle();
       if (client?.allergies) setClientAllergies(client.allergies);
     }
     loadClientInfo();
   }, [userId, preselectedMasterId]);
+
+  // Load family members for "book for whom" selector
+  useEffect(() => {
+    if (!userId) return;
+    async function loadFamily() {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('family_links')
+        .select('id, member_name, relationship')
+        .eq('parent_profile_id', userId!)
+        .order('created_at');
+      setFamilyMembers((data ?? []) as FamilyMember[]);
+    }
+    loadFamily();
+  }, [userId]);
 
   // Load upsell options when service selected
   useEffect(() => {
@@ -249,18 +273,21 @@ export default function BookPage() {
     const formText = getConsentFormText({
       serviceName: selectedService.name,
       masterName: master?.display_name ?? master?.profile?.full_name ?? '',
-      clientName,
-      allergies: clientAllergies,
+      clientName: bookingFor?.member_name ?? clientName,
+      allergies: bookingFor ? [] : clientAllergies,
       date: today,
     });
 
-    // Get client ID if exists
-    const { data: existingClient } = await supabase
+    // Get client ID if exists (family-aware)
+    let consentLookup = supabase
       .from('clients')
       .select('id')
       .eq('profile_id', userId)
-      .eq('master_id', preselectedMasterId)
-      .single();
+      .eq('master_id', preselectedMasterId);
+    consentLookup = bookingFor
+      ? consentLookup.eq('family_link_id', bookingFor.id)
+      : consentLookup.is('family_link_id', null);
+    const { data: existingClient } = await consentLookup.maybeSingle();
 
     if (existingClient) {
       await supabase.from('consent_forms').insert({
@@ -290,14 +317,17 @@ export default function BookPage() {
     const endsAt = `${dateStr}T${endH}:${endM}:00`;
     const totalPrice = Number(selectedService.price) + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
 
-    // Find or create client record for this user under this master
+    // Find or create client record for self or selected family member
     let clientId: string | null = null;
-    const { data: existingClient } = await supabase
+    let existingClientQuery = supabase
       .from('clients')
       .select('id')
       .eq('profile_id', userId)
-      .eq('master_id', preselectedMasterId)
-      .single();
+      .eq('master_id', preselectedMasterId);
+    existingClientQuery = bookingFor
+      ? existingClientQuery.eq('family_link_id', bookingFor.id)
+      : existingClientQuery.is('family_link_id', null);
+    const { data: existingClient } = await existingClientQuery.maybeSingle();
 
     let isNewClient = false;
     if (existingClient) {
@@ -313,13 +343,14 @@ export default function BookPage() {
         .insert({
           profile_id: userId,
           master_id: preselectedMasterId,
-          full_name: profile?.full_name ?? '',
-          phone: profile?.phone ?? null,
+          family_link_id: bookingFor?.id ?? null,
+          full_name: bookingFor?.member_name ?? profile?.full_name ?? '',
+          phone: bookingFor ? null : (profile?.phone ?? null),
         })
         .select('id')
         .single();
       clientId = newClient?.id ?? null;
-      isNewClient = !!clientId;
+      isNewClient = !!clientId && !bookingFor;
     }
 
     if (isNewClient && typeof window !== 'undefined') {
@@ -374,11 +405,12 @@ export default function BookPage() {
         .eq('id', preselectedMasterId)
         .single();
       if (masterProfile?.profile_id) {
+        const forWhom = bookingFor ? ` (for ${bookingFor.member_name})` : '';
         await supabase.from('notifications').insert({
           profile_id: masterProfile.profile_id,
           channel: 'telegram',
           title: '🆕 New booking!',
-          body: `${selectedService.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime}`,
+          body: `${selectedService.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime}${forWhom}`,
           scheduled_for: new Date().toISOString(),
         });
       }
@@ -478,6 +510,40 @@ export default function BookPage() {
       {/* Step 1: Service */}
       {step === 'service' && (
         <div className="space-y-3">
+          {familyMembers.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground">{t('bookingFor')}</h3>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setBookingFor(null)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                    bookingFor === null
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-muted',
+                  )}
+                >
+                  <User className="size-3.5" />
+                  {t('myself')}
+                </button>
+                {familyMembers.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setBookingFor(m)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
+                      bookingFor?.id === m.id
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background hover:bg-muted',
+                    )}
+                  >
+                    <Users className="size-3.5" />
+                    {m.member_name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <h2 className="text-lg font-semibold">{t('selectService')}</h2>
           {services.map((service) => (
             <Card
@@ -610,6 +676,12 @@ export default function BookPage() {
           <h2 className="text-lg font-semibold">{t('confirmBooking')}</h2>
           <Card>
             <CardContent className="pt-4 space-y-3">
+              {bookingFor && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">{t('bookingFor')}</span>
+                  <span className="text-sm font-medium">{bookingFor.member_name}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">{t('service')}</span>
                 <span className="text-sm font-medium">{selectedService.name}</span>

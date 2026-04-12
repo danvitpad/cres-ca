@@ -1,6 +1,8 @@
 /** --- YAML
  * name: Birthday Greetings Cron
- * description: Daily cron that checks client/master birthdays and creates greeting notifications
+ * description: Daily cron — checks client/master birthdays and creates greeting notifications. Dedup via [bday:<scope>:<id>:<YYYY-MM-DD>] marker so multiple runs same day are no-ops.
+ * created: 2026-04-12
+ * updated: 2026-04-12
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -8,7 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -16,93 +18,115 @@ export async function GET(request: Request) {
   const today = new Date();
   const month = today.getMonth() + 1;
   const day = today.getDate();
+  const dayKey = today.toISOString().split('T')[0];
 
-  // Find clients with birthdays today
-  const { data: birthdayClients } = await supabase
+  // Pre-fetch today's existing birthday notifications so we don't double-send
+  const { data: alreadySent } = await supabase
+    .from('notifications')
+    .select('body')
+    .ilike('body', `%[bday:%:${dayKey}]%`);
+  const sentMarkers = new Set(
+    (alreadySent ?? [])
+      .map((n) => n.body?.match(/\[bday:[^\]]+\]/)?.[0])
+      .filter((m): m is string => !!m),
+  );
+
+  const inserts: Array<{
+    profile_id: string;
+    channel: string;
+    title: string;
+    body: string;
+    scheduled_for: string;
+  }> = [];
+
+  // 1. Client birthdays — notify the master + (if opted-in) the client
+  const { data: clientsWithBirthdays } = await supabase
     .from('clients')
-    .select('id, full_name, master_id, date_of_birth')
+    .select('id, full_name, master_id, profile_id, date_of_birth')
     .not('date_of_birth', 'is', null);
 
-  const clientBirthdays = (birthdayClients ?? []).filter((c) => {
+  const clientHits = (clientsWithBirthdays ?? []).filter((c) => {
     if (!c.date_of_birth) return false;
     const dob = new Date(c.date_of_birth);
     return dob.getMonth() + 1 === month && dob.getDate() === day;
   });
 
-  // Notify masters about client birthdays
-  for (const client of clientBirthdays) {
-    // Get master's profile_id for notification
-    const { data: master } = await supabase
+  const masterIds = [...new Set(clientHits.map((c) => c.master_id))];
+  const masterMap = new Map<
+    string,
+    { profile_id: string | null; birthday_auto_greet: boolean | null; birthday_discount_percent: number | null }
+  >();
+  if (masterIds.length) {
+    const { data: masters } = await supabase
       .from('masters')
-      .select('profile_id, birthday_auto_greet, birthday_discount_percent')
-      .eq('id', client.master_id)
-      .single();
+      .select('id, profile_id, birthday_auto_greet, birthday_discount_percent')
+      .in('id', masterIds);
+    for (const m of masters ?? []) masterMap.set(m.id, m);
+  }
 
-    if (!master) continue;
+  for (const client of clientHits) {
+    const master = masterMap.get(client.master_id);
+    if (!master?.profile_id) continue;
 
-    // Notify master
-    await supabase.from('notifications').insert({
-      profile_id: master.profile_id,
-      channel: 'telegram',
-      title: 'Birthday',
-      body: `Today is ${client.full_name}'s birthday! 🎂`,
-      status: 'pending',
-      scheduled_for: new Date().toISOString(),
-    });
+    const masterMarker = `[bday:master:${client.id}:${dayKey}]`;
+    if (!sentMarkers.has(masterMarker)) {
+      inserts.push({
+        profile_id: master.profile_id,
+        channel: 'telegram',
+        title: '🎂 Birthday today',
+        body: `${client.full_name} has a birthday today! ${masterMarker}`,
+        scheduled_for: new Date().toISOString(),
+      });
+    }
 
-    // Auto-greet client if master enabled it
-    if (master.birthday_auto_greet) {
-      const discount = master.birthday_discount_percent ?? 0;
-      const discountText = discount > 0
-        ? ` Use code BDAY for ${discount}% off your next visit!`
-        : '';
-
-      // Get client's profile_id for notification
-      const { data: clientRecord } = await supabase
-        .from('clients')
-        .select('profile_id')
-        .eq('id', client.id)
-        .single();
-
-      if (clientRecord?.profile_id) {
-        await supabase.from('notifications').insert({
-          profile_id: clientRecord.profile_id,
+    if (master.birthday_auto_greet && client.profile_id) {
+      const clientMarker = `[bday:client:${client.id}:${dayKey}]`;
+      if (!sentMarkers.has(clientMarker)) {
+        const discount = master.birthday_discount_percent ?? 0;
+        const discountText = discount > 0 ? ` Use BDAY for ${discount}% off your next visit!` : '';
+        inserts.push({
+          profile_id: client.profile_id,
           channel: 'telegram',
           title: 'Happy Birthday! 🎂',
-          body: `Happy Birthday, ${client.full_name}!${discountText}`,
-          status: 'pending',
+          body: `Happy Birthday, ${client.full_name}!${discountText} ${clientMarker}`,
           scheduled_for: new Date().toISOString(),
         });
       }
     }
   }
 
-  // Find masters with birthdays today
-  const { data: birthdayMasters } = await supabase
+  // 2. Master birthdays — platform-side greeting from CRES-CA
+  const { data: masterProfiles } = await supabase
     .from('profiles')
     .select('id, full_name, date_of_birth')
     .eq('role', 'master')
     .not('date_of_birth', 'is', null);
 
-  const masterBirthdays = (birthdayMasters ?? []).filter((m) => {
+  const masterHits = (masterProfiles ?? []).filter((m) => {
     if (!m.date_of_birth) return false;
     const dob = new Date(m.date_of_birth);
     return dob.getMonth() + 1 === month && dob.getDate() === day;
   });
 
-  for (const master of masterBirthdays) {
-    await supabase.from('notifications').insert({
-      profile_id: master.id,
+  for (const m of masterHits) {
+    const marker = `[bday:platform:${m.id}:${dayKey}]`;
+    if (sentMarkers.has(marker)) continue;
+    inserts.push({
+      profile_id: m.id,
       channel: 'telegram',
       title: 'Happy Birthday! 🎂',
-      body: `Happy Birthday, ${master.full_name}! Thank you for being part of CRES-CA.`,
-      status: 'pending',
+      body: `Happy Birthday, ${m.full_name}! Thanks for being part of CRES-CA. ${marker}`,
       scheduled_for: new Date().toISOString(),
     });
   }
 
+  if (inserts.length) {
+    await supabase.from('notifications').insert(inserts);
+  }
+
   return NextResponse.json({
-    clientBirthdays: clientBirthdays.length,
-    masterBirthdays: masterBirthdays.length,
+    clientHits: clientHits.length,
+    masterHits: masterHits.length,
+    inserted: inserts.length,
   });
 }
