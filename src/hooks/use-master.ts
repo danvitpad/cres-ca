@@ -20,6 +20,8 @@ export interface MasterData {
   working_hours: Record<string, { start: string; end: string; break_start?: string; break_end?: string } | null>;
   invite_code: string | null;
   is_active: boolean;
+  tax_rate_percent: number | null;
+  bonus_points: number | null;
   profile: {
     full_name: string;
     phone: string | null;

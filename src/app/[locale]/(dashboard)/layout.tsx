@@ -110,6 +110,7 @@ const sidebarNav: SidebarNavItem[] = [
       { label: 'Список записей', href: '/finance/appointments' },
       { label: 'Список продаж', href: '/finance' },
       { label: 'Реальная прибыль', href: '/finance/profitability' },
+      { label: 'Налоговый отчёт', href: '/finance/tax-report' },
       { label: 'Платежи', href: '/finance/payments' },
       { label: 'Подарочные карты', href: '/finance/gift-cards' },
       { label: 'Купленные абонементы', href: '/finance/memberships' },
