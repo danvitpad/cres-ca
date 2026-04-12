@@ -11,7 +11,7 @@ interface AuthState {
   role: UserRole | null;
   tier: SubscriptionTier | null;
   isLoading: boolean;
-  setAuth: (userId: string, role: UserRole, tier: SubscriptionTier) => void;
+  setAuth: (userId: string, role: UserRole, tier: SubscriptionTier | null) => void;
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
 }

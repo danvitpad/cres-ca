@@ -9,28 +9,42 @@ const intlMiddleware = createIntlMiddleware({
   localePrefix: 'as-needed',
 });
 
-// Route groups that require authentication
+// Routes that require authentication (any role)
 const protectedPatterns = [
+  // Dashboard (master/salon)
   '/calendar', '/clients', '/services', '/finance',
   '/inventory', '/marketing', '/settings',
-  '/book', '/history', '/masters', '/map', '/profile',
+  // Client-only
+  '/feed', '/book', '/history', '/my-calendar', '/my-masters',
+  '/favorites', '/wallet', '/forms', '/reviews', '/notifications',
+  '/account-settings', '/profile',
+  // Shared
+  '/map',
 ];
 
-function isProtectedPath(pathname: string): boolean {
-  // Strip locale prefix if present
+function stripLocale(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean);
-  const pathWithoutLocale = locales.includes(segments[0] as (typeof locales)[number])
+  return locales.includes(segments[0] as (typeof locales)[number])
     ? '/' + segments.slice(1).join('/')
     : pathname;
-  return protectedPatterns.some((p) => pathWithoutLocale.startsWith(p));
+}
+
+function isProtectedPath(pathname: string): boolean {
+  const p = stripLocale(pathname);
+  return protectedPatterns.some((pat) => p === pat || p.startsWith(pat + '/'));
 }
 
 export async function middleware(request: NextRequest) {
   // Run intl middleware first (sets locale cookie, rewrites)
   const response = intlMiddleware(request);
 
-  // Only check auth for protected routes
-  if (!isProtectedPath(request.nextUrl.pathname)) {
+  const pathname = request.nextUrl.pathname;
+  const strippedPath = stripLocale(pathname);
+  const isRoot = strippedPath === '' || strippedPath === '/';
+  const isProtected = isProtectedPath(pathname);
+
+  // Skip DB calls entirely if not root and not protected
+  if (!isRoot && !isProtected) {
     return response;
   }
 
@@ -54,9 +68,20 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Root: if logged in, route to role-appropriate home
+  if (isRoot) {
+    if (!user) return response;
+    const { data: profile } = await supabase
+      .from('profiles').select('role').eq('id', user.id).single();
+    if (!profile) return response;
+    const target = profile.role === 'client' ? '/feed' : '/calendar';
+    return NextResponse.redirect(new URL(target, request.url));
+  }
+
+  // Protected: require session
   if (!user) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', request.nextUrl.pathname);
+    loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
   }
 

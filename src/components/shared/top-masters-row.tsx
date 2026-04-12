@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 interface TopMaster {
   id: string;
   rating: number;
-  review_count: number;
+  total_reviews: number;
   specialization: string | null;
   profile: { full_name: string; avatar_url: string | null } | null;
 }
@@ -28,7 +28,7 @@ export function TopMastersRow() {
       const supabase = createClient();
       const { data } = await supabase
         .from('masters')
-        .select('id, rating, review_count, specialization, profile:profiles(full_name, avatar_url)')
+        .select('id, rating, total_reviews, specialization, profile:profiles(full_name, avatar_url)')
         .eq('is_active', true)
         .gte('rating', 4.0)
         .order('rating', { ascending: false })
@@ -38,8 +38,8 @@ export function TopMastersRow() {
 
       // Sort by rating * ln(review_count + 1)
       const sorted = (data as unknown as TopMaster[]).sort((a, b) => {
-        const scoreA = (a.rating ?? 0) * Math.log((a.review_count ?? 0) + 1);
-        const scoreB = (b.rating ?? 0) * Math.log((b.review_count ?? 0) + 1);
+        const scoreA = (a.rating ?? 0) * Math.log((a.total_reviews ?? 0) + 1);
+        const scoreB = (b.rating ?? 0) * Math.log((b.total_reviews ?? 0) + 1);
         return scoreB - scoreA;
       });
 
@@ -58,7 +58,7 @@ export function TopMastersRow() {
           const name = master.profile?.full_name ?? '?';
           const avatarUrl = master.profile?.avatar_url;
           const isTop3 = i < 3;
-          const hasReviews = (master.review_count ?? 0) > 0;
+          const hasReviews = (master.total_reviews ?? 0) > 0;
           const initials = name
             .split(' ')
             .map((w) => w[0])
