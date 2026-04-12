@@ -16,8 +16,7 @@ const protectedPatterns = [
   '/inventory', '/marketing', '/settings',
   // Client-only
   '/feed', '/book', '/history', '/my-calendar', '/my-masters',
-  '/favorites', '/wallet', '/forms', '/reviews', '/notifications',
-  '/account-settings', '/profile',
+  '/wallet', '/notifications', '/account-settings', '/profile',
   // Shared
   '/map',
 ];
