@@ -1,4 +1,9 @@
 {
+  "meta": {
+    "title": "CRES-CA — CRM for the Service Industry",
+    "description": "Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.",
+    "ogLocale": "en_CA"
+  },
   "common": {
     "appName": "CRES-CA",
     "loading": "Loading...",

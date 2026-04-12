@@ -20,35 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: 'CRES-CA — CRM for the Service Industry',
-    template: '%s | CRES-CA',
-  },
-  description:
-    'Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.',
   metadataBase: new URL('https://cres-ca.com'),
-  openGraph: {
-    type: 'website',
-    siteName: 'CRES-CA',
-    title: 'CRES-CA — CRM for the Service Industry',
-    description: 'Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.',
-    url: 'https://cres-ca.com',
-    locale: 'en_CA',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'CRES-CA — Universal CRM for Service Businesses',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'CRES-CA — CRM for the Service Industry',
-    description: 'Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.',
-    images: ['/og-image.png'],
-  },
   robots: {
     index: true,
     follow: true,
