@@ -67,7 +67,7 @@ const accountNav = [
   { key: 'forms', icon: ClipboardList, href: '/forms' },
   { key: 'reviews', icon: Star, href: '/reviews' },
   { key: 'notifications', icon: Bell, href: '/notifications' },
-  { key: 'accountSettings', icon: Settings, href: '/settings' },
+  { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
 
 const accountRoutes = [
@@ -79,7 +79,7 @@ const accountRoutes = [
   '/forms',
   '/reviews',
   '/notifications',
-  '/settings',
+  '/account-settings',
 ];
 
 const mobileTabs = [
