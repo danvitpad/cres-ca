@@ -130,8 +130,8 @@
   --accent: #000000;
   --accent-foreground: #f5f5f5;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #1a1a1a;
-  --input: #000000;
+  --border: #2e2e2e;
+  --input: #2e2e2e;
   --ring: oklch(0.65 0.22 264.376);
   --chart-1: oklch(0.65 0.22 264.376);
   --chart-2: oklch(0.55 0.2 264);
@@ -144,7 +144,7 @@
   --sidebar-primary-foreground: #f5f5f5;
   --sidebar-accent: #000000;
   --sidebar-accent-foreground: #f5f5f5;
-  --sidebar-border: #1a1a1a;
+  --sidebar-border: #2e2e2e;
   --sidebar-ring: oklch(0.65 0.22 264.376);
 
   /* Design system — Surfaces (dark) */

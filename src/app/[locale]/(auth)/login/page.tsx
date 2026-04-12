@@ -73,7 +73,6 @@ export default function LoginPage() {
       if (json.exists) {
         setStep('password');
       } else {
-        toast.info(t('emailNotFound'));
         router.push(`/register?role=${role ?? 'client'}&email=${encodeURIComponent(email)}`);
       }
     } catch {

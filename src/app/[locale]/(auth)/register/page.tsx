@@ -420,26 +420,24 @@ export default function RegisterPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>{t('firstName')} *</Label>
-                      <Input
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        required
-                        autoFocus
-                        className="h-11"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>{t('lastName')} *</Label>
-                      <Input
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        required
-                        className="h-11"
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label>{t('firstName')} *</Label>
+                    <Input
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      autoFocus
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t('lastName')} *</Label>
+                    <Input
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      className="h-11"
+                    />
                   </div>
 
                   {!emailParam && (
