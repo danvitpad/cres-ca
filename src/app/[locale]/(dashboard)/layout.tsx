@@ -135,6 +135,7 @@ const sidebarNav: SidebarNavItem[] = [
       { label: 'Меню услуг', href: '/services' },
       { label: 'Абонементы', href: '/services/memberships' },
       { label: 'Товары', href: '/inventory' },
+      { label: 'Сканировать', href: '/inventory/scan' },
       { label: 'До / После', href: '/before-after' },
       { label: 'Рекомендации', href: '/recommend' },
       { label: 'Сеть мастеров', href: '/network' },
