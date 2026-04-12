@@ -111,6 +111,7 @@ const sidebarNav: SidebarNavItem[] = [
       { label: 'Список продаж', href: '/finance' },
       { label: 'Реальная прибыль', href: '/finance/profitability' },
       { label: 'Налоговый отчёт', href: '/finance/tax-report' },
+      { label: 'Упущенная выгода', href: '/finance/lost-revenue' },
       { label: 'Платежи', href: '/finance/payments' },
       { label: 'Подарочные карты', href: '/finance/gift-cards' },
       { label: 'Купленные абонементы', href: '/finance/memberships' },
@@ -122,6 +123,7 @@ const sidebarNav: SidebarNavItem[] = [
       { label: 'Список клиентов', href: '/clients' },
       { label: 'Сегменты клиентов', href: '/clients/segments' },
       { label: 'Лояльность клиентов', href: '/clients/loyalty' },
+      { label: 'Чёрный список', href: '/clients/blacklist' },
     ],
   },
   {
