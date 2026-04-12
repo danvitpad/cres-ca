@@ -43,6 +43,16 @@ export async function middleware(request: NextRequest) {
   const isRoot = strippedPath === '' || strippedPath === '/';
   const isProtected = isProtectedPath(pathname);
 
+  // OAuth fallback: if Supabase dropped a ?code= on the root (because Site URL
+  // points at the apex instead of /api/auth/callback), forward to the callback
+  // route so the session is exchanged server-side and the user lands on /feed.
+  const oauthCode = request.nextUrl.searchParams.get('code');
+  if (isRoot && oauthCode) {
+    const cb = new URL('/api/auth/callback', request.url);
+    cb.searchParams.set('code', oauthCode);
+    return NextResponse.redirect(cb);
+  }
+
   // Skip DB calls entirely if not root and not protected
   if (!isRoot && !isProtected) {
     return response;
