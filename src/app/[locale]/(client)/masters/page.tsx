@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Star, MapPin, X, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,7 +36,13 @@ interface MasterResult {
 export default function MastersPage() {
   const t = useTranslations('map');
   const tc = useTranslations('common');
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
+
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null) setQuery(q);
+  }, [searchParams]);
   const [masters, setMasters] = useState<MasterResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);

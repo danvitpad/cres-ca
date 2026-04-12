@@ -56,6 +56,13 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
+const primaryNav = [
+  { key: 'feed', icon: Home, href: '/feed' },
+  { key: 'masters', icon: Users, href: '/masters' },
+  { key: 'calendar', icon: CalendarDays, href: '/my-calendar' },
+  { key: 'book', icon: Plus, href: '/book' },
+] as const;
+
 const accountNav = [
   { key: 'profile', icon: User, href: '/profile' },
   { key: 'family', icon: UsersRound, href: '/profile/family' },
@@ -114,6 +121,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [tabBarVisible, setTabBarVisible] = useState(true);
   const [displayName, setDisplayName] = useState<string>('');
   const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'procedures' | 'venues' | 'pros'>('all');
+  const [searchInput, setSearchInput] = useState('');
+
+  const goSearch = useCallback((q: string) => {
+    const trimmed = q.trim();
+    router.push(trimmed ? `/masters?q=${encodeURIComponent(trimmed)}` : '/masters');
+  }, [router]);
   const lastScrollY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -192,6 +205,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   </button>
                 ))}
               </div>
+              <div className="border-b px-4 py-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') goSearch(searchInput); }}
+                    placeholder={tHeader('searchPlaceholder')}
+                    className="w-full rounded-full border bg-background pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
               <div className="max-h-[380px] overflow-y-auto p-2">
                 <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">
                   {tHeader('procedures')}
@@ -199,6 +225,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 {serviceCategories.map(({ key, icon: Icon }) => (
                   <button
                     key={key}
+                    onClick={() => goSearch(key === 'allServices' ? '' : tSvc(key))}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
                   >
                     <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -248,7 +275,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             </PopoverContent>
           </Popover>
 
-          <button className="mx-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95">
+          <button
+            onClick={() => goSearch(searchInput)}
+            className="mx-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
+          >
             <Search className="size-4" />
           </button>
         </div>
@@ -309,37 +339,61 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop account sidebar — only on account routes */}
-        {isAccountRoute && (
-          <aside className="hidden lg:flex w-[260px] shrink-0 flex-col border-r bg-card">
-            <div className="px-6 pt-7 pb-4">
-              <p className="text-base font-semibold text-foreground truncate">
-                {displayName || t('myAccount')}
-              </p>
-            </div>
+        {/* Desktop sidebar — always visible on lg+ */}
+        <aside className="hidden lg:flex w-[260px] shrink-0 flex-col border-r bg-card overflow-y-auto">
+          <nav className="flex-1 px-3 pt-5 space-y-0.5">
+            {primaryNav.map(({ key, icon: Icon, href }) => {
+              const isActive = pathname.endsWith(href);
+              return (
+                <Link
+                  key={key}
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
+                    isActive
+                      ? 'bg-muted font-medium text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-[18px] shrink-0" />
+                  <span>{t(key)}</span>
+                </Link>
+              );
+            })}
+          </nav>
 
-            <nav className="flex-1 px-3 space-y-0.5">
-              {accountNav.map(({ key, icon: Icon, href }) => {
-                const isActive = pathname.endsWith(href);
-                return (
-                  <Link
-                    key={key}
-                    href={href}
-                    className={cn(
-                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
-                      isActive
-                        ? 'bg-muted font-medium text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                    )}
-                  >
-                    <Icon className="size-[18px] shrink-0" />
-                    <span>{t(key)}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </aside>
-        )}
+          <div className="border-t mx-3 my-3" />
+
+          <div className="px-6 pb-2">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {t('myAccount')}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground truncate">
+              {displayName || ''}
+            </p>
+          </div>
+
+          <nav className="px-3 pb-6 space-y-0.5">
+            {accountNav.map(({ key, icon: Icon, href }) => {
+              const isActive = pathname.endsWith(href);
+              return (
+                <Link
+                  key={key}
+                  href={href}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all',
+                    isActive
+                      ? 'bg-muted font-medium text-foreground'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                  )}
+                >
+                  <Icon className="size-[18px] shrink-0" />
+                  <span>{t(key)}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
 
         {/* Main content */}
         <main ref={scrollRef} className="flex-1 overflow-y-auto pb-20 lg:pb-0">
