@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Scissors, Sparkles, ArrowLeftRight, Flame, MessageSquare, Heart, Share2, Search } from 'lucide-react';
+import { Scissors, Sparkles, ArrowLeftRight, Flame, MessageSquare, Heart, Share2, Search, Hand, Droplet, Smile, Flower2, Paintbrush, Syringe } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
@@ -71,10 +71,25 @@ const typeColors: Record<string, string> = {
 
 const PAGE_SIZE = 10;
 
+const FEED_CATEGORIES = [
+  { key: 'hairStyling', icon: Scissors },
+  { key: 'nails', icon: Hand },
+  { key: 'browsLashes', icon: Smile },
+  { key: 'massage', icon: Hand },
+  { key: 'faceSkinCare', icon: Flower2 },
+  { key: 'hairRemoval', icon: Droplet },
+  { key: 'makeup', icon: Paintbrush },
+  { key: 'aestheticMedicine', icon: Syringe },
+  { key: 'barbers', icon: Scissors },
+] as const;
+
 export default function FeedPage() {
   const t = useTranslations('feed');
+  const tSvc = useTranslations('serviceCategories');
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [masters, setMasters] = useState<FollowedMaster[]>([]);
+  const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
+  const [promotions, setPromotions] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -108,15 +123,40 @@ export default function FeedPage() {
     return (data ?? []).map((d) => ({ ...d, hasNewPosts: false })) as unknown as FollowedMaster[];
   }, []);
 
+  const fetchSection = useCallback(async (type: 'burning_slot' | 'promotion') => {
+    const supabase = createClient();
+    let q = supabase
+      .from('feed_posts')
+      .select(`
+        id, type, title, body, image_url, linked_service_id, expires_at, created_at,
+        master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url))
+      `)
+      .eq('type', type)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (type === 'burning_slot') {
+      q = q.gte('expires_at', new Date().toISOString());
+    }
+    const { data } = await q;
+    return (data ?? []) as unknown as FeedPost[];
+  }, []);
+
   useEffect(() => {
     async function init() {
-      const [p, m] = await Promise.all([fetchPosts(0), fetchMasters()]);
+      const [p, m, b, pr] = await Promise.all([
+        fetchPosts(0),
+        fetchMasters(),
+        fetchSection('burning_slot'),
+        fetchSection('promotion'),
+      ]);
       setPosts(p);
       setMasters(m);
+      setBurningSlots(b);
+      setPromotions(pr);
       setLoading(false);
     }
     init();
-  }, [fetchPosts, fetchMasters]);
+  }, [fetchPosts, fetchMasters, fetchSection]);
 
   // Infinite scroll
   useEffect(() => {
@@ -184,6 +224,94 @@ export default function FeedPage() {
           );
         })}
       </div>
+
+      {/* Category chips */}
+      <div className="flex gap-2 overflow-x-auto px-[var(--space-page)] pb-3 scrollbar-thin">
+        {FEED_CATEGORIES.map(({ key, icon: Icon }) => (
+          <Link
+            key={key}
+            href={`/masters?q=${encodeURIComponent(tSvc(key))}`}
+            className="flex shrink-0 items-center gap-1.5 rounded-full border bg-card px-3.5 py-2 text-xs font-medium transition-colors hover:bg-muted"
+          >
+            <Icon className="size-3.5 text-[var(--ds-accent)]" />
+            <span>{tSvc(key)}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* Burning slots */}
+      {burningSlots.length > 0 && (
+        <div className="space-y-2 px-[var(--space-page)] pb-3">
+          <div className="flex items-center gap-1.5">
+            <Flame className="size-4 text-red-500" />
+            <h3 className="text-sm font-semibold">{t('burningSlotsTitle')}</h3>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
+            {burningSlots.map((slot) => {
+              const name = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
+              const avatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
+              return (
+                <Link
+                  key={slot.id}
+                  href={`/book?master_id=${slot.master.id}${slot.linked_service_id ? `&service_id=${slot.linked_service_id}` : ''}`}
+                  className="flex w-[260px] shrink-0 flex-col gap-2 rounded-2xl border bg-card p-3 transition-all hover:shadow-md hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center gap-2">
+                    {avatar ? (
+                      <img src={avatar} alt={name} className="size-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                        {name[0]}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold">{name}</p>
+                      <p className="truncate text-[10px] text-muted-foreground">{slot.master.specialization ?? ''}</p>
+                    </div>
+                  </div>
+                  {slot.title && <p className="text-sm font-medium line-clamp-1">{slot.title}</p>}
+                  {slot.expires_at && (
+                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
+                      <span className="inline-block size-1.5 animate-pulse rounded-full bg-red-500" />
+                      {t('expiresIn', { hours: hoursUntil(slot.expires_at) })}
+                    </div>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Promotions */}
+      {promotions.length > 0 && (
+        <div className="space-y-2 px-[var(--space-page)] pb-3">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="size-4 text-amber-500" />
+            <h3 className="text-sm font-semibold">{t('promotionsTitle')}</h3>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
+            {promotions.map((promo) => {
+              const name = promo.master.display_name ?? promo.master.profile?.full_name ?? '?';
+              return (
+                <Link
+                  key={promo.id}
+                  href={`/masters/${promo.master.id}`}
+                  className="relative flex h-32 w-[280px] shrink-0 flex-col justify-end overflow-hidden rounded-2xl bg-gradient-to-br from-amber-400 to-pink-500 p-4 text-white transition-all hover:-translate-y-0.5"
+                >
+                  {promo.image_url && (
+                    <img src={promo.image_url} alt="" className="absolute inset-0 size-full object-cover opacity-40" />
+                  )}
+                  <div className="relative">
+                    {promo.title && <p className="text-sm font-bold drop-shadow line-clamp-2">{promo.title}</p>}
+                    <p className="text-[11px] opacity-90 drop-shadow">{name}</p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Top masters */}
       <div className="px-[var(--space-page)] py-2">
