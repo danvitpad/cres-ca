@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
@@ -51,11 +51,20 @@ interface ServiceItem {
 
 export default function MasterProfilePage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const masterId = params.id as string;
   const t = useTranslations('masterProfile');
   const tb = useTranslations('booking');
   const tc = useTranslations('common');
   const userId = useAuthStore((s) => s.userId);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const ref = searchParams.get('ref');
+    if (ref && /^[0-9a-f-]{36}$/i.test(ref) && ref !== userId) {
+      window.localStorage.setItem(`cres-ref:${masterId}`, ref);
+    }
+  }, [searchParams, masterId, userId]);
   const [master, setMaster] = useState<MasterProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -127,7 +136,12 @@ export default function MasterProfilePage() {
   }, [userId, masterId, isFollowing, followBusy]);
 
   const handleShare = useCallback(async () => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
+    let url = typeof window !== 'undefined' ? window.location.href : '';
+    if (userId && typeof window !== 'undefined') {
+      const u = new URL(window.location.href);
+      u.searchParams.set('ref', userId);
+      url = u.toString();
+    }
     const title = master?.display_name ?? master?.profile?.full_name ?? 'Master';
     if (typeof navigator !== 'undefined' && 'share' in navigator) {
       try {
@@ -143,7 +157,7 @@ export default function MasterProfilePage() {
     } catch {
       toast.error(t('linkCopyFailed'));
     }
-  }, [master, t]);
+  }, [master, t, userId]);
 
   if (loading) {
     return (

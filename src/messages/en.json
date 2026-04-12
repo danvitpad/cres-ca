@@ -735,7 +735,9 @@
     "noNextVisit": "No scheduled visits",
     "latestPost": "Latest post",
     "book": "Book",
-    "unsubscribe": "Unfollow"
+    "unsubscribe": "Unfollow",
+    "bonusLabel": "Referral bonus",
+    "bonusPoints": "pts"
   },
   "clientForms": {
     "title": "Forms & documents",

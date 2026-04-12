@@ -735,7 +735,9 @@
     "noNextVisit": "Немає запланованих візитів",
     "latestPost": "Останній пост",
     "book": "Записатись",
-    "unsubscribe": "Відписатись"
+    "unsubscribe": "Відписатись",
+    "bonusLabel": "Реферальний бонус",
+    "bonusPoints": "балів"
   },
   "clientForms": {
     "title": "Анкети та документи",

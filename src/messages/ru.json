@@ -735,7 +735,9 @@
     "noNextVisit": "Нет запланированных визитов",
     "latestPost": "Последний пост",
     "book": "Записаться",
-    "unsubscribe": "Отписаться"
+    "unsubscribe": "Отписаться",
+    "bonusLabel": "Реферальный бонус",
+    "bonusPoints": "баллов"
   },
   "clientForms": {
     "title": "Анкеты и документы",

@@ -299,6 +299,7 @@ export default function BookPage() {
       .eq('master_id', preselectedMasterId)
       .single();
 
+    let isNewClient = false;
     if (existingClient) {
       clientId = existingClient.id;
     } else {
@@ -318,6 +319,28 @@ export default function BookPage() {
         .select('id')
         .single();
       clientId = newClient?.id ?? null;
+      isNewClient = !!clientId;
+    }
+
+    if (isNewClient && typeof window !== 'undefined') {
+      const refKey = `cres-ref:${preselectedMasterId}`;
+      const referrerProfileId = window.localStorage.getItem(refKey);
+      if (referrerProfileId && referrerProfileId !== userId) {
+        const { data: referrerClient } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('profile_id', referrerProfileId)
+          .eq('master_id', preselectedMasterId)
+          .maybeSingle();
+        if (referrerClient && clientId) {
+          await supabase.from('referrals').insert({
+            referrer_client_id: referrerClient.id,
+            referred_client_id: clientId,
+            bonus_points: 50,
+          });
+        }
+        window.localStorage.removeItem(refKey);
+      }
     }
 
     if (!clientId) {

@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { UserPlus, Star, Calendar, Search, MapPin } from 'lucide-react';
+import { UserPlus, Star, Calendar, Search, MapPin, Gift } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,6 +25,7 @@ interface MasterRow {
   city: string | null;
   nextVisit: string | null;
   lastPost: { title: string | null; image_url: string | null; created_at: string } | null;
+  bonusPoints: number;
 }
 
 export default function MyMastersPage() {
@@ -69,6 +70,7 @@ export default function MyMastersPage() {
         );
 
         const nextByMaster = new Map<string, string>();
+        const bonusByMaster = new Map<string, number>();
         if (clientIds.length > 0) {
           const { data: upcoming } = await supabase
             .from('appointments')
@@ -80,6 +82,17 @@ export default function MyMastersPage() {
           upcoming?.forEach((a: { client_id: string; master_id: string; starts_at: string }) => {
             const mId = a.master_id ?? clientMasterMap.get(a.client_id);
             if (mId && !nextByMaster.has(mId)) nextByMaster.set(mId, a.starts_at);
+          });
+
+          const { data: refs } = await supabase
+            .from('referrals')
+            .select('referrer_client_id, bonus_points')
+            .in('referrer_client_id', clientIds);
+
+          refs?.forEach((r: { referrer_client_id: string; bonus_points: number | null }) => {
+            const mId = clientMasterMap.get(r.referrer_client_id);
+            if (!mId) return;
+            bonusByMaster.set(mId, (bonusByMaster.get(mId) ?? 0) + (r.bonus_points ?? 0));
           });
         }
 
@@ -106,6 +119,7 @@ export default function MyMastersPage() {
               city: m.city ?? null,
               nextVisit: nextByMaster.get(row.master_id) ?? null,
               lastPost: lastPostByMaster.get(row.master_id) ?? null,
+              bonusPoints: bonusByMaster.get(row.master_id) ?? 0,
             };
           })
           .filter((x): x is MasterRow => x !== null);
@@ -200,6 +214,15 @@ export default function MyMastersPage() {
                     : t('noNextVisit')}
                 </span>
               </div>
+              {m.bonusPoints > 0 && (
+                <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs">
+                  <Gift className="size-3.5 text-amber-600" />
+                  <span className="text-muted-foreground">{t('bonusLabel')}:</span>
+                  <span className="font-semibold text-amber-700 dark:text-amber-400">
+                    {m.bonusPoints} {t('bonusPoints')}
+                  </span>
+                </div>
+              )}
               {m.lastPost && (
                 <Link
                   href={`/masters/${m.id}`}
