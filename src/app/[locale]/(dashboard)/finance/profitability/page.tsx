@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useFxRates, SUPPORTED_CURRENCIES, type SupportedCurrency } from '@/hooks/use-fx-rates';
 import { cn } from '@/lib/utils';
 
 type RecipeItem = { item_id: string; quantity: number };
@@ -31,6 +32,16 @@ export default function ProfitabilityReportPage() {
   const { master } = useMaster();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>('UAH');
+  const { convert, date: ratesDate, ready: fxReady } = useFxRates();
+
+  const fmt = useCallback(
+    (amount: number) => {
+      const v = convert(amount, 'UAH', displayCurrency);
+      return `${v.toFixed(2)} ${displayCurrency}`;
+    },
+    [convert, displayCurrency],
+  );
 
   const load = useCallback(async () => {
     if (!master?.id) return;
@@ -98,20 +109,38 @@ export default function ProfitabilityReportPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <TrendingUp className="h-6 w-6 text-primary" />
-          Реальная прибыль по услугам
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Себестоимость рассчитывается из техкарты услуги (inventory recipe) × стоимость единицы из склада.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            <TrendingUp className="h-6 w-6 text-primary" />
+            Реальная прибыль по услугам
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Себестоимость рассчитывается из техкарты услуги (inventory recipe) × стоимость единицы из склада.
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <select
+            className="rounded-md border bg-background px-3 py-1.5 text-sm"
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value as SupportedCurrency)}
+          >
+            {SUPPORTED_CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <span className="text-[10px] text-muted-foreground">
+            {fxReady ? `курс на ${ratesDate}` : 'курс не загружен'}
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Услуг" value={rows.length.toString()} />
-        <Stat label="Выручка" value={totals.price.toFixed(2)} />
-        <Stat label="Себестоимость" value={totals.cost.toFixed(2)} />
+        <Stat label="Выручка" value={fmt(totals.price)} />
+        <Stat label="Себестоимость" value={fmt(totals.cost)} />
         <Stat label="Средняя маржа" value={`${totals.margin.toFixed(0)}%`} accent={totals.margin >= 60} />
       </div>
 
@@ -156,10 +185,10 @@ export default function ProfitabilityReportPage() {
                         <div className="mt-1 text-xs text-muted-foreground">Нет техкарты</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium">{r.price.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{r.cost.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium">{fmt(r.price)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{fmt(r.cost)}</td>
                     <td className={cn('px-4 py-3 text-right font-semibold', r.profit < 0 && 'text-red-600')}>
-                      {r.profit.toFixed(2)}
+                      {fmt(r.profit)}
                     </td>
                     <td className={cn('px-4 py-3 text-right font-bold', marginColor)}>
                       <span className="inline-flex items-center gap-1">
