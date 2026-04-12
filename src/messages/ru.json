@@ -1125,10 +1125,17 @@
     "save": "Сохранить",
     "expiresIn": "Истекает через {hours}ч",
     "burningSlotsTitle": "Горящие слоты",
+    "freeSlotsTitle": "Свободные окна",
+    "freeSlotsLive": "сейчас",
     "promotionsTitle": "Акции и скидки",
+    "discoverTitle": "Открой для себя",
+    "discoverSubtitle": "Мастера рядом с тобой",
+    "peopleBooked": "{count} записались",
+    "promoBadge": "Акция",
     "pullToRefresh": "Потяните для обновления",
     "loadMore": "Загрузить ещё",
-    "topMasters": "Топ мастеров"
+    "topMasters": "Топ мастеров",
+    "viewAll": "Все"
   },
   "contact": {
     "title": "Связаться с нами",

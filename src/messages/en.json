@@ -1125,10 +1125,17 @@
     "save": "Save",
     "expiresIn": "Expires in {hours}h",
     "burningSlotsTitle": "Burning slots",
+    "freeSlotsTitle": "Free slots",
+    "freeSlotsLive": "now",
     "promotionsTitle": "Promotions & deals",
+    "discoverTitle": "Discover",
+    "discoverSubtitle": "Masters near you",
+    "peopleBooked": "{count} booked",
+    "promoBadge": "Promo",
     "pullToRefresh": "Pull to refresh",
     "loadMore": "Load more",
-    "topMasters": "Top Masters"
+    "topMasters": "Top Masters",
+    "viewAll": "All"
   },
   "contact": {
     "title": "Contact Us",

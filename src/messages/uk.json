@@ -1125,10 +1125,17 @@
     "save": "Зберегти",
     "expiresIn": "Закінчується через {hours}г",
     "burningSlotsTitle": "Гарячі слоти",
+    "freeSlotsTitle": "Вільні вікна",
+    "freeSlotsLive": "зараз",
     "promotionsTitle": "Акції та знижки",
+    "discoverTitle": "Відкрий для себе",
+    "discoverSubtitle": "Майстри поряд з тобою",
+    "peopleBooked": "{count} записались",
+    "promoBadge": "Акція",
     "pullToRefresh": "Потягніть для оновлення",
     "loadMore": "Завантажити ще",
-    "topMasters": "Топ майстрів"
+    "topMasters": "Топ майстрів",
+    "viewAll": "Всі"
   },
   "contact": {
     "title": "Зв'язатися з нами",
