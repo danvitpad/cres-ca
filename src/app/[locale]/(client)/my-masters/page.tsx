@@ -26,6 +26,7 @@ interface MasterRow {
   nextVisit: string | null;
   lastPost: { title: string | null; image_url: string | null; created_at: string } | null;
   bonusPoints: number;
+  visitCount: number;
 }
 
 export default function MyMastersPage() {
@@ -71,6 +72,7 @@ export default function MyMastersPage() {
 
         const nextByMaster = new Map<string, string>();
         const bonusByMaster = new Map<string, number>();
+        const visitCountByMaster = new Map<string, number>();
         if (clientIds.length > 0) {
           const { data: upcoming } = await supabase
             .from('appointments')
@@ -82,6 +84,17 @@ export default function MyMastersPage() {
           upcoming?.forEach((a: { client_id: string; master_id: string; starts_at: string }) => {
             const mId = a.master_id ?? clientMasterMap.get(a.client_id);
             if (mId && !nextByMaster.has(mId)) nextByMaster.set(mId, a.starts_at);
+          });
+
+          const { data: past } = await supabase
+            .from('appointments')
+            .select('client_id, master_id, status')
+            .in('client_id', clientIds)
+            .lt('starts_at', new Date().toISOString());
+          past?.forEach((a: { client_id: string; master_id: string; status: string }) => {
+            if (a.status === 'cancelled') return;
+            const mId = a.master_id ?? clientMasterMap.get(a.client_id);
+            if (mId) visitCountByMaster.set(mId, (visitCountByMaster.get(mId) ?? 0) + 1);
           });
 
           const { data: refs } = await supabase
@@ -120,6 +133,7 @@ export default function MyMastersPage() {
               nextVisit: nextByMaster.get(row.master_id) ?? null,
               lastPost: lastPostByMaster.get(row.master_id) ?? null,
               bonusPoints: bonusByMaster.get(row.master_id) ?? 0,
+              visitCount: visitCountByMaster.get(row.master_id) ?? 0,
             };
           })
           .filter((x): x is MasterRow => x !== null);
@@ -155,98 +169,113 @@ export default function MyMastersPage() {
       </div>
 
       {masters.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border bg-card p-16 text-center">
-          <div className="flex size-20 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-16 text-center">
+          <div className="flex size-20 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
             <UserPlus className="size-10" />
           </div>
           <p className="mt-6 text-xl font-semibold">{t('emptyTitle')}</p>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">{t('emptyDesc')}</p>
           <Link
             href="/masters"
-            className="mt-6 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
           >
             <Search className="size-4" />
             {t('findMaster')}
           </Link>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {masters.map((m) => (
-            <div key={m.id} className="rounded-3xl border bg-card p-5 transition-all hover:shadow-lg">
-              <Link href={`/masters/${m.id}`} className="flex items-center gap-4">
-                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-primary/70 text-2xl font-semibold text-primary-foreground">
-                  {m.avatar_url ? (
-                    <img src={m.avatar_url} alt={m.full_name ?? ''} className="size-full object-cover" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {masters.map((m, idx) => {
+            const cover = m.lastPost?.image_url ?? null;
+            return (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.04, duration: 0.25 }}
+                className="group/master overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)] transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)] hover:border-[var(--ds-accent)]/40"
+              >
+                {/* Cover */}
+                <Link href={`/masters/${m.id}`} className="relative block h-32 w-full overflow-hidden">
+                  {cover ? (
+                    <img src={cover} alt="" className="size-full object-cover transition-transform duration-500 group-hover/master:scale-105" />
                   ) : (
-                    (m.full_name || 'M')[0].toUpperCase()
+                    <div className="size-full bg-gradient-to-br from-[var(--ds-accent)] via-purple-500 to-pink-500" />
                   )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{m.full_name}</p>
-                  <p className="truncate text-xs text-muted-foreground">{m.specialization}</p>
-                  <div className="mt-1 flex items-center gap-3 text-xs">
-                    {m.rating != null && (
-                      <span className="flex items-center gap-1">
-                        <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                        <span className="font-medium">{m.rating.toFixed(1)}</span>
-                      </span>
-                    )}
-                    {m.city && (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <MapPin className="size-3" />
-                        {m.city}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </Link>
-              <div className="mt-4 flex items-center gap-2 border-t pt-4 text-xs">
-                <Calendar className="size-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">{t('nextVisit')}:</span>
-                <span className="font-medium">
-                  {m.nextVisit
-                    ? new Date(m.nextVisit).toLocaleString(undefined, {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })
-                    : t('noNextVisit')}
-                </span>
-              </div>
-              {m.bonusPoints > 0 && (
-                <div className="mt-2 flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs">
-                  <Gift className="size-3.5 text-amber-600" />
-                  <span className="text-muted-foreground">{t('bonusLabel')}:</span>
-                  <span className="font-semibold text-amber-700 dark:text-amber-400">
-                    {m.bonusPoints} {t('bonusPoints')}
-                  </span>
-                </div>
-              )}
-              {m.lastPost && (
-                <Link
-                  href={`/masters/${m.id}`}
-                  className="mt-3 flex items-center gap-3 rounded-xl bg-muted/40 p-2 transition-colors hover:bg-muted"
-                >
-                  {m.lastPost.image_url && (
-                    <img
-                      src={m.lastPost.image_url}
-                      alt=""
-                      className="size-12 shrink-0 rounded-lg object-cover"
-                    />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                  {m.bonusPoints > 0 && (
+                    <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+                      <Gift className="size-3 text-amber-300" />
+                      {m.bonusPoints}
+                    </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-medium">
-                      {m.lastPost.title ?? t('latestPost')}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {new Date(m.lastPost.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
                 </Link>
-              )}
-            </div>
-          ))}
+
+                {/* Body */}
+                <div className="relative px-5 pb-5">
+                  {/* Avatar overlap */}
+                  <div className="-mt-10 flex justify-start">
+                    <Link href={`/masters/${m.id}`}>
+                      <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-card text-2xl font-bold text-[var(--ds-accent)] ring-4 ring-card shadow-md">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt={m.full_name ?? ''} className="size-full object-cover" />
+                        ) : (
+                          (m.full_name || 'M')[0].toUpperCase()
+                        )}
+                      </div>
+                    </Link>
+                  </div>
+
+                  {/* Name + meta */}
+                  <div className="mt-2">
+                    <Link href={`/masters/${m.id}`} className="block">
+                      <p className="truncate text-base font-semibold leading-snug">{m.full_name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{m.specialization}</p>
+                    </Link>
+                    <div className="mt-1.5 flex items-center gap-3 text-[11px]">
+                      {m.rating != null && (
+                        <span className="flex items-center gap-1">
+                          <Star className="size-3 fill-amber-400 stroke-amber-400" />
+                          <span className="font-medium">{m.rating.toFixed(1)}</span>
+                        </span>
+                      )}
+                      {m.city && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <MapPin className="size-3" />
+                          {m.city}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Visit count + next visit */}
+                  <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
+                    <div className="text-center">
+                      <p className="text-lg font-bold tabular-nums">{m.visitCount}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('visitsWithYou')}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="truncate text-xs font-semibold tabular-nums">
+                        {m.nextVisit
+                          ? new Date(m.nextVisit).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+                          : '—'}
+                      </p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t('nextVisit')}</p>
+                    </div>
+                  </div>
+
+                  {/* Quick book */}
+                  <Link
+                    href={`/book?master_id=${m.id}`}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
+                  >
+                    <Calendar className="size-4" />
+                    {t('quickBook')}
+                  </Link>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </motion.div>

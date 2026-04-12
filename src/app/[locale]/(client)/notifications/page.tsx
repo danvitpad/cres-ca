@@ -11,12 +11,13 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox } from 'lucide-react';
+import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Sparkles, Star, Sliders } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 interface NotifRow {
   id: string;
@@ -55,6 +56,25 @@ const defaults: Prefs = {
   review_requests: true,
 };
 
+type Category = 'all' | 'important' | 'bookings' | 'reminders' | 'promos' | 'reviews';
+
+function categorize(n: NotifRow): Exclude<Category, 'all' | 'important'> | 'system' {
+  const text = `${n.title ?? ''} ${n.body ?? ''}`.toLowerCase();
+  if (/cancel|cancelled|booking|appointment|записал|отмен|подтвержд/.test(text)) return 'bookings';
+  if (/remind|reminder|reminded|напомин/.test(text)) return 'reminders';
+  if (/review|отзыв/.test(text)) return 'reviews';
+  if (/burning|promo|sale|акци|скидк|burning|🎉/.test(text)) return 'promos';
+  return 'system';
+}
+
+const CATEGORY_META: Record<Exclude<Category, 'all' | 'important'> | 'system', { icon: React.ComponentType<{ className?: string }>; color: string }> = {
+  bookings: { icon: Calendar, color: 'oklch(0.65 0.2 264)' },
+  reminders: { icon: Clock, color: 'oklch(0.7 0.18 75)' },
+  promos: { icon: Sparkles, color: 'oklch(0.65 0.22 320)' },
+  reviews: { icon: Star, color: 'oklch(0.75 0.18 75)' },
+  system: { icon: Bell, color: 'oklch(0.6 0 0)' },
+};
+
 export default function NotificationsPage() {
   const t = useTranslations('clientNotifications');
   const { userId } = useAuthStore();
@@ -62,6 +82,7 @@ export default function NotificationsPage() {
   const [dirty, setDirty] = useState(false);
   const [feed, setFeed] = useState<NotifRow[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
+  const [category, setCategory] = useState<Category>('all');
 
   useEffect(() => {
     if (!userId) return;
@@ -131,34 +152,96 @@ export default function NotificationsPage() {
           <TabsTrigger value="settings">{t('settingsTab')}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="inbox" className="mt-6 space-y-3">
+        <TabsContent value="inbox" className="mt-6 space-y-4">
+          {/* Category filter chips */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
+            {(['all', 'important', 'bookings', 'reminders', 'promos', 'reviews'] as const).map((c) => {
+              const isActive = category === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={cn(
+                    'shrink-0 rounded-full border px-4 py-2 text-xs font-medium transition-all',
+                    isActive
+                      ? 'border-[var(--ds-accent)] bg-[var(--ds-accent)] text-white shadow-sm'
+                      : 'border-border/60 bg-card text-muted-foreground hover:text-foreground hover:border-foreground/30',
+                  )}
+                >
+                  {c === 'important' && <Sliders className="mr-1 inline-block size-3" />}
+                  {t(`filter_${c}`)}
+                </button>
+              );
+            })}
+          </div>
+
           {feedLoading ? (
             <p className="text-sm text-muted-foreground">…</p>
-          ) : feed.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-3xl border bg-card p-12 text-center">
-              <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Inbox className="size-8" />
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground">{t('inboxEmpty')}</p>
-            </div>
-          ) : (
-            feed.map((n) => (
-              <div key={n.id} className="rounded-2xl border bg-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold">{n.title}</p>
-                  <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {new Date(n.created_at).toLocaleString(undefined, {
-                      day: 'numeric',
-                      month: 'short',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
+          ) : (() => {
+            // Filter
+            const filtered = feed.filter((n) => {
+              if (category === 'all') return true;
+              const cat = categorize(n);
+              if (category === 'important') return cat === 'bookings' || cat === 'reminders';
+              return cat === category;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-card p-12 text-center">
+                  <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Inbox className="size-8" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">{t('inboxEmpty')}</p>
                 </div>
-                {n.body && <p className="mt-1 text-xs text-muted-foreground">{cleanBody(n.body)}</p>}
+              );
+            }
+
+            // Group by date label
+            const groups = new Map<string, NotifRow[]>();
+            const todayStr = new Date().toDateString();
+            const yStr = new Date(Date.now() - 86400000).toDateString();
+            for (const n of filtered) {
+              const ds = new Date(n.created_at).toDateString();
+              const label = ds === todayStr ? t('today') : ds === yStr ? t('yesterday') : new Date(n.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
+              if (!groups.has(label)) groups.set(label, []);
+              groups.get(label)!.push(n);
+            }
+
+            return (
+              <div className="space-y-5">
+                {[...groups.entries()].map(([label, items]) => (
+                  <div key={label} className="space-y-2">
+                    <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                    {items.map((n) => {
+                      const cat = categorize(n);
+                      const meta = CATEGORY_META[cat];
+                      const Icon = meta.icon;
+                      return (
+                        <div key={n.id} className="group/notif flex gap-3 rounded-2xl border border-border/60 bg-card p-4 transition-all hover:border-[var(--ds-accent)]/40 hover:shadow-sm">
+                          <div
+                            className="flex size-10 shrink-0 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: `color-mix(in oklch, ${meta.color} 15%, transparent)`, color: meta.color }}
+                          >
+                            <Icon className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="text-sm font-semibold leading-snug">{n.title}</p>
+                              <span className="shrink-0 text-[10px] text-muted-foreground">
+                                {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            {n.body && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cleanBody(n.body)}</p>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
-            ))
-          )}
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6 space-y-6">

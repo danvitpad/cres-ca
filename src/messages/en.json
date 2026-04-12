@@ -774,7 +774,9 @@
     "book": "Book",
     "unsubscribe": "Unfollow",
     "bonusLabel": "Referral bonus",
-    "bonusPoints": "pts"
+    "bonusPoints": "pts",
+    "visitsWithYou": "Visits",
+    "quickBook": "Book"
   },
   "clientForms": {
     "title": "Forms & documents",
@@ -838,7 +840,15 @@
     "waitlistAlertsDesc": "Alert me when my preferred slot opens up",
     "reviewRequests": "Ask me to leave a review after a visit",
     "connectTelegram": "Connect Telegram",
-    "saveChanges": "Save"
+    "saveChanges": "Save",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "filter_all": "All",
+    "filter_important": "Important only",
+    "filter_bookings": "Bookings",
+    "filter_reminders": "Reminders",
+    "filter_promos": "Promos",
+    "filter_reviews": "Reviews"
   },
   "clientSettings": {
     "title": "Account settings",

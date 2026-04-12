@@ -774,7 +774,9 @@
     "book": "Записатись",
     "unsubscribe": "Відписатись",
     "bonusLabel": "Реферальний бонус",
-    "bonusPoints": "балів"
+    "bonusPoints": "балів",
+    "visitsWithYou": "Візитів",
+    "quickBook": "Записатись"
   },
   "clientForms": {
     "title": "Анкети та документи",
@@ -838,7 +840,15 @@
     "waitlistAlertsDesc": "Повідомляти, коли звільнилось потрібне мені віконце",
     "reviewRequests": "Просити залишити відгук після візиту",
     "connectTelegram": "Підключити Telegram",
-    "saveChanges": "Зберегти"
+    "saveChanges": "Зберегти",
+    "today": "Сьогодні",
+    "yesterday": "Вчора",
+    "filter_all": "Всі",
+    "filter_important": "Тільки важливе",
+    "filter_bookings": "Записи",
+    "filter_reminders": "Нагадування",
+    "filter_promos": "Акції",
+    "filter_reviews": "Відгуки"
   },
   "clientSettings": {
     "title": "Налаштування акаунту",

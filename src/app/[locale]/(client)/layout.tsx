@@ -25,20 +25,12 @@ import {
   Clock,
   ChevronDown,
   Sparkles,
-  Scissors,
   UserPlus,
   History,
   Bell,
-  ShoppingBag,
   Map as MapIcon,
+  X as XIcon,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -46,21 +38,13 @@ import { cn } from '@/lib/utils';
 
 // IG-style sidebar — hover to expand.
 const sidebarNav = [
+  { key: 'home', icon: Home, href: '/feed' },
   { key: 'profile', icon: User, href: '/profile' },
   { key: 'calendar', icon: CalendarDays, href: '/my-calendar' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
+  { key: 'family', icon: Users, href: '/profile/family' },
   { key: 'activity', icon: History, href: '/history' },
-  { key: 'notifications', icon: Bell, href: '/notifications' },
   { key: 'map', icon: MapIcon, href: '/map' },
-  { key: 'shop', icon: ShoppingBag, href: '/shop' },
-  { key: 'wallet', icon: Wallet, href: '/wallet' },
-  { key: 'accountSettings', icon: Settings, href: '/account-settings' },
-] as const;
-
-// Profile dropdown — only Главная, Профиль, Кошелёк, Настройки, Выход.
-const dropdownNav = [
-  { key: 'home', icon: Home, href: '/feed' },
-  { key: 'profile', icon: User, href: '/profile' },
   { key: 'wallet', icon: Wallet, href: '/wallet' },
   { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
@@ -99,10 +83,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const tInd = useTranslations('industries');
   const tHeader = useTranslations('clientHeader');
   const tAuth = useTranslations('auth');
-  const { userId, clearAuth } = useAuthStore();
+  const { clearAuth } = useAuthStore();
 
   const [tabBarVisible, setTabBarVisible] = useState(true);
-  const [displayName, setDisplayName] = useState<string>('');
   const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'procedures' | 'venues' | 'pros'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -223,27 +206,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return () => el.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  useEffect(() => {
-    if (!userId) return;
-    const supabase = createClient();
-    supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => {
-        if (data?.full_name) setDisplayName(data.full_name);
-      });
-  }, [userId]);
-
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
     clearAuth();
     router.push('/');
   }
-
-  const initial = (displayName || 'U')[0].toUpperCase();
 
   return (
     <div className="flex h-dvh flex-col bg-background">
@@ -414,16 +382,22 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               <div className="border-t p-3">
                 <p className="mb-2 text-[11px] font-medium text-muted-foreground">{tHeader('chooseTime')}</p>
                 <div className="grid grid-cols-4 gap-2">
-                  {(['anyTime','morning','afternoon','evening'] as const).map((k) => (
+                  {([
+                    { k: 'anyTime', range: '' },
+                    { k: 'morning', range: '06–12' },
+                    { k: 'afternoon', range: '12–17' },
+                    { k: 'evening', range: '17–23' },
+                  ] as const).map(({ k, range }) => (
                     <button
                       key={k}
                       onClick={() => setTimeOfDay(k)}
                       className={cn(
-                        'rounded-xl border px-2 py-2 text-center text-[11px] transition-colors',
+                        'rounded-xl border px-2 py-2 text-center transition-colors',
                         timeOfDay === k ? 'border-primary bg-primary/10 text-primary font-medium' : 'hover:bg-muted',
                       )}
                     >
-                      <div className="font-medium">{tHeader(k)}</div>
+                      <div className="text-[11px] font-medium">{tHeader(k)}</div>
+                      {range && <div className="mt-0.5 text-[10px] tabular-nums opacity-70">{range}</div>}
                     </button>
                   ))}
                 </div>
@@ -439,16 +413,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           </button>
         </div>
 
-        {/* Expanded search overlay — morphs over the pill */}
+        {/* Expanded search overlay — paints right-to-left across the pill */}
         <AnimatePresence>
           {searchExpanded && (
             <motion.div
               key="search-expand"
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-              className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[620px] items-center rounded-full border bg-card shadow-lg pl-5 pr-1 py-1"
+              initial={{ clipPath: 'inset(0% 0% 0% 100%)' }}
+              animate={{ clipPath: 'inset(0% 0% 0% 0%)' }}
+              exit={{ clipPath: 'inset(0% 0% 0% 100%)' }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+              className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[620px] items-center rounded-full border bg-card shadow-lg pl-5 pr-1 py-1 z-10"
             >
               <Search className="size-4 text-muted-foreground shrink-0" />
               <input
@@ -464,9 +438,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               />
               <button
                 onClick={() => setSearchExpanded(false)}
-                className="rounded-full px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                className="rounded-full p-2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={tc('cancel')}
               >
-                {tc('cancel')}
+                <XIcon className="size-4" />
               </button>
               <button
                 onClick={() => { goSearch(searchInput); setSearchExpanded(false); }}
@@ -480,38 +455,20 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
         <div className="md:hidden flex-1" />
 
-        {/* User avatar dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger className="flex shrink-0 items-center gap-1.5 rounded-full border bg-card pr-2 pl-0.5 py-0.5 hover:bg-muted/40 transition-colors">
-            <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground text-sm font-semibold">
-              {initial}
-            </div>
-            <ChevronDown className="size-4 text-muted-foreground" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[220px] rounded-2xl shadow-lg p-1.5">
-            {dropdownNav.map(({ key, icon: Icon, href }) => (
-              <DropdownMenuItem
-                key={key}
-                render={<Link href={href} />}
-                className="gap-2.5 cursor-pointer"
-              >
-                <Icon className="size-4" />
-                <span>{t(key)}</span>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut} className="gap-2.5 cursor-pointer text-destructive focus:text-destructive">
-              <LogOut className="size-4" />
-              <span>{tAuth('signOut')}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Notifications bell — replaces profile dropdown */}
+        <Link
+          href="/notifications"
+          className="relative flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground transition-colors hover:bg-muted/40"
+          aria-label={t('notifications')}
+        >
+          <Bell className="size-5" />
+        </Link>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — IG-web style: 72px reserved, expands to overlay on hover (no content shift) */}
+        {/* Desktop sidebar — IG-web style: 72px reserved, expands to overlay on hover (no content shift, no bg change) */}
         <aside className="hidden lg:block w-[72px] shrink-0 relative">
-          <div className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[240px] transition-[width,background-color,box-shadow] duration-200 ease-out flex flex-col justify-center overflow-hidden bg-transparent hover:bg-card/95 hover:backdrop-blur-md hover:shadow-[var(--shadow-elevated)] hover:border-r hover:border-border/60 z-30">
+          <div className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[240px] transition-[width] duration-200 ease-out flex flex-col justify-center overflow-hidden z-30">
             <nav className="px-3 space-y-1.5">
               {sidebarNav.map(({ key, icon: Icon, href }) => {
                 const isActive = pathname.endsWith(href);
@@ -520,10 +477,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     key={key}
                     href={href}
                     className={cn(
-                      'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all whitespace-nowrap',
+                      'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-colors whitespace-nowrap',
                       isActive
-                        ? 'bg-muted font-medium text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                        ? 'font-medium text-foreground'
+                        : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
                     <Icon className="size-[22px] shrink-0" />
@@ -533,6 +490,15 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                   </Link>
                 );
               })}
+              <button
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-destructive whitespace-nowrap"
+              >
+                <LogOut className="size-[22px] shrink-0" />
+                <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                  {tAuth('signOut')}
+                </span>
+              </button>
             </nav>
           </div>
         </aside>

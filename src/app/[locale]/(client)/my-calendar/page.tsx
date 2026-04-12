@@ -209,6 +209,13 @@ export default function ClientCalendarPage() {
 
   const selectedAppts = selectedDay ? appointmentsByDay.get(selectedDay) ?? [] : [];
 
+  const nowMs = today.getTime();
+  const upcomingAppts = useMemo(() => {
+    return [...appointments]
+      .filter((a) => new Date(a.starts_at).getTime() >= nowMs - 60_000)
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  }, [appointments, nowMs]);
+
   function prevMonth() {
     if (month === 0) { setMonth(11); setYear((y) => y - 1); }
     else setMonth((m) => m - 1);
@@ -237,12 +244,6 @@ export default function ClientCalendarPage() {
     setMonth(today.getMonth());
     setSelectedDay(today.getDate());
   }
-
-  const upcomingAppts = useMemo(() => {
-    return [...appointments]
-      .filter((a) => new Date(a.starts_at).getTime() >= Date.now() - 60_000)
-      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [appointments]);
 
   return (
     <div className="space-y-4">
@@ -435,7 +436,7 @@ export default function ClientCalendarPage() {
             {selectedAppts.map((appt, i) => {
               const startTime = new Date(appt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               const endTime = new Date(appt.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-              const isUpcoming = new Date(appt.starts_at).getTime() > Date.now() && (appt.status === 'booked' || appt.status === 'confirmed');
+              const isUpcoming = new Date(appt.starts_at).getTime() > nowMs && (appt.status === 'booked' || appt.status === 'confirmed');
               return (
                 <motion.div
                   key={appt.id}

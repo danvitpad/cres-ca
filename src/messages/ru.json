@@ -774,7 +774,9 @@
     "book": "Записаться",
     "unsubscribe": "Отписаться",
     "bonusLabel": "Реферальный бонус",
-    "bonusPoints": "баллов"
+    "bonusPoints": "баллов",
+    "visitsWithYou": "Визитов",
+    "quickBook": "Записаться"
   },
   "clientForms": {
     "title": "Анкеты и документы",
@@ -838,7 +840,15 @@
     "waitlistAlertsDesc": "Сообщать, когда освободилось нужное мне окошко",
     "reviewRequests": "Просить оставить отзыв после визита",
     "connectTelegram": "Подключить Telegram",
-    "saveChanges": "Сохранить"
+    "saveChanges": "Сохранить",
+    "today": "Сегодня",
+    "yesterday": "Вчера",
+    "filter_all": "Все",
+    "filter_important": "Только важное",
+    "filter_bookings": "Записи",
+    "filter_reminders": "Напоминания",
+    "filter_promos": "Акции",
+    "filter_reviews": "Отзывы"
   },
   "clientSettings": {
     "title": "Настройки аккаунта",
