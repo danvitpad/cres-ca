@@ -25,10 +25,16 @@ interface MasterWithProfile {
   latitude: number | null;
   longitude: number | null;
   is_active: boolean;
+  display_name: string | null;
+  avatar_url: string | null;
   profiles: {
-    full_name: string;
+    full_name: string | null;
     avatar_url: string | null;
-  };
+  } | null;
+}
+
+function mName(m: MasterWithProfile): string {
+  return m.display_name ?? m.profiles?.full_name ?? 'Master';
 }
 
 const DEFAULT_CENTER: [number, number] = [50.4501, 30.5234]; // Kyiv
@@ -49,7 +55,7 @@ export default function MapPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from('masters')
-      .select('id, specialization, rating, latitude, longitude, is_active, profiles(full_name, avatar_url)')
+      .select('id, specialization, rating, latitude, longitude, is_active, display_name, avatar_url, profiles(full_name, avatar_url)')
       .eq('is_active', true)
       .gte('latitude', lat - RADIUS_DEG)
       .lte('latitude', lat + RADIUS_DEG)
@@ -65,7 +71,7 @@ export default function MapPage() {
         .map((m) => ({
           lat: m.latitude!,
           lng: m.longitude!,
-          name: m.profiles?.full_name || 'Master',
+          name: mName(m),
           rating: m.rating || 0,
           specialization: m.specialization || undefined,
           masterId: m.id,
@@ -176,10 +182,10 @@ export default function MapPage() {
             >
               <div className="flex items-center gap-3">
                 <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                  {(selectedMaster.profiles?.full_name || 'M')[0].toUpperCase()}
+                  {mName(selectedMaster)[0].toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{selectedMaster.profiles?.full_name}</h3>
+                  <h3 className="font-semibold truncate">{mName(selectedMaster)}</h3>
                   <p className="text-sm text-muted-foreground truncate">{selectedMaster.specialization}</p>
                 </div>
                 <div className="flex items-center gap-1 text-sm">

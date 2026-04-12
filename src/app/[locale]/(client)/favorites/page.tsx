@@ -44,7 +44,7 @@ export default function FavoritesPage() {
       const masterIds = favs.map((f: { target_id: string }) => f.target_id);
       const { data: rows } = await supabase
         .from('masters')
-        .select('id, specialization, rating, city, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url)')
+        .select('id, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url)')
         .in('id', masterIds);
 
       if (rows) {
@@ -54,13 +54,15 @@ export default function FavoritesPage() {
             specialization: string | null;
             rating: number | null;
             city: string | null;
+            display_name: string | null;
+            avatar_url: string | null;
             profiles: { full_name?: string | null; avatar_url?: string | null } | { full_name?: string | null; avatar_url?: string | null }[] | null;
           };
           const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
           return {
             master_id: row.id,
-            full_name: profile?.full_name ?? null,
-            avatar_url: profile?.avatar_url ?? null,
+            full_name: row.display_name ?? profile?.full_name ?? null,
+            avatar_url: row.avatar_url ?? profile?.avatar_url ?? null,
             specialization: row.specialization,
             rating: row.rating,
             city: row.city,
@@ -105,9 +107,18 @@ export default function FavoritesPage() {
                   className="group rounded-3xl border bg-card p-5 transition-all hover:shadow-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-2xl font-semibold text-primary-foreground">
-                      {(m.full_name || 'M')[0].toUpperCase()}
-                    </div>
+                    {m.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={m.avatar_url}
+                        alt={m.full_name ?? ''}
+                        className="size-16 shrink-0 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-2xl font-semibold text-primary-foreground">
+                        {(m.full_name || 'M')[0].toUpperCase()}
+                      </div>
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{m.full_name}</p>
                       <p className="truncate text-xs text-muted-foreground">{m.specialization}</p>

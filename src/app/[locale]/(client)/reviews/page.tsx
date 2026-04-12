@@ -42,17 +42,19 @@ export default function ReviewsPage() {
       const masterIds = data.map((r: { target_id: string }) => r.target_id);
       const { data: masters } = await supabase
         .from('masters')
-        .select('id, profiles:profiles!masters_profile_id_fkey(full_name)')
+        .select('id, display_name, profiles:profiles!masters_profile_id_fkey(full_name)')
         .in('id', masterIds);
 
       const nameById = new Map<string, string>();
       masters?.forEach((m: unknown) => {
         const row = m as {
           id: string;
+          display_name: string | null;
           profiles: { full_name?: string | null } | { full_name?: string | null }[] | null;
         };
         const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-        if (profile?.full_name) nameById.set(row.id, profile.full_name);
+        const name = row.display_name ?? profile?.full_name ?? null;
+        if (name) nameById.set(row.id, name);
       });
 
       const list: ReviewRow[] = data.map(

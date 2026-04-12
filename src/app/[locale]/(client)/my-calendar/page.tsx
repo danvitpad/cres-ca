@@ -23,8 +23,18 @@ interface ClientAppointment {
   service: { name: string; color: string | null } | null;
   master: {
     id: string;
-    profile: { full_name: string; avatar_url: string | null };
+    display_name: string | null;
+    avatar_url: string | null;
+    profile: { full_name: string | null; avatar_url: string | null } | null;
   } | null;
+}
+
+function masterName(m: ClientAppointment['master']): string {
+  return m?.display_name ?? m?.profile?.full_name ?? '';
+}
+
+function masterAvatar(m: ClientAppointment['master']): string | null {
+  return m?.avatar_url ?? m?.profile?.avatar_url ?? null;
 }
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -57,7 +67,7 @@ function generateIcs(appt: ClientAppointment): string {
     'BEGIN:VEVENT',
     `DTSTART:${start}`,
     `DTEND:${end}`,
-    `SUMMARY:${appt.service?.name ?? 'Appointment'} — ${appt.master?.profile.full_name ?? ''}`,
+    `SUMMARY:${appt.service?.name ?? 'Appointment'} — ${masterName(appt.master)}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\r\n');
@@ -93,7 +103,7 @@ export default function ClientCalendarPage() {
       .select(`
         id, starts_at, ends_at, status,
         service:services(name, color),
-        master:masters!inner(id, profile:profiles!inner(full_name, avatar_url))
+        master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))
       `)
       .gte('starts_at', start)
       .lte('starts_at', end)
@@ -239,15 +249,15 @@ export default function ClientCalendarPage() {
                 >
                   {appt.master && (
                     <AvatarRing
-                      src={appt.master.profile.avatar_url}
-                      name={appt.master.profile.full_name}
+                      src={masterAvatar(appt.master)}
+                      name={masterName(appt.master)}
                       size={40}
                     />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate">{appt.service?.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {appt.master?.profile.full_name} &middot; {startTime}–{endTime}
+                      {masterName(appt.master)} &middot; {startTime}–{endTime}
                     </p>
                   </div>
                   <button

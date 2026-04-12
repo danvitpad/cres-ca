@@ -28,7 +28,14 @@ interface HistoryAppointment {
   master_id: string;
   service_id: string;
   service: { name: string; color: string; duration_minutes: number } | null;
-  client: { master_id: string; master: { profile: { full_name: string } } | null } | null;
+  client: {
+    master_id: string;
+    master: {
+      display_name: string | null;
+      avatar_url: string | null;
+      profile: { full_name: string; avatar_url: string | null } | null;
+    } | null;
+  } | null;
 }
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -57,7 +64,7 @@ export default function HistoryPage() {
       // Get all client IDs for this user
       const { data: clients } = await supabase
         .from('clients')
-        .select('id, master_id, master:masters(profile:profiles(full_name))')
+        .select('id, master_id, master:masters(display_name, avatar_url, profile:profiles(full_name, avatar_url))')
         .eq('profile_id', userId);
 
       if (!clients?.length) {
@@ -82,7 +89,9 @@ export default function HistoryPage() {
             service: a.service as unknown as HistoryAppointment['service'],
             client: clientRecord ? {
               master_id: clientRecord.master_id,
-              master: clientRecord.master as unknown as { profile: { full_name: string } },
+              master: clientRecord.master as unknown as HistoryAppointment['client'] extends infer C
+                ? C extends { master: infer M } ? M : never
+                : never,
             } : null,
           };
         });
@@ -200,7 +209,7 @@ export default function HistoryPage() {
                       {appointment.client?.master && (
                         <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                           <User className="size-3" />
-                          {appointment.client.master.profile.full_name}
+                          {appointment.client.master.display_name ?? appointment.client.master.profile?.full_name ?? '—'}
                         </div>
                       )}
                     </div>

@@ -24,8 +24,18 @@ interface ShopProduct {
   image_url: string | null;
   master: {
     id: string;
-    profile: { full_name: string; avatar_url: string | null };
+    display_name: string | null;
+    avatar_url: string | null;
+    profile: { full_name: string | null; avatar_url: string | null } | null;
   };
+}
+
+function masterName(m: ShopProduct['master']): string {
+  return m.display_name ?? m.profile?.full_name ?? '—';
+}
+
+function masterAvatar(m: ShopProduct['master']): string | null {
+  return m.avatar_url ?? m.profile?.avatar_url ?? null;
 }
 
 export default function ShopPage() {
@@ -39,7 +49,7 @@ export default function ShopPage() {
     const supabase = createClient();
     let query = supabase
       .from('products')
-      .select('id, name, description, price, currency, image_url, master:masters!inner(id, profile:profiles!inner(full_name, avatar_url))')
+      .select('id, name, description, price, currency, image_url, master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))')
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
@@ -55,7 +65,7 @@ export default function ShopPage() {
     const uniqueMasters = new Map<string, string>();
     for (const p of items) {
       if (!uniqueMasters.has(p.master.id)) {
-        uniqueMasters.set(p.master.id, p.master.profile.full_name);
+        uniqueMasters.set(p.master.id, masterName(p.master));
       }
     }
     setMasters(Array.from(uniqueMasters, ([id, name]) => ({ id, name })));
@@ -179,12 +189,12 @@ export default function ShopPage() {
                 )}
                 <div className="flex items-center gap-1.5">
                   <AvatarRing
-                    src={product.master.profile.avatar_url}
-                    name={product.master.profile.full_name}
+                    src={masterAvatar(product.master)}
+                    name={masterName(product.master)}
                     size={20}
                   />
                   <span className="text-[10px] text-muted-foreground truncate">
-                    {product.master.profile.full_name}
+                    {masterName(product.master)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
