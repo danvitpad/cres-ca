@@ -688,7 +688,9 @@
     "myAccount": "Мій акаунт",
     "searchPlaceholder": "Пошук послуг, компаній, майстрів...",
     "photos": "Фото до/після",
-    "home": "Головна"
+    "home": "Головна",
+    "shop": "Магазин",
+    "map": "На карті"
   },
   "clientHeader": {
     "allServices": "Усі послуги",
@@ -906,6 +908,13 @@
     "referralProgram": "Реферальна програма",
     "referralDesc": "Поділіться посиланням та отримайте бонуси, коли друзі зареєструються!",
     "profileSaved": "Профіль збережено",
+    "statsVisits": "Візити",
+    "statsMasters": "Майстри",
+    "statsBonuses": "Бонуси",
+    "personalInfo": "Особиста інформація",
+    "addresses": "Адреси",
+    "rewards": "Бонуси та реферал",
+    "memberSince": "З нами з {date}",
     "hoursSaved": "Графік збережено",
     "copyLink": "Копіювати",
     "copied": "Скопійовано!",
@@ -1231,7 +1240,12 @@
     "cancelReasonPlaceholder": "Причина (необов'язково) — допоможе майстру спланувати",
     "cancelKeep": "Залишити",
     "cancelConfirm": "Скасувати запис",
-    "cancelDone": "Запис скасовано"
+    "cancelDone": "Запис скасовано",
+    "viewMonth": "Місяць",
+    "viewWeek": "Тиждень",
+    "viewAgenda": "Список",
+    "moreEvents": "+{count} ще",
+    "noUpcoming": "Запишись до майстра — і тут зʼявляться твої візити"
   },
   "products": {
     "title": "Товари",

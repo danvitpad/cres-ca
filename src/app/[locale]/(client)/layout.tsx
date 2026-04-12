@@ -27,6 +27,10 @@ import {
   Sparkles,
   Scissors,
   UserPlus,
+  History,
+  Bell,
+  ShoppingBag,
+  Map as MapIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,11 +44,15 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
-// IG-style sidebar — hover to expand. Order: profile → calendar → myMasters → wallet → settings.
+// IG-style sidebar — hover to expand.
 const sidebarNav = [
   { key: 'profile', icon: User, href: '/profile' },
   { key: 'calendar', icon: CalendarDays, href: '/my-calendar' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
+  { key: 'activity', icon: History, href: '/history' },
+  { key: 'notifications', icon: Bell, href: '/notifications' },
+  { key: 'map', icon: MapIcon, href: '/map' },
+  { key: 'shop', icon: ShoppingBag, href: '/shop' },
   { key: 'wallet', icon: Wallet, href: '/wallet' },
   { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
@@ -501,30 +509,32 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — IG-web style: transparent, vertically centered icons, expand on hover */}
-        <aside className="group/sb hidden lg:flex w-[72px] hover:w-[240px] shrink-0 flex-col justify-center bg-transparent overflow-hidden transition-[width] duration-200 ease-out">
-          <nav className="px-3 space-y-2">
-            {sidebarNav.map(({ key, icon: Icon, href }) => {
-              const isActive = pathname.endsWith(href);
-              return (
-                <Link
-                  key={key}
-                  href={href}
-                  className={cn(
-                    'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all whitespace-nowrap',
-                    isActive
-                      ? 'bg-muted font-medium text-foreground'
-                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                  )}
-                >
-                  <Icon className="size-[22px] shrink-0" />
-                  <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
-                    {t(key)}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
+        {/* Desktop sidebar — IG-web style: 72px reserved, expands to overlay on hover (no content shift) */}
+        <aside className="hidden lg:block w-[72px] shrink-0 relative">
+          <div className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[240px] transition-[width,background-color,box-shadow] duration-200 ease-out flex flex-col justify-center overflow-hidden bg-transparent hover:bg-card/95 hover:backdrop-blur-md hover:shadow-[var(--shadow-elevated)] hover:border-r hover:border-border/60 z-30">
+            <nav className="px-3 space-y-1.5">
+              {sidebarNav.map(({ key, icon: Icon, href }) => {
+                const isActive = pathname.endsWith(href);
+                return (
+                  <Link
+                    key={key}
+                    href={href}
+                    className={cn(
+                      'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-all whitespace-nowrap',
+                      isActive
+                        ? 'bg-muted font-medium text-foreground'
+                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                    )}
+                  >
+                    <Icon className="size-[22px] shrink-0" />
+                    <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                      {t(key)}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
         </aside>
 
         {/* Main content */}

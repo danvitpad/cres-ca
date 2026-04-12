@@ -688,7 +688,9 @@
     "myAccount": "Мой аккаунт",
     "searchPlaceholder": "Поиск услуг, компаний, мастеров...",
     "photos": "Фото до/после",
-    "home": "Главная"
+    "home": "Главная",
+    "shop": "Магазин",
+    "map": "На карте"
   },
   "clientHeader": {
     "allServices": "Все услуги",
@@ -906,6 +908,13 @@
     "referralProgram": "Реферальная программа",
     "referralDesc": "Поделитесь ссылкой и получите бонусы, когда друзья зарегистрируются!",
     "profileSaved": "Профиль сохранён",
+    "statsVisits": "Визиты",
+    "statsMasters": "Мастера",
+    "statsBonuses": "Бонусы",
+    "personalInfo": "Личная информация",
+    "addresses": "Адреса",
+    "rewards": "Бонусы и реферал",
+    "memberSince": "С нами с {date}",
     "hoursSaved": "График сохранён",
     "copyLink": "Копировать",
     "copied": "Скопировано!",
@@ -1231,7 +1240,12 @@
     "cancelReasonPlaceholder": "Причина (необязательно) — поможет мастеру спланировать",
     "cancelKeep": "Оставить",
     "cancelConfirm": "Отменить запись",
-    "cancelDone": "Запись отменена"
+    "cancelDone": "Запись отменена",
+    "viewMonth": "Месяц",
+    "viewWeek": "Неделя",
+    "viewAgenda": "Список",
+    "moreEvents": "+{count} ещё",
+    "noUpcoming": "Запишись к мастеру — и здесь появятся твои визиты"
   },
   "products": {
     "title": "Товары",

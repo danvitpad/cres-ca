@@ -1,6 +1,7 @@
 /** --- YAML
  * name: ClientCalendarPage
- * description: Client unified calendar showing appointments across all masters with monthly grid and day detail
+ * description: Google-Calendar-style client calendar with inline event chips, view switcher (month/agenda), today button
+ * updated: 2026-04-12
  * --- */
 
 'use client';
@@ -9,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, X, Calendar as CalendarIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
@@ -93,6 +94,7 @@ export default function ClientCalendarPage() {
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [view, setView] = useState<'month' | 'agenda'>('month');
   const [appointments, setAppointments] = useState<ClientAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -230,71 +232,191 @@ export default function ClientCalendarPage() {
     );
   }
 
+  function goToday() {
+    setYear(today.getFullYear());
+    setMonth(today.getMonth());
+    setSelectedDay(today.getDate());
+  }
+
+  const upcomingAppts = useMemo(() => {
+    return [...appointments]
+      .filter((a) => new Date(a.starts_at).getTime() >= Date.now() - 60_000)
+      .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+  }, [appointments]);
+
   return (
-    <div className="p-[var(--space-page)]">
-      {/* Month navigation */}
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={prevMonth} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <h2 className="text-lg font-semibold capitalize">{monthLabel}</h2>
-        <button onClick={nextMonth} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted">
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </div>
-
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAYS.map((d) => (
-          <div key={d} className="text-center text-[10px] font-medium uppercase text-muted-foreground py-1">
-            {d}
+    <div className="space-y-4">
+      {/* Top toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={goToday}
+            className="rounded-full border border-border/60 bg-card px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            {t('today')}
+          </button>
+          <div className="flex items-center">
+            <button onClick={prevMonth} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button onClick={nextMonth} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
-        ))}
-      </div>
+          <h2 className="text-xl font-semibold capitalize tracking-tight">{monthLabel}</h2>
+        </div>
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {grid.map((day, i) => {
-          if (day === null) return <div key={`e${i}`} />;
-          const dayDate = new Date(year, month, day);
-          const isToday = sameDay(dayDate, today);
-          const isSelected = day === selectedDay;
-          const dayAppts = appointmentsByDay.get(day);
-          const uniqueColors = dayAppts
-            ? [...new Set(dayAppts.map((a) => a.service?.color ?? '#8b5cf6'))]
-            : [];
-
-          return (
+        {/* View switcher */}
+        <div className="flex gap-1 rounded-full border border-border/60 bg-card p-1">
+          {(['month', 'agenda'] as const).map((v) => (
             <button
-              key={day}
-              onClick={() => {
-                setSelectedDay(day);
-                if (dayAppts?.length) setSheetOpen(true);
-              }}
+              key={v}
+              onClick={() => setView(v)}
               className={cn(
-                'relative flex flex-col items-center justify-center rounded-xl py-2 text-sm transition-all',
-                isToday && !isSelected && 'font-bold text-[var(--ds-accent)]',
-                isSelected && 'bg-[var(--ds-accent)] text-white font-bold',
-                !isSelected && 'hover:bg-muted',
+                'rounded-full px-4 py-1.5 text-xs font-medium transition-all',
+                view === v ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {day}
-              {/* Appointment dots */}
-              {uniqueColors.length > 0 && (
-                <div className="flex gap-0.5 mt-0.5">
-                  {uniqueColors.slice(0, 3).map((color, ci) => (
-                    <span
-                      key={ci}
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ backgroundColor: isSelected ? '#fff' : color }}
-                    />
-                  ))}
-                </div>
-              )}
+              {t(v === 'month' ? 'viewMonth' : 'viewAgenda')}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
+
+      {view === 'month' && (
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 border-b border-border/60 bg-muted/30">
+            {WEEKDAYS.map((d) => (
+              <div key={d} className="py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar grid — Google-style cells */}
+          <div className="grid grid-cols-7">
+            {grid.map((day, i) => {
+              if (day === null) {
+                return <div key={`e${i}`} className="min-h-[120px] border-b border-r border-border/40 bg-muted/10 last:border-r-0" />;
+              }
+              const dayDate = new Date(year, month, day);
+              const isToday = sameDay(dayDate, today);
+              const isSelected = day === selectedDay;
+              const dayAppts = (appointmentsByDay.get(day) ?? []).slice().sort((a, b) =>
+                new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+              );
+              const visibleAppts = dayAppts.slice(0, 3);
+              const remaining = dayAppts.length - visibleAppts.length;
+
+              return (
+                <button
+                  key={day}
+                  onClick={() => {
+                    setSelectedDay(day);
+                    if (dayAppts.length) setSheetOpen(true);
+                  }}
+                  className={cn(
+                    'group/cell relative flex min-h-[120px] flex-col gap-1 border-b border-r border-border/40 p-1.5 text-left transition-colors last:border-r-0 hover:bg-muted/40',
+                    isSelected && 'bg-[var(--ds-accent)]/5 ring-1 ring-inset ring-[var(--ds-accent)]/40',
+                  )}
+                >
+                  {/* Day number */}
+                  <div className="flex justify-end px-1">
+                    <span
+                      className={cn(
+                        'flex size-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums',
+                        isToday && 'bg-[var(--ds-accent)] text-white shadow-sm',
+                        !isToday && 'text-foreground',
+                      )}
+                    >
+                      {day}
+                    </span>
+                  </div>
+
+                  {/* Inline event chips */}
+                  <div className="flex flex-1 flex-col gap-0.5">
+                    {visibleAppts.map((appt) => {
+                      const startTime = new Date(appt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const color = appt.service?.color ?? 'var(--ds-accent)';
+                      return (
+                        <div
+                          key={appt.id}
+                          className="truncate rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-tight"
+                          style={{
+                            backgroundColor: `color-mix(in oklch, ${color} 18%, transparent)`,
+                            color: color,
+                            borderLeft: `2px solid ${color}`,
+                          }}
+                        >
+                          <span className="tabular-nums opacity-80">{startTime}</span>{' '}
+                          <span className="opacity-95">{appt.service?.name ?? '—'}</span>
+                        </div>
+                      );
+                    })}
+                    {remaining > 0 && (
+                      <span className="px-1.5 text-[10px] font-medium text-muted-foreground">
+                        {t('moreEvents', { count: remaining })}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {view === 'agenda' && (
+        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
+          {upcomingAppts.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 p-12 text-center">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <CalendarIcon className="size-6" />
+              </div>
+              <p className="text-sm text-muted-foreground">{t('noUpcoming')}</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {upcomingAppts.map((appt) => {
+                const dt = new Date(appt.starts_at);
+                const startTime = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateLabel = dt.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+                const color = appt.service?.color ?? 'var(--ds-accent)';
+                return (
+                  <li key={appt.id} className="flex items-center gap-4 p-4 transition-colors hover:bg-muted/40">
+                    <div className="flex w-16 shrink-0 flex-col items-center rounded-xl p-2" style={{ backgroundColor: `color-mix(in oklch, ${color} 12%, transparent)` }}>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color }}>{dateLabel}</span>
+                      <span className="text-sm font-bold tabular-nums" style={{ color }}>{startTime}</span>
+                    </div>
+                    {appt.master && (
+                      <AvatarRing src={masterAvatar(appt.master)} name={masterName(appt.master)} size={40} />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{appt.service?.name ?? '—'}</p>
+                      <p className="truncate text-xs text-muted-foreground">{masterName(appt.master)}</p>
+                    </div>
+                    <button
+                      onClick={() => downloadIcs(appt)}
+                      className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      title={t('addToCalendar')}
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => { setCancelTarget(appt); setCancelReason(''); }}
+                      className="shrink-0 rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
+                      title={t('cancel')}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Bottom sheet with day's appointments */}
       <BottomSheet open={sheetOpen} onClose={() => setSheetOpen(false)} snapPoints={[0.45, 0.85]}>

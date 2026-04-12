@@ -1,6 +1,7 @@
 /** --- YAML
  * name: ClientProfilePage
- * description: Fresha-style client profile — avatar, personal info fields, addresses section
+ * description: Premium client profile — gradient hero, big avatar, stats row, tabbed content
+ * updated: 2026-04-12
  * --- */
 
 'use client';
@@ -9,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Camera, MapPin, Plus, Gift, Copy, Check, LogOut } from 'lucide-react';
+import { Camera, MapPin, Plus, Gift, Copy, Check, LogOut, User as UserIcon, Sparkles, Calendar, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useRouter } from 'next/navigation';
@@ -17,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 interface ProfileData {
   id: string;
@@ -26,7 +27,10 @@ interface ProfileData {
   avatar_url: string | null;
   email?: string;
   referral_code?: string;
+  created_at?: string;
 }
+
+type Tab = 'info' | 'addresses' | 'rewards';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
@@ -39,10 +43,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('info');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [stats, setStats] = useState({ visits: 0, masters: 0, bonuses: 0 });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -51,7 +57,7 @@ export default function ProfilePage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, phone, avatar_url')
+        .select('id, full_name, phone, avatar_url, created_at')
         .eq('id', userId)
         .single();
 
@@ -63,6 +69,15 @@ export default function ProfilePage() {
         setPhone(data.phone || '');
         setAvatarUrl(data.avatar_url || null);
       }
+
+      // Stats — best-effort, ignore errors
+      const [{ count: visits }, { count: masters }, { data: wallet }] = await Promise.all([
+        supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('client_id', userId),
+        supabase.from('client_master_links').select('id', { count: 'exact', head: true }).eq('client_id', userId),
+        supabase.from('client_wallets').select('balance').eq('client_id', userId).maybeSingle(),
+      ]);
+      setStats({ visits: visits ?? 0, masters: masters ?? 0, bonuses: wallet?.balance ?? 0 });
+
       setLoading(false);
     }
     load();
@@ -79,7 +94,7 @@ export default function ProfilePage() {
     if (error) toast.error(tc('error'));
     else {
       toast.success(t('profileSaved'));
-      setProfile((p) => p ? { ...p, full_name: name.trim(), phone: phone.trim() || null } : p);
+      setProfile((p) => (p ? { ...p, full_name: name.trim(), phone: phone.trim() || null } : p));
       setEditing(false);
     }
   }
@@ -141,31 +156,36 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-60" />
+        <Skeleton className="h-48 w-full rounded-3xl" />
+        <Skeleton className="h-60 rounded-2xl" />
       </div>
     );
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Page heading */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{t('editProfile')}</h1>
-        {!editing && (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            {tc('edit')}
-          </Button>
-        )}
-      </div>
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : '—';
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-        {/* Left — personal info */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {/* Avatar */}
-          <div className="flex flex-col items-center gap-3 mb-8">
-            <div className="relative">
-              <div className="flex size-24 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground text-3xl font-bold">
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Hero — gradient cover with avatar overlap */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-[var(--shadow-card)]"
+      >
+        {/* Gradient cover */}
+        <div className="relative h-40 bg-gradient-to-br from-[var(--ds-accent)] via-purple-500 to-pink-500">
+          <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_30%_20%,white,transparent_50%)]" />
+          <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_80%_60%,white,transparent_40%)]" />
+        </div>
+
+        {/* Content row */}
+        <div className="px-6 pb-6 pt-0 sm:px-8">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:gap-6">
+            {/* Avatar */}
+            <div className="relative -mt-16">
+              <div className="flex size-32 items-center justify-center overflow-hidden rounded-full bg-card text-4xl font-bold text-[var(--ds-accent)] ring-4 ring-card shadow-[var(--shadow-elevated)]">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt={name} className="size-full object-cover" />
                 ) : (
@@ -182,146 +202,187 @@ export default function ProfilePage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={avatarBusy}
-                className="absolute bottom-0 right-0 flex size-8 items-center justify-center rounded-full bg-card border shadow-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                className="absolute bottom-1 right-1 flex size-9 items-center justify-center rounded-full bg-foreground text-background shadow-md transition-transform hover:scale-110 disabled:opacity-50"
               >
                 <Camera className="size-4" />
               </button>
             </div>
-            <p className="text-lg font-medium">{name || 'User'}</p>
-          </div>
 
-          <Separator className="mb-6" />
-
-          {/* Info fields */}
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{ta('firstName')}</Label>
-                {editing ? (
-                  <Input
-                    value={firstName}
-                    onChange={(e) => setName(`${e.target.value} ${lastName}`.trim())}
-                    className="h-10"
-                  />
-                ) : (
-                  <p className="text-sm font-medium py-2">{firstName || '—'}</p>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{ta('lastName')}</Label>
-                {editing ? (
-                  <Input
-                    value={lastName}
-                    onChange={(e) => setName(`${firstName} ${e.target.value}`.trim())}
-                    className="h-10"
-                  />
-                ) : (
-                  <p className="text-sm font-medium py-2">{lastName || '—'}</p>
-                )}
-              </div>
+            {/* Name + meta */}
+            <div className="flex-1 text-center sm:pb-2 sm:text-left">
+              <h1 className="text-2xl font-bold tracking-tight">{name || 'User'}</h1>
+              <p className="text-sm text-muted-foreground">{profile?.email || phone || ''}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t('memberSince', { date: memberSince })}</p>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{ta('phone')}</Label>
+            {/* Edit button */}
+            <div className="sm:pb-2">
               {editing ? (
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380..." className="h-10" />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={saveProfile}>
+                    {tc('save')}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                    {tc('cancel')}
+                  </Button>
+                </div>
               ) : (
-                <p className="text-sm font-medium py-2">{phone || '—'}</p>
+                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                  {tc('edit')}
+                </Button>
               )}
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{ta('email')}</Label>
-              <p className="text-sm font-medium py-2">{profile?.email || '—'}</p>
-            </div>
+          {/* Stats row */}
+          <div className="mt-6 grid grid-cols-3 gap-3 rounded-2xl border border-border/60 bg-background/40 p-4 backdrop-blur-sm">
+            <StatCell icon={<Calendar className="size-4" />} label={t('statsVisits')} value={stats.visits} />
+            <StatCell icon={<UserPlus className="size-4" />} label={t('statsMasters')} value={stats.masters} />
+            <StatCell icon={<Sparkles className="size-4" />} label={t('statsBonuses')} value={stats.bonuses} accent />
+          </div>
+        </div>
+      </motion.div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('birthday')}</Label>
-              <p className="text-sm font-medium py-2">—</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t('gender')}</Label>
-              <p className="text-sm font-medium py-2">—</p>
-            </div>
-
-            {editing && (
-              <div className="flex gap-3 pt-2">
-                <Button onClick={saveProfile} className="flex-1">{tc('save')}</Button>
-                <Button variant="outline" onClick={() => setEditing(false)}>{tc('cancel')}</Button>
-              </div>
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-full border border-border/60 bg-card p-1 w-fit mx-auto">
+        {(['info', 'addresses', 'rewards'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'rounded-full px-5 py-2 text-sm font-medium transition-all',
+              activeTab === tab
+                ? 'bg-foreground text-background shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
             )}
-          </div>
-        </motion.div>
-
-        {/* Right — addresses + referral */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="space-y-6"
-        >
-          {/* Addresses */}
-          <div className="rounded-xl border bg-card p-5">
-            <h3 className="text-sm font-semibold mb-4">{t('myAddresses')}</h3>
-            <div className="space-y-3">
-              <button className="flex w-full items-center gap-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors">
-                <div className="flex size-9 items-center justify-center rounded-full bg-muted">
-                  <MapPin className="size-4" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-foreground">{t('homeAddress')}</p>
-                  <p className="text-xs">{t('addHomeAddress')}</p>
-                </div>
-              </button>
-              <button className="flex w-full items-center gap-3 rounded-lg border border-dashed p-3 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors">
-                <div className="flex size-9 items-center justify-center rounded-full bg-muted">
-                  <MapPin className="size-4" />
-                </div>
-                <div className="text-left">
-                  <p className="font-medium text-foreground">{t('workAddress')}</p>
-                  <p className="text-xs">{t('addWorkAddress')}</p>
-                </div>
-              </button>
-              <button className="flex w-full items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <Plus className="size-4" />
-                <span>{tc('create')}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Referral */}
-          <div className="rounded-xl border bg-card p-5">
-            <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-              <Gift className="size-4 text-primary" />
-              {t('referralProgram')}
-            </h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              {t('referralDesc')}
-            </p>
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${profile?.referral_code}`}
-                className="text-xs h-9"
-              />
-              <Button variant="outline" size="sm" onClick={copyReferralLink} className="shrink-0 gap-1.5 h-9">
-                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              </Button>
-            </div>
-          </div>
-
-          {/* Sign out */}
-          <Button
-            variant="ghost"
-            onClick={handleSignOut}
-            className="w-full gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
           >
-            <LogOut className="size-4" />
-            {ta('signOut')}
-          </Button>
-        </motion.div>
+            {t(tab === 'info' ? 'personalInfo' : tab === 'addresses' ? 'addresses' : 'rewards')}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="mx-auto max-w-2xl"
+      >
+        {activeTab === 'info' && (
+          <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-card)]">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label={ta('firstName')} editing={editing} value={firstName} onChange={(v) => setName(`${v} ${lastName}`.trim())} />
+              <Field label={ta('lastName')} editing={editing} value={lastName} onChange={(v) => setName(`${firstName} ${v}`.trim())} />
+              <Field label={ta('phone')} editing={editing} value={phone} onChange={setPhone} placeholder="+380..." />
+              <Field label={ta('email')} editing={false} value={profile?.email ?? '—'} onChange={() => {}} />
+              <Field label={t('birthday')} editing={false} value="—" onChange={() => {}} />
+              <Field label={t('gender')} editing={false} value="—" onChange={() => {}} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'addresses' && (
+          <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-card)]">
+            <AddressRow icon={<MapPin className="size-4" />} title={t('homeAddress')} hint={t('addHomeAddress')} />
+            <AddressRow icon={<MapPin className="size-4" />} title={t('workAddress')} hint={t('addWorkAddress')} />
+            <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground transition-colors hover:border-[var(--ds-accent)] hover:text-foreground">
+              <Plus className="size-4" />
+              {tc('create')}
+            </button>
+          </div>
+        )}
+
+        {activeTab === 'rewards' && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-amber-400/10 via-pink-500/10 to-purple-500/10 p-6 shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-3">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-pink-500 text-white shadow-md">
+                  <Gift className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold">{t('referralProgram')}</h3>
+                  <p className="text-xs text-muted-foreground">{t('referralDesc')}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Input
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${profile?.referral_code}`}
+                  className="h-10 text-xs"
+                />
+                <Button variant="outline" size="sm" onClick={copyReferralLink} className="shrink-0 gap-1.5 h-10">
+                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Sign out */}
+      <div className="mx-auto max-w-2xl">
+        <Button
+          variant="ghost"
+          onClick={handleSignOut}
+          className="w-full gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut className="size-4" />
+          {ta('signOut')}
+        </Button>
       </div>
     </div>
+  );
+}
+
+function StatCell({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', accent && 'text-[var(--ds-accent)]')}>
+        {icon}
+        {label}
+      </div>
+      <p className="text-xl font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  editing,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  editing: boolean;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
+      {editing ? (
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-10" />
+      ) : (
+        <p className="rounded-lg bg-muted/40 px-3 py-2.5 text-sm font-medium">{value || '—'}</p>
+      )}
+    </div>
+  );
+}
+
+function AddressRow({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
+  return (
+    <button className="flex w-full items-center gap-3 rounded-xl border border-border/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--ds-accent)]/40 hover:shadow-sm">
+      <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
+        {icon}
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      <Plus className="size-4 text-muted-foreground" />
+    </button>
   );
 }

@@ -688,7 +688,9 @@
     "myAccount": "My Account",
     "searchPlaceholder": "Search services, businesses, masters...",
     "photos": "Before/After photos",
-    "home": "Home"
+    "home": "Home",
+    "shop": "Shop",
+    "map": "Map"
   },
   "clientHeader": {
     "allServices": "All treatments",
@@ -906,6 +908,13 @@
     "referralProgram": "Referral Program",
     "referralDesc": "Share your link and earn bonus points when friends sign up!",
     "profileSaved": "Profile saved",
+    "statsVisits": "Visits",
+    "statsMasters": "Masters",
+    "statsBonuses": "Bonuses",
+    "personalInfo": "Personal info",
+    "addresses": "Addresses",
+    "rewards": "Rewards & referral",
+    "memberSince": "Member since {date}",
     "hoursSaved": "Working hours saved",
     "copyLink": "Copy link",
     "copied": "Copied!",
@@ -1231,7 +1240,12 @@
     "cancelReasonPlaceholder": "Reason (optional) — helps your master plan",
     "cancelKeep": "Keep",
     "cancelConfirm": "Cancel appointment",
-    "cancelDone": "Appointment cancelled"
+    "cancelDone": "Appointment cancelled",
+    "viewMonth": "Month",
+    "viewWeek": "Week",
+    "viewAgenda": "Agenda",
+    "moreEvents": "+{count} more",
+    "noUpcoming": "Book a master and your visits will show up here"
   },
   "products": {
     "title": "Products",
