@@ -15,12 +15,12 @@ type FiltersDrawerProps = {
 };
 
 const LIGHT = {
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
   sectionBg: '#f9f9f9',
   accent: '#6950f3',
-  btnBg: '#0d0d0d',
+  btnBg: '#000000',
   btnText: '#ffffff',
   btnOutlineBg: 'transparent',
   btnOutlineBorder: '#e5e5e5',
@@ -30,8 +30,8 @@ const LIGHT = {
 const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
-  border: '#2a2a2a',
-  sectionBg: '#252525',
+  border: '#1a1a1a',
+  sectionBg: '#000000',
   accent: '#8b7cf6',
   btnBg: '#6950f3',
   btnText: '#ffffff',

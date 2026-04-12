@@ -12,21 +12,22 @@ import { useState, useEffect, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Home,
-  CalendarDays,
-  Tag,
-  Smile,
-  BookOpen,
-  Contact,
-  Megaphone,
-  Users,
-  BarChart3,
-  LayoutGrid,
-  Settings,
-  HelpCircle,
-  Bell,
-  Search,
-} from 'lucide-react';
+  FreshaHome,
+  FreshaCalendar,
+  FreshaTag,
+  FreshaSmile,
+  FreshaBook,
+  FreshaContact,
+  FreshaMegaphone,
+  FreshaTeam,
+  FreshaAnalytics,
+  FreshaAddons,
+  FreshaSettings,
+  FreshaHelp,
+  FreshaSearch,
+  FreshaBarChart,
+  FreshaBell,
+} from '@/components/shared/fresha-icons';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { cn } from '@/lib/utils';
@@ -66,19 +67,19 @@ const F_LIGHT = {
 };
 
 const F_DARK = {
-  headerBg: '#1a1a1a',
-  headerBorder: '#2a2a2a',
+  headerBg: '#0d0d0d',
+  headerBorder: '#333333',
   sidebarBg: '#0d0d0d',
-  sidebarBorder: '#2a2a2a',
+  sidebarBorder: '#333333',
   sidebarActiveBg: '#6950f3',
   sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#8a8a8a',
-  textPrimary: '#e5e5e5',
-  avatarBg: '#2a2a2a',
-  avatarBorder: '#3a3a3a',
+  sidebarInactiveIconColor: '#f5f5f5',
+  textPrimary: '#f5f5f5',
+  avatarBg: '#1a1a1a',
+  avatarBorder: '#333333',
   badgeBg: '#d4163a',
   badgeText: '#ffffff',
-  contentBg: '#1a1a1a',
+  contentBg: '#131313',
 };
 
 type FTheme = typeof F_LIGHT;
@@ -95,22 +96,26 @@ type SidebarNavItem = {
   icon: React.ComponentType<{ style?: React.CSSProperties }>;
   href?: string;
   title?: string;
+  tooltip?: string;
   submenu?: { label: string; href: string }[];
 };
 
 const sidebarNav: SidebarNavItem[] = [
-  { key: 'dashboard', icon: Home, href: '/dashboard' },
-  { key: 'calendar', icon: CalendarDays, href: '/calendar' },
+  { key: 'dashboard', icon: FreshaHome, href: '/dashboard', tooltip: 'Главная' },
+  { key: 'calendar', icon: FreshaCalendar, href: '/calendar', tooltip: 'Календарь' },
   {
-    key: 'catalogue', icon: Tag, title: 'Каталог',
+    key: 'sales', icon: FreshaTag, title: 'Продажи',
     submenu: [
-      { label: 'Меню услуг', href: '/services' },
-      { label: 'Абонементы', href: '/services/memberships' },
-      { label: 'Товары', href: '/inventory' },
+      { label: 'Ежедневные продажи', href: '/finance/daily' },
+      { label: 'Список записей', href: '/finance/appointments' },
+      { label: 'Список продаж', href: '/finance' },
+      { label: 'Платежи', href: '/finance/payments' },
+      { label: 'Подарочные карты', href: '/finance/gift-cards' },
+      { label: 'Купленные абонементы', href: '/finance/memberships' },
     ],
   },
   {
-    key: 'clients', icon: Smile, title: 'Клиенты',
+    key: 'clients', icon: FreshaSmile, title: 'Клиенты',
     submenu: [
       { label: 'Список клиентов', href: '/clients' },
       { label: 'Сегменты клиентов', href: '/clients/segments' },
@@ -118,7 +123,15 @@ const sidebarNav: SidebarNavItem[] = [
     ],
   },
   {
-    key: 'online-booking', icon: BookOpen, title: 'Онлайн-запись',
+    key: 'catalogue', icon: FreshaBook, title: 'Каталог',
+    submenu: [
+      { label: 'Меню услуг', href: '/services' },
+      { label: 'Абонементы', href: '/services/memberships' },
+      { label: 'Товары', href: '/inventory' },
+    ],
+  },
+  {
+    key: 'online-booking', icon: FreshaContact, title: 'Онлайн-запись',
     submenu: [
       { label: 'Профиль на маркетплейсе', href: '/marketing/profile' },
       { label: 'Бронирование Google', href: '/marketing/google' },
@@ -127,7 +140,7 @@ const sidebarNav: SidebarNavItem[] = [
     ],
   },
   {
-    key: 'marketing', icon: Megaphone, title: 'Обмен сообщениями',
+    key: 'marketing', icon: FreshaMegaphone, title: 'Обмен сообщениями',
     submenu: [
       { label: 'Массовые кампании', href: '/marketing/campaigns' },
       { label: 'Автоматизация', href: '/marketing/automation' },
@@ -138,7 +151,7 @@ const sidebarNav: SidebarNavItem[] = [
     ],
   },
   {
-    key: 'team', icon: Users, title: 'Команда',
+    key: 'team', icon: FreshaTeam, title: 'Команда',
     submenu: [
       { label: 'Участники команды', href: '/settings/team' },
       { label: 'График смен', href: '/settings/team/shifts' },
@@ -147,22 +160,13 @@ const sidebarNav: SidebarNavItem[] = [
     ],
   },
   {
-    key: 'sales', icon: BarChart3, title: 'Продажи',
-    submenu: [
-      { label: 'Ежедневные продажи', href: '/finance/daily' },
-      { label: 'Список записей', href: '/finance/appointments' },
-      { label: 'Список продаж', href: '/finance' },
-      { label: 'Платежи', href: '/finance/payments' },
-      { label: 'Подарочные карты', href: '/finance/gift-cards' },
-      { label: 'Купленные абонементы', href: '/finance/memberships' },
-    ],
+    key: 'analytics', icon: FreshaAnalytics, href: '/finance/reports', tooltip: 'Аналитика',
   },
-  { key: 'reports', icon: Contact, href: '/finance/reports' },
-  { key: 'addons', icon: LayoutGrid, href: '/settings' },
-  { key: 'settings', icon: Settings, href: '/settings' },
+  { key: 'addons', icon: FreshaAddons, href: '/addons', tooltip: 'Дополнения' },
+  { key: 'settings', icon: FreshaSettings, href: '/settings', tooltip: 'Настройки' },
 ];
 
-const sidebarHelp: SidebarNavItem = { key: 'help', icon: HelpCircle, href: '/contact' };
+const sidebarHelp: SidebarNavItem = { key: 'help', icon: FreshaHelp, href: '/contact' };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('dashboard');
@@ -182,6 +186,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const F: FTheme = mounted && resolvedTheme === 'dark' ? F_DARK : F_LIGHT;
   const masterName = master?.profile?.full_name || 'Master';
 
+  /* Auto-open flyout when current route matches a submenu item (like Fresha) */
+  useEffect(() => {
+    const matchingItem = sidebarNav.find(
+      item => item.submenu && item.submenu.some(sub => pathname.includes(sub.href))
+    );
+    if (matchingItem) {
+      setOpenFlyout(matchingItem.key);
+    }
+  }, [pathname]);
+
   function isActive(href: string) {
     return pathname.includes(href);
   }
@@ -197,6 +211,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const Icon = item.icon;
     const active = isItemActive(item);
     const hasFlyout = !!item.submenu;
+    const [hovered, setHovered] = useState(false);
+    const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
+    const tooltipLabel = item.tooltip || item.title || item.key;
 
     function handleClick(e: React.MouseEvent) {
       if (hasFlyout) {
@@ -229,6 +246,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Wrapper
           {...wrapperProps as any}
           onClick={handleClick}
+          onMouseEnter={() => {
+            setHovered(true);
+            if (itemRef.current) {
+              const rect = itemRef.current.getBoundingClientRect();
+              setTooltipPos({ left: rect.right + 8, top: rect.top + rect.height / 2 });
+            }
+          }}
+          onMouseLeave={() => setHovered(false)}
           style={{
             width: S.sidebarW,
             height: S.sidebarItemH,
@@ -263,9 +288,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               zIndex: 1,
             }}
           />
+          {/* Tooltip — rendered via fixed position to escape aside overflow */}
         </Wrapper>
 
-        {/* Flyout submenu — fixed position to escape aside overflow */}
+        {/* Flyout submenu — full-height panel like Fresha, fixed next to sidebar */}
         <AnimatePresence>
           {hasFlyout && openFlyout === item.key && (
             <motion.div
@@ -275,53 +301,107 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               transition={{ duration: 0.15 }}
               style={{
                 position: 'fixed',
-                left: S.sidebarW + 4,
-                top: flyoutTop,
-                minWidth: 220,
-                backgroundColor: F.contentBg,
-                borderRadius: 12,
-                border: `0.8px solid ${F.headerBorder}`,
-                boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.08)',
-                padding: '8px 0',
+                left: S.sidebarW,
+                top: S.headerH,
+                bottom: 0,
+                width: 240,
+                backgroundColor: F.sidebarBg,
+                borderRight: `0.8px solid ${mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#e5e5e5'}`,
+                padding: '16px 0',
                 zIndex: 800,
+                overflowY: 'auto',
               }}
             >
+              {/* Flyout header — Fresha style: title + close chevron */}
               {item.title && (
                 <div style={{
-                  padding: '8px 16px 4px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: mounted && resolvedTheme === 'dark' ? '#8a8a8a' : '#737373',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  padding: '8px 20px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}>
-                  {item.title}
+                  <span style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: F.textPrimary,
+                    lineHeight: '22px',
+                  }}>
+                    {item.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOpenFlyout(null)}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: 'none',
+                      backgroundColor: mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#e5e5e5',
+                      color: F.textPrimary,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 14,
+                    }}
+                  >
+                    ‹
+                  </button>
                 </div>
               )}
-              {item.submenu!.map((sub) => (
+              {item.submenu!.map((sub) => {
+                const subActive = isActive(sub.href);
+                return (
                 <Link
                   key={sub.href}
                   href={sub.href}
-                  onClick={() => { setOpenFlyout(null); setMobileOpen(false); }}
+                  onClick={() => { setMobileOpen(false); }}
                   style={{
                     display: 'block',
-                    padding: '10px 16px',
-                    fontSize: 14,
-                    fontWeight: isActive(sub.href) ? 600 : 400,
+                    padding: '10px 20px',
+                    fontSize: 15,
+                    fontWeight: subActive ? 600 : 400,
                     color: F.textPrimary,
                     textDecoration: 'none',
                     borderRadius: 0,
                     transition: 'background 100ms',
+                    lineHeight: '22px',
+                    backgroundColor: subActive ? (mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#e8e4fd') : 'transparent',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#2a2a2a' : '#f5f5f5'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                  onMouseEnter={(e) => { if (!subActive) e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#0a0a0a' : '#f5f5f5'; }}
+                  onMouseLeave={(e) => { if (!subActive) e.currentTarget.style.backgroundColor = 'transparent'; }}
                 >
                   {sub.label}
                 </Link>
-              ))}
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Tooltip — fixed position to escape aside overflow */}
+        {hovered && openFlyout !== item.key && tooltipPos && (
+          <div
+            style={{
+              position: 'fixed',
+              left: tooltipPos.left,
+              top: tooltipPos.top,
+              transform: 'translateY(-50%)',
+              zIndex: 1000,
+              backgroundColor: mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#0d0d0d',
+              color: '#ffffff',
+              padding: '6px 12px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 500,
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            }}
+          >
+            {tooltipLabel}
+          </div>
+        )}
       </div>
     );
   }
@@ -399,7 +479,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }}
             aria-label={t('search')}
           >
-            <Search style={{ width: S.iconSize, height: S.iconSize }} />
+            <FreshaSearch style={{ width: S.iconSize, height: S.iconSize }} />
           </button>
 
           {/* Analytics — 44×44 */}
@@ -418,7 +498,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }}
             aria-label={t('analyticsLabel')}
           >
-            <BarChart3 style={{ width: S.iconSize, height: S.iconSize }} />
+            <FreshaBarChart style={{ width: S.iconSize, height: S.iconSize }} />
           </button>
 
           {/* Bell with badge — 44×44, red badge + notifications panel */}
@@ -441,7 +521,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               }}
               aria-label={t('notificationsLabel')}
             >
-              <Bell style={{ width: S.iconSize, height: S.iconSize }} />
+              <FreshaBell style={{ width: S.iconSize, height: S.iconSize }} />
               <div
                 style={{
                   position: 'absolute',
@@ -524,9 +604,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div style={{
                       padding: '48px 24px',
                       textAlign: 'center',
-                      color: mounted && resolvedTheme === 'dark' ? '#8a8a8a' : '#737373',
+                      color: mounted && resolvedTheme === 'dark' ? '#d4d4d4' : '#737373',
                     }}>
-                      <Bell style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
+                      <FreshaBell style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
                       <div style={{ fontSize: 15, fontWeight: 500, color: F.textPrimary, marginBottom: 4 }}>
                         Нет новых уведомлений
                       </div>
@@ -601,7 +681,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {/* User info */}
                     <div style={{ padding: '8px 16px 12px', borderBottom: `0.8px solid ${F.headerBorder}` }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: F.textPrimary }}>{masterName}</div>
-                      <div style={{ fontSize: 13, color: mounted && resolvedTheme === 'dark' ? '#8a8a8a' : '#737373', marginTop: 2 }}>
+                      <div style={{ fontSize: 13, color: mounted && resolvedTheme === 'dark' ? '#d4d4d4' : '#737373', marginTop: 2 }}>
                         {master?.profile?.full_name || ''}
                       </div>
                     </div>
@@ -622,7 +702,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           textDecoration: 'none',
                           transition: 'background 100ms',
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#2a2a2a' : '#f5f5f5'; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#f5f5f5'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                       >
                         {item.label}
@@ -648,7 +728,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         cursor: 'pointer',
                         transition: 'background 100ms',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#2a2a2a' : '#f5f5f5'; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#f5f5f5'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                     >
                       Выйти
@@ -690,13 +770,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </aside>
 
-        {/* Click outside to close flyout */}
-        {openFlyout && (
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 799 }}
-            onClick={() => setOpenFlyout(null)}
-          />
-        )}
+        {/* No backdrop div — flyout closed via onClick on main */}
 
         {/* Mobile sidebar overlay */}
         <AnimatePresence>
@@ -739,16 +813,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* ═══ Content area — Fresha: white bg, full remaining width ═══ */}
         <main
+          onClick={() => { if (openFlyout) setOpenFlyout(null); }}
           style={{
             flex: 1,
-            overflow: 'hidden',
+            overflowY: 'auto',
+            overflowX: 'hidden',
             backgroundColor: F.contentBg,
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
           }}
         >
-          {children}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {children}
+          </div>
         </main>
       </div>
 

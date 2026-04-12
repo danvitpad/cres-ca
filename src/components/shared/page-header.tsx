@@ -20,9 +20,9 @@ type PageHeaderProps = {
 };
 
 const LIGHT = {
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
-  btnBg: '#0d0d0d',
+  btnBg: '#000000',
   btnText: '#ffffff',
   btnOutlineBg: 'transparent',
   btnOutlineBorder: '#e5e5e5',
@@ -36,8 +36,8 @@ const DARK = {
   btnBg: '#6950f3',
   btnText: '#ffffff',
   btnOutlineBg: 'transparent',
-  btnOutlineBorder: '#3a3a3a',
-  badgeBg: '#2a2a2a',
+  btnOutlineBorder: '#1a1a1a',
+  badgeBg: '#000000',
   badgeText: '#8a8a8a',
 };
 
@@ -48,7 +48,7 @@ export function PageHeader({ title, count, description, onAdd, addLabel = 'До�
   const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
 
   return (
-    <div style={{ padding: '24px 24px 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+    <div style={{ padding: '0 0 16px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: description ? 4 : 0 }}>
           <h1 style={{ fontSize: 17, fontWeight: 600, color: C.text, margin: 0 }}>{title}</h1>

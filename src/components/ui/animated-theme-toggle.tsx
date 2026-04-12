@@ -36,7 +36,7 @@ export const AnimatedThemeToggle = ({ className }: { className?: string }) => {
     <button
       onClick={toggleTheme}
       className={cn(
-        'inline-flex items-center justify-center rounded-md px-2.5 py-1.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors',
+        'inline-flex items-center justify-center px-2.5 py-2 text-muted-foreground hover:text-foreground transition-colors',
         className,
       )}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}

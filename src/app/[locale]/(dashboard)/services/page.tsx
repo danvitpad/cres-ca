@@ -1,29 +1,26 @@
 /** --- YAML
  * name: Services Page
- * description: Service catalog management — full CRUD with dialog form, categories, Zod validation
+ * description: Fresha-exact service catalog — categories card, service rows with left border accent, three-dot menus, inline Fresha theming
  * --- */
 
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -33,7 +30,32 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
-import { Plus, Pencil, Trash2, Clock, DollarSign } from 'lucide-react';
+import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase } from 'lucide-react';
+import { motion } from 'framer-motion';
+
+const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+const LIGHT = {
+  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
+  text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
+  accent: '#6950f3', accentSoft: 'rgba(105,80,243,0.08)',
+  rowBorder: '#f0f0f0', rowHover: '#fafafa',
+  catBg: '#f5f5f5', catBorder: '#e5e5e5', catActive: '#6950f3', catActiveBg: 'rgba(105,80,243,0.12)',
+  badgeBg: '#f0f0f0', badgeText: '#737373',
+  searchBg: '#f5f5f5', searchBorder: '#e5e5e5',
+  btnBorder: '#e5e5e5', btnHover: '#fafafa',
+};
+
+const DARK = {
+  bg: '#000000', cardBg: '#111111', cardBorder: '#2a2a2a',
+  text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
+  accent: '#8b7cf6', accentSoft: 'rgba(139,124,246,0.12)',
+  rowBorder: '#1a1a1a', rowHover: '#0d0d0d',
+  catBg: '#111111', catBorder: '#2a2a2a', catActive: '#8b7cf6', catActiveBg: 'rgba(139,124,246,0.15)',
+  badgeBg: '#222222', badgeText: '#999999',
+  searchBg: '#111111', searchBorder: '#2a2a2a',
+  btnBorder: '#333333', btnHover: '#1a1a1a',
+};
 
 const serviceSchema = z.object({
   name: z.string().min(1),
@@ -64,12 +86,19 @@ export default function ServicesPage() {
   const t = useTranslations('services');
   const tp = useTranslations('profile');
   const tc = useTranslations('common');
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const { master, loading: masterLoading } = useMaster();
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ServiceRow | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  useEffect(() => setMounted(true), []);
+  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
 
   const loadServices = useCallback(async () => {
     if (!master) return;
@@ -105,82 +134,334 @@ export default function ServicesPage() {
 
   if (masterLoading || loading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-40 w-full" />
+      <div style={{ padding: '32px 40px', fontFamily: FONT }}>
+        <div style={{ height: 32, width: 200, backgroundColor: C.catBg, borderRadius: 8, marginBottom: 16 }} />
+        <div style={{ height: 200, width: '100%', backgroundColor: C.catBg, borderRadius: 12 }} />
       </div>
     );
   }
 
   if (!master) return null;
 
+  // Group services by category
+  const grouped = new Map<string, { category: { name: string; color: string } | null; services: ServiceRow[] }>();
+  const uncategorized: ServiceRow[] = [];
+
+  for (const s of services) {
+    if (s.category) {
+      const key = s.category_id || 'none';
+      if (!grouped.has(key)) {
+        grouped.set(key, { category: s.category, services: [] });
+      }
+      grouped.get(key)!.services.push(s);
+    } else {
+      uncategorized.push(s);
+    }
+  }
+
+  // Filter by selected category + search
+  let filteredServices = selectedCategory === 'all'
+    ? services
+    : selectedCategory === 'none'
+      ? uncategorized
+      : services.filter((s) => s.category_id === selectedCategory);
+
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filteredServices = filteredServices.filter((s) => s.name.toLowerCase().includes(q));
+  }
+
+  // Get active category name
+  const activeCatName = selectedCategory === 'all'
+    ? null
+    : selectedCategory === 'none'
+      ? t('uncategorized')
+      : Array.from(grouped.entries()).find(([k]) => k === selectedCategory)?.[1]?.category?.name;
+
+  // Duration formatter
+  function formatDuration(min: number): string {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    if (h === 0) return `${m} ${t('duration')}`;
+    if (m === 0) return `${h} ${t('hours') || 'ч'}`;
+    return `${h} ${t('hours') || 'ч'} ${m} ${t('duration')}`;
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{t('addService')}</h2>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger render={<Button onClick={openNew} />}>
-            <Plus className="h-4 w-4 mr-2" />
+    <div style={{ padding: '32px 40px', fontFamily: FONT }}>
+      {/* ── Page header (Fresha style) ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2 }}>
+            {t('serviceMenu')}
+          </h1>
+          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 6, lineHeight: 1.5 }}>
+            {t('servicesDescription') || `${services.length} ${t('servicesCount')}`}
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={openNew}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '10px 20px', borderRadius: 999, border: `1.5px solid ${C.accent}`,
+              backgroundColor: 'transparent', color: C.accent,
+              fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.accentSoft; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+          >
+            <Plus style={{ width: 16, height: 16 }} />
             {t('addService')}
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editing ? tp('editService') : t('addService')}</DialogTitle>
-            </DialogHeader>
-            <ServiceForm
-              masterId={master.id}
-              categories={categories}
-              editing={editing}
-              onSaved={() => { setDialogOpen(false); loadServices(); }}
-              onCancel={() => setDialogOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-muted-foreground">{tp('addCategory')}</h3>
-        <CategoryManager masterId={master.id} onCategoriesChange={setCategories} />
-      </div>
-
-      {services.length === 0 ? (
-        <div className="rounded-lg border p-8 text-center text-muted-foreground">
-          {t('noServices')}
+          </button>
         </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => (
-            <Card key={s.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: s.color }} />
-                    <h3 className="font-medium">{s.name}</h3>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(s)}>
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(s.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                {s.category && (
-                  <span className="text-xs text-muted-foreground">{s.category.name}</span>
-                )}
-                <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{s.duration_minutes} {t('duration')}</span>
-                  <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />{s.price} {s.currency}</span>
-                </div>
-                {s.requires_prepayment && (
-                  <span className="mt-1 inline-block text-xs text-amber-600">{tp('prepayment')}: {s.prepayment_amount} {s.currency}</span>
-                )}
-              </CardContent>
-            </Card>
+      </div>
+
+      {/* ── Search bar (Fresha style) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 400,
+          padding: '10px 14px', borderRadius: 999,
+          backgroundColor: C.searchBg, border: `1px solid ${C.searchBorder}`,
+        }}>
+          <Search style={{ width: 16, height: 16, color: C.textLight, flexShrink: 0 }} />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('searchPlaceholder') || 'Поиск по названию услуги'}
+            style={{
+              border: 'none', outline: 'none', backgroundColor: 'transparent',
+              fontSize: 14, color: C.text, width: '100%', fontFamily: FONT,
+            }}
+          />
+        </div>
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '10px 16px', borderRadius: 999,
+          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+        }}>
+          <SlidersHorizontal style={{ width: 14, height: 14 }} />
+          {t('filters') || 'Фильтры'}
+        </button>
+        <div style={{ flex: 1 }} />
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '10px 16px', borderRadius: 999,
+          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+        }}>
+          <ArrowUpDown style={{ width: 14, height: 14 }} />
+          {t('reorder') || 'Изменить порядок'}
+        </button>
+      </div>
+
+      {/* ── Main content: categories card + service rows ── */}
+      <div style={{ display: 'flex', gap: 24 }}>
+        {/* Categories card (Fresha style) */}
+        <div style={{
+          width: 280, flexShrink: 0,
+          border: `1px solid ${C.catBorder}`, borderRadius: 12,
+          padding: '20px 0', alignSelf: 'flex-start',
+        }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 20px 16px', fontFamily: FONT }}>
+            {t('categories') || 'Категории'}
+          </h3>
+          {/* All categories */}
+          <button
+            onClick={() => setSelectedCategory('all')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
+              backgroundColor: selectedCategory === 'all' ? C.catActiveBg : 'transparent',
+              borderLeft: selectedCategory === 'all' ? `3px solid ${C.catActive}` : '3px solid transparent',
+              color: selectedCategory === 'all' ? C.catActive : C.text,
+              fontSize: 14, fontWeight: selectedCategory === 'all' ? 600 : 400,
+              fontFamily: FONT, transition: 'all 150ms',
+            }}
+          >
+            <span>{t('allCategories') || 'Все категории'}</span>
+            <span style={{
+              fontSize: 12, fontWeight: 500, color: C.badgeText,
+              backgroundColor: C.badgeBg, borderRadius: 999, padding: '2px 8px',
+            }}>
+              {services.length}
+            </span>
+          </button>
+          {Array.from(grouped.entries()).map(([key, { category, services: catServices }]) => (
+            <button
+              key={key}
+              onClick={() => setSelectedCategory(key)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
+                backgroundColor: selectedCategory === key ? C.catActiveBg : 'transparent',
+                borderLeft: selectedCategory === key ? `3px solid ${C.catActive}` : '3px solid transparent',
+                color: selectedCategory === key ? C.catActive : C.text,
+                fontSize: 14, fontWeight: selectedCategory === key ? 600 : 400,
+                fontFamily: FONT, transition: 'all 150ms',
+              }}
+            >
+              <span>{category?.name}</span>
+              <span style={{
+                fontSize: 12, fontWeight: 500, color: C.badgeText,
+                backgroundColor: C.badgeBg, borderRadius: 999, padding: '2px 8px',
+              }}>
+                {catServices.length}
+              </span>
+            </button>
           ))}
+          {uncategorized.length > 0 && (
+            <button
+              onClick={() => setSelectedCategory('none')}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
+                backgroundColor: selectedCategory === 'none' ? C.catActiveBg : 'transparent',
+                borderLeft: selectedCategory === 'none' ? `3px solid ${C.catActive}` : '3px solid transparent',
+                color: selectedCategory === 'none' ? C.catActive : C.text,
+                fontSize: 14, fontWeight: selectedCategory === 'none' ? 600 : 400,
+                fontFamily: FONT, transition: 'all 150ms',
+              }}
+            >
+              <span>{t('uncategorized')}</span>
+              <span style={{
+                fontSize: 12, fontWeight: 500, color: C.badgeText,
+                backgroundColor: C.badgeBg, borderRadius: 999, padding: '2px 8px',
+              }}>
+                {uncategorized.length}
+              </span>
+            </button>
+          )}
+          <div style={{ padding: '12px 20px 0' }}>
+            <CategoryManager masterId={master.id} onCategoriesChange={setCategories} />
+          </div>
         </div>
-      )}
+
+        {/* Service rows (Fresha style — left border accent) */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Category group header */}
+          {activeCatName && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: C.text, fontFamily: FONT }}>{activeCatName}</h2>
+            </div>
+          )}
+
+          {filteredServices.length === 0 ? (
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '80px 0', textAlign: 'center',
+            }}>
+              <Briefcase style={{ width: 48, height: 48, color: C.textLight, marginBottom: 12 }} />
+              <p style={{ fontSize: 16, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t('noServices')}</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {filteredServices.map((s, i) => (
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  style={{
+                    display: 'flex', alignItems: 'center',
+                    padding: '16px 20px', borderRadius: 10,
+                    border: `1px solid ${C.rowBorder}`,
+                    borderLeft: `4px solid ${s.color}`,
+                    backgroundColor: C.bg,
+                    cursor: 'pointer', transition: 'background-color 150ms',
+                    position: 'relative',
+                  }}
+                  onClick={() => openEdit(s)}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = C.bg; }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT }}>
+                      {s.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: C.textMuted, marginTop: 3, fontFamily: FONT }}>
+                      {formatDuration(s.duration_minutes)}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginRight: 12, whiteSpace: 'nowrap', fontFamily: FONT }}>
+                    {s.price.toLocaleString()} {s.currency}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpenId(menuOpenId === s.id ? null : s.id);
+                    }}
+                    style={{
+                      width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: 6, border: 'none', backgroundColor: 'transparent',
+                      cursor: 'pointer', color: C.textMuted, transition: 'color 100ms',
+                    }}
+                  >
+                    <MoreVertical style={{ width: 18, height: 18 }} />
+                  </button>
+                  {/* Three-dot dropdown menu */}
+                  {menuOpenId === s.id && (
+                    <div
+                      style={{
+                        position: 'absolute', right: 8, top: '100%', zIndex: 50,
+                        backgroundColor: C.cardBg, border: `1px solid ${C.cardBorder}`,
+                        borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                        overflow: 'hidden', minWidth: 160, fontFamily: FONT,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={() => { setMenuOpenId(null); openEdit(s); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '10px 16px',
+                          border: 'none', backgroundColor: 'transparent', textAlign: 'left',
+                          fontSize: 14, color: C.text, cursor: 'pointer', fontFamily: FONT,
+                          transition: 'background-color 100ms',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        {tp('editService') || 'Редактировать'}
+                      </button>
+                      <button
+                        onClick={() => { setMenuOpenId(null); handleDelete(s.id); }}
+                        style={{
+                          display: 'block', width: '100%', padding: '10px 16px',
+                          border: 'none', backgroundColor: 'transparent', textAlign: 'left',
+                          fontSize: 14, color: '#d4163a', cursor: 'pointer', fontFamily: FONT,
+                          transition: 'background-color 100ms',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      >
+                        {tc('delete') || 'Удалить'}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Edit/Add dialog ── */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? tp('editService') : t('addService')}</DialogTitle>
+          </DialogHeader>
+          <ServiceForm
+            masterId={master.id}
+            categories={categories}
+            editing={editing}
+            onSaved={() => { setDialogOpen(false); loadServices(); }}
+            onCancel={() => setDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

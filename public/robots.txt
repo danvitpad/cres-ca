@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /telegram
 
 Sitemap: https://cres-ca.com/sitemap.xml

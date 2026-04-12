@@ -22,7 +22,10 @@ import { CalendarDrawer } from '@/components/calendar/calendar-drawer';
 import { SettingsDrawerContent } from '@/components/calendar/settings-drawer';
 import { WaitlistDrawerContent } from '@/components/calendar/waitlist-drawer';
 import { FiltersDrawerContent } from '@/components/calendar/filters-drawer';
+import { AnalyticsDrawerContent } from '@/components/calendar/analytics-drawer';
+import { BlockTimeDrawerContent } from '@/components/calendar/block-time-drawer';
 import { QuickSaleDrawer } from '@/components/calendar/quick-sale-drawer';
+import { QuickPaymentModal } from '@/components/calendar/quick-payment-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -48,6 +51,7 @@ import {
   UserPlus,
   ShoppingBag,
   Banknote,
+  BarChart3,
 } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
@@ -91,25 +95,25 @@ const TL = {
 };
 
 const TD = {
-  toolbarBg: '#1a1a1a',
-  toolbarBorder: '#2a2a2a',
+  toolbarBg: '#000000',
+  toolbarBorder: '#1a1a1a',
   btnBorder: '#3a3a3a',
-  btnBg: '#252525',
-  btnHoverBg: '#333333',
+  btnBg: '#000000',
+  btnHoverBg: '#1a1a1a',
   btnActiveBg: '#444444',
   btnText: '#e5e5e5',
   addBg: '#6950f3',
   addText: '#ffffff',
   addBorder: '#6950f3',
-  popoverBg: '#252525',
+  popoverBg: '#000000',
   popoverBorder: '#3a3a3a',
   popoverShadow: 'rgba(0,0,0,0.4) 0px 2px 8px 0px, rgba(0,0,0,0.5) 0px 4px 20px 0px',
   popoverItemActiveBg: '#2d2a4e',
-  popoverItemHoverBg: '#333333',
+  popoverItemHoverBg: '#1a1a1a',
   accent: '#8b7cf6',
   accentSoft: '#2d2a4e',
-  text: '#e5e5e5',
-  textMuted: '#8a8a8a',
+  text: '#f0f0f0',
+  textMuted: '#b3b3b3',
 };
 
 type TTheme = typeof TL;
@@ -119,7 +123,9 @@ function pillBtn(F: TTheme, overrides?: React.CSSProperties): React.CSSPropertie
   return {
     height: TS.btnHeight,
     borderRadius: TS.btnRadius,
-    border: `0.8px solid ${F.btnBorder}`,
+    borderWidth: '0.8px',
+    borderStyle: 'solid',
+    borderColor: F.btnBorder,
     backgroundColor: F.btnBg,
     color: F.btnText,
     fontSize: TS.btnFont,
@@ -168,9 +174,7 @@ function popoverItemStyle(F: TTheme, active?: boolean, hover?: boolean): React.C
     fontWeight: active ? 500 : 400,
     color: F.text,
     transition: 'background-color 150ms',
-    borderWidth: 0,
-    borderStyle: 'none',
-    borderColor: 'transparent',
+    border: 'none',
     width: '100%',
     textAlign: 'left' as const,
   };
@@ -219,8 +223,10 @@ export default function CalendarPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
 
   /* Right-side drawer state */
-  type DrawerType = 'settings' | 'waitlist' | 'filters' | 'analytics' | null;
+  type DrawerType = 'settings' | 'waitlist' | 'filters' | 'analytics' | 'blockTime' | null;
   const [activeDrawer, setActiveDrawer] = useState<DrawerType>(null);
+  const [blockTimeDefault, setBlockTimeDefault] = useState<string | undefined>(undefined);
+  const [editingBlock, setEditingBlock] = useState<{ id: string; starts_at: string; ends_at: string; reason: string | null } | undefined>(undefined);
 
   const viewDropdownRef = useRef<HTMLDivElement>(null);
   const teamDropdownRef = useRef<HTMLDivElement>(null);
@@ -670,6 +676,18 @@ export default function CalendarPage() {
             <ListTodo style={{ width: 20, height: 20 }} />
           </button>
 
+          {/* Analytics icon */}
+          <button
+            onClick={() => setActiveDrawer(activeDrawer === 'analytics' ? null : 'analytics')}
+            style={pillBtn(F, {
+              width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
+              ...(activeDrawer === 'analytics' ? { backgroundColor: F.popoverItemActiveBg, borderColor: F.accent } : {}),
+            })}
+            aria-label="Performance analytics"
+          >
+            <BarChart3 style={{ width: 20, height: 20 }} />
+          </button>
+
           {/* Connected group: Reset + View selector */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <button
@@ -760,12 +778,34 @@ export default function CalendarPage() {
                     <span>{t('addGroupAppointment')}</span>
                   </button>
                   <button
+                    onClick={() => { setAddDropdownOpen(false); setBlockTimeDefault(undefined); setEditingBlock(undefined); setActiveDrawer('blockTime'); }}
                     style={popoverItemStyle(F,false, hoveredItem === 'add-block')}
                     onMouseEnter={() => setHoveredItem('add-block')}
                     onMouseLeave={() => setHoveredItem(null)}
                   >
                     <Lock style={{ width: 20, height: 20, color: F.textMuted }} />
                     <span>{t('blockTime')}</span>
+                  </button>
+
+                  <div style={{ height: 1, backgroundColor: F.toolbarBorder, margin: '4px 0' }} />
+
+                  <button
+                    onClick={() => { setAddDropdownOpen(false); setSaleOpen(true); }}
+                    style={popoverItemStyle(F,false, hoveredItem === 'add-sale')}
+                    onMouseEnter={() => setHoveredItem('add-sale')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <ShoppingBag style={{ width: 20, height: 20, color: F.textMuted }} />
+                    <span>{t('sale') || 'Продажа'}</span>
+                  </button>
+                  <button
+                    onClick={() => { setAddDropdownOpen(false); setPaymentOpen(true); }}
+                    style={popoverItemStyle(F,false, hoveredItem === 'add-payment')}
+                    onMouseEnter={() => setHoveredItem('add-payment')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <Banknote style={{ width: 20, height: 20, color: F.textMuted }} />
+                    <span>{t('quickPayment') || 'Быстрая оплата'}</span>
                   </button>
                 </div>
               </div>
@@ -793,6 +833,16 @@ export default function CalendarPage() {
               onSlotClick={handleSlotClick}
               onAppointmentClick={handleAppointmentClick}
               onRefetch={refetchAll}
+              onOpenBlockDrawer={(time) => {
+                setBlockTimeDefault(time);
+                setEditingBlock(undefined);
+                setActiveDrawer('blockTime');
+              }}
+              onEditBlock={(block) => {
+                setEditingBlock(block);
+                setBlockTimeDefault(undefined);
+                setActiveDrawer('blockTime');
+              }}
               clearSelection={!sidePanelOpen}
             />
           ) : view === '3day' ? (
@@ -1096,6 +1146,38 @@ export default function CalendarPage() {
           />
         </CalendarDrawer>
 
+        <CalendarDrawer
+          open={activeDrawer === 'analytics'}
+          onClose={() => setActiveDrawer(null)}
+          title="Аналитика"
+          width={400}
+          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+        >
+          <AnalyticsDrawerContent
+            masterId={master.id}
+            theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+          />
+        </CalendarDrawer>
+
+        <CalendarDrawer
+          open={activeDrawer === 'blockTime'}
+          onClose={() => { setActiveDrawer(null); setEditingBlock(undefined); }}
+          title={editingBlock ? (t('editBlockTime') || 'Редактировать блокировку') : (t('blockTime') || 'Заблокировать время')}
+          width={380}
+          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+        >
+          <BlockTimeDrawerContent
+            theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+            masterId={master.id}
+            masterName={master.profile?.full_name}
+            date={currentDate}
+            defaultTime={blockTimeDefault}
+            editBlock={editingBlock}
+            onSaved={refetchAll}
+            onClose={() => { setActiveDrawer(null); setEditingBlock(undefined); }}
+          />
+        </CalendarDrawer>
+
         {/* Appointment detail drawer (Fresha-style right panel) */}
         <AppointmentDetailDrawer
           appointment={selectedAppointment}
@@ -1106,6 +1188,22 @@ export default function CalendarPage() {
           theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
         />
       </div>
+
+      {/* Quick sale drawer */}
+      <QuickSaleDrawer
+        open={saleOpen}
+        onClose={() => setSaleOpen(false)}
+        theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+        services={sidePanelServices.map(s => ({ id: s.id, name: s.name, price: s.price, color: '#6950f3', currency: s.currency }))}
+      />
+
+      {/* Quick payment modal */}
+      {paymentOpen && (
+        <QuickPaymentModal
+          onClose={() => setPaymentOpen(false)}
+          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+        />
+      )}
 
       {/* Dialogs (fallback for repeat / add-button actions) */}
       <NewAppointmentDialog

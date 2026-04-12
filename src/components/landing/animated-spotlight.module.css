@@ -1,0 +1,90 @@
+/* Fresha-style animated spotlight — two SVG blobs rotating slowly */
+
+.container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Rotation wrappers — positioned absolutely, 0×0, child overflows visually */
+.rotation {
+  position: absolute;
+  width: 0;
+  height: 0;
+  animation: spotlight-rotate 90s ease-in-out infinite;
+}
+
+.rotationMain {
+  top: 350px;
+  left: 50%;
+  animation-duration: 90s;
+}
+
+.rotationSatellite {
+  top: 150px;
+  left: 95%;
+  animation-duration: 95s;
+}
+
+/* The actual spotlight blobs — SVG as background */
+.spotlight {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.spotlightImg1 {
+  width: 1154px;
+  height: 775px;
+  background-image: url('/spotlight1.svg');
+  background-size: 1154px 775px;
+  background-repeat: no-repeat;
+  transform: scale(1.4) translate(-50%, -50%);
+  top: 0;
+  left: 0;
+}
+
+.spotlightImg2 {
+  width: 775px;
+  height: 1154px;
+  background-image: url('/spotlight2.svg');
+  background-size: 775px 1154px;
+  background-repeat: no-repeat;
+  transform: scale(1.6) translate(-50%, -50%);
+  top: 0;
+  left: 0;
+}
+
+/* In dark mode, reduce blob opacity */
+:global(.dark) .spotlight {
+  opacity: 0.15;
+}
+
+@keyframes spotlight-rotate {
+  0% {
+    transform: rotate(0deg) translateZ(100px);
+  }
+  25% {
+    transform: rotate(90deg) translateZ(100px);
+  }
+  50% {
+    transform: rotate(180deg) translateZ(100px);
+  }
+  75% {
+    transform: rotate(270deg) translateZ(100px);
+  }
+  100% {
+    transform: rotate(360deg) translateZ(100px);
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .rotation {
+    animation: none;
+  }
+}

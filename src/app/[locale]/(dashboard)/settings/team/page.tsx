@@ -89,7 +89,7 @@ export default function TeamPage() {
   if (role !== 'salon_admin') {
     return (
       <div className="p-4 text-center text-muted-foreground py-20">
-        Only salon administrators can manage teams.
+        {t('onlyAdmins')}
       </div>
     );
   }
@@ -146,7 +146,7 @@ export default function TeamPage() {
               </div>
             )}
           </div>
-          <p className="text-sm text-muted-foreground">{members.length} members</p>
+          <p className="text-sm text-muted-foreground">{members.length} {t('membersCount')}</p>
         </div>
       )}
 
@@ -157,7 +157,7 @@ export default function TeamPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search team..."
+            placeholder={tc('search')}
             className="pl-9 bg-card/50"
           />
         </div>
@@ -167,7 +167,7 @@ export default function TeamPage() {
         <Card className="bg-card/80 backdrop-blur border-border/50">
           <CardContent className="py-12 text-center text-muted-foreground">
             <Users className="size-10 mx-auto mb-3 opacity-40" />
-            <p>No team members yet. Invite masters to join your salon!</p>
+            <p>{t('noMembers')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -197,10 +197,10 @@ export default function TeamPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium truncate text-sm">{member.profile?.full_name}</h3>
-                      <p className="text-xs text-muted-foreground">{member.specialization || 'No specialization'}</p>
+                      <p className="text-xs text-muted-foreground">{member.specialization || t('noSpecialization')}</p>
                     </div>
                     <Badge variant={member.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                      {member.is_active ? 'Active' : 'Inactive'}
+                      {member.is_active ? t('active') : t('inactive')}
                     </Badge>
                     <button
                       onClick={() => removeMember(member.id)}
@@ -224,7 +224,7 @@ export default function TeamPage() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <p className="text-sm text-muted-foreground">
-              Share the invite link below. When a master registers using this link, they'll automatically join your salon.
+              {t('inviteDescription')}
             </p>
             <div className="space-y-2">
               <Label>{t('inviteLink')}</Label>

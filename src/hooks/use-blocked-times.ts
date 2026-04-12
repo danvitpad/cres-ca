@@ -21,8 +21,9 @@ export function useBlockedTimes(masterId: string | undefined, startDate: Date, e
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetch = useCallback(async () => {
+  const fetchData = useCallback(async (showLoading: boolean) => {
     if (!masterId) return;
+    if (showLoading) setIsLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from('blocked_times')
@@ -35,9 +36,9 @@ export function useBlockedTimes(masterId: string | undefined, startDate: Date, e
     setIsLoading(false);
   }, [masterId, startDate.getTime(), endDate.getTime()]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { fetchData(true); }, [fetchData]);
 
-  const refetch = useCallback(() => { fetch(); }, [fetch]);
+  const refetch = useCallback(() => { fetchData(false); }, [fetchData]);
 
   return { blockedTimes, isLoading, refetch };
 }

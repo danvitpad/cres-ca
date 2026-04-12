@@ -22,7 +22,7 @@ const LIGHT = {
   nonWorkingBg: '#f5f5f5',
   gridBorder: '#e5e5e5',
   gridBorderSub: 'rgba(229,229,229,0.4)',
-  text: '#0d0d0d',
+  text: '#000000',
   timeText: '#737373',
   currentTime: '#d4163a',
   todayBg: 'rgba(105,80,243,0.04)',
@@ -33,16 +33,16 @@ const LIGHT = {
 };
 
 const DARK = {
-  pageBg: '#1a1a1a',
-  nonWorkingBg: '#111111',
-  gridBorder: '#2a2a2a',
+  pageBg: '#000000',
+  nonWorkingBg: '#000000',
+  gridBorder: '#1a1a1a',
   gridBorderSub: 'rgba(42,42,42,0.5)',
   text: '#e5e5e5',
   timeText: '#8a8a8a',
   currentTime: '#d4163a',
   todayBg: 'rgba(105,80,243,0.08)',
-  headerBg: '#1a1a1a',
-  headerBorder: '#2a2a2a',
+  headerBg: '#000000',
+  headerBorder: '#1a1a1a',
   headerShadow: 'rgba(0, 0, 0, 0.4) 0px 2px 4px 0px',
   todayDot: '#8b7cf6',
 };

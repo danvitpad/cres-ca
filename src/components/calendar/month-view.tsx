@@ -20,7 +20,7 @@ const LIGHT = {
   cellBorder: '#e5e5e5',
   otherMonthBg: '#fafafa',
   otherMonthText: '#c4c4c4',
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
   todayBg: '#6950f3',
   todayText: '#ffffff',
@@ -30,12 +30,12 @@ const LIGHT = {
 };
 
 const DARK = {
-  pageBg: '#1a1a1a',
-  headerBg: '#1a1a1a',
-  headerBorder: '#2a2a2a',
-  cellBg: '#1a1a1a',
-  cellHover: '#222222',
-  cellBorder: '#2a2a2a',
+  pageBg: '#000000',
+  headerBg: '#000000',
+  headerBorder: '#1a1a1a',
+  cellBg: '#000000',
+  cellHover: '#000000',
+  cellBorder: '#1a1a1a',
   otherMonthBg: '#141414',
   otherMonthText: '#444444',
   text: '#e5e5e5',

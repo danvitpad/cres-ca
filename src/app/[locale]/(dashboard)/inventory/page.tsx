@@ -140,9 +140,9 @@ export default function InventoryPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Package className="size-12 text-muted-foreground/40 mb-4" />
-        <p className="text-muted-foreground mb-4">This feature requires Pro plan</p>
+        <p className="text-muted-foreground mb-4">{t('requiresPro')}</p>
         <Link href="/settings" className={cn(buttonVariants({ variant: 'outline' }))}>
-          Upgrade
+          {t('upgrade')}
         </Link>
       </div>
     );
@@ -162,7 +162,7 @@ export default function InventoryPage() {
   const lowStockCount = items.filter((i) => i.quantity <= i.low_stock_threshold).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ padding: '32px 40px' }}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -282,7 +282,7 @@ export default function InventoryPage() {
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>{t('itemName')}</Label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Gel, Gloves..." />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('itemNamePlaceholder')} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
@@ -291,7 +291,7 @@ export default function InventoryPage() {
               </div>
               <div className="space-y-2">
                 <Label>{t('unit')}</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pcs, ml, g" />
+                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t('unitPlaceholder')} />
               </div>
               <div className="space-y-2">
                 <Label>{t('costPerUnit')}</Label>
@@ -299,7 +299,7 @@ export default function InventoryPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t('lowStock')} threshold</Label>
+              <Label>{t('lowStockThreshold')}</Label>
               <Input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
             </div>
             <Button onClick={saveItem} className="w-full">

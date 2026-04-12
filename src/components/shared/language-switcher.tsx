@@ -8,6 +8,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Globe } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const LOCALES = [
   { code: 'uk', label: 'Українська' },
@@ -15,7 +16,7 @@ const LOCALES = [
   { code: 'en', label: 'English' },
 ];
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ className }: { className?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -41,10 +42,10 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div className="relative" ref={ref}>
+    <div className={cn('relative', className)} ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+        className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <Globe className="size-4" />
         <span className="text-xs font-medium">{current.label}</span>

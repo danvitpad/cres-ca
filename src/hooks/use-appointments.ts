@@ -28,9 +28,9 @@ export function useAppointments(masterId: string | undefined, startDate: Date, e
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refetch = useCallback(async () => {
+  const fetchData = useCallback(async (showLoading: boolean) => {
     if (!masterId) return;
-    setIsLoading(true);
+    if (showLoading) setIsLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from('appointments')
@@ -43,7 +43,9 @@ export function useAppointments(masterId: string | undefined, startDate: Date, e
     setIsLoading(false);
   }, [masterId, startDate.toISOString(), endDate.toISOString()]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { refetch(); }, [refetch]);
+  const refetch = useCallback(() => fetchData(false), [fetchData]);
+
+  useEffect(() => { fetchData(true); }, [fetchData]);
 
   return { appointments, isLoading, refetch };
 }

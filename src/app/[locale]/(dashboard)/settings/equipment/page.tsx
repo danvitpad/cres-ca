@@ -41,6 +41,7 @@ interface Equipment {
 export default function EquipmentPage() {
   const tc = useTranslations('common');
   const tp = useTranslations('pricing');
+  const te = useTranslations('equipment');
   const { userId } = useAuthStore();
   const { canUse } = useSubscription();
 
@@ -117,8 +118,8 @@ export default function EquipmentPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <Wrench className="size-12 text-muted-foreground/40 mb-4" />
-        <p className="text-muted-foreground mb-4">This feature requires Business plan</p>
-        <Link href="/settings" className={cn(buttonVariants({ variant: 'outline' }))}>Upgrade</Link>
+        <p className="text-muted-foreground mb-4">{te('requiresBusiness')}</p>
+        <Link href="/settings" className={cn(buttonVariants({ variant: 'outline' }))}>{te('upgrade')}</Link>
       </div>
     );
   }
@@ -141,7 +142,7 @@ export default function EquipmentPage() {
         <Card className="bg-card/80 backdrop-blur border-border/50">
           <CardContent className="py-12 text-center text-muted-foreground">
             <Wrench className="size-10 mx-auto mb-3 opacity-40" />
-            <p>No equipment registered yet.</p>
+            <p>{te('noEquipment')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -161,7 +162,7 @@ export default function EquipmentPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <h3 className="font-medium truncate">{item.name}</h3>
-                            {needsMaintenance && <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-600">Maintenance</Badge>}
+                            {needsMaintenance && <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-600">{te('maintenance')}</Badge>}
                           </div>
                           <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden">
                             <div className={cn('h-full rounded-full transition-all', needsMaintenance ? 'bg-amber-500' : 'bg-primary')} style={{ width: `${Math.min(usage, 100)}%` }} />
@@ -186,11 +187,11 @@ export default function EquipmentPage() {
         <DialogContent>
           <DialogHeader><DialogTitle>{editItem ? tc('edit') : tc('create')}</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="space-y-2"><Label>Name</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Laser device..." /></div>
+            <div className="space-y-2"><Label>{te('name')}</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder={te('namePlaceholder')} /></div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2"><Label>Total resource</Label><Input type="number" value={totalResource} onChange={(e) => setTotalResource(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Unit</Label><Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="pulses, hours" /></div>
-              <div className="space-y-2"><Label>Maintenance at</Label><Input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)} /></div>
+              <div className="space-y-2"><Label>{te('totalResource')}</Label><Input type="number" value={totalResource} onChange={(e) => setTotalResource(e.target.value)} /></div>
+              <div className="space-y-2"><Label>{te('unit')}</Label><Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={te('unitPlaceholder')} /></div>
+              <div className="space-y-2"><Label>{te('maintenanceAt')}</Label><Input type="number" value={threshold} onChange={(e) => setThreshold(e.target.value)} /></div>
             </div>
             <Button onClick={saveEquipment} className="w-full">{tc('save')}</Button>
           </div>

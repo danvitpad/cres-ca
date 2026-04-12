@@ -20,7 +20,7 @@ type CalendarDrawerProps = {
 const LIGHT = {
   bg: '#ffffff',
   border: '#e5e5e5',
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
   headerBg: '#ffffff',
   controlBg: '#f5f5f5',
@@ -28,13 +28,13 @@ const LIGHT = {
 };
 
 const DARK = {
-  bg: '#1a1a1a',
-  border: '#2a2a2a',
+  bg: '#000000',
+  border: '#1a1a1a',
   text: '#e5e5e5',
-  textMuted: '#8a8a8a',
-  headerBg: '#1a1a1a',
-  controlBg: '#252525',
-  controlHover: '#333333',
+  textMuted: '#b3b3b3',
+  headerBg: '#000000',
+  controlBg: '#000000',
+  controlHover: '#1a1a1a',
 };
 
 export function CalendarDrawer({ open, onClose, title, width = 380, children, theme }: CalendarDrawerProps) {

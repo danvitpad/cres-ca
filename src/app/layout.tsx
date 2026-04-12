@@ -6,6 +6,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
+import { getLocale } from 'next-intl/server';
 import './globals.css';
 
 const geistSans = Geist({
@@ -20,46 +21,57 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'CRES-CA — CRM для сфери послуг',
+    default: 'CRES-CA — CRM for the Service Industry',
     template: '%s | CRES-CA',
   },
   description:
-    'Універсальна CRM для сфери послуг — записи, клієнти, фінанси та маркетинг в одному місці.',
+    'Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.',
   metadataBase: new URL('https://cres-ca.com'),
   openGraph: {
     type: 'website',
     siteName: 'CRES-CA',
-    title: 'CRES-CA — CRM для сфери послуг',
-    description: 'Універсальна CRM для сфери послуг — записи, клієнти, фінанси та маркетинг в одному місці.',
+    title: 'CRES-CA — CRM for the Service Industry',
+    description: 'Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.',
     url: 'https://cres-ca.com',
-    locale: 'uk_UA',
+    locale: 'en_CA',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'CRES-CA — Universal CRM for Service Businesses',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'CRES-CA — CRM для сфери послуг',
-    description: 'Універсальна CRM для сфери послуг — записи, клієнти, фінанси та маркетинг в одному місці.',
+    title: 'CRES-CA — CRM for the Service Industry',
+    description: 'Universal CRM platform for service businesses — bookings, clients, finance & marketing in one place.',
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,
     follow: true,
   },
   alternates: {
-    canonical: 'https://cres-ca.com',
     languages: {
       uk: 'https://cres-ca.com/uk',
       ru: 'https://cres-ca.com/ru',
       en: 'https://cres-ca.com/en',
+      'x-default': 'https://cres-ca.com/en',
     },
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const lang = await getLocale();
+
   return (
-    <html lang="uk" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang={lang} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#6366f1" />

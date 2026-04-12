@@ -13,21 +13,21 @@ type SettingsDrawerProps = {
 };
 
 const LIGHT = {
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
   sliderTrack: '#e5e5e5',
-  sliderThumb: '#0d0d0d',
+  sliderThumb: '#000000',
   toggleActive: '#6950f3',
   toggleInactive: '#d4d4d4',
-  btnBg: '#0d0d0d',
+  btnBg: '#000000',
   btnText: '#ffffff',
 };
 
 const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
-  border: '#2a2a2a',
+  border: '#1a1a1a',
   sliderTrack: '#3a3a3a',
   sliderThumb: '#e5e5e5',
   toggleActive: '#8b7cf6',

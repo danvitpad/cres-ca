@@ -48,7 +48,7 @@ type AppointmentDetailDrawerProps = {
 const LIGHT = {
   bg: '#ffffff',
   border: '#e5e5e5',
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
   controlBg: '#f5f5f5',
   controlHover: '#ebebeb',
@@ -56,7 +56,7 @@ const LIGHT = {
   accentSoft: '#f0f0ff',
   danger: '#d4163a',
   dangerSoft: '#fef2f4',
-  btnBg: '#0d0d0d',
+  btnBg: '#000000',
   btnText: '#ffffff',
   btnOutlineBorder: '#e5e5e5',
   cardBg: '#f9f9f9',
@@ -73,12 +73,12 @@ const LIGHT = {
 };
 
 const DARK = {
-  bg: '#1a1a1a',
-  border: '#2a2a2a',
+  bg: '#000000',
+  border: '#1a1a1a',
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
-  controlBg: '#252525',
-  controlHover: '#333333',
+  controlBg: '#000000',
+  controlHover: '#1a1a1a',
   accent: '#8b7cf6',
   accentSoft: '#2d2a4e',
   danger: '#ef4444',
@@ -86,9 +86,9 @@ const DARK = {
   btnBg: '#6950f3',
   btnText: '#ffffff',
   btnOutlineBorder: '#3a3a3a',
-  cardBg: '#252525',
+  cardBg: '#000000',
   link: '#5eb3d8',
-  popoverBg: '#252525',
+  popoverBg: '#000000',
   popoverShadow: 'rgba(0,0,0,0.4) 0px 2px 8px, rgba(0,0,0,0.5) 0px 4px 20px',
   popoverBorder: '#3a3a3a',
   statusBooked: '#3a3a3a',
@@ -432,7 +432,7 @@ export function AppointmentDetailDrawer({
                   justifyContent: 'center',
                   fontSize: 15,
                   fontWeight: 600,
-                  color: '#0d0d0d',
+                  color: '#000000',
                   flexShrink: 0,
                 }}>
                   {clientInitials}

@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Clients Page
- * description: Fresha-style client list — avatars, search, filters, clean table, import banner
+ * description: Fresha-exact client list — avatars, search, filters, data table with Fresha inline theming
  * --- */
 
 'use client';
@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
@@ -15,31 +16,42 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import {
-  Plus,
   AlertTriangle,
   Search,
-  Filter,
-  ChevronRight,
+  SlidersHorizontal,
+  ChevronDown,
   Users,
   Star,
-  Calendar,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { SubSidebar } from '@/components/shared/sub-sidebar';
 import { PageHeader } from '@/components/shared/page-header';
 import type { BehaviorIndicator } from '@/types';
 
 const PAGE_SIZE = 20;
+const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+const LIGHT = {
+  bg: '#ffffff', text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
+  searchBg: '#f5f5f5', searchBorder: '#e5e5e5',
+  tableBg: '#ffffff', tableBorder: '#f0f0f0', tableHeaderText: '#737373',
+  rowHover: '#fafafa', btnBorder: '#e5e5e5',
+  avatarColors: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'],
+};
+
+const DARK = {
+  bg: '#000000', text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
+  searchBg: '#111111', searchBorder: '#2a2a2a',
+  tableBg: '#000000', tableBorder: '#1a1a1a', tableHeaderText: '#666666',
+  rowHover: '#0d0d0d', btnBorder: '#333333',
+  avatarColors: ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#22d3ee', '#818cf8', '#f472b6'],
+};
 
 interface ClientRow {
   id: string;
@@ -65,21 +77,20 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-const ACCENT_COLORS = [
-  'bg-blue-500', 'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
-  'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-pink-500',
-];
-
-function getAvatarColor(name: string) {
+function getAvatarColorIdx(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return ACCENT_COLORS[Math.abs(hash) % ACCENT_COLORS.length];
+  return Math.abs(hash) % 8;
 }
 
 export default function ClientsPage() {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const { master, loading: masterLoading } = useMaster();
+  useEffect(() => setMounted(true), []);
+  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -149,43 +160,27 @@ export default function ClientsPage() {
     return true;
   });
 
-  const clientsSidebarGroups = [
-    {
-      items: [
-        { label: 'Список клиентов', href: '/clients' },
-        { label: 'Сегменты клиентов', href: '/clients/segments' },
-        { label: 'Лояльность клиентов', href: '/clients/loyalty' },
-      ],
-    },
-  ];
-
   if (masterLoading) {
     return (
-      <div style={{ display: 'flex', height: '100%' }}>
-        <SubSidebar title="Клиенты" groups={clientsSidebarGroups} />
-        <div className="flex-1 p-6 space-y-4">
-          <div className="flex justify-between"><Skeleton className="h-8 w-48" /><Skeleton className="h-9 w-28" /></div>
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-2xl" />
-        </div>
+      <div style={{ padding: '32px 40px', fontFamily: FONT }}>
+        <div style={{ height: 28, width: 200, backgroundColor: C.searchBg, borderRadius: 8, marginBottom: 16 }} />
+        <div style={{ height: 200, width: '100%', backgroundColor: C.searchBg, borderRadius: 12 }} />
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
-      <SubSidebar title="Клиенты" groups={clientsSidebarGroups} />
-      <div style={{ flex: 1, overflow: 'auto' }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: '32px 40px', fontFamily: FONT }}>
       <PageHeader
-        title={t('clientCard')}
+        title={t('clientList') || t('clientCard')}
         count={clients.length}
+        description={t('clientsDescription') || undefined}
         onAdd={() => setDialogOpen(true)}
         addLabel={t('addClient')}
         onOptions={() => {}}
       />
 
-      <div className="px-6 space-y-5">
-      {/* Add Client Dialog (hidden trigger — opened via PageHeader onAdd) */}
+      {/* Add Client Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{t('addClient')}</DialogTitle></DialogHeader>
@@ -193,137 +188,177 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Search + Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={tc('search')}
-            className="pl-9 rounded-xl border-border/60"
+      {/* ── Search + Filters (Fresha style) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 420,
+          padding: '10px 14px', borderRadius: 999,
+          backgroundColor: C.searchBg, border: `1px solid ${C.searchBorder}`,
+        }}>
+          <Search style={{ width: 16, height: 16, color: C.textLight, flexShrink: 0 }} />
+          <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('searchPlaceholder') || 'Имя, эл. почта или телефон'}
+            style={{
+              border: 'none', outline: 'none', backgroundColor: 'transparent',
+              fontSize: 14, color: C.text, width: '100%', fontFamily: FONT,
+            }}
           />
         </div>
-        <div className="flex gap-1 rounded-xl border bg-card p-1 shadow-sm">
-          {(['all', 'recent', 'frequent', 'inactive'] as FilterType[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                filter === f
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {f === 'all' ? tc('all') : f === 'recent' ? t('recent') : f === 'frequent' ? t('frequent') : t('inactive')}
-            </button>
-          ))}
-        </div>
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '10px 16px', borderRadius: 999,
+          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+        }}>
+          <SlidersHorizontal style={{ width: 14, height: 14 }} />
+          {t('filters') || 'Фильтры'}
+        </button>
+        <div style={{ flex: 1 }} />
+        <button style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '10px 16px', borderRadius: 999,
+          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+        }}>
+          {t('sortByDate') || 'Дата создания (от новых к старым)'}
+          <ChevronDown style={{ width: 14, height: 14 }} />
+        </button>
       </div>
 
-      {/* Client list */}
+      {/* ── Client table (Fresha style) ── */}
       {loading ? (
-        <div className="space-y-2">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ height: 56, backgroundColor: C.searchBg, borderRadius: 8 }} />
+          ))}
         </div>
       ) : filteredClients.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-16 text-center"
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '80px 0', textAlign: 'center',
+          }}
         >
-          <Users className="size-12 text-muted-foreground/30 mb-3" />
-          <h4 className="font-medium">{t('noClients')}</h4>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+          <Users style={{ width: 48, height: 48, color: C.textLight, marginBottom: 12 }} />
+          <p style={{ fontSize: 16, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t('noClients')}</p>
+          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 4, fontFamily: FONT }}>
             {t('noClientsDesc') || t('noClients')}
           </p>
         </motion.div>
       ) : (
         <>
-          <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{t('name')}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">{t('phone')}</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">{t('totalVisits')}</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden lg:table-cell">{t('lastVisit')}</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden lg:table-cell">{t('rating')}</th>
-                  <th className="px-4 py-3 w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {filteredClients.map((c, i) => {
-                  const lastVisitLabel = c.last_visit_at
-                    ? new Date(c.last_visit_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-                    : '—';
-                  return (
-                    <motion.tr
-                      key={c.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.02 }}
-                      className="border-b last:border-0 hover:bg-muted/30 transition-colors group"
-                    >
-                      <td className="px-4 py-3">
-                        <Link href={`/clients/${c.id}`} className="flex items-center gap-3">
-                          <div className={cn(
-                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white text-xs font-semibold',
-                            getAvatarColor(c.full_name),
-                          )}>
-                            {getInitials(c.full_name)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              {c.has_health_alert && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
-                              <span className="font-medium truncate">{c.full_name}</span>
-                            </div>
-                            {c.email && <p className="text-xs text-muted-foreground truncate">{c.email}</p>}
-                            <BehaviorIndicators indicators={c.behavior_indicators} />
-                          </div>
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell text-muted-foreground">{c.phone || '—'}</td>
-                      <td className="px-4 py-3 text-right hidden md:table-cell">
-                        <span className="font-medium">{c.total_visits}</span>
-                      </td>
-                      <td className="px-4 py-3 text-right hidden lg:table-cell text-muted-foreground text-xs">
-                        {lastVisitLabel}
-                      </td>
-                      <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {c.rating > 0 && (
-                          <span className="inline-flex items-center gap-0.5 text-xs">
-                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                            {c.rating.toFixed(1)}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link href={`/clients/${c.id}`}>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </Link>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* Table header */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
+            padding: '10px 16px', borderBottom: `1px solid ${C.tableBorder}`,
+            fontSize: 13, fontWeight: 500, color: C.tableHeaderText, fontFamily: FONT,
+          }}>
+            <span>{t('clientName') || t('name')}</span>
+            <span>{t('mobileNumber') || t('phone')}</span>
+            <span style={{ textAlign: 'center' }}>{t('reviews') || 'Отзывы'}</span>
+            <span style={{ textAlign: 'right' }}>{t('sales') || 'Продажи'}</span>
+            <span style={{ textAlign: 'right' }}>{t('createdDate') || t('lastVisit')}</span>
           </div>
 
-          {/* Footer stats */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-            <span>{filteredClients.length} {t('clientCard').toLowerCase()}</span>
+          {/* Table rows */}
+          {filteredClients.map((c, i) => {
+            const lastVisitLabel = c.last_visit_at
+              ? new Date(c.last_visit_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+              : '—';
+            const avatarColor = C.avatarColors[getAvatarColorIdx(c.full_name)];
+            return (
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.02 }}
+              >
+                <Link
+                  href={`/clients/${c.id}`}
+                  style={{
+                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
+                    alignItems: 'center', padding: '12px 16px',
+                    borderBottom: `1px solid ${C.tableBorder}`,
+                    textDecoration: 'none', color: 'inherit',
+                    transition: 'background-color 100ms', cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                >
+                  {/* Name + avatar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 999, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: avatarColor, color: '#ffffff',
+                      fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                    }}>
+                      {getInitials(c.full_name)}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {c.has_health_alert && <AlertTriangle style={{ width: 14, height: 14, color: '#d4163a', flexShrink: 0 }} />}
+                        <span style={{ fontSize: 14, fontWeight: 500, color: C.text, fontFamily: FONT }}>
+                          {c.full_name}
+                        </span>
+                      </div>
+                      {c.email && (
+                        <span style={{ fontSize: 13, color: C.textMuted, fontFamily: FONT }}>
+                          {c.email}
+                        </span>
+                      )}
+                      <BehaviorIndicators indicators={c.behavior_indicators} />
+                    </div>
+                  </div>
+                  {/* Phone */}
+                  <span style={{ fontSize: 14, color: C.textMuted, fontFamily: FONT }}>{c.phone || '—'}</span>
+                  {/* Reviews */}
+                  <span style={{ fontSize: 14, color: C.textMuted, textAlign: 'center', fontFamily: FONT }}>
+                    {c.rating > 0 ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <Star style={{ width: 13, height: 13, fill: '#fbbf24', color: '#fbbf24' }} />
+                        {c.rating.toFixed(1)}
+                      </span>
+                    ) : '—'}
+                  </span>
+                  {/* Sales */}
+                  <span style={{ fontSize: 14, color: C.textMuted, textAlign: 'right', fontFamily: FONT }}>
+                    {c.avg_check > 0 ? `${(c.avg_check * c.total_visits).toLocaleString()} UAH` : '0 UAH'}
+                  </span>
+                  {/* Date */}
+                  <span style={{ fontSize: 13, color: C.textMuted, textAlign: 'right', fontFamily: FONT }}>
+                    {lastVisitLabel}
+                  </span>
+                </Link>
+              </motion.div>
+            );
+          })}
+
+          {/* Footer */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 4px', fontSize: 13, color: C.textMuted, fontFamily: FONT,
+          }}>
+            <span>{t('showingResults') || `Просмотр результатов 1–${filteredClients.length} из ${filteredClients.length}`}</span>
             {hasMore && (
-              <Button variant="outline" size="sm" onClick={() => loadClients(true)} className="h-7 text-xs rounded-lg">
+              <button
+                onClick={() => loadClients(true)}
+                style={{
+                  padding: '6px 14px', borderRadius: 999,
+                  border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+                  color: C.text, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
+                }}
+              >
                 {tc('next')}
-              </Button>
+              </button>
             )}
           </div>
         </>
       )}
-    </div>
-    </div>
     </div>
   );
 }

@@ -176,7 +176,7 @@ export function CommandPalette({ open, onOpenChange, items: externalItems }: Com
           {Object.entries(grouped).map(([category, categoryItems]) => (
             <div key={category}>
               <p className="px-2 py-1.5 text-xs font-medium uppercase text-muted-foreground">
-                {category}
+                {category === 'pages' ? t('categoryPages') : category === 'actions' ? t('categoryActions') : category}
               </p>
               {categoryItems.map((item) => {
                 const idx = flatIndex++;

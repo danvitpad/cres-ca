@@ -10,7 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { AlertTriangle, X, CalendarPlus, Users, Lock, Settings2 } from 'lucide-react';
+import { AlertTriangle, X, CalendarPlus, Users, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
@@ -35,16 +35,16 @@ const LIGHT = {
   nonWorkingBg: '#f5f5f5',
   gridBorder: '#e5e5e5',
   gridBorderSub: 'rgba(229,229,229,0.4)',
-  text: '#0d0d0d',
+  text: '#000000',
   timeText: '#737373',
   timeLabelSuffix: '#a3a3a3',
   currentTime: '#d4163a',
   currentTimeBg: '#ffffff',
   avatarBg: '#ebf8fe',
   avatarBorder: '#e5e5e5',
-  avatarText: '#0d0d0d',
+  avatarText: '#000000',
   cardBg: '#a5dff8',
-  cardText: '#0d0d0d',
+  cardText: '#000000',
   headerShadow: 'rgba(13, 22, 25, 0.06) 0px 6px 4px 0px',
   popupBg: '#ffffff',
   popupBorder: '#e5e5e5',
@@ -61,28 +61,28 @@ const LIGHT = {
 };
 
 const DARK = {
-  pageBg: '#1a1a1a',
-  nonWorkingBg: '#111111',
-  gridBorder: '#2a2a2a',
+  pageBg: '#000000',
+  nonWorkingBg: '#000000',
+  gridBorder: '#1a1a1a',
   gridBorderSub: 'rgba(42,42,42,0.5)',
   text: '#e5e5e5',
-  timeText: '#8a8a8a',
-  timeLabelSuffix: '#666666',
+  timeText: '#d4d4d4',
+  timeLabelSuffix: '#a3a3a3',
   currentTime: '#d4163a',
-  currentTimeBg: '#1a1a1a',
-  avatarBg: '#2a2a2a',
+  currentTimeBg: '#000000',
+  avatarBg: '#1a1a1a',
   avatarBorder: '#3a3a3a',
   avatarText: '#c4b5fd',
   cardBg: '#6950f3',
   cardText: '#ffffff',
   headerShadow: 'rgba(0, 0, 0, 0.4) 0px 6px 4px 0px',
-  popupBg: '#252525',
+  popupBg: '#000000',
   popupBorder: '#3a3a3a',
   popupShadow: 'rgba(0,0,0,0.4) 0px 2px 8px 0px, rgba(0,0,0,0.5) 0px 4px 20px 0px',
-  textMuted: '#8a8a8a',
+  textMuted: '#b3b3b3',
   accent: '#8b7cf6',
   hoverSlot: 'rgba(105,80,243,0.15)',
-  hoverPopupItem: '#333333',
+  hoverPopupItem: '#1a1a1a',
   newBlockBg: 'rgba(105,80,243,0.25)',
   newBlockBorder: '#6950f3',
   newBlockTimeText: '#8b7cf6',
@@ -125,6 +125,8 @@ interface DayViewProps {
   onSlotClick: (time: string) => void;
   onAppointmentClick: (appointment: AppointmentData) => void;
   onRefetch: () => void;
+  onOpenBlockDrawer?: (time: string) => void;
+  onEditBlock?: (block: { id: string; starts_at: string; ends_at: string; reason: string | null }) => void;
   /** When true, clears the preview block on the calendar */
   clearSelection?: boolean;
 }
@@ -151,6 +153,8 @@ export function DayView({
   onSlotClick,
   onAppointmentClick,
   onRefetch,
+  onOpenBlockDrawer,
+  onEditBlock,
   clearSelection,
 }: DayViewProps) {
   const t = useTranslations('calendar');
@@ -248,27 +252,19 @@ export function DayView({
     setSlotPopup({ slotIndex: i, x, y, time });
   }
 
-  async function handlePopupAction(action: string) {
+  function handlePopupAction(action: string) {
     if (!slotPopup) return;
     if (action === 'appointment') {
       onSlotClick(slotPopup.time);
-    } else if (action === 'block' && masterId) {
-      const [h, m] = slotPopup.time.split(':').map(Number);
-      const start = new Date(date);
-      start.setHours(h, m, 0, 0);
-      const end = new Date(start);
-      end.setMinutes(end.getMinutes() + 30); // default 30min block
-      const supabase = createClient();
-      const { error } = await supabase.from('blocked_times').insert({
-        master_id: masterId,
-        starts_at: start.toISOString(),
-        ends_at: end.toISOString(),
-        reason: null,
-      });
-      if (error) toast.error(error.message);
-      else { toast.success(t('timeBlocked') || 'Время заблокировано'); onRefetch(); }
+      setSlotPopup(null);
+    } else if (action === 'group') {
+      onSlotClick(slotPopup.time);
+      setSlotPopup(null);
+      toast.info(t('groupBookingHint') || 'Выберите групповую услугу в диалоге записи');
+    } else if (action === 'block') {
+      setSlotPopup(null);
+      onOpenBlockDrawer?.(slotPopup.time);
     }
-    setSlotPopup(null);
   }
 
   async function handleDrop(apptId: string, newY: number) {
@@ -651,7 +647,6 @@ export function DayView({
                       { key: 'appointment', icon: CalendarPlus, label: t('addAppointment') },
                       { key: 'group', icon: Users, label: t('addGroupAppointment') },
                       { key: 'block', icon: Lock, label: t('blockTime') },
-                      { key: 'settings', icon: Settings2, label: t('quickActionsSettings') },
                     ].map(item => (
                       <button
                         key={item.key}
@@ -807,6 +802,7 @@ export function DayView({
             return (
               <div
                 key={bt.id}
+                onClick={() => onEditBlock?.({ id: bt.id, starts_at: bt.starts_at, ends_at: bt.ends_at, reason: bt.reason })}
                 style={{
                   position: 'absolute',
                   left: TIME_COL_WIDTH + 1,
@@ -820,16 +816,21 @@ export function DayView({
                   borderLeft: `3px solid ${C.accent}`,
                   padding: '4px 8px',
                   overflow: 'hidden',
-                  cursor: 'default',
+                  cursor: 'pointer',
                   fontFamily: FONT,
+                  transition: 'box-shadow 0.15s',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.15)')}
+                onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Lock style={{ width: 12, height: 12, color: C.accent, flexShrink: 0 }} />
                   <span style={{ fontSize: 12, fontWeight: 600, color: C.accent }}>{st} - {et}</span>
                 </div>
                 {bt.reason && height > 30 && (
-                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{bt.reason}</div>
+                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>
+                    {bt.reason === 'lunch' ? '🍽️ Обід' : bt.reason}
+                  </div>
                 )}
               </div>
             );

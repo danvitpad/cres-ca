@@ -13,26 +13,26 @@ type WaitlistDrawerProps = {
 };
 
 const LIGHT = {
-  text: '#0d0d0d',
+  text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
-  tabActive: '#0d0d0d',
+  tabActive: '#000000',
   tabInactive: '#737373',
-  tabIndicator: '#0d0d0d',
+  tabIndicator: '#000000',
   bgSubtle: '#f9f9f9',
   accent: '#6950f3',
-  btnBg: '#0d0d0d',
+  btnBg: '#000000',
   btnText: '#ffffff',
 };
 
 const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
-  border: '#2a2a2a',
+  border: '#1a1a1a',
   tabActive: '#e5e5e5',
   tabInactive: '#8a8a8a',
   tabIndicator: '#e5e5e5',
-  bgSubtle: '#252525',
+  bgSubtle: '#000000',
   accent: '#8b7cf6',
   btnBg: '#6950f3',
   btnText: '#ffffff',

@@ -129,7 +129,7 @@ export default function ProductsPage() {
   if (loading) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ padding: '32px 40px' }}>
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">{t('title')}</h2>
         <button

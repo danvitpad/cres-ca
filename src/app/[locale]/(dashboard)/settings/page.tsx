@@ -19,7 +19,17 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Copy, Check } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  UserCircle,
+  CalendarClock,
+  CreditCard,
+  LinkIcon,
+  Shield,
+  ChevronLeft,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -31,6 +41,7 @@ export default function SettingsPage() {
   const tc = useTranslations('common');
   const { master, loading, refetch } = useMaster();
   const { userId } = useAuthStore();
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -50,34 +61,64 @@ export default function SettingsPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">{t('editProfile')}</h2>
-      <Tabs defaultValue="profile">
-        <TabsList>
-          <TabsTrigger value="profile">{t('editProfile')}</TabsTrigger>
-          <TabsTrigger value="hours">{t('workingHours')}</TabsTrigger>
-          <TabsTrigger value="subscription">{t('subscription')}</TabsTrigger>
-          <TabsTrigger value="invite">{t('inviteLink')}</TabsTrigger>
-          <TabsTrigger value="policies">{t('policies')}</TabsTrigger>
-        </TabsList>
+  const settingSections = [
+    { key: 'profile', icon: UserCircle, title: t('editProfile'), desc: t('profileDesc') || t('editProfile') },
+    { key: 'hours', icon: CalendarClock, title: t('workingHours'), desc: t('hoursDesc') || t('workingHours') },
+    { key: 'subscription', icon: CreditCard, title: t('subscription'), desc: t('subscriptionDesc') || t('subscription') },
+    { key: 'invite', icon: LinkIcon, title: t('inviteLink'), desc: t('inviteDesc') || t('inviteLink') },
+    { key: 'policies', icon: Shield, title: t('policies'), desc: t('policiesDesc') || t('policies') },
+  ];
 
-        <TabsContent value="profile">
-          <ProfileTab master={master} userId={userId!} onSaved={refetch} />
-        </TabsContent>
-        <TabsContent value="hours">
-          <WorkingHoursTab master={master} onSaved={refetch} />
-        </TabsContent>
-        <TabsContent value="subscription">
-          <SubscriptionTab />
-        </TabsContent>
-        <TabsContent value="invite">
-          <InviteLinkTab master={master} />
-        </TabsContent>
-        <TabsContent value="policies">
-          <PoliciesTab master={master} onSaved={refetch} />
-        </TabsContent>
-      </Tabs>
+  if (activeSection) {
+    return (
+      <div className="space-y-5" style={{ padding: '32px 40px', maxWidth: 1024 }}>
+        <button
+          onClick={() => setActiveSection(null)}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          {t('editProfile')}
+        </button>
+        {activeSection === 'profile' && <ProfileTab master={master} userId={userId!} onSaved={refetch} />}
+        {activeSection === 'hours' && <WorkingHoursTab master={master} onSaved={refetch} />}
+        {activeSection === 'subscription' && <SubscriptionTab />}
+        {activeSection === 'invite' && <InviteLinkTab master={master} />}
+        {activeSection === 'policies' && <PoliciesTab master={master} onSaved={refetch} />}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5" style={{ padding: '32px 40px', maxWidth: 1024 }}>
+      <div>
+        <h2 className="text-xl font-bold">{t('editProfile')}</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">{t('settingsDesc') || t('editProfile')}</p>
+      </div>
+
+      {/* Fresha-style card grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {settingSections.map((section, i) => {
+          const Icon = section.icon;
+          return (
+            <motion.button
+              key={section.key}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => setActiveSection(section.key)}
+              className="flex flex-col items-start gap-3 rounded-2xl border bg-card p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5 group"
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">{section.title}</h3>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{section.desc}</p>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -118,11 +159,11 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>{t('specialization')}</Label>
-            <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder="Nail artist, Massage therapist..." />
+            <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('specializationPlaceholder')} />
           </div>
           <div className="space-y-2">
-            <Label>{tc('required')}: {t('city')}</Label>
-            <Input value={city} onChange={(e) => setCity(e.target.value)} />
+            <Label>{t('city')}</Label>
+            <Input value={city} onChange={(e) => setCity(e.target.value)} required />
           </div>
         </div>
 
@@ -139,11 +180,11 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>{tc('required')}: full_name</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Label>{t('fullName')}</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label>{t('specialization')}: phone</Label>
+            <Label>{t('phone')}</Label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" />
           </div>
         </div>
@@ -238,7 +279,7 @@ function SubscriptionTab() {
       <CardHeader><CardTitle>{t('subscription')}</CardTitle></CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground">
-          Current plan: <span className="font-semibold text-foreground capitalize">{tier}</span>
+          {t('currentPlan')}: <span className="font-semibold text-foreground capitalize">{tier}</span>
         </p>
         <Button variant="outline" className="mt-4">{t('changePlan')}</Button>
       </CardContent>
