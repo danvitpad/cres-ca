@@ -9,8 +9,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scissors, Sparkles, ArrowLeftRight, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf, Clock, Users, ArrowRight, MapPin, Star } from 'lucide-react';
+import { Scissors, Sparkles, ArrowLeftRight, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf, Clock, Users, ArrowRight, MapPin, Star, CalendarCheck, Flame } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
@@ -102,6 +103,8 @@ export default function FeedPage() {
   const [masters, setMasters] = useState<FollowedMaster[]>([]);
   const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
   const [discover, setDiscover] = useState<FollowedMaster[]>([]);
+  const [nextAppt, setNextAppt] = useState<{ id: string; starts_at: string; service: string | null; masterName: string; masterAvatar: string | null; masterId: string } | null>(null);
+  const { userId } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -176,10 +179,39 @@ export default function FeedPage() {
       setMasters(m);
       setBurningSlots(b);
       setDiscover(d);
+
+      if (userId) {
+        const supabase = createClient();
+        const { data: clientRows } = await supabase.from('clients').select('id').eq('profile_id', userId);
+        const clientIds = clientRows?.map((c: { id: string }) => c.id) ?? [];
+        if (clientIds.length) {
+          const { data: appt } = await supabase
+            .from('appointments')
+            .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))')
+            .in('client_id', clientIds)
+            .gte('starts_at', new Date().toISOString())
+            .order('starts_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          if (appt) {
+            const a = appt as unknown as { id: string; starts_at: string; service: { name: string } | { name: string }[] | null; master: { id: string; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null } };
+            const svc = Array.isArray(a.service) ? a.service[0] : a.service;
+            setNextAppt({
+              id: a.id,
+              starts_at: a.starts_at,
+              service: svc?.name ?? null,
+              masterName: a.master.display_name ?? a.master.profile?.full_name ?? '?',
+              masterAvatar: a.master.avatar_url ?? a.master.profile?.avatar_url ?? null,
+              masterId: a.master.id,
+            });
+          }
+        }
+      }
+
       setLoading(false);
     }
     init();
-  }, [fetchPosts, fetchMasters, fetchBurning, fetchDiscover]);
+  }, [fetchPosts, fetchMasters, fetchBurning, fetchDiscover, userId]);
 
   // Infinite scroll
   useEffect(() => {
@@ -222,7 +254,8 @@ export default function FeedPage() {
   }
 
   return (
-    <div>
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+      <div className="min-w-0">
       {/* Stories row */}
       <div className="flex gap-3 overflow-x-auto px-[var(--space-page)] py-3 scrollbar-thin">
         {masters.map((m) => {
@@ -423,6 +456,118 @@ export default function FeedPage() {
           )}
         </div>
       )}
+      </div>
+
+      {/* Right rail — densified context */}
+      <aside className="hidden lg:block">
+        <div className="sticky top-4 space-y-4">
+          {/* Next appointment */}
+          <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
+            <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
+              <CalendarCheck className="size-4 text-[var(--ds-accent)]" />
+              <h3 className="text-sm font-semibold">{t('nextApptTitle')}</h3>
+            </div>
+            {nextAppt ? (
+              <Link href={`/my-calendar`} className="block p-4 transition-colors hover:bg-muted/40">
+                <div className="flex items-center gap-3">
+                  {nextAppt.masterAvatar ? (
+                    <img src={nextAppt.masterAvatar} alt="" className="size-11 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
+                      {nextAppt.masterName[0]}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{nextAppt.service ?? '—'}</p>
+                    <p className="truncate text-xs text-muted-foreground">{nextAppt.masterName}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {new Date(nextAppt.starts_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                  </span>
+                  <span className="text-sm font-bold tabular-nums text-[var(--ds-accent)]">
+                    {new Date(nextAppt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <div className="p-5 text-center">
+                <p className="text-xs text-muted-foreground">{t('nextApptEmpty')}</p>
+                <Link href="/masters" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ds-accent)] hover:underline">
+                  {t('discover')}
+                  <ArrowRight className="size-3" />
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Today in your city */}
+          {(burningSlots.length > 0 || discover.length > 0) && (
+            <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
+                <Flame className="size-4 text-rose-500" />
+                <h3 className="text-sm font-semibold">{t('todayInCityTitle')}</h3>
+              </div>
+              <ul className="divide-y divide-border/60">
+                {burningSlots.slice(0, 3).map((slot) => {
+                  const name = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
+                  const avatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
+                  return (
+                    <li key={slot.id}>
+                      <Link
+                        href={`/book?master_id=${slot.master.id}${slot.linked_service_id ? `&service_id=${slot.linked_service_id}` : ''}`}
+                        className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
+                      >
+                        {avatar ? (
+                          <img src={avatar} alt="" className="size-9 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex size-9 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-semibold text-emerald-600">
+                            {name[0]}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold">{name}</p>
+                          <p className="truncate text-[10px] text-muted-foreground">
+                            {slot.title ?? slot.master.specialization ?? ''}
+                          </p>
+                        </div>
+                        {slot.expires_at && (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
+                            {hoursUntil(slot.expires_at)}ч
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+                {burningSlots.length === 0 && discover.slice(0, 3).map((m) => {
+                  const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
+                  const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
+                  return (
+                    <li key={m.master.id}>
+                      <Link href={`/masters/${m.master.id}`} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
+                        {avatar ? (
+                          <img src={avatar} alt="" className="size-9 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex size-9 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
+                            {name[0]}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold">{name}</p>
+                          <p className="truncate text-[10px] text-muted-foreground">{m.master.specialization ?? ''}</p>
+                        </div>
+                        <MapPin className="size-3 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

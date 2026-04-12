@@ -16,8 +16,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { CalendarDays, Clock, RefreshCw, Star, User } from 'lucide-react';
+import { CalendarDays, Clock, RefreshCw, Star, User, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
+
+interface BeforeAfterPair {
+  id: string;
+  before_url: string;
+  after_url: string;
+  caption: string | null;
+}
 
 interface HistoryAppointment {
   id: string;
@@ -37,6 +45,7 @@ interface HistoryAppointment {
       profile: { full_name: string; avatar_url: string | null } | null;
     } | null;
   } | null;
+  beforeAfter: BeforeAfterPair | null;
 }
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -62,6 +71,7 @@ export default function HistoryPage() {
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingBusy, setRatingBusy] = useState(false);
+  const [showSliderFor, setShowSliderFor] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -88,7 +98,24 @@ export default function HistoryPage() {
         .order('starts_at', { ascending: false });
 
       if (data) {
-        // Attach master info from clients
+        // Fetch before/after photos for these masters/services
+        const masterIds = Array.from(new Set(data.map((a) => a.master_id).filter(Boolean)));
+        const serviceIds = Array.from(new Set(data.map((a) => a.service_id).filter(Boolean)));
+        const photoMap = new Map<string, BeforeAfterPair>();
+        if (masterIds.length && serviceIds.length) {
+          const { data: photos } = await supabase
+            .from('before_after_photos')
+            .select('id, master_id, service_id, before_url, after_url, caption, created_at')
+            .in('master_id', masterIds)
+            .in('service_id', serviceIds)
+            .order('created_at', { ascending: false });
+          photos?.forEach((p: { id: string; master_id: string; service_id: string; before_url: string; after_url: string; caption: string | null }) => {
+            const key = `${p.master_id}::${p.service_id}`;
+            if (!photoMap.has(key)) photoMap.set(key, { id: p.id, before_url: p.before_url, after_url: p.after_url, caption: p.caption });
+          });
+        }
+
+        // Attach master info from clients + before/after by master+service
         const enriched = data.map((a) => {
           const clientRecord = clients.find((c) => c.master_id === a.master_id);
           return {
@@ -100,6 +127,7 @@ export default function HistoryPage() {
                 ? C extends { master: infer M } ? M : never
                 : never,
             } : null,
+            beforeAfter: photoMap.get(`${a.master_id}::${a.service_id}`) ?? null,
           };
         });
         setAppointments(enriched);
@@ -276,9 +304,37 @@ export default function HistoryPage() {
                     </span>
                   </div>
 
+                  {/* Before/After slider — past completed visits with photos */}
+                  {tab === 'past' && appointment.status === 'completed' && appointment.beforeAfter && showSliderFor === appointment.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="overflow-hidden"
+                    >
+                      <BeforeAfterSlider
+                        beforeUrl={appointment.beforeAfter.before_url}
+                        afterUrl={appointment.beforeAfter.after_url}
+                        caption={appointment.beforeAfter.caption}
+                      />
+                    </motion.div>
+                  )}
+
                   {/* Repeat + Rate buttons for past completed appointments */}
                   {tab === 'past' && appointment.status === 'completed' && (
                     <div className="mt-1 flex gap-2">
+                      {appointment.beforeAfter && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 gap-2"
+                          onClick={() => setShowSliderFor((cur) => (cur === appointment.id ? null : appointment.id))}
+                        >
+                          <ImageIcon className="size-3.5" />
+                          {showSliderFor === appointment.id ? tc('hide') : tc('show')}
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

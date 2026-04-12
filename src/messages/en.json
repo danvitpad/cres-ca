@@ -27,7 +27,9 @@
     "getStarted": "Get Started",
     "learnMore": "Learn More",
     "required": "Required field",
-    "optional": "Optional"
+    "optional": "Optional",
+    "show": "Show",
+    "hide": "Hide"
   },
   "auth": {
     "signIn": "Sign In",
@@ -749,9 +751,28 @@
     "addCard": "Add card",
     "noCards": "No saved cards",
     "tab_balance": "Balance",
+    "tab_timeline": "Timeline",
     "tab_referrals": "Referrals",
     "tab_giftCards": "Gift cards",
-    "tab_cards": "Cards"
+    "tab_cards": "Cards",
+    "timelineTitle": "Recent activity",
+    "timelineEmpty": "No activity yet",
+    "savingsGoalTitle": "Savings goal",
+    "savingsGoalDesc": "Save bonuses toward a specific service or treatment",
+    "goalTitlePh": "e.g. SPA day",
+    "goalAmountPh": "Amount in ₴",
+    "goalSave": "Save goal",
+    "goalInvalid": "Add a title and amount",
+    "transferTitle": "Transfer bonuses",
+    "transferDesc": "Send bonuses to a friend by email or referral code",
+    "transferToPh": "Friend's email or code",
+    "transferAmountPh": "Amount",
+    "transferAvailable": "Available",
+    "transferSend": "Send",
+    "transferDone": "Transfer complete",
+    "transferInvalid": "Enter recipient and amount",
+    "transferInsufficient": "Insufficient balance",
+    "transferNotFound": "Recipient not found"
   },
   "clientFavorites": {
     "title": "Favorites",
@@ -1154,7 +1175,10 @@
     "pullToRefresh": "Pull to refresh",
     "loadMore": "Load more",
     "topMasters": "Top Masters",
-    "viewAll": "All"
+    "viewAll": "All",
+    "nextApptTitle": "Next appointment",
+    "nextApptEmpty": "No upcoming bookings",
+    "todayInCityTitle": "Today in your city"
   },
   "contact": {
     "title": "Contact Us",

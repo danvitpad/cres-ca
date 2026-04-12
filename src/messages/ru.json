@@ -27,7 +27,9 @@
     "getStarted": "Начать",
     "learnMore": "Подробнее",
     "required": "Обязательное поле",
-    "optional": "Необязательно"
+    "optional": "Необязательно",
+    "show": "Показать",
+    "hide": "Скрыть"
   },
   "auth": {
     "signIn": "Войти",
@@ -749,9 +751,28 @@
     "addCard": "Добавить карту",
     "noCards": "Нет сохранённых карт",
     "tab_balance": "Баланс",
+    "tab_timeline": "История",
     "tab_referrals": "Рефералы",
     "tab_giftCards": "Подарочные",
-    "tab_cards": "Карты"
+    "tab_cards": "Карты",
+    "timelineTitle": "Последние операции",
+    "timelineEmpty": "Пока нет операций",
+    "savingsGoalTitle": "Цель накопления",
+    "savingsGoalDesc": "Копи бонусы на конкретную услугу или процедуру",
+    "goalTitlePh": "Например: SPA-день",
+    "goalAmountPh": "Сумма в ₴",
+    "goalSave": "Сохранить цель",
+    "goalInvalid": "Заполни название и сумму",
+    "transferTitle": "Перевод бонусов",
+    "transferDesc": "Отправь бонусы другу по email или реферальному коду",
+    "transferToPh": "Email или код друга",
+    "transferAmountPh": "Сумма",
+    "transferAvailable": "Доступно",
+    "transferSend": "Отправить",
+    "transferDone": "Перевод выполнен",
+    "transferInvalid": "Заполни получателя и сумму",
+    "transferInsufficient": "Недостаточно средств",
+    "transferNotFound": "Получатель не найден"
   },
   "clientFavorites": {
     "title": "Избранное",
@@ -1154,7 +1175,10 @@
     "pullToRefresh": "Потяните для обновления",
     "loadMore": "Загрузить ещё",
     "topMasters": "Топ мастеров",
-    "viewAll": "Все"
+    "viewAll": "Все",
+    "nextApptTitle": "Ближайшая запись",
+    "nextApptEmpty": "Нет предстоящих записей",
+    "todayInCityTitle": "Сегодня в твоём городе"
   },
   "contact": {
     "title": "Связаться с нами",

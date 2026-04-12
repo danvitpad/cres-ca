@@ -27,7 +27,9 @@
     "getStarted": "Почати",
     "learnMore": "Дізнатися більше",
     "required": "Обов'язкове поле",
-    "optional": "Необов'язково"
+    "optional": "Необов'язково",
+    "show": "Показати",
+    "hide": "Сховати"
   },
   "auth": {
     "signIn": "Увійти",
@@ -749,9 +751,28 @@
     "addCard": "Додати картку",
     "noCards": "Немає збережених карток",
     "tab_balance": "Баланс",
+    "tab_timeline": "Історія",
     "tab_referrals": "Реферали",
     "tab_giftCards": "Подарункові",
-    "tab_cards": "Картки"
+    "tab_cards": "Картки",
+    "timelineTitle": "Останні операції",
+    "timelineEmpty": "Поки немає операцій",
+    "savingsGoalTitle": "Ціль накопичення",
+    "savingsGoalDesc": "Збирай бонуси на конкретну послугу чи процедуру",
+    "goalTitlePh": "Наприклад: SPA-день",
+    "goalAmountPh": "Сума в ₴",
+    "goalSave": "Зберегти ціль",
+    "goalInvalid": "Заповни назву і суму",
+    "transferTitle": "Переказ бонусів",
+    "transferDesc": "Надішли бонуси другу за email або реферальним кодом",
+    "transferToPh": "Email або код друга",
+    "transferAmountPh": "Сума",
+    "transferAvailable": "Доступно",
+    "transferSend": "Надіслати",
+    "transferDone": "Переказ виконано",
+    "transferInvalid": "Заповни отримувача і суму",
+    "transferInsufficient": "Недостатньо коштів",
+    "transferNotFound": "Отримувача не знайдено"
   },
   "clientFavorites": {
     "title": "Обране",
@@ -1154,7 +1175,10 @@
     "pullToRefresh": "Потягніть для оновлення",
     "loadMore": "Завантажити ще",
     "topMasters": "Топ майстрів",
-    "viewAll": "Всі"
+    "viewAll": "Всі",
+    "nextApptTitle": "Найближчий запис",
+    "nextApptEmpty": "Немає майбутніх записів",
+    "todayInCityTitle": "Сьогодні у твоєму місті"
   },
   "contact": {
     "title": "Зв'язатися з нами",
