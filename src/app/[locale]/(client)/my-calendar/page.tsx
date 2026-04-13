@@ -246,9 +246,9 @@ export default function ClientCalendarPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3 h-[calc(100dvh-180px)]">
       {/* Top toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
             onClick={goToday}
@@ -285,21 +285,24 @@ export default function ClientCalendarPage() {
       </div>
 
       {view === 'month' && (
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 border-b border-border/60 bg-muted/30">
+          <div className="grid shrink-0 grid-cols-7 border-b border-border/60 bg-muted/30">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="py-2.5 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <div key={d} className="py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {d}
               </div>
             ))}
           </div>
 
-          {/* Calendar grid — Google-style cells */}
-          <div className="grid grid-cols-7">
+          {/* Calendar grid — Google-style cells, flex to fill viewport */}
+          <div
+            className="grid min-h-0 flex-1 grid-cols-7"
+            style={{ gridTemplateRows: `repeat(${grid.length / 7}, minmax(0, 1fr))` }}
+          >
             {grid.map((day, i) => {
               if (day === null) {
-                return <div key={`e${i}`} className="min-h-[120px] border-b border-r border-border/40 bg-muted/10 last:border-r-0" />;
+                return <div key={`e${i}`} className="min-h-0 border-b border-r border-border/40 bg-muted/10 last:border-r-0" />;
               }
               const dayDate = new Date(year, month, day);
               const isToday = sameDay(dayDate, today);
@@ -318,7 +321,7 @@ export default function ClientCalendarPage() {
                     if (dayAppts.length) setSheetOpen(true);
                   }}
                   className={cn(
-                    'group/cell relative flex min-h-[120px] flex-col gap-1 border-b border-r border-border/40 p-1.5 text-left transition-colors last:border-r-0 hover:bg-muted/40',
+                    'group/cell relative flex min-h-0 min-w-0 flex-col gap-0.5 overflow-hidden border-b border-r border-border/40 p-1 text-left transition-colors last:border-r-0 hover:bg-muted/40',
                     isSelected && 'bg-[var(--ds-accent)]/5 ring-1 ring-inset ring-[var(--ds-accent)]/40',
                   )}
                 >

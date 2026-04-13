@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scissors, Sparkles, ArrowLeftRight, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf, Clock, Users, ArrowRight, MapPin, Star, CalendarCheck, Flame } from 'lucide-react';
+import { Scissors, Sparkles, ArrowLeftRight, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf, Clock, Users, ArrowRight, MapPin, Star, CalendarCheck, Compass } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
@@ -138,18 +138,21 @@ export default function FeedPage() {
     return (data ?? []).map((d) => ({ ...d, hasNewPosts: false })) as unknown as FollowedMaster[];
   }, []);
 
-  const fetchBurning = useCallback(async () => {
+  const fetchBurning = useCallback(async (followedIds: string[]) => {
     const supabase = createClient();
-    const { data } = await supabase
+    let q = supabase
       .from('feed_posts')
       .select(`
         id, type, title, body, image_url, linked_service_id, expires_at, created_at,
         master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url))
       `)
-      .eq('type', 'burning_slot')
-      .gte('expires_at', new Date().toISOString())
+      .in('type', ['burning_slot', 'promotion', 'before_after', 'new_service', 'update'])
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(12);
+    if (followedIds.length > 0) {
+      q = q.in('master_id', followedIds);
+    }
+    const { data } = await q;
     return (data ?? []) as unknown as FeedPost[];
   }, []);
 
@@ -159,7 +162,7 @@ export default function FeedPage() {
     const { data } = await supabase
       .from('masters')
       .select('id, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url)')
-      .limit(4);
+      .limit(8);
     return (data ?? []).map((master) => ({
       master_id: master.id,
       master,
@@ -169,10 +172,11 @@ export default function FeedPage() {
 
   useEffect(() => {
     async function init() {
-      const [p, m, b, d] = await Promise.all([
+      const m = await fetchMasters();
+      const followedIds = m.map((x) => x.master_id);
+      const [p, b, d] = await Promise.all([
         fetchPosts(0),
-        fetchMasters(),
-        fetchBurning(),
+        fetchBurning(followedIds),
         fetchDiscover(),
       ]);
       setPosts(p);
@@ -254,7 +258,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
       <div className="min-w-0">
       {/* Stories row */}
       <div className="flex gap-3 overflow-x-auto px-[var(--space-page)] py-3 scrollbar-thin">
@@ -323,7 +327,7 @@ export default function FeedPage() {
         </AnimatePresence>
       </div>
 
-      {/* Свободные окна — premium live carousel */}
+      {/* От твоих мастеров — субscriptions feed (свободные окна, акции, истории) */}
       {burningSlots.length > 0 && (
         <div className="pb-4">
           <div className="flex items-center justify-between px-[var(--space-page)] pb-2.5">
@@ -332,8 +336,8 @@ export default function FeedPage() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
                 <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
               </span>
-              <h3 className="text-base font-semibold tracking-tight">{t('freeSlotsTitle')}</h3>
-              <span className="text-xs text-muted-foreground">· {t('freeSlotsLive')}</span>
+              <h3 className="text-base font-semibold tracking-tight">{t('subscriptionsTitle')}</h3>
+              <span className="text-xs text-muted-foreground">· {t('subscriptionsSubtitle')}</span>
             </div>
           </div>
           <div className="flex gap-3 overflow-x-auto px-[var(--space-page)] pb-1 scrollbar-thin">
@@ -377,48 +381,6 @@ export default function FeedPage() {
         </div>
       )}
 
-      {/* Открой для себя — geo + paid placement */}
-      <div className="pb-4">
-        <div className="flex items-center justify-between px-[var(--space-page)] pb-2.5">
-          <div>
-            <h3 className="text-base font-semibold tracking-tight">{t('discoverTitle')}</h3>
-            <p className="text-xs text-muted-foreground">{t('discoverSubtitle')}</p>
-          </div>
-          <Link href="/masters" className="text-xs font-medium text-[var(--ds-accent)] hover:underline">
-            {t('viewAll')}
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-3 px-[var(--space-page)] sm:grid-cols-4">
-          {discover.map((m) => {
-            const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
-            const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
-            return (
-              <Link
-                key={m.master.id}
-                href={`/masters/${m.master.id}`}
-                className="group/disc relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl border border-border/60 bg-card p-4 transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)] hover:border-[var(--ds-accent)]/40"
-              >
-                {avatar ? (
-                  <img src={avatar} alt={name} className="size-16 rounded-full object-cover ring-2 ring-[var(--ds-accent)]/15" />
-                ) : (
-                  <div className="flex size-16 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-lg font-semibold text-[var(--ds-accent)] ring-2 ring-[var(--ds-accent)]/15">
-                    {name[0]}
-                  </div>
-                )}
-                <p className="line-clamp-1 text-center text-sm font-semibold">{name}</p>
-                {m.master.specialization && (
-                  <p className="line-clamp-1 text-center text-[11px] text-muted-foreground">{m.master.specialization}</p>
-                )}
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <MapPin className="size-3" />
-                  <span>1.2 км</span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Feed */}
       {posts.length === 0 ? (
         <EmptyState
@@ -458,8 +420,8 @@ export default function FeedPage() {
       )}
       </div>
 
-      {/* Right rail — densified context */}
-      <aside className="hidden lg:block">
+      {/* Right rail — densified context. pr-3 mirrors left sidebar inner padding so distances are symmetric */}
+      <aside className="hidden lg:block pr-3">
         <div className="sticky top-4 space-y-4">
           {/* Next appointment */}
           <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
@@ -502,55 +464,29 @@ export default function FeedPage() {
             )}
           </div>
 
-          {/* Today in your city */}
-          {(burningSlots.length > 0 || discover.length > 0) && (
+          {/* Recommended masters */}
+          {discover.length > 0 && (
             <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
-                <Flame className="size-4 text-rose-500" />
-                <h3 className="text-sm font-semibold">{t('todayInCityTitle')}</h3>
+              <div className="flex items-center justify-between border-b border-border/60 px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <Compass className="size-4 text-[var(--ds-accent)]" />
+                  <h3 className="text-sm font-semibold">{t('recommendedTitle')}</h3>
+                </div>
+                <Link href="/masters" className="text-[11px] font-medium text-[var(--ds-accent)] hover:underline">
+                  {t('viewAll')}
+                </Link>
               </div>
               <ul className="divide-y divide-border/60">
-                {burningSlots.slice(0, 3).map((slot) => {
-                  const name = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
-                  const avatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
-                  return (
-                    <li key={slot.id}>
-                      <Link
-                        href={`/book?master_id=${slot.master.id}${slot.linked_service_id ? `&service_id=${slot.linked_service_id}` : ''}`}
-                        className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40"
-                      >
-                        {avatar ? (
-                          <img src={avatar} alt="" className="size-9 rounded-full object-cover" />
-                        ) : (
-                          <div className="flex size-9 items-center justify-center rounded-full bg-emerald-500/10 text-xs font-semibold text-emerald-600">
-                            {name[0]}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold">{name}</p>
-                          <p className="truncate text-[10px] text-muted-foreground">
-                            {slot.title ?? slot.master.specialization ?? ''}
-                          </p>
-                        </div>
-                        {slot.expires_at && (
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
-                            {hoursUntil(slot.expires_at)}ч
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
-                {burningSlots.length === 0 && discover.slice(0, 3).map((m) => {
+                {discover.slice(0, 6).map((m) => {
                   const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
                   const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
                   return (
                     <li key={m.master.id}>
-                      <Link href={`/masters/${m.master.id}`} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
+                      <Link href={`/masters/${m.master.id}`} className="group/rec flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
                         {avatar ? (
-                          <img src={avatar} alt="" className="size-9 rounded-full object-cover" />
+                          <img src={avatar} alt="" className="size-10 rounded-full object-cover ring-1 ring-border/60" />
                         ) : (
-                          <div className="flex size-9 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
+                          <div className="flex size-10 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
                             {name[0]}
                           </div>
                         )}
@@ -558,7 +494,9 @@ export default function FeedPage() {
                           <p className="truncate text-xs font-semibold">{name}</p>
                           <p className="truncate text-[10px] text-muted-foreground">{m.master.specialization ?? ''}</p>
                         </div>
-                        <MapPin className="size-3 text-muted-foreground" />
+                        <span className="rounded-full bg-[var(--ds-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-accent)] opacity-0 transition-opacity group-hover/rec:opacity-100">
+                          {t('viewMaster')}
+                        </span>
                       </Link>
                     </li>
                   );

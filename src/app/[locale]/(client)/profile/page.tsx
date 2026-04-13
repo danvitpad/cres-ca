@@ -10,10 +10,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Camera, MapPin, Plus, Gift, Copy, Check, LogOut, User as UserIcon, Sparkles, Calendar, UserPlus } from 'lucide-react';
+import { Camera, MapPin, Plus, Gift, Copy, Check, Sparkles, Calendar, UserPlus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,8 +35,7 @@ export default function ProfilePage() {
   const t = useTranslations('profile');
   const ta = useTranslations('auth');
   const tc = useTranslations('common');
-  const { userId, clearAuth } = useAuthStore();
-  const router = useRouter();
+  const { userId } = useAuthStore();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,13 +131,6 @@ export default function ProfilePage() {
       toast.success(t('profileSaved'));
     }
     setAvatarBusy(false);
-  }
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    clearAuth();
-    router.push('/');
   }
 
   function copyReferralLink() {
@@ -320,17 +311,6 @@ export default function ProfilePage() {
         )}
       </motion.div>
 
-      {/* Sign out */}
-      <div className="mx-auto max-w-2xl">
-        <Button
-          variant="ghost"
-          onClick={handleSignOut}
-          className="w-full gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-        >
-          <LogOut className="size-4" />
-          {ta('signOut')}
-        </Button>
-      </div>
     </div>
   );
 }

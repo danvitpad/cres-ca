@@ -236,29 +236,65 @@ export default function WalletPage() {
         </TabsList>
 
         <TabsContent value="balance" className="mt-6 space-y-6">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-fuchsia-600 to-rose-500 p-8 text-white shadow-xl">
-            <div className="absolute -right-16 -top-16 size-60 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -left-10 size-60 rounded-full bg-white/10 blur-3xl" />
+          {/* Premium hero — animated mesh, oversized number, chip-card aesthetic */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="relative overflow-hidden rounded-[28px] bg-[#0b0b14] p-8 text-white shadow-[0_30px_80px_-30px_rgba(80,30,180,0.55)]"
+          >
+            {/* Animated gradient mesh */}
+            <motion.div
+              animate={{ rotate: [0, 360] }}
+              transition={{ duration: 40, ease: 'linear', repeat: Infinity }}
+              className="pointer-events-none absolute -inset-[40%] opacity-80"
+              style={{
+                background:
+                  'conic-gradient(from 90deg at 50% 50%, #6d28d9 0%, #db2777 25%, #f59e0b 50%, #6d28d9 75%, #6d28d9 100%)',
+                filter: 'blur(80px)',
+              }}
+            />
+            <div className="absolute inset-0 bg-[#0b0b14]/55" />
+            <div className="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+
             <div className="relative flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-white/80">{t('balance')}</p>
-                <p className="mt-2 text-5xl font-bold tracking-tight">{data.balance.toFixed(2)} ₴</p>
-                <p className="mt-3 text-sm text-white/80">
-                  {t('bonusPoints')}: <span className="font-semibold text-white">{data.bonusPoints}</span>
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">{t('balance')}</p>
+                <p className="font-bold tracking-tight text-white" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', lineHeight: 1 }}>
+                  {data.balance.toFixed(2)} <span className="text-2xl font-medium text-white/70">₴</span>
                 </p>
+                <div className="flex items-center gap-2 pt-2">
+                  <span className="rounded-full bg-white/12 px-2.5 py-0.5 text-[11px] font-semibold backdrop-blur">
+                    +{data.bonusPoints} {t('bonusPoints').toLowerCase()}
+                  </span>
+                  <span className="text-[11px] text-white/60">·</span>
+                  <span className="text-[11px] text-white/60">{t('lifetimeEarned')}: {data.lifetimeEarned.toFixed(0)} ₴</span>
+                </div>
               </div>
-              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/15 backdrop-blur">
+              <div className="flex size-14 items-center justify-center rounded-2xl bg-white/12 backdrop-blur ring-1 ring-white/15">
                 <Sparkles className="size-7" />
               </div>
             </div>
-            <div className="relative mt-6 flex gap-3">
-              <Button variant="secondary" className="bg-white text-foreground hover:bg-white/90">
-                <Plus className="mr-1 size-4" /> {t('topUp')}
-              </Button>
-              <Button variant="ghost" className="text-white hover:bg-white/15" onClick={() => setTransferOpen(true)}>
-                <Send className="mr-1 size-4" /> {t('transfer')}
-              </Button>
+
+            <div className="relative mt-7 flex gap-2">
+              <button className="group inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#0b0b14] transition-all hover:scale-[1.02]">
+                <Plus className="size-4" /> {t('topUp')}
+              </button>
+              <button
+                onClick={() => setTransferOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/10"
+              >
+                <Send className="size-4" /> {t('transfer')}
+              </button>
             </div>
+          </motion.div>
+
+          {/* Quick action tiles */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <QuickTile icon={Plus} label={t('topUp')} accent="violet" />
+            <QuickTile icon={Send} label={t('transfer')} accent="rose" onClick={() => setTransferOpen(true)} />
+            <QuickTile icon={Gift} label={t('buyGiftCard')} accent="amber" />
+            <QuickTile icon={UserPlus} label={t('referralProgram')} accent="emerald" />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -480,12 +516,44 @@ export default function WalletPage() {
 
 function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border bg-card p-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+    <div className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.25)]">
+      <div className="absolute -right-6 -top-6 size-24 rounded-full bg-primary/5 blur-2xl transition-opacity group-hover:opacity-100" />
+      <div className="relative flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
         <Icon className="size-4" />
         <span>{label}</span>
       </div>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="relative mt-2 text-3xl font-bold tracking-tight tabular-nums">{value}</p>
     </div>
+  );
+}
+
+const tileAccents: Record<string, string> = {
+  violet: 'from-violet-500/15 to-violet-500/5 text-violet-600 dark:text-violet-300',
+  rose: 'from-rose-500/15 to-rose-500/5 text-rose-600 dark:text-rose-300',
+  amber: 'from-amber-500/15 to-amber-500/5 text-amber-600 dark:text-amber-300',
+  emerald: 'from-emerald-500/15 to-emerald-500/5 text-emerald-600 dark:text-emerald-300',
+};
+
+function QuickTile({
+  icon: Icon,
+  label,
+  accent,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  accent: 'violet' | 'rose' | 'amber' | 'emerald';
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`group flex flex-col items-start gap-3 rounded-2xl border bg-gradient-to-br ${tileAccents[accent]} p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.25)]`}
+    >
+      <div className="flex size-10 items-center justify-center rounded-xl bg-background/70 backdrop-blur ring-1 ring-border/60">
+        <Icon className="size-5" />
+      </div>
+      <span className="text-xs font-semibold leading-tight text-foreground">{label}</span>
+    </button>
   );
 }

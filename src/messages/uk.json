@@ -668,7 +668,8 @@
     "nearbyMasters": "Майстри поблизу",
     "searchArea": "Шукати в цьому районі",
     "showOnMap": "Показати на карті",
-    "distance": "Відстань"
+    "distance": "Відстань",
+    "locationDenied": "Доступ до геолокації заборонено"
   },
   "clientNav": {
     "feed": "Головна",
@@ -715,7 +716,12 @@
     "forBusiness": "Для бізнесу",
     "useMyLocation": "Використати моє місцезнаходження",
     "searchCity": "Пошук міста…",
-    "chooseTime": "Виберіть час"
+    "chooseTime": "Виберіть час",
+    "notifEmpty": "Поки немає сповіщень",
+    "notifViewAll": "Усі сповіщення",
+    "toggleTheme": "Змінити тему",
+    "darkMode": "Темна тема",
+    "lightMode": "Світла тема"
   },
   "serviceCategories": {
     "allServices": "Усі послуги",
@@ -1178,7 +1184,11 @@
     "viewAll": "Всі",
     "nextApptTitle": "Найближчий запис",
     "nextApptEmpty": "Немає майбутніх записів",
-    "todayInCityTitle": "Сьогодні у твоєму місті"
+    "todayInCityTitle": "Сьогодні у твоєму місті",
+    "subscriptionsTitle": "Від твоїх майстрів",
+    "subscriptionsSubtitle": "вільні вікна, акції, історії",
+    "recommendedTitle": "Рекомендуємо",
+    "viewMaster": "Переглянути"
   },
   "contact": {
     "title": "Зв'язатися з нами",

@@ -668,7 +668,8 @@
     "nearbyMasters": "Мастера рядом",
     "searchArea": "Искать в этом районе",
     "showOnMap": "Показать на карте",
-    "distance": "Расстояние"
+    "distance": "Расстояние",
+    "locationDenied": "Доступ к геолокации запрещён"
   },
   "clientNav": {
     "feed": "Главная",
@@ -715,7 +716,12 @@
     "forBusiness": "Для бизнеса",
     "useMyLocation": "Использовать моё местоположение",
     "searchCity": "Поиск города…",
-    "chooseTime": "Выберите время"
+    "chooseTime": "Выберите время",
+    "notifEmpty": "Пока нет уведомлений",
+    "notifViewAll": "Все уведомления",
+    "toggleTheme": "Сменить тему",
+    "darkMode": "Тёмная тема",
+    "lightMode": "Светлая тема"
   },
   "serviceCategories": {
     "allServices": "Все услуги",
@@ -1178,7 +1184,11 @@
     "viewAll": "Все",
     "nextApptTitle": "Ближайшая запись",
     "nextApptEmpty": "Нет предстоящих записей",
-    "todayInCityTitle": "Сегодня в твоём городе"
+    "todayInCityTitle": "Сегодня в твоём городе",
+    "subscriptionsTitle": "От твоих мастеров",
+    "subscriptionsSubtitle": "свободные окна, акции, истории",
+    "recommendedTitle": "Рекомендуем",
+    "viewMaster": "Смотреть"
   },
   "contact": {
     "title": "Связаться с нами",

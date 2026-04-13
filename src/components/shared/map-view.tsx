@@ -24,7 +24,19 @@ interface MapViewProps {
   zoom?: number;
   className?: string;
   onMarkerClick?: (masterId: string) => void;
+  userLocation?: [number, number] | null;
 }
+
+const userLocationIcon = L.divIcon({
+  html: `<div style="position:relative;width:22px;height:22px">
+    <div style="position:absolute;inset:0;background:#3b82f6;border-radius:50%;opacity:0.25;animation:cresPulse 2s ease-out infinite"></div>
+    <div style="position:absolute;inset:5px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 2px 8px rgba(59,130,246,0.6)"></div>
+  </div>
+  <style>@keyframes cresPulse{0%{transform:scale(0.6);opacity:0.6}100%{transform:scale(2.2);opacity:0}}</style>`,
+  className: '',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+});
 
 function createIcon(rating: number) {
   const color = rating >= 4.5 ? '#10b981' : rating >= 3.5 ? '#3b82f6' : '#f59e0b';
@@ -45,9 +57,10 @@ function createIcon(rating: number) {
   });
 }
 
-export default function MapView({ markers, center, zoom = 13, className, onMarkerClick }: MapViewProps) {
+export default function MapView({ markers, center, zoom = 13, className, onMarkerClick, userLocation }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -72,9 +85,9 @@ export default function MapView({ markers, center, zoom = 13, className, onMarke
   useEffect(() => {
     if (!mapRef.current) return;
 
-    // Clear existing markers
+    // Clear existing markers (preserve user-location marker)
     mapRef.current.eachLayer((layer) => {
-      if (layer instanceof L.Marker) {
+      if (layer instanceof L.Marker && layer !== userMarkerRef.current) {
         mapRef.current!.removeLayer(layer);
       }
     });
@@ -96,6 +109,18 @@ export default function MapView({ markers, center, zoom = 13, className, onMarke
       }
     });
   }, [markers, onMarkerClick]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (userMarkerRef.current) {
+      mapRef.current.removeLayer(userMarkerRef.current);
+      userMarkerRef.current = null;
+    }
+    if (userLocation) {
+      userMarkerRef.current = L.marker(userLocation, { icon: userLocationIcon, zIndexOffset: 1000 })
+        .addTo(mapRef.current);
+    }
+  }, [userLocation]);
 
   return <div ref={containerRef} className={className} style={{ minHeight: '300px' }} />;
 }

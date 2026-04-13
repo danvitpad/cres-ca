@@ -13,7 +13,6 @@ import { MapPin, Navigation, Loader2, Star, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import type { MapMarker } from '@/components/shared/map-view';
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
@@ -44,10 +43,12 @@ export default function MapPage() {
   const t = useTranslations('map');
   const router = useRouter();
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [masters, setMasters] = useState<MasterWithProfile[]>([]);
   const [markers, setMarkers] = useState<MapMarker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [geoDenied, setGeoDenied] = useState(false);
   const [selectedMaster, setSelectedMaster] = useState<MasterWithProfile | null>(null);
 
   const fetchMasters = useCallback(async (lat: number, lng: number) => {
@@ -81,26 +82,28 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    // Try geolocation on mount
     if ('geolocation' in navigator) {
       setGeoLoading(true);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const newCenter: [number, number] = [pos.coords.latitude, pos.coords.longitude];
           setCenter(newCenter);
+          setUserLocation(newCenter);
           fetchMasters(newCenter[0], newCenter[1]);
           setGeoLoading(false);
         },
         () => {
-          // Fallback to default
+          setGeoDenied(true);
           fetchMasters(center[0], center[1]);
           setGeoLoading(false);
         },
-        { timeout: 5000 },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
       );
     } else {
+      setGeoDenied(true);
       fetchMasters(center[0], center[1]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleMarkerClick(masterId: string) {
@@ -115,11 +118,13 @@ export default function MapPage() {
       (pos) => {
         const newCenter: [number, number] = [pos.coords.latitude, pos.coords.longitude];
         setCenter(newCenter);
+        setUserLocation(newCenter);
+        setGeoDenied(false);
         fetchMasters(newCenter[0], newCenter[1]);
         setGeoLoading(false);
       },
-      () => setGeoLoading(false),
-      { timeout: 5000 },
+      () => { setGeoDenied(true); setGeoLoading(false); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     );
   }
 
@@ -156,12 +161,21 @@ export default function MapPage() {
           zoom={13}
           className="h-full w-full"
           onMarkerClick={handleMarkerClick}
+          userLocation={userLocation}
         />
 
         {/* Master count badge */}
         {!isLoading && (
           <div className="absolute top-3 left-3 z-[500] rounded-full bg-background/80 backdrop-blur-md border border-border/50 px-3 py-1.5 text-xs font-medium shadow-sm">
             {markers.length} {t('nearbyMasters').toLowerCase()}
+          </div>
+        )}
+
+        {/* Geo permission hint */}
+        {geoDenied && !geoLoading && (
+          <div className="absolute top-3 right-3 z-[500] flex items-center gap-2 rounded-full border border-amber-500/40 bg-amber-50/95 px-3 py-1.5 text-xs font-medium text-amber-900 shadow-sm backdrop-blur-md dark:bg-amber-950/80 dark:text-amber-100">
+            <Navigation className="size-3.5" />
+            {t('locationDenied')}
           </div>
         )}
       </div>

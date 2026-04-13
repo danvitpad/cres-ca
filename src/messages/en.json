@@ -668,7 +668,8 @@
     "nearbyMasters": "Masters Nearby",
     "searchArea": "Search this area",
     "showOnMap": "Show on Map",
-    "distance": "Distance"
+    "distance": "Distance",
+    "locationDenied": "Location access denied"
   },
   "clientNav": {
     "feed": "Home",
@@ -715,7 +716,12 @@
     "forBusiness": "For business",
     "useMyLocation": "Use my location",
     "searchCity": "Search city…",
-    "chooseTime": "Choose time"
+    "chooseTime": "Choose time",
+    "notifEmpty": "No notifications yet",
+    "notifViewAll": "All notifications",
+    "toggleTheme": "Toggle theme",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode"
   },
   "serviceCategories": {
     "allServices": "All services",
@@ -1178,7 +1184,11 @@
     "viewAll": "All",
     "nextApptTitle": "Next appointment",
     "nextApptEmpty": "No upcoming bookings",
-    "todayInCityTitle": "Today in your city"
+    "todayInCityTitle": "Today in your city",
+    "subscriptionsTitle": "From your masters",
+    "subscriptionsSubtitle": "free slots, promos, stories",
+    "recommendedTitle": "Recommended",
+    "viewMaster": "View"
   },
   "contact": {
     "title": "Contact Us",

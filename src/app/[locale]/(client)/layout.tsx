@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTheme } from 'next-themes';
 import {
   Home,
   CalendarDays,
@@ -30,6 +31,9 @@ import {
   Bell,
   Map as MapIcon,
   X as XIcon,
+  Sun,
+  Moon,
+  ArrowRight,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
@@ -83,7 +87,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const tInd = useTranslations('industries');
   const tHeader = useTranslations('clientHeader');
   const tAuth = useTranslations('auth');
-  const { clearAuth } = useAuthStore();
+  const { clearAuth, userId } = useAuthStore();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const isDark = (resolvedTheme ?? theme) === 'dark';
 
   const [tabBarVisible, setTabBarVisible] = useState(true);
   const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'procedures' | 'venues' | 'pros'>('all');
@@ -189,6 +195,31 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     () => accountRoutes.some((r) => pathname.includes(r)),
     [pathname],
   );
+  const isFeedRoute = useMemo(() => /\/feed\/?$/.test(pathname), [pathname]);
+
+  // Notifications dropdown state
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifs, setNotifs] = useState<Array<{ id: string; title: string; body: string | null; created_at: string; read_at: string | null }>>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('notifications')
+        .select('id, title, body, created_at, read_at')
+        .eq('profile_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      if (cancelled) return;
+      const list = (data ?? []) as typeof notifs;
+      setNotifs(list);
+      setUnreadCount(list.filter((n) => !n.read_at).length);
+    })();
+    return () => { cancelled = true; };
+  }, [userId, notifOpen]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -221,8 +252,18 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           CRES-CA
         </Link>
 
-        {/* 3-segment search pill */}
-        <div className="hidden md:flex flex-1 max-w-[620px] mx-auto items-center rounded-full border bg-card shadow-sm">
+        {/* 3-segment search pill — sits left-of-center, expands inline into a single search input */}
+        <div className="relative hidden md:flex w-full max-w-[620px] ml-6 mr-auto items-center rounded-full border bg-card shadow-sm overflow-hidden h-12">
+          <AnimatePresence initial={false} mode="wait">
+          {!searchExpanded ? (
+          <motion.div
+            key="segments"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex w-full items-center"
+          >
           {/* Services */}
           <Popover>
             <PopoverTrigger className="flex-1 flex items-center gap-2 px-5 py-3 text-sm rounded-l-full hover:bg-muted/40 transition-colors">
@@ -408,61 +449,113 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           <button
             onClick={() => setSearchExpanded(true)}
             className="mx-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
+            aria-label={tHeader('searchPlaceholder')}
           >
             <Search className="size-4" />
           </button>
-        </div>
-
-        {/* Expanded search overlay — paints right-to-left across the pill */}
-        <AnimatePresence>
-          {searchExpanded && (
-            <motion.div
-              key="search-expand"
-              initial={{ clipPath: 'inset(0% 0% 0% 100%)' }}
-              animate={{ clipPath: 'inset(0% 0% 0% 0%)' }}
-              exit={{ clipPath: 'inset(0% 0% 0% 100%)' }}
-              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-              className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[620px] items-center rounded-full border bg-card shadow-lg pl-5 pr-1 py-1 z-10"
+          </motion.div>
+          ) : (
+          <motion.div
+            key="searchInput"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex w-full items-center pl-5 pr-1"
+          >
+            <Search className="size-4 text-muted-foreground shrink-0" />
+            <input
+              autoFocus
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { goSearch(searchInput); setSearchExpanded(false); }
+                if (e.key === 'Escape') setSearchExpanded(false);
+              }}
+              placeholder={tHeader('searchPlaceholder')}
+              className="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none"
+            />
+            <button
+              onClick={() => setSearchExpanded(false)}
+              className="rounded-full p-2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={tc('cancel')}
             >
-              <Search className="size-4 text-muted-foreground shrink-0" />
-              <input
-                autoFocus
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') { goSearch(searchInput); setSearchExpanded(false); }
-                  if (e.key === 'Escape') setSearchExpanded(false);
-                }}
-                placeholder={tHeader('searchPlaceholder')}
-                className="flex-1 bg-transparent px-3 py-2.5 text-sm outline-none"
-              />
-              <button
-                onClick={() => setSearchExpanded(false)}
-                className="rounded-full p-2 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={tc('cancel')}
-              >
-                <XIcon className="size-4" />
-              </button>
-              <button
-                onClick={() => { goSearch(searchInput); setSearchExpanded(false); }}
-                className="flex size-9 items-center justify-center rounded-full bg-foreground text-background"
-              >
-                <Search className="size-4" />
-              </button>
-            </motion.div>
+              <XIcon className="size-4" />
+            </button>
+            <button
+              onClick={() => { goSearch(searchInput); setSearchExpanded(false); }}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground text-background"
+              aria-label={tHeader('searchPlaceholder')}
+            >
+              <Search className="size-4" />
+            </button>
+          </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
 
         <div className="md:hidden flex-1" />
 
-        {/* Notifications bell — replaces profile dropdown */}
-        <Link
-          href="/notifications"
-          className="relative flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground transition-colors hover:bg-muted/40"
-          aria-label={t('notifications')}
-        >
-          <Bell className="size-5" />
-        </Link>
+        {/* Notifications bell — dropdown with 5 latest + view-all link */}
+        <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+          <PopoverTrigger
+            className="relative flex size-11 shrink-0 items-center justify-center rounded-full border bg-card text-foreground transition-colors hover:bg-muted/40"
+            aria-label={t('notifications')}
+          >
+            <Bell className="size-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow-sm ring-2 ring-background">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[360px] p-0 rounded-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <h3 className="text-sm font-semibold">{t('notifications')}</h3>
+              {unreadCount > 0 && (
+                <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
+                  {unreadCount}
+                </span>
+              )}
+            </div>
+            <ul className="max-h-[360px] divide-y divide-border/60 overflow-y-auto">
+              {notifs.length === 0 && (
+                <li className="px-4 py-8 text-center text-xs text-muted-foreground">
+                  {tHeader('notifEmpty')}
+                </li>
+              )}
+              {notifs.map((n) => (
+                <li key={n.id}>
+                  <Link
+                    href="/notifications"
+                    onClick={() => setNotifOpen(false)}
+                    className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
+                  >
+                    <div className={cn(
+                      'mt-1 size-2 shrink-0 rounded-full',
+                      n.read_at ? 'bg-transparent' : 'bg-rose-500',
+                    )} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-semibold">{n.title}</p>
+                      {n.body && <p className="line-clamp-2 text-[11px] text-muted-foreground">{n.body}</p>}
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        {new Date(n.created_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/notifications"
+              onClick={() => setNotifOpen(false)}
+              className="flex items-center justify-center gap-1.5 border-t bg-muted/30 px-4 py-3 text-xs font-semibold text-[var(--ds-accent)] transition-colors hover:bg-muted/50"
+            >
+              {tHeader('notifViewAll')}
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </PopoverContent>
+        </Popover>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -491,6 +584,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 );
               })}
               <button
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap"
+                aria-label={tHeader('toggleTheme')}
+              >
+                <span className="relative size-[22px] shrink-0">
+                  <Sun className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100')} />
+                  <Moon className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0')} />
+                </span>
+                <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                  {isDark ? tHeader('lightMode') : tHeader('darkMode')}
+                </span>
+              </button>
+              <button
                 onClick={handleSignOut}
                 className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-destructive whitespace-nowrap"
               >
@@ -507,8 +613,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <main ref={scrollRef} className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div
             className={cn(
-              'mx-auto px-4 py-6 lg:px-10 lg:py-10',
-              isAccountRoute ? 'max-w-[960px]' : 'max-w-[1200px]',
+              'py-6 lg:py-10',
+              isFeedRoute
+                ? 'pl-4 lg:pl-10 pr-0' // feed: flush right so the rail mirrors the left sidebar
+                : isAccountRoute
+                  ? 'mx-auto max-w-[960px] px-4 lg:px-10'
+                  : 'mx-auto max-w-[1200px] px-4 lg:px-10',
             )}
           >
             {children}
