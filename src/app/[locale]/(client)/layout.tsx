@@ -558,52 +558,60 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — fixed icon-only rail. No hover expansion: never pushes content, never overlays it. Labels show as native tooltips. */}
-        <aside className="hidden lg:block w-[72px] shrink-0 border-r border-border/40">
-          <div className="sticky top-0 flex h-[calc(100dvh-72px)] flex-col justify-center">
-            <nav className="px-3 space-y-1.5">
-              {sidebarNav.map(({ key, icon: Icon, href }) => {
-                const isActive = pathname.endsWith(href);
-                const label = t(key);
-                return (
-                  <Link
-                    key={key}
-                    href={href}
-                    title={label}
-                    aria-label={label}
-                    className={cn(
-                      'flex items-center justify-center rounded-xl p-3 transition-colors',
-                      isActive
-                        ? 'bg-muted text-foreground'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                    )}
-                  >
-                    <Icon className="size-[22px] shrink-0" />
-                  </Link>
-                );
-              })}
-              <button
-                onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                title={isDark ? tHeader('lightMode') : tHeader('darkMode')}
-                aria-label={tHeader('toggleTheme')}
-                className="flex w-full items-center justify-center rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-              >
-                <span className="relative size-[22px] shrink-0">
-                  <Sun className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100')} />
-                  <Moon className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0')} />
-                </span>
-              </button>
-              <button
-                onClick={handleSignOut}
-                title={tAuth('signOut')}
-                aria-label={tAuth('signOut')}
-                className="flex w-full items-center justify-center rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive"
-              >
-                <LogOut className="size-[22px] shrink-0" />
-              </button>
-            </nav>
-          </div>
-        </aside>
+        {/* Desktop sidebar — outer container reserves full 280px (mirrors right rail), inner aside is 72px collapsed and hover-expands to fill the reserved space. No layout shift. */}
+        <div className="hidden lg:block relative w-[320px] shrink-0 border-r border-border/40">
+          <aside className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[320px] bg-background transition-[width] duration-200 ease-out overflow-hidden">
+            <div className="sticky top-0 flex h-[calc(100dvh-72px)] flex-col justify-center">
+              <nav className="px-3 space-y-1.5">
+                {sidebarNav.map(({ key, icon: Icon, href }) => {
+                  const isActive = pathname.endsWith(href);
+                  const label = t(key);
+                  return (
+                    <Link
+                      key={key}
+                      href={href}
+                      aria-label={label}
+                      className={cn(
+                        'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-colors whitespace-nowrap',
+                        isActive
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                      )}
+                    >
+                      <Icon className="size-[22px] shrink-0" />
+                      <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                        {label}
+                      </span>
+                    </Link>
+                  );
+                })}
+                <button
+                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                  aria-label={tHeader('toggleTheme')}
+                  className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground whitespace-nowrap"
+                >
+                  <span className="relative size-[22px] shrink-0">
+                    <Sun className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100')} />
+                    <Moon className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0')} />
+                  </span>
+                  <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                    {isDark ? tHeader('lightMode') : tHeader('darkMode')}
+                  </span>
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  aria-label={tAuth('signOut')}
+                  className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive whitespace-nowrap"
+                >
+                  <LogOut className="size-[22px] shrink-0" />
+                  <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
+                    {tAuth('signOut')}
+                  </span>
+                </button>
+              </nav>
+            </div>
+          </aside>
+        </div>
 
         {/* Main content */}
         <main ref={scrollRef} className="flex-1 overflow-y-auto pb-20 lg:pb-0">

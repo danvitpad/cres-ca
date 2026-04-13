@@ -82,27 +82,62 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    if ('geolocation' in navigator) {
-      setGeoLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const newCenter: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-          setCenter(newCenter);
-          setUserLocation(newCenter);
-          fetchMasters(newCenter[0], newCenter[1]);
-          setGeoLoading(false);
-        },
-        () => {
-          setGeoDenied(true);
-          fetchMasters(center[0], center[1]);
-          setGeoLoading(false);
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-      );
-    } else {
-      setGeoDenied(true);
-      fetchMasters(center[0], center[1]);
+    let cancelled = false;
+
+    async function ipFallback(): Promise<[number, number] | null> {
+      try {
+        const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+        if (!r.ok) return null;
+        const j = await r.json();
+        if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
+          return [j.latitude, j.longitude];
+        }
+      } catch {}
+      return null;
     }
+
+    async function locate() {
+      setGeoLoading(true);
+
+      // 1) Try precise browser geolocation
+      const precise = await new Promise<[number, number] | null>((resolve) => {
+        if (!('geolocation' in navigator)) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
+          () => resolve(null),
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+        );
+      });
+
+      if (cancelled) return;
+
+      if (precise) {
+        setCenter(precise);
+        setUserLocation(precise);
+        setGeoDenied(false);
+        fetchMasters(precise[0], precise[1]);
+        setGeoLoading(false);
+        return;
+      }
+
+      // 2) Fallback: IP-based approximate location (no permission needed)
+      const approx = await ipFallback();
+      if (cancelled) return;
+
+      if (approx) {
+        setCenter(approx);
+        setUserLocation(approx);
+        setGeoDenied(true); // surface hint that precise location was denied
+        fetchMasters(approx[0], approx[1]);
+      } else {
+        setGeoDenied(true);
+        fetchMasters(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
+      }
+      setGeoLoading(false);
+    }
+
+    locate();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
