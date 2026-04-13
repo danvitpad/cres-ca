@@ -662,7 +662,9 @@
     "inFavorites": "Збережено",
     "addFavorite": "Додати в обране",
     "removeFavorite": "Прибрати з обраного",
-    "beforeAfter": "До і Після"
+    "beforeAfter": "До і Після",
+    "shopTitle": "Магазин майстра",
+    "shopSubtitle": "Рекомендовані товари"
   },
   "map": {
     "nearbyMasters": "Майстри поблизу",

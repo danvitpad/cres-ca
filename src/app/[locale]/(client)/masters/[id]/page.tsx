@@ -28,6 +28,15 @@ type BeforeAfterPair = {
   caption: string | null;
 };
 
+type ProductItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  currency: string;
+  image_url: string | null;
+};
+
 interface MasterProfile {
   id: string;
   specialization: string | null;
@@ -80,6 +89,7 @@ export default function MasterProfilePage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
   const [beforeAfter, setBeforeAfter] = useState<BeforeAfterPair[]>([]);
+  const [products, setProducts] = useState<ProductItem[]>([]);
 
   useEffect(() => {
     if (!masterId) return;
@@ -91,6 +101,14 @@ export default function MasterProfilePage() {
       .order('created_at', { ascending: false })
       .limit(10)
       .then(({ data }) => setBeforeAfter((data as BeforeAfterPair[]) ?? []));
+    supabase
+      .from('products')
+      .select('id, name, description, price, currency, image_url')
+      .eq('master_id', masterId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(12)
+      .then(({ data }) => setProducts((data as ProductItem[]) ?? []));
   }, [masterId]);
 
   useEffect(() => {
@@ -403,6 +421,46 @@ export default function MasterProfilePage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {beforeAfter.map((p) => (
               <BeforeAfterSlider key={p.id} beforeUrl={p.before_url} afterUrl={p.after_url} caption={p.caption} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {products.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-end justify-between">
+            <h2 className="text-lg font-semibold">{t('shopTitle')}</h2>
+            <span className="text-xs text-muted-foreground">{t('shopSubtitle')}</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {products.map((p) => (
+              <div
+                key={p.id}
+                className="group flex gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]"
+              >
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-muted">
+                  {p.image_url ? (
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-[var(--ds-accent)]/10 to-[var(--ds-accent)]/5 text-[var(--ds-accent)]">
+                      <span className="text-xs font-semibold uppercase">{p.name[0]}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold group-hover:text-[var(--ds-accent)]">{p.name}</p>
+                  {p.description && (
+                    <p className="line-clamp-2 text-xs text-muted-foreground">{p.description}</p>
+                  )}
+                  <p className="mt-1 text-sm font-bold tabular-nums text-[var(--ds-accent)]">
+                    {Number(p.price).toFixed(0)} {p.currency}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         </div>

@@ -662,7 +662,9 @@
     "inFavorites": "Saved",
     "addFavorite": "Add to favorites",
     "removeFavorite": "Remove from favorites",
-    "beforeAfter": "Before & After"
+    "beforeAfter": "Before & After",
+    "shopTitle": "Master's shop",
+    "shopSubtitle": "Recommended products"
   },
   "map": {
     "nearbyMasters": "Masters Nearby",

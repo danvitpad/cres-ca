@@ -662,7 +662,9 @@
     "inFavorites": "Сохранено",
     "addFavorite": "Добавить в избранное",
     "removeFavorite": "Убрать из избранного",
-    "beforeAfter": "До и После"
+    "beforeAfter": "До и После",
+    "shopTitle": "Магазин мастера",
+    "shopSubtitle": "Рекомендованные товары"
   },
   "map": {
     "nearbyMasters": "Мастера рядом",
