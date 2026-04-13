@@ -1187,6 +1187,8 @@
     "usualTitle": "Your usual",
     "usualSubtitle": "{visits} visits with this master",
     "bookYourUsual": "Book again",
+    "recsTitle": "Your masters suggest",
+    "recsFrom": "Recommended by {name}",
     "todayInCityTitle": "Today in your city",
     "subscriptionsTitle": "From your masters",
     "subscriptionsSubtitle": "free slots, promos, stories",

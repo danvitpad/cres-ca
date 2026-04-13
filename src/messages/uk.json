@@ -1187,6 +1187,8 @@
     "usualTitle": "Ваш постійний вибір",
     "usualSubtitle": "{visits} візитів до цього майстра",
     "bookYourUsual": "Повторити",
+    "recsTitle": "Радять ваші майстри",
+    "recsFrom": "Рекомендує {name}",
     "todayInCityTitle": "Сьогодні у твоєму місті",
     "subscriptionsTitle": "Від твоїх майстрів",
     "subscriptionsSubtitle": "вільні вікна, акції, історії",

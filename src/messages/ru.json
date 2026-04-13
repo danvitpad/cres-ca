@@ -1187,6 +1187,8 @@
     "usualTitle": "Ваш постоянный выбор",
     "usualSubtitle": "{visits} визитов к этому мастеру",
     "bookYourUsual": "Повторить бронь",
+    "recsTitle": "Советуют ваши мастера",
+    "recsFrom": "Рекомендует {name}",
     "todayInCityTitle": "Сегодня в твоём городе",
     "subscriptionsTitle": "От твоих мастеров",
     "subscriptionsSubtitle": "свободные окна, акции, истории",

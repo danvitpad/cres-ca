@@ -105,6 +105,7 @@ export default function FeedPage() {
   const [discover, setDiscover] = useState<FollowedMaster[]>([]);
   const [nextAppt, setNextAppt] = useState<{ id: string; starts_at: string; service: string | null; masterName: string; masterAvatar: string | null; masterId: string } | null>(null);
   const [usual, setUsual] = useState<{ masterId: string; masterName: string; masterAvatar: string | null; serviceId: string; serviceName: string; visits: number } | null>(null);
+  const [recommendations, setRecommendations] = useState<Array<{ id: string; fromName: string; toMasterId: string; toName: string; toAvatar: string | null; toSpec: string | null; note: string | null }>>([]);
   const { userId } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -190,6 +191,36 @@ export default function FeedPage() {
         const { data: clientRows } = await supabase.from('clients').select('id').eq('profile_id', userId);
         const clientIds = clientRows?.map((c: { id: string }) => c.id) ?? [];
         if (clientIds.length) {
+          // Cross-master recommendations: "Your nail master suggests this massage therapist"
+          const { data: recs } = await supabase
+            .from('master_recommendations')
+            .select('id, note, from_master:masters!master_recommendations_from_master_id_fkey(display_name, profile:profiles(full_name)), to_master:masters!master_recommendations_to_master_id_fkey(id, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url))')
+            .in('client_id', clientIds)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(5);
+          if (recs) {
+            type RecRow = {
+              id: string;
+              note: string | null;
+              from_master: { display_name: string | null; profile: { full_name: string | null } | null } | null;
+              to_master: { id: string; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null } | null;
+            };
+            setRecommendations(
+              (recs as unknown as RecRow[])
+                .filter((r) => r.to_master)
+                .map((r) => ({
+                  id: r.id,
+                  fromName: r.from_master?.display_name ?? r.from_master?.profile?.full_name ?? '?',
+                  toMasterId: r.to_master!.id,
+                  toName: r.to_master!.display_name ?? r.to_master!.profile?.full_name ?? '?',
+                  toAvatar: r.to_master!.avatar_url ?? r.to_master!.profile?.avatar_url ?? null,
+                  toSpec: r.to_master!.specialization,
+                  note: r.note,
+                })),
+            );
+          }
+
           const { data: appt } = await supabase
             .from('appointments')
             .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))')
@@ -572,6 +603,40 @@ export default function FeedPage() {
                 </div>
               </div>
             </Link>
+          )}
+
+          {/* Cross-master recommendations — "your nail master suggests this massage therapist" */}
+          {recommendations.length > 0 && (
+            <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
+              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
+                <Sparkles className="size-4 text-[var(--ds-accent)]" />
+                <h3 className="text-sm font-semibold">{t('recsTitle')}</h3>
+              </div>
+              <ul className="divide-y divide-border/60">
+                {recommendations.map((r) => (
+                  <li key={r.id}>
+                    <Link href={`/masters/${r.toMasterId}`} className="group/rec flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
+                      {r.toAvatar ? (
+                        <img src={r.toAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-1 ring-border/60" />
+                      ) : (
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
+                          {r.toName[0]}
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold group-hover/rec:text-[var(--ds-accent)]">{r.toName}</p>
+                        {r.toSpec && <p className="truncate text-xs text-muted-foreground">{r.toSpec}</p>}
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {t('recsFrom', { name: r.fromName })}
+                          {r.note ? ` — ${r.note}` : ''}
+                        </p>
+                      </div>
+                      <ArrowRight className="size-4 shrink-0 self-center text-muted-foreground transition-colors group-hover/rec:text-[var(--ds-accent)]" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {/* Recommended masters */}
