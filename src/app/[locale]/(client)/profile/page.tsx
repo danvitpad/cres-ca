@@ -10,7 +10,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Camera, MapPin, Plus, Gift, Copy, Check, Sparkles, Calendar, UserPlus } from 'lucide-react';
+import Link from 'next/link';
+import { Camera, MapPin, Plus, Gift, Copy, Check, Sparkles, Calendar, UserPlus, ImageIcon, FileText } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -310,6 +311,28 @@ export default function ProfilePage() {
           </div>
         )}
       </motion.div>
+
+      {/* Archive shortcut */}
+      <div className="mx-auto grid max-w-2xl gap-3 sm:grid-cols-2">
+        <Link href="/profile/photos" className="group flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
+            <ImageIcon className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold group-hover:text-[var(--ds-accent)]">{t('photosTab')}</p>
+            <p className="truncate text-xs text-muted-foreground">{t('photosDesc')}</p>
+          </div>
+        </Link>
+        <Link href="/profile/documents" className="group flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
+            <FileText className="size-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold group-hover:text-[var(--ds-accent)]">{t('documentsTab')}</p>
+            <p className="truncate text-xs text-muted-foreground">{t('documentsDesc')}</p>
+          </div>
+        </Link>
+      </div>
 
     </div>
   );

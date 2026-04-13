@@ -1002,6 +1002,11 @@
     "photosTab": "Before/After photos",
     "noPhotos": "No photos yet",
     "photosDesc": "Before and after photos uploaded by your master will appear here",
+    "documentsTab": "My documents",
+    "noDocuments": "No documents yet",
+    "documentsDesc": "Certificates, reports and other files your master attached to your card will appear here",
+    "archiveTitle": "My archive",
+    "archiveDesc": "Before/after photos and documents",
     "before": "Before",
     "after": "After"
   },
