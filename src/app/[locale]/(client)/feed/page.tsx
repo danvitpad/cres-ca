@@ -104,6 +104,7 @@ export default function FeedPage() {
   const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
   const [discover, setDiscover] = useState<FollowedMaster[]>([]);
   const [nextAppt, setNextAppt] = useState<{ id: string; starts_at: string; service: string | null; masterName: string; masterAvatar: string | null; masterId: string } | null>(null);
+  const [usual, setUsual] = useState<{ masterId: string; masterName: string; masterAvatar: string | null; serviceId: string; serviceName: string; visits: number } | null>(null);
   const { userId } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -208,6 +209,39 @@ export default function FeedPage() {
               masterAvatar: a.master.avatar_url ?? a.master.profile?.avatar_url ?? null,
               masterId: a.master.id,
             });
+          } else {
+            // "Your usual": aggregate last 30 completed visits → pick most-frequent (master, service).
+            // Only surface if ≥3 visits with the same pair AND no upcoming appointment.
+            const { data: completed } = await supabase
+              .from('appointments')
+              .select('master_id, service_id, service:services(name), master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))')
+              .in('client_id', clientIds)
+              .eq('status', 'completed')
+              .order('starts_at', { ascending: false })
+              .limit(30);
+
+            if (completed && completed.length >= 3) {
+              type Row = { master_id: string; service_id: string; service: { name: string } | { name: string }[] | null; master: { id: string; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null } };
+              const counts = new Map<string, { n: number; row: Row }>();
+              for (const r of completed as unknown as Row[]) {
+                const key = `${r.master_id}::${r.service_id}`;
+                const prev = counts.get(key);
+                counts.set(key, { n: (prev?.n ?? 0) + 1, row: prev?.row ?? r });
+              }
+              let best: { n: number; row: Row } | null = null;
+              for (const v of counts.values()) if (!best || v.n > best.n) best = v;
+              if (best && best.n >= 3) {
+                const svc = Array.isArray(best.row.service) ? best.row.service[0] : best.row.service;
+                setUsual({
+                  masterId: best.row.master.id,
+                  masterName: best.row.master.display_name ?? best.row.master.profile?.full_name ?? '?',
+                  masterAvatar: best.row.master.avatar_url ?? best.row.master.profile?.avatar_url ?? null,
+                  serviceId: best.row.service_id,
+                  serviceName: svc?.name ?? '—',
+                  visits: best.n,
+                });
+              }
+            }
           }
         }
       }
@@ -502,6 +536,43 @@ export default function FeedPage() {
               </div>
             )}
           </div>
+
+          {/* Your usual — shown when no next appt but client has a repeat pattern */}
+          {!nextAppt && usual && (
+            <Link
+              href={`/book?master_id=${usual.masterId}&service_id=${usual.serviceId}`}
+              className="group/usual block overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-[var(--ds-accent)]/10 via-card to-card shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]"
+            >
+              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
+                <Sparkles className="size-4 text-[var(--ds-accent)]" />
+                <h3 className="text-sm font-semibold">{t('usualTitle')}</h3>
+              </div>
+              <div className="p-4">
+                <div className="flex items-center gap-3">
+                  {usual.masterAvatar ? (
+                    <img src={usual.masterAvatar} alt="" className="size-11 rounded-full object-cover ring-1 ring-border/60" />
+                  ) : (
+                    <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
+                      {usual.masterName[0]}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{usual.serviceName}</p>
+                    <p className="truncate text-xs text-muted-foreground">{usual.masterName}</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    {t('usualSubtitle', { visits: usual.visits })}
+                  </span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-[var(--ds-accent)] group-hover/usual:underline">
+                    {t('bookYourUsual')}
+                    <ArrowRight className="size-3" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          )}
 
           {/* Recommended masters */}
           {discover.length > 0 && (

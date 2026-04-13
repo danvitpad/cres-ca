@@ -75,7 +75,11 @@ export default function MastersPage() {
       `address.ilike.%${q}%`,
     ].join(',');
 
-    const [byMaster, byProfile] = await Promise.all([
+    // Phone: keep only digits and plus sign; ignore if fewer than 3 meaningful chars
+    const phoneQ = raw.replace(/[^\d+]/g, '');
+    const phoneLookup = phoneQ.length >= 3 ? phoneQ : null;
+
+    const [byMaster, byFullName, byPhone] = await Promise.all([
       supabase
         .from('masters')
         .select('id, specialization, rating, city, address, is_active, invite_code, display_name, avatar_url, profiles(full_name, avatar_url), services(id, name, price, currency)')
@@ -88,11 +92,22 @@ export default function MastersPage() {
         .eq('is_active', true)
         .ilike('profiles.full_name', `%${q}%`)
         .limit(20),
+      phoneLookup
+        ? supabase
+            .from('masters')
+            .select('id, specialization, rating, city, address, is_active, invite_code, display_name, avatar_url, profiles!inner(full_name, avatar_url, phone), services(id, name, price, currency)')
+            .eq('is_active', true)
+            .ilike('profiles.phone', `%${phoneLookup}%`)
+            .limit(20)
+        : Promise.resolve({ data: [] as unknown[] }),
     ]);
 
     const merged = new Map<string, MasterResult>();
     for (const row of (byMaster.data ?? []) as unknown as MasterResult[]) merged.set(row.id, row);
-    for (const row of (byProfile.data ?? []) as unknown as MasterResult[]) {
+    for (const row of (byFullName.data ?? []) as unknown as MasterResult[]) {
+      if (!merged.has(row.id)) merged.set(row.id, row);
+    }
+    for (const row of (byPhone.data ?? []) as unknown as MasterResult[]) {
       if (!merged.has(row.id)) merged.set(row.id, row);
     }
 
