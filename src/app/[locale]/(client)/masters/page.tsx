@@ -22,6 +22,7 @@ interface MasterResult {
   specialization: string | null;
   rating: number;
   city: string | null;
+  address: string | null;
   is_active: boolean;
   invite_code: string | null;
   display_name: string | null;
@@ -57,17 +58,45 @@ export default function MastersPage() {
     setIsLoading(true);
     setHasSearched(true);
     const supabase = createClient();
-    const q = searchQuery.trim();
+    const raw = searchQuery.trim();
+    // Telegram-style: strip leading @ or #, escape PostgREST special chars for ilike
+    const q = raw.replace(/^[@#]/, '').replace(/([%,()])/g, '\\$1');
 
-    // Search by name, invite code, or city
-    const { data } = await supabase
-      .from('masters')
-      .select('id, specialization, rating, city, is_active, invite_code, display_name, avatar_url, profiles(full_name, avatar_url), services(id, name, price, currency)')
-      .eq('is_active', true)
-      .or(`invite_code.eq.${q},display_name.ilike.%${q}%,city.ilike.%${q}%`)
-      .limit(20);
+    // Three-way search:
+    //  - internal ID  → exact match on invite_code (short hex)
+    //  - ФИО          → ilike on display_name, specialization, and joined profiles.full_name
+    //  - address      → ilike on address + city
+    // profiles.full_name lives on a joined table so it needs a separate ilike via the foreign-table filter.
+    const orFilter = [
+      `invite_code.eq.${q}`,
+      `display_name.ilike.%${q}%`,
+      `specialization.ilike.%${q}%`,
+      `city.ilike.%${q}%`,
+      `address.ilike.%${q}%`,
+    ].join(',');
 
-    setMasters((data as unknown as MasterResult[]) || []);
+    const [byMaster, byProfile] = await Promise.all([
+      supabase
+        .from('masters')
+        .select('id, specialization, rating, city, address, is_active, invite_code, display_name, avatar_url, profiles(full_name, avatar_url), services(id, name, price, currency)')
+        .eq('is_active', true)
+        .or(orFilter)
+        .limit(20),
+      supabase
+        .from('masters')
+        .select('id, specialization, rating, city, address, is_active, invite_code, display_name, avatar_url, profiles!inner(full_name, avatar_url), services(id, name, price, currency)')
+        .eq('is_active', true)
+        .ilike('profiles.full_name', `%${q}%`)
+        .limit(20),
+    ]);
+
+    const merged = new Map<string, MasterResult>();
+    for (const row of (byMaster.data ?? []) as unknown as MasterResult[]) merged.set(row.id, row);
+    for (const row of (byProfile.data ?? []) as unknown as MasterResult[]) {
+      if (!merged.has(row.id)) merged.set(row.id, row);
+    }
+
+    setMasters(Array.from(merged.values()));
     setIsLoading(false);
   }, []);
 
@@ -184,8 +213,6 @@ function MasterCard({ master }: { master: MasterResult }) {
                 name[0].toUpperCase()
               )}
             </div>
-            {/* Online indicator */}
-            <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-emerald-500 border-2 border-card" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -224,17 +251,17 @@ function MasterCard({ master }: { master: MasterResult }) {
 
             {/* Service tags */}
             {master.services?.length > 0 && (
-              <div className="flex gap-1.5 mt-2.5 overflow-hidden">
+              <div className="flex gap-1.5 mt-2.5 flex-wrap">
                 {master.services.slice(0, 3).map((s) => (
                   <span
                     key={s.id}
-                    className="text-[10px] px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground truncate max-w-[100px]"
+                    className="text-xs px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground line-clamp-1"
                   >
                     {s.name}
                   </span>
                 ))}
                 {master.services.length > 3 && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground">
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground">
                     +{master.services.length - 3}
                   </span>
                 )}

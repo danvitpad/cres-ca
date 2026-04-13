@@ -272,7 +272,7 @@ export default function FeedPage() {
               className="flex shrink-0 flex-col items-center gap-1"
             >
               <AvatarRing src={avatar} name={name} size={64} hasNewContent={m.hasNewPosts} />
-              <span className="max-w-[64px] truncate text-[10px]">{name.split(' ')[0]}</span>
+              <span className="max-w-[64px] truncate text-xs text-muted-foreground">{name.split(' ')[0]}</span>
             </Link>
           );
         })}
