@@ -186,7 +186,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   const goSearch = useCallback((q: string) => {
     const trimmed = q.trim();
-    router.push(trimmed ? `/masters?q=${encodeURIComponent(trimmed)}` : '/masters');
+    if (!trimmed) return; // do not navigate on empty input
+    router.push(`/masters?q=${encodeURIComponent(trimmed)}`);
   }, [router]);
   const lastScrollY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -559,51 +560,48 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — inline expand: pushes content on hover instead of overlaying it */}
-        <aside className="group/sb hidden lg:block w-[72px] hover:w-[240px] shrink-0 border-r border-border/40 transition-[width] duration-200 ease-out overflow-hidden">
+        {/* Desktop sidebar — fixed icon-only rail. No hover expansion: never pushes content, never overlays it. Labels show as native tooltips. */}
+        <aside className="hidden lg:block w-[72px] shrink-0 border-r border-border/40">
           <div className="sticky top-0 flex h-[calc(100dvh-72px)] flex-col justify-center">
             <nav className="px-3 space-y-1.5">
               {sidebarNav.map(({ key, icon: Icon, href }) => {
                 const isActive = pathname.endsWith(href);
+                const label = t(key);
                 return (
                   <Link
                     key={key}
                     href={href}
+                    title={label}
+                    aria-label={label}
                     className={cn(
-                      'flex items-center gap-4 rounded-xl px-3 py-3 text-sm transition-colors whitespace-nowrap',
+                      'flex items-center justify-center rounded-xl p-3 transition-colors',
                       isActive
-                        ? 'font-medium text-foreground'
-                        : 'text-muted-foreground hover:text-foreground',
+                        ? 'bg-muted text-foreground'
+                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
                     )}
                   >
                     <Icon className="size-[22px] shrink-0" />
-                    <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
-                      {t(key)}
-                    </span>
                   </Link>
                 );
               })}
               <button
                 onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap"
+                title={isDark ? tHeader('lightMode') : tHeader('darkMode')}
                 aria-label={tHeader('toggleTheme')}
+                className="flex w-full items-center justify-center rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
               >
                 <span className="relative size-[22px] shrink-0">
                   <Sun className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100')} />
                   <Moon className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0')} />
                 </span>
-                <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
-                  {isDark ? tHeader('lightMode') : tHeader('darkMode')}
-                </span>
               </button>
               <button
                 onClick={handleSignOut}
-                className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:text-destructive whitespace-nowrap"
+                title={tAuth('signOut')}
+                aria-label={tAuth('signOut')}
+                className="flex w-full items-center justify-center rounded-xl p-3 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive"
               >
                 <LogOut className="size-[22px] shrink-0" />
-                <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
-                  {tAuth('signOut')}
-                </span>
               </button>
             </nav>
           </div>
