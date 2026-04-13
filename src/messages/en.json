@@ -839,6 +839,27 @@
     "promptTitle": "Please fill out the intake form",
     "promptDesc": "This is your first booking. Share allergies and contraindications so your master can prepare and keep you safe."
   },
+  "apptDetail": {
+    "serviceLabel": "Service",
+    "date": "Date",
+    "time": "Time",
+    "total": "Total",
+    "location": "Location",
+    "route": "Directions",
+    "call": "Call",
+    "profile": "Profile",
+    "notes": "Notes",
+    "reschedule": "Reschedule",
+    "cancelCta": "Cancel appointment",
+    "cancelTitle": "Cancel appointment?",
+    "cancelDesc": "This cannot be undone. Your master will be notified.",
+    "cancelConfirm": "Yes, cancel",
+    "cancelDone": "Appointment cancelled",
+    "policyFree": "Cancellation is free — plenty of time before the visit",
+    "policyPartial": "Partial charge: {amount} {currency} will be held",
+    "policyFull": "Full charge: {amount} {currency} will be held — too late to cancel free",
+    "notFound": "Appointment not found"
+  },
   "clientReviews": {
     "title": "My reviews",
     "desc": "Reviews you've left for masters. They're published anonymously.",

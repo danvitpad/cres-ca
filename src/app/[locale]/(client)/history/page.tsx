@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { CalendarDays, Clock, RefreshCw, Star, User, ImageIcon } from 'lucide-react';
+import { CalendarDays, Clock, RefreshCw, Star, User, ImageIcon, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 
@@ -261,7 +261,15 @@ export default function HistoryPage() {
             </div>
           ) : (
             displayed.map((appointment) => (
-              <Card key={appointment.id} size="sm">
+              <Card
+                key={appointment.id}
+                size="sm"
+                className="cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
+                onClick={(e) => {
+                  if ((e.target as HTMLElement).closest('button')) return;
+                  router.push(`/history/${appointment.id}`);
+                }}
+              >
                 <CardContent className="pt-3 space-y-2">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
@@ -283,9 +291,12 @@ export default function HistoryPage() {
                         </div>
                       )}
                     </div>
-                    <Badge variant={statusVariant[appointment.status] ?? 'outline'}>
-                      {t(getStatusKey(appointment.status))}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={statusVariant[appointment.status] ?? 'outline'}>
+                        {t(getStatusKey(appointment.status))}
+                      </Badge>
+                      <ChevronRight className="size-4 text-muted-foreground" />
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-sm">
