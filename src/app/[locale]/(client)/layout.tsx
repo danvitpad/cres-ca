@@ -247,14 +247,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="flex h-dvh flex-col bg-background">
-      {/* Top header — Fresha-style global search */}
-      <header className="sticky top-0 z-50 relative flex h-[72px] shrink-0 items-center gap-4 border-b bg-background px-4 lg:px-8">
+      {/* Top header — Fresha-style global search. Logo left, pill absolutely centered, notifications right. */}
+      <header className="sticky top-0 z-50 relative flex h-[72px] shrink-0 items-center justify-between border-b bg-background px-4 lg:px-8">
         <Link href="/feed" className="shrink-0 text-2xl font-bold tracking-tight">
           CRES-CA
         </Link>
 
-        {/* 3-segment search pill — sits left-of-center, expands inline into a single search input */}
-        <div className="relative hidden md:flex w-full max-w-[620px] ml-6 mr-auto items-center rounded-full border bg-card shadow-sm overflow-hidden h-12">
+        {/* 3-segment search pill — absolutely centered in the header */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex w-full max-w-[620px] items-center rounded-full border bg-card shadow-sm overflow-hidden h-12">
           <AnimatePresence initial={false} mode="wait">
           {!searchExpanded ? (
           <motion.div
@@ -494,8 +494,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           )}
           </AnimatePresence>
         </div>
-
-        <div className="md:hidden flex-1" />
 
         {/* Notifications bell — dropdown with 5 latest + view-all link */}
         <Popover open={notifOpen} onOpenChange={setNotifOpen}>

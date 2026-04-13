@@ -327,52 +327,91 @@ export default function FeedPage() {
         </AnimatePresence>
       </div>
 
-      {/* От твоих мастеров — субscriptions feed (свободные окна, акции, истории) */}
+      {/* От твоих мастеров — immersive hero cards, equal height, gradient fallback when no image */}
       {burningSlots.length > 0 && (
-        <div className="pb-4">
-          <div className="flex items-center justify-between px-[var(--space-page)] pb-2.5">
+        <div className="pb-6">
+          <div className="flex items-center justify-between px-[var(--space-page)] pb-3">
             <div className="flex items-center gap-2">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
                 <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
               </span>
-              <h3 className="text-base font-semibold tracking-tight">{t('subscriptionsTitle')}</h3>
+              <h3 className="text-lg font-semibold tracking-tight">{t('subscriptionsTitle')}</h3>
               <span className="text-xs text-muted-foreground">· {t('subscriptionsSubtitle')}</span>
             </div>
           </div>
-          <div className="flex gap-3 overflow-x-auto px-[var(--space-page)] pb-1 scrollbar-thin">
+          <div className="flex gap-4 overflow-x-auto px-[var(--space-page)] pb-2 scrollbar-thin">
             {burningSlots.map((slot) => {
               const name = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
               const avatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
+              const typeGradients: Record<string, string> = {
+                burning_slot: 'from-emerald-500 via-teal-500 to-cyan-600',
+                promotion: 'from-amber-400 via-rose-500 to-fuchsia-600',
+                before_after: 'from-violet-500 via-purple-500 to-indigo-600',
+                new_service: 'from-sky-500 via-blue-500 to-indigo-600',
+                update: 'from-zinc-500 via-slate-600 to-zinc-700',
+              };
+              const gradient = typeGradients[slot.type] ?? typeGradients.update;
               return (
                 <Link
                   key={slot.id}
                   href={`/book?master_id=${slot.master.id}${slot.linked_service_id ? `&service_id=${slot.linked_service_id}` : ''}`}
-                  className="group/slot relative flex w-[280px] shrink-0 flex-col gap-3 overflow-hidden rounded-3xl border border-border/60 bg-card p-4 transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)] hover:border-emerald-500/40"
+                  className="group/slot relative flex h-[340px] w-[260px] shrink-0 flex-col overflow-hidden rounded-[28px] border border-border/50 bg-card shadow-[var(--shadow-card)] transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)]"
                 >
-                  <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
-                  <div className="flex items-center gap-3">
-                    {avatar ? (
-                      <img src={avatar} alt={name} className="size-11 rounded-full object-cover ring-2 ring-emerald-500/20" />
+                  {/* Hero — image or gradient fallback */}
+                  <div className={cn('relative h-[180px] w-full overflow-hidden bg-gradient-to-br', gradient)}>
+                    {slot.image_url ? (
+                      <img
+                        src={slot.image_url}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover/slot:scale-105"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
                     ) : (
-                      <div className="flex size-11 items-center justify-center rounded-full bg-emerald-500/10 text-sm font-semibold text-emerald-600 ring-2 ring-emerald-500/20">
-                        {name[0]}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-white/90">
+                          {typeIcons[slot.type]
+                            ? <span className="[&>svg]:size-16 [&>svg]:stroke-[1.2]">{typeIcons[slot.type]}</span>
+                            : <Sparkles className="size-16 stroke-[1.2]" />}
+                        </span>
                       </div>
                     )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{slot.master.specialization ?? ''}</p>
+                    {/* Bottom scrim for legibility */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
+                    {/* Type pill */}
+                    <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground backdrop-blur-md">
+                      {typeIcons[slot.type]}
+                      {t(slot.type as 'burning_slot' | 'promotion' | 'before_after' | 'new_service' | 'update')}
+                    </span>
+                    {/* Master chip over the hero */}
+                    <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                      {avatar ? (
+                        <img src={avatar} alt={name} className="size-8 rounded-full object-cover ring-2 ring-white/90" />
+                      ) : (
+                        <div className="flex size-8 items-center justify-center rounded-full bg-white/95 text-xs font-bold text-foreground ring-2 ring-white/90">
+                          {name[0]}
+                        </div>
+                      )}
+                      <span className="max-w-[160px] truncate text-xs font-semibold text-white drop-shadow-md">{name}</span>
                     </div>
                   </div>
-                  {slot.title && <p className="text-sm font-medium line-clamp-2 leading-snug">{slot.title}</p>}
-                  <div className="mt-auto flex items-center justify-between pt-1">
-                    {slot.expires_at && (
-                      <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        <Clock className="size-3" />
-                        {t('expiresIn', { hours: hoursUntil(slot.expires_at) })}
-                      </div>
-                    )}
-                    <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover/slot:translate-x-1 group-hover/slot:text-foreground" />
+                  {/* Body — fixed height so all cards align */}
+                  <div className="flex flex-1 flex-col justify-between gap-2 p-4">
+                    <div className="space-y-1">
+                      {slot.title && <p className="line-clamp-2 text-sm font-semibold leading-snug">{slot.title}</p>}
+                      {slot.master.specialization && (
+                        <p className="truncate text-[11px] text-muted-foreground">{slot.master.specialization}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      {slot.expires_at ? (
+                        <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <Clock className="size-3" />
+                          {t('expiresIn', { hours: hoursUntil(slot.expires_at) })}
+                        </div>
+                      ) : <span />}
+                      <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover/slot:translate-x-1 group-hover/slot:text-foreground" />
+                    </div>
                   </div>
                 </Link>
               );
@@ -557,11 +596,18 @@ function FeedCard({
         )}
       </div>
 
-      {/* Image */}
-      {post.image_url && (
-        <div className="relative aspect-[4/5] w-full bg-muted">
-          <img src={post.image_url} alt="" className="h-full w-full object-cover" />
-          {/* Social proof overlay */}
+      {/* Image — only renders when we have a valid src and onError hides the whole block */}
+      {post.image_url && post.image_url.trim().length > 0 && (
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-muted to-muted/60">
+          <img
+            src={post.image_url}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              const parent = (e.currentTarget as HTMLImageElement).parentElement;
+              if (parent) parent.style.display = 'none';
+            }}
+          />
           <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
             <Users className="size-3" />
             {t('peopleBooked', { count: bookedCount })}

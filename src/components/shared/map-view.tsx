@@ -60,21 +60,30 @@ function createIcon(rating: number) {
 export default function MapView({ markers, center, zoom = 13, className, onMarkerClick, userLocation }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const userMarkerRef = useRef<L.Marker | null>(null);
+  const masterLayerRef = useRef<L.LayerGroup | null>(null);
+  const userLayerRef = useRef<L.LayerGroup | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    mapRef.current = L.map(containerRef.current).setView(center, zoom);
+    const map = L.map(containerRef.current).setView(center, zoom);
+    mapRef.current = map;
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(mapRef.current);
+    }).addTo(map);
+
+    // Two independent layer groups so master updates never wipe the user pin
+    masterLayerRef.current = L.layerGroup().addTo(map);
+    userLayerRef.current = L.layerGroup().addTo(map);
 
     return () => {
-      mapRef.current?.remove();
+      map.remove();
       mapRef.current = null;
+      masterLayerRef.current = null;
+      userLayerRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -83,19 +92,12 @@ export default function MapView({ markers, center, zoom = 13, className, onMarke
   }, [center, zoom]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    // Clear existing markers (preserve user-location marker)
-    mapRef.current.eachLayer((layer) => {
-      if (layer instanceof L.Marker && layer !== userMarkerRef.current) {
-        mapRef.current!.removeLayer(layer);
-      }
-    });
+    const group = masterLayerRef.current;
+    if (!group) return;
+    group.clearLayers();
 
     markers.forEach((m) => {
-      const marker = L.marker([m.lat, m.lng], { icon: createIcon(m.rating) })
-        .addTo(mapRef.current!);
-
+      const marker = L.marker([m.lat, m.lng], { icon: createIcon(m.rating) });
       marker.bindPopup(`
         <div style="min-width:160px;font-family:system-ui">
           <strong style="font-size:14px">${m.name}</strong>
@@ -103,22 +105,19 @@ export default function MapView({ markers, center, zoom = 13, className, onMarke
           <br/><span style="color:#f59e0b">★</span> ${m.rating.toFixed(1)}
         </div>
       `);
-
       if (onMarkerClick) {
         marker.on('click', () => onMarkerClick(m.masterId));
       }
+      group.addLayer(marker);
     });
   }, [markers, onMarkerClick]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
-    if (userMarkerRef.current) {
-      mapRef.current.removeLayer(userMarkerRef.current);
-      userMarkerRef.current = null;
-    }
+    const group = userLayerRef.current;
+    if (!group) return;
+    group.clearLayers();
     if (userLocation) {
-      userMarkerRef.current = L.marker(userLocation, { icon: userLocationIcon, zIndexOffset: 1000 })
-        .addTo(mapRef.current);
+      L.marker(userLocation, { icon: userLocationIcon, zIndexOffset: 1000 }).addTo(group);
     }
   }, [userLocation]);
 
