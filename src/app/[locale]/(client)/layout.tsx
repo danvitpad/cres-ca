@@ -559,9 +559,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — IG-web style: 72px reserved, expands to overlay on hover (no content shift, no bg change) */}
-        <aside className="hidden lg:block w-[72px] shrink-0 relative">
-          <div className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[240px] transition-[width] duration-200 ease-out flex flex-col justify-center overflow-hidden z-30">
+        {/* Desktop sidebar — inline expand: pushes content on hover instead of overlaying it */}
+        <aside className="group/sb hidden lg:block w-[72px] hover:w-[240px] shrink-0 border-r border-border/40 transition-[width] duration-200 ease-out overflow-hidden">
+          <div className="sticky top-0 flex h-[calc(100dvh-72px)] flex-col justify-center">
             <nav className="px-3 space-y-1.5">
               {sidebarNav.map(({ key, icon: Icon, href }) => {
                 const isActive = pathname.endsWith(href);
