@@ -48,6 +48,7 @@ interface MasterProfile {
   display_name: string | null;
   avatar_url: string | null;
   cover_url: string | null;
+  invite_code: string | null;
   profile: {
     full_name: string;
     avatar_url: string | null;
@@ -118,7 +119,7 @@ export default function MasterProfilePage() {
         .from('masters')
         .select(`
           id, specialization, bio, address, city, rating, total_reviews,
-          display_name, avatar_url, cover_url,
+          display_name, avatar_url, cover_url, invite_code,
           profile:profiles(full_name, avatar_url),
           services(id, name, description, duration_minutes, price, currency, color, category:service_categories(name))
         `)
@@ -212,19 +213,20 @@ export default function MasterProfilePage() {
   }, [userId, masterId, isFavorite, favBusy]);
 
   const handleShare = useCallback(async () => {
-    let url = typeof window !== 'undefined' ? window.location.href : '';
-    if (userId && typeof window !== 'undefined') {
-      const u = new URL(window.location.href);
-      u.searchParams.set('ref', userId);
-      url = u.toString();
-    }
+    if (typeof window === 'undefined') return;
     const title = master?.display_name ?? master?.profile?.full_name ?? 'Master';
-    if (typeof navigator !== 'undefined' && 'share' in navigator) {
+    const origin = window.location.origin;
+    const code = master?.invite_code;
+    // Clean public URL uses /invite/[code] if available (auto-follows on landing), otherwise falls back to the profile page.
+    const url = code ? `${origin}/invite/${code}${userId ? `?ref=${userId}` : ''}` : window.location.href;
+    const text = t('shareText', { name: title });
+
+    if ('share' in navigator) {
       try {
-        await navigator.share({ title, url });
+        await navigator.share({ title, text, url });
         return;
       } catch {
-        // user cancelled or share unsupported — fall through to clipboard
+        // fall through
       }
     }
     try {

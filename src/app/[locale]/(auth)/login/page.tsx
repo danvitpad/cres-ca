@@ -109,7 +109,16 @@ export default function LoginPage() {
       .eq('id', user.id)
       .single();
 
+    // Claim any pending invite stashed by /invite/[code]
     if (profile?.role === 'client') {
+      try {
+        const res = await fetch('/api/invite/claim', { method: 'POST' });
+        const body = (await res.json()) as { master_id?: string };
+        if (body.master_id) {
+          router.push(`/masters/${body.master_id}`);
+          return;
+        }
+      } catch {}
       router.push('/feed');
     } else {
       router.push('/calendar');

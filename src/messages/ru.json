@@ -658,6 +658,7 @@
     "share": "Поделиться",
     "linkCopied": "Ссылка скопирована",
     "linkCopyFailed": "Не удалось скопировать ссылку",
+    "shareText": "Посмотри {name} на CRES-CA",
     "favorite": "Сохранить",
     "inFavorites": "Сохранено",
     "addFavorite": "Добавить в избранное",

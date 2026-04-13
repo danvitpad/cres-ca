@@ -658,6 +658,7 @@
     "share": "Share",
     "linkCopied": "Link copied to clipboard",
     "linkCopyFailed": "Couldn't copy the link",
+    "shareText": "Check out {name} on CRES-CA",
     "favorite": "Save",
     "inFavorites": "Saved",
     "addFavorite": "Add to favorites",
