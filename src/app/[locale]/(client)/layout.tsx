@@ -558,9 +558,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar — outer container reserves full 280px (mirrors right rail), inner aside is 72px collapsed and hover-expands to fill the reserved space. No layout shift. */}
-        <div className="hidden lg:block relative w-[320px] shrink-0 border-r border-border/40">
-          <aside className="group/sb absolute inset-y-0 left-0 w-[72px] hover:w-[320px] bg-background transition-[width] duration-200 ease-out overflow-hidden">
+        {/* Desktop sidebar — on /feed reserve 320px so expanded panel fits inside. On other routes reserve only 72px and let hover-expand overlay the centered margin. No divider either way. */}
+        <div className={cn('hidden lg:block relative shrink-0', isFeedRoute ? 'w-[320px]' : 'w-[72px]')}>
+          <aside className={cn(
+            'group/sb absolute inset-y-0 left-0 z-20 w-[72px] bg-background transition-[width] duration-200 ease-out overflow-hidden',
+            isFeedRoute ? 'hover:w-[320px]' : 'hover:w-[240px] hover:shadow-[var(--shadow-elevated)]',
+          )}>
             <div className="sticky top-0 flex h-[calc(100dvh-72px)] flex-col justify-center">
               <nav className="px-3 space-y-1.5">
                 {sidebarNav.map(({ key, icon: Icon, href }) => {

@@ -84,52 +84,94 @@ export default function MapPage() {
   useEffect(() => {
     let cancelled = false;
 
-    async function ipFallback(): Promise<[number, number] | null> {
-      try {
-        const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-        if (!r.ok) return null;
-        const j = await r.json();
-        if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
-          return [j.latitude, j.longitude];
+    function browserGeo(highAccuracy: boolean, timeoutMs: number): Promise<[number, number] | null> {
+      return new Promise((resolve) => {
+        if (!('geolocation' in navigator)) return resolve(null);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            console.log('[map] browser geolocation ok:', pos.coords.latitude, pos.coords.longitude);
+            resolve([pos.coords.latitude, pos.coords.longitude]);
+          },
+          (err) => {
+            console.log('[map] browser geolocation failed:', err.code, err.message);
+            resolve(null);
+          },
+          { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: 60000 },
+        );
+      });
+    }
+
+    async function ipGeo(): Promise<[number, number] | null> {
+      const providers: Array<{ url: string; pick: (j: Record<string, unknown>) => [number, number] | null }> = [
+        {
+          url: 'https://ipwho.is/',
+          pick: (j) => (typeof j.latitude === 'number' && typeof j.longitude === 'number')
+            ? [j.latitude as number, j.longitude as number]
+            : null,
+        },
+        {
+          url: 'https://ipapi.co/json/',
+          pick: (j) => (typeof j.latitude === 'number' && typeof j.longitude === 'number')
+            ? [j.latitude as number, j.longitude as number]
+            : null,
+        },
+        {
+          url: 'https://get.geojs.io/v1/ip/geo.json',
+          pick: (j) => {
+            const lat = parseFloat(j.latitude as string);
+            const lng = parseFloat(j.longitude as string);
+            return (Number.isFinite(lat) && Number.isFinite(lng)) ? [lat, lng] : null;
+          },
+        },
+      ];
+      for (const p of providers) {
+        try {
+          const r = await fetch(p.url, { cache: 'no-store' });
+          if (!r.ok) continue;
+          const j = await r.json();
+          const coords = p.pick(j);
+          if (coords) {
+            console.log('[map] ip geolocation via', p.url, '→', coords, 'city:', j.city);
+            return coords;
+          }
+        } catch (e) {
+          console.log('[map] ip provider failed:', p.url, e);
         }
-      } catch {}
+      }
       return null;
     }
 
     async function locate() {
       setGeoLoading(true);
 
-      // 1) Try precise browser geolocation
-      const precise = await new Promise<[number, number] | null>((resolve) => {
-        if (!('geolocation' in navigator)) return resolve(null);
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve([pos.coords.latitude, pos.coords.longitude]),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
-        );
-      });
-
+      // 1) Precise browser geolocation
+      let coords = await browserGeo(true, 8000);
       if (cancelled) return;
 
-      if (precise) {
-        setCenter(precise);
-        setUserLocation(precise);
+      // 2) Low-accuracy retry (some devices/drivers fail only the high-accuracy path)
+      if (!coords) coords = await browserGeo(false, 5000);
+      if (cancelled) return;
+
+      if (coords) {
+        setCenter(coords);
+        setUserLocation(coords);
         setGeoDenied(false);
-        fetchMasters(precise[0], precise[1]);
+        fetchMasters(coords[0], coords[1]);
         setGeoLoading(false);
         return;
       }
 
-      // 2) Fallback: IP-based approximate location (no permission needed)
-      const approx = await ipFallback();
+      // 3) IP-based fallback (no permission, ~city-level accuracy)
+      coords = await ipGeo();
       if (cancelled) return;
 
-      if (approx) {
-        setCenter(approx);
-        setUserLocation(approx);
-        setGeoDenied(true); // surface hint that precise location was denied
-        fetchMasters(approx[0], approx[1]);
+      if (coords) {
+        setCenter(coords);
+        setUserLocation(coords);
+        setGeoDenied(true); // still show "allow precise location" hint
+        fetchMasters(coords[0], coords[1]);
       } else {
+        console.log('[map] all geolocation sources failed — falling back to default center');
         setGeoDenied(true);
         fetchMasters(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
       }
