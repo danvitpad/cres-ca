@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Copy, Check, Gift, CreditCard, Plus, Sparkles, UserPlus, TrendingUp, Send, Target, ArrowDownLeft, ArrowUpRight, X as XIcon } from 'lucide-react';
+import { Copy, Check, Gift, CreditCard, Plus, Sparkles, UserPlus, TrendingUp, Send, Target, ArrowDownLeft, ArrowUpRight, X as XIcon, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,14 @@ interface SavingsGoal {
   target: number;
 }
 
+interface FamilyBudgetRow {
+  name: string;
+  relationship: string;
+  visits: number;
+  total: number;
+  last: string | null;
+}
+
 export default function WalletPage() {
   const t = useTranslations('clientWallet');
   const tc = useTranslations('common');
@@ -53,6 +61,8 @@ export default function WalletPage() {
   const [transferAmount, setTransferAmount] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
   const [goal, setGoal] = useState<SavingsGoal | null>(null);
+  const [familyBudget, setFamilyBudget] = useState<FamilyBudgetRow[]>([]);
+  const [familyTotal, setFamilyTotal] = useState(0);
   const [goalDraft, setGoalDraft] = useState({ title: '', target: '' });
   const [goalEditing, setGoalEditing] = useState(false);
 
@@ -118,6 +128,85 @@ export default function WalletPage() {
 
       items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
       setTimeline(items.slice(0, 15));
+
+      // Family budget: aggregate completed spending per linked family member (last 90 days)
+      const { data: links } = await supabase
+        .from('family_links')
+        .select('id, member_name, relationship, linked_profile_id')
+        .eq('parent_profile_id', userId);
+
+      if (links && links.length > 0) {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+        // Collect client_ids across self + all linked members
+        const memberProfileIds = links
+          .map((l: { linked_profile_id: string | null }) => l.linked_profile_id)
+          .filter((id): id is string => !!id);
+        const allProfileIds = [userId, ...memberProfileIds];
+        const { data: allClients } = await supabase
+          .from('clients')
+          .select('id, profile_id, family_link_id')
+          .in('profile_id', allProfileIds);
+        const allClientIds = (allClients ?? []).map((c: { id: string }) => c.id);
+        const { data: apts } = allClientIds.length === 0 ? { data: [] } : await supabase
+          .from('appointments')
+          .select('id, client_id, price, starts_at, family_link_id')
+          .in('client_id', allClientIds)
+          .eq('status', 'completed')
+          .gte('starts_at', ninetyDaysAgo.toISOString());
+
+        type AptRow = { id: string; client_id: string; price: number | null; starts_at: string; family_link_id: string | null };
+        const clientById = new Map(
+          (allClients ?? []).map((c: { id: string; profile_id: string | null; family_link_id: string | null }) => [c.id, c]),
+        );
+
+        const rows: FamilyBudgetRow[] = [];
+        // "Self" row first
+        const selfAgg = { visits: 0, total: 0, last: null as string | null };
+        const perLink = new Map<string, { visits: number; total: number; last: string | null }>();
+
+        for (const a of (apts ?? []) as AptRow[]) {
+          const price = Number(a.price ?? 0);
+          const isFamily = a.family_link_id || clientById.get(a.client_id)?.family_link_id;
+          if (isFamily) {
+            const key = isFamily;
+            const cur = perLink.get(key) ?? { visits: 0, total: 0, last: null as string | null };
+            cur.visits += 1;
+            cur.total += price;
+            if (!cur.last || a.starts_at > cur.last) cur.last = a.starts_at;
+            perLink.set(key, cur);
+          } else {
+            const client = clientById.get(a.client_id);
+            if (client?.profile_id === userId) {
+              selfAgg.visits += 1;
+              selfAgg.total += price;
+              if (!selfAgg.last || a.starts_at > selfAgg.last) selfAgg.last = a.starts_at;
+            }
+          }
+        }
+
+        rows.push({
+          name: t('familySelf'),
+          relationship: 'self',
+          visits: selfAgg.visits,
+          total: selfAgg.total,
+          last: selfAgg.last,
+        });
+        for (const l of links as Array<{ id: string; member_name: string; relationship: string }>) {
+          const agg = perLink.get(l.id) ?? { visits: 0, total: 0, last: null };
+          rows.push({
+            name: l.member_name,
+            relationship: l.relationship,
+            visits: agg.visits,
+            total: agg.total,
+            last: agg.last,
+          });
+        }
+
+        setFamilyBudget(rows);
+        setFamilyTotal(rows.reduce((s, r) => s + r.total, 0));
+      }
 
       try {
         const raw = localStorage.getItem(`cres-ca-goal-${userId}`);
@@ -227,9 +316,10 @@ export default function WalletPage() {
       </div>
 
       <Tabs defaultValue="balance" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 max-w-[700px]">
+        <TabsList className="grid w-full grid-cols-6 max-w-[820px]">
           <TabsTrigger value="balance">{t('tab_balance')}</TabsTrigger>
           <TabsTrigger value="timeline">{t('tab_timeline')}</TabsTrigger>
+          <TabsTrigger value="family">{t('tab_family')}</TabsTrigger>
           <TabsTrigger value="referrals">{t('tab_referrals')}</TabsTrigger>
           <TabsTrigger value="giftCards">{t('tab_giftCards')}</TabsTrigger>
           <TabsTrigger value="cards">{t('tab_cards')}</TabsTrigger>
@@ -403,6 +493,73 @@ export default function WalletPage() {
               </ul>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="family" className="mt-6 space-y-6">
+          <div className="rounded-3xl border bg-gradient-to-br from-violet-500/8 via-card to-card p-6 shadow-[var(--shadow-card)]">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-12 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-500">
+                  <Users className="size-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold">{t('familyBudgetTitle')}</h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t('familyBudgetDesc')}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{t('familyPeriod90d')}</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums">{familyTotal.toFixed(0)} ₴</p>
+              </div>
+            </div>
+          </div>
+
+          {familyBudget.length === 0 ? (
+            <div className="rounded-3xl border bg-card p-12 text-center">
+              <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                <Users className="size-8" />
+              </div>
+              <p className="mt-5 text-base font-semibold">{t('familyNoData')}</p>
+            </div>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {familyBudget.map((row, i) => (
+                <li
+                  key={`${row.name}-${i}`}
+                  className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.25)]"
+                >
+                  <div className="absolute -right-6 -top-6 size-24 rounded-full bg-violet-500/5 blur-2xl" />
+                  <div className="relative flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{row.name}</p>
+                      <p className="text-[11px] capitalize text-muted-foreground">{row.relationship}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-violet-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-violet-600 dark:text-violet-300">
+                      {row.visits} {t('familyVisits')}
+                    </span>
+                  </div>
+                  <div className="relative mt-4 flex items-baseline justify-between">
+                    <span className="text-2xl font-bold tabular-nums">{row.total.toFixed(0)} ₴</span>
+                    {row.last && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {new Date(row.last).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                      </span>
+                    )}
+                  </div>
+                  {familyTotal > 0 && (
+                    <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, (row.total / familyTotal) * 100)}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                      />
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </TabsContent>
 
         <TabsContent value="referrals" className="mt-6">
