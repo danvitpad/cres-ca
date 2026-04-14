@@ -309,7 +309,7 @@
 > Всё, что не является багом текущего функционала. Упорядочено по приоритету.
 
 ### HIGH — критично для запуска
-- [ ] **AUTH-1.** Password reset UI — web-страницы `/forgot-password` и `/reset-password` (Supabase Auth flow есть, UI нет)
+- [x] **AUTH-1.** Password reset UI — flow уже inline на `/login` (step machine `forgot → reset-sent → reset-otp → new-password`). **Нашёл баг:** UI ждал 8-значный OTP, а Supabase `resetPasswordForEmail` шлёт 6-значный — flow был сломан. Fix: 6-slot `InputOTP`. Commit `TBD`.
 - [ ] **AUTH-2.** Live-верификация email OTP при регистрации (Resend key стоит, нужен реальный тест)
 - [ ] **AUTH-3.** Live-верификация web `/login` для master/salon ролей с реальным аккаунтом
 - [x] **BUG-1.** При регистрации через Mini App имя сохраняется с лишним пробелом → fix в `api/telegram/register/route.ts` (trim каждой части до join). Commit `7fa7ce8`.
