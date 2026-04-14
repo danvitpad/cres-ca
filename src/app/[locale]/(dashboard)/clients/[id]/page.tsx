@@ -22,6 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
+import { ClientDebtBanner } from '@/components/finance/client-debt-banner';
+import { useMaster } from '@/hooks/use-master';
+import { useLocale } from 'next-intl';
 import { ImageComparisonSlider } from '@/components/ui/image-comparison-slider';
 import { ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { BehaviorIndicator, AppointmentStatus } from '@/types';
@@ -67,6 +70,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const router = useRouter();
+  const locale = useLocale();
+  const { master } = useMaster();
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [intake, setIntake] = useState<ClientIntake | null>(null);
   const [blacklist, setBlacklist] = useState<{ warning: boolean; total: number } | null>(null);
@@ -146,6 +151,10 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </h2>
         <BehaviorIndicators indicators={client.behavior_indicators} />
       </div>
+
+      {master?.id && (
+        <ClientDebtBanner clientId={id} masterId={master.id} locale={locale} />
+      )}
 
       {blacklist?.warning && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">

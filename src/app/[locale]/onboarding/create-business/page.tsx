@@ -5,14 +5,20 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
+import { getSpecializations } from '@/lib/verticals/specializations';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import {
   ArrowLeft,
   ArrowRight,
+  Camera,
+  ImagePlus,
+  X as XIcon,
   Scissors,
   Sparkles,
   Eye,
@@ -42,7 +48,7 @@ import {
 
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 const CATEGORIES = [
   { key: 'categoryHairdressing', icon: Scissors },
@@ -79,14 +85,41 @@ interface GeoResult {
 }
 
 export default function CreateBusinessPage() {
+  return (
+    <Suspense fallback={null}>
+      <CreateBusinessWizard />
+    </Suspense>
+  );
+}
+
+function CreateBusinessWizard() {
   const t = useTranslations('onboarding');
   const tc = useTranslations('common');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const vertical = searchParams.get('vertical');
   const [step, setStep] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const initialServices = getDefaultServices(vertical);
+  const specializationOptions = getSpecializations(vertical);
+  const [specialization, setSpecialization] = useState<string | null>(specializationOptions[0] ?? null);
+  const [selectedServiceKeys, setSelectedServiceKeys] = useState<Set<string>>(
+    () => new Set(initialServices.map((s) => s.name)),
+  );
 
   // Form state
   const [businessName, setBusinessName] = useState('');
   const [website, setWebsite] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [teamType, setTeamType] = useState<'solo' | 'team' | null>(null);
   const [locationType, setLocationType] = useState<string | null>(null);
@@ -106,13 +139,14 @@ export default function CreateBusinessPage() {
       case 3: return teamType !== null;
       case 4: return locationType !== null;
       case 5: return selectedAddress !== null;
+      case 6: return true;
       default: return false;
     }
   };
 
   const handleContinue = () => {
     if (step === 4 && locationType !== 'locationPhysical') {
-      setStep(TOTAL_STEPS + 1); // go to completion
+      setStep(6); // skip address, go to services
       return;
     }
     if (step < TOTAL_STEPS) {
@@ -122,10 +156,20 @@ export default function CreateBusinessPage() {
     }
   };
 
+  const toggleService = (name: string) => {
+    setSelectedServiceKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
+
   const handleBack = () => {
     if (step === TOTAL_STEPS + 1) {
-      // From completion, go back to last real step
-      setStep(locationType === 'locationPhysical' ? TOTAL_STEPS : 4);
+      setStep(6);
+    } else if (step === 6 && locationType !== 'locationPhysical') {
+      setStep(4);
     } else if (step > 1) {
       setStep(step - 1);
     } else {
@@ -133,9 +177,91 @@ export default function CreateBusinessPage() {
     }
   };
 
-  const handleFinish = () => {
-    // TODO: Save business data to Supabase
-    router.push('/calendar');
+  const handleFileSelect = (kind: 'avatar' | 'cover', file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 8 * 1024 * 1024) {
+      setSubmitError('file_too_large');
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    if (kind === 'avatar') {
+      setAvatarFile(file);
+      setAvatarPreview(url);
+    } else {
+      setCoverFile(file);
+      setCoverPreview(url);
+    }
+  };
+
+  const uploadMedia = async (): Promise<{ avatarUrl: string | null; coverUrl: string | null }> => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { avatarUrl: null, coverUrl: null };
+
+    let avatarUrl: string | null = null;
+    let coverUrl: string | null = null;
+
+    if (avatarFile) {
+      const ext = avatarFile.name.split('.').pop() || 'jpg';
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('avatars').upload(path, avatarFile, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+      if (!error) {
+        avatarUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+      }
+    }
+    if (coverFile) {
+      const ext = coverFile.name.split('.').pop() || 'jpg';
+      const path = `${user.id}/cover-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('avatars').upload(path, coverFile, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+      if (!error) {
+        coverUrl = supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+      }
+    }
+    return { avatarUrl, coverUrl };
+  };
+
+  const handleFinish = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const { avatarUrl, coverUrl } = await uploadMedia();
+      const services: DefaultService[] = initialServices.filter((s) => selectedServiceKeys.has(s.name));
+      const res = await fetch('/api/business/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: businessName,
+          vertical,
+          teamType: teamType ?? 'solo',
+          categories: selectedCategories,
+          address: selectedAddress?.display_name ?? null,
+          latitude: selectedAddress ? parseFloat(selectedAddress.lat) : null,
+          longitude: selectedAddress ? parseFloat(selectedAddress.lon) : null,
+          city: null,
+          services,
+          avatarUrl,
+          coverUrl,
+          specialization,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(j.error ?? 'failed');
+      }
+      if (j.inviteCode) setInviteCode(j.inviteCode);
+      setStep(TOTAL_STEPS + 1); // show completion / invite screen
+      setSubmitting(false);
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'unknown');
+      setSubmitting(false);
+    }
   };
 
   const toggleCategory = (key: string) => {
@@ -188,7 +314,12 @@ export default function CreateBusinessPage() {
     }
   };
 
-  const progress = step <= TOTAL_STEPS ? (step / effectiveSteps) * 100 : 100;
+  const visibleStep = (() => {
+    if (step > TOTAL_STEPS) return effectiveSteps;
+    if (step === 6 && locationType !== 'locationPhysical') return 5;
+    return step;
+  })();
+  const progress = step <= TOTAL_STEPS ? (visibleStep / effectiveSteps) * 100 : 100;
   const isCompletion = step === TOTAL_STEPS + 1;
 
   return (
@@ -217,7 +348,7 @@ export default function CreateBusinessPage() {
             </button>
 
             <span className="text-sm text-muted-foreground">
-              {t('step', { current: Math.min(step, effectiveSteps), total: effectiveSteps })}
+              {t('step', { current: visibleStep, total: effectiveSteps })}
             </span>
 
             <div className="flex items-center gap-2">
@@ -227,14 +358,16 @@ export default function CreateBusinessPage() {
               >
                 {t('close')}
               </button>
-              <button
-                onClick={handleContinue}
-                disabled={!canContinue()}
-                className="flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-opacity disabled:opacity-40"
-              >
-                {t('continue')}
-                <ArrowRight className="size-3.5" />
-              </button>
+              {step !== 6 && (
+                <button
+                  onClick={handleContinue}
+                  disabled={!canContinue()}
+                  className="flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-opacity disabled:opacity-40"
+                >
+                  {t('continue')}
+                  <ArrowRight className="size-3.5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -254,6 +387,75 @@ export default function CreateBusinessPage() {
                 <p className="mt-2 text-muted-foreground">{t('businessNameDesc')}</p>
 
                 <div className="mt-8 space-y-5">
+                  {/* Cover + avatar uploaders */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => coverInputRef.current?.click()}
+                      className="group relative block h-36 w-full overflow-hidden rounded-xl border border-dashed border-border bg-muted/30 transition-colors hover:border-primary/40"
+                    >
+                      {coverPreview ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={coverPreview} alt="" className="h-full w-full object-cover" />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                            <Camera className="size-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <ImagePlus className="size-6" />
+                          <span className="text-xs">{t('coverUploadHint')}</span>
+                        </div>
+                      )}
+                    </button>
+                    {coverPreview && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setCoverFile(null); setCoverPreview(null); }}
+                        className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+                      >
+                        <XIcon className="size-3.5" />
+                      </button>
+                    )}
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileSelect('cover', e.target.files?.[0] ?? null)}
+                    />
+
+                    {/* Avatar circle overlapping cover bottom-left */}
+                    <div className="absolute -bottom-8 left-4">
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        className="group relative flex size-20 items-center justify-center overflow-hidden rounded-full border-4 border-background bg-muted shadow-md transition-transform hover:scale-[1.02]"
+                      >
+                        {avatarPreview ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={avatarPreview} alt="" className="h-full w-full object-cover" />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
+                              <Camera className="size-4 text-white opacity-0 transition-opacity group-hover:opacity-100" />
+                            </div>
+                          </>
+                        ) : (
+                          <Camera className="size-5 text-muted-foreground" />
+                        )}
+                      </button>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileSelect('avatar', e.target.files?.[0] ?? null)}
+                      />
+                    </div>
+                  </div>
+                  <div className="h-6" />
+
                   <div className="space-y-2">
                     <label className="text-sm font-medium">{t('businessName')}</label>
                     <input
@@ -264,6 +466,28 @@ export default function CreateBusinessPage() {
                       autoFocus
                     />
                   </div>
+                  {specializationOptions.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">{t('specializationLabel')}</label>
+                      <div className="flex flex-wrap gap-2">
+                        {specializationOptions.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setSpecialization(s)}
+                            className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
+                              specialization === s
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
                       {t('website')}{' '}
@@ -482,64 +706,195 @@ export default function CreateBusinessPage() {
               </StepWrapper>
             )}
 
-            {/* Completion screen */}
-            {isCompletion && (
-              <motion.div
-                key="completion"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, ease: 'easeOut' }}
-                className="flex flex-col items-center justify-center py-20 text-center"
-              >
-                {/* Animated check circle */}
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-                  className="flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-violet-500"
-                >
-                  <motion.div
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 0.4 }}
+            {/* Step 6: Default services preview */}
+            {step === 6 && (
+              <StepWrapper key="step6">
+                <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                  Популярные услуги
+                </h1>
+                <p className="mt-2 text-muted-foreground">
+                  {initialServices.length > 0
+                    ? 'Мы подобрали популярные услуги для твоей ниши. Убери ненужные или оставь как есть — можно будет править позже.'
+                    : 'Пропусти шаг — добавишь услуги вручную в разделе «Услуги».'}
+                </p>
+
+                {initialServices.length > 0 && (
+                  <div className="mt-8 space-y-2">
+                    {initialServices.map((s) => {
+                      const checked = selectedServiceKeys.has(s.name);
+                      return (
+                        <button
+                          key={s.name}
+                          type="button"
+                          onClick={() => toggleService(s.name)}
+                          className={`flex w-full items-center justify-between rounded-xl border p-4 text-left transition-all ${
+                            checked
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border bg-card hover:border-primary/30'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                checked ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                              }`}
+                            >
+                              {checked && <Check className="size-3 text-primary-foreground" />}
+                            </div>
+                            <span className="font-medium">{s.name}</span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {s.duration_minutes > 0 && `${s.duration_minutes} мин · `}
+                            {s.price > 0 ? `${s.price}₴` : 'по запросу'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="mt-8 flex justify-end">
+                  <button
+                    onClick={handleFinish}
+                    disabled={submitting}
+                    className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity disabled:opacity-40"
                   >
-                    <Check className="size-10 text-white" strokeWidth={3} />
-                  </motion.div>
-                </motion.div>
+                    {submitting ? 'Создаём…' : 'Завершить'}
+                  </button>
+                </div>
+                {submitError && (
+                  <p className="mt-3 text-right text-xs text-rose-500">Ошибка: {submitError}</p>
+                )}
+              </StepWrapper>
+            )}
 
-                <motion.h1
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="mt-8 text-2xl font-semibold md:text-3xl"
-                >
-                  {t('onboardingComplete')}
-                </motion.h1>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                  className="mt-3 text-muted-foreground"
-                >
-                  {t('onboardingCompleteDesc')}
-                </motion.p>
-
-                <motion.button
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9 }}
-                  onClick={handleFinish}
-                  className="mt-8 rounded-full bg-foreground px-8 py-3 font-medium text-background transition-opacity hover:opacity-90"
-                >
-                  {t('goToDashboard')}
-                </motion.button>
-              </motion.div>
+            {/* Completion / invite-first-clients screen */}
+            {isCompletion && (
+              <InviteScreen
+                inviteCode={inviteCode}
+                copied={copied}
+                setCopied={setCopied}
+                onGoDashboard={() => router.push('/calendar')}
+                t={t}
+              />
             )}
           </AnimatePresence>
         </div>
       </div>
     </div>
+  );
+}
+
+function InviteScreen({
+  inviteCode,
+  copied,
+  setCopied,
+  onGoDashboard,
+  t,
+}: {
+  inviteCode: string | null;
+  copied: boolean;
+  setCopied: (v: boolean) => void;
+  onGoDashboard: () => void;
+  t: (key: string) => string;
+}) {
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const webLink = inviteCode ? `${appUrl}/invite/${inviteCode}` : '';
+  const tgBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
+  const tgLink = inviteCode ? `https://t.me/${tgBot}?start=master_${inviteCode}` : '';
+
+  const copy = async () => {
+    if (!webLink) return;
+    try {
+      await navigator.clipboard.writeText(webLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+
+  const shareTelegram = () => {
+    if (!tgLink) return;
+    const text = encodeURIComponent(t('inviteShareText'));
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(tgLink)}&text=${text}`, '_blank');
+  };
+
+  return (
+    <motion.div
+      key="completion"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="flex flex-col items-center py-14 text-center"
+    >
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
+        className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-violet-500"
+      >
+        <Check className="size-8 text-white" strokeWidth={3} />
+      </motion.div>
+
+      <motion.h1
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="mt-6 text-2xl font-semibold md:text-3xl"
+      >
+        {t('inviteTitle')}
+      </motion.h1>
+
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mt-3 max-w-md text-muted-foreground"
+      >
+        {t('inviteDesc')}
+      </motion.p>
+
+      {inviteCode && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8 w-full max-w-md space-y-3"
+        >
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/30 p-3">
+            <div className="flex-1 truncate text-left text-sm text-muted-foreground">{webLink}</div>
+            <button
+              type="button"
+              onClick={copy}
+              className="shrink-0 rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-90"
+            >
+              {copied ? t('inviteCopied') : t('inviteCopy')}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={shareTelegram}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#229ED9] px-4 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295l.213-3.053 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.643.135-.953l11.566-4.458c.538-.196 1.006.128.832.938z" />
+            </svg>
+            {t('inviteShareTelegram')}
+          </button>
+        </motion.div>
+      )}
+
+      <motion.button
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+        onClick={onGoDashboard}
+        className="mt-8 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {t('inviteSkip')}
+      </motion.button>
+    </motion.div>
   );
 }
 

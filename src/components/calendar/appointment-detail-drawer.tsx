@@ -166,12 +166,7 @@ export function AppointmentDetailDrawer({
 
     if (error) { toast.error(error.message); setUpdating(false); return; }
 
-    if (newStatus === 'completed') {
-      await supabase.rpc('increment_client_stats', {
-        p_client_id: appointment.client_id,
-        p_amount: appointment.price,
-      }).then(() => {}, () => {});
-    }
+    // Completion stats (visits/spent/bonus) handled by `appointments_on_completed` trigger (J1)
 
     if (newStatus === 'cancelled') {
       const { data: cl } = await supabase.from('clients').select('cancellation_count').eq('id', appointment.client_id).single();

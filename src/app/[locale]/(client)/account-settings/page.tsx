@@ -27,6 +27,22 @@ export default function ClientSettingsPage() {
   const [hideProfile, setHideProfile] = useState(false);
   const [shareLocation, setShareLocation] = useState(true);
 
+  async function exportData() {
+    try {
+      const res = await fetch('/api/gdpr/self-export');
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // noop — user will see missing download
+    }
+  }
+
   async function deleteAccount() {
     if (!confirm(t('deleteConfirm'))) return;
     const supabase = createClient();
@@ -103,7 +119,7 @@ export default function ClientSettingsPage() {
       </Section>
 
       <Section>
-        <LinkRow icon={Download} label={t('dataExport')} />
+        <LinkRow icon={Download} label={t('dataExport')} onClick={exportData} />
         <div className="px-6 py-4">
           <Button variant="destructive" onClick={deleteAccount}>
             <Trash2 className="mr-2 size-4" />
@@ -138,9 +154,9 @@ function Row({ icon: Icon, label, children }: { icon: React.ComponentType<{ clas
   );
 }
 
-function LinkRow({ icon: Icon, label }: { icon: React.ComponentType<{ className?: string }>; label: string }) {
+function LinkRow({ icon: Icon, label, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; onClick?: () => void }) {
   return (
-    <button className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-muted/40 transition-colors">
+    <button onClick={onClick} className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-muted/40 transition-colors">
       <Icon className="size-5 text-muted-foreground shrink-0" />
       <span className="flex-1 text-sm font-medium">{label}</span>
       <span className="text-muted-foreground">›</span>

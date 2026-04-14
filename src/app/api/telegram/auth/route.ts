@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Telegram Auth API
- * description: Validates Telegram Mini App initData and returns/creates a Supabase session
+ * description: Validates Telegram Mini App initData and looks up existing profile. Does NOT create users — returns {linked, needsRegistration, tgData} so the client can drive the consent/register flow.
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -13,98 +13,88 @@ interface TelegramUser {
   last_name?: string;
   username?: string;
   language_code?: string;
+  photo_url?: string;
+  is_premium?: boolean;
 }
 
-function validateInitData(initData: string): TelegramUser | null {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN!;
+function validateInitData(
+  initData: string,
+): { user: TelegramUser } | { error: string; debug?: Record<string, unknown> } {
+  const botToken = (process.env.TELEGRAM_BOT_TOKEN ?? '').trim();
+  if (!botToken) return { error: 'no_bot_token' };
+
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
-  if (!hash) return null;
+  if (!hash) return { error: 'no_hash' };
 
   params.delete('hash');
-  const dataCheckArr = Array.from(params.entries())
+  const dataCheckString = Array.from(params.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`);
-  const dataCheckString = dataCheckArr.join('\n');
+    .map(([k, v]) => `${k}=${v}`)
+    .join('\n');
 
   const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
   const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
 
-  if (hmac !== hash) return null;
+  if (hmac !== hash) return { error: 'hash_mismatch' };
 
   const userStr = params.get('user');
-  if (!userStr) return null;
+  if (!userStr) return { error: 'no_user' };
 
-  return JSON.parse(userStr) as TelegramUser;
+  return { user: JSON.parse(userStr) as TelegramUser };
 }
 
 export async function POST(request: Request) {
   const { initData } = await request.json();
-
   if (!initData) {
-    return NextResponse.json({ error: 'Missing initData' }, { status: 400 });
+    return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
   }
 
-  const telegramUser = validateInitData(initData);
-  if (!telegramUser) {
-    return NextResponse.json({ error: 'Invalid initData' }, { status: 403 });
+  const result = validateInitData(initData);
+  if ('error' in result) {
+    return NextResponse.json({ error: result.error }, { status: 403 });
   }
 
+  const tg = result.user;
   const supabase = await createClient();
 
-  // Find existing profile by telegram_id
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, role')
-    .eq('telegram_id', String(telegramUser.id))
-    .single();
+    .select('id, role, full_name, phone, public_id, date_of_birth')
+    .eq('telegram_id', tg.id)
+    .maybeSingle();
 
-  if (profile) {
-    // User exists — sign them in
-    const { data: sub } = await supabase
-      .from('subscriptions')
-      .select('tier')
-      .eq('profile_id', profile.id)
-      .single();
-
+  if (!profile) {
     return NextResponse.json({
-      userId: profile.id,
-      role: profile.role,
-      tier: sub?.tier || 'trial',
-      isNew: false,
+      linked: false,
+      needsRegistration: true,
+      tgData: {
+        id: tg.id,
+        first_name: tg.first_name,
+        last_name: tg.last_name ?? null,
+        username: tg.username ?? null,
+        photo_url: tg.photo_url ?? null,
+        language_code: tg.language_code ?? null,
+      },
     });
   }
 
-  // New user — create via Supabase auth with a pseudo-email
-  const email = `tg_${telegramUser.id}@telegram.cres-ca.com`;
-  const password = crypto.randomBytes(32).toString('hex');
+  const needsPhone = !profile.phone;
 
-  const { data: authData, error: signUpError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(' '),
-        role: 'client',
-        telegram_id: String(telegramUser.id),
-      },
-    },
-  });
-
-  if (signUpError || !authData.user) {
-    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
-  }
-
-  // Update telegram_id on profile
-  await supabase
-    .from('profiles')
-    .update({ telegram_id: String(telegramUser.id) })
-    .eq('id', authData.user.id);
+  const { data: sub } = await supabase
+    .from('subscriptions')
+    .select('tier')
+    .eq('profile_id', profile.id)
+    .maybeSingle();
 
   return NextResponse.json({
-    userId: authData.user.id,
-    role: 'client',
-    tier: 'trial',
-    isNew: true,
+    linked: true,
+    needsRegistration: needsPhone,
+    userId: profile.id,
+    role: profile.role,
+    tier: sub?.tier ?? 'trial',
+    publicId: profile.public_id,
+    fullName: profile.full_name,
+    missing: needsPhone ? ['phone'] : [],
   });
 }

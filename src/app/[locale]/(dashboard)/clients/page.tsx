@@ -64,6 +64,7 @@ interface ClientRow {
   rating: number;
   has_health_alert: boolean;
   behavior_indicators: BehaviorIndicator[];
+  tier: 'new' | 'regular' | 'vip';
 }
 
 type FilterType = 'all' | 'recent' | 'frequent' | 'inactive';
@@ -103,7 +104,7 @@ export default function ClientsPage() {
     const supabase = createClient();
     let query = supabase
       .from('clients')
-      .select('id, full_name, phone, email, total_visits, avg_check, last_visit_at, rating, has_health_alert, behavior_indicators')
+      .select('id, full_name, phone, email, total_visits, avg_check, last_visit_at, rating, has_health_alert, behavior_indicators, tier')
       .eq('master_id', master.id)
       .order('created_at', { ascending: false });
 
@@ -305,6 +306,16 @@ export default function ClientsPage() {
                         <span style={{ fontSize: 14, fontWeight: 500, color: C.text, fontFamily: FONT }}>
                           {c.full_name}
                         </span>
+                        {c.tier === 'vip' && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, backgroundColor: '#fef3c7', color: '#92400e', letterSpacing: 0.3 }}>
+                            ★ VIP
+                          </span>
+                        )}
+                        {c.tier === 'regular' && (
+                          <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 999, backgroundColor: '#dbeafe', color: '#1d4ed8' }}>
+                            REG
+                          </span>
+                        )}
                       </div>
                       {c.email && (
                         <span style={{ fontSize: 13, color: C.textMuted, fontFamily: FONT }}>

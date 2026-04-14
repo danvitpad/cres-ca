@@ -36,8 +36,23 @@ interface TimelineItem {
 }
 
 interface SavingsGoal {
+  id: string;
   title: string;
   target: number;
+  createdAt: string;
+}
+
+interface GoalAchievement {
+  id: string;
+  title: string;
+  target: number;
+  achievedAt: string;
+}
+
+interface GoalsStore {
+  version: 2;
+  goals: SavingsGoal[];
+  achievements: GoalAchievement[];
 }
 
 interface FamilyBudgetRow {
@@ -46,6 +61,20 @@ interface FamilyBudgetRow {
   visits: number;
   total: number;
   last: string | null;
+}
+
+interface GiftCardRow {
+  id: string;
+  code: string;
+  amount: number;
+  currency: string;
+  is_redeemed: boolean;
+  sender_message: string | null;
+  created_at: string;
+  sender_profile_id: string | null;
+  recipient_profile_id: string | null;
+  sender_name?: string | null;
+  recipient_name?: string | null;
 }
 
 export default function WalletPage() {
@@ -60,11 +89,20 @@ export default function WalletPage() {
   const [transferTo, setTransferTo] = useState('');
   const [transferAmount, setTransferAmount] = useState('');
   const [transferBusy, setTransferBusy] = useState(false);
-  const [goal, setGoal] = useState<SavingsGoal | null>(null);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [achievements, setAchievements] = useState<GoalAchievement[]>([]);
   const [familyBudget, setFamilyBudget] = useState<FamilyBudgetRow[]>([]);
   const [familyTotal, setFamilyTotal] = useState(0);
   const [goalDraft, setGoalDraft] = useState({ title: '', target: '' });
-  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalFormOpen, setGoalFormOpen] = useState(false);
+  const [giftSent, setGiftSent] = useState<GiftCardRow[]>([]);
+  const [giftReceived, setGiftReceived] = useState<GiftCardRow[]>([]);
+  const [sendGiftOpen, setSendGiftOpen] = useState(false);
+  const [giftTo, setGiftTo] = useState('');
+  const [giftAmount, setGiftAmount] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+  const [giftBusy, setGiftBusy] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -126,8 +164,25 @@ export default function WalletPage() {
         });
       }
 
+      const { data: walletTx } = await supabase
+        .from('wallet_transactions')
+        .select('id, kind, amount, reason, created_at')
+        .eq('profile_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      (walletTx ?? []).forEach((tx) => {
+        const amt = Number(tx.amount);
+        items.push({
+          id: `wtx-${tx.id}`,
+          kind: amt >= 0 ? 'in' : 'out',
+          title: tx.reason ?? (amt >= 0 ? 'Bonus credited' : 'Bonus spent'),
+          amount: Math.abs(amt),
+          at: tx.created_at,
+        });
+      });
+
       items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-      setTimeline(items.slice(0, 15));
+      setTimeline(items.slice(0, 20));
 
       // Family budget: aggregate completed spending per linked family member (last 90 days)
       const { data: links } = await supabase
@@ -208,9 +263,49 @@ export default function WalletPage() {
         setFamilyTotal(rows.reduce((s, r) => s + r.total, 0));
       }
 
+      // Gift cards (sent + received)
+      const { data: gcSent } = await supabase
+        .from('gift_certificates')
+        .select('id, code, amount, currency, is_redeemed, sender_message, created_at, sender_profile_id, recipient_profile_id')
+        .eq('sender_profile_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      const { data: gcReceived } = await supabase
+        .from('gift_certificates')
+        .select('id, code, amount, currency, is_redeemed, sender_message, created_at, sender_profile_id, recipient_profile_id')
+        .eq('recipient_profile_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      setGiftSent((gcSent ?? []) as GiftCardRow[]);
+      setGiftReceived((gcReceived ?? []) as GiftCardRow[]);
+
       try {
-        const raw = localStorage.getItem(`cres-ca-goal-${userId}`);
-        if (raw) setGoal(JSON.parse(raw));
+        const rawV2 = localStorage.getItem(`cres-ca-goals-${userId}`);
+        if (rawV2) {
+          const parsed = JSON.parse(rawV2) as GoalsStore;
+          setGoals(parsed.goals ?? []);
+          setAchievements(parsed.achievements ?? []);
+        } else {
+          // Migrate legacy single-goal format
+          const rawV1 = localStorage.getItem(`cres-ca-goal-${userId}`);
+          if (rawV1) {
+            const legacy = JSON.parse(rawV1) as { title: string; target: number };
+            if (legacy?.title && legacy?.target > 0) {
+              const migrated: SavingsGoal[] = [{
+                id: crypto.randomUUID(),
+                title: legacy.title,
+                target: legacy.target,
+                createdAt: new Date().toISOString(),
+              }];
+              setGoals(migrated);
+              localStorage.setItem(
+                `cres-ca-goals-${userId}`,
+                JSON.stringify({ version: 2, goals: migrated, achievements: [] } satisfies GoalsStore),
+              );
+            }
+            localStorage.removeItem(`cres-ca-goal-${userId}`);
+          }
+        }
       } catch {}
 
       setLoading(false);
@@ -218,21 +313,55 @@ export default function WalletPage() {
     load();
   }, [userId]);
 
-  function saveGoal() {
+  function persistGoals(nextGoals: SavingsGoal[], nextAch: GoalAchievement[]) {
+    try {
+      localStorage.setItem(
+        `cres-ca-goals-${userId}`,
+        JSON.stringify({ version: 2, goals: nextGoals, achievements: nextAch } satisfies GoalsStore),
+      );
+    } catch {}
+  }
+
+  function addGoal() {
     const target = Number(goalDraft.target);
     if (!goalDraft.title.trim() || !target || target <= 0) {
       toast.error(t('goalInvalid'));
       return;
     }
-    const g: SavingsGoal = { title: goalDraft.title.trim(), target };
-    setGoal(g);
-    setGoalEditing(false);
-    try { localStorage.setItem(`cres-ca-goal-${userId}`, JSON.stringify(g)); } catch {}
+    const g: SavingsGoal = {
+      id: crypto.randomUUID(),
+      title: goalDraft.title.trim(),
+      target,
+      createdAt: new Date().toISOString(),
+    };
+    const next = [...goals, g];
+    setGoals(next);
+    persistGoals(next, achievements);
+    setGoalDraft({ title: '', target: '' });
+    setGoalFormOpen(false);
   }
 
-  function clearGoal() {
-    setGoal(null);
-    try { localStorage.removeItem(`cres-ca-goal-${userId}`); } catch {}
+  function removeGoal(id: string) {
+    const next = goals.filter((g) => g.id !== id);
+    setGoals(next);
+    persistGoals(next, achievements);
+  }
+
+  function achieveGoal(id: string) {
+    const g = goals.find((x) => x.id === id);
+    if (!g) return;
+    const ach: GoalAchievement = {
+      id: g.id,
+      title: g.title,
+      target: g.target,
+      achievedAt: new Date().toISOString(),
+    };
+    const nextGoals = goals.filter((x) => x.id !== id);
+    const nextAch = [ach, ...achievements].slice(0, 50);
+    setGoals(nextGoals);
+    setAchievements(nextAch);
+    persistGoals(nextGoals, nextAch);
+    toast.success(t('savingsGoalTitle'));
   }
 
   async function submitTransfer() {
@@ -248,31 +377,29 @@ export default function WalletPage() {
     }
     setTransferBusy(true);
     const supabase = createClient();
-    // Try to find recipient by email or referral code (best-effort, no destructive RPC)
-    const { data: rcpt } = await supabase
-      .from('profiles')
-      .select('id, full_name, bonus_balance')
-      .or(`email.eq.${transferTo.trim()},id.ilike.${transferTo.trim().toLowerCase()}%`)
-      .maybeSingle();
-    if (!rcpt) {
-      toast.error(t('transferNotFound'));
+    const { data: rpcResult, error: rpcErr } = await supabase.rpc('wallet_transfer', {
+      recipient_lookup: transferTo.trim(),
+      amount,
+    });
+    if (rpcErr) {
+      toast.error(rpcErr.message);
       setTransferBusy(false);
       return;
     }
-    const { error: e1 } = await supabase
-      .from('profiles')
-      .update({ bonus_balance: data.balance - amount })
-      .eq('id', userId!);
-    if (e1) {
-      toast.error(e1.message);
+    const res = rpcResult as { ok?: boolean; error?: string; new_balance?: number } | null;
+    if (!res?.ok) {
+      const errMap: Record<string, string> = {
+        insufficient_funds: t('transferInsufficient'),
+        recipient_not_found: t('transferNotFound'),
+        invalid_amount: t('transferInvalid'),
+        self_transfer: t('transferNotFound'),
+        unauthorized: t('transferNotFound'),
+      };
+      toast.error(errMap[res?.error ?? ''] ?? t('transferNotFound'));
       setTransferBusy(false);
       return;
     }
-    await supabase
-      .from('profiles')
-      .update({ bonus_balance: (rcpt.bonus_balance ?? 0) + amount })
-      .eq('id', rcpt.id);
-    setData({ ...data, balance: data.balance - amount });
+    setData({ ...data, balance: res.new_balance ?? data.balance - amount });
     toast.success(t('transferDone'));
     setTransferOpen(false);
     setTransferTo('');
@@ -280,10 +407,67 @@ export default function WalletPage() {
     setTransferBusy(false);
   }
 
-  const goalProgress = useMemo(() => {
-    if (!goal || !data) return 0;
-    return Math.min(100, Math.round((data.balance / goal.target) * 100));
-  }, [goal, data]);
+  async function submitSendGift() {
+    if (!data) return;
+    const amount = Math.floor(Number(giftAmount));
+    if (!giftTo.trim() || !amount || amount <= 0) {
+      toast.error(t('giftInvalid'));
+      return;
+    }
+    if (amount > data.balance) {
+      toast.error(t('transferInsufficient'));
+      return;
+    }
+    setGiftBusy(true);
+    try {
+      const res = await fetch('/api/gift-cards/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: giftTo.trim(), amount, message: giftMessage.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error === 'insufficient_funds' ? t('transferInsufficient') : json.error ?? 'error');
+        setGiftBusy(false);
+        return;
+      }
+      toast.success(t('giftSent', { code: json.code }));
+      setData({ ...data, balance: data.balance - amount });
+      setGiftSent((prev) => [
+        {
+          id: json.id,
+          code: json.code,
+          amount,
+          currency: 'UAH',
+          is_redeemed: false,
+          sender_message: giftMessage.trim() || null,
+          created_at: new Date().toISOString(),
+          sender_profile_id: userId ?? null,
+          recipient_profile_id: null,
+        },
+        ...prev,
+      ]);
+      setSendGiftOpen(false);
+      setGiftTo('');
+      setGiftAmount('');
+      setGiftMessage('');
+    } catch {
+      toast.error('error');
+    }
+    setGiftBusy(false);
+  }
+
+  function copyGiftCode(code: string) {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast.success(t('copied'));
+    setTimeout(() => setCopiedCode(null), 2000);
+  }
+
+  function progressFor(target: number): number {
+    if (!data || !target) return 0;
+    return Math.min(100, Math.round((data.balance / target) * 100));
+  }
 
   function copyReferral() {
     if (!data) return;
@@ -381,10 +565,10 @@ export default function WalletPage() {
 
           {/* Quick action tiles */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <QuickTile icon={Plus} label={t('topUp')} accent="violet" />
+            <QuickTile icon={Plus} label={t('topUp')} accent="violet" onClick={() => toast.info(t('topUp'))} />
             <QuickTile icon={Send} label={t('transfer')} accent="rose" onClick={() => setTransferOpen(true)} />
-            <QuickTile icon={Gift} label={t('buyGiftCard')} accent="amber" />
-            <QuickTile icon={UserPlus} label={t('referralProgram')} accent="emerald" />
+            <QuickTile icon={Gift} label={t('sendGift')} accent="amber" onClick={() => setSendGiftOpen(true)} />
+            <QuickTile icon={UserPlus} label={t('referralProgram')} accent="emerald" onClick={copyReferral} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -392,7 +576,7 @@ export default function WalletPage() {
             <StatCard icon={UserPlus} label={t('invitedFriends')} value={String(data.invitedCount)} />
           </div>
 
-          {/* Savings goal */}
+          {/* Savings goals — multi */}
           <div className="rounded-3xl border bg-card p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -404,15 +588,15 @@ export default function WalletPage() {
                   <p className="text-xs text-muted-foreground">{t('savingsGoalDesc')}</p>
                 </div>
               </div>
-              {goal && !goalEditing && (
-                <Button size="sm" variant="ghost" onClick={clearGoal}>
-                  <XIcon className="size-4" />
+              {!goalFormOpen && (
+                <Button size="sm" variant="ghost" onClick={() => setGoalFormOpen(true)}>
+                  <Plus className="size-4" />
                 </Button>
               )}
             </div>
 
-            {goalEditing || !goal ? (
-              <div className="mt-5 space-y-3">
+            {goalFormOpen && (
+              <div className="mt-5 space-y-3 rounded-2xl border border-dashed p-4">
                 <input
                   value={goalDraft.title}
                   onChange={(e) => setGoalDraft((d) => ({ ...d, title: e.target.value }))}
@@ -428,36 +612,78 @@ export default function WalletPage() {
                   className="w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={saveGoal} size="sm">{t('goalSave')}</Button>
-                  {goal && (
-                    <Button onClick={() => setGoalEditing(false)} size="sm" variant="ghost">
-                      {tc('cancel')}
-                    </Button>
-                  )}
+                  <Button onClick={addGoal} size="sm">{t('goalSave')}</Button>
+                  <Button
+                    onClick={() => { setGoalFormOpen(false); setGoalDraft({ title: '', target: '' }); }}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    {tc('cancel')}
+                  </Button>
                 </div>
               </div>
-            ) : (
-              <div className="mt-5">
-                <div className="flex items-baseline justify-between">
-                  <p className="font-medium">{goal.title}</p>
-                  <p className="text-sm text-muted-foreground tabular-nums">
-                    {data.balance.toFixed(0)} / {goal.target.toFixed(0)} ₴
-                  </p>
-                </div>
-                <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${goalProgress}%` }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                    className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-500"
-                  />
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="font-semibold text-primary">{goalProgress}%</span>
-                  <button onClick={() => { setGoalEditing(true); setGoalDraft({ title: goal.title, target: String(goal.target) }); }} className="text-muted-foreground hover:text-foreground">
-                    {tc('edit')}
-                  </button>
-                </div>
+            )}
+
+            {goals.length === 0 && !goalFormOpen && (
+              <p className="mt-5 text-sm text-muted-foreground">{t('goalTitlePh')}</p>
+            )}
+
+            <ul className="mt-5 space-y-4">
+              {goals.map((g) => {
+                const pct = progressFor(g.target);
+                const reached = pct >= 100;
+                return (
+                  <li key={g.id} className="rounded-2xl border bg-background/40 p-4">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="min-w-0 flex-1 truncate font-medium">{g.title}</p>
+                      <p className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                        {Math.min(data.balance, g.target).toFixed(0)} / {g.target.toFixed(0)} ₴
+                      </p>
+                    </div>
+                    <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-muted">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${reached ? 'bg-emerald-500' : 'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-rose-500'}`}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className={`font-semibold ${reached ? 'text-emerald-500' : 'text-primary'}`}>{pct}%</span>
+                      <div className="flex items-center gap-3">
+                        {reached && (
+                          <button onClick={() => achieveGoal(g.id)} className="font-semibold text-emerald-500 hover:text-emerald-600">
+                            {t('goalSave')} ✓
+                          </button>
+                        )}
+                        <button onClick={() => removeGoal(g.id)} className="text-muted-foreground hover:text-foreground">
+                          <XIcon className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {achievements.length > 0 && (
+              <div className="mt-6 border-t pt-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  {t('lifetimeEarned')}
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {achievements.map((a) => (
+                    <li key={a.id + a.achievedAt} className="flex items-center justify-between rounded-xl bg-emerald-500/5 px-3 py-2 text-xs">
+                      <span className="flex items-center gap-2">
+                        <span className="flex size-6 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-500">✓</span>
+                        <span className="font-medium">{a.title}</span>
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {a.target.toFixed(0)} ₴ · {new Date(a.achievedAt).toLocaleDateString('ru')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>
@@ -587,17 +813,75 @@ export default function WalletPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="giftCards" className="mt-6">
-          <div className="flex flex-col items-center justify-center rounded-3xl border bg-card p-12 text-center">
-            <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <Gift className="size-8" />
+        <TabsContent value="giftCards" className="mt-6 space-y-6">
+          <div className="flex items-center justify-between gap-3 rounded-3xl border bg-gradient-to-br from-amber-500/8 via-card to-card p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-300">
+                <Gift className="size-6" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold">{t('giftCardsTitle')}</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">{t('giftCardsDesc')}</p>
+              </div>
             </div>
-            <p className="mt-5 text-base font-semibold">{t('noGiftCards')}</p>
-            <div className="mt-6 flex gap-2">
-              <Button>{t('buyGiftCard')}</Button>
-              <Button variant="outline">{t('sendGift')}</Button>
-            </div>
+            <Button onClick={() => setSendGiftOpen(true)}>
+              <Send className="mr-1 size-4" /> {t('sendGift')}
+            </Button>
           </div>
+
+          {giftReceived.length === 0 && giftSent.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border bg-card p-12 text-center">
+              <div className="flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Gift className="size-8" />
+              </div>
+              <p className="mt-5 text-base font-semibold">{t('noGiftCards')}</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {giftReceived.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t('giftReceivedHeader')}
+                  </h3>
+                  <ul className="grid gap-3 sm:grid-cols-2">
+                    {giftReceived.map((gc) => (
+                      <GiftCardTile
+                        key={gc.id}
+                        gc={gc}
+                        kind="received"
+                        copied={copiedCode === gc.code}
+                        onCopy={() => copyGiftCode(gc.code)}
+                        redeemedLabel={t('giftRedeemed')}
+                        activeLabel={t('giftActive')}
+                        codeLabel={t('giftCodeLabel')}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {giftSent.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    {t('giftSentHeader')}
+                  </h3>
+                  <ul className="grid gap-3 sm:grid-cols-2">
+                    {giftSent.map((gc) => (
+                      <GiftCardTile
+                        key={gc.id}
+                        gc={gc}
+                        kind="sent"
+                        copied={copiedCode === gc.code}
+                        onCopy={() => copyGiftCode(gc.code)}
+                        redeemedLabel={t('giftRedeemed')}
+                        activeLabel={t('giftActive')}
+                        codeLabel={t('giftCodeLabel')}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="cards" className="mt-6">
@@ -667,7 +951,135 @@ export default function WalletPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {sendGiftOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center"
+            onClick={() => !giftBusy && setSendGiftOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md space-y-4 rounded-3xl border bg-card p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-300">
+                    <Gift className="size-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">{t('sendGiftTitle')}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">{t('sendGiftDesc')}</p>
+                  </div>
+                </div>
+                <button onClick={() => setSendGiftOpen(false)} className="rounded-lg p-1 text-muted-foreground hover:text-foreground">
+                  <XIcon className="size-4" />
+                </button>
+              </div>
+              <input
+                value={giftTo}
+                onChange={(e) => setGiftTo(e.target.value)}
+                placeholder={t('giftRecipientPh')}
+                className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <input
+                type="number"
+                inputMode="decimal"
+                value={giftAmount}
+                onChange={(e) => setGiftAmount(e.target.value)}
+                placeholder={t('giftAmountPh')}
+                className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <textarea
+                value={giftMessage}
+                onChange={(e) => setGiftMessage(e.target.value)}
+                placeholder={t('giftMessagePh')}
+                rows={3}
+                className="w-full resize-none rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {t('transferAvailable')}: <span className="font-semibold text-foreground">{data.balance.toFixed(2)} ₴</span>
+              </p>
+              <div className="flex gap-2 pt-1">
+                <Button variant="ghost" className="flex-1" disabled={giftBusy} onClick={() => setSendGiftOpen(false)}>
+                  {tc('cancel')}
+                </Button>
+                <Button className="flex-1" disabled={giftBusy} onClick={submitSendGift}>
+                  {giftBusy ? '…' : t('giftSendBtn')}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+  );
+}
+
+function GiftCardTile({
+  gc,
+  kind,
+  copied,
+  onCopy,
+  redeemedLabel,
+  activeLabel,
+  codeLabel,
+}: {
+  gc: GiftCardRow;
+  kind: 'sent' | 'received';
+  copied: boolean;
+  onCopy: () => void;
+  redeemedLabel: string;
+  activeLabel: string;
+  codeLabel: string;
+}) {
+  const gradient =
+    kind === 'received'
+      ? 'from-amber-500/20 via-rose-500/15 to-fuchsia-500/20'
+      : 'from-violet-500/20 via-indigo-500/15 to-sky-500/20';
+  return (
+    <li className="group relative overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.25)]">
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-60`} />
+      <div className="absolute -right-8 -top-8 size-32 rounded-full bg-white/10 blur-2xl" />
+      <div className="relative flex items-start justify-between">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-background/70 backdrop-blur ring-1 ring-border/60">
+          <Gift className="size-5" />
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+            gc.is_redeemed
+              ? 'bg-muted text-muted-foreground'
+              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
+          }`}
+        >
+          {gc.is_redeemed ? redeemedLabel : activeLabel}
+        </span>
+      </div>
+      <p className="relative mt-4 text-3xl font-bold tabular-nums">
+        {gc.amount.toFixed(0)} <span className="text-base font-medium text-muted-foreground">{gc.currency}</span>
+      </p>
+      {gc.sender_message && (
+        <p className="relative mt-2 line-clamp-2 text-xs italic text-muted-foreground">&ldquo;{gc.sender_message}&rdquo;</p>
+      )}
+      <div className="relative mt-4 flex items-center gap-2">
+        <div className="flex-1 rounded-lg bg-background/70 px-3 py-1.5 font-mono text-[11px] backdrop-blur">
+          <span className="mr-1 text-[9px] uppercase text-muted-foreground">{codeLabel}</span>
+          {gc.code}
+        </div>
+        <button
+          onClick={onCopy}
+          className="flex size-8 items-center justify-center rounded-lg bg-background/70 text-muted-foreground backdrop-blur hover:text-foreground"
+        >
+          {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+        </button>
+      </div>
+    </li>
   );
 }
 

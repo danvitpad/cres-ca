@@ -27,45 +27,119 @@ export async function POST(request: Request) {
   const telegramId = update.message.from.id;
   const firstName = update.message.from.first_name;
 
-  // Handle /start command
+  const appUrl = `${process.env.NEXT_PUBLIC_APP_URL}/telegram`;
+
+  // /start [param]
   if (text.startsWith('/start')) {
     const parts = text.split(' ');
-    const param = parts[1]; // e.g., "master_ABC123"
+    const param = parts[1];
 
-    if (param?.startsWith('master_')) {
+    if (param?.startsWith('linkmaster_')) {
+      const token = param.replace('linkmaster_', '');
+      await handleMasterAccountLink(chatId, telegramId, token);
+    } else if (param?.startsWith('master_')) {
       const inviteCode = param.replace('master_', '');
       await handleMasterLink(chatId, telegramId, inviteCode, firstName);
     } else {
-      await sendMessage(chatId, `👋 Welcome to CRES-CA, ${firstName}!\n\nUse this bot to receive booking reminders and notifications.\n\nOpen the app to get started:`, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '📱 Open CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } },
-          ]],
+      await sendMessage(
+        chatId,
+        `👋 Добро пожаловать в <b>CRES-CA</b>, ${firstName}!\n\nНайди лучших мастеров, записывайся в пару тапов и получай бонусы.\n\nОткрой приложение, чтобы начать:`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
+          },
         },
-      });
+      );
     }
-
-    // Link Telegram ID to profile if possible
-    const supabase = await createClient();
-    await supabase
-      .from('profiles')
-      .update({ telegram_id: String(telegramId) })
-      .eq('telegram_id', String(telegramId)); // Only updates if already linked
 
     return NextResponse.json({ ok: true });
   }
 
-  // Default help message
-  await sendMessage(chatId, '💡 Use /start to begin.\n\nYou can also open the CRES-CA app directly from Telegram.', {
+  // /app — quick-open
+  if (text.startsWith('/app')) {
+    await sendMessage(chatId, '📱 Открыть CRES-CA:', {
+      reply_markup: {
+        inline_keyboard: [[{ text: '✨ Открыть', web_app: { url: appUrl } }]],
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // /help
+  if (text.startsWith('/help')) {
+    await sendMessage(
+      chatId,
+      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/app — открыть приложение\n/help — справка\n\nВсе услуги, мастера и записи доступны внутри мини-приложения.',
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
+        },
+      },
+    );
+    return NextResponse.json({ ok: true });
+  }
+
+  // Fallback
+  await sendMessage(chatId, 'Нажми /start чтобы начать, или открой приложение ниже.', {
     reply_markup: {
-      inline_keyboard: [[
-        { text: '📱 Open App', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } },
-      ]],
+      inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
     },
   });
 
   return NextResponse.json({ ok: true });
+}
+
+async function handleMasterAccountLink(chatId: number, telegramId: number, token: string) {
+  const supabase = await createClient();
+
+  const { data: tokenRow } = await supabase
+    .from('telegram_link_tokens')
+    .select('profile_id, consumed_at, created_at')
+    .eq('token', token)
+    .single();
+
+  if (!tokenRow) {
+    await sendMessage(chatId, '❌ Ссылка недействительна или устарела.');
+    return;
+  }
+  if (tokenRow.consumed_at) {
+    await sendMessage(chatId, '❌ Эта ссылка уже использована.');
+    return;
+  }
+
+  const ageMs = Date.now() - new Date(tokenRow.created_at).getTime();
+  if (ageMs > 15 * 60 * 1000) {
+    await sendMessage(chatId, '❌ Ссылка просрочена (действует 15 минут). Сгенерируй новую в настройках.');
+    return;
+  }
+
+  const { error: profErr } = await supabase
+    .from('profiles')
+    .update({ telegram_id: String(telegramId) })
+    .eq('id', tokenRow.profile_id);
+
+  if (profErr) {
+    await sendMessage(chatId, '❌ Не получилось связать аккаунт. Попробуй ещё раз.');
+    return;
+  }
+
+  await supabase
+    .from('telegram_link_tokens')
+    .update({ consumed_at: new Date().toISOString() })
+    .eq('token', token);
+
+  await sendMessage(
+    chatId,
+    '✅ <b>Telegram подключён!</b>\n\nТеперь ты будешь получать уведомления о новых записях и отменах прямо сюда.',
+    {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: '📅 Открыть календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
+      },
+    },
+  );
 }
 
 async function handleMasterLink(chatId: number, telegramId: number, inviteCode: string, firstName: string) {
@@ -99,11 +173,11 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
     }, { onConflict: 'profile_id,master_id' });
   }
 
-  await sendMessage(chatId, `✅ You're now connected to <b>${masterName}</b>!\n\nTap below to book an appointment:`, {
+  await sendMessage(chatId, `✅ Ты подписан на <b>${masterName}</b>!\n\nОткрой приложение, чтобы записаться:`, {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [[
-        { text: `📅 Book with ${masterName}`, web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/book?master_id=${master.id}` } },
+        { text: `📅 Записаться к ${masterName}`, web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram?startapp=master_${master.id}` } },
       ]],
     },
   });

@@ -7,6 +7,11 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
+
+const DEFAULT_CADENCE =
+  '{client_name}, обычно ты приходишь раз в ~{avg} дней. Прошло уже {days} — пора записаться?';
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
@@ -34,6 +39,22 @@ export async function GET(request: Request) {
   }
 
   const clientIds = clients.map((c) => c.id);
+  const masterIds = Array.from(new Set(clients.map((c) => c.master_id)));
+  const automationSettings = await loadAutomationSettings(supabase, masterIds);
+
+  const { data: tplRows } = await supabase
+    .from('message_templates')
+    .select('master_id, content, is_active')
+    .eq('kind', 'cadence')
+    .eq('is_active', true)
+    .in('master_id', masterIds);
+  const tplMap = new Map<string, typeof tplRows>();
+  for (const row of tplRows ?? []) {
+    const arr = tplMap.get(row.master_id) ?? [];
+    arr.push(row);
+    tplMap.set(row.master_id, arr);
+  }
+
   const { data: apts } = await supabase
     .from('appointments')
     .select('client_id, starts_at')
@@ -58,6 +79,7 @@ export async function GET(request: Request) {
   }> = [];
 
   for (const c of clients) {
+    if (!isEnabled(automationSettings, c.master_id, 'cadence')) continue;
     const dates = byClient.get(c.id) ?? [];
     if (dates.length < 2) continue;
     const intervals: number[] = [];
@@ -78,11 +100,18 @@ export async function GET(request: Request) {
       .limit(1);
     if (existing && existing.length > 0) continue;
 
+    const tpl = pickTemplate(tplMap.get(c.master_id), DEFAULT_CADENCE);
+    const body = renderTemplate(tpl, {
+      client_name: c.full_name ?? 'клиент',
+      avg: med,
+      days: Math.round(daysSinceLast),
+    });
+
     notifyRows.push({
       profile_id: c.profile_id!,
       channel: 'telegram',
       title: '⏰ Пора записаться',
-      body: `${c.full_name}, обычно ты приходишь раз в ~${med} дней. Прошло уже ${Math.round(daysSinceLast)}. ${marker}`,
+      body: `${body} ${marker}`,
       scheduled_for: new Date().toISOString(),
     });
   }

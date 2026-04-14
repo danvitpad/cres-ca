@@ -38,6 +38,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
+import { ClientOnboardingWizard } from '@/components/client/onboarding-wizard';
 import { cn } from '@/lib/utils';
 
 // IG-style sidebar — hover to expand.
@@ -198,6 +199,37 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   );
   const isFeedRoute = useMemo(() => /\/feed\/?$/.test(pathname), [pathname]);
 
+  // Onboarding wizard state
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingInitial, setOnboardingInitial] = useState<{
+    full_name: string | null;
+    phone: string | null;
+    date_of_birth: string | null;
+  }>({ full_name: null, phone: null, date_of_birth: null });
+
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, phone, date_of_birth, client_onboarded_at, role')
+        .eq('id', userId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      if (data.role === 'client' && !data.client_onboarded_at) {
+        setOnboardingInitial({
+          full_name: data.full_name ?? null,
+          phone: data.phone ?? null,
+          date_of_birth: data.date_of_birth ?? null,
+        });
+        setOnboardingOpen(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
   // Notifications dropdown state
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState<Array<{ id: string; title: string; body: string | null; created_at: string; read_at: string | null }>>([]);
@@ -207,20 +239,55 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     if (!userId) return;
     const supabase = createClient();
     let cancelled = false;
-    (async () => {
+
+    async function refresh() {
       const { data } = await supabase
         .from('notifications')
         .select('id, title, body, created_at, read_at')
         .eq('profile_id', userId)
         .order('created_at', { ascending: false })
         .limit(5);
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('profile_id', userId)
+        .is('read_at', null);
       if (cancelled) return;
-      const list = (data ?? []) as typeof notifs;
-      setNotifs(list);
-      setUnreadCount(list.filter((n) => !n.read_at).length);
-    })();
-    return () => { cancelled = true; };
-  }, [userId, notifOpen]);
+      setNotifs((data ?? []) as typeof notifs);
+      setUnreadCount(count ?? 0);
+    }
+
+    refresh();
+
+    const channel = supabase
+      .channel(`notif-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `profile_id=eq.${userId}` },
+        () => refresh(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  // Mark all as read when the dropdown opens (fire-and-forget).
+  useEffect(() => {
+    if (!notifOpen || !userId || unreadCount === 0) return;
+    const supabase = createClient();
+    supabase
+      .from('notifications')
+      .update({ read_at: new Date().toISOString() })
+      .eq('profile_id', userId)
+      .is('read_at', null)
+      .then(() => {
+        setNotifs((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: new Date().toISOString() })));
+        setUnreadCount(0);
+      }, () => {});
+  }, [notifOpen, userId, unreadCount]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -678,6 +745,12 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           );
         })}
       </motion.nav>
+
+      <ClientOnboardingWizard
+        open={onboardingOpen}
+        onClose={() => setOnboardingOpen(false)}
+        initial={onboardingInitial}
+      />
     </div>
   );
 }

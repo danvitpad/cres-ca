@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -67,7 +68,16 @@ const serviceSchema = z.object({
   prepayment_amount: z.number().min(0).default(0),
   color: z.string().default('#6366f1'),
   upsell_services: z.array(z.string().uuid()).default([]),
+  preparation: z.string().nullable().optional(),
+  aftercare: z.string().nullable().optional(),
+  faq: z.array(z.object({ q: z.string(), a: z.string() })).default([]),
+  checklist: z.array(z.string()).default([]),
 });
+
+interface FaqItem {
+  q: string;
+  a: string;
+}
 
 interface ServiceRow {
   id: string;
@@ -81,6 +91,9 @@ interface ServiceRow {
   prepayment_amount: number;
   is_active: boolean;
   upsell_services: string[] | null;
+  preparation: string | null;
+  aftercare: string | null;
+  faq: FaqItem[] | null;
   category: { name: string; color: string } | null;
 }
 
@@ -497,7 +510,45 @@ function ServiceForm({
   const [requiresPrepayment, setRequiresPrepayment] = useState(editing?.requires_prepayment ?? false);
   const [prepaymentAmount, setPrepaymentAmount] = useState(String(editing?.prepayment_amount ?? 0));
   const [upsellServices, setUpsellServices] = useState<string[]>(editing?.upsell_services ?? []);
+  const [isMobile, setIsMobile] = useState<boolean>(((editing as unknown) as { is_mobile?: boolean } | null)?.is_mobile ?? false);
+  const [travelBuffer, setTravelBuffer] = useState<string>(String(((editing as unknown) as { travel_buffer_minutes?: number } | null)?.travel_buffer_minutes ?? 0));
+  const [preparation, setPreparation] = useState(editing?.preparation ?? '');
+  const [aftercare, setAftercare] = useState(editing?.aftercare ?? '');
+  const [checklistText, setChecklistText] = useState(
+    ((editing as unknown as { checklist?: string[] } | null)?.checklist ?? []).join('\n'),
+  );
+  const [faqText, setFaqText] = useState(
+    (editing?.faq ?? []).map((f) => `${f.q} :: ${f.a}`).join('\n'),
+  );
   const upsellCandidates = allServices.filter((s) => s.id !== editing?.id);
+
+  const [inventoryItems, setInventoryItems] = useState<
+    { id: string; name: string; unit: string }[]
+  >([]);
+  const [recipeMap, setRecipeMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const { data } = await supabase
+        .from('inventory_items')
+        .select('id, name, unit')
+        .eq('master_id', masterId)
+        .order('name');
+      setInventoryItems((data ?? []) as { id: string; name: string; unit: string }[]);
+      if (editing) {
+        const { data: recs } = await supabase
+          .from('service_recipes')
+          .select('item_id, quantity')
+          .eq('service_id', editing.id);
+        const map: Record<string, number> = {};
+        for (const r of (recs ?? []) as { item_id: string; quantity: number }[]) {
+          map[r.item_id] = Number(r.quantity);
+        }
+        setRecipeMap(map);
+      }
+    })();
+  }, [masterId, editing]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -511,6 +562,21 @@ function ServiceForm({
       requires_prepayment: requiresPrepayment,
       prepayment_amount: parseFloat(prepaymentAmount) || 0,
       upsell_services: upsellServices,
+      preparation: preparation.trim() || null,
+      aftercare: aftercare.trim() || null,
+      faq: faqText
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .map((l) => {
+          const [q, ...rest] = l.split('::');
+          return { q: q.trim(), a: rest.join('::').trim() };
+        })
+        .filter((f) => f.q && f.a),
+      checklist: checklistText
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean),
     });
 
     if (!parsed.success) {
@@ -520,7 +586,7 @@ function ServiceForm({
 
     setSaving(true);
     const supabase = createClient();
-    const payload = { ...parsed.data, master_id: masterId };
+    const payload = { ...parsed.data, master_id: masterId, is_mobile: isMobile, travel_buffer_minutes: Number(travelBuffer) || 0 };
 
     const { error } = editing
       ? await supabase.from('services').update(payload).eq('id', editing.id)
@@ -528,6 +594,27 @@ function ServiceForm({
 
     setSaving(false);
     if (error) { toast.error(error.message); return; }
+
+    // Sync service_recipes
+    const serviceId = editing?.id ??
+      (await supabase
+        .from('services')
+        .select('id')
+        .eq('master_id', masterId)
+        .eq('name', parsed.data.name)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()).data?.id;
+    if (serviceId) {
+      await supabase.from('service_recipes').delete().eq('service_id', serviceId);
+      const recipeRows = Object.entries(recipeMap)
+        .filter(([, q]) => q > 0)
+        .map(([item_id, quantity]) => ({ service_id: serviceId, item_id, quantity }));
+      if (recipeRows.length > 0) {
+        await supabase.from('service_recipes').insert(recipeRows);
+      }
+    }
+
     toast.success(tc('success'));
     onSaved();
   }
@@ -586,6 +673,18 @@ function ServiceForm({
         <Label>{tp('prepayment')}</Label>
       </div>
 
+      <div className="flex items-center gap-3">
+        <Switch checked={isMobile} onCheckedChange={setIsMobile} />
+        <Label>Выездная услуга</Label>
+      </div>
+
+      {isMobile && (
+        <div className="space-y-2">
+          <Label>Буфер на дорогу (мин)</Label>
+          <Input type="number" min={0} max={180} value={travelBuffer} onChange={(e) => setTravelBuffer(e.target.value)} />
+        </div>
+      )}
+
       {requiresPrepayment && (
         <div className="space-y-2">
           <Label>{tp('prepaymentAmount')}</Label>
@@ -623,6 +722,82 @@ function ServiceForm({
                 </label>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Как подготовиться</Label>
+        <Textarea
+          rows={3}
+          value={preparation}
+          onChange={(e) => setPreparation(e.target.value)}
+          placeholder="Напр.: Приходи без макияжа, волосы чистые и сухие"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Уход после</Label>
+        <Textarea
+          rows={3}
+          value={aftercare}
+          onChange={(e) => setAftercare(e.target.value)}
+          placeholder="Напр.: Не мыть голову первые 24 часа"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>FAQ — одна пара на строку: «Вопрос :: Ответ»</Label>
+        <Textarea
+          rows={4}
+          value={faqText}
+          onChange={(e) => setFaqText(e.target.value)}
+          placeholder="Сколько держится? :: В среднем 3-4 недели"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Чеклист визита — один пункт на строку</Label>
+        <Textarea
+          rows={4}
+          value={checklistText}
+          onChange={(e) => setChecklistText(e.target.value)}
+          placeholder={'Поздороваться и предложить воду\nЗафиксировать до-фото\nПровести процедуру\nСнять после-фото\nОбъяснить домашний уход'}
+        />
+        <p className="text-xs text-muted-foreground">
+          Эти пункты будут показаны во время визита — ничего не забудешь.
+        </p>
+      </div>
+
+      {inventoryItems.length > 0 && (
+        <div className="space-y-2">
+          <Label>Рецепт (авто-списание со склада после визита)</Label>
+          <p className="text-xs text-muted-foreground">
+            Укажите сколько каждого материала расходуется на одну услугу. Пустое = не тратится.
+          </p>
+          <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2">
+            {inventoryItems.map((it) => (
+              <div key={it.id} className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm">
+                <span className="flex-1 truncate">{it.name}</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  className="h-7 w-24"
+                  value={recipeMap[it.id] ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setRecipeMap((prev) => {
+                      const next = { ...prev };
+                      if (v === '') delete next[it.id];
+                      else next[it.id] = parseFloat(v) || 0;
+                      return next;
+                    });
+                  }}
+                />
+                <span className="w-10 text-xs text-muted-foreground">{it.unit}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}

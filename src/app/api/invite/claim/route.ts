@@ -34,12 +34,17 @@ export async function POST() {
     .upsert({ profile_id: user.id, master_id: payload.master_id }, { onConflict: 'profile_id,master_id' });
 
   if (payload.ref && payload.ref !== user.id) {
-    await supabase.from('referrals').insert({
-      referrer_profile_id: payload.ref,
-      referee_profile_id: user.id,
-      master_id: payload.master_id,
-      source: 'invite_link',
-    }).then(() => {}, () => {});
+    const { data: refClient } = await supabase
+      .from('clients').select('id').eq('profile_id', payload.ref).maybeSingle();
+    const { data: meClient } = await supabase
+      .from('clients').select('id').eq('profile_id', user.id).maybeSingle();
+    if (refClient?.id && meClient?.id) {
+      await supabase.from('referrals').insert({
+        referrer_client_id: refClient.id,
+        referred_client_id: meClient.id,
+        bonus_points: 0,
+      }).then(() => {}, () => {});
+    }
   }
 
   jar.delete('pending_invite');

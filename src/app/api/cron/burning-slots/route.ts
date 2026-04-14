@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendMessage } from '@/lib/telegram/bot';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -104,23 +105,37 @@ export async function GET(request: Request) {
 
     const { data: followers } = await supabase
       .from('client_master_links')
-      .select('profile_id')
+      .select('profile_id, profiles(telegram_id)')
       .eq('master_id', master.id);
 
+    const marker = `[burning:${master.id}:${tomorrow.toISOString().split('T')[0]}]`;
+    const pushTitle = '🔥 Flash Deal!';
+    const pushBody = service
+      ? `${service.name} tomorrow with ${discount}% off! ${marker}`
+      : `${discount}% off tomorrow! ${marker}`;
+
     if (followers?.length) {
-      const notifications = followers
-        .filter((f) => !!f.profile_id)
-        .map((f) => ({
-          profile_id: f.profile_id,
-          channel: 'telegram' as const,
-          title: '🔥 Flash Deal!',
-          body: service
-            ? `${service.name} tomorrow with ${discount}% off! [burning:${master.id}:${tomorrow.toISOString().split('T')[0]}]`
-            : `${discount}% off tomorrow! [burning:${master.id}:${tomorrow.toISOString().split('T')[0]}]`,
-          status: 'pending' as const,
-          scheduled_for: new Date().toISOString(),
-        }));
-      if (notifications.length > 0) await supabase.from('notifications').insert(notifications);
+      const rows = followers.filter((f) => !!f.profile_id);
+      if (rows.length > 0) {
+        await supabase.from('notifications').insert(
+          rows.map((f) => ({
+            profile_id: f.profile_id,
+            channel: 'telegram' as const,
+            title: pushTitle,
+            body: pushBody,
+            status: 'sent' as const,
+            scheduled_for: new Date().toISOString(),
+            sent_at: new Date().toISOString(),
+          })),
+        );
+        for (const f of rows) {
+          const tgId = (f.profiles as unknown as { telegram_id: string | null } | null)?.telegram_id;
+          if (!tgId) continue;
+          try {
+            await sendMessage(tgId, `<b>${pushTitle}</b>\n\n${pushBody}`, { parse_mode: 'HTML' });
+          } catch {}
+        }
+      }
     }
 
     postsCreated++;

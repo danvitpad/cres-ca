@@ -20,16 +20,18 @@ interface DocRow {
   file_url: string;
   file_name: string;
   file_type: string | null;
-  file_size_bytes: number | null;
   description: string | null;
   created_at: string;
 }
 
-function formatSize(bytes: number | null): string {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+function fileNameFromUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split('/').filter(Boolean).pop() ?? 'file';
+    return decodeURIComponent(last);
+  } catch {
+    return url.split('/').pop() ?? 'file';
+  }
 }
 
 function iconFor(type: string | null) {
@@ -60,12 +62,16 @@ export default function ClientDocumentsPage() {
       }
       const { data } = await supabase
         .from('client_files')
-        .select('id, file_url, file_name, file_type, file_size_bytes, description, created_at')
+        .select('id, file_url, file_type, description, created_at')
         .in('client_id', clientIds)
         .not('file_type', 'like', 'image/%')
         .order('created_at', { ascending: false });
 
-      setDocs((data ?? []) as DocRow[]);
+      const rows: DocRow[] = (data ?? []).map((r: { id: string; file_url: string; file_type: string | null; description: string | null; created_at: string }) => ({
+        ...r,
+        file_name: fileNameFromUrl(r.file_url),
+      }));
+      setDocs(rows);
       setLoading(false);
     }
     load();
@@ -124,7 +130,6 @@ export default function ClientDocumentsPage() {
                   )}
                   <div className="mt-1 flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
                     <span>{new Date(doc.created_at).toLocaleDateString()}</span>
-                    {doc.file_size_bytes && <span>· {formatSize(doc.file_size_bytes)}</span>}
                   </div>
                 </div>
                 <Download className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-[var(--ds-accent)]" />

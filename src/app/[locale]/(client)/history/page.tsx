@@ -98,24 +98,38 @@ export default function HistoryPage() {
         .order('starts_at', { ascending: false });
 
       if (data) {
-        // Fetch before/after photos for these masters/services
+        // Fetch before/after photos: prefer exact appointment_id match, fall back to master+service.
+        const apptIds = data.map((a) => a.id);
         const masterIds = Array.from(new Set(data.map((a) => a.master_id).filter(Boolean)));
         const serviceIds = Array.from(new Set(data.map((a) => a.service_id).filter(Boolean)));
-        const photoMap = new Map<string, BeforeAfterPair>();
+
+        const byAppt = new Map<string, BeforeAfterPair>();
+        const byMasterService = new Map<string, BeforeAfterPair>();
+
+        if (apptIds.length) {
+          const { data: exact } = await supabase
+            .from('before_after_photos')
+            .select('id, appointment_id, before_url, after_url, caption')
+            .in('appointment_id', apptIds);
+          exact?.forEach((p: { id: string; appointment_id: string; before_url: string; after_url: string; caption: string | null }) => {
+            byAppt.set(p.appointment_id, { id: p.id, before_url: p.before_url, after_url: p.after_url, caption: p.caption });
+          });
+        }
+
         if (masterIds.length && serviceIds.length) {
           const { data: photos } = await supabase
             .from('before_after_photos')
             .select('id, master_id, service_id, before_url, after_url, caption, created_at')
             .in('master_id', masterIds)
             .in('service_id', serviceIds)
+            .is('appointment_id', null)
             .order('created_at', { ascending: false });
           photos?.forEach((p: { id: string; master_id: string; service_id: string; before_url: string; after_url: string; caption: string | null }) => {
             const key = `${p.master_id}::${p.service_id}`;
-            if (!photoMap.has(key)) photoMap.set(key, { id: p.id, before_url: p.before_url, after_url: p.after_url, caption: p.caption });
+            if (!byMasterService.has(key)) byMasterService.set(key, { id: p.id, before_url: p.before_url, after_url: p.after_url, caption: p.caption });
           });
         }
 
-        // Attach master info from clients + before/after by master+service
         const enriched = data.map((a) => {
           const clientRecord = clients.find((c) => c.master_id === a.master_id);
           return {
@@ -127,7 +141,7 @@ export default function HistoryPage() {
                 ? C extends { master: infer M } ? M : never
                 : never,
             } : null,
-            beforeAfter: photoMap.get(`${a.master_id}::${a.service_id}`) ?? null,
+            beforeAfter: byAppt.get(a.id) ?? byMasterService.get(`${a.master_id}::${a.service_id}`) ?? null,
           };
         });
         setAppointments(enriched);

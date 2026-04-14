@@ -202,6 +202,8 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
   const tc = useTranslations('common');
   const [saving, setSaving] = useState(false);
   const [hours, setHours] = useState<WorkingHours>(master.working_hours || {});
+  const [bufferMin, setBufferMin] = useState<number>(((master as unknown) as { long_visit_buffer_minutes: number | null }).long_visit_buffer_minutes ?? 0);
+  const [bufferThreshold, setBufferThreshold] = useState<number>(((master as unknown) as { long_visit_threshold_minutes: number | null }).long_visit_threshold_minutes ?? 120);
 
   function toggleDay(day: string, enabled: boolean) {
     setHours((prev) => ({
@@ -218,10 +220,34 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
     });
   }
 
+  function applyBreakToAll(sourceDay: string) {
+    setHours((prev) => {
+      const src = prev[sourceDay];
+      if (!src?.break_start || !src?.break_end) {
+        toast.error('Сначала задай обед в выбранном дне');
+        return prev;
+      }
+      const next: WorkingHours = { ...prev };
+      for (const d of DAYS) {
+        const cur = next[d];
+        if (cur) next[d] = { ...cur, break_start: src.break_start, break_end: src.break_end };
+      }
+      toast.success('Обед применён ко всем рабочим дням');
+      return next;
+    });
+  }
+
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from('masters').update({ working_hours: hours }).eq('id', master.id);
+    const { error } = await supabase
+      .from('masters')
+      .update({
+        working_hours: hours,
+        long_visit_buffer_minutes: bufferMin,
+        long_visit_threshold_minutes: bufferThreshold,
+      })
+      .eq('id', master.id);
     setSaving(false);
     if (error) toast.error(error.message);
     else { toast.success(t('hoursSaved')); onSaved(); }
@@ -262,6 +288,38 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
             </div>
           );
         })}
+        <div className="rounded-md border p-4 space-y-2">
+          <div className="text-sm font-semibold">Обеденный перерыв · применить ко всем дням</div>
+          <p className="text-xs text-muted-foreground">
+            Задай «обед» в одном дне, затем скопируй его в остальные рабочие дни одной кнопкой. Календарь автоматически блокирует это время.
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {DAYS.filter((d) => hours[d]?.break_start && hours[d]?.break_end).map((d) => (
+              <Button key={d} size="sm" variant="outline" onClick={() => applyBreakToAll(d)}>
+                Применить {t(d)} ({hours[d]?.break_start}–{hours[d]?.break_end})
+              </Button>
+            ))}
+            {!DAYS.some((d) => hours[d]?.break_start && hours[d]?.break_end) && (
+              <span className="text-xs text-muted-foreground">Задай обед хотя бы в одном дне, затем появится кнопка копирования.</span>
+            )}
+          </div>
+        </div>
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="text-sm font-semibold">Smart scheduling · буфер после длинных визитов</div>
+          <p className="text-xs text-muted-foreground">
+            Если визит длиннее порога, следующий слот не откроется сразу — оставляем буфер на отдых/уборку.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Буфер (мин)</div>
+              <Input type="number" min={0} max={120} value={bufferMin} onChange={(e) => setBufferMin(Number(e.target.value) || 0)} />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground mb-1">Порог длительности (мин)</div>
+              <Input type="number" min={30} max={480} value={bufferThreshold} onChange={(e) => setBufferThreshold(Number(e.target.value) || 120)} />
+            </div>
+          </div>
+        </div>
         <Button onClick={handleSave} disabled={saving}>
           {saving ? tc('loading') : tc('save')}
         </Button>

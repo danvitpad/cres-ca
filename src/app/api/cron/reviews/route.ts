@@ -7,6 +7,11 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
+
+const DEFAULT_REVIEW_REQUEST =
+  '⭐ {client_name}, как прошёл визит «{service_name}» у {master_name}? Оцените визит: https://cres.ca/review/{apt_id} [review:{apt_id}]';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -21,7 +26,9 @@ export async function GET(request: Request) {
 
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('id, master_id, ends_at, clients(profile_id, full_name), services(name), masters(display_name, profiles(full_name))')
+    .select(
+      'id, master_id, ends_at, clients(profile_id, full_name), services(name), masters(display_name, profiles(full_name))',
+    )
     .eq('status', 'completed')
     .gte('ends_at', from.toISOString())
     .lte('ends_at', to.toISOString());
@@ -56,24 +63,49 @@ export async function GET(request: Request) {
     .in('profile_id', profileIds);
   const prefMap = new Map((prefs ?? []).map((p) => [p.profile_id, p.review_requests !== false]));
 
+  const masterIds = Array.from(new Set(appointments.map((a) => a.master_id)));
+  const automationSettings = await loadAutomationSettings(supabase, masterIds);
+  const { data: tplRows } = await supabase
+    .from('message_templates')
+    .select('master_id, content, is_active')
+    .eq('kind', 'review_request')
+    .eq('is_active', true)
+    .in('master_id', masterIds);
+  const tplMap = new Map<string, typeof tplRows>();
+  for (const row of tplRows ?? []) {
+    const arr = tplMap.get(row.master_id) ?? [];
+    arr.push(row);
+    tplMap.set(row.master_id, arr);
+  }
+
   let created = 0;
   for (const apt of appointments) {
+    if (!isEnabled(automationSettings, apt.master_id, 'review_request')) continue;
     if (reviewedSet.has(apt.id) || notifiedSet.has(apt.id)) continue;
 
-    const client = apt.clients as unknown as { profile_id: string | null } | null;
+    const client = apt.clients as unknown as { profile_id: string | null; full_name: string | null } | null;
     if (!client?.profile_id) continue;
     if (prefMap.get(client.profile_id) === false) continue;
 
     const service = apt.services as unknown as { name: string } | null;
     const master = apt.masters as unknown as { display_name: string | null; profiles: { full_name: string | null } | null } | null;
-    const masterName = master?.display_name ?? master?.profiles?.full_name ?? 'your master';
-    const serviceName = service?.name ?? 'the visit';
+    const masterName = master?.display_name ?? master?.profiles?.full_name ?? 'мастер';
+    const serviceName = service?.name ?? 'визит';
+
+    const tpl = pickTemplate(tplMap.get(apt.master_id), DEFAULT_REVIEW_REQUEST);
+    const body = renderTemplate(tpl, {
+      client_name: client.full_name ?? 'клиент',
+      service_name: serviceName,
+      master_name: masterName,
+      apt_id: apt.id,
+    });
+    const finalBody = body.includes(`[review:${apt.id}]`) ? body : `${body} [review:${apt.id}]`;
 
     await supabase.from('notifications').insert({
       profile_id: client.profile_id,
       channel: 'telegram',
-      title: '⭐ Rate your visit',
-      body: `How was "${serviceName}" with ${masterName}? Open History to leave a review. [review:${apt.id}]`,
+      title: '⭐ Оцените визит',
+      body: finalBody,
       scheduled_for: now.toISOString(),
     });
     created++;

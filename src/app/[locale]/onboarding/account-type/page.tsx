@@ -33,7 +33,7 @@ export default function AccountTypePage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              onClick={() => router.push('/onboarding/create-business')}
+              onClick={() => router.push('/onboarding/vertical')}
               className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-md"
             >
               <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">

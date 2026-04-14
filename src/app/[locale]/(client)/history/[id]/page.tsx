@@ -99,6 +99,7 @@ export default function AppointmentDetailPage() {
   const [ratingOpen, setRatingOpen] = useState(false);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
+  const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
   const [cancelOpen, setCancelOpen] = useState(false);
 
   useEffect(() => {
@@ -185,23 +186,35 @@ export default function AppointmentDetailPage() {
     if (!row || busy) return;
     setBusy(true);
     const supabase = createClient();
-    const { error } = await supabase.from('reviews').insert({
-      appointment_id: row.id,
-      reviewer_id: userId,
-      target_type: 'master',
-      target_id: row.master_id,
-      score: ratingScore,
-      comment: ratingComment.trim() || null,
-      is_published: true,
-    });
-    setBusy(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      const photoUrls: string[] = [];
+      for (const file of reviewPhotos) {
+        const ext = file.name.split('.').pop() || 'jpg';
+        const path = `${row.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('reviews').upload(path, file);
+        if (upErr) throw upErr;
+        photoUrls.push(supabase.storage.from('reviews').getPublicUrl(path).data.publicUrl);
+      }
+      const { error } = await supabase.from('reviews').insert({
+        appointment_id: row.id,
+        reviewer_id: userId,
+        target_type: 'master',
+        target_id: row.master_id,
+        score: ratingScore,
+        comment: ratingComment.trim() || null,
+        photos: photoUrls,
+        is_published: true,
+      });
+      if (error) throw error;
+      toast.success(tr('thanks'));
+      setReviewExists(true);
+      setRatingOpen(false);
+      setReviewPhotos([]);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
     }
-    toast.success(tr('thanks'));
-    setReviewExists(true);
-    setRatingOpen(false);
   }
 
   if (loading) {
@@ -529,6 +542,19 @@ export default function AppointmentDetailPage() {
               rows={3}
               className="w-full resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             />
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Фото (необязательно)</label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => setReviewPhotos(Array.from(e.target.files ?? []))}
+                className="w-full text-xs"
+              />
+              {reviewPhotos.length > 0 && (
+                <div className="mt-1 text-xs text-muted-foreground">{reviewPhotos.length} фото</div>
+              )}
+            </div>
             <div className="flex gap-2">
               <Button variant="ghost" className="flex-1" disabled={busy} onClick={() => setRatingOpen(false)}>
                 {tc('cancel')}

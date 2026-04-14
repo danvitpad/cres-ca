@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Download, X, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, X, Calendar as CalendarIcon, CalendarClock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
@@ -25,13 +25,33 @@ interface ClientAppointment {
   starts_at: string;
   ends_at: string;
   status: string;
+  price: number | null;
+  currency: string | null;
+  client_id: string | null;
+  service_id: string | null;
   service: { name: string; color: string | null } | null;
   master: {
     id: string;
     display_name: string | null;
     avatar_url: string | null;
+    cancellation_policy: { free_hours: number; partial_hours: number; partial_percent: number } | null;
     profile: { full_name: string | null; avatar_url: string | null } | null;
   } | null;
+}
+
+function computeCancellationFee(
+  appt: ClientAppointment,
+): { kind: 'free' | 'partial' | 'late'; amount: number; hoursUntil: number } {
+  const now = Date.now();
+  const start = new Date(appt.starts_at).getTime();
+  const hoursUntil = Math.max(0, (start - now) / 3_600_000);
+  const price = Number(appt.price ?? 0);
+  const policy = appt.master?.cancellation_policy ?? { free_hours: 24, partial_hours: 12, partial_percent: 50 };
+  if (hoursUntil >= policy.free_hours) return { kind: 'free', amount: 0, hoursUntil };
+  if (hoursUntil >= policy.partial_hours) {
+    return { kind: 'partial', amount: Math.round((price * policy.partial_percent) / 100), hoursUntil };
+  }
+  return { kind: 'late', amount: price, hoursUntil };
 }
 
 function masterName(m: ClientAppointment['master']): string {
@@ -101,6 +121,11 @@ export default function ClientCalendarPage() {
   const [cancelTarget, setCancelTarget] = useState<ClientAppointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<ClientAppointment | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<string>('');
+  const [rescheduleSlots, setRescheduleSlots] = useState<string[]>([]);
+  const [rescheduleLoadingSlots, setRescheduleLoadingSlots] = useState(false);
+  const [rescheduleBusy, setRescheduleBusy] = useState(false);
 
   const fetchAppointments = useCallback(async () => {
     const supabase = createClient();
@@ -110,9 +135,9 @@ export default function ClientCalendarPage() {
     const { data } = await supabase
       .from('appointments')
       .select(`
-        id, starts_at, ends_at, status, master_id,
+        id, starts_at, ends_at, status, master_id, price, currency, client_id, service_id,
         service:services(name, color),
-        master:masters!inner(id, display_name, avatar_url, profile:profiles(full_name, avatar_url))
+        master:masters!inner(id, display_name, avatar_url, cancellation_policy, profile:profiles(full_name, avatar_url))
       `)
       .gte('starts_at', start)
       .lte('starts_at', end)
@@ -122,14 +147,82 @@ export default function ClientCalendarPage() {
     setLoading(false);
   }, [year, month]);
 
+  function openReschedule(appt: ClientAppointment) {
+    setRescheduleTarget(appt);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setRescheduleDate(tomorrow.toISOString().slice(0, 10));
+    setRescheduleSlots([]);
+  }
+
+  useEffect(() => {
+    if (!rescheduleTarget || !rescheduleDate || !rescheduleTarget.master?.id || !rescheduleTarget.service_id) return;
+    const controller = new AbortController();
+    setRescheduleLoadingSlots(true);
+    fetch(
+      `/api/slots?master_id=${rescheduleTarget.master.id}&service_id=${rescheduleTarget.service_id}&date=${rescheduleDate}`,
+      { signal: controller.signal },
+    )
+      .then((r) => r.json())
+      .then((json: { slots?: string[] }) => setRescheduleSlots(json.slots ?? []))
+      .catch(() => {})
+      .finally(() => setRescheduleLoadingSlots(false));
+    return () => controller.abort();
+  }, [rescheduleTarget, rescheduleDate]);
+
+  async function submitReschedule(slot: string) {
+    if (!rescheduleTarget) return;
+    setRescheduleBusy(true);
+    const supabase = createClient();
+    const durationMs = new Date(rescheduleTarget.ends_at).getTime() - new Date(rescheduleTarget.starts_at).getTime();
+    const newStart = new Date(`${rescheduleDate}T${slot}:00`);
+    const newEnd = new Date(newStart.getTime() + durationMs);
+
+    const { error } = await supabase
+      .from('appointments')
+      .update({
+        starts_at: newStart.toISOString(),
+        ends_at: newEnd.toISOString(),
+        status: 'booked',
+      })
+      .eq('id', rescheduleTarget.id);
+
+    if (error) {
+      toast.error(error.message);
+      setRescheduleBusy(false);
+      return;
+    }
+
+    const { data: masterRow } = await supabase
+      .from('masters')
+      .select('profile_id')
+      .eq('id', rescheduleTarget.master?.id ?? '')
+      .maybeSingle();
+    if (masterRow?.profile_id) {
+      await supabase.from('notifications').insert({
+        profile_id: masterRow.profile_id,
+        channel: 'telegram',
+        title: '🔄 Client rescheduled',
+        body: `${rescheduleTarget.service?.name ?? 'Appointment'} перенесён на ${newStart.toLocaleString()}. [resched:${rescheduleTarget.id}]`,
+        scheduled_for: new Date().toISOString(),
+      });
+    }
+
+    toast.success('Visit rescheduled');
+    setRescheduleTarget(null);
+    setRescheduleBusy(false);
+    fetchAppointments();
+  }
+
   async function submitCancel() {
     if (!cancelTarget) return;
     setCancelBusy(true);
     const supabase = createClient();
+    const fee = computeCancellationFee(cancelTarget);
     const { error } = await supabase
       .from('appointments')
       .update({
-        status: 'cancelled',
+        status: 'cancelled_by_client',
         cancellation_reason: cancelReason.trim() || null,
         cancelled_at: new Date().toISOString(),
         cancelled_by: 'client',
@@ -139,6 +232,18 @@ export default function ClientCalendarPage() {
       toast.error(error.message);
       setCancelBusy(false);
       return;
+    }
+
+    if (fee.amount > 0 && cancelTarget.client_id) {
+      await supabase.from('payments').insert({
+        appointment_id: cancelTarget.id,
+        client_id: cancelTarget.client_id,
+        master_id: cancelTarget.master?.id ?? null,
+        amount: fee.amount,
+        currency: cancelTarget.currency ?? 'UAH',
+        type: 'cancellation_fee',
+        status: 'pending',
+      });
     }
 
     const { data: masterRow } = await supabase
@@ -408,6 +513,13 @@ export default function ClientCalendarPage() {
                       <Download className="h-4 w-4" />
                     </button>
                     <button
+                      onClick={() => openReschedule(appt)}
+                      className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      title="Перенести"
+                    >
+                      <CalendarClock className="h-4 w-4" />
+                    </button>
+                    <button
                       onClick={() => { setCancelTarget(appt); setCancelReason(''); }}
                       className="shrink-0 rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
                       title={t('cancel')}
@@ -470,13 +582,22 @@ export default function ClientCalendarPage() {
                     <Download className="h-4 w-4" />
                   </button>
                   {isUpcoming && (
-                    <button
-                      onClick={() => { setCancelTarget(appt); setCancelReason(''); }}
-                      className="shrink-0 rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
-                      title={t('cancel')}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                    <>
+                      <button
+                        onClick={() => openReschedule(appt)}
+                        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Перенести"
+                      >
+                        <CalendarClock className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => { setCancelTarget(appt); setCancelReason(''); }}
+                        className="shrink-0 rounded-lg p-2 text-red-500 transition-colors hover:bg-red-50 dark:hover:bg-red-950"
+                        title={t('cancel')}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
                 </motion.div>
               );
@@ -490,11 +611,28 @@ export default function ClientCalendarPage() {
           <DialogHeader>
             <DialogTitle>{t('cancelTitle')}</DialogTitle>
           </DialogHeader>
-          {cancelTarget && (
+          {cancelTarget && (() => {
+            const fee = computeCancellationFee(cancelTarget);
+            return (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 {cancelTarget.service?.name} — {new Date(cancelTarget.starts_at).toLocaleString()}
               </p>
+              {fee.kind === 'free' && (
+                <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-300">
+                  До визита {Math.round(fee.hoursUntil)} ч — отмена бесплатная.
+                </div>
+              )}
+              {fee.kind === 'partial' && (
+                <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-300">
+                  Поздняя отмена ({Math.round(fee.hoursUntil)} ч до визита): удерживается <b>{fee.amount} {cancelTarget.currency ?? 'UAH'}</b> по политике мастера.
+                </div>
+              )}
+              {fee.kind === 'late' && (
+                <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-300">
+                  Срочная отмена ({Math.round(fee.hoursUntil)} ч до визита): удерживается полная стоимость <b>{fee.amount} {cancelTarget.currency ?? 'UAH'}</b>.
+                </div>
+              )}
               <Textarea
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
@@ -508,6 +646,54 @@ export default function ClientCalendarPage() {
                 <Button variant="destructive" onClick={submitCancel} disabled={cancelBusy}>
                   {cancelBusy ? '…' : t('cancelConfirm')}
                 </Button>
+              </div>
+            </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rescheduleTarget} onOpenChange={(o) => !o && setRescheduleTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Перенести визит</DialogTitle>
+          </DialogHeader>
+          {rescheduleTarget && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {rescheduleTarget.service?.name} — сейчас: {new Date(rescheduleTarget.starts_at).toLocaleString()}
+              </p>
+              <div>
+                <label className="text-xs text-muted-foreground">Новая дата</label>
+                <input
+                  type="date"
+                  value={rescheduleDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm"
+                />
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground mb-2">Доступные слоты</div>
+                {rescheduleLoadingSlots ? (
+                  <div className="text-sm text-muted-foreground">Загрузка…</div>
+                ) : rescheduleSlots.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Нет доступных слотов на эту дату.</div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {rescheduleSlots.map((slot) => (
+                      <Button
+                        key={slot}
+                        variant="outline"
+                        size="sm"
+                        disabled={rescheduleBusy}
+                        onClick={() => submitReschedule(slot)}
+                      >
+                        {slot}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

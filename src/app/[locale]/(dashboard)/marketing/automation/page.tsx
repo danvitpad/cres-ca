@@ -1,38 +1,193 @@
 /** --- YAML
- * name: AutomationPage
- * description: Fresha-exact automated messages — set up automated client communications
+ * name: Marketing Automations
+ * description: Мастер видит список всех автоматизаций (24h reminder, 2h reminder, review request, cadence, win-back, NPS) и может их включать/выключать. Связано с `message_templates` и cron-джобами.
+ * created: 2026-04-13
+ * updated: 2026-04-13
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
-import { motion } from 'framer-motion';
-import { Zap } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useMaster } from '@/hooks/use-master';
+import { Switch } from '@/components/ui/switch';
 
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const LIGHT = { bg: '#ffffff', text: '#0d0d0d', textMuted: '#737373', accent: '#6950f3', emptyBg: '#f9fafb', emptyBorder: '#e5e5e5' };
-const DARK = { bg: '#000000', text: '#f5f5f5', textMuted: '#999999', accent: '#8b7cf6', emptyBg: '#000000', emptyBorder: '#1a1a1a' };
+type AutomationKey =
+  | 'reminder_24h'
+  | 'reminder_2h'
+  | 'review_request'
+  | 'cadence'
+  | 'win_back'
+  | 'nps';
+
+interface Settings {
+  reminder_24h: boolean;
+  reminder_2h: boolean;
+  review_request: boolean;
+  cadence: boolean;
+  win_back: boolean;
+  nps: boolean;
+}
+
+const DEFAULTS: Settings = {
+  reminder_24h: true,
+  reminder_2h: true,
+  review_request: true,
+  cadence: false,
+  win_back: false,
+  nps: false,
+};
+
+const RULES: {
+  key: AutomationKey;
+  title: string;
+  description: string;
+  trigger: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+}[] = [
+  {
+    key: 'reminder_24h',
+    title: 'Напоминание за 24 часа',
+    description: 'TG-пуш клиенту и мастеру за день до визита',
+    trigger: 'Cron · ежедневно в 08:00',
+    icon: Clock,
+    accent: '#6366f1',
+  },
+  {
+    key: 'reminder_2h',
+    title: 'Напоминание за 2 часа',
+    description: 'TG-пуш клиенту за 2 часа до визита',
+    trigger: 'Cron · ежедневно в 08:00',
+    icon: Bell,
+    accent: '#8b5cf6',
+  },
+  {
+    key: 'review_request',
+    title: 'Запрос отзыва',
+    description: 'Через 2 часа после визита — предложение оставить отзыв',
+    trigger: 'Cron · каждый день в 10:00',
+    icon: Star,
+    accent: '#f59e0b',
+  },
+  {
+    key: 'cadence',
+    title: 'Smart rebooking',
+    description: 'Клиент перестал приходить по своей привычке — напомнить',
+    trigger: 'Cron · ежедневно в 11:00',
+    icon: TrendingUp,
+    accent: '#10b981',
+  },
+  {
+    key: 'win_back',
+    title: 'Win-back',
+    description: 'Клиент не был 60+ дней — вернуть со скидкой',
+    trigger: 'Cron · понедельник в 12:00',
+    icon: Heart,
+    accent: '#ec4899',
+  },
+  {
+    key: 'nps',
+    title: 'NPS опрос',
+    description: 'После 3, 10, 20, 50 визитов — короткий опрос лояльности',
+    trigger: 'Cron · ежедневно в 13:00',
+    icon: BarChart3,
+    accent: '#06b6d4',
+  },
+];
 
 export default function AutomationPage() {
-  const t = useTranslations('marketing');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const supabase = createClient();
+  const { master } = useMaster();
+  const [settings, setSettings] = useState<Settings>(DEFAULTS);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!master?.id) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from('master_automation_settings')
+      .select('*')
+      .eq('master_id', master.id)
+      .maybeSingle();
+    if (data) {
+      setSettings(data as Settings);
+    }
+    setLoading(false);
+  }, [supabase, master?.id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  async function toggle(key: AutomationKey, value: boolean) {
+    if (!master?.id) return;
+    const next = { ...settings, [key]: value };
+    setSettings(next);
+    const { error } = await supabase
+      .from('master_automation_settings')
+      .upsert({ master_id: master.id, ...next, updated_at: new Date().toISOString() });
+    if (error) {
+      toast.error(error.message);
+      setSettings(settings);
+    } else {
+      toast.success(value ? 'Включено' : 'Выключено');
+    }
+  }
 
   return (
-    <div style={{ fontFamily: FONT, padding: '32px 40px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 600, color: C.text, margin: '0 0 8px' }}>{t('automation')}</h1>
-      <p style={{ fontSize: 15, color: C.textMuted, margin: '0 0 32px', lineHeight: '22px' }}>{t('automationDesc')}</p>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ backgroundColor: C.emptyBg, border: `1px dashed ${C.emptyBorder}`, borderRadius: 12, padding: '64px 32px', textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: 999, backgroundColor: C.accent + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-          <Zap size={28} color={C.accent} />
+    <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Автоматизация</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Встроенные правила автоматических сообщений. Шаблоны редактируются в{' '}
+            <Link href="/ru/marketing/messages" className="text-violet-600 hover:underline">
+              Шаблоны сообщений
+            </Link>
+            .
+          </p>
         </div>
-        <div style={{ fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>{t('noAutomation')}</div>
-        <div style={{ fontSize: 15, color: C.textMuted, maxWidth: 400, margin: '0 auto', lineHeight: '22px' }}>{t('noAutomationDesc')}</div>
-      </motion.div>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Загрузка…</p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {RULES.map((r) => {
+            const Icon = r.icon;
+            const enabled = settings[r.key];
+            return (
+              <div
+                key={r.key}
+                className="rounded-2xl border bg-card p-5 transition-shadow hover:shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    className="flex size-10 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: `${r.accent}15`, color: r.accent }}
+                  >
+                    <Icon className="size-5" />
+                  </div>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={(v) => toggle(r.key, v)}
+                  />
+                </div>
+                <div className="mt-4 font-semibold">{r.title}</div>
+                <div className="mt-1 text-sm text-muted-foreground">{r.description}</div>
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Settings className="size-3" />
+                  {r.trigger}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

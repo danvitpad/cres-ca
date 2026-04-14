@@ -72,17 +72,18 @@ export default function LandingPage() {
     'reminders', 'basicFinance',
   ];
   const proFeatures = [
-    'clients300', 'masters3', ...starterFeatures.slice(2),
-    'waitlist', 'autoUpsell', 'referral', 'inventory',
-    'consent', 'allergies', 'extendedAnalytics', 'autoMessages',
+    'clients500', 'masters1', ...starterFeatures.slice(2),
+    'miniAppMaster', 'waitlist', 'smartRebooking', 'burningSlots',
+    'inventory', 'beforeAfter', 'giftCertificates', 'consent',
+    'autoReviewRequest', 'autoUpsell', 'extendedAnalytics',
+    'punchCardLoyalty', 'autoMessages',
   ];
   const businessFeatures = [
-    'clientsUnlimited', 'mastersUnlimited', ...starterFeatures.slice(2),
-    'waitlist', 'autoUpsell', 'referral', 'inventory',
-    'consent', 'allergies', 'extendedAnalytics', 'autoMessages',
-    'aiFeatures', 'behaviorIndicators', 'fileStorage', 'equipmentBooking',
-    'crossMarketing', 'autoReports', 'currencyTracking',
-    'beforeAfter', 'giftCertificates', 'prioritySupport',
+    'clientsUnlimited', 'mastersUnlimited', ...proFeatures.slice(2),
+    'aiFeatures', 'voiceAi', 'multiCurrency', 'guildMarketing',
+    'autoReports', 'googleBusiness', 'socialPosting',
+    'gdprExport', 'taxReports', 'behaviorIndicators',
+    'fileStorage', 'equipmentBooking', 'prioritySupport',
   ];
 
   const jsonLd = {

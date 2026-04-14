@@ -33,6 +33,9 @@ import { useMaster } from '@/hooks/use-master';
 import { cn } from '@/lib/utils';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
+import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
+import { TrialBadge } from '@/components/subscription/trial-badge';
+import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
 
 /* ─── Layout constants (shared) ─── */
 const S = {
@@ -469,6 +472,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             Продолжить настройку
           </button>
+          <TrialBadge />
         </div>
 
         {/* Right: icon buttons + avatar */}
@@ -836,13 +840,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           }}
         >
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            {children}
+            <RouteFeatureGate>{children}</RouteFeatureGate>
           </div>
         </main>
       </div>
 
       <OnboardingDialog />
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
+      <DashboardRealtimeToasts />
     </div>
   );
 }

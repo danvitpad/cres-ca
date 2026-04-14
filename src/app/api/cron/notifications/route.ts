@@ -31,12 +31,19 @@ export async function GET(request: Request) {
 
   let sent = 0;
 
+  const appUrl = `${process.env.NEXT_PUBLIC_APP_URL}/telegram`;
+
   for (const n of notifications) {
     const profile = n.profiles as { telegram_id: string | null; full_name: string } | null;
 
     if (n.channel === 'telegram' && profile?.telegram_id) {
-      await sendMessage(profile.telegram_id, `${n.title}\n\n${n.body}`);
-      await supabase.from('notifications').update({ status: 'sent' }).eq('id', n.id);
+      await sendMessage(profile.telegram_id, `<b>${n.title}</b>\n\n${n.body}`, {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
+        },
+      });
+      await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);
       sent++;
     } else if (n.channel === 'email') {
       // Email sending via Resend would go here

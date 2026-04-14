@@ -1,46 +1,150 @@
 /** --- YAML
- * name: GoogleBookingPage
- * description: Fresha-exact Google booking integration — manage Reserve with Google
+ * name: Google Business Profile Preview
+ * description: Generates a ready-to-paste GBP listing preview (name, hours, services, phone, address) from master data. Copy & paste to Google Business Profile.
+ * created: 2026-04-13
+ * updated: 2026-04-13
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
-import { motion } from 'framer-motion';
-import { Globe } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Globe, Copy, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+import { useMaster } from '@/hooks/use-master';
+import { Button } from '@/components/ui/button';
 
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const LIGHT = { bg: '#ffffff', text: '#0d0d0d', textMuted: '#737373', accent: '#6950f3', emptyBg: '#f9fafb', emptyBorder: '#e5e5e5' };
-const DARK = { bg: '#000000', text: '#f5f5f5', textMuted: '#999999', accent: '#8b7cf6', emptyBg: '#000000', emptyBorder: '#1a1a1a' };
+interface ServiceRow {
+  name: string;
+  price: number;
+  currency: string;
+  duration_minutes: number;
+}
 
-export default function GoogleBookingPage() {
-  const t = useTranslations('marketing');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+const WEEKDAY_NAMES: Record<string, string> = {
+  monday: 'Пн',
+  tuesday: 'Вт',
+  wednesday: 'Ср',
+  thursday: 'Чт',
+  friday: 'Пт',
+  saturday: 'Сб',
+  sunday: 'Вс',
+};
+
+export default function GoogleBusinessPage() {
+  const { master } = useMaster();
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [profile, setProfile] = useState<{ full_name: string | null; phone: string | null } | null>(null);
+
+  const load = useCallback(async () => {
+    if (!master?.id || !master?.profile_id) return;
+    const supabase = createClient();
+    const [svc, prof] = await Promise.all([
+      supabase
+        .from('services')
+        .select('name, price, currency, duration_minutes')
+        .eq('master_id', master.id)
+        .eq('is_active', true)
+        .order('price'),
+      supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', master.profile_id)
+        .single(),
+    ]);
+    setServices((svc.data ?? []) as ServiceRow[]);
+    setProfile((prof.data ?? null) as typeof profile);
+  }, [master?.id, master?.profile_id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const hoursLines = useMemo(() => {
+    const wh = (master?.working_hours ?? {}) as Record<
+      string,
+      { start: string; end: string } | null
+    >;
+    return Object.entries(WEEKDAY_NAMES).map(([key, label]) => {
+      const h = wh[key];
+      return h ? `${label}: ${h.start}–${h.end}` : `${label}: выходной`;
+    });
+  }, [master?.working_hours]);
+
+  const exportText = useMemo(() => {
+    const title = profile?.full_name ?? master?.profile?.full_name ?? 'Мой салон';
+    const phoneLine = profile?.phone ? `Телефон: ${profile.phone}` : '';
+    const addressLine = master?.address ? `Адрес: ${master.address}` : '';
+    const bio = master?.bio ? master.bio : '';
+    const serviceLines = services
+      .map(
+        (s) =>
+          `• ${s.name} — ${Number(s.price).toFixed(0)} ${s.currency} (${s.duration_minutes} мин)`,
+      )
+      .join('\n');
+
+    return [
+      `🏢 ${title}`,
+      bio,
+      '',
+      addressLine,
+      phoneLine,
+      '',
+      '🕐 Часы работы:',
+      ...hoursLines,
+      '',
+      '💼 Услуги:',
+      serviceLines,
+      '',
+      `🔗 Онлайн-запись: https://cres.ca/m/${master?.invite_code ?? ''}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }, [master, profile, services, hoursLines]);
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(exportText);
+      toast.success('Скопировано');
+    } catch {
+      toast.error('Не удалось скопировать');
+    }
+  }
 
   return (
-    <div style={{ fontFamily: FONT, padding: '32px 40px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 600, color: C.text, margin: '0 0 8px' }}>
-        {t('googleBooking')}
-      </h1>
-      <p style={{ fontSize: 15, color: C.textMuted, margin: '0 0 32px', lineHeight: '22px' }}>
-        {t('googleBookingDesc')}
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+          <Globe className="h-6 w-6 text-primary" />
+          Google Business Profile
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Скопируй карточку ниже и вставь в свой Google Business Profile — название, часы, услуги, телефон, ссылку на онлайн-запись.
+        </p>
+      </div>
+
+      <div className="rounded-lg border bg-card p-5">
+        <pre className="whitespace-pre-wrap font-sans text-sm">{exportText}</pre>
+        <div className="mt-4 flex gap-2">
+          <Button onClick={copyText}>
+            <Copy className="mr-1 h-4 w-4" />
+            Копировать
+          </Button>
+          <a
+            href="https://business.google.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Открыть GBP
+          </a>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Прямая OAuth-интеграция с Google Business Profile API требует верификации Google — планируется в следующих фазах.
       </p>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ backgroundColor: C.emptyBg, border: `1px dashed ${C.emptyBorder}`, borderRadius: 12, padding: '64px 32px', textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: 999, backgroundColor: C.accent + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-          <Globe size={28} color={C.accent} />
-        </div>
-        <div style={{ fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>
-          {t('noGoogleBooking')}
-        </div>
-        <div style={{ fontSize: 15, color: C.textMuted, maxWidth: 400, margin: '0 auto', lineHeight: '22px' }}>
-          {t('noGoogleBookingDesc')}
-        </div>
-      </motion.div>
     </div>
   );
 }

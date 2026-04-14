@@ -73,6 +73,7 @@ export default function BookPage() {
 
   const preselectedMasterId = searchParams.get('master_id');
   const preselectedServiceId = searchParams.get('service_id');
+  const rescheduleId = searchParams.get('reschedule');
 
   const [step, setStep] = useState<Step>('service');
   const [master, setMaster] = useState<MasterInfo | null>(null);
@@ -185,13 +186,22 @@ export default function BookPage() {
   }, [userId]);
 
   // Load upsell options when service selected
+  // Manual-configured upsells first; fallback to auto-suggest (top-3 cheapest other services)
   useEffect(() => {
-    if (!selectedService?.upsell_services?.length) {
+    if (!selectedService) {
       setUpsellOptions([]);
       return;
     }
-    const ups = services.filter((s) => selectedService.upsell_services.includes(s.id));
-    setUpsellOptions(ups);
+    if (selectedService.upsell_services?.length) {
+      const ups = services.filter((s) => selectedService.upsell_services.includes(s.id));
+      setUpsellOptions(ups);
+      return;
+    }
+    const auto = services
+      .filter((s) => s.id !== selectedService.id)
+      .sort((a, b) => Number(a.price) - Number(b.price))
+      .slice(0, 3);
+    setUpsellOptions(auto);
   }, [selectedService, services]);
 
   // Load slots when date selected
@@ -380,21 +390,37 @@ export default function BookPage() {
       return;
     }
 
+    const referrerProfileId = typeof window !== 'undefined' ? window.sessionStorage.getItem('cres_ref') : null;
     const { error } = await supabase.from('appointments').insert({
       client_id: clientId,
       master_id: preselectedMasterId,
       service_id: selectedService.id,
+      booked_via: 'client_web',
       starts_at: startsAt,
       ends_at: endsAt,
       status: 'booked',
       price: totalPrice,
       currency: selectedService.currency,
+      referrer_profile_id: referrerProfileId,
     });
 
     if (error) {
       toast.error(tc('error'));
       setSubmitting(false);
       return;
+    }
+
+    // If this was a reschedule, cancel the original appointment
+    if (rescheduleId) {
+      await supabase
+        .from('appointments')
+        .update({
+          status: 'cancelled_by_client',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: userId,
+          cancellation_reason: 'rescheduled',
+        })
+        .eq('id', rescheduleId);
     }
 
     // Notify master about new booking

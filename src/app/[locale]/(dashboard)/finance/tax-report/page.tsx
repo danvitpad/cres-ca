@@ -13,12 +13,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { TaxCounterWidget } from '@/components/finance/tax-counter-widget';
 
 type MonthStat = {
   key: string;
   year: number;
   month: number;
   revenue: number;
+  tips: number;
   expenses: number;
   inventoryCost: number;
   net: number;
@@ -60,7 +62,7 @@ export default function TaxReportPage() {
       const [{ data: apts }, { data: exps }, { data: usage }] = await Promise.all([
         supabase
           .from('appointments')
-          .select('id, payment:payments(amount)')
+          .select('id, tip_amount, payment:payments(amount)')
           .eq('master_id', master.id)
           .eq('status', 'completed')
           .gte('starts_at', r.start)
@@ -80,10 +82,12 @@ export default function TaxReportPage() {
       ]);
 
       let revenue = 0;
-      for (const a of (apts ?? []) as unknown as { payment: { amount: number } | { amount: number }[] | null }[]) {
+      let tips = 0;
+      for (const a of (apts ?? []) as unknown as { tip_amount: number | null; payment: { amount: number } | { amount: number }[] | null }[]) {
         const p = a.payment;
         const amt = Array.isArray(p) ? (p[0]?.amount ?? 0) : (p?.amount ?? 0);
         revenue += Number(amt);
+        tips += Number(a.tip_amount ?? 0);
       }
       const expenses = (exps ?? []).reduce((a, e) => a + Number(e.amount ?? 0), 0);
       let inventoryCost = 0;
@@ -98,6 +102,7 @@ export default function TaxReportPage() {
         year: r.year,
         month: r.month,
         revenue,
+        tips,
         expenses,
         inventoryCost,
         net,
@@ -117,12 +122,13 @@ export default function TaxReportPage() {
     return months.reduce(
       (acc, m) => ({
         revenue: acc.revenue + m.revenue,
+        tips: acc.tips + m.tips,
         expenses: acc.expenses + m.expenses,
         inventoryCost: acc.inventoryCost + m.inventoryCost,
         net: acc.net + m.net,
         tax: acc.tax + m.tax,
       }),
-      { revenue: 0, expenses: 0, inventoryCost: 0, net: 0, tax: 0 },
+      { revenue: 0, tips: 0, expenses: 0, inventoryCost: 0, net: 0, tax: 0 },
     );
   }, [months]);
 
@@ -142,8 +148,11 @@ export default function TaxReportPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {master?.id && <TaxCounterWidget masterId={master.id} taxRatePercent={taxRate} />}
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
         <Stat label="Выручка" value={totals.revenue.toFixed(2)} />
+        <Stat label="Чаевые" value={totals.tips.toFixed(2)} accent={totals.tips > 0} />
         <Stat label="Расходы" value={totals.expenses.toFixed(2)} />
         <Stat label="Себестоимость" value={totals.inventoryCost.toFixed(2)} />
         <Stat label="Чистая прибыль" value={totals.net.toFixed(2)} accent={totals.net > 0} />
@@ -159,6 +168,7 @@ export default function TaxReportPage() {
               <tr>
                 <th className="px-4 py-2 text-left">Месяц</th>
                 <th className="px-4 py-2 text-right">Выручка</th>
+                <th className="px-4 py-2 text-right">Чай</th>
                 <th className="px-4 py-2 text-right">Расходы</th>
                 <th className="px-4 py-2 text-right">Себест.</th>
                 <th className="px-4 py-2 text-right">Прибыль</th>
@@ -172,6 +182,7 @@ export default function TaxReportPage() {
                 <tr key={m.key} className="border-t">
                   <td className="px-4 py-3 font-medium">{MONTHS_RU[m.month - 1]} {m.year}</td>
                   <td className="px-4 py-3 text-right">{m.revenue.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right text-emerald-600">{m.tips.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-muted-foreground">{m.expenses.toFixed(2)}</td>
                   <td className="px-4 py-3 text-right text-muted-foreground">{m.inventoryCost.toFixed(2)}</td>
                   <td className={cn('px-4 py-3 text-right font-semibold', m.net < 0 && 'text-red-600')}>{m.net.toFixed(2)}</td>

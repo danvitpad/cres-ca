@@ -36,13 +36,17 @@ export default async function InvitePage({ params, searchParams }: Props) {
       .from('client_master_links')
       .upsert({ profile_id: user.id, master_id: master.id }, { onConflict: 'profile_id,master_id' });
     if (ref && ref !== user.id) {
-      // Record the referral once — ignore conflicts.
-      await supabase.from('referrals').insert({
-        referrer_profile_id: ref,
-        referee_profile_id: user.id,
-        master_id: master.id,
-        source: 'invite_link',
-      }).then(() => {}, () => {});
+      const { data: refClient } = await supabase
+        .from('clients').select('id').eq('profile_id', ref).maybeSingle();
+      const { data: meClient } = await supabase
+        .from('clients').select('id').eq('profile_id', user.id).maybeSingle();
+      if (refClient?.id && meClient?.id) {
+        await supabase.from('referrals').insert({
+          referrer_client_id: refClient.id,
+          referred_client_id: meClient.id,
+          bonus_points: 0,
+        }).then(() => {}, () => {});
+      }
     }
     redirect(`/${locale}/masters/${master.id}`);
   }

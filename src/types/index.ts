@@ -40,49 +40,61 @@ export type SubscriptionFeature =
   | 'currency_tracking'
   | 'before_after'
   | 'gift_certificates'
-  | 'priority_support';
+  | 'priority_support'
+  // — Matrix rev 2026-04-13 (BLOCK Y) —
+  | 'mini_app_master'
+  | 'smart_rebooking'
+  | 'burning_slots'
+  | 'auto_review_request'
+  | 'voice_ai'
+  | 'multi_currency'
+  | 'guild_marketing'
+  | 'google_business'
+  | 'social_posting'
+  | 'punch_card_loyalty'
+  | 'gdpr_export'
+  | 'tax_reports';
+
+const STARTER_FEATURES: SubscriptionFeature[] = [
+  'calendar', 'online_booking', 'basic_client_cards', 'reminders', 'basic_finance',
+];
+
+const PRO_FEATURES: SubscriptionFeature[] = [
+  ...STARTER_FEATURES,
+  'mini_app_master', 'waitlist', 'inventory', 'before_after', 'consent_forms',
+  'gift_certificates', 'referral', 'auto_review_request', 'smart_rebooking',
+  'burning_slots', 'auto_upsell', 'extended_analytics', 'punch_card_loyalty',
+  'allergies', 'auto_messages',
+];
+
+const BUSINESS_FEATURES: SubscriptionFeature[] = [
+  ...PRO_FEATURES,
+  'ai_features', 'voice_ai', 'multi_currency', 'guild_marketing', 'auto_reports',
+  'google_business', 'social_posting', 'gdpr_export', 'tax_reports',
+  'cross_marketing', 'currency_tracking', 'behavior_indicators',
+  'file_storage', 'equipment_booking', 'priority_support',
+];
 
 export const SUBSCRIPTION_CONFIG: Record<SubscriptionTier, SubscriptionLimits> = {
   trial: {
     maxClients: -1,
     maxMasters: -1,
-    features: [
-      'calendar', 'online_booking', 'basic_client_cards', 'reminders',
-      'basic_finance', 'waitlist', 'auto_upsell', 'referral', 'inventory',
-      'consent_forms', 'allergies', 'extended_analytics', 'auto_messages',
-      'ai_features', 'behavior_indicators', 'file_storage', 'equipment_booking',
-      'cross_marketing', 'auto_reports', 'currency_tracking', 'before_after',
-      'gift_certificates', 'priority_support',
-    ],
+    features: [...BUSINESS_FEATURES],
   },
   starter: {
     maxClients: 50,
     maxMasters: 1,
-    features: [
-      'calendar', 'online_booking', 'basic_client_cards', 'reminders',
-      'basic_finance',
-    ],
+    features: STARTER_FEATURES,
   },
   pro: {
-    maxClients: 300,
-    maxMasters: 3,
-    features: [
-      'calendar', 'online_booking', 'basic_client_cards', 'reminders',
-      'basic_finance', 'waitlist', 'auto_upsell', 'referral', 'inventory',
-      'consent_forms', 'allergies', 'extended_analytics', 'auto_messages',
-    ],
+    maxClients: 500,
+    maxMasters: 1,
+    features: PRO_FEATURES,
   },
   business: {
     maxClients: -1,
     maxMasters: -1,
-    features: [
-      'calendar', 'online_booking', 'basic_client_cards', 'reminders',
-      'basic_finance', 'waitlist', 'auto_upsell', 'referral', 'inventory',
-      'consent_forms', 'allergies', 'extended_analytics', 'auto_messages',
-      'ai_features', 'behavior_indicators', 'file_storage', 'equipment_booking',
-      'cross_marketing', 'auto_reports', 'currency_tracking', 'before_after',
-      'gift_certificates', 'priority_support',
-    ],
+    features: BUSINESS_FEATURES,
   },
 };
 

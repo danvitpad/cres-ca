@@ -13,6 +13,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist';
+import { TelegramLinkCard } from '@/components/dashboard/telegram-link-card';
+import { DashboardKpiStrip } from '@/components/dashboard/dashboard-kpi-strip';
 import { format, subDays, addDays, startOfDay, endOfDay, startOfMonth, subMonths, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
@@ -543,6 +546,16 @@ export default function DashboardOverviewPage() {
         gridTemplateColumns: '1fr 1fr',
         gap: 32,
       }}>
+
+        <div style={{ gridColumn: '1 / -1' }}>
+          <DashboardKpiStrip
+            masterId={master?.id ?? null}
+            workingHours={(master?.working_hours as Record<string, { start: string; end: string } | null> | null) ?? null}
+            theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+          />
+        </div>
+        <OnboardingChecklist master={master} theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'} />
+        <TelegramLinkCard theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'} />
 
         {/* ═══ Card 1: Последние продажи (Recent Sales) ═══ */}
         <motion.div

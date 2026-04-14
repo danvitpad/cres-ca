@@ -5,7 +5,15 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error('RESEND_API_KEY is not set');
+    _resend = new Resend(key);
+  }
+  return _resend;
+}
 
 const FROM_EMAIL = 'CRES-CA <noreply@cres-ca.com>';
 
@@ -61,7 +69,7 @@ export async function sendOTPEmail(to: string, otp: string, locale: string = 'uk
     `,
   };
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject: subjects[locale] ?? subjects.en,
@@ -78,7 +86,7 @@ export async function sendPasswordResetEmail(to: string, otp: string, locale: st
     en: 'Password reset — CRES-CA',
   };
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to,
     subject: subjects[locale] ?? subjects.en,
@@ -98,4 +106,4 @@ export async function sendPasswordResetEmail(to: string, otp: string, locale: st
   if (error) throw new Error(error.message);
 }
 
-export { resend };
+export { getResend };

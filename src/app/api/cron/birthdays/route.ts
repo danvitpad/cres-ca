@@ -54,12 +54,12 @@ export async function GET(request: Request) {
   const masterIds = [...new Set(clientHits.map((c) => c.master_id))];
   const masterMap = new Map<
     string,
-    { profile_id: string | null; birthday_auto_greet: boolean | null; birthday_discount_percent: number | null }
+    { profile_id: string | null; birthday_auto_greet: boolean | null; birthday_discount_percent: number | null; birthday_bonus_amount: number | null }
   >();
   if (masterIds.length) {
     const { data: masters } = await supabase
       .from('masters')
-      .select('id, profile_id, birthday_auto_greet, birthday_discount_percent')
+      .select('id, profile_id, birthday_auto_greet, birthday_discount_percent, birthday_bonus_amount')
       .in('id', masterIds);
     for (const m of masters ?? []) masterMap.set(m.id, m);
   }
@@ -83,16 +83,77 @@ export async function GET(request: Request) {
       const clientMarker = `[bday:client:${client.id}:${dayKey}]`;
       if (!sentMarkers.has(clientMarker)) {
         const discount = master.birthday_discount_percent ?? 0;
+        const bonus = Number(master.birthday_bonus_amount ?? 0);
         const discountText = discount > 0 ? ` Use BDAY for ${discount}% off your next visit!` : '';
+        const bonusText = bonus > 0 ? ` 🎁 We credited ${bonus} to your bonus balance.` : '';
         inserts.push({
           profile_id: client.profile_id,
           channel: 'telegram',
           title: 'Happy Birthday! 🎂',
-          body: `Happy Birthday, ${client.full_name}!${discountText} ${clientMarker}`,
+          body: `Happy Birthday, ${client.full_name}!${discountText}${bonusText} ${clientMarker}`,
           scheduled_for: new Date().toISOString(),
+        });
+        if (bonus > 0) {
+          const { data: cur } = await supabase
+            .from('clients')
+            .select('bonus_balance')
+            .eq('id', client.id)
+            .single();
+          const newBalance = Number((cur as { bonus_balance: number } | null)?.bonus_balance ?? 0) + bonus;
+          await supabase
+            .from('clients')
+            .update({ bonus_balance: newBalance })
+            .eq('id', client.id);
+        }
+      }
+    }
+  }
+
+  // 1b. Client anniversaries — one year (or multiples of a year) since first registration in master's book
+  const { data: anniClients } = await supabase
+    .from('clients')
+    .select('id, full_name, master_id, profile_id, created_at')
+    .not('created_at', 'is', null);
+
+  const anniHits = (anniClients ?? []).filter((c) => {
+    if (!c.created_at) return false;
+    const d = new Date(c.created_at);
+    if (d.getMonth() + 1 !== month || d.getDate() !== day) return false;
+    const years = today.getFullYear() - d.getFullYear();
+    return years >= 1;
+  });
+
+  if (anniHits.length && masterIds.length === 0) {
+    const extraMasterIds = [...new Set(anniHits.map((c) => c.master_id))];
+    const { data: masters2 } = await supabase
+      .from('masters')
+      .select('id, profile_id, birthday_auto_greet')
+      .in('id', extraMasterIds);
+    for (const m of masters2 ?? []) {
+      if (!masterMap.has(m.id)) {
+        masterMap.set(m.id, {
+          profile_id: m.profile_id ?? null,
+          birthday_auto_greet: m.birthday_auto_greet ?? null,
+          birthday_discount_percent: null,
+          birthday_bonus_amount: null,
         });
       }
     }
+  }
+
+  for (const c of anniHits) {
+    const master = masterMap.get(c.master_id);
+    if (!master?.birthday_auto_greet || !c.profile_id) continue;
+    const years = today.getFullYear() - new Date(c.created_at!).getFullYear();
+    const marker = `[bday:anni:${c.id}:${dayKey}]`;
+    if (sentMarkers.has(marker)) continue;
+    inserts.push({
+      profile_id: c.profile_id,
+      channel: 'telegram',
+      title: '🎉 Годовщина!',
+      body: `${c.full_name}, уже ${years} ${years === 1 ? 'год' : 'года'} вместе! Спасибо за доверие. ${marker}`,
+      scheduled_for: new Date().toISOString(),
+    });
   }
 
   // 2. Master birthdays — platform-side greeting from CRES-CA
