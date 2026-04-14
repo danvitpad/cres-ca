@@ -102,7 +102,10 @@ export async function POST(request: Request) {
 
   const fullName =
     fullNameOverride?.trim() ||
-    [firstName, middleName, lastName].filter((s): s is string => Boolean(s?.trim())).join(' ').trim() ||
+    [firstName, middleName, lastName]
+      .map((s) => s?.trim())
+      .filter((s): s is string => Boolean(s))
+      .join(' ') ||
     `tg_${tg.id}`;
 
   // Only store TG identifiers if user opted in (per consent checkbox).

@@ -37,7 +37,7 @@ export default function LostRevenuePage() {
         .from('appointments')
         .select('id, price, client:clients(full_name)')
         .eq('master_id', master.id)
-        .eq('status', 'cancelled')
+        .in('status', ['cancelled', 'cancelled_by_client', 'cancelled_by_master'])
         .gte('starts_at', since),
       supabase
         .from('appointments')

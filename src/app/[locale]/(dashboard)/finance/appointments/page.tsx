@@ -110,7 +110,12 @@ export default function AppointmentsListPage() {
   const filtered = useMemo(() => {
     let list = appointments;
     if (statusFilter !== 'all') {
-      list = list.filter(a => a.status === statusFilter);
+      list = list.filter(a => {
+        if (statusFilter === 'cancelled') {
+          return a.status === 'cancelled' || a.status === 'cancelled_by_client' || a.status === 'cancelled_by_master';
+        }
+        return a.status === statusFilter;
+      });
     }
     if (search.trim()) {
       const q = search.toLowerCase();

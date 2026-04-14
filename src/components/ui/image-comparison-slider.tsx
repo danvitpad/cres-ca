@@ -67,7 +67,7 @@ export const ImageComparisonSlider = React.forwardRef<
         document.removeEventListener('touchend', onEnd);
         document.body.style.cursor = '';
       };
-    }, [isDragging]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [isDragging]);  
 
     return (
       <div

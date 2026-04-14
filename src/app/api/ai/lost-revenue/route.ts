@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       .from('appointments')
       .select('id', { count: 'exact', head: true })
       .eq('master_id', master.id)
-      .in('status', ['cancelled', 'no_show'])
+      .in('status', ['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'])
       .gte('starts_at', thirtyDaysAgo.toISOString()),
     // Services with prices
     supabase

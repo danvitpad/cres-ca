@@ -40,7 +40,7 @@ export async function GET(request: Request) {
       .from('appointments')
       .select('id')
       .eq('master_id', rec.master_id)
-      .neq('status', 'cancelled')
+      .not('status', 'in', '(cancelled,cancelled_by_client,cancelled_by_master)')
       .lt('starts_at', endDate.toISOString())
       .gt('ends_at', startDate.toISOString())
       .limit(1);

@@ -46,7 +46,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
   const { data: mastersData } = await query;
 
   // Period-scoped completed appointments for ranking
-  let aptQuery = supabase
+  const aptQuery = supabase
     .from('appointments')
     .select('master_id, price, status')
     .eq('status', 'completed')

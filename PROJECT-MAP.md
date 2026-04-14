@@ -314,16 +314,28 @@
 - [ ] **AUTH-3.** Live-верификация web `/login` для master/salon ролей с реальным аккаунтом
 - [ ] **BUG-1.** При регистрации через Mini App имя сохраняется с лишним пробелом → `.trim()` на `/telegram/register` + `/api/telegram/register` (источник: inbox 2026-04-14)
 - [ ] **FIX-1.** Сегменты клиентов не учитывают `cancelled_by_client` — добавить в SQL-фильтры в `(dashboard)/marketing/segments` и scoring (источник: inbox 2026-04-14)
+- [ ] **I18N-1.** Масштабная регрессия next-intl: **50 файлов с захардкоженными RU-строками** (нарушение §4 rules). Основные: весь `(dashboard)/**`, часть `(client)/**`, весь `/telegram/**`. Блокирует UA/EN переводы. **Делать пакетами по surface**, не одним коммитом.
+- [ ] **E2E-1.** Master↔Client live flow не верифицирован: создать запись мастером → проверить у клиента (history/wallet/notifications). Нужен прогон через Claude-in-Chrome после подключения расширения.
+- [ ] **E2E-2.** Wallet transfer RPC (`00027_cf3_wallet_transfer_rpc.sql`) — проверить live: перевод между кошельками, concurrent lock, FX конверсия.
+- [ ] **E2E-3.** RLS policies — аудит всех таблиц (client не видит чужое, master видит только своих клиентов).
 
-### MEDIUM — улучшения UX
-- [ ] **UX-1.** Hardcoded RU-строки в `/telegram/(app)/notifications` — перенести в next-intl
+### MEDIUM — улучшения UX / quality
+- [ ] **UX-1.** Hardcoded RU-строки в `/telegram/(app)/notifications` — перенести в next-intl (часть I18N-1)
 - [ ] **UX-2.** Client web-профиль (`(client)/profile/page.tsx`) — актуализировать под новый дизайн (сейчас legacy)
 - [ ] **UX-3.** Pairing API (`/api/pair/*`) — либо вернуть UI, либо удалить orphan роуты
 - [ ] **UX-4.** Кнопка «Пожаловаться» на публичном профиле мастера `/m/[handle]` + модалка с причинами + запись в `reports` таблицу (источник: inbox 2026-04-14)
+- [ ] **LINT-1.** 79 `react-hooks/set-state-in-effect` ошибок (React 19 strict) — рефакторить effect'ы на events / derived state. Не runtime-блокер, но копится.
+- [ ] **LINT-2.** 76 unused imports/vars — автоматически через `eslint --fix` + ручная чистка.
+- [ ] **LINT-3.** 27 `<img>` → заменить на `next/image` (performance + LCP).
+- [ ] **LINT-4.** 12 `<a href="/...">` → заменить на `<Link>` из `next/link` (SPA navigation).
+- [ ] **LINT-5.** 29 `react-hooks/preserve-manual-memoization` + 20 `exhaustive-deps` warnings — аудит и исправление.
 
 ### LOW — rework / рефакторинг
 - [ ] **REF-1.** `favorites` → мигрировать в `follows` (legacy таблица)
 - [ ] **REF-2.** `/my-masters` web-страница — решить судьбу (переписать или удалить)
+- [ ] **REF-3.** 21 non-null assertion (`!`) в коде — ревью на безопасность.
+- [ ] **REF-4.** 4 `any`-типа — заменить на конкретные типы.
+- [ ] **REF-5.** TODO Phase 8 в `feed/page.tsx` — geo + paid placement ranking RPC, real social-proof from bookings.
 
 ### IDEAS — Parking lot (не в порядке)
 - [ ] **Платные stories** для продвижения — buy-boost с тарифом в subscription, или разовая оплата через wallet (источник: inbox 2026-04-14)

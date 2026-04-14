@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     .eq('master_id', masterId)
     .gte('starts_at', dayStart)
     .lte('starts_at', dayEnd)
-    .not('status', 'in', '("cancelled","no_show")');
+    .not('status', 'in', '("cancelled","cancelled_by_client","cancelled_by_master","no_show")');
 
   const bufferMin = Number((master as { long_visit_buffer_minutes: number | null }).long_visit_buffer_minutes ?? 0);
   const thresholdMin = Number((master as { long_visit_threshold_minutes: number | null }).long_visit_threshold_minutes ?? 120);
