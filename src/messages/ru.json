@@ -279,9 +279,18 @@
       "title": "До запуска осталось немного",
       "subtitle": "Шаг {done} из {total} — завершите настройку, чтобы принимать клиентов",
       "steps": {
-        "services": { "title": "Услуги", "hint": "Добавьте хотя бы одну" },
-        "hours": { "title": "График", "hint": "Настройте рабочие часы" },
-        "first_appointment": { "title": "Первая запись", "hint": "Создайте в календаре" }
+        "services": {
+          "title": "Услуги",
+          "hint": "Добавьте хотя бы одну"
+        },
+        "hours": {
+          "title": "График",
+          "hint": "Настройте рабочие часы"
+        },
+        "first_appointment": {
+          "title": "Первая запись",
+          "hint": "Создайте в календаре"
+        }
       }
     },
     "timePeriod": "Временной период",
@@ -329,7 +338,80 @@
     "noShow": "Неявка",
     "inProgress": "В работе",
     "booked_status": "Забронировано",
-    "noActivityToday": "Сегодня пока нет активности"
+    "noActivityToday": "Сегодня пока нет активности",
+    "nav": {
+      "dashboard": "Главная",
+      "calendar": "Календарь",
+      "analytics": "Аналитика",
+      "addons": "Дополнения",
+      "settings": "Настройки",
+      "sales": "Продажи",
+      "clients": "Клиенты",
+      "catalogue": "Каталог",
+      "onlineBooking": "Онлайн-запись",
+      "messaging": "Обмен сообщениями",
+      "team": "Команда",
+      "salesSub": {
+        "daily": "Ежедневные продажи",
+        "appointments": "Список записей",
+        "list": "Список продаж",
+        "profitability": "Реальная прибыль",
+        "taxReport": "Налоговый отчёт",
+        "lostRevenue": "Упущенная выгода",
+        "payments": "Платежи",
+        "giftCards": "Подарочные карты",
+        "memberships": "Купленные абонементы"
+      },
+      "clientsSub": {
+        "list": "Список клиентов",
+        "segments": "Сегменты клиентов",
+        "loyalty": "Лояльность клиентов",
+        "blacklist": "Чёрный список",
+        "cadence": "Периодичность",
+        "consents": "Согласия",
+        "voiceNotes": "Голосовые заметки"
+      },
+      "catalogueSub": {
+        "services": "Меню услуг",
+        "memberships": "Абонементы",
+        "products": "Товары",
+        "scan": "Сканировать",
+        "beforeAfter": "До / После",
+        "recommend": "Рекомендации",
+        "network": "Сеть мастеров"
+      },
+      "onlineBookingSub": {
+        "profile": "Профиль на маркетплейсе",
+        "google": "Бронирование Google",
+        "social": "Facebook & Instagram",
+        "links": "Конструктор ссылок"
+      },
+      "messagingSub": {
+        "campaigns": "Массовые кампании",
+        "automation": "Автоматизация",
+        "notifications": "Уведомления",
+        "deals": "Акции",
+        "pricing": "Умное ценообразование",
+        "reviews": "Отзывы"
+      },
+      "teamSub": {
+        "members": "Участники команды",
+        "shifts": "График смен",
+        "timesheets": "Табели",
+        "payrun": "Прогоны платежей"
+      }
+    },
+    "header": {
+      "continueSetup": "Продолжить настройку",
+      "notifications": "Уведомления",
+      "markAllRead": "Прочитать все",
+      "noNewNotifications": "Нет новых уведомлений",
+      "noNewNotificationsDesc": "Здесь будут отображаться уведомления о записях, сообщениях и обновлениях",
+      "myProfile": "Мой профиль",
+      "personalSettings": "Личные настройки",
+      "helpSupport": "Помощь и поддержка",
+      "signOut": "Выйти"
+    }
   },
   "calendar": {
     "today": "Сегодня",

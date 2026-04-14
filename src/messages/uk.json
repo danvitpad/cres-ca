@@ -279,9 +279,18 @@
       "title": "До запуску залишилось трохи",
       "subtitle": "Крок {done} із {total} — завершіть налаштування, щоб приймати клієнтів",
       "steps": {
-        "services": { "title": "Послуги", "hint": "Додайте хоча б одну" },
-        "hours": { "title": "Графік", "hint": "Налаштуйте робочі години" },
-        "first_appointment": { "title": "Перший запис", "hint": "Створіть у календарі" }
+        "services": {
+          "title": "Послуги",
+          "hint": "Додайте хоча б одну"
+        },
+        "hours": {
+          "title": "Графік",
+          "hint": "Налаштуйте робочі години"
+        },
+        "first_appointment": {
+          "title": "Перший запис",
+          "hint": "Створіть у календарі"
+        }
       }
     },
     "timePeriod": "Часовий період",
@@ -329,7 +338,80 @@
     "noShow": "Неявка",
     "inProgress": "В роботі",
     "booked_status": "Заброньовано",
-    "noActivityToday": "Сьогодні поки немає активності"
+    "noActivityToday": "Сьогодні поки немає активності",
+    "nav": {
+      "dashboard": "Головна",
+      "calendar": "Календар",
+      "analytics": "Аналітика",
+      "addons": "Доповнення",
+      "settings": "Налаштування",
+      "sales": "Продажі",
+      "clients": "Клієнти",
+      "catalogue": "Каталог",
+      "onlineBooking": "Онлайн-запис",
+      "messaging": "Повідомлення",
+      "team": "Команда",
+      "salesSub": {
+        "daily": "Щоденні продажі",
+        "appointments": "Список записів",
+        "list": "Список продажів",
+        "profitability": "Реальний прибуток",
+        "taxReport": "Податковий звіт",
+        "lostRevenue": "Втрачена вигода",
+        "payments": "Платежі",
+        "giftCards": "Подарункові картки",
+        "memberships": "Куплені абонементи"
+      },
+      "clientsSub": {
+        "list": "Список клієнтів",
+        "segments": "Сегменти клієнтів",
+        "loyalty": "Лояльність клієнтів",
+        "blacklist": "Чорний список",
+        "cadence": "Періодичність",
+        "consents": "Згоди",
+        "voiceNotes": "Голосові нотатки"
+      },
+      "catalogueSub": {
+        "services": "Меню послуг",
+        "memberships": "Абонементи",
+        "products": "Товари",
+        "scan": "Сканувати",
+        "beforeAfter": "До / Після",
+        "recommend": "Рекомендації",
+        "network": "Мережа майстрів"
+      },
+      "onlineBookingSub": {
+        "profile": "Профіль на маркетплейсі",
+        "google": "Бронювання Google",
+        "social": "Facebook & Instagram",
+        "links": "Конструктор посилань"
+      },
+      "messagingSub": {
+        "campaigns": "Масові кампанії",
+        "automation": "Автоматизація",
+        "notifications": "Сповіщення",
+        "deals": "Акції",
+        "pricing": "Розумне ціноутворення",
+        "reviews": "Відгуки"
+      },
+      "teamSub": {
+        "members": "Учасники команди",
+        "shifts": "Графік змін",
+        "timesheets": "Табелі",
+        "payrun": "Прогони платежів"
+      }
+    },
+    "header": {
+      "continueSetup": "Продовжити налаштування",
+      "notifications": "Сповіщення",
+      "markAllRead": "Позначити все",
+      "noNewNotifications": "Немає нових сповіщень",
+      "noNewNotificationsDesc": "Тут з'являться сповіщення про записи, повідомлення та оновлення",
+      "myProfile": "Мій профіль",
+      "personalSettings": "Особисті налаштування",
+      "helpSupport": "Допомога та підтримка",
+      "signOut": "Вийти"
+    }
   },
   "calendar": {
     "today": "Сьогодні",

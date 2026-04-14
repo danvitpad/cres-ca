@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -103,82 +103,82 @@ type SidebarNavItem = {
   submenu?: { label: string; href: string }[];
 };
 
-const sidebarNav: SidebarNavItem[] = [
-  { key: 'dashboard', icon: FreshaHome, href: '/dashboard', tooltip: 'Главная' },
-  { key: 'calendar', icon: FreshaCalendar, href: '/calendar', tooltip: 'Календарь' },
-  {
-    key: 'sales', icon: FreshaTag, title: 'Продажи',
-    submenu: [
-      { label: 'Ежедневные продажи', href: '/finance/daily' },
-      { label: 'Список записей', href: '/finance/appointments' },
-      { label: 'Список продаж', href: '/finance' },
-      { label: 'Реальная прибыль', href: '/finance/profitability' },
-      { label: 'Налоговый отчёт', href: '/finance/tax-report' },
-      { label: 'Упущенная выгода', href: '/finance/lost-revenue' },
-      { label: 'Платежи', href: '/finance/payments' },
-      { label: 'Подарочные карты', href: '/finance/gift-cards' },
-      { label: 'Купленные абонементы', href: '/finance/memberships' },
-    ],
-  },
-  {
-    key: 'clients', icon: FreshaSmile, title: 'Клиенты',
-    submenu: [
-      { label: 'Список клиентов', href: '/clients' },
-      { label: 'Сегменты клиентов', href: '/clients/segments' },
-      { label: 'Лояльность клиентов', href: '/clients/loyalty' },
-      { label: 'Чёрный список', href: '/clients/blacklist' },
-      { label: 'Периодичность', href: '/clients/cadence' },
-      { label: 'Согласия', href: '/consents' },
-      { label: 'Голосовые заметки', href: '/voice-notes' },
-    ],
-  },
-  {
-    key: 'catalogue', icon: FreshaBook, title: 'Каталог',
-    submenu: [
-      { label: 'Меню услуг', href: '/services' },
-      { label: 'Абонементы', href: '/services/memberships' },
-      { label: 'Товары', href: '/inventory' },
-      { label: 'Сканировать', href: '/inventory/scan' },
-      { label: 'До / После', href: '/before-after' },
-      { label: 'Рекомендации', href: '/recommend' },
-      { label: 'Сеть мастеров', href: '/network' },
-    ],
-  },
-  {
-    key: 'online-booking', icon: FreshaContact, title: 'Онлайн-запись',
-    submenu: [
-      { label: 'Профиль на маркетплейсе', href: '/marketing/profile' },
-      { label: 'Бронирование Google', href: '/marketing/google' },
-      { label: 'Facebook & Instagram', href: '/marketing/social' },
-      { label: 'Конструктор ссылок', href: '/marketing/links' },
-    ],
-  },
-  {
-    key: 'marketing', icon: FreshaMegaphone, title: 'Обмен сообщениями',
-    submenu: [
-      { label: 'Массовые кампании', href: '/marketing/campaigns' },
-      { label: 'Автоматизация', href: '/marketing/automation' },
-      { label: 'Уведомления', href: '/marketing/messages' },
-      { label: 'Акции', href: '/marketing/deals' },
-      { label: 'Умное ценообразование', href: '/marketing/pricing' },
-      { label: 'Отзывы', href: '/marketing/reviews' },
-    ],
-  },
-  {
-    key: 'team', icon: FreshaTeam, title: 'Команда',
-    submenu: [
-      { label: 'Участники команды', href: '/settings/team' },
-      { label: 'График смен', href: '/settings/team/shifts' },
-      { label: 'Табели', href: '/settings/team/timesheets' },
-      { label: 'Прогоны платежей', href: '/settings/team/payrun' },
-    ],
-  },
-  {
-    key: 'analytics', icon: FreshaAnalytics, href: '/finance/reports', tooltip: 'Аналитика',
-  },
-  { key: 'addons', icon: FreshaAddons, href: '/addons', tooltip: 'Дополнения' },
-  { key: 'settings', icon: FreshaSettings, href: '/settings', tooltip: 'Настройки' },
-];
+function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
+  return [
+    { key: 'dashboard', icon: FreshaHome, href: '/dashboard', tooltip: t('nav.dashboard') },
+    { key: 'calendar', icon: FreshaCalendar, href: '/calendar', tooltip: t('nav.calendar') },
+    {
+      key: 'sales', icon: FreshaTag, title: t('nav.sales'),
+      submenu: [
+        { label: t('nav.salesSub.daily'), href: '/finance/daily' },
+        { label: t('nav.salesSub.appointments'), href: '/finance/appointments' },
+        { label: t('nav.salesSub.list'), href: '/finance' },
+        { label: t('nav.salesSub.profitability'), href: '/finance/profitability' },
+        { label: t('nav.salesSub.taxReport'), href: '/finance/tax-report' },
+        { label: t('nav.salesSub.lostRevenue'), href: '/finance/lost-revenue' },
+        { label: t('nav.salesSub.payments'), href: '/finance/payments' },
+        { label: t('nav.salesSub.giftCards'), href: '/finance/gift-cards' },
+        { label: t('nav.salesSub.memberships'), href: '/finance/memberships' },
+      ],
+    },
+    {
+      key: 'clients', icon: FreshaSmile, title: t('nav.clients'),
+      submenu: [
+        { label: t('nav.clientsSub.list'), href: '/clients' },
+        { label: t('nav.clientsSub.segments'), href: '/clients/segments' },
+        { label: t('nav.clientsSub.loyalty'), href: '/clients/loyalty' },
+        { label: t('nav.clientsSub.blacklist'), href: '/clients/blacklist' },
+        { label: t('nav.clientsSub.cadence'), href: '/clients/cadence' },
+        { label: t('nav.clientsSub.consents'), href: '/consents' },
+        { label: t('nav.clientsSub.voiceNotes'), href: '/voice-notes' },
+      ],
+    },
+    {
+      key: 'catalogue', icon: FreshaBook, title: t('nav.catalogue'),
+      submenu: [
+        { label: t('nav.catalogueSub.services'), href: '/services' },
+        { label: t('nav.catalogueSub.memberships'), href: '/services/memberships' },
+        { label: t('nav.catalogueSub.products'), href: '/inventory' },
+        { label: t('nav.catalogueSub.scan'), href: '/inventory/scan' },
+        { label: t('nav.catalogueSub.beforeAfter'), href: '/before-after' },
+        { label: t('nav.catalogueSub.recommend'), href: '/recommend' },
+        { label: t('nav.catalogueSub.network'), href: '/network' },
+      ],
+    },
+    {
+      key: 'online-booking', icon: FreshaContact, title: t('nav.onlineBooking'),
+      submenu: [
+        { label: t('nav.onlineBookingSub.profile'), href: '/marketing/profile' },
+        { label: t('nav.onlineBookingSub.google'), href: '/marketing/google' },
+        { label: t('nav.onlineBookingSub.social'), href: '/marketing/social' },
+        { label: t('nav.onlineBookingSub.links'), href: '/marketing/links' },
+      ],
+    },
+    {
+      key: 'marketing', icon: FreshaMegaphone, title: t('nav.messaging'),
+      submenu: [
+        { label: t('nav.messagingSub.campaigns'), href: '/marketing/campaigns' },
+        { label: t('nav.messagingSub.automation'), href: '/marketing/automation' },
+        { label: t('nav.messagingSub.notifications'), href: '/marketing/messages' },
+        { label: t('nav.messagingSub.deals'), href: '/marketing/deals' },
+        { label: t('nav.messagingSub.pricing'), href: '/marketing/pricing' },
+        { label: t('nav.messagingSub.reviews'), href: '/marketing/reviews' },
+      ],
+    },
+    {
+      key: 'team', icon: FreshaTeam, title: t('nav.team'),
+      submenu: [
+        { label: t('nav.teamSub.members'), href: '/settings/team' },
+        { label: t('nav.teamSub.shifts'), href: '/settings/team/shifts' },
+        { label: t('nav.teamSub.timesheets'), href: '/settings/team/timesheets' },
+        { label: t('nav.teamSub.payrun'), href: '/settings/team/payrun' },
+      ],
+    },
+    { key: 'analytics', icon: FreshaAnalytics, href: '/finance/reports', tooltip: t('nav.analytics') },
+    { key: 'addons', icon: FreshaAddons, href: '/addons', tooltip: t('nav.addons') },
+    { key: 'settings', icon: FreshaSettings, href: '/settings', tooltip: t('nav.settings') },
+  ];
+}
 
 const sidebarHelp: SidebarNavItem = { key: 'help', icon: FreshaHelp, href: '/contact' };
 
@@ -199,6 +199,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const F: FTheme = mounted && resolvedTheme === 'dark' ? F_DARK : F_LIGHT;
   const masterName = master?.profile?.full_name || 'Master';
+  const sidebarNav = useMemo(() => buildSidebarNav(t), [t]);
 
   /* Auto-open flyout when current route matches a submenu item (like Fresha) */
   useEffect(() => {
@@ -208,7 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (matchingItem) {
       setOpenFlyout(matchingItem.key);
     }
-  }, [pathname]);
+  }, [pathname, sidebarNav]);
 
   function isActive(href: string) {
     return pathname.includes(href);
@@ -470,7 +471,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
             onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
           >
-            Продолжить настройку
+            {t('header.continueSetup')}
           </button>
           <TrialBadge />
         </div>
@@ -599,7 +600,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       justifyContent: 'space-between',
                     }}>
                       <span style={{ fontSize: 16, fontWeight: 600, color: F.textPrimary }}>
-                        Уведомления
+                        {t('header.notifications')}
                       </span>
                       <button
                         type="button"
@@ -612,7 +613,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           padding: 0,
                         }}
                       >
-                        Прочитать все
+                        {t('header.markAllRead')}
                       </button>
                     </div>
                     {/* Empty state */}
@@ -623,10 +624,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     }}>
                       <FreshaBell style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
                       <div style={{ fontSize: 15, fontWeight: 500, color: F.textPrimary, marginBottom: 4 }}>
-                        Нет новых уведомлений
+                        {t('header.noNewNotifications')}
                       </div>
                       <div style={{ fontSize: 13 }}>
-                        Здесь будут отображаться уведомления о записях, сообщениях и обновлениях
+                        {t('header.noNewNotificationsDesc')}
                       </div>
                     </div>
                   </motion.div>
@@ -701,9 +702,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     </div>
                     {[
-                      { label: 'Мой профиль', href: '/settings' },
-                      { label: 'Личные настройки', href: '/settings' },
-                      { label: 'Помощь и поддержка', href: '/contact' },
+                      { label: t('header.myProfile'), href: '/settings' },
+                      { label: t('header.personalSettings'), href: '/settings' },
+                      { label: t('header.helpSupport'), href: '/contact' },
                     ].map((item) => (
                       <Link
                         key={item.label}
@@ -746,7 +747,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#f5f5f5'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                     >
-                      Выйти
+                      {t('header.signOut')}
                     </button>
                   </motion.div>
                 </>

@@ -279,9 +279,18 @@
       "title": "Almost ready to launch",
       "subtitle": "Step {done} of {total} — finish setup to start accepting clients",
       "steps": {
-        "services": { "title": "Services", "hint": "Add at least one" },
-        "hours": { "title": "Schedule", "hint": "Set your working hours" },
-        "first_appointment": { "title": "First booking", "hint": "Create one in calendar" }
+        "services": {
+          "title": "Services",
+          "hint": "Add at least one"
+        },
+        "hours": {
+          "title": "Schedule",
+          "hint": "Set your working hours"
+        },
+        "first_appointment": {
+          "title": "First booking",
+          "hint": "Create one in calendar"
+        }
       }
     },
     "timePeriod": "Time period",
@@ -329,7 +338,80 @@
     "noShow": "No-show",
     "inProgress": "In progress",
     "booked_status": "Booked",
-    "noActivityToday": "No activity today yet"
+    "noActivityToday": "No activity today yet",
+    "nav": {
+      "dashboard": "Dashboard",
+      "calendar": "Calendar",
+      "analytics": "Analytics",
+      "addons": "Add-ons",
+      "settings": "Settings",
+      "sales": "Sales",
+      "clients": "Clients",
+      "catalogue": "Catalogue",
+      "onlineBooking": "Online booking",
+      "messaging": "Messaging",
+      "team": "Team",
+      "salesSub": {
+        "daily": "Daily sales",
+        "appointments": "Appointments",
+        "list": "Sales list",
+        "profitability": "Profitability",
+        "taxReport": "Tax report",
+        "lostRevenue": "Lost revenue",
+        "payments": "Payments",
+        "giftCards": "Gift cards",
+        "memberships": "Purchased memberships"
+      },
+      "clientsSub": {
+        "list": "Client list",
+        "segments": "Client segments",
+        "loyalty": "Client loyalty",
+        "blacklist": "Blacklist",
+        "cadence": "Cadence",
+        "consents": "Consents",
+        "voiceNotes": "Voice notes"
+      },
+      "catalogueSub": {
+        "services": "Service menu",
+        "memberships": "Memberships",
+        "products": "Products",
+        "scan": "Scan",
+        "beforeAfter": "Before / After",
+        "recommend": "Recommendations",
+        "network": "Master network"
+      },
+      "onlineBookingSub": {
+        "profile": "Marketplace profile",
+        "google": "Google booking",
+        "social": "Facebook & Instagram",
+        "links": "Link builder"
+      },
+      "messagingSub": {
+        "campaigns": "Bulk campaigns",
+        "automation": "Automation",
+        "notifications": "Notifications",
+        "deals": "Deals",
+        "pricing": "Smart pricing",
+        "reviews": "Reviews"
+      },
+      "teamSub": {
+        "members": "Team members",
+        "shifts": "Shift schedule",
+        "timesheets": "Timesheets",
+        "payrun": "Payruns"
+      }
+    },
+    "header": {
+      "continueSetup": "Continue setup",
+      "notifications": "Notifications",
+      "markAllRead": "Mark all as read",
+      "noNewNotifications": "No new notifications",
+      "noNewNotificationsDesc": "You'll see updates about bookings, messages and changes here",
+      "myProfile": "My profile",
+      "personalSettings": "Personal settings",
+      "helpSupport": "Help & support",
+      "signOut": "Sign out"
+    }
   },
   "calendar": {
     "today": "Today",
