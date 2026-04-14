@@ -10,8 +10,9 @@ Universal service CRM (masters → salons). Next.js 16 + React 19 + Supabase + n
 1. Прочитать `PROJECT-MAP.md` полностью.
 2. Найти все строки с префиксом `📝 TODO:` / `📝 BUG:` / `📝 IDEA:` / `📝 FIX:` (это заметки Данила).
 3. Для каждой такой строки — превратить в чекбокс `[ ]` в соответствующем разделе карты, либо в секции «Что предстоит сделать», и начать работу с ней, если пользователь подтвердил.
-4. После любых изменений в проекте — обновить чекбоксы в `PROJECT-MAP.md` и добавить запись в секцию «Changelog» внизу карты.
-5. **Никогда не создавать параллельный roadmap-документ.** Все фазы, блоки, задачи — только в `PROJECT-MAP.md`. Старые файлы `MASTER-WORK.md`, `CLIENT-WORK.md`, `phase-*.md` — **архив**, не рабочий план.
+4. **Очистить inbox** — после того как 📝-заметки разнесены по задачам, удалить их из секции INBOX, чтобы она снова была пустой. Inbox всегда должен быть чистым и готов принять следующую запись.
+5. После любых изменений в проекте — обновить чекбоксы в `PROJECT-MAP.md` и добавить запись в секцию «Changelog» внизу карты.
+6. **Никогда не создавать параллельный roadmap-документ.** Все фазы, блоки, задачи — только в `PROJECT-MAP.md`. Старые файлы `MASTER-WORK.md`, `CLIENT-WORK.md`, `phase-*.md` — **архив**, не рабочий план.
 
 ```bash
 npm run dev      # Dev server
@@ -76,6 +77,7 @@ Toolbox читается первым на любом новом проекте 
 4. **next-intl everywhere** — no hardcoded user-visible strings; all text via `useTranslations()` / `getTranslations()`.
 5. **shadcn v4 / base-ui** — do NOT pass `asChild`. Use `render` prop or wrap manually.
 6. **DESIGN.md reference on every UI task** — open `.knowledge/design-md/INDEX.md`, pick the brand reference for the surface you're styling (dashboard → `linear.app`, Mini App feed → `pinterest`/`spotify`, marketing → `stripe`), read palette/type/spacing, then build. Never invent ad-hoc styling.
+7. **Logged-in browser work** — для Supabase Dashboard, Vercel, GitHub и прочих залогиненных админок: CLI first (`supabase`/`vercel`/`gh` + соответствующие MCP plugin tools), затем `mcp__claude-in-chrome__*` (реальный Chrome пользователя). **Никогда** не открывать `mcp__plugin_playwright_playwright__browser_navigate` на админские URL — откроется гостевой headless, потребует логина, задача встанет. Playwright headless — только для публичных страниц / клонирования. Полное правило: `D:/toolbox/CLAUDE.md` §15.
 
 Full list and rationale in `.knowledge/rules.md`.
 
