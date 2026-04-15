@@ -2,7 +2,7 @@
  * name: MiniAppHomePage
  * description: Instagram-style main feed — Stories row (top masters by score) + next appointment strip + vertical feed of posts from followed profiles.
  * created: 2026-04-13
- * updated: 2026-04-14
+ * updated: 2026-04-15
  * --- */
 
 'use client';
@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Calendar, Search, Heart, Send, Loader2, Compass } from 'lucide-react';
+import { Calendar, Search, Heart, Send, Loader2, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -172,13 +172,37 @@ export default function MiniAppHomePage() {
   }
 
   const firstName = user?.first_name ?? 'друг';
+  const todayLabel = useMemo(
+    () => new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' }),
+    [],
+  );
+  const nextLabel = useMemo(() => {
+    if (!next) return null;
+    const ms = new Date(next.starts_at).getTime() - Date.now();
+    const days = Math.ceil(ms / 86400000);
+    if (days <= 0) return 'сегодня';
+    if (days === 1) return 'завтра';
+    if (days < 7) return `через ${days} дн`;
+    return `через ${Math.ceil(days / 7)} нед`;
+  }, [next]);
 
   if (!ready || loading) {
     return (
-      <div className="space-y-4 px-5 pt-6">
-        <div className="h-8 w-40 animate-pulse rounded-lg bg-white/5" />
-        <div className="h-20 w-full animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-80 w-full animate-pulse rounded-3xl bg-white/5" />
+      <div className="space-y-5 px-5 pt-6">
+        <div className="space-y-2">
+          <Shimmer className="h-3 w-16" />
+          <Shimmer className="h-7 w-48" />
+        </div>
+        <div className="flex gap-3">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex flex-col items-center gap-1.5">
+              <Shimmer className="size-14 rounded-full" />
+              <Shimmer className="h-2.5 w-10" />
+            </div>
+          ))}
+        </div>
+        <Shimmer className="h-20 w-full rounded-2xl" />
+        <Shimmer className="aspect-[4/5] w-full rounded-none" />
       </div>
     );
   }
@@ -192,51 +216,83 @@ export default function MiniAppHomePage() {
     >
       {/* Header */}
       <div className="px-5 pt-5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">CRES-CA</p>
-        <h1 className="mt-1 text-2xl font-bold">Привет, {firstName}</h1>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/35">
+          {todayLabel}
+        </p>
+        <h1 className="mt-1.5 text-[26px] font-bold leading-tight tracking-tight">
+          Привет,{' '}
+          <span className="bg-gradient-to-r from-amber-300 via-rose-400 to-fuchsia-500 bg-clip-text text-transparent">
+            {firstName}
+          </span>
+        </h1>
       </div>
 
       {/* Stories row */}
       {stories.length > 0 && (
-        <div className="-mx-0 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {stories.map((s) => (
-            <Link
+        <div className="flex gap-3.5 overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {stories.map((s, i) => (
+            <motion.div
               key={s.id}
-              href={s.publicId ? `/telegram/u/${s.publicId}` : `/telegram/search?master=${s.id}`}
-              onClick={() => haptic('light')}
-              className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: i * 0.04, ease: [0.22, 1, 0.36, 1] }}
             >
-              <div className="rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[2px]">
-                <div className="rounded-full bg-[#1f2023] p-[2px]">
-                  <div className="flex size-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-sm font-bold">
-                    {s.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.avatar} alt="" className="size-full object-cover" />
-                    ) : (
-                      (s.name[0] ?? 'M').toUpperCase()
-                    )}
+              <Link
+                href={s.publicId ? `/telegram/u/${s.publicId}` : `/telegram/search?master=${s.id}`}
+                onClick={() => haptic('light')}
+                className="flex w-[72px] shrink-0 flex-col items-center gap-1.5 active:scale-[0.94] transition-transform"
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 animate-[spin_6s_linear_infinite] rounded-full bg-[conic-gradient(from_0deg,#fbbf24,#f43f5e,#d946ef,#8b5cf6,#fbbf24)] blur-[1px] opacity-80" />
+                  <div className="relative rounded-full p-[2.5px]">
+                    <div className="rounded-full bg-[#0f1012] p-[2px]">
+                      <div className="flex size-[60px] items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-[15px] font-bold">
+                        {s.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.avatar} alt="" className="size-full object-cover" />
+                        ) : (
+                          (s.name[0] ?? 'M').toUpperCase()
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <p className="line-clamp-1 text-center text-[10px] text-white/70">{s.name}</p>
-            </Link>
+                <p className="line-clamp-1 text-center text-[10px] font-medium text-white/75">{s.name}</p>
+              </Link>
+            </motion.div>
           ))}
         </div>
       )}
 
       {/* Next appointment strip */}
       {next && (
-        <div className="px-5">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="px-5"
+        >
           <Link
             href={`/telegram/activity?id=${next.id}`}
             onClick={() => haptic('light')}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-br from-violet-600/25 via-fuchsia-600/10 to-rose-600/25 p-3 active:scale-[0.99] transition-transform"
+            className="group relative flex items-center gap-3 overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03] p-3.5 backdrop-blur-xl active:scale-[0.985] transition-transform"
           >
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
-              <Calendar className="size-5" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-600/30 via-fuchsia-600/15 to-rose-600/30" />
+            <div className="pointer-events-none absolute -left-8 -top-8 size-32 rounded-full bg-fuchsia-500/20 blur-3xl" />
+            <div className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/10">
+              <Calendar className="size-[18px]" />
+              <span className="absolute -right-0.5 -top-0.5 flex size-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-emerald-400 ring-2 ring-[#0f1012]" />
+              </span>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold">{next.service_name}</p>
+            <div className="relative min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="rounded-full bg-white/10 px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wider text-white/80">
+                  {nextLabel}
+                </span>
+              </div>
+              <p className="mt-0.5 truncate text-[13.5px] font-semibold">{next.service_name}</p>
               <p className="truncate text-[11px] text-white/60">
                 с {next.master_name} ·{' '}
                 {new Date(next.starts_at).toLocaleString('ru', {
@@ -247,40 +303,55 @@ export default function MiniAppHomePage() {
                 })}
               </p>
             </div>
-            <span className="text-[12px] font-bold">{next.price.toFixed(0)} ₴</span>
+            <span className="relative text-[13px] font-bold tabular-nums">{next.price.toFixed(0)} ₴</span>
           </Link>
-        </div>
+        </motion.div>
       )}
 
       {/* Feed */}
       {posts.length === 0 ? (
-        <div className="mx-5 mt-2 rounded-[28px] border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/10">
-            <Compass className="size-6 text-white/60" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="mx-5 mt-2 overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.02] p-10 text-center backdrop-blur-xl"
+        >
+          <div className="relative mx-auto size-20">
+            <div className="absolute inset-0 animate-pulse rounded-full bg-gradient-to-br from-violet-500/30 via-fuchsia-500/20 to-rose-500/30 blur-2xl" />
+            <div className="relative flex size-20 items-center justify-center rounded-full bg-gradient-to-br from-white/15 to-white/5 ring-1 ring-white/15">
+              <Sparkles className="size-8 text-white" strokeWidth={1.5} />
+            </div>
           </div>
-          <p className="mt-4 text-base font-semibold">Лента пуста</p>
-          <p className="mt-1 text-[12px] text-white/50">
-            Подпишитесь на мастеров, чтобы видеть их работы
+          <p className="mt-5 text-[17px] font-bold">Здесь пока пусто</p>
+          <p className="mt-1.5 text-[12.5px] leading-relaxed text-white/55">
+            Подпишитесь на мастеров — их работы появятся в&nbsp;вашей ленте
           </p>
           <Link
-            href="/telegram/search"
+            href="/telegram/map"
             onClick={() => haptic('selection')}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-xs font-semibold text-black"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-[12.5px] font-semibold text-black active:scale-[0.96] transition-transform"
           >
             <Search className="size-3.5" /> Найти мастера
           </Link>
-        </div>
+        </motion.div>
       ) : (
         <div className="space-y-1 pb-8">
-          {posts.map((p) => (
-            <PostCard key={p.id} post={p} onLike={() => toggleLike(p.id)} onHaptic={haptic} />
+          {posts.map((p, i) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: Math.min(i * 0.04, 0.3), ease: [0.22, 1, 0.36, 1] }}
+            >
+              <PostCard post={p} onLike={() => toggleLike(p.id)} onHaptic={haptic} />
+            </motion.div>
           ))}
           {nextCursor && (
             <div className="flex justify-center pt-4">
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[12px] font-semibold disabled:opacity-60"
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-2.5 text-[12px] font-semibold backdrop-blur-xl active:scale-[0.96] transition-transform disabled:opacity-60"
               >
                 {loadingMore && <Loader2 className="size-3 animate-spin" />}
                 Показать ещё
@@ -290,6 +361,19 @@ export default function MiniAppHomePage() {
         </div>
       )}
     </motion.div>
+  );
+}
+
+function Shimmer({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={`relative overflow-hidden bg-white/[0.04] ${className}`}
+      style={{ borderRadius: className.includes('rounded') ? undefined : 8 }}
+    >
+      <div
+        className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/[0.06] to-transparent"
+      />
+    </div>
   );
 }
 

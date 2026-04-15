@@ -60,75 +60,89 @@
 
 > Идеи Данила верхнего уровня — **инфраструктура для создания проектов вообще**, не только cres-ca. Живут здесь, потому что PROJECT-JOURNAL.md — единая точка правды, и терять их между проектами нельзя. После оформления — дублируются в `D:/toolbox/` как универсальное достояние.
 
-### META-1. Полуавтономная фабрика создания сервисов (цепочка субагентов)
+### META-1. Полуавтономная фабрика создания сервисов (закреплено 2026-04-15)
 
-**Видение Данила (дословно, 2026-04-15):**
-> «хочу настроить систему полуавтономного создания сервисов — я кидаю ТЗ и первый субагент аналитик помогает его развить, второй создает PROJECT-JOURNAL.md, третий создает PROJECT-MAP.md, третий еще что то, четвертый стиль сайта создает и тд. поитогу должна быть создана выверенная структура создания любых проектов от автоматизации любых процессов, до создания CRM любой сложности, сайтов, программ, мобильных игр и прочего»
+**Видение Данила (дословно):**
+> «хочу настроить систему полуавтономного создания сервисов — я кидаю ТЗ и первый субагент аналитик помогает его развить, второй создает PROJECT-JOURNAL.md, третий создает PROJECT-MAP.md... поитогу должна быть создана выверенная структура создания любых проектов от автоматизации, до CRM, сайтов, программ, мобильных игр и прочего»
 
-**Цель:** один пайплайн для старта любого проекта — CRM, автоматизация, сайт, программа, мобильная игра. Данил даёт сырое ТЗ → на выходе живой проект с документацией, структурой, дизайн-системой, roadmap и подключёнными субагентами по элементам.
+**Цель:** один slash-command `/new-project "<бриф>"` → живой проект с документацией, кодом, деплоем, handoff-пакетом. От брифа до сдачи клиенту — часы.
 
-**Цепочка (первая версия, расширять):**
-1. `analyst-agent` — принимает сырое ТЗ от Данила, задаёт уточняющие вопросы, превращает в структурированный бриф (персоны, сценарии, бизнес-модель, tech-stack, ограничения, риски).
-2. `journal-agent` — создаёт `PROJECT-JOURNAL.md` по канону cres-ca (принципы работы, легенда, inbox, секции по модулям, changelog).
-3. `map-agent` — создаёт `PROJECT-MAP.md` (визуальный canvas-граф страниц/кнопок/связей — зарезервированное имя).
-4. `architecture-agent` — выбирает tech-stack, структуру папок, БД-схему, auth-стратегию, интеграции.
-5. `design-system-agent` — выбирает бренд-референс из `.knowledge/design-md/`, генерирует палитру/типографику/spacing/motion, кладёт в проект `DESIGN.md`.
-6. `agents-bootstrap-agent` — по модулям из брифа создаёт индивидуальных субагентов (см. AGENTS-1): landing-agent, auth-agent, onboarding-agent, профильные mobile/web/dashboard агенты и т.д. — каждый со своим `SECTOR.md` с правилами.
-7. `skeleton-agent` — создаёт начальный код (Next.js/Vite/Expo/Unity — зависит от типа проекта), привязывает к git, создаёт первый деплой.
-8. `qa-agent` — настраивает линтеры, type-check, тесты, CI, pre-commit hooks.
-9. `content-seed-agent` (опционально) — генерирует начальный контент: placeholder тексты, OG-изображения, seed данные.
+**Где жить:** `D:/toolbox/.workspace/skills/project-factory/SKILL.md` + агенты в `D:/toolbox/.workspace/agents/factory/<name>/AGENT.md`. Проекты создаются в `D:/projects/<name>/`.
 
-**Где жить:** `D:/toolbox/.workspace/skills/project-factory/` + набор агентов в `D:/toolbox/.workspace/agents/factory/`. Запуск: `/new-project <название> <type>` или через серию шагов в чате.
+**Контекст:**
+- Типы проектов: web-сайт, CRM, автоматизация, Telegram-бот, **мобильные игры** (="мобилка" в лексиконе Данила = mobile games, не обычные мобильные приложения)
+- Вход: сырая идея "хочу как X" от клиента. **Данил = посредник** между Claude и клиентом — Данил пишет Claude текстовое ТЗ на основе общения с клиентом. Intake-agent работает по этому тексту, не напрямую с клиентом.
+- Срок: часы (от брифа до handoff)
+- Стек: адаптивный, per-type пресеты + переиспользование cres-ca компонентов (копировать в новый проект, не npm-link)
+- Оркестрация: один slash-command `/new-project`, native Claude Code Agent tool (не Ruflo — избыточно), молчаливый режим с чекпоинтами каждые ~3 агента / 15 минут
+- GitHub: создаётся в аккаунте Данила, потом transfer клиенту
+- Путь: `D:/projects/<name>/`
+- Эксперимент: обкатываем фабрику на cres-ca (responsive-agent → handoff-agent → потом перенос в toolbox)
 
-**Архитектура (v0.1 — 2026-04-15):**
+**Цепочка — 14 агентов (выверенная последовательность, запускается оркестратором):**
 
-Оркестратор — один slash-command `/new-project "<бриф>"` который запускает цепочку. Каждый агент — отдельный файл в `D:/toolbox/.workspace/agents/factory/<name>/AGENT.md` с чётким контрактом:
+| # | Agent | Роль | Входы | Выходы | Handoff | Время | Parallel? |
+|---|---|---|---|---|---|---|---|
+| 1 | `intake-agent` | Читает текст ТЗ от Данила, задаёт **до 5** уточняющих вопросов в ОДНОМ сообщении, фиксирует open-questions | `raw_brief.md` (текст от Данила) | `01-intake.md` (ТЗ-структура: тип, цель, must-have, nice-to-have, constraints, open-questions) | → analyst | ~10м | нет |
+| 2 | `analyst-agent` | Расширяет: персоны, user stories, 1 конкурент-референс, метрики успеха, риски | `01-intake.md` | `02-analyst.md` (persona, stories, competitor, metrics, risks) | → stack | ~15м | нет |
+| 3 | `stack-agent` | Выбирает стек по типу из пресет-таблицы (ниже). Копирует нужные куски из cres-ca | `01-intake.md` + `02-analyst.md` | `03-stack.md` (выбранный стек, список cres-ca компонентов для копирования) | → journal | ~5м | нет |
+| 4 | `journal-agent` | Создаёт `PROJECT-JOURNAL.md` в новом проекте по канону cres-ca (принципы, inbox, блоки A/B/C, changelog) | все предыдущие | `PROJECT-JOURNAL.md` в `D:/projects/<name>/` | → map | ~5м | ✅ с map |
+| 5 | `map-agent` | `PROJECT-MAP.md` — routes/components/DB-сущности в mermaid + JSON | 01+02+03 | `PROJECT-MAP.md` | → architecture | ~10м | ✅ с journal |
+| 6 | `architecture-agent` | DB schema, API routes, auth model, env vars, папочная структура | 03 + map | `ARCHITECTURE.md` + `schema.sql` | → design | ~15м | нет |
+| 7 | `design-system-agent` | Выбирает DESIGN.md референс из `.knowledge/design-md/`, генерит `tokens.css`, компонентный каркас | 01 + architecture | `DESIGN.md` + `tokens.css` + `components/` skeleton | → skeleton | ~15м | нет |
+| 8 | `skeleton-agent` | `git init`, скаффолд страниц / API / миграций (пустые но рабочие), копирование cres-ca компонентов из `03-stack.md` | всё выше | рабочий проект в `D:/projects/<name>/` + первый `git commit` | → impl | ~20м | нет |
+| 9 | `impl-agent` (×N) | Реализация фич по блокам из journal. **Параллельный** — оркестратор запускает N instances по одному на блок A/B/C... | journal + skeleton | фичи реализованы, чекбоксы в journal закрыты | → responsive | зависит | ✅ N параллельно |
+| 10 | ⭐ `responsive-agent` | **Отдельный по запросу Данила** — адаптирует ВСЕ surfaces под разные экраны: mobile 320-430, tablet 768-1024, desktop 1280-1920+, TV 2560+ | готовый impl | обновлённые компоненты с брейкпоинтами, storybook snapshots | → qa | ~30м | нет (после impl) |
+| 11 | `qa-agent` | `tsc --noEmit` + `eslint` + `next build` + Playwright smoke golden path + Lighthouse ≥85 | готовый impl + responsive | `QA-REPORT.md` | → deploy **или** → impl если fail | ~15м | нет |
+| 12 | `deploy-agent` | Vercel provision (в аккаунте Данила), Supabase provision, env vars из `.env.example`, кастомный домен (опц.), production deploy | qa pass | `DEPLOYMENT.md` (URLs, креды, env) | → content-seed | ~10м | нет |
+| 13 | `content-seed-agent` | Реалистичный seed data в БД, i18n starters (ru/en/uk), legal placeholders (privacy/terms) | deploy done | seed applied, `SEED.md` | → handoff | ~10м | нет |
+| 14 | `handoff-agent` | Генерит handoff-пакет (см. ниже). Передача клиенту через Данила | всё выше | `handoff/` папка | DONE | ~15м | нет |
 
-```yaml
-name: analyst-agent
-inputs:
-  - raw_brief: string (сырое ТЗ от Данила)
-outputs:
-  - /tmp/factory/<project>/01-analyst.md
-    sections: [persona, scenarios, business-model, tech-constraints, success-metrics, risks, open-questions]
-handoff_to: journal-agent
-rules:
-  - задавать не больше 5 уточняющих вопросов зараз
-  - выход всегда на русском, структура жёсткая
-  - НЕ начинать следующие шаги если open-questions > 0 — ждать ответов
-```
+**Пресеты stack-agent (выбор по типу):**
 
-**Контракты по шагам (черновой):**
+| Тип проекта | Дефолтный стек | Референс из cres-ca |
+|---|---|---|
+| Web-сайт / лендинг | Next 16 + Tailwind + framer-motion + Vercel | `app/(marketing)` |
+| CRM / dashboard | Next 16 + Supabase + next-intl + Tailwind + Vercel (= cres-ca) | весь cres-ca |
+| Автоматизация | Bun scripts + cron + Supabase + простой web-UI Next | — |
+| Telegram-бот | grammY + Bun + Supabase + Vercel Functions | `src/app/telegram/*` (Mini App паттерны) |
+| **Мобильная игра** | Godot 4 (нативная iOS/Android) **или** Phaser 3 (HTML5 для web-wrap) — выбирает intake в open-questions | — |
 
-| # | Agent | In | Out | Handoff |
-|---|---|---|---|---|
-| 1 | `analyst-agent` | сырое ТЗ | `01-analyst.md` (persona, scenarios, biz-model, constraints, risks) | → journal |
-| 2 | `journal-agent` | 01-analyst.md | `PROJECT-JOURNAL.md` (принципы, легенда, inbox, секции по модулям, changelog) | → map |
-| 3 | `map-agent` | 01-analyst.md + journal | `PROJECT-MAP.md` (canvas граф страниц/кнопок/связей в JSON + mermaid) | → architecture |
-| 4 | `architecture-agent` | journal + map | `ARCHITECTURE.md` (tech-stack, папки, БД-схема, auth, интеграции, deployment) | → design |
-| 5 | `design-system-agent` | brief + architecture | `DESIGN.md` (бренд-ref из `.knowledge/design-md/`, палитра, типо, spacing, motion) | → agents-bootstrap |
-| 6 | `agents-bootstrap-agent` | journal + map + architecture | набор `.agents/sectors/<element>/SECTOR.md` по элементам (landing, auth, onboarding, profile, dashboard и т.д., granularity из карты страниц) | → skeleton |
-| 7 | `skeleton-agent` | architecture + design + agents | git init + initial code (Next.js/Vite/Expo/Unity — по типу проекта), первый деплой на Vercel | → qa |
-| 8 | `qa-agent` | skeleton | линтеры, type-check, тесты, CI, pre-commit hooks | → content-seed |
-| 9 | `content-seed-agent` | все предыдущие | placeholder тексты, OG-изображения, seed данные в БД | DONE |
+**Handoff-пакет (что генерит `handoff-agent`):**
+1. `README.md` — как запустить локально + архитектура в 1 абзаце
+2. `.env.example` — описание каждой переменной
+3. `CLIENT-GUIDE.pdf` (6-10 страниц) — скриншоты каждого экрана + "что куда кликать"
+4. `LOOM-SCRIPT.md` — готовый текст для записи 5-мин walkthrough видео (Данил сам пишет ртом)
+5. `ACCESS.md` — как передать Vercel/Supabase/GitHub доступы клиенту (transfer ownership инструкции)
+6. GitHub repo создан в аккаунте Данила, готов к transfer
+7. Live preview URL (Vercel production)
 
-**Критичные правила цепочки:**
-- Каждый агент **только читает** выходы предыдущих, не правит их. Если нашёл ошибку — останавливается и эскалирует Данилу.
-- Каждый агент пишет в свой namespace (`/tmp/factory/<project>/NN-<name>.md`), итоговые артефакты собираются в целевой репо только на шаге skeleton-agent.
-- Оркестратор ведёт `/tmp/factory/<project>/STATUS.md` с текущим шагом, последним выходом, ошибками.
-- Токены: каждый агент обязан работать с **минимальным контекстом** — только `01-analyst.md` + свой предыдущий шаг, а не всё сразу.
-- Перед запуском шага оркестратор проверяет: все open-questions закрыты, предыдущие артефакты валидны, токен-бюджет не превышен.
+**Quality gates (блокируют deploy, принуждают impl-agent чинить):**
+- `tsc --noEmit` = 0 errors
+- `eslint` = 0 errors (warnings ok)
+- `next build` = green
+- Playwright smoke golden path = pass
+- Lighthouse home ≥ 85 (performance + accessibility)
 
-**Связь с AGENTS-1 (из cres-ca):** AGENTS-1 — это ручное создание агентов по элементам для cres-ca. После того как META-1 готов — AGENTS-1 становится результатом работы `agents-bootstrap-agent` на существующем проекте (retrofit mode: принимает готовый журнал/карту и создаёт агентов постфактум).
+**Протокол тишины оркестратора:**
+- Не отчитывается после каждого агента
+- Пишет статус каждые **~3 завершённых агента** ИЛИ **каждые 15 минут** (что раньше)
+- Формат чекпоинта: `✓ [агенты выполнены]. [краткий факт — например выбранный стек, URL]. Начинаю [следующие агенты].`
+- Блокирующий вопрос Данилу — ТОЛЬКО если критично: API ключи, домен, платёжный провайдер, выбор при open-questions > 0
+- Ошибка (например qa-agent fail) — печатает сразу, не ждёт чекпоинта
 
-**Статус:** 0% реализации, архитектура v0.1 записана.
+**Статус реализации:**
 
-- [ ] **META-1.** Полуавтономная фабрика создания сервисов. План:
-  - [ ] **1a.** Прописать `AGENT.md` для каждого из 9 агентов в `D:/toolbox/.workspace/agents/factory/` (9 файлов, по одному шаблону).
-  - [ ] **1b.** Создать оркестратор-скилл `D:/toolbox/.workspace/skills/project-factory/SKILL.md` + `/new-project` slash command.
-  - [ ] **1c.** Тест на mini-проекте: создать игрушечный «landing page для пекарни» от брифа до задеплоенного Vercel URL. Должно уложиться в 1-2 часа чистого времени Claude Code.
-  - [ ] **1d.** Retrofit на cres-ca: прогнать `agents-bootstrap-agent` на существующий journal → получить 18 `SECTOR.md` файлов в `.agents/sectors/`. Это закроет AGENTS-1 автоматически.
-  - [ ] **1e.** Документация для Данила: как пользоваться, какие команды, где смотреть прогресс.
+- [ ] **META-1.** Фабрика проектов v0.2. План:
+  - [ ] **1a.** Прописать `AGENT.md` для каждого из 14 агентов в `D:/toolbox/.workspace/agents/factory/<name>/AGENT.md` (14 файлов по шаблону).
+  - [ ] **1b.** Создать оркестратор-скилл `D:/toolbox/.workspace/skills/project-factory/SKILL.md` + `/new-project` slash-command с silent-mode протоколом.
+  - [ ] **1c.** Создать пресет-таблицу `stack-agent` в отдельном файле `D:/toolbox/.workspace/agents/factory/stack-agent/PRESETS.md`.
+  - [ ] **1d.** 🧪 **Эксперимент на cres-ca:** прогнать `responsive-agent` по клиентскому модулю (закрывает UX-7 premium polish).
+  - [ ] **1e.** 🧪 **Эксперимент на cres-ca:** прогнать `handoff-agent` по cres-ca — получить handoff-пакет как dogfooding.
+  - [ ] **1f.** Перенос принципа работы (этот раздел v0.2) в `D:/toolbox/.workspace/CLAUDE.md` и `D:/toolbox/.workspace/PROJECT-JOURNAL.md`.
+  - [ ] **1g.** Первый реальный mini-проект через `/new-project`: "лендинг для вымышленной кофейни", цель — уложиться в 2 часа от брифа до live URL.
+  - [ ] **1h.** Retrofit `agents-bootstrap-agent` на cres-ca → 18 `SECTOR.md` (закрывает AGENTS-1).
+  - [ ] **1i.** Документация для Данила: как пользоваться `/new-project`, где смотреть прогресс, как эскалировать.
 
 ### META-2. Система реалистичной генерации фото/видео + AI-аватары (commerce-grade)
 
