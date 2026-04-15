@@ -1,15 +1,17 @@
 /** --- YAML
  * name: MiniAppSettingsPage
- * description: Mini App settings — account, CRES-ID slug, language, sign-out. Stub for CG6.
+ * description: Mini App settings — язык (stub), приватность (stub), помощь, выход. Аккаунт/email/phone редактируются на /telegram/profile.
  * created: 2026-04-14
- * updated: 2026-04-14
+ * updated: 2026-04-15
  * --- */
 
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ChevronLeft, LogOut, User, Globe, Shield, HelpCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, User, Globe, Shield, HelpCircle, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -18,9 +20,12 @@ export default function MiniAppSettingsPage() {
   const router = useRouter();
   const { haptic } = useTelegram();
   const { clearAuth } = useAuthStore();
+  const [signingOut, setSigningOut] = useState(false);
 
   async function signOut() {
+    if (signingOut) return;
     haptic('medium');
+    setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
     clearAuth();
@@ -49,7 +54,22 @@ export default function MiniAppSettingsPage() {
       </div>
 
       <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
-        <Row icon={User} label="Аккаунт" hint="Имя, CRES-ID, био" onClick={() => haptic('light')} />
+        <li>
+          <Link
+            href="/telegram/profile"
+            onClick={() => haptic('light')}
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+          >
+            <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+              <User className="size-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm">Аккаунт</p>
+              <p className="text-[11px] text-white/45">Имя, email, телефон, CRES-ID, био</p>
+            </div>
+            <ChevronRight className="size-4 text-white/40" />
+          </Link>
+        </li>
         <Row icon={Globe} label="Язык" hint="Русский" onClick={() => haptic('light')} />
         <Row icon={Shield} label="Приватность" hint="Видимость профиля" onClick={() => haptic('light')} />
         <Row icon={HelpCircle} label="Помощь" hint="FAQ и поддержка" onClick={() => haptic('light')} />
@@ -57,9 +77,11 @@ export default function MiniAppSettingsPage() {
 
       <button
         onClick={signOut}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-4 text-[14px] font-semibold text-rose-200 active:scale-[0.98] transition-transform"
+        disabled={signingOut}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-4 text-[14px] font-semibold text-rose-200 active:scale-[0.98] transition-transform disabled:opacity-60"
       >
-        <LogOut className="size-4" /> Выйти из аккаунта
+        {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+        Выйти из аккаунта
       </button>
     </motion.div>
   );
@@ -86,6 +108,7 @@ function Row({
           <p className="text-sm">{label}</p>
           {hint && <p className="text-[11px] text-white/45">{hint}</p>}
         </div>
+        <ChevronRight className="size-4 text-white/40" />
       </button>
     </li>
   );
