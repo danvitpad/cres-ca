@@ -50,7 +50,7 @@
     "selectRole": "Выберите роль",
     "roleMaster": "Я оказываю услуги",
     "roleClient": "Я ищу услуги",
-    "roleSalon": "Я управляю бизнесом",
+    "roleSalon": "Я руковожу командой",
     "backToHome": "На главную",
     "platformDesc": "Удобный сервис для записи и управления услугами",
     "rememberMe": "Запомнить меня",
@@ -1318,7 +1318,31 @@
     "createGuild": "Создать гильдию",
     "noGuilds": "Гильдий пока нет. Создайте и пригласите других мастеров!",
     "guildName": "Название гильдии",
-    "guildPlaceholder": "Beauty Alliance..."
+    "guildPlaceholder": "Beauty Alliance...",
+    "messagesPage": {
+      "title": "Шаблоны сообщений",
+      "description": "Переменные: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}'",
+      "addTemplate": "Добавить шаблон",
+      "selectType": "Выбери тип…",
+      "create": "Создать",
+      "loading": "Загрузка…",
+      "empty": "Нет шаблонов — создай первый из выпадающего списка выше.",
+      "saved": "Сохранено",
+      "deleteConfirm": "Удалить шаблон?",
+      "active": "Активен",
+      "save": "Сохранить",
+      "delete": "Удалить",
+      "kinds": {
+        "reminder_24h": "Напоминание за 24ч",
+        "reminder_2h": "Напоминание за 2ч",
+        "thanks": "Спасибо после визита",
+        "win_back": "Win-back (давно не был)",
+        "review_request": "Запрос отзыва",
+        "cadence": "Пора записаться",
+        "nps": "NPS опрос",
+        "custom": "Другое"
+      }
+    }
   },
   "consent": {
     "title": "Форма цифрового согласия",

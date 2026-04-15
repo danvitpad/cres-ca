@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
@@ -43,7 +43,6 @@ import {
   Search,
   Check,
   MapPin,
-  Pencil,
 } from 'lucide-react';
 
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });

@@ -50,7 +50,7 @@
     "selectRole": "Оберіть роль",
     "roleMaster": "Я надаю послуги",
     "roleClient": "Я шукаю послуги",
-    "roleSalon": "Я керую бізнесом",
+    "roleSalon": "Я керую командою",
     "backToHome": "На головну",
     "platformDesc": "Зручний сервіс для запису та управління послугами",
     "rememberMe": "Запам'ятати мене",
@@ -1318,7 +1318,31 @@
     "createGuild": "Створити гільдію",
     "noGuilds": "Гільдій поки немає. Створіть та запросіть інших майстрів!",
     "guildName": "Назва гільдії",
-    "guildPlaceholder": "Beauty Alliance..."
+    "guildPlaceholder": "Beauty Alliance...",
+    "messagesPage": {
+      "title": "Шаблони повідомлень",
+      "description": "Змінні: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}'",
+      "addTemplate": "Додати шаблон",
+      "selectType": "Обери тип…",
+      "create": "Створити",
+      "loading": "Завантаження…",
+      "empty": "Шаблонів немає — створи перший зі списку вище.",
+      "saved": "Збережено",
+      "deleteConfirm": "Видалити шаблон?",
+      "active": "Активний",
+      "save": "Зберегти",
+      "delete": "Видалити",
+      "kinds": {
+        "reminder_24h": "Нагадування за 24г",
+        "reminder_2h": "Нагадування за 2г",
+        "thanks": "Дякуємо після візиту",
+        "win_back": "Win-back (давно не був)",
+        "review_request": "Запит відгуку",
+        "cadence": "Час записатись",
+        "nps": "NPS опитування",
+        "custom": "Інше"
+      }
+    }
   },
   "consent": {
     "title": "Форма цифрової згоди",

@@ -12,7 +12,6 @@ import { ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
 
 interface ConsentFormProps {
   serviceName: string;

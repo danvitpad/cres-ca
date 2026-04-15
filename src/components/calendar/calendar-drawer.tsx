@@ -6,7 +6,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Minus, Maximize2 } from 'lucide-react';
+import { X } from 'lucide-react';
 
 type CalendarDrawerProps = {
   open: boolean;

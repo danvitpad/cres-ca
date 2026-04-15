@@ -9,7 +9,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, ChevronDown, Plus, ShoppingBag } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, ShoppingBag } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { format, subMonths, type Locale } from 'date-fns';

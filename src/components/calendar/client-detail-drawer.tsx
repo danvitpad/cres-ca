@@ -6,7 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Phone, Mail, Calendar, Star, CreditCard, AlertTriangle, ChevronRight, Clock } from 'lucide-react';
+import { X, Phone, Mail, Calendar, Star, CreditCard, AlertTriangle, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';

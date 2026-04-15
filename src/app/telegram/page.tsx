@@ -34,6 +34,8 @@ export default function TelegramEntryPage() {
 
       webapp.ready();
       webapp.expand();
+      // Bot API 8.0+ — true fullscreen on iOS/Android clients (no-op on Web/Desktop)
+      try { webapp.requestFullscreen?.(); } catch {}
       try { webapp.disableVerticalSwipes(); } catch {}
       try {
         webapp.setHeaderColor('#1f2023');

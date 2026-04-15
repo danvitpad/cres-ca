@@ -29,9 +29,7 @@ import {
   GraduationCap,
   Dumbbell,
   Sparkles,
-  ChevronRight,
 } from 'lucide-react';
-import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AnimatedSection, AnimatedStagger, AnimatedItem, AnimatedCounter } from '@/components/shared/animated-section';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';

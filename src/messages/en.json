@@ -50,7 +50,7 @@
     "selectRole": "Choose your role",
     "roleMaster": "I provide services",
     "roleClient": "I'm looking for services",
-    "roleSalon": "I manage a business",
+    "roleSalon": "I manage a team",
     "backToHome": "Back to home",
     "platformDesc": "Easy booking and service management platform",
     "rememberMe": "Remember me",
@@ -1318,7 +1318,31 @@
     "createGuild": "Create Guild",
     "noGuilds": "No guilds yet. Create one and invite other masters!",
     "guildName": "Guild Name",
-    "guildPlaceholder": "Beauty Alliance..."
+    "guildPlaceholder": "Beauty Alliance...",
+    "messagesPage": {
+      "title": "Message Templates",
+      "description": "Variables: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}'",
+      "addTemplate": "Add template",
+      "selectType": "Select type…",
+      "create": "Create",
+      "loading": "Loading…",
+      "empty": "No templates — create your first one from the dropdown above.",
+      "saved": "Saved",
+      "deleteConfirm": "Delete template?",
+      "active": "Active",
+      "save": "Save",
+      "delete": "Delete",
+      "kinds": {
+        "reminder_24h": "Reminder 24h before",
+        "reminder_2h": "Reminder 2h before",
+        "thanks": "Thank you after visit",
+        "win_back": "Win-back (long absence)",
+        "review_request": "Review request",
+        "cadence": "Time to book again",
+        "nps": "NPS survey",
+        "custom": "Other"
+      }
+    }
   },
   "consent": {
     "title": "Digital Consent Form",

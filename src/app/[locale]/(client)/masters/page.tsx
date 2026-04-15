@@ -13,9 +13,7 @@ import { Search, Star, MapPin, X, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
-import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 interface MasterResult {
   id: string;

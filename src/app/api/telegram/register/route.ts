@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     middleName,
     dateOfBirth,
     fullNameOverride,
+    salonName,
     linkTelegram = true,
     role = 'client',
   } = body as {
@@ -71,11 +72,17 @@ export async function POST(request: Request) {
     middleName?: string | null;
     dateOfBirth?: string | null;
     fullNameOverride?: string;
+    salonName?: string;
     linkTelegram?: boolean;
-    role?: 'client' | 'master';
+    role?: 'client' | 'master' | 'salon_admin';
   };
 
-  const safeRole: 'client' | 'master' = role === 'master' ? 'master' : 'client';
+  const safeRole: 'client' | 'master' | 'salon_admin' =
+    role === 'master' ? 'master' : role === 'salon_admin' ? 'salon_admin' : 'client';
+
+  if (safeRole === 'salon_admin' && !salonName?.trim()) {
+    return NextResponse.json({ error: 'missing_salon_name' }, { status: 400 });
+  }
 
   if (!initData) return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
   if (!phone) return NextResponse.json({ error: 'missing_phone' }, { status: 400 });
@@ -100,13 +107,16 @@ export async function POST(request: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const fullName =
+  const personalName =
     fullNameOverride?.trim() ||
     [firstName, middleName, lastName]
       .map((s) => s?.trim())
       .filter((s): s is string => Boolean(s))
       .join(' ') ||
     `tg_${tg.id}`;
+
+  // For salon_admin, `full_name` on the profile = salon name (matches web /register behaviour)
+  const fullName = safeRole === 'salon_admin' ? salonName!.trim() : personalName;
 
   // Only store TG identifiers if user opted in (per consent checkbox).
   // Always stash the numeric id so we can recognize this user on next entry,
@@ -135,7 +145,12 @@ export async function POST(request: Request) {
       await admin.from('profiles').update({ role: 'master' }).eq('id', byTg.id);
       await ensureMasterRow(admin, byTg.id, fullName);
     }
-    return NextResponse.json({ userId: byTg.id, role: safeRole === 'master' ? 'master' : byTg.role, publicId: byTg.public_id, isNew: false });
+    if (safeRole === 'salon_admin' && byTg.role !== 'salon_admin') {
+      await admin.from('profiles').update({ role: 'salon_admin', full_name: fullName }).eq('id', byTg.id);
+      await ensureSalonAndMaster(admin, byTg.id, fullName);
+    }
+    const resolvedRole = safeRole === 'client' ? byTg.role : safeRole;
+    return NextResponse.json({ userId: byTg.id, role: resolvedRole, publicId: byTg.public_id, isNew: false });
   }
 
   // 2. Phone matches an existing profile without telegram_id → link
@@ -152,7 +167,12 @@ export async function POST(request: Request) {
       await admin.from('profiles').update({ role: 'master' }).eq('id', byPhone.id);
       await ensureMasterRow(admin, byPhone.id, fullName);
     }
-    return NextResponse.json({ userId: byPhone.id, role: safeRole === 'master' ? 'master' : byPhone.role, publicId: byPhone.public_id, isNew: false, linkedExisting: true });
+    if (safeRole === 'salon_admin' && byPhone.role !== 'salon_admin') {
+      await admin.from('profiles').update({ role: 'salon_admin', full_name: fullName }).eq('id', byPhone.id);
+      await ensureSalonAndMaster(admin, byPhone.id, fullName);
+    }
+    const resolvedRole = safeRole === 'client' ? byPhone.role : safeRole;
+    return NextResponse.json({ userId: byPhone.id, role: resolvedRole, publicId: byPhone.public_id, isNew: false, linkedExisting: true });
   }
 
   // 3. Create new auth user + profile via admin API
@@ -212,8 +232,11 @@ export async function POST(request: Request) {
         phone: normalizedPhone,
       });
     }
-  } else {
+  } else if (safeRole === 'master') {
     await ensureMasterRow(admin, created.user.id, fullName);
+  } else {
+    // salon_admin — trigger creates salons+masters automatically, but we ensure as safety net
+    await ensureSalonAndMaster(admin, created.user.id, fullName);
   }
 
   // Sign in on the server client so cookies are set for subsequent requests
@@ -247,4 +270,38 @@ async function ensureMasterRow(admin: any, profileId: string, displayName: strin
     display_name: displayName,
     is_active: true,
   });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function ensureSalonAndMaster(admin: any, profileId: string, salonName: string): Promise<void> {
+  let salonId: string | null = null;
+  const { data: existingSalon } = await admin
+    .from('salons')
+    .select('id')
+    .eq('owner_id', profileId)
+    .maybeSingle();
+  if (existingSalon) {
+    salonId = existingSalon.id;
+  } else {
+    const { data: newSalon } = await admin
+      .from('salons')
+      .insert({ owner_id: profileId, name: salonName })
+      .select('id')
+      .single();
+    salonId = newSalon?.id ?? null;
+  }
+
+  const { data: existingMaster } = await admin
+    .from('masters')
+    .select('id')
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (!existingMaster && salonId) {
+    await admin.from('masters').insert({
+      profile_id: profileId,
+      display_name: salonName,
+      salon_id: salonId,
+      is_active: true,
+    });
+  }
 }

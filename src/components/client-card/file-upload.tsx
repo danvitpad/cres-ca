@@ -11,8 +11,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useSubscription } from '@/hooks/use-subscription';
-import { Button } from '@/components/ui/button';
-import { UploadCloud, FileText, Image, Trash2, CheckCircle2, File as FileIcon } from 'lucide-react';
+import { UploadCloud, FileText, Image, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ClientFile {

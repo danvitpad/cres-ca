@@ -12,6 +12,7 @@ const MESSAGES: Record<string, string> = {
   missing_phone: 'Укажите номер телефона',
   invalid_phone: 'Введите корректный номер телефона',
   missing_name: 'Укажите имя и фамилию',
+  missing_salon_name: 'Укажите название команды',
   missing_email: 'Укажите email',
   invalid_email: 'Некорректный email — используйте латиницу',
   missing_password: 'Придумайте пароль',

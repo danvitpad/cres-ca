@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
-import { Plus, Users, Filter } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 
 const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 

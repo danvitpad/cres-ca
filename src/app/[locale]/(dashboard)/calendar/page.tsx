@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
@@ -17,7 +18,6 @@ import { WeekView } from '@/components/calendar/week-view';
 import { ThreeDayView } from '@/components/calendar/three-day-view';
 import { MonthView } from '@/components/calendar/month-view';
 import { NewAppointmentDialog } from '@/components/calendar/new-appointment-dialog';
-import { AppointmentActions } from '@/components/calendar/appointment-actions';
 import { AppointmentDetailDrawer } from '@/components/calendar/appointment-detail-drawer';
 import { CalendarDrawer } from '@/components/calendar/calendar-drawer';
 import { SettingsDrawerContent } from '@/components/calendar/settings-drawer';
@@ -1062,7 +1062,7 @@ export default function CalendarPage() {
                   ) : sidePanelServices.length === 0 ? (
                     <div style={{ padding: '24px 0', textAlign: 'center' }}>
                       <p style={{ fontSize: 14, color: F.textMuted, margin: 0 }}>{t('noServices')}</p>
-                      <a href="/services" style={{ fontSize: 13, color: F.accent, marginTop: 8, display: 'inline-block' }}>{t('goToServices')}</a>
+                      <Link href="/services" style={{ fontSize: 13, color: F.accent, marginTop: 8, display: 'inline-block' }}>{t('goToServices')}</Link>
                     </div>
                   ) : (() => {
                     const filtered = sidePanelServices.filter(s =>

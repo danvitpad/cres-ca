@@ -17,12 +17,10 @@ import {
   Calendar,
   AlertTriangle,
   FileText,
-  Plus,
   Loader2,
   Save,
   Crown,
   TrendingUp,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';

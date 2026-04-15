@@ -1,16 +1,17 @@
 /** --- YAML
  * name: MiniAppRegisterPage
- * description: Manual registration form — last/first/middle name, phone, email, optional DoB. Opt-in checkbox at bottom to link Telegram ID + username.
+ * description: Manual registration form — role picker (client/master/salon), personal or salon name, phone, email, optional DoB. Opt-in checkbox at bottom to link Telegram ID + username.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-15
  * --- */
 
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Lock } from 'lucide-react';
+import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Building2, Lock } from 'lucide-react';
 import { mapError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -34,10 +35,11 @@ export default function MiniAppRegisterPage() {
   const { setAuth } = useAuthStore();
   const [stash, setStash] = useState<Stash | null>(null);
 
-  const [role, setRole] = useState<'client' | 'master'>('client');
+  const [role, setRole] = useState<'client' | 'master' | 'salon_admin'>('client');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [middleName, setMiddleName] = useState('');
+  const [salonName, setSalonName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,8 +77,12 @@ export default function MiniAppRegisterPage() {
   }
 
   function validate(): string | null {
-    if (!firstName.trim()) return mapError('missing_name');
-    if (!lastName.trim()) return mapError('missing_name');
+    if (role === 'salon_admin') {
+      if (!salonName.trim()) return mapError('missing_salon_name');
+    } else {
+      if (!firstName.trim()) return mapError('missing_name');
+      if (!lastName.trim()) return mapError('missing_name');
+    }
     if (!normalizePhone(phone)) return mapError('invalid_phone');
     if (!email.trim()) return mapError('missing_email');
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) return mapError('invalid_email');
@@ -94,7 +100,7 @@ export default function MiniAppRegisterPage() {
     setErrorMsg(null);
     setSubmitting(true);
 
-    const fullName = [lastName.trim(), firstName.trim(), middleName.trim()]
+    const personalFullName = [lastName.trim(), firstName.trim(), middleName.trim()]
       .filter(Boolean)
       .join(' ');
     const normalizedPhone = normalizePhone(phone)!;
@@ -105,10 +111,11 @@ export default function MiniAppRegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           initData: stash.initData,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
+          firstName: firstName.trim() || 'Salon',
+          lastName: lastName.trim() || 'Owner',
           middleName: middleName.trim() || null,
-          fullNameOverride: fullName,
+          fullNameOverride: role === 'salon_admin' ? salonName.trim() : personalFullName,
+          salonName: role === 'salon_admin' ? salonName.trim() : undefined,
           phone: normalizedPhone,
           email: email.trim(),
           password,
@@ -127,7 +134,7 @@ export default function MiniAppRegisterPage() {
       sessionStorage.removeItem('cres:tg');
 
       const target =
-        data.role === 'master'
+        data.role === 'master' || data.role === 'salon_admin'
           ? '/telegram/m/home'
           : stash.startParam?.startsWith('master_')
             ? `/telegram/home?master=${stash.startParam.replace('master_', '')}`
@@ -264,16 +271,16 @@ export default function MiniAppRegisterPage() {
           </p>
         </div>
 
-        {/* Role picker — client vs master */}
+        {/* Role picker — client / master / salon */}
         <div className="space-y-1">
           <div className="px-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
             Я регистрируюсь как
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setRole('client')}
-              className={`flex items-center justify-center gap-2 rounded-2xl border p-4 text-sm font-semibold transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
                 role === 'client'
                   ? 'border-violet-400 bg-violet-500/20 text-white'
                   : 'border-white/10 bg-white/5 text-white/60'
@@ -285,7 +292,7 @@ export default function MiniAppRegisterPage() {
             <button
               type="button"
               onClick={() => setRole('master')}
-              className={`flex items-center justify-center gap-2 rounded-2xl border p-4 text-sm font-semibold transition-colors ${
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
                 role === 'master'
                   ? 'border-violet-400 bg-violet-500/20 text-white'
                   : 'border-white/10 bg-white/5 text-white/60'
@@ -294,17 +301,43 @@ export default function MiniAppRegisterPage() {
               <Briefcase className="size-4" />
               Мастер
             </button>
+            <button
+              type="button"
+              onClick={() => setRole('salon_admin')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
+                role === 'salon_admin'
+                  ? 'border-emerald-400 bg-emerald-500/20 text-white'
+                  : 'border-white/10 bg-white/5 text-white/60'
+              }`}
+            >
+              <Building2 className="size-4" />
+              Команда
+            </button>
           </div>
           {role === 'master' && (
             <p className="mt-2 px-1 text-[11px] leading-snug text-white/45">
               Вы получите Mini App мастера с календарём, клиентами и финансами. Настроить услуги и график можно будет сразу после регистрации.
             </p>
           )}
+          {role === 'salon_admin' && (
+            <p className="mt-2 px-1 text-[11px] leading-snug text-white/45">
+              Команде — мультимастерский календарь, состав, смены и отчёты. Услуги и людей добавите после регистрации. Подходит для любой сферы услуг.
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">
-          <Field icon={User} label="Фамилия" value={lastName} onChange={setLastName} placeholder="Иванов" />
-          <Field icon={User} label="Имя" value={firstName} onChange={setFirstName} placeholder="Иван" />
+          {role === 'salon_admin' ? (
+            <Field
+              icon={Building2}
+              label="Название команды"
+              value={salonName}
+              onChange={setSalonName}
+              placeholder="Например: Studio 54, AutoPro, Dr. Smile..."
+            />
+          ) : null}
+          <Field icon={User} label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'} value={lastName} onChange={setLastName} placeholder="Иванов" optional={role === 'salon_admin'} />
+          <Field icon={User} label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'} value={firstName} onChange={setFirstName} placeholder="Иван" optional={role === 'salon_admin'} />
           <Field icon={User} label="Отчество" value={middleName} onChange={setMiddleName} placeholder="Иванович" optional />
           <Field
             icon={Phone}
@@ -404,9 +437,9 @@ export default function MiniAppRegisterPage() {
         )}
         <p className="text-center text-[11px] leading-relaxed text-white/40">
           Продолжая, вы принимаете{' '}
-          <a href="/telegram/terms" className="underline decoration-white/30">
+          <Link href="/telegram/terms" className="underline decoration-white/30">
             Условия использования
-          </a>{' '}
+          </Link>{' '}
           CRES-CA.
         </p>
       </div>

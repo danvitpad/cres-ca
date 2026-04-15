@@ -2,12 +2,13 @@
  * name: Message Templates
  * description: Мастер управляет шаблонами сообщений для автонапоминаний и follow-up (reminder_24h, reminder_2h, thanks, win_back, review_request, cadence, nps, custom). Переменные: {client_name}, {service_name}, {time}, {date}, {master_name}.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-15
  * --- */
 
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Plus, Trash2, Save } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -34,16 +35,16 @@ type Kind =
   | 'nps'
   | 'custom';
 
-const KIND_LABELS: Record<Kind, string> = {
-  reminder_24h: 'Напоминание за 24ч',
-  reminder_2h: 'Напоминание за 2ч',
-  thanks: 'Спасибо после визита',
-  win_back: 'Win-back (давно не был)',
-  review_request: 'Запрос отзыва',
-  cadence: 'Пора записаться',
-  nps: 'NPS опрос',
-  custom: 'Другое',
-};
+const KIND_ORDER: Kind[] = [
+  'reminder_24h',
+  'reminder_2h',
+  'thanks',
+  'win_back',
+  'review_request',
+  'cadence',
+  'nps',
+  'custom',
+];
 
 const DEFAULTS: Record<Kind, string> = {
   reminder_24h: '{client_name}, завтра в {time} у вас запись на {service_name}. Жду вас! — {master_name}',
@@ -65,6 +66,8 @@ interface Template {
 }
 
 export default function MessageTemplatesPage() {
+  const t = useTranslations('marketing.messagesPage');
+  const tKind = useTranslations('marketing.messagesPage.kinds');
   const supabase = createClient();
   const { master } = useMaster();
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -95,7 +98,7 @@ export default function MessageTemplatesPage() {
       .insert({
         master_id: master.id,
         kind,
-        name: `${KIND_LABELS[kind]} #${templates.filter((t) => t.kind === kind).length + 1}`,
+        name: `${tKind(kind)} #${templates.filter((t) => t.kind === kind).length + 1}`,
         content: DEFAULTS[kind],
       })
       .select()
@@ -115,11 +118,11 @@ export default function MessageTemplatesPage() {
       return;
     }
     setTemplates((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
-    toast.success('Сохранено');
+    toast.success(t('saved'));
   }
 
   async function deleteTemplate(id: string) {
-    if (!confirm('Удалить шаблон?')) return;
+    if (!confirm(t('deleteConfirm'))) return;
     const { error } = await supabase.from('message_templates').delete().eq('id', id);
     if (error) {
       toast.error(error.message);
@@ -128,58 +131,47 @@ export default function MessageTemplatesPage() {
     setTemplates((prev) => prev.filter((t) => t.id !== id));
   }
 
-  const kinds = Object.keys(KIND_LABELS) as Kind[];
-
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Шаблоны сообщений</h1>
-        <p className="text-sm text-muted-foreground">
-          Переменные: <code className="rounded bg-muted px-1">{'{client_name}'}</code>,{' '}
-          <code className="rounded bg-muted px-1">{'{service_name}'}</code>,{' '}
-          <code className="rounded bg-muted px-1">{'{time}'}</code>,{' '}
-          <code className="rounded bg-muted px-1">{'{date}'}</code>,{' '}
-          <code className="rounded bg-muted px-1">{'{master_name}'}</code>,{' '}
-          <code className="rounded bg-muted px-1">{'{days}'}</code>
-        </p>
+        <h1 className="text-2xl font-semibold">{t('title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('description')}</p>
       </div>
 
       <div className="flex items-end gap-2">
         <div className="flex-1 space-y-2">
-          <Label>Добавить шаблон</Label>
+          <Label>{t('addTemplate')}</Label>
           <Select value={creatingKind ?? ''} onValueChange={(v) => setCreatingKind(v as Kind)}>
             <SelectTrigger>
-              <SelectValue placeholder="Выбери тип…" />
+              <SelectValue placeholder={t('selectType')} />
             </SelectTrigger>
             <SelectContent>
-              {kinds.map((k) => (
+              {KIND_ORDER.map((k) => (
                 <SelectItem key={k} value={k}>
-                  {KIND_LABELS[k]}
+                  {tKind(k)}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <Button disabled={!creatingKind} onClick={() => creatingKind && createTemplate(creatingKind)}>
-          <Plus className="mr-1 size-4" /> Создать
+          <Plus className="mr-1 size-4" /> {t('create')}
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
       ) : templates.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Нет шаблонов — создай первый из выпадающего списка выше.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('empty')}</p>
       ) : (
         <div className="space-y-4">
-          {kinds.map((kind) => {
+          {KIND_ORDER.map((kind) => {
             const group = templates.filter((t) => t.kind === kind);
             if (group.length === 0) return null;
             return (
               <div key={kind} className="rounded-xl border bg-card">
                 <div className="border-b px-4 py-2 text-sm font-medium text-muted-foreground">
-                  {KIND_LABELS[kind]}
+                  {tKind(kind)}
                 </div>
                 <div className="divide-y">
                   {group.map((tpl) => (
@@ -209,6 +201,7 @@ function TemplateRow({
   onSave: (patch: Partial<Template>) => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations('marketing.messagesPage');
   const [name, setName] = useState(template.name);
   const [content, setContent] = useState(template.content);
   const [isActive, setIsActive] = useState(template.is_active);
@@ -220,7 +213,7 @@ function TemplateRow({
         <Input value={name} onChange={(e) => setName(e.target.value)} className="flex-1" />
         <label className="flex items-center gap-1 text-xs">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-          Активен
+          {t('active')}
         </label>
       </div>
       <Textarea rows={3} value={content} onChange={(e) => setContent(e.target.value)} />
@@ -230,10 +223,10 @@ function TemplateRow({
           disabled={!dirty}
           onClick={() => onSave({ name, content, is_active: isActive })}
         >
-          <Save className="mr-1 size-4" /> Сохранить
+          <Save className="mr-1 size-4" /> {t('save')}
         </Button>
         <Button size="sm" variant="outline" onClick={onDelete}>
-          <Trash2 className="mr-1 size-4" /> Удалить
+          <Trash2 className="mr-1 size-4" /> {t('delete')}
         </Button>
       </div>
     </div>

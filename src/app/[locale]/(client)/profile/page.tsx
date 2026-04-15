@@ -69,13 +69,13 @@ export default function ProfilePage() {
         setAvatarUrl(data.avatar_url || null);
       }
 
-      // Stats — best-effort, ignore errors
-      const [{ count: visits }, { count: masters }, { data: wallet }] = await Promise.all([
+      // Stats — best-effort, ignore errors.
+      // TODO(wallet): client_wallets table not created yet — pending legal check on holding bonuses/funds.
+      const [{ count: visits }, { count: masters }] = await Promise.all([
         supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('client_id', userId),
-        supabase.from('client_master_links').select('id', { count: 'exact', head: true }).eq('client_id', userId),
-        supabase.from('client_wallets').select('balance').eq('client_id', userId).maybeSingle(),
+        supabase.from('client_master_links').select('master_id', { count: 'exact', head: true }).eq('profile_id', userId),
       ]);
-      setStats({ visits: visits ?? 0, masters: masters ?? 0, bonuses: wallet?.balance ?? 0 });
+      setStats({ visits: visits ?? 0, masters: masters ?? 0, bonuses: 0 });
 
       setLoading(false);
     }

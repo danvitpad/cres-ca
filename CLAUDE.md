@@ -2,17 +2,19 @@
 
 Universal service CRM (masters → salons). Next.js 16 + React 19 + Supabase + next-intl. All commands run from the repo root (this directory).
 
-## 🧭 MAIN MAP — читать первым делом каждой сессии
+## 🧭 MAIN JOURNAL — читать первым делом каждой сессии
 
-**`PROJECT-MAP.md`** (рядом с этим файлом) — **единственный живой документ со статусом всего проекта**. Там полная карта всех страниц сервиса с чекбоксами `[x]/[ ]`, раздел «Что предстоит сделать», и inbox для заметок владельца проекта.
+**`PROJECT-JOURNAL.md`** (рядом с этим файлом) — **единственный живой документ со статусом всего проекта**. Там полная карта всех страниц сервиса с чекбоксами `[x]/[ ]`, раздел «Что предстоит сделать», и inbox для заметок владельца проекта.
+
+> **Имя `PROJECT-MAP.md` зарезервировано** под будущий **визуальный canvas** (граф страниц/кнопок/связей) — когда он появится, текстовый журнал и визуальная карта будут жить параллельно.
 
 **Обязательный протокол на старте каждой сессии:**
-1. Прочитать `PROJECT-MAP.md` полностью.
+1. Прочитать `PROJECT-JOURNAL.md` полностью.
 2. Найти все строки с префиксом `📝 TODO:` / `📝 BUG:` / `📝 IDEA:` / `📝 FIX:` (это заметки Данила).
-3. Для каждой такой строки — превратить в чекбокс `[ ]` в соответствующем разделе карты, либо в секции «Что предстоит сделать», и начать работу с ней, если пользователь подтвердил.
+3. Для каждой такой строки — превратить в чекбокс `[ ]` в соответствующем разделе журнала, либо в секции «Что предстоит сделать», и начать работу с ней, если пользователь подтвердил.
 4. **Очистить inbox** — после того как 📝-заметки разнесены по задачам, удалить их из секции INBOX, чтобы она снова была пустой. Inbox всегда должен быть чистым и готов принять следующую запись.
-5. После любых изменений в проекте — обновить чекбоксы в `PROJECT-MAP.md` и добавить запись в секцию «Changelog» внизу карты.
-6. **Никогда не создавать параллельный roadmap-документ.** Все фазы, блоки, задачи — только в `PROJECT-MAP.md`. Старые файлы `MASTER-WORK.md`, `CLIENT-WORK.md`, `phase-*.md` — **архив**, не рабочий план.
+5. После любых изменений в проекте — обновить чекбоксы в `PROJECT-JOURNAL.md` и добавить запись в секцию «Changelog» внизу журнала.
+6. **Никогда не создавать параллельный roadmap-документ.** Все фазы, блоки, задачи — только в `PROJECT-JOURNAL.md`. Старые файлы `MASTER-WORK.md`, `CLIENT-WORK.md`, `phase-*.md` — **архив**, не рабочий план.
 
 ```bash
 npm run dev      # Dev server
@@ -26,18 +28,19 @@ Do NOT load everything. Read only the files relevant to the current task.
 
 | If the task involves… | Read |
 |---|---|
+| **🎨 ЛЮБАЯ UI/фронт-задача (читать первым перед кодом)** | `.knowledge/FRONTEND.md` ← **единая точка входа, консолидирует rules + patterns + ui-libraries + design-md + premium правила** |
 | Project overview, personas, business model | `.knowledge/project.md` |
 | **User's raw feature vision** (источник истины для "что делаем и почему") | `.knowledge/vision.md` |
 | **Карта индустриальных вертикалей** — дефолты per-industry (анамнез, шаблоны услуг, спец. сущности: pets/vehicles/events) | `.knowledge/verticals.md` |
 | Framework versions, Next.js 16 quirks | `.knowledge/tech-stack.md` |
-| **Critical rules & DO NOTs** (read before any code) | `.knowledge/rules.md` |
+| Critical rules & DO NOTs (deep справочник — overview уже в FRONTEND.md) | `.knowledge/rules.md` |
 | Folder layout, where files go | `.knowledge/structure.md` |
 | DB tables, migrations, storage, subscription tiers | `.knowledge/database.md` |
 | Env variables | `.knowledge/env.md` |
-| Boilerplate for pages/components/API routes | `.knowledge/patterns.md` |
+| Boilerplate pages/components/API routes (детали — уже в FRONTEND.md §6) | `.knowledge/patterns.md` |
 | i18n / translation keys | `.knowledge/translations.md` |
-| UI libraries, 21st.dev snippets, shadcn usage | `.knowledge/ui-libraries.md` |
-| **DESIGN.md library** (per-brand palettes/typo/components — ALWAYS check before styling UI) | `.knowledge/design-md/INDEX.md` |
+| UI libraries deep-dive (21st.dev snippets, shadcn — overview в FRONTEND.md §8) | `.knowledge/ui-libraries.md` |
+| DESIGN.md library (per-brand palettes — overview в FRONTEND.md §2) | `.knowledge/design-md/INDEX.md` |
 | **АКТИВНАЯ фаза работ (client unfreeze)** | `.knowledge/roadmap/CLIENT-WORK.md` ← единый рабочий док |
 | Завершённая фаза (solo-master) | `.knowledge/roadmap/MASTER-WORK.md` (116/116 ✓, для справки) |
 | **Client module snapshot** (что реализовано у клиента, связи с мастером, заморожено) | `.knowledge/CLIENT-REFERENCE.md` |
@@ -98,7 +101,7 @@ Shared dashboard components → pick the persona that benefits more. If both →
 ```
 D:/Claude.cres-ca/app/     ← git repo root (github.com/danvitpad/cres-ca)
 ├── CLAUDE.md              ← this file (index only)
-├── PROJECT-MAP.md         ← живой инвентарь проекта (читать первым)
+├── PROJECT-JOURNAL.md     ← живой журнал проекта (читать первым); PROJECT-MAP.md — зарезервировано под визуальный canvas
 ├── .knowledge/            ← lazy-loaded knowledge base
 │   ├── project.md, tech-stack.md, rules.md, structure.md,
 │   ├── database.md, env.md, patterns.md, translations.md, ui-libraries.md

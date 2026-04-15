@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { Pencil, UtensilsCrossed, Clock, ChevronDown, Repeat, X } from 'lucide-react';
+import { Pencil, UtensilsCrossed, Clock, ChevronDown, X } from 'lucide-react';
 
 const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 

@@ -30,7 +30,6 @@ import {
 } from '@/components/shared/fresha-icons';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { cn } from '@/lib/utils';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';

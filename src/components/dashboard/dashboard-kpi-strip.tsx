@@ -8,7 +8,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
 import { TrendingUp, Calendar as CalendarIcon, Percent, Clock, CalendarDays } from 'lucide-react';
