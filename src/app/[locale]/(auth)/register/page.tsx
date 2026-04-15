@@ -76,7 +76,7 @@ export default function RegisterPage() {
   }
 
   const displayName = `${firstName} ${lastName}`.trim();
-  const metaFullName = role === 'salon_admin' ? salonName || displayName : displayName || firstName;
+  const metaFullName = role === 'salon_admin' ? salonName.trim() : displayName || firstName;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -277,44 +277,47 @@ export default function RegisterPage() {
                   {/* Salon name (only for salon_admin) */}
                   {isSalon && (
                     <div className="space-y-1.5">
-                      <Label>{tc('name')}</Label>
+                      <Label>{t('teamName')}</Label>
                       <Input
                         value={salonName}
                         onChange={(e) => setSalonName(e.target.value)}
-                        placeholder="Studio Beauty"
+                        placeholder={t('teamNamePlaceholder')}
                         required
                         autoFocus
                         className="h-11"
                       />
+                      <p className="text-xs text-muted-foreground pt-1">{t('teamNameHint')}</p>
                     </div>
                   )}
 
-                  {/* First + Last name */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>{t('firstName')}</Label>
-                      <Input
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder={t('firstNamePlaceholder')}
-                        required
-                        autoFocus={!isSalon}
-                        className="h-11"
-                      />
+                  {/* Personal name — hidden for salon_admin (owner can fill in profile later) */}
+                  {!isSalon && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label>{t('firstName')}</Label>
+                        <Input
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder={t('firstNamePlaceholder')}
+                          required
+                          autoFocus
+                          className="h-11"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>{t('lastName')}</Label>
+                        <Input
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder={t('lastNamePlaceholder')}
+                          required
+                          className="h-11"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label>{t('lastName')}</Label>
-                      <Input
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder={t('lastNamePlaceholder')}
-                        required
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  {/* Email */}
+                  {/* Email — always editable (URL param only prefills) */}
                   <div className="space-y-1.5">
                     <Label>{t('email')}</Label>
                     <Input
@@ -322,7 +325,6 @@ export default function RegisterPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      readOnly={!!emailParam}
                       className="h-11"
                     />
                   </div>
