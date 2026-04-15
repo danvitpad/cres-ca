@@ -99,7 +99,7 @@ export default function RegisterPage() {
         data: {
           full_name: metaFullName,
           role,
-          phone: phone || undefined,
+          phone: phone ? `+380${phone}` : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
       },
@@ -353,16 +353,25 @@ export default function RegisterPage() {
                     </div>
                   </div>
 
-                  {/* Phone */}
+                  {/* Phone — fixed +380 prefix, user types only subscriber digits */}
                   <div className="space-y-1.5">
                     <Label>{t('phone')}</Label>
-                    <Input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+380..."
-                      className="h-11"
-                    />
+                    <div className="flex h-11 items-center overflow-hidden rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                      <span className="flex h-full items-center border-r bg-muted px-3 text-sm text-muted-foreground select-none">
+                        +380
+                      </span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        value={phone}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                          setPhone(digits);
+                        }}
+                        placeholder="501234567"
+                        className="h-full flex-1 bg-transparent px-3 text-sm outline-none"
+                      />
+                    </div>
                   </div>
 
                   {/* Terms */}

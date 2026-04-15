@@ -61,11 +61,30 @@ export async function POST(req: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  // Look up profile by email (case-insensitive)
+  // Sign in FIRST — this is the source of truth for email existence + password.
+  // (profiles.email may be NULL for older users because the trigger didn't copy it.)
+  const supabase = await createClient();
+  const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+    email,
+    password: body.password,
+  });
+
+  if (signInErr || !signInData.user) {
+    const msg = signInErr?.message?.toLowerCase() ?? '';
+    if (msg.includes('not confirmed') || msg.includes('confirm')) {
+      return NextResponse.json({ error: 'email_not_confirmed' }, { status: 401 });
+    }
+    // Supabase returns "Invalid login credentials" for both wrong password AND missing user.
+    return NextResponse.json({ error: 'wrong_password' }, { status: 401 });
+  }
+
+  const userId = signInData.user.id;
+
+  // Now fetch profile by id
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, telegram_id, role, public_id, email')
-    .ilike('email', email)
+    .select('id, telegram_id, role, public_id')
+    .eq('id', userId)
     .maybeSingle();
 
   if (!profile) {
@@ -76,18 +95,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'already_linked_other' }, { status: 409 });
   }
 
-  // Attempt password sign-in on the server client so session cookies are set
-  const supabase = await createClient();
-  const { error: signInErr } = await supabase.auth.signInWithPassword({
-    email: profile.email ?? email,
-    password: body.password,
-  });
-
-  if (signInErr) {
-    return NextResponse.json({ error: 'wrong_password' }, { status: 401 });
-  }
-
-  // Link Telegram on the profile (only id/username/lang — respects original consent)
   await admin
     .from('profiles')
     .update({
@@ -95,6 +102,7 @@ export async function POST(req: Request) {
       telegram_username: tg.username ?? null,
       language_code: tg.language_code ?? null,
       telegram_linked_at: new Date().toISOString(),
+      email, // backfill for future lookups
     })
     .eq('id', profile.id);
 

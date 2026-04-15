@@ -34,7 +34,6 @@ export default function TelegramEntryPage() {
 
       webapp.ready();
       webapp.expand();
-      try { webapp.requestFullscreen?.(); } catch {}
       try { webapp.disableVerticalSwipes(); } catch {}
       try {
         webapp.setHeaderColor('#1f2023');

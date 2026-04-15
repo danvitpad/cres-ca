@@ -218,14 +218,23 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         .eq('id', userId)
         .maybeSingle();
       if (cancelled || !data) return;
-      if (data.role === 'client' && !data.client_onboarded_at) {
-        setOnboardingInitial({
-          full_name: data.full_name ?? null,
-          phone: data.phone ?? null,
-          date_of_birth: data.date_of_birth ?? null,
-        });
-        setOnboardingOpen(true);
+      if (data.role !== 'client' || data.client_onboarded_at) return;
+      // Skip wizard entirely if user already provided name + phone at registration —
+      // auto-mark onboarded, let them land on feed.
+      if (data.full_name?.trim() && data.phone?.trim()) {
+        supabase
+          .from('profiles')
+          .update({ client_onboarded_at: new Date().toISOString() })
+          .eq('id', userId)
+          .then(() => {}, () => {});
+        return;
       }
+      setOnboardingInitial({
+        full_name: data.full_name ?? null,
+        phone: data.phone ?? null,
+        date_of_birth: data.date_of_birth ?? null,
+      });
+      setOnboardingOpen(true);
     })();
     return () => { cancelled = true; };
   }, [userId]);
