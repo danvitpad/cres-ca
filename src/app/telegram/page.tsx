@@ -34,9 +34,7 @@ export default function TelegramEntryPage() {
 
       webapp.ready();
       webapp.expand();
-      // Намеренно НЕ вызываем requestFullscreen(): expand() даёт ~90% высоты
-      // с нативной шапкой Telegram (кнопка «свернуть» + имя бота). Fullscreen
-      // прячет весь chrome и воспринимается как навязчивый.
+      try { webapp.requestFullscreen?.(); } catch {}
       try { webapp.disableVerticalSwipes(); } catch {}
       try {
         webapp.setHeaderColor('#1f2023');
