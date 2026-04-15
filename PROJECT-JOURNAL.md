@@ -80,36 +80,96 @@
 
 **Где жить:** `D:/toolbox/.workspace/skills/project-factory/` + набор агентов в `D:/toolbox/.workspace/agents/factory/`. Запуск: `/new-project <название> <type>` или через серию шагов в чате.
 
-**Статус:** 0% — идея записана, реализация ждёт.
+**Архитектура (v0.1 — 2026-04-15):**
 
-- [ ] **META-1.** Полуавтономная фабрика создания сервисов (см. выше). Первый шаг: прописать каждого из 9 агентов в toolbox с чётким контрактом вход/выход, затем связать их через оркестратор-команду.
+Оркестратор — один slash-command `/new-project "<бриф>"` который запускает цепочку. Каждый агент — отдельный файл в `D:/toolbox/.workspace/agents/factory/<name>/AGENT.md` с чётким контрактом:
 
-### META-2. Фулстек контент система
+```yaml
+name: analyst-agent
+inputs:
+  - raw_brief: string (сырое ТЗ от Данила)
+outputs:
+  - /tmp/factory/<project>/01-analyst.md
+    sections: [persona, scenarios, business-model, tech-constraints, success-metrics, risks, open-questions]
+handoff_to: journal-agent
+rules:
+  - задавать не больше 5 уточняющих вопросов зараз
+  - выход всегда на русском, структура жёсткая
+  - НЕ начинать следующие шаги если open-questions > 0 — ждать ответов
+```
+
+**Контракты по шагам (черновой):**
+
+| # | Agent | In | Out | Handoff |
+|---|---|---|---|---|
+| 1 | `analyst-agent` | сырое ТЗ | `01-analyst.md` (persona, scenarios, biz-model, constraints, risks) | → journal |
+| 2 | `journal-agent` | 01-analyst.md | `PROJECT-JOURNAL.md` (принципы, легенда, inbox, секции по модулям, changelog) | → map |
+| 3 | `map-agent` | 01-analyst.md + journal | `PROJECT-MAP.md` (canvas граф страниц/кнопок/связей в JSON + mermaid) | → architecture |
+| 4 | `architecture-agent` | journal + map | `ARCHITECTURE.md` (tech-stack, папки, БД-схема, auth, интеграции, deployment) | → design |
+| 5 | `design-system-agent` | brief + architecture | `DESIGN.md` (бренд-ref из `.knowledge/design-md/`, палитра, типо, spacing, motion) | → agents-bootstrap |
+| 6 | `agents-bootstrap-agent` | journal + map + architecture | набор `.agents/sectors/<element>/SECTOR.md` по элементам (landing, auth, onboarding, profile, dashboard и т.д., granularity из карты страниц) | → skeleton |
+| 7 | `skeleton-agent` | architecture + design + agents | git init + initial code (Next.js/Vite/Expo/Unity — по типу проекта), первый деплой на Vercel | → qa |
+| 8 | `qa-agent` | skeleton | линтеры, type-check, тесты, CI, pre-commit hooks | → content-seed |
+| 9 | `content-seed-agent` | все предыдущие | placeholder тексты, OG-изображения, seed данные в БД | DONE |
+
+**Критичные правила цепочки:**
+- Каждый агент **только читает** выходы предыдущих, не правит их. Если нашёл ошибку — останавливается и эскалирует Данилу.
+- Каждый агент пишет в свой namespace (`/tmp/factory/<project>/NN-<name>.md`), итоговые артефакты собираются в целевой репо только на шаге skeleton-agent.
+- Оркестратор ведёт `/tmp/factory/<project>/STATUS.md` с текущим шагом, последним выходом, ошибками.
+- Токены: каждый агент обязан работать с **минимальным контекстом** — только `01-analyst.md` + свой предыдущий шаг, а не всё сразу.
+- Перед запуском шага оркестратор проверяет: все open-questions закрыты, предыдущие артефакты валидны, токен-бюджет не превышен.
+
+**Связь с AGENTS-1 (из cres-ca):** AGENTS-1 — это ручное создание агентов по элементам для cres-ca. После того как META-1 готов — AGENTS-1 становится результатом работы `agents-bootstrap-agent` на существующем проекте (retrofit mode: принимает готовый журнал/карту и создаёт агентов постфактум).
+
+**Статус:** 0% реализации, архитектура v0.1 записана.
+
+- [ ] **META-1.** Полуавтономная фабрика создания сервисов. План:
+  - [ ] **1a.** Прописать `AGENT.md` для каждого из 9 агентов в `D:/toolbox/.workspace/agents/factory/` (9 файлов, по одному шаблону).
+  - [ ] **1b.** Создать оркестратор-скилл `D:/toolbox/.workspace/skills/project-factory/SKILL.md` + `/new-project` slash command.
+  - [ ] **1c.** Тест на mini-проекте: создать игрушечный «landing page для пекарни» от брифа до задеплоенного Vercel URL. Должно уложиться в 1-2 часа чистого времени Claude Code.
+  - [ ] **1d.** Retrofit на cres-ca: прогнать `agents-bootstrap-agent` на существующий journal → получить 18 `SECTOR.md` файлов в `.agents/sectors/`. Это закроет AGENTS-1 автоматически.
+  - [ ] **1e.** Документация для Данила: как пользоваться, какие команды, где смотреть прогресс.
+
+### META-2. Система реалистичной генерации фото/видео + AI-аватары (commerce-grade)
 
 **Видение Данила (дословно, 2026-04-15):**
-> «хочу так же создать фул стек контент систему»
+> «создать внутри тулбокса систему генерации реалистичных фото и видео для коммерции, с реалистичными ии аватарами и прочим»
 
-**Контекст:** упоминалось ранее. В cres-ca есть только узкая часть — `BLOCK C` (C1 product-content внутри продукта, C2 marketing-content для самого cres-ca, C3 FORGE agent port, C4 skool research). Полноценная «фулстек контент система» — шире: охватывает весь жизненный цикл контента.
+**Уточнённый scope:** это **не** весь контент-пайплайн (как я ошибочно записал раньше), а именно **движок генерации коммерческого визуала** — реалистичные фото и видео, AI-аватары (повторяющиеся персонажи, speaking-portrait, lip-sync), которые потом можно использовать в рекламе, постах, креативах продуктов.
 
-**Что входит в полный фулстек (первая гипотеза, уточнить у Данила):**
-1. **Источники** — research: тренды, конкуренты, скул-курсы, рефы Instagram/TikTok, scrape лендингов.
-2. **Генерация** — AI создание текста / фото / видео / reels (fal.ai, Claude, Runway, Luma, Kling).
-3. **Монтаж и оформление** — FFmpeg автообрезка, подписи, subs, обложки, AB-варианты.
-4. **Планирование** — календарь публикаций, оптимальные слоты, A/B тесты форматов.
-5. **Публикация** — авто-постинг в IG / TikTok / YT shorts / Telegram / X / LinkedIn через официальные API + fallback на buffer/postiz.
-6. **Реклама** — Meta Ads / Google Ads / TikTok Ads автоматизация, бюджет per-creative, авто-выключение проигравших.
-7. **Аналитика** — трекинг охватов, CTR, CPC, CPA, LTV, attribution по каналам.
-8. **Монетизация** — воронки, pixel events, связь с Stripe/LiqPay, ROI per-creative.
-9. **Feedback loop** — выигравшие креативы → обратно в FORGE как winner refs (связь с META-1 через `looper-agent`).
-10. **Отчётность** — еженедельные/месячные дашборды с выводами и next-best-action для владельца.
+**Основа — референсы Данила, которые нужно прочитать и перегнать в playbook:**
 
-**Где жить:** `D:/toolbox/.workspace/skills/content-system/` — универсальный skill, применимый к cres-ca и любым следующим проектам Данила (Vizznary, FORGE, etc.).
+_Внешние гайды / курсы:_
+- https://www.skool.com/@dan-p-6986?g=nextgenai — Skool профиль Данила (memberships: NextGen AI и др. AI-контент комьюнити)
+- https://joeymulcahyguides.notion.site/The-Claude-Code-Product-Visual-Workflow-3262b10bd51680d6ba29e2072a5ba78e — Joey Mulcahy, Claude Code Product Visual Workflow
+- https://joeymulcahyguides.notion.site/Claude-Code-For-Brands-101-Guide-32d2b10bd51680d7b962eef06abde69f — Joey Mulcahy, Claude Code For Brands 101
+- https://youmind.com/nano-banana-pro-prompts — nano-banana prompts библиотека
+- Mobile Editing Club PDF — https://assets.stanwith.me/live/msc/26131308/8qbjy/mobileeditingclubcreateugcads.pdf
+- Google Drive ref — https://drive.google.com/file/d/18C9GxNx5xYMrGa3aW_CHUXzyVDNGupjn/view
 
-**Связь с cres-ca:** BLOCK C (C1-C4) — это **узкий срез** этой системы, применённый к cres-ca. После того как фулстек система будет построена в toolbox — cres-ca станет одним из её потребителей, а не отдельной веткой.
+_Instagram референсы (стиль/формат):_
+- https://www.instagram.com/reel/DWjsQhVk22z/
+- https://www.instagram.com/reel/DWrWNtBDX66/
+- https://www.instagram.com/p/DWwNA-ECMB3/
+- https://www.instagram.com/p/DWD0TyTDKK9/
 
-**Статус:** 10% — BLOCK C в journal есть, фулстек — нет.
+**Где жить:** `D:/toolbox/.workspace/skills/visual-gen/` — универсальный skill + набор агентов в `D:/toolbox/.workspace/agents/visual/`.
 
-- [ ] **META-2.** Фулстек контент система (полный цикл 10 пунктов выше). Первый шаг: уточнить у Данила список платформ, приоритет модулей, где границы «фулстек» заканчиваются. Второй шаг: создать `D:/toolbox/.workspace/skills/content-system/README.md` с архитектурой.
+**Компоненты системы (первая гипотеза — уточнить после research-агента):**
+1. **Avatar factory** — генерация AI-аватаров с консистентной внешностью (IP-Adapter / Photomaker / InstantID / reference identity locking). Каждый аватар — YAML-персонаж: возраст, этность, стиль, одежда, сцены.
+2. **Prompt library** — дистиллят из nano-banana prompts + Joey Mulcahy методов (правила brief→prompt, шаблоны под commerce).
+3. **Photo engine** — реалистичные product photos / lifestyle / portraits (fal.ai + Flux + nano-banana + SDXL — выбор модели по задаче).
+4. **Video engine** — короткие видео и reels (Runway / Luma / Kling / Wan / fal.ai video) с аватарами.
+5. **Lip-sync + voice** — speaking portraits (Sync.so / Hedra / HeyGen API) + голосовые клоны (ElevenLabs).
+6. **Brand-lock** — per-проект brand book (палитра, типо, logo overlay, tone) применяется ко всему выводу.
+7. **Consistency checker** — проверка что аватар выглядит одинаково между сценами.
+8. **Output vault** — `D:/toolbox/.workspace/assets/visual/<project>/<brief_id>/` с метаданными (модель, промпт, сид, стоимость, ссылка на fal.ai job).
+
+**Связь с cres-ca:** BLOCK C (C1 product-content, C2 marketing-content, C3 FORGE, C4 skool research) — это **потребитель** этой системы внутри cres-ca. После того как visual-gen в toolbox готов — cres-ca подключает его как зависимость, BLOCK C закрывается автоматически.
+
+**Статус:** 0% реализации + 0% research. Research-агент запущен 2026-04-15 для дистилляции всех референсов выше в `.knowledge/content-research.md` — это закроет долг по C4 (2 дня) и даст базу для архитектуры.
+
+- [ ] **META-2.** Система реалистичной визуальной генерации (см. выше). Первый шаг: research-агент читает все ссылки → `.knowledge/content-research.md`. Второй шаг: на основе дистиллята — архитектура `D:/toolbox/.workspace/skills/visual-gen/` (8 компонентов выше). Третий шаг: MVP — Avatar factory + Photo engine + Prompt library (минимум, который уже даёт ценность). Четвёртый шаг: video engine + lip-sync. Пятый шаг: consistency checker + brand-lock.
 
 ---
 
