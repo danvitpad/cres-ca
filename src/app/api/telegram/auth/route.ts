@@ -5,7 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 interface TelegramUser {
   id: number;
@@ -56,9 +56,17 @@ export async function POST(request: Request) {
   }
 
   const tg = result.user;
-  const supabase = await createClient();
 
-  const { data: profile } = await supabase
+  // Use admin client to bypass RLS — identity is already proven via initData HMAC.
+  // The server client (anon key + cookies) fails in Telegram WebView because
+  // the embedded browser doesn't reliably persist Supabase session cookies.
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
+  const { data: profile } = await admin
     .from('profiles')
     .select('id, role, full_name, phone, public_id, date_of_birth')
     .eq('telegram_id', tg.id)
@@ -81,7 +89,7 @@ export async function POST(request: Request) {
 
   const needsPhone = !profile.phone;
 
-  const { data: sub } = await supabase
+  const { data: sub } = await admin
     .from('subscriptions')
     .select('tier')
     .eq('profile_id', profile.id)

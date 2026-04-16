@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
   Sparkles,
-  Gift,
   UserPlus,
   Copy,
   Check,
@@ -24,9 +23,6 @@ import {
   Camera,
   Share2,
   LogOut,
-  Mail,
-  Phone as PhoneIcon,
-  KeyRound,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -57,7 +53,6 @@ export default function MiniAppProfilePage() {
   const [email, setEmail] = useState<string | null>(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [copiedId, setCopiedId] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
@@ -76,19 +71,8 @@ export default function MiniAppProfilePage() {
   const [editName, setEditName] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editSlug, setEditSlug] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editEmail, setEditEmail] = useState('');
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
-  const [emailConfirmSent, setEmailConfirmSent] = useState(false);
-
-  // Password change state
-  const [pwOpen, setPwOpen] = useState(false);
-  const [pwNew, setPwNew] = useState('');
-  const [pwConfirm, setPwConfirm] = useState('');
-  const [pwBusy, setPwBusy] = useState(false);
-  const [pwError, setPwError] = useState<string | null>(null);
-  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -114,16 +98,9 @@ export default function MiniAppProfilePage() {
         setFollowersCount(Number(data.followers_count ?? 0));
         setFollowingCount(Number(data.following_count ?? 0));
       }
+      setProfileLoaded(true);
     })();
   }, [userId]);
-
-  function copyPublicId() {
-    if (!publicId) return;
-    navigator.clipboard.writeText(publicId);
-    haptic('success');
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 2000);
-  }
 
   function copyReferral() {
     if (!publicId) return;
@@ -141,10 +118,7 @@ export default function MiniAppProfilePage() {
     setEditName(fullName ?? '');
     setEditBio(bio ?? '');
     setEditSlug(slug ?? '');
-    setEditPhone(phone ? phone.replace(/^\+380/, '') : '');
-    setEditEmail(email ?? '');
     setEditError(null);
-    setEmailConfirmSent(false);
     setEditOpen(true);
     haptic('light');
   }
@@ -154,7 +128,6 @@ export default function MiniAppProfilePage() {
     setEditBusy(true);
     setEditError(null);
     try {
-      const emailChanged = editEmail.trim().toLowerCase() !== (email ?? '').toLowerCase();
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -162,8 +135,6 @@ export default function MiniAppProfilePage() {
           fullName: editName.trim() || null,
           bio: editBio.trim() || null,
           slug: editSlug.trim() || null,
-          phone: editPhone.trim(),
-          email: editEmail.trim() || null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -175,55 +146,12 @@ export default function MiniAppProfilePage() {
       setFullName(editName.trim() || null);
       setBio(editBio.trim() || null);
       setSlug(editSlug.trim() || null);
-      setPhone(editPhone.trim() ? `+380${editPhone.replace(/\D/g, '').replace(/^380/, '')}` : null);
-      if (!emailChanged) setEmail(editEmail.trim() || null);
       haptic('success');
-      if (emailChanged && editEmail.trim()) {
-        setEmailConfirmSent(true);
-      } else {
-        setEditOpen(false);
-      }
+      setEditOpen(false);
     } catch (e) {
       setEditError(mapError(e instanceof Error ? e.message : 'network_error'));
     } finally {
       setEditBusy(false);
-    }
-  }
-
-  async function savePassword() {
-    if (pwBusy) return;
-    setPwError(null);
-    if (pwNew.length < 6) {
-      setPwError('Пароль должен быть не короче 6 символов');
-      return;
-    }
-    if (pwNew !== pwConfirm) {
-      setPwError('Пароли не совпадают');
-      return;
-    }
-    setPwBusy(true);
-    try {
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pwNew }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setPwError(mapError(data.error, 'Не удалось сменить пароль'));
-        haptic('error');
-        return;
-      }
-      haptic('success');
-      setPwSuccess(true);
-      setPwNew('');
-      setPwConfirm('');
-      setTimeout(() => {
-        setPwOpen(false);
-        setPwSuccess(false);
-      }, 1400);
-    } finally {
-      setPwBusy(false);
     }
   }
 
@@ -310,11 +238,12 @@ export default function MiniAppProfilePage() {
     }
   }
 
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const tgFullName = user ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}` : '';
-  const displayName = fullName ?? tgFullName ?? 'Гость';
-  // Only use Telegram avatar if DB full_name is empty or exactly matches Telegram name,
-  // otherwise show initial of DB name (prevents "Таисия" name + "Д" avatar mismatch).
-  const showTgPhoto = !!user?.photo_url && (!fullName || fullName.trim() === tgFullName.trim());
+  // Don't show Telegram name until DB loads — prevents flash of wrong name
+  const displayName = profileLoaded ? (fullName ?? tgFullName ?? 'Гость') : '';
+  // Only use Telegram avatar if DB full_name is empty or exactly matches Telegram name
+  const showTgPhoto = profileLoaded && !!user?.photo_url && (!fullName || fullName.trim() === tgFullName.trim());
 
   return (
     <>
@@ -324,50 +253,17 @@ export default function MiniAppProfilePage() {
         transition={{ duration: 0.3 }}
         className="space-y-5 px-5 pt-6"
       >
-        {/* Name · CRES-ID link on top */}
-        <div className="space-y-1 text-center">
-          <h1 className="truncate text-[22px] font-bold">{displayName}</h1>
-          {publicId && (
-            <div className="relative flex items-center justify-center gap-1.5">
-              <Link
-                href={`/telegram/u/${publicId}`}
-                onClick={() => haptic('light')}
-                className="font-mono text-[12px] tracking-[0.15em] text-violet-300 underline-offset-4 hover:underline"
-              >
-                cres-id//{slug ?? publicId.toLowerCase()}
-              </Link>
-              <button
-                onClick={copyPublicId}
-                className="flex size-6 items-center justify-center rounded-md bg-white/5 text-white/55 active:text-white"
-                aria-label="Скопировать CRES-ID"
-              >
-                {copiedId ? <Check className="size-3 text-emerald-300" /> : <Copy className="size-3" />}
-              </button>
-              <AnimatePresence>
-                {copiedId && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    className="pointer-events-none absolute left-1/2 top-full mt-2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-semibold text-white shadow-lg"
-                  >
-                    Скопировано
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-
-        {/* Avatar + 3-stat grid */}
-        <div className="flex items-center gap-6">
+        {/* Telegram-style: Avatar left, Name + ID right */}
+        <div className="flex items-center gap-4">
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={avatarBusy}
-            className="relative flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-3xl font-bold active:scale-95 transition-transform"
+            className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-2xl font-bold active:scale-95 transition-transform"
             aria-label="Изменить аватар"
           >
-            {avatarUrl ? (
+            {!profileLoaded ? (
+              <div className="size-full animate-pulse bg-white/10" />
+            ) : avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt="" className="size-full object-cover" />
             ) : showTgPhoto ? (
@@ -376,8 +272,8 @@ export default function MiniAppProfilePage() {
             ) : (
               (displayName[0] ?? 'U').toUpperCase()
             )}
-            <div className="absolute bottom-0 right-0 flex size-7 items-center justify-center rounded-full border-2 border-[#1f2023] bg-white text-black">
-              {avatarBusy ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
+            <div className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full border-2 border-[#1f2023] bg-white text-black">
+              {avatarBusy ? <Loader2 className="size-3 animate-spin" /> : <Camera className="size-3" />}
             </div>
           </button>
           <input
@@ -392,10 +288,24 @@ export default function MiniAppProfilePage() {
             }}
           />
 
-          <div className="grid flex-1 grid-cols-2 gap-2 text-center">
-            <Stat value={followersCount} label="подписчиков" onClick={() => openList('followers')} />
-            <Stat value={followingCount} label="подписок" onClick={() => openList('following')} />
+          <div className="min-w-0 flex-1">
+            {profileLoaded ? (
+              <h1 className="truncate text-[20px] font-bold leading-tight">{displayName}</h1>
+            ) : (
+              <div className="h-6 w-36 animate-pulse rounded-lg bg-white/10" />
+            )}
+            {profileLoaded && publicId && (
+              <p className="mt-0.5 truncate font-mono text-[12px] text-white/35">
+                cres-id//{slug ?? publicId.toLowerCase()}
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex gap-4">
+          <Stat value={followersCount} label="подписчиков" onClick={() => openList('followers')} />
+          <Stat value={followingCount} label="подписок" onClick={() => openList('following')} />
         </div>
 
         {bio && (
@@ -477,49 +387,8 @@ export default function MiniAppProfilePage() {
           </div>
         </button>
 
-        {/* Contacts — email + phone, tap to edit */}
-        <button
-          onClick={openEdit}
-          className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left active:scale-[0.99] transition-transform"
-        >
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
-              <Mail className="size-4 text-white/70" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">Email</p>
-              <p className="truncate text-[13px] text-white/90">{email ?? 'Добавить email'}</p>
-            </div>
-            <ChevronRight className="size-4 text-white/30" />
-          </div>
-          <div className="h-px bg-white/5" />
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
-              <PhoneIcon className="size-4 text-white/70" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">Телефон</p>
-              <p className="truncate text-[13px] text-white/90">{phone ?? 'Добавить номер'}</p>
-            </div>
-            <ChevronRight className="size-4 text-white/30" />
-          </div>
-        </button>
-
         {/* Quick links */}
         <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
-          <MenuItem
-            icon={KeyRound}
-            label="Сменить пароль"
-            onClick={() => {
-              setPwNew('');
-              setPwConfirm('');
-              setPwError(null);
-              setPwSuccess(false);
-              setPwOpen(true);
-              haptic('light');
-            }}
-          />
-          <MenuItem icon={Gift} label="Подарочные сертификаты" onClick={() => haptic('light')} />
           <MenuItemLink icon={Settings} label="Настройки" href="/telegram/settings" onClick={() => haptic('light')} />
         </ul>
 
@@ -685,41 +554,6 @@ export default function MiniAppProfilePage() {
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    Телефон
-                  </label>
-                  <div className="mt-1 flex items-center gap-2 text-base">
-                    <span className="text-white/40">+380</span>
-                    <input
-                      type="tel"
-                      inputMode="numeric"
-                      value={editPhone}
-                      onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                      placeholder="501234567"
-                      className="w-full bg-transparent outline-none placeholder:text-white/30"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value.slice(0, 120))}
-                    placeholder="you@example.com"
-                    className="mt-1 w-full bg-transparent text-base outline-none placeholder:text-white/30"
-                  />
-                  {emailConfirmSent && (
-                    <p className="mt-2 text-[11px] text-emerald-300">
-                      Письмо с подтверждением отправлено. Откройте его, чтобы завершить смену email.
-                    </p>
-                  )}
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     О себе
                   </label>
                   <textarea
@@ -752,88 +586,6 @@ export default function MiniAppProfilePage() {
         )}
       </AnimatePresence>
 
-      {/* Password change modal */}
-      <AnimatePresence>
-        {pwOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
-            onClick={() => !pwBusy && setPwOpen(false)}
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-[32px] border-t border-white/10 bg-[#2f3437] p-5"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-bold">Сменить пароль</h3>
-                <button
-                  onClick={() => !pwBusy && setPwOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    Новый пароль
-                  </label>
-                  <input
-                    type="password"
-                    value={pwNew}
-                    onChange={(e) => setPwNew(e.target.value.slice(0, 72))}
-                    placeholder="Минимум 6 символов"
-                    autoComplete="new-password"
-                    className="mt-1 w-full bg-transparent text-base outline-none placeholder:text-white/30"
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    Повторите пароль
-                  </label>
-                  <input
-                    type="password"
-                    value={pwConfirm}
-                    onChange={(e) => setPwConfirm(e.target.value.slice(0, 72))}
-                    placeholder="Ещё раз"
-                    autoComplete="new-password"
-                    className="mt-1 w-full bg-transparent text-base outline-none placeholder:text-white/30"
-                  />
-                </div>
-
-                {pwError && (
-                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
-                    {pwError}
-                  </div>
-                )}
-                {pwSuccess && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
-                    Пароль обновлён
-                  </div>
-                )}
-
-                <button
-                  onClick={savePassword}
-                  disabled={pwBusy || pwSuccess}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
-                >
-                  {pwBusy ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
-                  Сохранить пароль
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }
@@ -862,28 +614,6 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
   if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
   return n.toString();
-}
-
-function MenuItem({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <li>
-      <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-        <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
-          <Icon className="size-4" />
-        </div>
-        <span className="flex-1 text-sm">{label}</span>
-        <ChevronRight className="size-4 text-white/40" />
-      </button>
-    </li>
-  );
 }
 
 function MenuItemLink({

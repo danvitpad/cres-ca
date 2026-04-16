@@ -30,18 +30,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 }
 
 export async function getLocation(): Promise<GeoPosition | null> {
+  // Strategy 1: Telegram LocationManager (most reliable inside Mini App)
   if (isTelegram()) {
     try {
-      const lm = tg()!.LocationManager;
+      const webapp = tg()!;
+      const lm = webapp.LocationManager;
 
       if (!lm.isInited) {
         await withTimeout(
           new Promise<void>((resolve) => lm.init(() => resolve())),
-          3000,
+          4000,
           undefined as unknown as void,
         );
       }
 
+      // If location services are available, try to get location
       if (lm.isLocationAvailable) {
         const tgResult = await withTimeout(
           new Promise<GeoPosition | null>((resolve) => {
@@ -59,33 +62,38 @@ export async function getLocation(): Promise<GeoPosition | null> {
               }
             });
           }),
-          6000,
+          8000,
           null,
         );
         if (tgResult) return tgResult;
       }
-    } catch {}
+    } catch {
+      // Telegram LocationManager failed, try browser
+    }
   }
 
-  // Browser fallback
-  if (typeof navigator === 'undefined' || !navigator.geolocation) return null;
+  // Strategy 2: Browser geolocation (works in some WebViews)
+  if (typeof navigator !== 'undefined' && navigator.geolocation) {
+    const browserResult = await withTimeout(
+      new Promise<GeoPosition | null>((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) =>
+            resolve({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              altitude: pos.coords.altitude ?? undefined,
+              speed: pos.coords.speed ?? undefined,
+              accuracy: pos.coords.accuracy ?? undefined,
+            }),
+          () => resolve(null),
+          { timeout: 8000, enableHighAccuracy: false },
+        );
+      }),
+      9000,
+      null,
+    );
+    if (browserResult) return browserResult;
+  }
 
-  return withTimeout(
-    new Promise<GeoPosition | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          resolve({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            altitude: pos.coords.altitude ?? undefined,
-            speed: pos.coords.speed ?? undefined,
-            accuracy: pos.coords.accuracy ?? undefined,
-          }),
-        () => resolve(null),
-        { timeout: 8000, enableHighAccuracy: false },
-      );
-    }),
-    9000,
-    null,
-  );
+  return null;
 }

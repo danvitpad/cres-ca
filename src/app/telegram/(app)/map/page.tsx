@@ -145,21 +145,53 @@ export default function MiniAppMapPage() {
           if (interactive) haptic('success');
           return;
         }
-      } catch {}
+      } catch {
+        // geolocation failed, try IP fallbacks
+      }
 
-      // IP-level fallback (~city accuracy)
-      try {
-        const r = await fetch('https://ipwho.is/', { cache: 'no-store' });
-        const j = (await r.json()) as { latitude?: number; longitude?: number };
-        if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
-          const coords: [number, number] = [j.latitude, j.longitude];
-          setCenter(coords);
-          setUserLocation(coords);
-          setGeoDenied(true);
-          await fetchMasters(j.latitude, j.longitude);
-          return;
+      // IP-level fallback — try multiple services
+      const ipServices = [
+        async () => {
+          const r = await fetch('https://ipwho.is/', { cache: 'no-store' });
+          const j = await r.json();
+          if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
+            return { lat: j.latitude, lng: j.longitude };
+          }
+          return null;
+        },
+        async () => {
+          const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+          const j = await r.json();
+          if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
+            return { lat: j.latitude, lng: j.longitude };
+          }
+          return null;
+        },
+        async () => {
+          const r = await fetch('https://ip-api.com/json/?fields=lat,lon', { cache: 'no-store' });
+          const j = await r.json();
+          if (typeof j.lat === 'number' && typeof j.lon === 'number') {
+            return { lat: j.lat, lng: j.lon };
+          }
+          return null;
+        },
+      ];
+
+      for (const svc of ipServices) {
+        try {
+          const result = await svc();
+          if (result) {
+            const coords: [number, number] = [result.lat, result.lng];
+            setCenter(coords);
+            setUserLocation(coords);
+            setGeoDenied(true);
+            await fetchMasters(result.lat, result.lng);
+            return;
+          }
+        } catch {
+          // try next service
         }
-      } catch {}
+      }
 
       setGeoDenied(true);
       await fetchMasters(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
