@@ -17,6 +17,7 @@
     { "path": "/api/cron/daily-closeout", "schedule": "0 22 * * *" },
     { "path": "/api/cron/debts", "schedule": "0 14 * * 1" },
     { "path": "/api/cron/low-stock", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/post-visit-upsell", "schedule": "0 14 * * *" }
+    { "path": "/api/cron/post-visit-upsell", "schedule": "0 14 * * *" },
+    { "path": "/api/cron/voice-reminders", "schedule": "* * * * *" }
   ]
 }
