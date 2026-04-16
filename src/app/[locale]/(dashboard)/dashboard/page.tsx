@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Dashboard Overview
- * description: Master's operational dashboard — compact single-screen layout. Finance strip + 3-block grid (schedule, stats, birthdays). Linear.app design system.
+ * description: Master's operational dashboard — compact single-screen layout. Finance strip (reference-matched) + 3-block grid. Linear.app tokens.
  * created: 2026-04-13
  * updated: 2026-04-16
  * --- */
@@ -17,7 +17,8 @@ import { useMaster } from '@/hooks/use-master';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek,
-  startOfMonth, differenceInDays, getYear, setYear,
+  startOfMonth, endOfMonth, subMonths, subWeeks, subDays,
+  differenceInDays, getYear, setYear,
   type Locale,
 } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
@@ -25,45 +26,39 @@ import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 import {
   CalendarPlus, UserPlus, Calendar, TrendingUp,
-  Cake, Clock, ArrowUpRight, ArrowDownRight,
+  Cake, Clock, ArrowUpRight, ArrowDownRight, Minus,
 } from 'lucide-react';
 
-/* ─── Linear.app Design Tokens ─── */
+/* ─── Tokens ─── */
 
 const FONT = 'Inter, "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 const DARK = {
   cardBg: '#0f1011',
-  cardBgHover: '#141516',
-  elevated: '#191a1b',
   text: '#f7f8f8',
   textSecondary: '#8a8f98',
   textTertiary: '#62666d',
   accent: '#5e6ad2',
-  accentHover: '#828fff',
   success: '#10b981',
   warning: '#f59e0b',
   danger: '#ef4444',
   border: 'rgba(255,255,255,0.05)',
-  borderStrong: 'rgba(255,255,255,0.08)',
   stripBg: '#0c0d0e',
+  blockBg: '#141516',
 };
 
 const LIGHT = {
   cardBg: '#ffffff',
-  cardBgHover: '#f3f4f5',
-  elevated: '#f3f4f5',
   text: '#0d0d0d',
   textSecondary: '#62666d',
   textTertiary: '#8a8f98',
   accent: '#5e6ad2',
-  accentHover: '#4850b8',
   success: '#059669',
   warning: '#d97706',
   danger: '#dc2626',
   border: '#e6e6e6',
-  borderStrong: '#d0d6e0',
   stripBg: '#f0f1f2',
+  blockBg: '#f5f6f7',
 };
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
@@ -78,32 +73,10 @@ interface Appointment {
   client: { full_name: string } | null;
 }
 
-interface Expense {
-  id: string;
-  amount: number;
-  date: string;
-}
-
-interface ClientBirthday {
-  id: string;
-  full_name: string;
-  date_of_birth: string;
-}
+interface Expense { id: string; amount: number; date: string }
+interface ClientBirthday { id: string; full_name: string; date_of_birth: string }
 
 /* ─── Helpers ─── */
-
-function parseWorkingHours(
-  wh: Record<string, { start: string; end: string } | null> | null,
-  day: Date,
-): number {
-  if (!wh) return 0;
-  const dow = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][day.getDay()];
-  const slot = wh[dow];
-  if (!slot) return 0;
-  const [sh, sm] = slot.start.split(':').map(Number);
-  const [eh, em] = slot.end.split(':').map(Number);
-  return Math.max(0, eh + em / 60 - sh - sm / 60);
-}
 
 function getGreeting(t: ReturnType<typeof useTranslations>) {
   const h = new Date().getHours();
@@ -120,16 +93,23 @@ function nextBirthday(dob: string): Date {
   return next;
 }
 
+function pctChange(current: number, previous: number): { value: number; label: string } | null {
+  if (previous === 0 && current === 0) return null;
+  if (previous === 0) return { value: 100, label: '+100%' };
+  const pct = Math.round(((current - previous) / previous) * 100);
+  if (pct === 0) return { value: 0, label: 'Стабильно' };
+  return { value: pct, label: (pct > 0 ? '+' : '') + pct + '%' };
+}
+
 /* ─── Easing ─── */
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
-
 const stagger = (i: number) => ({
   initial: { opacity: 0, y: 6 } as const,
   animate: { opacity: 1, y: 0 } as const,
   transition: { delay: i * 0.04, duration: 0.25, ease: EASE_OUT } as const,
 });
 
-/* ─── Component ─── */
+/* ─── Page ─── */
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
@@ -147,7 +127,7 @@ export default function DashboardPage() {
   const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ── Data fetch ── */
+  /* ── Fetch — extended range to include previous month for % comparison ── */
   useEffect(() => {
     if (masterLoading || !master?.id) {
       if (!masterLoading) setLoading(false);
@@ -155,7 +135,7 @@ export default function DashboardPage() {
     }
     const supabase = createClient();
     const now = new Date();
-    const monthStart = startOfMonth(now);
+    const prevMonthStart = startOfMonth(subMonths(now, 1));
     const weekEnd = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
 
     Promise.all([
@@ -163,14 +143,14 @@ export default function DashboardPage() {
         .from('appointments')
         .select('id, starts_at, ends_at, status, price, service:services(name, color), client:clients(full_name)')
         .eq('master_id', master.id)
-        .gte('starts_at', monthStart.toISOString())
+        .gte('starts_at', prevMonthStart.toISOString())
         .lte('starts_at', weekEnd.toISOString())
         .order('starts_at', { ascending: true }),
       supabase
         .from('expenses')
         .select('id, amount, date')
         .eq('master_id', master.id)
-        .gte('date', format(monthStart, 'yyyy-MM-dd')),
+        .gte('date', format(prevMonthStart, 'yyyy-MM-dd')),
       supabase
         .from('clients')
         .select('id, full_name, date_of_birth')
@@ -191,33 +171,41 @@ export default function DashboardPage() {
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const monthStart = startOfMonth(now);
 
+  const yesterdayStart = startOfDay(subDays(now, 1));
+  const yesterdayEnd = endOfDay(subDays(now, 1));
+  const prevWeekStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+  const prevWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+  const prevMonthStart = startOfMonth(subMonths(now, 1));
+  const prevMonthEnd = endOfMonth(subMonths(now, 1));
+
   const profit = useMemo(() => {
-    let incomeToday = 0, incomeWeek = 0, incomeMonth = 0;
-    let expToday = 0, expWeek = 0, expMonth = 0;
-
-    for (const a of appointments) {
-      if (a.status !== 'completed') continue;
-      const d = new Date(a.starts_at);
-      const p = Number(a.price) || 0;
-      if (d >= todayStart && d <= todayEnd) incomeToday += p;
-      if (d >= weekStart) incomeWeek += p;
-      if (d >= monthStart) incomeMonth += p;
+    function sumPeriod(from: Date, to: Date) {
+      let income = 0, expense = 0;
+      for (const a of appointments) {
+        if (a.status !== 'completed') continue;
+        const d = new Date(a.starts_at);
+        if (d >= from && d <= to) income += Number(a.price) || 0;
+      }
+      for (const e of expenses) {
+        const d = new Date(e.date + 'T00:00:00');
+        if (d >= from && d <= to) expense += Number(e.amount) || 0;
+      }
+      return income - expense;
     }
 
-    for (const e of expenses) {
-      const d = new Date(e.date + 'T00:00:00');
-      const a = Number(e.amount) || 0;
-      if (d >= todayStart && d <= todayEnd) expToday += a;
-      if (d >= weekStart) expWeek += a;
-      if (d >= monthStart) expMonth += a;
-    }
+    const todayNet = sumPeriod(todayStart, todayEnd);
+    const yesterdayNet = sumPeriod(yesterdayStart, yesterdayEnd);
+    const weekNet = sumPeriod(weekStart, todayEnd);
+    const prevWeekNet = sumPeriod(prevWeekStart, prevWeekEnd);
+    const monthNet = sumPeriod(monthStart, todayEnd);
+    const prevMonthNet = sumPeriod(prevMonthStart, prevMonthEnd);
 
     return {
-      today: { income: incomeToday, expense: expToday, net: incomeToday - expToday },
-      week: { income: incomeWeek, expense: expWeek, net: incomeWeek - expWeek },
-      month: { income: incomeMonth, expense: expMonth, net: incomeMonth - expMonth },
+      today: { net: todayNet, change: pctChange(todayNet, yesterdayNet) },
+      week: { net: weekNet, change: pctChange(weekNet, prevWeekNet) },
+      month: { net: monthNet, change: pctChange(monthNet, prevMonthNet) },
     };
-  }, [appointments, expenses, todayStart, todayEnd, weekStart, monthStart]);
+  }, [appointments, expenses, todayStart, todayEnd, yesterdayStart, yesterdayEnd, weekStart, prevWeekStart, prevWeekEnd, monthStart, prevMonthStart, prevMonthEnd]);
 
   const todaySchedule = useMemo(() =>
     appointments.filter(a => {
@@ -239,37 +227,12 @@ export default function DashboardPage() {
       .slice(0, 5);
   }, [birthdays, todayStart]);
 
-  const weekStats = useMemo(() => {
-    let cancellations = 0, noShows = 0, totalWeek = 0;
-    for (const a of appointments) {
-      const d = new Date(a.starts_at);
-      if (d < weekStart) continue;
-      totalWeek++;
-      if (a.status === 'cancelled') cancellations++;
-      if (a.status === 'no_show') noShows++;
-    }
-    return { cancellations, noShows, totalWeek };
-  }, [appointments, weekStart]);
-
-  const utilization = useMemo(() => {
-    const wh = master?.working_hours as Record<string, { start: string; end: string } | null> | null;
-    const totalMins = parseWorkingHours(wh, now) * 60;
-    if (totalMins <= 0) return 0;
-    let bookedMins = 0;
-    for (const a of todaySchedule) {
-      const start = new Date(a.starts_at).getTime();
-      const end = new Date(a.ends_at).getTime();
-      bookedMins += Math.max(0, (end - start) / 60000);
-    }
-    return Math.min(100, Math.round((bookedMins / totalMins) * 100));
-  }, [todaySchedule, master?.working_hours, now]);
-
   /* ── Currency ── */
   const fmtMoney = useCallback((n: number) =>
     new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ₴',
   [locale]);
 
-  /* ── Card base style ── */
+  /* ── Styles ── */
   const card: React.CSSProperties = {
     backgroundColor: C.cardBg,
     borderRadius: 10,
@@ -281,12 +244,12 @@ export default function DashboardPage() {
     overflow: 'hidden',
   };
 
-  /* ── Loading skeleton ── */
+  /* ── Loading ── */
   if (masterLoading || loading) {
     return (
       <div style={{ padding: '20px 24px', fontFamily: FONT, height: '100%' }}>
         <Skeleton className="mb-4 h-6 w-48" />
-        <Skeleton className="mb-4 h-16 rounded-[10px]" />
+        <Skeleton className="mb-4 h-20 rounded-[10px]" />
         <div className="grid grid-cols-3 gap-4" style={{ flex: 1 }}>
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 rounded-[10px]" />)}
         </div>
@@ -295,6 +258,14 @@ export default function DashboardPage() {
   }
 
   const firstName = master?.profile?.full_name?.split(' ')[0] || '';
+  const monthName = format(now, 'LLLL', { locale: dfLocale });
+
+  /* Finance strip items — reference: СЕГОДНЯ / ЭТА НЕДЕЛЯ / [Month name] */
+  const financeItems = [
+    { label: t('today').toUpperCase(), data: profit.today, icon: '📅' },
+    { label: t('thisWeek').toUpperCase(), data: profit.week, icon: '📊' },
+    { label: monthName.charAt(0).toUpperCase() + monthName.slice(1), data: profit.month, icon: '📈' },
+  ];
 
   return (
     <div
@@ -304,11 +275,11 @@ export default function DashboardPage() {
         display: 'flex',
         flexDirection: 'column',
         padding: '20px 24px 16px',
-        gap: 16,
+        gap: 14,
         overflow: 'hidden',
       }}
     >
-      {/* ═══ Row 1: Greeting — compact single line ═══ */}
+      {/* ═══ Row 1: Greeting ═══ */}
       <motion.div
         {...stagger(0)}
         style={{
@@ -330,88 +301,112 @@ export default function DashboardPage() {
         <span style={{
           fontSize: 13,
           color: C.textTertiary,
-          letterSpacing: '-0.1px',
           textTransform: 'capitalize',
         }}>
           {format(now, 'EEEE, d MMMM', { locale: dfLocale })}
         </span>
       </motion.div>
 
-      {/* ═══ Row 2: Finance strip — compact horizontal bar ═══ */}
+      {/* ═══ Row 2: Finance strip — matches reference ═══ */}
       <motion.div
         {...stagger(1)}
         style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr 1fr',
           backgroundColor: C.stripBg,
-          borderRadius: 10,
+          borderRadius: 12,
           border: `1px solid ${C.border}`,
           overflow: 'hidden',
           flexShrink: 0,
         }}
       >
-        {([
-          { label: t('today'), data: profit.today },
-          { label: t('thisWeek'), data: profit.week },
-          { label: t('thisMonth'), data: profit.month },
-        ] as const).map((item, i) => {
-          const isPositive = item.data.net >= 0;
+        {financeItems.map((item, i) => {
+          const ch = item.data.change;
+          const changeColor = ch === null ? C.textTertiary
+            : ch.value > 0 ? C.success
+            : ch.value < 0 ? C.danger
+            : C.textSecondary;
+
           return (
             <div
               key={item.label}
               style={{
-                padding: '14px 20px',
+                padding: '16px 24px 14px',
                 borderRight: i < 2 ? `1px solid ${C.border}` : undefined,
+                position: 'relative',
               }}
             >
+              {/* Label row */}
               <div style={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: C.textTertiary,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 8,
               }}>
-                {item.label}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
                 <span style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: C.text,
-                  letterSpacing: '-0.5px',
-                  fontVariantNumeric: 'tabular-nums',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: C.textTertiary,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.6px',
                 }}>
-                  {fmtMoney(item.data.net)}
+                  {item.label}
                 </span>
-                {item.data.income > 0 && (
+                {/* Change badge — like reference */}
+                {ch && (
                   <span style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 3,
                     fontSize: 12,
                     fontWeight: 600,
-                    color: isPositive ? C.success : C.danger,
+                    color: changeColor,
+                    backgroundColor: isDark
+                      ? (ch.value > 0 ? 'rgba(16,185,129,0.12)' : ch.value < 0 ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.05)')
+                      : (ch.value > 0 ? 'rgba(5,150,105,0.08)' : ch.value < 0 ? 'rgba(220,38,38,0.08)' : 'rgba(0,0,0,0.04)'),
+                    padding: '2px 8px',
+                    borderRadius: 6,
                   }}>
-                    {isPositive
-                      ? <ArrowUpRight style={{ width: 12, height: 12 }} />
-                      : <ArrowDownRight style={{ width: 12, height: 12 }} />
-                    }
-                    {fmtMoney(item.data.income)}
+                    {ch.value > 0 && <ArrowUpRight style={{ width: 11, height: 11 }} />}
+                    {ch.value < 0 && <ArrowDownRight style={{ width: 11, height: 11 }} />}
+                    {ch.value === 0 && <Minus style={{ width: 11, height: 11 }} />}
+                    {ch.label}
                   </span>
                 )}
+              </div>
+
+              {/* Big number */}
+              <div style={{
+                fontSize: 26,
+                fontWeight: 700,
+                color: C.text,
+                letterSpacing: '-0.6px',
+                fontVariantNumeric: 'tabular-nums',
+                lineHeight: 1.1,
+              }}>
+                {fmtMoney(item.data.net)}
+              </div>
+
+              {/* Subtitle */}
+              <div style={{
+                fontSize: 11,
+                color: C.textTertiary,
+                marginTop: 4,
+                letterSpacing: '0.2px',
+              }}>
+                {t('netProfit')}
               </div>
             </div>
           );
         })}
       </motion.div>
 
-      {/* ═══ Row 3: Three blocks — fills remaining space ═══ */}
+      {/* ═══ Row 3: Three blocks — fills remaining viewport ═══ */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1.2fr 0.8fr 1fr',
-          gap: 16,
+          gridTemplateColumns: '1.3fr 0.7fr 1fr',
+          gap: 14,
           flex: 1,
           minHeight: 0,
         }}
@@ -427,7 +422,7 @@ export default function DashboardPage() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock style={{ width: 14, height: 14, color: C.accent }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text, letterSpacing: '-0.2px' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
                 {t('todaySchedule')}
               </span>
             </div>
@@ -448,7 +443,7 @@ export default function DashboardPage() {
               justifyContent: 'center',
               gap: 8,
             }}>
-              <Calendar style={{ width: 28, height: 28, color: C.textTertiary, opacity: 0.5 }} />
+              <Calendar style={{ width: 28, height: 28, color: C.textTertiary, opacity: 0.4 }} />
               <p style={{ fontSize: 13, fontWeight: 500, color: C.textSecondary, margin: 0, textAlign: 'center' }}>
                 {t('noAppointmentsToday')}
               </p>
@@ -457,7 +452,7 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               {todaySchedule.map((appt, i) => {
                 const start = new Date(appt.starts_at);
                 const end = new Date(appt.ends_at);
@@ -476,10 +471,10 @@ export default function DashboardPage() {
                       borderRadius: 6,
                       textDecoration: 'none',
                       color: 'inherit',
-                      opacity: isPast ? 0.45 : 1,
+                      opacity: isPast ? 0.4 : 1,
                       backgroundColor: isNow ? (isDark ? 'rgba(94,106,210,0.08)' : 'rgba(94,106,210,0.04)') : 'transparent',
                       borderBottom: i < todaySchedule.length - 1 ? `1px solid ${C.border}` : undefined,
-                      transition: 'background-color 150ms cubic-bezier(0.23,1,0.32,1)',
+                      transition: 'background-color 150ms',
                       flexShrink: 0,
                     }}
                   >
@@ -494,20 +489,14 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div style={{
-                      width: 3,
-                      height: 28,
-                      borderRadius: 2,
+                      width: 3, height: 28, borderRadius: 2,
                       backgroundColor: appt.service?.color || C.accent,
                       flexShrink: 0,
                     }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: C.text,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        fontSize: 13, fontWeight: 500, color: C.text,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {appt.service?.name || '—'}
                       </div>
@@ -525,122 +514,56 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* ── Block 2: Stats + Quick Actions ── */}
-        <motion.div {...stagger(3)} style={{ ...card, gap: 12, minHeight: 0 }}>
-          {/* Utilization bar */}
-          <div style={{ flexShrink: 0 }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              marginBottom: 6,
-            }}>
-              <span style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {t('occupancy')}
-              </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: C.text, letterSpacing: '-0.4px' }}>
-                {utilization}%
-              </span>
-            </div>
-            <div style={{ height: 4, borderRadius: 2, backgroundColor: isDark ? '#191a1b' : '#e6e6e6' }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${utilization}%` }}
-                transition={{ delay: 0.4, duration: 0.5 }}
+        {/* ── Block 2: Quick Actions ── */}
+        <motion.div {...stagger(3)} style={{ ...card, gap: 10, minHeight: 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: C.text, flexShrink: 0 }}>
+            {t('quickActions')}
+          </span>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+            {[
+              { href: `/${locale}/calendar`, icon: CalendarPlus, label: t('newAppointment'), accent: true },
+              { href: `/${locale}/clients`, icon: UserPlus, label: t('addClient'), accent: false },
+              { href: `/${locale}/calendar`, icon: Calendar, label: t('goToCalendar'), accent: false },
+              { href: `/${locale}/finance`, icon: TrendingUp, label: t('goToFinance'), accent: false },
+            ].map(({ href, icon: Icon, label, accent }) => (
+              <Link
+                key={label}
+                href={href}
                 style={{
-                  height: '100%',
-                  borderRadius: 2,
-                  backgroundColor: utilization > 80 ? C.success : utilization > 40 ? C.accent : C.warning,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  backgroundColor: accent ? C.accent : C.blockBg,
+                  color: accent ? '#ffffff' : C.text,
+                  textDecoration: 'none',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  transition: 'transform 160ms cubic-bezier(0.23,1,0.32,1)',
                 }}
-              />
-            </div>
+                onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
+                onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+              >
+                <Icon style={{ width: 15, height: 15, opacity: 0.8 }} />
+                {label}
+              </Link>
+            ))}
           </div>
 
-          {/* Mini stats row */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 8,
-            flexShrink: 0,
-          }}>
-            <div style={{
-              padding: '8px 10px',
-              borderRadius: 8,
-              backgroundColor: isDark ? '#141516' : '#f5f6f7',
-            }}>
-              <div style={{ fontSize: 11, color: C.textTertiary, marginBottom: 2 }}>{t('todaySchedule')}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{todaySchedule.length}</div>
+          {/* Week summary — compact */}
+          <div style={{ marginTop: 'auto', flexShrink: 0 }}>
+            <div style={{ height: 1, backgroundColor: C.border, marginBottom: 10 }} />
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+              {t('thisWeek')}
             </div>
-            <div style={{
-              padding: '8px 10px',
-              borderRadius: 8,
-              backgroundColor: isDark ? '#141516' : '#f5f6f7',
-            }}>
-              <div style={{ fontSize: 11, color: C.textTertiary, marginBottom: 2 }}>{t('thisWeek')}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: C.text }}>{weekStats.totalWeek}</div>
-            </div>
-          </div>
-
-          {/* Cancellations + no-shows compact */}
-          {(weekStats.cancellations > 0 || weekStats.noShows > 0) && (
-            <div style={{
-              display: 'flex',
-              gap: 12,
-              fontSize: 12,
-              color: C.textSecondary,
-              flexShrink: 0,
-            }}>
-              {weekStats.cancellations > 0 && (
-                <span style={{ color: C.warning }}>
-                  {t('cancellations')}: {weekStats.cancellations}
-                </span>
-              )}
-              {weekStats.noShows > 0 && (
-                <span style={{ color: C.danger }}>
-                  {t('noShows')}: {weekStats.noShows}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Separator */}
-          <div style={{ height: 1, backgroundColor: C.border, flexShrink: 0 }} />
-
-          {/* Quick Actions */}
-          <div style={{ flexShrink: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 8, letterSpacing: '-0.1px' }}>
-              {t('quickActions')}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {[
-                { href: `/${locale}/calendar`, icon: CalendarPlus, label: t('newAppointment'), accent: true },
-                { href: `/${locale}/clients`, icon: UserPlus, label: t('addClient'), accent: false },
-                { href: `/${locale}/finance`, icon: TrendingUp, label: t('goToFinance'), accent: false },
-              ].map(({ href, icon: Icon, label, accent }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    backgroundColor: accent ? C.accent : (isDark ? '#141516' : '#f5f6f7'),
-                    color: accent ? '#ffffff' : C.text,
-                    textDecoration: 'none',
-                    fontSize: 13,
-                    fontWeight: 500,
-                    transition: 'transform 160ms cubic-bezier(0.23,1,0.32,1)',
-                  }}
-                  onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
-                  onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                >
-                  <Icon style={{ width: 14, height: 14, opacity: 0.8 }} />
-                  {label}
-                </Link>
-              ))}
+            <div style={{ display: 'flex', gap: 16, fontSize: 13 }}>
+              <div>
+                <span style={{ fontWeight: 700, color: C.text }}>{todaySchedule.length}</span>
+                <span style={{ color: C.textTertiary, marginLeft: 4 }}>{t('today').toLowerCase()}</span>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -655,7 +578,7 @@ export default function DashboardPage() {
             flexShrink: 0,
           }}>
             <Cake style={{ width: 14, height: 14, color: C.warning }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.text, letterSpacing: '-0.2px' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>
               {t('birthdays')}
             </span>
           </div>
@@ -672,7 +595,7 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
               {upcomingBirthdays.map((client, i) => (
                 <Link
                   key={client.id}
@@ -686,7 +609,6 @@ export default function DashboardPage() {
                     textDecoration: 'none',
                     color: 'inherit',
                     flexShrink: 0,
-                    transition: 'background-color 150ms cubic-bezier(0.23,1,0.32,1)',
                     borderRadius: 4,
                   }}
                 >
