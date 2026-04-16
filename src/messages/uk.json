@@ -29,7 +29,8 @@
     "required": "Обов'язкове поле",
     "optional": "Необов'язково",
     "show": "Показати",
-    "hide": "Сховати"
+    "hide": "Сховати",
+    "clear": "Очистити"
   },
   "auth": {
     "signIn": "Увійти",
@@ -798,7 +799,32 @@
     "notes": "Нотатки",
     "noSuppliers": "Поки немає постачальників",
     "selectSupplier": "Обрати постачальника",
-    "noSupplier": "Без постачальника"
+    "noSupplier": "Без постачальника",
+    "scanTitle": "Сканування товару",
+    "scanDescription": "Сфотографуй штрих-код препарату — знайдемо на складі або створимо нову позицію.",
+    "scanNoDetector": "BarcodeDetector не підтримується — введи штрих-код вручну після зйомки.",
+    "scanCapture": "Зняти штрих-код",
+    "scanBarcode": "Штрих-код",
+    "scanBarcodePlaceholder": "наприклад 4607004870019",
+    "scanManualFallback": "Штрих-код не розпізнано — введи вручну",
+    "scanError": "Помилка детектора",
+    "photoUploadError": "Помилка завантаження фото",
+    "scanStock": "Залишок",
+    "scanExpiry": "Термін придатності",
+    "scanExpiringSoon": "Скоро спливає",
+    "scanSerial": "Серійний номер (необов'язково)",
+    "scanSerialPlaceholder": "S/N або номер партії",
+    "scanDeduct": "Списати",
+    "scanReceive": "Прийняти",
+    "scanLinkClient": "Прив'язати до клієнта",
+    "scanLinked": "Скан прив'язано",
+    "scanLinkedTo": "Прив'язано до",
+    "scanRecord": "Записати скан",
+    "scanRecorded": "Скан записано",
+    "scanNotFound": "Товар не знайдено — додати?",
+    "scanClientSearchPlaceholder": "Пошук клієнта за ім'ям...",
+    "scanNoClients": "Клієнтів не знайдено",
+    "itemAdded": "Товар додано на склад"
   },
   "equipment": {
     "title": "Обладнання",

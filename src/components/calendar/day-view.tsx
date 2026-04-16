@@ -26,6 +26,7 @@ const SLOT_HEIGHT = HOUR_HEIGHT / SLOTS_PER_HOUR; // 16px
 const TIME_COL_WIDTH = 80; // wider for "12:00 дня" labels
 const INTERVALS_PER_HOUR = 6; // 10-min intervals (6 per hour)
 const INTERVAL_HEIGHT = HOUR_HEIGHT / INTERVALS_PER_HOUR; // 16px
+const DRAG_SNAP_MINUTES = 15; // snap to 15-min intervals during drag
 
 const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
@@ -106,6 +107,10 @@ function freshaTimeLabelMin(hour: number, min: number): string {
   return `${h12}:${String(min).padStart(2, '0')}`;
 }
 
+function fmtTime(h: number, m: number): string {
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 interface BlockedTime {
   id: string;
   starts_at: string;
@@ -162,6 +167,8 @@ export function DayView({
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [dragGhostY, setDragGhostY] = useState<number | null>(null);
+  const [dragGhostH, setDragGhostH] = useState<number>(0);
   const [currentMinute, setCurrentMinute] = useState(0);
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
   const [slotPopup, setSlotPopup] = useState<SlotPopup | null>(null);
@@ -207,12 +214,25 @@ export function DayView({
     return (ms / 3_600_000) * HOUR_HEIGHT;
   }
 
+  function yToMinutes(y: number): number {
+    return (y / TOTAL_HEIGHT) * TOTAL_HOURS * 60;
+  }
+
+  function snapMinutes(min: number, snap: number = DRAG_SNAP_MINUTES): number {
+    return Math.round(min / snap) * snap;
+  }
+
   function yToTime(y: number): string {
-    const totalMin = (y / TOTAL_HEIGHT) * TOTAL_HOURS * 60;
-    const snapped = Math.round(totalMin / 10) * 10;
+    const snapped = snapMinutes(yToMinutes(y), SLOT_MINUTES);
     const h = Math.floor(snapped / 60);
     const m = snapped % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  /** Convert Y position to snapped Y (15-min grid) for drag preview */
+  function snapY(y: number): number {
+    const min = snapMinutes(yToMinutes(y), DRAG_SNAP_MINUTES);
+    return (min / (TOTAL_HOURS * 60)) * TOTAL_HEIGHT;
   }
 
   function slotToTime(i: number): string {
@@ -267,22 +287,62 @@ export function DayView({
     }
   }
 
-  async function handleDrop(apptId: string, newY: number) {
-    const time = yToTime(newY);
-    const [h, m] = time.split(':').map(Number);
-    const appt = appointments.find((a) => a.id === apptId);
+  function isDraggable(appt: AppointmentData): boolean {
+    return appt.status !== 'completed' && appt.status !== 'cancelled' && appt.status !== 'no_show';
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!gridRef.current || !dragId) return;
+    const rect = gridRef.current.getBoundingClientRect();
+    const rawY = e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0);
+    const appt = appointments.find((a) => a.id === dragId);
     if (!appt) return;
+    const dur = new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime();
+    const durH = (dur / 3_600_000) * HOUR_HEIGHT;
+    setDragGhostY(snapY(rawY));
+    setDragGhostH(durH);
+  }
+
+  function handleDragLeave() {
+    setDragGhostY(null);
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragGhostY(null);
+    if (!gridRef.current || !dragId) { setDragId(null); return; }
+
+    const rect = gridRef.current.getBoundingClientRect();
+    const rawY = e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0);
+    const snappedMin = snapMinutes(yToMinutes(rawY), DRAG_SNAP_MINUTES);
+    const h = Math.floor(snappedMin / 60);
+    const m = snappedMin % 60;
+
+    const appt = appointments.find((a) => a.id === dragId);
+    if (!appt) { setDragId(null); return; }
+
     const ns = new Date(date); ns.setHours(h, m, 0, 0);
     const dur = new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime();
     const ne = new Date(ns.getTime() + dur);
+
+    // Check for overlaps with other appointments
     const overlap = appointments.some((a) => {
-      if (a.id === apptId) return false;
+      if (a.id === dragId) return false;
       return ns.getTime() < new Date(a.ends_at).getTime() && ne.getTime() > new Date(a.starts_at).getTime();
     });
-    if (overlap) { toast.error(t('slotOccupied')); return; }
+    if (overlap) { toast.error(t('slotOccupied')); setDragId(null); return; }
+
+    // Check for overlaps with blocked times
+    const blockedOverlap = blockedTimes.some((bt) => {
+      return ns.getTime() < new Date(bt.ends_at).getTime() && ne.getTime() > new Date(bt.starts_at).getTime();
+    });
+    if (blockedOverlap) { toast.error(t('slotOccupied')); setDragId(null); return; }
+
     const supabase = createClient();
     const { error } = await supabase.from('appointments')
-      .update({ starts_at: ns.toISOString(), ends_at: ne.toISOString() }).eq('id', apptId);
+      .update({ starts_at: ns.toISOString(), ends_at: ne.toISOString() }).eq('id', appt.id);
     if (error) toast.error(error.message); else onRefetch();
     setDragId(null);
   }
@@ -376,7 +436,13 @@ export function DayView({
         </div>
 
         {/* ═══ Grid container ═══ */}
-        <div ref={gridRef} style={{ position: 'relative', height: TOTAL_HEIGHT }}>
+        <div
+          ref={gridRef}
+          style={{ position: 'relative', height: TOTAL_HEIGHT }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
 
           {/* Non-working background */}
           <div
@@ -732,6 +798,41 @@ export function DayView({
           )}
 
           {/* ── Appointment cards ── */}
+          {/* ── Drag ghost preview ── */}
+          {dragId && dragGhostY !== null && (() => {
+            const appt = appointments.find((a) => a.id === dragId);
+            if (!appt) return null;
+            const color = appt.service?.color || C.cardBg;
+            const ghostMin = snapMinutes(yToMinutes(dragGhostY), DRAG_SNAP_MINUTES);
+            const ghostH = Math.floor(ghostMin / 60);
+            const ghostM = ghostMin % 60;
+            const ghostLabel = fmtTime(ghostH, ghostM);
+            return (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: TIME_COL_WIDTH + 1,
+                  right: 1,
+                  top: dragGhostY,
+                  height: Math.max(INTERVAL_HEIGHT, dragGhostH),
+                  zIndex: 45,
+                  backgroundColor: color,
+                  opacity: 0.45,
+                  borderRadius: 4,
+                  border: `2px dashed ${C.accent}`,
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 8,
+                  fontFamily: FONT,
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{ghostLabel}</span>
+              </div>
+            );
+          })()}
+
+          {/* ── Appointment cards ── */}
           {appointments.map((appt) => {
             const top = timeToY(appt.starts_at);
             const height = durationToH(appt.starts_at, appt.ends_at);
@@ -739,6 +840,7 @@ export function DayView({
             const st = new Date(appt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const et = new Date(appt.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const cancelled = appt.status === 'cancelled' || appt.status === 'no_show';
+            const canDrag = isDraggable(appt);
 
             return (
               <div
@@ -758,19 +860,26 @@ export function DayView({
                   borderRadius: 4,
                   padding: '3px 4px 3px 8px',
                   overflow: 'hidden',
-                  cursor: 'pointer',
+                  cursor: canDrag ? 'grab' : 'pointer',
                   transition: 'box-shadow 150ms',
                   fontFamily: FONT,
                 }}
                 onClick={() => onAppointmentClick(appt)}
                 onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)')}
                 onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
-                draggable
-                onDragStart={() => setDragId(appt.id)}
-                onDragEnd={(e) => {
-                  if (!gridRef.current) return;
-                  const rect = gridRef.current.getBoundingClientRect();
-                  handleDrop(appt.id, e.clientY - rect.top + (scrollRef.current?.scrollTop ?? 0) - HEADER_HEIGHT);
+                draggable={canDrag}
+                onDragStart={(e) => {
+                  if (!canDrag) { e.preventDefault(); return; }
+                  setDragId(appt.id);
+                  // Set drag image to semi-transparent clone
+                  if (e.currentTarget) {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', appt.id);
+                  }
+                }}
+                onDragEnd={() => {
+                  setDragId(null);
+                  setDragGhostY(null);
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flexWrap: 'wrap' }}>

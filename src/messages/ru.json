@@ -29,7 +29,8 @@
     "required": "Обязательное поле",
     "optional": "Необязательно",
     "show": "Показать",
-    "hide": "Скрыть"
+    "hide": "Скрыть",
+    "clear": "Очистить"
   },
   "auth": {
     "signIn": "Войти",
@@ -798,7 +799,32 @@
     "notes": "Заметки",
     "noSuppliers": "Пока нет поставщиков",
     "selectSupplier": "Выбрать поставщика",
-    "noSupplier": "Без поставщика"
+    "noSupplier": "Без поставщика",
+    "scanTitle": "Сканирование товара",
+    "scanDescription": "Сфотографируй штрих-код препарата — найдём в складе или создадим новую позицию.",
+    "scanNoDetector": "BarcodeDetector не поддерживается — введи штрих-код вручную после съёмки.",
+    "scanCapture": "Снять штрих-код",
+    "scanBarcode": "Штрих-код",
+    "scanBarcodePlaceholder": "например 4607004870019",
+    "scanManualFallback": "Штрих-код не распознан — введи вручную",
+    "scanError": "Ошибка детектора",
+    "photoUploadError": "Ошибка загрузки фото",
+    "scanStock": "Остаток",
+    "scanExpiry": "Срок годности",
+    "scanExpiringSoon": "Скоро истекает",
+    "scanSerial": "Серийный номер (необязательно)",
+    "scanSerialPlaceholder": "S/N или номер партии",
+    "scanDeduct": "Списать",
+    "scanReceive": "Принять",
+    "scanLinkClient": "Привязать к клиенту",
+    "scanLinked": "Скан привязан",
+    "scanLinkedTo": "Привязано к",
+    "scanRecord": "Записать скан",
+    "scanRecorded": "Скан записан",
+    "scanNotFound": "Товар не найден — добавить?",
+    "scanClientSearchPlaceholder": "Поиск клиента по имени...",
+    "scanNoClients": "Клиенты не найдены",
+    "itemAdded": "Товар добавлен в склад"
   },
   "equipment": {
     "title": "Оборудование",

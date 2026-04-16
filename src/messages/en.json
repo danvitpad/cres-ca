@@ -29,7 +29,8 @@
     "required": "Required field",
     "optional": "Optional",
     "show": "Show",
-    "hide": "Hide"
+    "hide": "Hide",
+    "clear": "Clear"
   },
   "auth": {
     "signIn": "Sign In",
@@ -798,7 +799,32 @@
     "notes": "Notes",
     "noSuppliers": "No suppliers yet",
     "selectSupplier": "Select supplier",
-    "noSupplier": "No supplier"
+    "noSupplier": "No supplier",
+    "scanTitle": "Scan Product",
+    "scanDescription": "Take a photo of the barcode — we will find it in stock or create a new item.",
+    "scanNoDetector": "BarcodeDetector is not supported — enter the barcode manually after taking the photo.",
+    "scanCapture": "Capture barcode",
+    "scanBarcode": "Barcode",
+    "scanBarcodePlaceholder": "e.g. 4607004870019",
+    "scanManualFallback": "Barcode not recognized — enter manually",
+    "scanError": "Detector error",
+    "photoUploadError": "Photo upload failed",
+    "scanStock": "In stock",
+    "scanExpiry": "Expiry",
+    "scanExpiringSoon": "Expiring soon",
+    "scanSerial": "Serial number (optional)",
+    "scanSerialPlaceholder": "S/N or batch number",
+    "scanDeduct": "Deduct",
+    "scanReceive": "Receive",
+    "scanLinkClient": "Link to client",
+    "scanLinked": "Scan linked",
+    "scanLinkedTo": "Linked to",
+    "scanRecord": "Record scan",
+    "scanRecorded": "Scan recorded",
+    "scanNotFound": "Item not found — create?",
+    "scanClientSearchPlaceholder": "Search client by name...",
+    "scanNoClients": "No clients found",
+    "itemAdded": "Item added to stock"
   },
   "equipment": {
     "title": "Equipment",
