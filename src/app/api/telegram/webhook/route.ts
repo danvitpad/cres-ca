@@ -110,7 +110,7 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('telegram_id', String(telegramId))
+    .eq('telegram_id', telegramId)
     .single();
 
   if (!profile) {
@@ -326,7 +326,7 @@ async function handleMasterAccountLink(chatId: number, telegramId: number, token
 
   const { error: profErr } = await supabase
     .from('profiles')
-    .update({ telegram_id: String(telegramId) })
+    .update({ telegram_id: telegramId })
     .eq('id', tokenRow.profile_id);
 
   if (profErr) {
@@ -370,7 +370,7 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('telegram_id', String(telegramId))
+    .eq('telegram_id', telegramId)
     .single();
 
   if (profile) {
