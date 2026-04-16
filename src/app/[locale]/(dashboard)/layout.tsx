@@ -35,6 +35,7 @@ import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
+import { ReminderPopup } from '@/components/reminders/reminder-popup';
 
 /* ─── Layout constants (shared) ─── */
 const S = {
@@ -848,6 +849,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <OnboardingDialog />
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
       <DashboardRealtimeToasts />
+      <ReminderPopup />
     </div>
   );
 }

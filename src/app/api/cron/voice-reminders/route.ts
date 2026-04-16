@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   // Find due reminders (due_at <= now, not completed)
   const { data: reminders, error } = await supabase
     .from('reminders')
-    .select('id, text, due_at, master_id, master:masters!inner(profile_id)')
+    .select('id, text, due_at, master_id, master:masters!inner(profile_id, notify_telegram)')
     .eq('completed', false)
     .not('due_at', 'is', null)
     .lte('due_at', new Date().toISOString())
@@ -38,23 +38,25 @@ export async function GET(request: Request) {
   let sent = 0;
 
   for (const r of reminders) {
-    const master = r.master as unknown as { profile_id: string };
+    const master = r.master as unknown as { profile_id: string; notify_telegram: boolean };
 
-    // Find ALL telegram chats linked to this master's profile
-    const { data: sessions } = await supabase
-      .from('telegram_sessions')
-      .select('chat_id')
-      .eq('profile_id', master.profile_id);
+    // Send to Telegram only if enabled
+    if (master.notify_telegram !== false) {
+      const { data: sessions } = await supabase
+        .from('telegram_sessions')
+        .select('chat_id')
+        .eq('profile_id', master.profile_id);
 
-    if (sessions?.length) {
-      for (const s of sessions) {
-        await sendMessage(
-          s.chat_id,
-          `🔔 <b>Напоминание</b>\n\n${r.text}`,
-          { parse_mode: 'HTML' },
-        );
+      if (sessions?.length) {
+        for (const s of sessions) {
+          await sendMessage(
+            s.chat_id,
+            `🔔 <b>Напоминание</b>\n\n${r.text}`,
+            { parse_mode: 'HTML' },
+          );
+        }
+        sent++;
       }
-      sent++;
     }
 
     // Mark as completed

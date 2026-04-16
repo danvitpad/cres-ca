@@ -27,6 +27,7 @@ import {
   LinkIcon,
   Shield,
   ChevronLeft,
+  BellRing,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -66,6 +67,7 @@ export default function SettingsPage() {
     { key: 'subscription', icon: CreditCard, title: t('subscription'), desc: t('subscriptionDesc') || t('subscription') },
     { key: 'invite', icon: LinkIcon, title: t('inviteLink'), desc: t('inviteDesc') || t('inviteLink') },
     { key: 'policies', icon: Shield, title: t('policies'), desc: t('policiesDesc') || t('policies') },
+    { key: 'notifications', icon: BellRing, title: 'Уведомления', desc: 'Напоминания на сайте и в Telegram' },
   ];
 
   if (activeSection) {
@@ -83,6 +85,7 @@ export default function SettingsPage() {
         {activeSection === 'subscription' && <SubscriptionTab />}
         {activeSection === 'invite' && <InviteLinkTab master={master} />}
         {activeSection === 'policies' && <PoliciesTab master={master} onSaved={refetch} />}
+        {activeSection === 'notifications' && <NotificationsTab master={master} onSaved={refetch} />}
       </div>
     );
   }
@@ -460,6 +463,76 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
         <Button onClick={handleSave} disabled={saving}>
           {saving ? tc('loading') : tc('save')}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const [notifyWeb, setNotifyWeb] = useState((master as Record<string, unknown>).notify_web !== false);
+  const [notifyTelegram, setNotifyTelegram] = useState((master as Record<string, unknown>).notify_telegram !== false);
+  const [saving, setSaving] = useState(false);
+
+  const handleToggle = async (field: 'notify_web' | 'notify_telegram', value: boolean) => {
+    if (field === 'notify_web') setNotifyWeb(value);
+    else setNotifyTelegram(value);
+
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('masters')
+      .update({ [field]: value })
+      .eq('id', master.id);
+
+    if (error) {
+      toast.error('Не удалось сохранить');
+      if (field === 'notify_web') setNotifyWeb(!value);
+      else setNotifyTelegram(!value);
+    } else {
+      toast.success('Сохранено');
+      onSaved();
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BellRing className="h-5 w-5" />
+          Уведомления
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Напоминания на сайте</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Всплывающие уведомления о напоминаниях в правом нижнем углу
+            </p>
+          </div>
+          <Switch
+            checked={notifyWeb}
+            onCheckedChange={(v) => handleToggle('notify_web', v)}
+            disabled={saving}
+          />
+        </div>
+
+        <div className="h-px bg-border" />
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Уведомления в Telegram</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Бот присылает напоминание в Telegram при наступлении срока
+            </p>
+          </div>
+          <Switch
+            checked={notifyTelegram}
+            onCheckedChange={(v) => handleToggle('notify_telegram', v)}
+            disabled={saving}
+          />
+        </div>
       </CardContent>
     </Card>
   );
