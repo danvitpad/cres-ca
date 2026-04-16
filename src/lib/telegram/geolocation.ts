@@ -86,10 +86,10 @@ export async function getLocation(): Promise<GeoPosition | null> {
               accuracy: pos.coords.accuracy ?? undefined,
             }),
           () => resolve(null),
-          { timeout: 8000, enableHighAccuracy: false },
+          { timeout: 10000, enableHighAccuracy: true },
         );
       }),
-      9000,
+      11000,
       null,
     );
     if (browserResult) return browserResult;
