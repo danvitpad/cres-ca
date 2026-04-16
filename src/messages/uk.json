@@ -2018,5 +2018,22 @@
     "utilization": "Завантаження",
     "nextAppointment": "Наступний запис",
     "none": "Немає записів"
+  },
+  "followSystem": {
+    "newFollower": "Новий підписник",
+    "newFollowerBody": "{name} підписався на вас",
+    "mutualFollow": "Взаємна підписка",
+    "mutualFollowBody": "{name} підписався на вас у відповідь",
+    "followBack": "Підписатися у відповідь",
+    "unfollow": "Відписатися",
+    "mutual": "Взаємна",
+    "followers": "Підписники",
+    "following": "Підписки",
+    "allClients": "Усі клієнти",
+    "mutualClients": "Взаємні",
+    "searchPlaceholder": "Ім'я, телефон, email або CRES-ID...",
+    "followedSince": "Підписаний(а) з {date}",
+    "noFollowers": "Підписників поки немає",
+    "unfollowBack": "Відписатися"
   }
 }

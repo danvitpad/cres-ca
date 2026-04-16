@@ -35,6 +35,7 @@ interface MasterResult {
 export default function MastersPage() {
   const t = useTranslations('map');
   const tc = useTranslations('common');
+  const tf = useTranslations('followSystem');
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') ?? '');
 
@@ -77,7 +78,10 @@ export default function MastersPage() {
     const phoneQ = raw.replace(/[^\d+]/g, '');
     const phoneLookup = phoneQ.length >= 3 ? phoneQ : null;
 
-    const [byMaster, byFullName, byPhone] = await Promise.all([
+    // Email-like input: has @ sign
+    const emailLookup = q.includes('@') ? q : null;
+
+    const [byMaster, byFullName, byPhone, byEmail] = await Promise.all([
       supabase
         .from('masters')
         .select('id, specialization, rating, city, address, is_active, invite_code, display_name, avatar_url, profiles(full_name, avatar_url), services(id, name, price, currency)')
@@ -98,6 +102,14 @@ export default function MastersPage() {
             .ilike('profiles.phone', `%${phoneLookup}%`)
             .limit(20)
         : Promise.resolve({ data: [] as unknown[] }),
+      emailLookup
+        ? supabase
+            .from('masters')
+            .select('id, specialization, rating, city, address, is_active, invite_code, display_name, avatar_url, profiles!inner(full_name, avatar_url, email), services(id, name, price, currency)')
+            .eq('is_active', true)
+            .ilike('profiles.email', `%${emailLookup}%`)
+            .limit(20)
+        : Promise.resolve({ data: [] as unknown[] }),
     ]);
 
     const merged = new Map<string, MasterResult>();
@@ -106,6 +118,9 @@ export default function MastersPage() {
       if (!merged.has(row.id)) merged.set(row.id, row);
     }
     for (const row of (byPhone.data ?? []) as unknown as MasterResult[]) {
+      if (!merged.has(row.id)) merged.set(row.id, row);
+    }
+    for (const row of (byEmail.data ?? []) as unknown as MasterResult[]) {
       if (!merged.has(row.id)) merged.set(row.id, row);
     }
 
@@ -151,7 +166,7 @@ export default function MastersPage() {
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={tc('search') + '...'}
+            placeholder={tf('searchPlaceholder')}
             className="pl-9 pr-9 h-11 rounded-xl bg-muted/50 border-border/50"
           />
           {query && (

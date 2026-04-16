@@ -2038,5 +2038,22 @@
     "utilization": "Utilization",
     "nextAppointment": "Next appointment",
     "none": "No appointments"
+  },
+  "followSystem": {
+    "newFollower": "New follower",
+    "newFollowerBody": "{name} followed you",
+    "mutualFollow": "Mutual follow",
+    "mutualFollowBody": "{name} followed you back",
+    "followBack": "Follow back",
+    "unfollow": "Unfollow",
+    "mutual": "Mutual",
+    "followers": "Followers",
+    "following": "Following",
+    "allClients": "All clients",
+    "mutualClients": "Mutual",
+    "searchPlaceholder": "Name, phone, email, or CRES-ID...",
+    "followedSince": "Followed since {date}",
+    "noFollowers": "No followers yet",
+    "unfollowBack": "Unfollow"
   }
 }

@@ -16,6 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Star, Clock, MapPin, ArrowLeft, Heart, Check, Share2, Bookmark, BookmarkCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -74,6 +75,7 @@ export default function MasterProfilePage() {
   const t = useTranslations('masterProfile');
   const tb = useTranslations('booking');
   const tc = useTranslations('common');
+  const tf = useTranslations('followSystem');
   const userId = useAuthStore((s) => s.userId);
 
   useEffect(() => {
@@ -86,6 +88,7 @@ export default function MasterProfilePage() {
   const [master, setMaster] = useState<MasterProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isMutual, setIsMutual] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
@@ -148,11 +151,12 @@ export default function MasterProfilePage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('client_master_links')
-        .select('master_id')
+        .select('master_id, master_follows_back')
         .eq('profile_id', userId)
         .eq('master_id', masterId)
         .maybeSingle();
       setIsFollowing(!!data);
+      setIsMutual(!!data?.master_follows_back);
     }
     async function checkFavorite() {
       const supabase = createClient();
@@ -172,22 +176,20 @@ export default function MasterProfilePage() {
   const toggleFollow = useCallback(async () => {
     if (!userId || followBusy) return;
     setFollowBusy(true);
-    const supabase = createClient();
-    if (isFollowing) {
-      await supabase
-        .from('client_master_links')
-        .delete()
-        .eq('profile_id', userId)
-        .eq('master_id', masterId);
-      setIsFollowing(false);
-    } else {
-      await supabase
-        .from('client_master_links')
-        .insert({ profile_id: userId, master_id: masterId });
-      setIsFollowing(true);
+    try {
+      const res = await fetch('/api/follow/crm/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId }),
+      });
+      const json = await res.json();
+      setIsFollowing(json.following);
+      setIsMutual(json.mutual ?? false);
+    } catch {
+      // silent
     }
     setFollowBusy(false);
-  }, [userId, masterId, isFollowing, followBusy]);
+  }, [userId, masterId, followBusy]);
 
   const toggleFavorite = useCallback(async () => {
     if (!userId || favBusy) return;
@@ -337,6 +339,11 @@ export default function MasterProfilePage() {
                 {isFollowing ? <Check className="size-4" /> : <Heart className="size-4" />}
                 {isFollowing ? t('following') : t('follow')}
               </Button>
+            )}
+            {isMutual && (
+              <Badge variant="secondary" className="text-xs">
+                {tf('mutual')}
+              </Badge>
             )}
             {userId && (
               <Button

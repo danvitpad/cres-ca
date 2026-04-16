@@ -2038,5 +2038,22 @@
     "utilization": "Загрузка",
     "nextAppointment": "Следующая запись",
     "none": "Нет записей"
+  },
+  "followSystem": {
+    "newFollower": "Новый подписчик",
+    "newFollowerBody": "{name} подписался на вас",
+    "mutualFollow": "Взаимная подписка",
+    "mutualFollowBody": "{name} подписался на вас в ответ",
+    "followBack": "Подписаться в ответ",
+    "unfollow": "Отписаться",
+    "mutual": "Взаимная",
+    "followers": "Подписчики",
+    "following": "Подписки",
+    "allClients": "Все клиенты",
+    "mutualClients": "Взаимные",
+    "searchPlaceholder": "Имя, телефон, email или CRES-ID...",
+    "followedSince": "Подписан(а) с {date}",
+    "noFollowers": "Подписчиков пока нет",
+    "unfollowBack": "Отписаться"
   }
 }

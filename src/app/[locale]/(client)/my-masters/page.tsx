@@ -27,10 +27,12 @@ interface MasterRow {
   lastPost: { title: string | null; image_url: string | null; created_at: string } | null;
   bonusPoints: number;
   visitCount: number;
+  mutual: boolean;
 }
 
 export default function MyMastersPage() {
   const t = useTranslations('clientMyMasters');
+  const tf = useTranslations('followSystem');
   const { userId } = useAuthStore();
   const [masters, setMasters] = useState<MasterRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export default function MyMastersPage() {
       const supabase = createClient();
       const { data: links } = await supabase
         .from('client_master_links')
-        .select('master_id, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url))')
+        .select('master_id, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url))')
         .eq('profile_id', userId);
 
       if (links && links.length > 0) {
@@ -110,7 +112,7 @@ export default function MyMastersPage() {
         }
 
         const list: MasterRow[] = links
-          .map((row: { master_id: string; masters: unknown }) => {
+          .map((row: { master_id: string; master_follows_back: boolean; masters: unknown }) => {
             const m = row.masters as
               | {
                   id?: string;
@@ -134,6 +136,7 @@ export default function MyMastersPage() {
               lastPost: lastPostByMaster.get(row.master_id) ?? null,
               bonusPoints: bonusByMaster.get(row.master_id) ?? 0,
               visitCount: visitCountByMaster.get(row.master_id) ?? 0,
+              mutual: row.master_follows_back ?? false,
             };
           })
           .filter((x): x is MasterRow => x !== null);
@@ -229,7 +232,14 @@ export default function MyMastersPage() {
                   {/* Name + meta */}
                   <div className="mt-2">
                     <Link href={`/masters/${m.id}`} className="block">
-                      <p className="truncate text-base font-semibold leading-snug">{m.full_name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-base font-semibold leading-snug">{m.full_name}</p>
+                        {m.mutual && (
+                          <span className="shrink-0 rounded-full bg-[var(--ds-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-accent)]">
+                            {tf('mutual')}
+                          </span>
+                        )}
+                      </div>
                       <p className="truncate text-xs text-muted-foreground">{m.specialization}</p>
                     </Link>
                     <div className="mt-1.5 flex items-center gap-3 text-[11px]">
