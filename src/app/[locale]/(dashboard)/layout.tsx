@@ -36,6 +36,11 @@ import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
 import { ReminderPopup } from '@/components/reminders/reminder-popup';
+import { F_LIGHT, F_DARK, type FTheme } from '@/lib/dashboard-theme';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useAnnouncements } from '@/hooks/use-announcements';
+import { HeaderNotificationsDropdown } from '@/components/dashboard/header-notifications-dropdown';
+import { HeaderAnnouncementStrip } from '@/components/dashboard/header-announcement-strip';
 
 /* ─── Layout constants (shared) ─── */
 const S = {
@@ -52,40 +57,7 @@ const S = {
   fontFamily: '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 } as const;
 
-/* ─── Fresha theme palettes ─── */
-const F_LIGHT = {
-  headerBg: '#ffffff',
-  headerBorder: '#e5e5e5',
-  sidebarBg: '#0d0d0d',
-  sidebarBorder: '#e5e5e5',
-  sidebarActiveBg: '#6950f3',
-  sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#f5f5f5',
-  textPrimary: '#0d0d0d',
-  avatarBg: '#ebf8fe',
-  avatarBorder: '#ffffff',
-  badgeBg: '#d4163a',
-  badgeText: '#ffffff',
-  contentBg: '#ffffff',
-};
-
-const F_DARK = {
-  headerBg: '#0d0d0d',
-  headerBorder: '#333333',
-  sidebarBg: '#0d0d0d',
-  sidebarBorder: '#333333',
-  sidebarActiveBg: '#6950f3',
-  sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#f5f5f5',
-  textPrimary: '#f5f5f5',
-  avatarBg: '#1a1a1a',
-  avatarBorder: '#333333',
-  badgeBg: '#d4163a',
-  badgeText: '#ffffff',
-  contentBg: '#131313',
-};
-
-type FTheme = typeof F_LIGHT;
+/* Theme palettes imported from @/lib/dashboard-theme */
 
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
@@ -197,9 +169,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const F: FTheme = mounted && resolvedTheme === 'dark' ? F_DARK : F_LIGHT;
+  const isDark = mounted && resolvedTheme === 'dark';
+  const F: FTheme = isDark ? F_DARK : F_LIGHT;
   const masterName = master?.profile?.first_name || master?.profile?.full_name || '';
   const sidebarNav = useMemo(() => buildSidebarNav(t), [t]);
+
+  const userId = master?.profile_id ?? null;
+  const { items: notifItems, unreadCount, loading: notifLoading, followStates, markRead, markAllRead, toggleFollow } = useNotifications(userId);
+  const { announcements, dismiss: dismissAnnouncement } = useAnnouncements();
 
   /* Auto-open flyout when current route matches a submenu item (like Fresha) */
   useEffect(() => {
@@ -437,7 +414,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}
       >
         {/* Left: logo + setup CTA */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
           <Link href="/calendar" style={{ display: 'block', height: 22 }}>
             <span
               style={{
@@ -476,8 +453,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <TrialBadge />
         </div>
 
+        {/* Center: announcement strip */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 0 }}>
+          <HeaderAnnouncementStrip
+            announcements={announcements}
+            dismiss={dismissAnnouncement}
+            theme={F}
+            isDark={isDark}
+          />
+        </div>
+
         {/* Right: icon buttons + avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
           {/* Search — 44×44, borderRadius 8 */}
           <button
             onClick={() => setCmdOpen(true)}
@@ -492,7 +479,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               border: 'none',
               cursor: 'pointer',
               color: F.textPrimary,
+              transition: 'background-color 100ms',
             }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = F.hoverBg; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             aria-label={t('search')}
           >
             <FreshaSearch style={{ width: S.iconSize, height: S.iconSize }} />
@@ -500,6 +490,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Analytics — 44×44 */}
           <button
+            onClick={() => router.push('/finance/reports')}
             style={{
               width: S.iconBtnSize,
               height: S.iconBtnSize,
@@ -511,13 +502,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               border: 'none',
               cursor: 'pointer',
               color: F.textPrimary,
+              transition: 'background-color 100ms',
             }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = F.hoverBg; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             aria-label={t('analyticsLabel')}
           >
             <FreshaBarChart style={{ width: S.iconSize, height: S.iconSize }} />
           </button>
 
-          {/* Bell with badge — 44×44, red badge + notifications panel */}
+          {/* Bell with badge — 44×44, red badge + live notifications panel */}
           <div style={{ position: 'relative' }}>
             <button
               type="button"
@@ -534,104 +528,54 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 cursor: 'pointer',
                 color: F.textPrimary,
                 position: 'relative',
+                transition: 'background-color 100ms',
               }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = F.hoverBg; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               aria-label={t('notificationsLabel')}
             >
               <FreshaBell style={{ width: S.iconSize, height: S.iconSize }} />
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  minWidth: 12,
-                  height: 20,
-                  padding: '0 4px',
-                  borderRadius: 999,
-                  backgroundColor: F.badgeBg,
-                  color: F.badgeText,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  lineHeight: '20px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: `0 0 0 2px ${F.headerBg}`,
-                }}
-              >
-                2
-              </div>
+              {unreadCount > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 4,
+                    minWidth: 12,
+                    height: 20,
+                    padding: '0 4px',
+                    borderRadius: 999,
+                    backgroundColor: F.badgeBg,
+                    color: F.badgeText,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    lineHeight: '20px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 0 0 2px ${F.headerBg}`,
+                  }}
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </div>
+              )}
             </button>
 
-            {/* Notifications dropdown panel — Fresha style */}
             <AnimatePresence>
               {notificationsOpen && (
-                <>
-                  <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 899 }}
-                    onClick={() => setNotificationsOpen(false)}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.12 }}
-                    style={{
-                      position: 'absolute',
-                      top: S.iconBtnSize + 8,
-                      right: 0,
-                      width: 380,
-                      maxHeight: 500,
-                      backgroundColor: F.contentBg,
-                      borderRadius: 12,
-                      border: `0.8px solid ${F.headerBorder}`,
-                      boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.08)',
-                      zIndex: 900,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {/* Header */}
-                    <div style={{
-                      padding: '16px 16px 12px',
-                      borderBottom: `0.8px solid ${F.headerBorder}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}>
-                      <span style={{ fontSize: 16, fontWeight: 600, color: F.textPrimary }}>
-                        {t('header.notifications')}
-                      </span>
-                      <button
-                        type="button"
-                        style={{
-                          fontSize: 13,
-                          color: '#0075a8',
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          padding: 0,
-                        }}
-                      >
-                        {t('header.markAllRead')}
-                      </button>
-                    </div>
-                    {/* Empty state */}
-                    <div style={{
-                      padding: '48px 24px',
-                      textAlign: 'center',
-                      color: mounted && resolvedTheme === 'dark' ? '#d4d4d4' : '#737373',
-                    }}>
-                      <FreshaBell style={{ width: 40, height: 40, margin: '0 auto 12px', opacity: 0.3 }} />
-                      <div style={{ fontSize: 15, fontWeight: 500, color: F.textPrimary, marginBottom: 4 }}>
-                        {t('header.noNewNotifications')}
-                      </div>
-                      <div style={{ fontSize: 13 }}>
-                        {t('header.noNewNotificationsDesc')}
-                      </div>
-                    </div>
-                  </motion.div>
-                </>
+                <HeaderNotificationsDropdown
+                  open={notificationsOpen}
+                  onClose={() => setNotificationsOpen(false)}
+                  items={notifItems}
+                  unreadCount={unreadCount}
+                  loading={notifLoading}
+                  followStates={followStates}
+                  markRead={markRead}
+                  markAllRead={markAllRead}
+                  toggleFollow={toggleFollow}
+                  theme={F}
+                  isDark={isDark}
+                />
               )}
             </AnimatePresence>
           </div>
