@@ -182,10 +182,10 @@ export default function MiniAppAppointmentDetail() {
     if (masterRow?.profile_id) {
       await supabase.from('notifications').insert({
         profile_id: masterRow.profile_id,
-        channel: 'telegram',
-        title: '❌ Запись отменена',
-        body: `${row.service?.name ?? 'Услуга'} — ${new Date(row.starts_at).toLocaleString('ru')}`,
-        scheduled_for: new Date().toISOString(),
+        channel: 'push',
+        title: 'Запись отменена',
+        body: `${row.service?.name ?? 'Услуга'} — ${new Date(row.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}`,
+        data: { type: 'appointment_cancelled', appointment_id: row.id, action_url: '/calendar' },
       });
     }
     haptic('success');
