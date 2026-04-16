@@ -1,11 +1,13 @@
 /** --- YAML
  * name: Dashboard Overview
- * description: Fresha-exact dashboard — 2x3 card grid with sales chart, upcoming visits, appointments, follow-ups, popular services, top employee
+ * description: Master's operational dashboard — net profit, today's schedule, week view, client birthdays, quick actions. Linear.app design system.
+ * created: 2026-04-13
+ * updated: 2026-04-16
  * --- */
 
 'use client';
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from 'next-themes';
@@ -15,55 +17,58 @@ import { useMaster } from '@/hooks/use-master';
 import { Skeleton } from '@/components/ui/skeleton';
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist';
 import { TelegramLinkCard } from '@/components/dashboard/telegram-link-card';
-import { DashboardKpiStrip } from '@/components/dashboard/dashboard-kpi-strip';
-import { format, subDays, addDays, startOfDay, endOfDay, startOfMonth, subMonths, type Locale } from 'date-fns';
+import {
+  format, subDays, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek,
+  startOfMonth, differenceInDays, getYear, setYear, isToday, isTomorrow,
+  type Locale,
+} from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
+import {
+  CalendarPlus, UserPlus, Calendar, ArrowUpRight, ArrowDownRight,
+  TrendingUp, Cake, Clock, XCircle, UserX,
+} from 'lucide-react';
 
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
+/* ─── Linear.app Design Tokens ─── */
 
-/* ─── Fresha-exact color palettes ─── */
-const LIGHT = {
-  pageBg: '#ffffff',
-  cardBg: '#ffffff',
-  cardBorder: '0.8px solid #e0e0e0',
-  text: '#0d0d0d',
-  textSecondary: '#737373',
-  textMuted: '#a3a3a3',
-  accent: '#6950f3',
-  linkPurple: '#6950f3',
-  statusBlue: '#3b82f6',
-  statusBlueBg: '#eff6ff',
-  success: '#22c55e',
-  successBg: '#f0fdf4',
-  chartGreen: '#22c55e',
-  chartPurple: '#8b5cf6',
-  divider: '0.8px solid #e5e5e5',
-  rowHover: '#f5f5f5',
-  tableBorder: '0.8px solid #e5e5e5',
-};
+const FONT = 'Inter, "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 const DARK = {
-  pageBg: '#131313',
-  cardBg: '#181818',
-  cardBorder: '0.8px solid #333333',
-  text: '#f5f5f5',
-  textSecondary: '#bfbfbf',
-  textMuted: '#666666',
-  accent: '#6950f3',
-  linkPurple: '#8880ff',
-  statusBlue: '#5791f0',
-  statusBlueBg: '#0c2040',
-  success: '#2c7016',
-  successBg: '#0a2010',
-  chartGreen: '#10b981',
-  chartPurple: '#8b5cf6',
-  divider: '0.8px solid #333333',
-  rowHover: '#1f1f1f',
-  tableBorder: '0.8px solid #333333',
+  pageBg: '#08090a',
+  cardBg: '#0f1011',
+  cardBgHover: '#141516',
+  elevated: '#191a1b',
+  text: '#f7f8f8',
+  textSecondary: '#8a8f98',
+  textTertiary: '#62666d',
+  accent: '#5e6ad2',
+  accentHover: '#828fff',
+  success: '#10b981',
+  warning: '#f59e0b',
+  danger: '#ef4444',
+  border: 'rgba(255,255,255,0.05)',
+  borderStrong: 'rgba(255,255,255,0.08)',
 };
+
+const LIGHT = {
+  pageBg: '#f7f8f8',
+  cardBg: '#ffffff',
+  cardBgHover: '#f3f4f5',
+  elevated: '#f3f4f5',
+  text: '#0d0d0d',
+  textSecondary: '#62666d',
+  textTertiary: '#8a8f98',
+  accent: '#5e6ad2',
+  accentHover: '#4850b8',
+  success: '#059669',
+  warning: '#d97706',
+  danger: '#dc2626',
+  border: '#e6e6e6',
+  borderStrong: '#d0d6e0',
+};
+
+const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
 interface Appointment {
   id: string;
@@ -71,12 +76,55 @@ interface Appointment {
   ends_at: string;
   status: string;
   price: number;
-  service?: { name: string; color: string } | null;
-  client?: { full_name: string } | null;
-  master?: { full_name: string } | null;
+  service: { name: string; color: string } | null;
+  client: { full_name: string } | null;
 }
 
-export default function DashboardOverviewPage() {
+interface Expense {
+  id: string;
+  amount: number;
+  date: string;
+}
+
+interface ClientBirthday {
+  id: string;
+  full_name: string;
+  date_of_birth: string;
+}
+
+/* ─── Helpers ─── */
+
+function parseWorkingHours(
+  wh: Record<string, { start: string; end: string } | null> | null,
+  day: Date,
+): number {
+  if (!wh) return 0;
+  const dow = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][day.getDay()];
+  const slot = wh[dow];
+  if (!slot) return 0;
+  const [sh, sm] = slot.start.split(':').map(Number);
+  const [eh, em] = slot.end.split(':').map(Number);
+  return Math.max(0, eh + em / 60 - sh - sm / 60);
+}
+
+function getGreeting(t: ReturnType<typeof useTranslations>) {
+  const h = new Date().getHours();
+  if (h < 12) return t('greetingMorning');
+  if (h < 18) return t('greeting');
+  return t('greetingEvening');
+}
+
+function nextBirthday(dob: string): Date {
+  const now = new Date();
+  const birth = new Date(dob);
+  let next = setYear(birth, getYear(now));
+  if (next < startOfDay(now)) next = setYear(birth, getYear(now) + 1);
+  return next;
+}
+
+/* ─── Component ─── */
+
+export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
@@ -84,925 +132,576 @@ export default function DashboardOverviewPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const isDark = mounted && resolvedTheme === 'dark';
 
   const { master, loading: masterLoading } = useMaster();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ── Interactive state ── */
-  const [salesPeriod, setSalesPeriod] = useState<7 | 30>(7);
-  const [salesPopupOpen, setSalesPopupOpen] = useState(false);
-  const [salesPendingPeriod, setSalesPendingPeriod] = useState<7 | 30>(7);
-
-  const [visitsPeriod, setVisitsPeriod] = useState<7 | 30>(7);
-  const [visitsPopupOpen, setVisitsPopupOpen] = useState(false);
-  const [visitsPendingPeriod, setVisitsPendingPeriod] = useState<7 | 30>(7);
-
-  const [chartTooltip, setChartTooltip] = useState<{
-    x: number; y: number; date: string; sales: number; records: number;
-  } | null>(null);
-  const chartRef = useRef<SVGSVGElement>(null);
-
+  /* ── Data fetch ── */
   useEffect(() => {
-    if (masterLoading) return;
-    if (!master?.id) {
-      setLoading(false);
+    if (masterLoading || !master?.id) {
+      if (!masterLoading) setLoading(false);
       return;
     }
-    async function fetchData() {
-      const supabase = createClient();
-      const sixtyDaysAgo = subDays(new Date(), 60);
-      const sevenDaysFromNow = new Date();
-      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-      const { data } = await supabase
+    const supabase = createClient();
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const weekEnd = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
+
+    Promise.all([
+      // Appointments: from month start to week end (for revenue + schedule)
+      supabase
         .from('appointments')
         .select('id, starts_at, ends_at, status, price, service:services(name, color), client:clients(full_name)')
-        .eq('master_id', master!.id)
-        .gte('starts_at', sixtyDaysAgo.toISOString())
-        .lte('starts_at', sevenDaysFromNow.toISOString())
-        .order('starts_at', { ascending: true });
-      setAppointments((data as unknown as Appointment[]) || []);
+        .eq('master_id', master.id)
+        .gte('starts_at', monthStart.toISOString())
+        .lte('starts_at', weekEnd.toISOString())
+        .order('starts_at', { ascending: true }),
+      // Expenses: current month
+      supabase
+        .from('expenses')
+        .select('id, amount, date')
+        .eq('master_id', master.id)
+        .gte('date', format(monthStart, 'yyyy-MM-dd')),
+      // Clients with birthdays
+      supabase
+        .from('clients')
+        .select('id, full_name, date_of_birth')
+        .eq('master_id', master.id)
+        .not('date_of_birth', 'is', null),
+    ]).then(([apptRes, expRes, clientRes]) => {
+      setAppointments((apptRes.data as unknown as Appointment[]) || []);
+      setExpenses((expRes.data as unknown as Expense[]) || []);
+      setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
       setLoading(false);
-    }
-    fetchData();
+    });
   }, [master?.id, masterLoading]);
 
-  /* ── Computed data ── */
+  /* ── Computed ── */
   const now = new Date();
-  const thisMonthStart = startOfMonth(now);
-  const lastMonthStart = startOfMonth(subMonths(now, 1));
+  const todayStart = startOfDay(now);
+  const todayEnd = endOfDay(now);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(now);
 
-  /* Sales chart data — dynamic period */
-  const salesChart = useMemo(() => {
-    const days: { label: string; dateNum: string; fullDate: string; sales: number; records: number }[] = [];
-    for (let i = salesPeriod; i >= 0; i--) {
-      const day = subDays(now, i);
-      const dayStart = startOfDay(day);
-      const dayEnd = endOfDay(day);
-      const dayAppts = appointments.filter(a => {
-        const d = new Date(a.starts_at);
-        return d >= dayStart && d <= dayEnd;
-      });
-      const completedAppts = dayAppts.filter(a => a.status === 'completed');
-      days.push({
-        label: format(day, 'EEE', { locale: dfLocale }).replace('.', ''),
-        dateNum: format(day, 'd', { locale: dfLocale }),
-        fullDate: format(day, 'EEEE, d MMM', { locale: dfLocale }),
-        sales: completedAppts.reduce((s, a) => s + (a.price || 0), 0),
-        records: dayAppts.filter(a => a.status !== 'cancelled').length,
-      });
-    }
-    return days;
-  }, [appointments, dfLocale, salesPeriod]);
+  const profit = useMemo(() => {
+    let incomeToday = 0, incomeWeek = 0, incomeMonth = 0;
+    let expToday = 0, expWeek = 0, expMonth = 0;
 
-  const totalSales7d = salesChart.reduce((s, d) => s + d.sales, 0);
-  const totalRecords7d = salesChart.reduce((s, d) => s + d.records, 0);
-  const totalVisitCost = appointments
-    .filter(a => {
+    for (const a of appointments) {
+      if (a.status !== 'completed') continue;
       const d = new Date(a.starts_at);
-      return d >= subDays(now, salesPeriod) && a.status !== 'cancelled';
-    })
-    .reduce((s, a) => s + (a.price || 0), 0);
+      const p = Number(a.price) || 0;
+      if (d >= todayStart && d <= todayEnd) incomeToday += p;
+      if (d >= weekStart) incomeWeek += p;
+      if (d >= monthStart) incomeMonth += p;
+    }
 
-  /* Upcoming visits (next N days) */
-  const upcomingVisits = useMemo(() => {
-    const limit = addDays(now, visitsPeriod);
-    return appointments
-      .filter(a => {
-        const d = new Date(a.starts_at);
-        return d > now && d <= limit && a.status !== 'cancelled';
-      })
-      .slice(0, 8);
-  }, [appointments, visitsPeriod]);
+    for (const e of expenses) {
+      const d = new Date(e.date + 'T00:00:00');
+      const a = Number(e.amount) || 0;
+      if (d >= todayStart && d <= todayEnd) expToday += a;
+      if (d >= weekStart) expWeek += a;
+      if (d >= monthStart) expMonth += a;
+    }
 
-  /* Recent appointments (upcoming, for the Записи card) */
-  const recentAppointments = useMemo(() => {
-    return appointments
-      .filter(a => a.status !== 'cancelled')
-      .sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime())
-      .slice(0, 5);
-  }, [appointments]);
+    return {
+      today: { income: incomeToday, expense: expToday, net: incomeToday - expToday },
+      week: { income: incomeWeek, expense: expWeek, net: incomeWeek - expWeek },
+      month: { income: incomeMonth, expense: expMonth, net: incomeMonth - expMonth },
+    };
+  }, [appointments, expenses, todayStart, todayEnd, weekStart, monthStart]);
 
-  /* Today's follow-up visits */
-  const todayFollowUps = useMemo(() => {
-    const todayStart = startOfDay(now);
-    const todayEnd = endOfDay(now);
-    return appointments.filter(a => {
+  const todaySchedule = useMemo(() =>
+    appointments.filter(a => {
       const d = new Date(a.starts_at);
       return d >= todayStart && d <= todayEnd && a.status !== 'cancelled';
-    });
-  }, [appointments]);
+    }),
+  [appointments, todayStart, todayEnd]);
 
-  /* Popular services */
-  const popularServices = useMemo(() => {
-    const thisMonthMap: Record<string, number> = {};
-    const lastMonthMap: Record<string, number> = {};
-    appointments.forEach(a => {
-      if (a.status === 'cancelled' || !a.service?.name) return;
-      const d = new Date(a.starts_at);
-      if (d >= thisMonthStart) {
-        thisMonthMap[a.service.name] = (thisMonthMap[a.service.name] || 0) + 1;
-      } else if (d >= lastMonthStart && d < thisMonthStart) {
-        lastMonthMap[a.service.name] = (lastMonthMap[a.service.name] || 0) + 1;
-      }
-    });
-    const allNames = new Set([...Object.keys(thisMonthMap), ...Object.keys(lastMonthMap)]);
-    return [...allNames]
-      .map(name => ({ name, thisMonth: thisMonthMap[name] || 0, lastMonth: lastMonthMap[name] || 0 }))
-      .sort((a, b) => b.thisMonth - a.thisMonth)
-      .slice(0, 5);
-  }, [appointments, thisMonthStart, lastMonthStart]);
-
-  /* Top employee revenue */
-  const topEmployeeRevenue = useMemo(() => {
-    return appointments
-      .filter(a => new Date(a.starts_at) >= thisMonthStart && a.status === 'completed')
-      .reduce((s, a) => s + (a.price || 0), 0);
-  }, [appointments, thisMonthStart]);
-
-  /* ── Chart hover handler (must be before any early returns to keep hook order stable) ── */
-  const handleChartMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = chartRef.current;
-    if (!svg || salesChart.length === 0) return;
-    const rect = svg.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const svgWidth = rect.width;
-    const cL = 50, cR = 520, viewBoxW = 570;
-    const scale = svgWidth / viewBoxW;
-    const chartMouseX = mouseX / scale;
-
-    const xStep = salesChart.length > 1 ? (cR - cL) / (salesChart.length - 1) : 0;
-    let closestIdx = 0;
-    let closestDist = Infinity;
-    salesChart.forEach((_, i) => {
-      const cx = cL + i * xStep;
-      const dist = Math.abs(chartMouseX - cx);
-      if (dist < closestDist) { closestDist = dist; closestIdx = i; }
-    });
-
-    if (closestDist < 30) {
-      const d = salesChart[closestIdx];
-      const cx = cL + closestIdx * xStep;
-      setChartTooltip({ x: cx, y: 60, date: d.fullDate, sales: d.sales, records: d.records });
-    } else {
-      setChartTooltip(null);
+  const weekSchedule = useMemo(() => {
+    const days: { date: Date; appointments: Appointment[] }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(now, i + 1);
+      const ds = startOfDay(day);
+      const de = endOfDay(day);
+      const dayAppts = appointments.filter(a => {
+        const d = new Date(a.starts_at);
+        return d >= ds && d <= de && a.status !== 'cancelled';
+      });
+      if (dayAppts.length > 0) days.push({ date: day, appointments: dayAppts });
     }
-  }, [salesChart]);
+    return days;
+  }, [appointments, now]);
 
-  /* ── Loading state ── */
+  const upcomingBirthdays = useMemo(() => {
+    return birthdays
+      .map(c => {
+        const next = nextBirthday(c.date_of_birth);
+        const daysUntil = differenceInDays(startOfDay(next), todayStart);
+        const age = getYear(next) - getYear(new Date(c.date_of_birth));
+        return { ...c, next, daysUntil, age };
+      })
+      .filter(c => c.daysUntil >= 0 && c.daysUntil <= 30)
+      .sort((a, b) => a.daysUntil - b.daysUntil)
+      .slice(0, 6);
+  }, [birthdays, todayStart]);
+
+  const weekStats = useMemo(() => {
+    let cancellations = 0, noShows = 0;
+    for (const a of appointments) {
+      const d = new Date(a.starts_at);
+      if (d < weekStart) continue;
+      if (a.status === 'cancelled') cancellations++;
+      if (a.status === 'no_show') noShows++;
+    }
+    return { cancellations, noShows };
+  }, [appointments, weekStart]);
+
+  const utilization = useMemo(() => {
+    const wh = master?.working_hours as Record<string, { start: string; end: string } | null> | null;
+    const totalMins = parseWorkingHours(wh, now) * 60;
+    if (totalMins <= 0) return 0;
+    let bookedMins = 0;
+    for (const a of todaySchedule) {
+      const start = new Date(a.starts_at).getTime();
+      const end = new Date(a.ends_at).getTime();
+      bookedMins += Math.max(0, (end - start) / 60000);
+    }
+    return Math.min(100, Math.round((bookedMins / totalMins) * 100));
+  }, [todaySchedule, master?.working_hours, now]);
+
+  /* ── Currency ── */
+  const fmtMoney = useCallback((n: number) =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ₴',
+  [locale]);
+
+  /* ── Styles ── */
+  const card: React.CSSProperties = {
+    backgroundColor: C.cardBg,
+    borderRadius: 10,
+    border: `1px solid ${C.border}`,
+    padding: 20,
+    fontFamily: FONT,
+  };
+
+  /* Custom ease-out: starts fast, decelerates naturally (Emil Kowalski) */
+  const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+
+  const stagger = (i: number) => ({
+    initial: { opacity: 0, y: 8 } as const,
+    animate: { opacity: 1, y: 0 } as const,
+    transition: { delay: i * 0.04, duration: 0.3, ease: EASE_OUT } as const,
+  });
+
+  /* ── Loading ── */
   if (masterLoading || loading) {
     return (
-      <div style={{ padding: '32px 40px', maxWidth: 1184, margin: '0 auto', fontFamily: FONT }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-64 rounded-lg" />)}
+      <div style={{ padding: '32px 40px', maxWidth: 1120, margin: '0 auto', fontFamily: FONT }}>
+        <Skeleton className="mb-6 h-8 w-64" />
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-[10px]" />)}
+        </div>
+        <div className="grid grid-cols-5 gap-4">
+          <Skeleton className="col-span-3 h-80 rounded-[10px]" />
+          <Skeleton className="col-span-2 h-80 rounded-[10px]" />
         </div>
       </div>
     );
   }
 
-  /* ── Helpers ── */
-  const currency = '₴';
-
-  function formatStatusBadge(status: string) {
-    const label = status === 'booked' || status === 'confirmed'
-      ? t('booked')
-      : status === 'completed'
-        ? t('completed')
-        : status === 'in_progress'
-          ? t('inProgress')
-          : status;
-    return (
-      <span style={{
-        fontSize: 13,
-        fontWeight: 500,
-        color: C.statusBlue,
-        lineHeight: '16px',
-      }}>
-        {label}
-      </span>
-    );
-  }
-
-  function renderSalesChart() {
-    const chartMaxSales = Math.max(...salesChart.map(d => d.sales), 1);
-    const chartMaxRecords = Math.max(...salesChart.map(d => d.records), 1);
-    const maxY = Math.max(chartMaxSales, 1);
-
-    const cL = 50, cR = 520, cT = 10, cB = 170;
-    const xStep = salesChart.length > 1 ? (cR - cL) / (salesChart.length - 1) : 0;
-
-    const ySteps = 5;
-    const yLabels = Array.from({ length: ySteps }, (_, i) =>
-      Math.round(maxY * (1 - i / (ySteps - 1)))
-    );
-
-    const salesPts = salesChart.map((d, i) => {
-      const x = cL + i * xStep;
-      const y = maxY > 0 ? cB - ((d.sales / maxY) * (cB - cT)) : cB;
-      return `${x},${y}`;
-    }).join(' ');
-
-    const recordsPts = salesChart.map((d, i) => {
-      const x = cL + i * xStep;
-      const y = chartMaxRecords > 0 ? cB - ((d.records / chartMaxRecords) * (cB - cT)) : cB;
-      return `${x},${y}`;
-    }).join(' ');
-
-    return (
-      <svg
-        ref={chartRef}
-        viewBox="0 0 570 220"
-        style={{ width: '100%', height: 220, cursor: 'crosshair' }}
-        preserveAspectRatio="xMidYMid meet"
-        onMouseMove={handleChartMouseMove}
-        onMouseLeave={() => setChartTooltip(null)}
-      >
-        {/* Horizontal grid lines */}
-        {Array.from({ length: ySteps }, (_, i) => {
-          const y = cT + (i / (ySteps - 1)) * (cB - cT);
-          return (
-            <line key={i} x1={cL} y1={y} x2={cR} y2={y}
-              stroke={C.textMuted} strokeWidth="0.5" opacity="0.3" />
-          );
-        })}
-        {/* Vertical grid lines */}
-        {salesChart.map((_, i) => {
-          const x = cL + i * xStep;
-          return (
-            <line key={`v${i}`} x1={x} y1={cT} x2={x} y2={cB}
-              stroke={C.textMuted} strokeWidth="0.5" opacity="0.3" />
-          );
-        })}
-        {/* Y-axis labels */}
-        {yLabels.map((label, i) => {
-          const y = cT + (i / (ySteps - 1)) * (cB - cT);
-          return (
-            <text key={i} x={cL - 8} y={y + 4} textAnchor="end"
-              fill={C.textSecondary} fontSize="11" fontFamily={FONT}>
-              {label} {currency}
-            </text>
-          );
-        })}
-        {/* Sales line */}
-        <polyline points={salesPts} fill="none" stroke={C.chartPurple}
-          strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {/* Records line */}
-        <polyline points={recordsPts} fill="none" stroke={C.chartGreen}
-          strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        {/* Data point dots — sales */}
-        {salesChart.map((d, i) => {
-          const x = cL + i * xStep;
-          const y = maxY > 0 ? cB - ((d.sales / maxY) * (cB - cT)) : cB;
-          return <circle key={`s${i}`} cx={x} cy={y} r="3.5" fill={C.chartPurple} />;
-        })}
-        {/* Data point dots — records */}
-        {salesChart.map((d, i) => {
-          const x = cL + i * xStep;
-          const y = chartMaxRecords > 0 ? cB - ((d.records / chartMaxRecords) * (cB - cT)) : cB;
-          return <circle key={`r${i}`} cx={x} cy={y} r="3.5" fill={C.chartGreen} />;
-        })}
-        {/* Hover vertical line */}
-        {chartTooltip && (
-          <line x1={chartTooltip.x} y1={cT} x2={chartTooltip.x} y2={cB}
-            stroke={C.textSecondary} strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
-        )}
-        {/* X-axis labels */}
-        {salesChart.map((d, i) => {
-          const x = cL + i * xStep;
-          return (
-            <text key={i} x={x} y={cB + 18} textAnchor="middle"
-              fill={C.textSecondary} fontSize="11" fontFamily={FONT}>
-              {d.label} {d.dateNum}
-            </text>
-          );
-        })}
-        {/* Tooltip — rendered inside SVG as foreignObject */}
-        {chartTooltip && (
-          <foreignObject x={Math.max(0, chartTooltip.x - 90)} y={chartTooltip.y - 55} width="180" height="70">
-            <div style={{
-              backgroundColor: mounted && resolvedTheme === 'dark' ? '#000000' : '#ffffff',
-              border: `1px solid ${mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#e0e0e0'}`,
-              borderRadius: 8,
-              padding: '8px 12px',
-              fontSize: 11,
-              fontFamily: FONT,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              color: C.text,
-              lineHeight: '16px',
-            }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{chartTooltip.date}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: C.chartPurple }} />
-                {t('salesLabel')} {chartTooltip.sales.toLocaleString()} {currency}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: C.chartGreen }} />
-                {t('recordsLabel')} {chartTooltip.records.toLocaleString()} {currency}
-              </div>
-            </div>
-          </foreignObject>
-        )}
-      </svg>
-    );
-  }
-
-  /* ═══ Card style — Fresha exact ═══ */
-  const cardStyle: React.CSSProperties = {
-    backgroundColor: C.cardBg,
-    borderRadius: 8,
-    border: C.cardBorder,
-    padding: 16,
-    fontFamily: FONT,
-  };
-
-  const cardTitleStyle: React.CSSProperties = {
-    fontSize: 20,
-    fontWeight: 600,
-    color: C.text,
-    lineHeight: '28px',
-    margin: 0,
-  };
-
-  const cardSubtitleStyle: React.CSSProperties = {
-    fontSize: 15,
-    fontWeight: 400,
-    color: C.textSecondary,
-    lineHeight: '20px',
-    marginTop: 0,
-  };
-
-  /* ═══ Helpers: dots menu & period popup (inline JSX, not components) ═══ */
-  const dotsMenuStyle: React.CSSProperties = {
-    background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-    color: C.textSecondary, display: 'flex', alignItems: 'center',
-  };
-
-  function renderPeriodPopup(
-    isOpen: boolean,
-    pendingValue: 7 | 30,
-    onPendingChange: (v: 7 | 30) => void,
-    onApply: () => void,
-    onClose: () => void,
-    options: { value: 7 | 30; label: string }[],
-  ) {
-    if (!isOpen) return null;
-    return (
-      <motion.div
-        key="period-popup"
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.15 }}
-        style={{
-          position: 'absolute',
-          top: 56,
-          right: 16,
-          zIndex: 50,
-          backgroundColor: C.cardBg,
-          border: C.cardBorder,
-          borderRadius: 8,
-          padding: 20,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-          minWidth: 260,
-          fontFamily: FONT,
-        }}
-      >
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 12 }}>
-          {t('timePeriod')}
-        </div>
-        <select
-          value={pendingValue}
-          onChange={(e) => onPendingChange(Number(e.target.value) as 7 | 30)}
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            fontSize: 14,
-            fontFamily: FONT,
-            border: C.cardBorder,
-            borderRadius: 6,
-            backgroundColor: C.cardBg,
-            color: C.text,
-            marginBottom: 16,
-            outline: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          {options.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '8px 16px',
-              fontSize: 14,
-              fontWeight: 500,
-              fontFamily: FONT,
-              border: C.cardBorder,
-              borderRadius: 6,
-              backgroundColor: 'transparent',
-              color: C.text,
-              cursor: 'pointer',
-            }}
-          >
-            {t('close')}
-          </button>
-          <button
-            type="button"
-            onClick={onApply}
-            style={{
-              padding: '8px 16px',
-              fontSize: 14,
-              fontWeight: 500,
-              fontFamily: FONT,
-              border: 'none',
-              borderRadius: 6,
-              backgroundColor: C.accent,
-              color: '#ffffff',
-              cursor: 'pointer',
-            }}
-          >
-            {t('applyChanges')}
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
-    <div style={{
-      fontFamily: FONT,
-      backgroundColor: C.pageBg,
-      minHeight: '100%',
-      overflowY: 'auto',
-    }}>
-      <div style={{
-        maxWidth: 1184,
-        margin: '0 auto',
-        padding: '32px 40px 96px',
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 32,
-      }}>
+    <div style={{ fontFamily: FONT, backgroundColor: C.pageBg, minHeight: '100vh' }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '28px 36px 80px' }}>
 
-        <div style={{ gridColumn: '1 / -1' }}>
-          <DashboardKpiStrip
-            masterId={master?.id ?? null}
-            workingHours={(master?.working_hours as Record<string, { start: string; end: string } | null> | null) ?? null}
-            theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
-          />
-        </div>
-        <OnboardingChecklist master={master} theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'} />
-        <TelegramLinkCard theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'} />
-
-        {/* ═══ Card 1: Последние продажи (Recent Sales) ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ ...cardStyle, position: 'relative' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div>
-              <h3 style={cardTitleStyle}>{t('recentSales')}</h3>
-              <p style={cardSubtitleStyle}>{salesPeriod === 7 ? t('last7days') : t('last30days')}</p>
-            </div>
-            <button type="button" onClick={() => { setSalesPendingPeriod(salesPeriod); setSalesPopupOpen(true); }} style={dotsMenuStyle}>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
-            </button>
-          </div>
-          {renderPeriodPopup(
-            salesPopupOpen,
-            salesPendingPeriod,
-            setSalesPendingPeriod,
-            () => { setSalesPeriod(salesPendingPeriod); setSalesPopupOpen(false); },
-            () => setSalesPopupOpen(false),
-            [{ value: 7, label: t('lastNdays', { n: 7 }) }, { value: 30, label: t('lastNdays', { n: 30 }) }],
-          )}
-
-          {/* Big number */}
-          <div style={{
-            fontSize: 28,
-            fontWeight: 700,
+        {/* ═══ Greeting ═══ */}
+        <motion.div {...stagger(0)} style={{ marginBottom: 28 }}>
+          <h1 style={{
+            fontSize: 24,
+            fontWeight: 600,
             color: C.text,
-            lineHeight: '36px',
-            marginBottom: 8,
+            letterSpacing: '-0.4px',
+            lineHeight: '32px',
+            margin: 0,
           }}>
-            {totalSales7d.toLocaleString()} {currency}
-          </div>
-
-          {/* Stats row */}
-          <div style={{ marginBottom: 20 }}>
-            <span style={{ fontSize: 14, color: C.text }}>{t('appointments')} </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{totalRecords7d}</span>
-          </div>
-          <div style={{ marginBottom: 20 }}>
-            <span style={{ fontSize: 14, color: C.text }}>{t('visitCost')} </span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{totalVisitCost.toLocaleString()} {currency}</span>
-          </div>
-
-          {/* Chart */}
-          {renderSalesChart()}
-
-          {/* Legend */}
-          <div style={{ display: 'flex', gap: 24, marginTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: C.chartPurple }} />
-              <span style={{ fontSize: 14, color: C.text }}>{t('salesLabel')}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: C.chartGreen }} />
-              <span style={{ fontSize: 14, color: C.text }}>{t('recordsLabel')}</span>
-            </div>
-          </div>
+            {getGreeting(t)}, {master?.profile?.full_name?.split(' ')[0] || ''}
+          </h1>
+          <p style={{
+            fontSize: 14,
+            color: C.textSecondary,
+            marginTop: 4,
+            letterSpacing: '-0.1px',
+          }}>
+            {format(now, 'EEEE, d MMMM yyyy', { locale: dfLocale })}
+          </p>
         </motion.div>
 
-        {/* ═══ Card 2: Предстоящие визиты (Upcoming Visits) ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          style={{ ...cardStyle, display: 'flex', flexDirection: 'column', position: 'relative' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div>
-              <h3 style={cardTitleStyle}>{t('upcomingVisits')}</h3>
-              <p style={cardSubtitleStyle}>{visitsPeriod === 7 ? t('next7days') : t('next30days')}</p>
-            </div>
-            <button type="button" onClick={() => { setVisitsPendingPeriod(visitsPeriod); setVisitsPopupOpen(true); }} style={dotsMenuStyle}>
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="4" r="1.5" /><circle cx="10" cy="10" r="1.5" /><circle cx="10" cy="16" r="1.5" /></svg>
-            </button>
-          </div>
-          {renderPeriodPopup(
-            visitsPopupOpen,
-            visitsPendingPeriod,
-            setVisitsPendingPeriod,
-            () => { setVisitsPeriod(visitsPendingPeriod); setVisitsPopupOpen(false); },
-            () => setVisitsPopupOpen(false),
-            [{ value: 7, label: t('nextNdays', { n: 7 }) }, { value: 30, label: t('nextNdays', { n: 30 }) }],
-          )}
+        {/* ═══ Onboarding + Telegram ═══ */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+          <OnboardingChecklist master={master} theme={isDark ? 'dark' : 'light'} />
+          <TelegramLinkCard theme={isDark ? 'dark' : 'light'} />
+        </div>
 
-          {upcomingVisits.length === 0 ? (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '48px 0',
-            }}>
-              {/* Bar chart icon — Fresha style */}
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ marginBottom: 20 }}>
-                <rect x="8" y="28" width="6" height="12" rx="1" fill={C.text} opacity="0.6" />
-                <rect x="17" y="20" width="6" height="20" rx="1" fill={C.text} opacity="0.6" />
-                <rect x="26" y="12" width="6" height="28" rx="1" fill={C.text} opacity="0.6" />
-                <rect x="35" y="24" width="6" height="16" rx="1" fill={C.text} opacity="0.6" />
-              </svg>
+        {/* ═══ Net Profit — 3 cards ═══ */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {([
+            { label: t('today'), data: profit.today },
+            { label: t('thisWeek'), data: profit.week },
+            { label: t('thisMonth'), data: profit.month },
+          ] as const).map((item, i) => (
+            <motion.div key={item.label} {...stagger(i + 1)} style={card}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>
+                {t('netProfit')} · {item.label}
+              </div>
               <div style={{
-                fontSize: 17,
+                fontSize: 28,
                 fontWeight: 700,
-                color: C.text,
-                textAlign: 'center',
-                marginBottom: 12,
+                color: item.data.net >= 0 ? C.success : C.danger,
+                letterSpacing: '-0.8px',
+                lineHeight: '36px',
               }}>
-                {t('emptySchedule')}
+                {item.data.net >= 0 ? '+' : ''}{fmtMoney(item.data.net)}
               </div>
-              <div style={{
-                fontSize: 15,
-                color: C.textSecondary,
-                textAlign: 'center',
-                maxWidth: 280,
-                lineHeight: '22px',
-              }}>
-                {t('emptyScheduleDesc')}
+              <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <ArrowUpRight style={{ width: 13, height: 13, color: C.success }} />
+                  <span style={{ fontSize: 13, color: C.textSecondary }}>{fmtMoney(item.data.income)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <ArrowDownRight style={{ width: 13, height: 13, color: C.danger }} />
+                  <span style={{ fontSize: 13, color: C.textSecondary }}>{fmtMoney(item.data.expense)}</span>
+                </div>
               </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* ═══ Utilization + Week Stats (compact row) ═══ */}
+        <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          {/* Utilization */}
+          <motion.div {...stagger(4)} style={{ ...card, padding: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+              {t('occupancy')}
             </div>
-          ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {upcomingVisits.map((appt) => {
-                const date = new Date(appt.starts_at);
-                return (
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.5px' }}>{utilization}%</span>
+            </div>
+            <div style={{ marginTop: 8, height: 4, borderRadius: 2, backgroundColor: isDark ? '#191a1b' : '#e6e6e6' }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${utilization}%` }}
+                transition={{ delay: 0.5, duration: 0.6 }}
+                style={{
+                  height: '100%',
+                  borderRadius: 2,
+                  backgroundColor: utilization > 80 ? C.success : utilization > 40 ? C.accent : C.warning,
+                }}
+              />
+            </div>
+          </motion.div>
+
+          {/* Today's visits count */}
+          <motion.div {...stagger(5)} style={{ ...card, padding: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+              {t('todaySchedule')}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.text, letterSpacing: '-0.5px' }}>
+              {todaySchedule.length}
+            </div>
+            <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>{t('todayAppointments')}</div>
+          </motion.div>
+
+          {/* Cancellations */}
+          <motion.div {...stagger(6)} style={{ ...card, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <XCircle style={{ width: 12, height: 12, color: C.warning }} />
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('cancellations')}
+              </span>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: weekStats.cancellations > 0 ? C.warning : C.text, letterSpacing: '-0.5px' }}>
+              {weekStats.cancellations}
+            </div>
+            <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>{t('thisWeekStats')}</div>
+          </motion.div>
+
+          {/* No-shows */}
+          <motion.div {...stagger(7)} style={{ ...card, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <UserX style={{ width: 12, height: 12, color: C.danger }} />
+              <span style={{ fontSize: 11, fontWeight: 500, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('noShows')}
+              </span>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: weekStats.noShows > 0 ? C.danger : C.text, letterSpacing: '-0.5px' }}>
+              {weekStats.noShows}
+            </div>
+            <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>{t('thisWeekStats')}</div>
+          </motion.div>
+        </div>
+
+        {/* ═══ Main content — 3+2 grid ═══ */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+
+          {/* ── Left: Today's Schedule ── */}
+          <motion.div {...stagger(8)} className="lg:col-span-3" style={card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Clock style={{ width: 16, height: 16, color: C.accent }} />
+                <h2 style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: 0, letterSpacing: '-0.2px' }}>
+                  {t('todaySchedule')}
+                </h2>
+              </div>
+              <Link
+                href={`/${locale}/calendar`}
+                style={{ fontSize: 13, color: C.accent, textDecoration: 'none', fontWeight: 500 }}
+              >
+                {t('goToCalendar')} →
+              </Link>
+            </div>
+
+            {todaySchedule.length === 0 ? (
+              <div style={{ padding: '40px 0', textAlign: 'center' }}>
+                <Calendar style={{ width: 32, height: 32, color: C.textTertiary, margin: '0 auto 12px' }} />
+                <p style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary, margin: 0 }}>
+                  {t('noAppointmentsToday')}
+                </p>
+                <p style={{ fontSize: 13, color: C.textTertiary, marginTop: 4 }}>
+                  {t('freeDay')}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {todaySchedule.map((appt, i) => {
+                  const start = new Date(appt.starts_at);
+                  const end = new Date(appt.ends_at);
+                  const mins = Math.round((end.getTime() - start.getTime()) / 60000);
+                  const isPast = end < now;
+                  const isNow = start <= now && end > now;
+
+                  return (
+                    <Link
+                      key={appt.id}
+                      href={`/${locale}/calendar`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        padding: '12px 8px',
+                        borderRadius: 8,
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        opacity: isPast ? 0.5 : 1,
+                        backgroundColor: isNow ? (isDark ? 'rgba(94,106,210,0.08)' : 'rgba(94,106,210,0.05)') : 'transparent',
+                        borderBottom: i < todaySchedule.length - 1 ? `1px solid ${C.border}` : undefined,
+                        transition: 'background-color 150ms cubic-bezier(0.23,1,0.32,1), transform 160ms cubic-bezier(0.23,1,0.32,1)',
+                      }}
+                    >
+                      {/* Time */}
+                      <div style={{ minWidth: 48, textAlign: 'right' }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: isNow ? C.accent : C.text, fontVariantNumeric: 'tabular-nums' }}>
+                          {format(start, 'HH:mm')}
+                        </div>
+                        <div style={{ fontSize: 11, color: C.textTertiary }}>{mins} мин</div>
+                      </div>
+                      {/* Color bar */}
+                      <div style={{
+                        width: 3,
+                        height: 36,
+                        borderRadius: 2,
+                        backgroundColor: appt.service?.color || C.accent,
+                        flexShrink: 0,
+                      }} />
+                      {/* Details */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {appt.service?.name || '—'}
+                        </div>
+                        <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 1 }}>
+                          {appt.client?.full_name || '—'}
+                        </div>
+                      </div>
+                      {/* Price */}
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text, flexShrink: 0 }}>
+                        {fmtMoney(Number(appt.price) || 0)}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+
+          {/* ── Right column ── */}
+          <div className="flex flex-col gap-6 lg:col-span-2">
+
+            {/* Quick Actions */}
+            <motion.div {...stagger(9)} style={card}>
+              <h2 style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: '0 0 14px', letterSpacing: '-0.2px' }}>
+                {t('quickActions')}
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { href: `/${locale}/calendar`, icon: CalendarPlus, label: t('newAppointment'), accent: true },
+                  { href: `/${locale}/clients`, icon: UserPlus, label: t('addClient'), accent: false },
+                  { href: `/${locale}/calendar`, icon: Calendar, label: t('goToCalendar'), accent: false },
+                  { href: `/${locale}/finance`, icon: TrendingUp, label: t('goToFinance'), accent: false },
+                ].map(({ href, icon: Icon, label, accent }) => (
                   <Link
-                    key={appt.id}
-                    href="/calendar"
+                    key={label}
+                    href={href}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 16,
-                      padding: '12px 0',
-                      borderBottom: C.divider,
+                      gap: 10,
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      backgroundColor: accent ? C.accent : (isDark ? '#141516' : '#f3f4f5'),
+                      color: accent ? '#ffffff' : C.text,
                       textDecoration: 'none',
-                      color: 'inherit',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      transition: 'transform 160ms cubic-bezier(0.23,1,0.32,1), opacity 0.15s',
                     }}
+                    onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
+                    onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
                   >
-                    {/* Date badge */}
-                    <div style={{ textAlign: 'center', minWidth: 40 }}>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: C.text, lineHeight: '24px' }}>
-                        {format(date, 'd')}
-                      </div>
-                      <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: '16px' }}>
-                        {format(date, 'MMM', { locale: dfLocale })}
-                      </div>
-                    </div>
-                    {/* Details */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, color: C.textSecondary, lineHeight: '20px' }}>
-                        {format(date, 'EEE, d MMM yyyy h:mma', { locale: dfLocale }).toLowerCase()}{' '}
-                        {formatStatusBadge(appt.status)}
-                      </div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: '20px', marginTop: 2 }}>
-                        {appt.service?.name || '—'}
-                      </div>
-                      <div style={{ fontSize: 14, color: C.textSecondary, lineHeight: '20px', marginTop: 1 }}>
-                        {appt.client?.full_name || '—'}, {(() => {
-                          const start = new Date(appt.starts_at);
-                          const end = new Date(appt.ends_at);
-                          const mins = Math.round((end.getTime() - start.getTime()) / 60000);
-                          const h = Math.floor(mins / 60);
-                          const m = mins % 60;
-                          return h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
-                        })()} с {master?.profile?.full_name || '—'}
-                      </div>
-                    </div>
+                    <Icon style={{ width: 15, height: 15, opacity: 0.8 }} />
+                    {label}
                   </Link>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
+                ))}
+              </div>
+            </motion.div>
 
-        {/* ═══ Card 3: Записи (Appointments) ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          style={{ ...cardStyle, padding: '16px 0 0' }}
-        >
-          <div style={{ padding: '0 16px', marginBottom: 16 }}>
-            <h3 style={cardTitleStyle}>{t('appointments')}</h3>
+            {/* Birthdays */}
+            <motion.div {...stagger(10)} style={card}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Cake style={{ width: 15, height: 15, color: C.warning }} />
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0, letterSpacing: '-0.2px' }}>
+                  {t('birthdays')}
+                </h2>
+              </div>
+
+              {upcomingBirthdays.length === 0 ? (
+                <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>{t('noBirthdays')}</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {upcomingBirthdays.map((client, i) => (
+                    <Link
+                      key={client.id}
+                      href={`/${locale}/clients/${client.id}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 4px',
+                        borderBottom: i < upcomingBirthdays.length - 1 ? `1px solid ${C.border}` : undefined,
+                        textDecoration: 'none',
+                        color: 'inherit',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: C.text }}>{client.full_name}</div>
+                        <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 2 }}>
+                          {t('turnsAge', { age: client.age })}
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: client.daysUntil === 0 ? C.warning : client.daysUntil === 1 ? C.accent : C.textSecondary,
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        backgroundColor: client.daysUntil <= 1 ? (isDark ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.08)') : 'transparent',
+                      }}>
+                        {client.daysUntil === 0
+                          ? t('birthdayToday')
+                          : client.daysUntil === 1
+                            ? t('birthdayTomorrow')
+                            : t('birthdayInDays', { n: client.daysUntil })}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+
+        {/* ═══ Week overview ═══ */}
+        <motion.div {...stagger(11)} style={{ ...card, marginTop: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: 0, letterSpacing: '-0.2px' }}>
+              {t('weekSchedule')}
+            </h2>
+            <Link
+              href={`/${locale}/calendar`}
+              style={{ fontSize: 13, color: C.accent, textDecoration: 'none', fontWeight: 500 }}
+            >
+              {t('viewAll')} →
+            </Link>
           </div>
 
-          {recentAppointments.length === 0 ? (
-            <div style={{ padding: '48px 16px', textAlign: 'center' }}>
-              <div style={{ fontSize: 15, color: C.textSecondary }}>{t('noSalesDesc')}</div>
-            </div>
+          {weekSchedule.length === 0 ? (
+            <p style={{ fontSize: 13, color: C.textTertiary, margin: 0, padding: '20px 0', textAlign: 'center' }}>
+              {t('emptyScheduleDesc')}
+            </p>
           ) : (
-            <div>
-              {recentAppointments.map((appt) => {
-                const date = new Date(appt.starts_at);
-                return (
-                  <Link
-                    key={appt.id}
-                    href={`/dashboard/drawer/appointment/${appt.id}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                      gap: 16,
-                      padding: '16px 16px',
-                      borderBottom: C.divider,
-                      textDecoration: 'none',
-                      color: 'inherit',
-                    }}
-                  >
-                    {/* Date badge */}
-                    <div style={{
-                      textAlign: 'center',
-                      minWidth: 36,
-                      flexShrink: 0,
-                    }}>
-                      <div style={{ fontSize: 17, fontWeight: 700, color: C.text, lineHeight: '22px' }}>
-                        {format(date, 'd')}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: '16px' }}>
-                        {format(date, 'MMM', { locale: dfLocale })}
-                      </div>
-                    </div>
-                    {/* Details */}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 14, color: C.textSecondary, lineHeight: '20px' }}>
-                          {format(date, 'EEE, d MMM yyyy', { locale: dfLocale })} {format(date, 'h:mma', { locale: dfLocale }).toLowerCase()}
-                        </span>
-                        {formatStatusBadge(appt.status)}
-                      </div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: '20px' }}>
-                        {appt.service?.name || '—'}
-                      </div>
-                      <div style={{ fontSize: 14, color: C.textSecondary, lineHeight: '20px', marginTop: 2 }}>
-                        {appt.client?.full_name || '—'}, {(() => {
-                          const start = new Date(appt.starts_at);
-                          const end = new Date(appt.ends_at);
-                          const mins = Math.round((end.getTime() - start.getTime()) / 60000);
-                          const h = Math.floor(mins / 60);
-                          const m = mins % 60;
-                          return h > 0 ? `${h}h${m > 0 ? ` ${m}min` : ''}` : `${m}min`;
-                        })()} с {master?.profile?.full_name || '—'}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
-
-        {/* ═══ Card 4: Последующие визиты на сегодня (Today's Follow-up Visits) ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}
-        >
-          <h3 style={{ ...cardTitleStyle, marginBottom: 0 }}>{t('todayUpcoming')}</h3>
-
-          {todayFollowUps.length === 0 ? (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '48px 0',
-            }}>
-              {/* Calendar with clock icon */}
-              <svg width="56" height="56" viewBox="0 0 56 56" fill="none" style={{ marginBottom: 20 }}>
-                <rect x="6" y="10" width="34" height="32" rx="3" stroke={C.text} strokeWidth="2" fill="none" opacity="0.7" />
-                <line x1="6" y1="18" x2="40" y2="18" stroke={C.text} strokeWidth="2" opacity="0.7" />
-                <line x1="14" y1="10" x2="14" y2="6" stroke={C.text} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-                <line x1="32" y1="10" x2="32" y2="6" stroke={C.text} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-                <circle cx="40" cy="36" r="12" stroke={C.text} strokeWidth="2" fill={C.cardBg} opacity="0.7" />
-                <line x1="40" y1="30" x2="40" y2="36" stroke={C.text} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-                <line x1="40" y1="36" x2="45" y2="36" stroke={C.text} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
-              </svg>
-              <div style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: C.text,
-                textAlign: 'center',
-                marginBottom: 12,
-                lineHeight: '24px',
-              }}>
-                {t('noAppointmentsToday')}
-              </div>
-              <div style={{
-                fontSize: 15,
-                color: C.textSecondary,
-                textAlign: 'center',
-                lineHeight: '22px',
-              }}>
-                {t('goToCalendar').includes('алендарь') ? (
-                  <>
-                    Перейдите в раздел{' '}
-                    <Link href="/calendar" style={{ color: C.linkPurple, textDecoration: 'none' }}>
-                      {t('calendar').toLowerCase()}
-                    </Link>
-                    , чтобы добавить визиты
-                  </>
-                ) : (
-                  <>
-                    Go to{' '}
-                    <Link href="/calendar" style={{ color: C.linkPurple, textDecoration: 'none' }}>
-                      calendar
-                    </Link>
-                    {' '}to add visits
-                  </>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div style={{ flex: 1, marginTop: 16 }}>
-              {todayFollowUps.map((appt) => {
-                const date = new Date(appt.starts_at);
-                return (
-                  <div key={appt.id} style={{
-                    padding: '12px 0',
-                    borderBottom: C.divider,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {weekSchedule.map(day => (
+                <div
+                  key={day.date.toISOString()}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 8,
+                    backgroundColor: isDark ? '#141516' : '#f5f6f7',
+                    border: `1px solid ${C.border}`,
+                  }}
+                >
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: C.text,
+                    marginBottom: 8,
+                    textTransform: 'capitalize',
                   }}>
-                    <div style={{ fontSize: 14, color: C.textSecondary, minWidth: 50 }}>
-                      {format(date, 'HH:mm')}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: C.text }}>
-                        {appt.service?.name || '—'}
-                      </div>
-                      <div style={{ fontSize: 13, color: C.textSecondary }}>
-                        {appt.client?.full_name || '—'}
-                      </div>
-                    </div>
+                    {format(day.date, 'EEEE, d MMM', { locale: dfLocale })}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
-
-        {/* ═══ Card 5: Популярные услуги (Popular Services) ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          style={cardStyle}
-        >
-          <h3 style={{ ...cardTitleStyle, marginBottom: 20 }}>{t('popularServices')}</h3>
-
-          {/* Table header */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 120px 120px',
-            borderBottom: C.tableBorder,
-            paddingBottom: 12,
-          }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary }}>{t('service')}</span>
-            <span style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary, textAlign: 'right' }}>{t('thisMonthCount')}</span>
-            <span style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary, textAlign: 'right' }}>{t('lastMonthCount')}</span>
-          </div>
-
-          {popularServices.length === 0 ? (
-            <div style={{ padding: '32px 0', textAlign: 'center' }}>
-              <span style={{ fontSize: 14, color: C.textSecondary }}>{t('noSalesDesc')}</span>
-            </div>
-          ) : (
-            <div>
-              {popularServices.map((s) => (
-                <div key={s.name} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 120px 120px',
-                  padding: '14px 0',
-                  borderBottom: C.tableBorder,
-                }}>
-                  <span style={{ fontSize: 14, color: C.text }}>{s.name}</span>
-                  <span style={{ fontSize: 14, color: C.text, textAlign: 'right' }}>{s.thisMonth}</span>
-                  <span style={{ fontSize: 14, color: C.text, textAlign: 'right' }}>{s.lastMonth}</span>
+                  <div style={{ fontSize: 12, color: C.accent, fontWeight: 500, marginBottom: 8 }}>
+                    {day.appointments.length === 1
+                      ? t('oneAppointment')
+                      : t('nAppointments', { n: day.appointments.length })}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {day.appointments.slice(0, 4).map(appt => (
+                      <div key={appt.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: C.textSecondary, fontVariantNumeric: 'tabular-nums', minWidth: 36 }}>
+                          {format(new Date(appt.starts_at), 'HH:mm')}
+                        </span>
+                        <span style={{
+                          width: 2,
+                          height: 14,
+                          borderRadius: 1,
+                          backgroundColor: appt.service?.color || C.accent,
+                          flexShrink: 0,
+                        }} />
+                        <span style={{ fontSize: 12, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {appt.client?.full_name || appt.service?.name || '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {day.appointments.length > 4 && (
+                      <span style={{ fontSize: 11, color: C.textTertiary }}>
+                        +{day.appointments.length - 4}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
-            </div>
-          )}
-        </motion.div>
-
-        {/* ═══ Card 6: Лучший сотрудник (Top Employee) ═══ */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}
-        >
-          <h3 style={{ ...cardTitleStyle, marginBottom: 0 }}>{t('topEmployee')}</h3>
-
-          {topEmployeeRevenue === 0 ? (
-            <div style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '48px 0',
-            }}>
-              {/* Trending up icon */}
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style={{ marginBottom: 20 }}>
-                <path d="M6 36L18 24L26 32L42 16" stroke={C.text} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-                <path d="M32 16H42V26" stroke={C.text} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-              </svg>
-              <div style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: C.text,
-                textAlign: 'center',
-                marginBottom: 12,
-              }}>
-                {t('noSalesYet')}
-              </div>
-              <div style={{
-                fontSize: 15,
-                color: C.textSecondary,
-                textAlign: 'center',
-                maxWidth: 280,
-                lineHeight: '22px',
-              }}>
-                {t('noSalesDesc')}
-              </div>
-            </div>
-          ) : (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 0' }}>
-              {/* Show master as top employee */}
-              <div style={{
-                width: 64, height: 64, borderRadius: 999,
-                backgroundColor: C.accent,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 24, fontWeight: 700, color: '#fff',
-                marginBottom: 12,
-              }}>
-                {(master?.profile?.full_name || '?')[0].toUpperCase()}
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4 }}>
-                {master?.profile?.full_name || '—'}
-              </div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: C.accent }}>
-                {topEmployeeRevenue.toLocaleString()} {currency}
-              </div>
             </div>
           )}
         </motion.div>
