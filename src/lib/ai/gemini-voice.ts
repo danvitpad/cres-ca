@@ -1,15 +1,11 @@
 /** --- YAML
  * name: Voice Intent Parser
- * description: Sends Telegram voice to AI (Gemini chain with OpenRouter fallback), returns structured intent. Handles 503/429 with model fallback.
+ * description: Sends Telegram voice to Gemini 2.5 Flash with retry, returns structured intent.
  * created: 2026-04-16
  * updated: 2026-04-16
  * --- */
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-
-// Gemini models: try in order
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash'] as const;
 
 function geminiUrl(model: string) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
@@ -63,64 +59,14 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
 
 Текущая дата/время: {{NOW}}
 
-Верни ТОЛЬКО JSON, без markdown:
-{
-  "action": "reminder",
-  "text": "краткое описание действия на русском",
-  "due_at": "2026-04-17T10:00:00+03:00" или null,
-  "client_name": "Имя" или null,
-  "amount": 500 или null,
-  "service_name": "название услуги" или null,
-  "raw_transcript": "полная транскрипция аудио",
-  "confidence": 0.95
-}`;
-
-/** Try to parse JSON robustly — handle truncated strings, markdown wrapping, etc. */
-function safeParseJSON(raw: string): VoiceIntent | null {
-  // Strip markdown code blocks if present
-  let text = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    // Try to fix truncated JSON — find the last complete field and close the object
-    // Common issue: Gemini truncates the output mid-string
-    try {
-      // Find last complete key-value pair
-      const lastComma = text.lastIndexOf(',');
-      const lastColon = text.lastIndexOf(':');
-      if (lastComma > lastColon) {
-        // Truncated after a comma — remove trailing incomplete field
-        text = text.slice(0, lastComma) + '}';
-      } else {
-        // Try closing any open strings and the object
-        if (!text.endsWith('}')) {
-          text = text.replace(/,?\s*"[^"]*$/, '') + '}';
-        }
-      }
-      const fixed = JSON.parse(text);
-      // Ensure required fields have defaults
-      return {
-        action: fixed.action || 'unknown',
-        text: fixed.text || fixed.raw_transcript || '',
-        due_at: fixed.due_at || null,
-        client_name: fixed.client_name || null,
-        amount: fixed.amount || null,
-        service_name: fixed.service_name || null,
-        raw_transcript: fixed.raw_transcript || fixed.text || '',
-        confidence: fixed.confidence || 0.5,
-      };
-    } catch {
-      return null;
-    }
-  }
-}
+ВАЖНО: ответь ТОЛЬКО одним JSON-объектом, без комментариев:
+{"action":"reminder","text":"описание","due_at":null,"client_name":null,"amount":null,"service_name":null,"raw_transcript":"полная транскрипция","confidence":0.9}`;
 
 export async function parseVoiceIntent(audioBase64: string, mimeType: string = 'audio/ogg'): Promise<VoiceIntent> {
   const now = new Date().toISOString();
   const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now);
 
-  const geminiBody = JSON.stringify({
+  const body = JSON.stringify({
     contents: [{
       parts: [
         { text: prompt },
@@ -129,118 +75,102 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
     }],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 1024,
-      responseMimeType: 'application/json',
+      maxOutputTokens: 2048,
     },
   });
 
-  // ── Try Gemini models ──
-  const errors: string[] = [];
+  // Retry up to 5 times with backoff — model is available but intermittently 503
+  const delays = [0, 2000, 3000, 5000, 8000];
 
-  for (const model of GEMINI_MODELS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await fetch(geminiUrl(model), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: geminiBody,
-        });
-
-        if (response.status === 503 || response.status === 429) {
-          const retryAfter = response.status === 429 ? 3000 : 1500;
-          await new Promise((r) => setTimeout(r, retryAfter));
-          continue;
-        }
-
-        if (!response.ok) {
-          const err = await response.text();
-          errors.push(`${model}: ${response.status}`);
-          break; // try next model
-        }
-
-        const data = await response.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!rawText) {
-          errors.push(`${model}: empty response`);
-          break;
-        }
-
-        console.log(`[voice] ${model} raw:`, rawText.slice(0, 300));
-        const parsed = safeParseJSON(rawText);
-        if (!parsed) {
-          errors.push(`${model}: invalid JSON`);
-          break;
-        }
-
-        console.log(`[voice] Success with ${model}`);
-        return parsed;
-      } catch (e) {
-        errors.push(`${model}: ${(e as Error).message}`);
-        break;
-      }
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, delays[attempt]));
     }
-  }
 
-  // ── Fallback: OpenRouter (text-only, no audio — but we try with data URI) ──
-  if (OPENROUTER_API_KEY) {
-    console.log('[voice] All Gemini failed, trying OpenRouter');
     try {
-      const result = await parseViaOpenRouter(audioBase64, mimeType, prompt);
-      if (result) return result;
+      const response = await fetch(geminiUrl('gemini-2.5-flash'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+
+      if (response.status === 503 || response.status === 429) {
+        console.log(`[voice] gemini-2.5-flash ${response.status}, attempt ${attempt + 1}/${delays.length}`);
+        continue;
+      }
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Gemini ${response.status}: ${err.slice(0, 200)}`);
+      }
+
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!rawText) {
+        console.log('[voice] empty response, retrying');
+        continue;
+      }
+
+      console.log('[voice] raw response:', rawText.slice(0, 500));
+
+      const parsed = extractJSON(rawText);
+      if (parsed) return parsed;
+
+      console.log('[voice] failed to parse JSON, retrying');
+      continue;
     } catch (e) {
-      errors.push(`openrouter: ${(e as Error).message}`);
+      if (attempt === delays.length - 1) throw e;
+      console.log(`[voice] error attempt ${attempt + 1}:`, (e as Error).message);
     }
   }
 
-  throw new Error(`All models failed: ${errors.join('; ')}`);
+  throw new Error('Gemini unavailable after 5 retries');
 }
 
-/** OpenRouter fallback — uses a multimodal model that accepts audio as data URI */
-async function parseViaOpenRouter(audioBase64: string, mimeType: string, prompt: string): Promise<VoiceIntent | null> {
-  // Use google/gemini-2.0-flash-exp:free via OpenRouter (different quota pool)
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.0-flash-exp:free',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: { url: `data:${mimeType};base64,${audioBase64}` },
-            },
-          ],
-        },
-      ],
-      temperature: 0.1,
-      max_tokens: 512,
-    }),
-  });
+/** Extract JSON from Gemini response — handles markdown, thinking preamble, truncation */
+function extractJSON(raw: string): VoiceIntent | null {
+  // Strip markdown
+  let text = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`OpenRouter ${response.status}: ${err}`);
+  // Find the JSON object — Gemini 2.5 may output thinking text before JSON
+  const jsonStart = text.indexOf('{');
+  const jsonEnd = text.lastIndexOf('}');
+
+  if (jsonStart === -1) return null;
+
+  if (jsonEnd > jsonStart) {
+    try {
+      return normalizeIntent(JSON.parse(text.slice(jsonStart, jsonEnd + 1)));
+    } catch { /* fall through */ }
   }
 
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content;
-  if (!text) throw new Error('Empty OpenRouter response');
-
-  // Clean potential markdown wrapping
-  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  console.log('[voice] Success via OpenRouter');
-  return JSON.parse(cleaned) as VoiceIntent;
+  // Truncated — try to fix
+  text = text.slice(jsonStart);
+  // Remove trailing incomplete key-value
+  text = text.replace(/,\s*"[^"]*"?\s*:?\s*[^,}]*$/, '') + '}';
+  try {
+    return normalizeIntent(JSON.parse(text));
+  } catch {
+    return null;
+  }
 }
 
-/**
- * Download a Telegram voice file and return as base64
- */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeIntent(obj: any): VoiceIntent {
+  return {
+    action: obj.action || 'unknown',
+    text: obj.text || obj.raw_transcript || '',
+    due_at: obj.due_at || null,
+    client_name: obj.client_name || null,
+    amount: obj.amount != null ? Number(obj.amount) : null,
+    service_name: obj.service_name || null,
+    raw_transcript: obj.raw_transcript || obj.text || '',
+    confidence: obj.confidence || 0.5,
+  };
+}
+
+/** Download a Telegram voice file and return as base64 */
 export async function downloadTelegramFile(fileId: string): Promise<{ base64: string; mimeType: string }> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN!;
 
