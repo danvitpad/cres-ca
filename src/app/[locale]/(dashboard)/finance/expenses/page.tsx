@@ -41,20 +41,31 @@ export default function ExpensesPage() {
   const [vendor, setVendor] = useState('');
   const [ocrBusy, setOcrBusy] = useState(false);
 
+  async function loadExpenses() {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('expenses')
+      .select('id, date, amount, currency, category, description, vendor')
+      .eq('master_id', master.id)
+      .order('date', { ascending: false })
+      .limit(50);
+    setItems((data ?? []) as Expense[]);
+    setLoading(false);
+  }
+
+  useEffect(() => { loadExpenses(); }, [master?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Realtime — auto-refresh expenses on changes
   useEffect(() => {
     if (!master?.id) return;
-    (async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('expenses')
-        .select('id, date, amount, currency, category, description, vendor')
-        .eq('master_id', master.id)
-        .order('date', { ascending: false })
-        .limit(50);
-      setItems((data ?? []) as Expense[]);
-      setLoading(false);
-    })();
-  }, [master?.id]);
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`expenses_rt_${master.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `master_id=eq.${master.id}` }, () => { loadExpenses(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [master?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ocrUpload(file: File) {
     setOcrBusy(true);

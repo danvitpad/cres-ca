@@ -38,6 +38,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'update_failed', detail: error.message }, { status: 500 });
   }
 
+  // Ensure client record exists for this follower
+  const { data: clientProfile } = await supabase
+    .from('profiles')
+    .select('full_name, phone, email')
+    .eq('id', clientProfileId)
+    .maybeSingle();
+
+  if (clientProfile) {
+    await supabase.from('clients').upsert({
+      profile_id: clientProfileId,
+      master_id: master.id,
+      full_name: clientProfile.full_name || 'Клиент',
+      phone: clientProfile.phone || null,
+      email: clientProfile.email || null,
+    }, { onConflict: 'profile_id,master_id', ignoreDuplicates: true });
+  }
+
   // Notify client about mutual follow
   const masterProfile = master.profiles as unknown as { full_name: string } | null;
   const masterName = master.display_name || masterProfile?.full_name || 'Мастер';

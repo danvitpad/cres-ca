@@ -157,6 +157,21 @@ export default function ClientsPage() {
     if (master) { setLoading(true); loadClients(); }
   }, [master, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Realtime subscription — auto-refresh clients list on INSERT/UPDATE/DELETE
+  useEffect(() => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`clients_rt_${master.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clients', filter: `master_id=eq.${master.id}` },
+        () => { loadClients(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [master?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!master) return;
     if (tab === 'users') loadFollowList('followers');

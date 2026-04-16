@@ -129,6 +129,17 @@ export default function ServicesPage() {
 
   useEffect(() => { loadServices(); }, [loadServices]);
 
+  // Realtime — auto-refresh on service changes
+  useEffect(() => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`services_rt_${master.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'services', filter: `master_id=eq.${master.id}` }, () => { loadServices(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [master?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function openEdit(service: ServiceRow) {
     setEditing(service);
     setDialogOpen(true);

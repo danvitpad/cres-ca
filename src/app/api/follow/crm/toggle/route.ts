@@ -40,11 +40,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
   }
 
-  // Send notification to master
+  // Auto-create clients record so master can select this person in calendar/appointments
   const [{ data: profile }, { data: master }] = await Promise.all([
-    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
-    supabase.from('masters').select('profile_id').eq('id', masterId).maybeSingle(),
+    supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).maybeSingle(),
+    supabase.from('masters').select('id, profile_id').eq('id', masterId).maybeSingle(),
   ]);
+
+  if (profile) {
+    await supabase.from('clients').upsert({
+      profile_id: user.id,
+      master_id: masterId,
+      full_name: profile.full_name || 'Клиент',
+      phone: profile.phone || null,
+      email: profile.email || null,
+    }, { onConflict: 'profile_id,master_id', ignoreDuplicates: true });
+  }
 
   if (master?.profile_id) {
     const clientName = profile?.full_name || 'Клиент';

@@ -68,6 +68,7 @@ export default function SalesListPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('sales');
+  const [todayOnly, setTodayOnly] = useState(false);
 
   const loadSales = useCallback(async () => {
     if (!master?.id) return;
@@ -90,13 +91,20 @@ export default function SalesListPage() {
 
   const filtered = useMemo(() => {
     if (activeTab === 'drafts') return [];
-    if (!search.trim()) return sales;
-    const q = search.toLowerCase();
-    return sales.filter(s =>
-      s.id.toLowerCase().includes(q) ||
-      (s.services?.name || '').toLowerCase().includes(q)
-    );
-  }, [sales, search, activeTab]);
+    let result = sales;
+    if (todayOnly) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      result = result.filter(s => s.created_at.startsWith(todayStr));
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(s =>
+        s.id.toLowerCase().includes(q) ||
+        (s.services?.name || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [sales, search, activeTab, todayOnly]);
 
   return (
     <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto', padding: '32px 40px' }}>
@@ -165,15 +173,19 @@ export default function SalesListPage() {
           />
         </div>
         <button
+          onClick={() => setTodayOnly(!todayOnly)}
           style={{
-            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.inputBorder}`,
-            background: C.inputBg, color: C.textMuted, fontSize: 13, cursor: 'pointer',
+            padding: '9px 14px', borderRadius: 8, border: `1px solid ${todayOnly ? C.accent : C.inputBorder}`,
+            background: todayOnly ? C.accentSoft : C.inputBg, color: todayOnly ? C.accent : C.textMuted,
+            fontSize: 13, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT,
+            transition: 'all 0.15s ease',
           }}
         >
           {t('today')}
         </button>
         <button
+          onClick={() => { setSearch(''); setTodayOnly(false); }}
           style={{
             padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.inputBorder}`,
             background: C.inputBg, color: C.textMuted, fontSize: 13, cursor: 'pointer',

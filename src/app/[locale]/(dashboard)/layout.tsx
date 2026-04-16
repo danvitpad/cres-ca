@@ -17,9 +17,9 @@ import {
   FreshaTag,
   FreshaSmile,
   FreshaBook,
-  FreshaContact,
+
   FreshaMegaphone,
-  FreshaTeam,
+
   FreshaAnalytics,
   FreshaAddons,
   FreshaSettings,
@@ -117,15 +117,7 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
         { label: t('nav.catalogueSub.network'), href: '/network' },
       ],
     },
-    {
-      key: 'online-booking', icon: FreshaContact, title: t('nav.onlineBooking'),
-      submenu: [
-        { label: t('nav.onlineBookingSub.profile'), href: '/marketing/profile' },
-        { label: t('nav.onlineBookingSub.google'), href: '/marketing/google' },
-        { label: t('nav.onlineBookingSub.social'), href: '/marketing/social' },
-        { label: t('nav.onlineBookingSub.links'), href: '/marketing/links' },
-      ],
-    },
+    // online-booking removed — lives in client Mini App, not master dashboard
     {
       key: 'marketing', icon: FreshaMegaphone, title: t('nav.messaging'),
       submenu: [
@@ -137,15 +129,7 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
         { label: t('nav.messagingSub.reviews'), href: '/marketing/reviews' },
       ],
     },
-    {
-      key: 'team', icon: FreshaTeam, title: t('nav.team'),
-      submenu: [
-        { label: t('nav.teamSub.members'), href: '/settings/team' },
-        { label: t('nav.teamSub.shifts'), href: '/settings/team/shifts' },
-        { label: t('nav.teamSub.timesheets'), href: '/settings/team/timesheets' },
-        { label: t('nav.teamSub.payrun'), href: '/settings/team/payrun' },
-      ],
-    },
+    // team removed — MVP is solo master, team features deferred
     { key: 'analytics', icon: FreshaAnalytics, href: '/finance/reports', tooltip: t('nav.analytics') },
     { key: 'addons', icon: FreshaAddons, href: '/addons', tooltip: t('nav.addons') },
     { key: 'settings', icon: FreshaSettings, href: '/settings', tooltip: t('nav.settings') },

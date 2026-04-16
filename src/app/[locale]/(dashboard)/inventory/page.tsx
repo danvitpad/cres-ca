@@ -121,6 +121,17 @@ export default function InventoryPage() {
     loadItems();
   }, [loadItems]);
 
+  // Realtime — auto-refresh inventory on changes
+  useEffect(() => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`inventory_rt_${master.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory', filter: `master_id=eq.${master.id}` }, () => { loadItems(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [master?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (tab === 'suppliers' && suppliers.length === 0) {
       loadSuppliers();
