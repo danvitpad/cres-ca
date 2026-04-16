@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const [mastersRes, salonsRes] = await Promise.all([
     admin
       .from('masters')
-      .select('id, specialization, rating, latitude, longitude, display_name, avatar_url, profile:profiles(full_name)')
+      .select('id, specialization, rating, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name)')
       .eq('is_active', true)
       .gte('latitude', lat - RADIUS_DEG)
       .lte('latitude', lat + RADIUS_DEG)

@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ mast
   );
   const { data: m } = await supabase
     .from('masters')
-    .select('display_name, specialization, city, rating, total_reviews, invite_code, profile:profiles(full_name, avatar_url)')
+    .select('display_name, specialization, city, rating, total_reviews, invite_code, profile:profiles!masters_profile_id_fkey(full_name, avatar_url)')
     .eq('id', master_id)
     .maybeSingle();
 

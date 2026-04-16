@@ -148,7 +148,7 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
   // Find master by invite code
   const { data: master } = await supabase
     .from('masters')
-    .select('id, profile:profiles(full_name)')
+    .select('id, profile:profiles!masters_profile_id_fkey(full_name)')
     .eq('invite_code', inviteCode)
     .single();
 

@@ -61,7 +61,7 @@ export default function TeamPage() {
 
     const { data } = await supabase
       .from('masters')
-      .select('id, specialization, is_active, invite_code, profile:profiles(full_name, phone, avatar_url)')
+      .select('id, specialization, is_active, invite_code, profile:profiles!masters_profile_id_fkey(full_name, phone, avatar_url)')
       .eq('salon_id', salon.id)
       .order('created_at');
 

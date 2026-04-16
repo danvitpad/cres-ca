@@ -30,7 +30,7 @@ export function TopMastersRow() {
       const supabase = createClient();
       const { data } = await supabase
         .from('masters')
-        .select('id, rating, total_reviews, specialization, display_name, avatar_url, profile:profiles(full_name, avatar_url)')
+        .select('id, rating, total_reviews, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url)')
         .eq('is_active', true)
         .order('rating', { ascending: false })
         .limit(20);

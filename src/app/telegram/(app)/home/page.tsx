@@ -85,7 +85,7 @@ export default function MiniAppHomePage() {
       if (clientIds.length > 0) {
         const { data: apt } = await supabase
           .from('appointments')
-          .select('id, starts_at, price, master:masters(profile:profiles(full_name)), service:services(name)')
+          .select('id, starts_at, price, master:masters(profile:profiles!masters_profile_id_fkey(full_name)), service:services(name)')
           .in('client_id', clientIds)
           .gte('starts_at', new Date().toISOString())
           .in('status', ['booked', 'confirmed'])

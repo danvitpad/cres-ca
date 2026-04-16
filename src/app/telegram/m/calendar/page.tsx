@@ -109,7 +109,7 @@ export default function MasterMiniAppCalendar() {
     const { data } = await supabase
       .from('appointments')
       .select(
-        'id, starts_at, ends_at, status, price, notes, client_id, client:clients(profile:profiles(full_name, phone)), service:services(name, duration_minutes)',
+        'id, starts_at, ends_at, status, price, notes, client_id, client:clients(profile:profiles!clients_profile_id_fkey(full_name, phone)), service:services(name, duration_minutes)',
       )
       .eq('master_id', masterId)
       .gte('starts_at', from)

@@ -69,7 +69,7 @@ export default function MiniAppMasterDetailPage() {
     (async () => {
       const { data } = await supabase
         .from('masters')
-        .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, profile:profiles(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, is_active)')
+        .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, is_active)')
         .eq('id', params.id)
         .eq('is_active', true)
         .maybeSingle();

@@ -30,7 +30,7 @@ export default async function InvoicePage({ params }: Props) {
       `id, starts_at, price, currency, tip_amount,
        service:services(name, duration_minutes),
        client:clients(full_name, phone, email),
-       master:masters(handle, profile:profiles(full_name, phone))`,
+       master:masters(handle, profile:profiles!masters_profile_id_fkey(full_name, phone))`,
     )
     .eq('id', apt_id)
     .maybeSingle();

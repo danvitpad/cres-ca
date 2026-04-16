@@ -38,7 +38,7 @@ export default async function LeaderboardPage({ searchParams }: PageProps) {
   // Base master query
   let query = supabase
     .from('masters')
-    .select('id, display_name, city, vertical, rating, total_reviews, likes_count, badges, level, invite_code, profile:profiles(full_name, avatar_url)')
+    .select('id, display_name, city, vertical, rating, total_reviews, likes_count, badges, level, invite_code, profile:profiles!masters_profile_id_fkey(full_name, avatar_url)')
     .eq('is_active', true)
     .limit(500);
   if (city) query = query.eq('city', city);

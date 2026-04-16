@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
   const { data: masters } = await supabase
     .from('masters')
-    .select('id, profile_id, city, rating, total_reviews, avatar_url, profile:profiles(full_name, avatar_url, public_id, posts_count)')
+    .select('id, profile_id, city, rating, total_reviews, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, public_id, posts_count)')
     .eq('is_active', true)
     .order('rating', { ascending: false })
     .limit(60);

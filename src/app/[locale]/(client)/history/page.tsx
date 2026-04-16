@@ -81,7 +81,7 @@ export default function HistoryPage() {
       // Get all client IDs for this user
       const { data: clients } = await supabase
         .from('clients')
-        .select('id, master_id, master:masters(display_name, avatar_url, profile:profiles(full_name, avatar_url))')
+        .select('id, master_id, master:masters(display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))')
         .eq('profile_id', userId);
 
       if (!clients?.length) {

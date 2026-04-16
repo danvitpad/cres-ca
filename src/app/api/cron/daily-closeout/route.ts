@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 
   const { data: masters } = await supabase
     .from('masters')
-    .select('id, profile_id, tax_rate_percent, profile:profiles(full_name)');
+    .select('id, profile_id, tax_rate_percent, profile:profiles!masters_profile_id_fkey(full_name)');
   if (!masters) return NextResponse.json({ created: 0 });
 
   // Skip already-sent closeouts for today

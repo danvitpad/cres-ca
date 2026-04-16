@@ -101,7 +101,7 @@ export default function BookPage() {
       const supabase = createClient();
       const { data: masterData } = await supabase
         .from('masters')
-        .select('id, working_hours, display_name, profile:profiles(full_name)')
+        .select('id, working_hours, display_name, profile:profiles!masters_profile_id_fkey(full_name)')
         .eq('id', preselectedMasterId!)
         .single();
 

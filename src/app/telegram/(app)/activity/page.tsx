@@ -48,7 +48,7 @@ export default function MiniAppActivityPage() {
       }
       const { data } = await supabase
         .from('appointments')
-        .select('id, starts_at, status, price, master:masters(profile:profiles(full_name)), service:services(name)')
+        .select('id, starts_at, status, price, master:masters(profile:profiles!masters_profile_id_fkey(full_name)), service:services(name)')
         .in('client_id', clientIds)
         .order('starts_at', { ascending: false })
         .limit(50);

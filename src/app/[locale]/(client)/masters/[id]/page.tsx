@@ -120,7 +120,7 @@ export default function MasterProfilePage() {
         .select(`
           id, specialization, bio, address, city, rating, total_reviews,
           display_name, avatar_url, cover_url, invite_code,
-          profile:profiles(full_name, avatar_url),
+          profile:profiles!masters_profile_id_fkey(full_name, avatar_url),
           services(id, name, description, duration_minutes, price, currency, color, category:service_categories(name))
         `)
         .eq('id', masterId)

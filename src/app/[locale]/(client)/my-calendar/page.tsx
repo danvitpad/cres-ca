@@ -137,7 +137,7 @@ export default function ClientCalendarPage() {
       .select(`
         id, starts_at, ends_at, status, master_id, price, currency, client_id, service_id,
         service:services(name, color),
-        master:masters!inner(id, display_name, avatar_url, cancellation_policy, profile:profiles(full_name, avatar_url))
+        master:masters!inner(id, display_name, avatar_url, cancellation_policy, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))
       `)
       .gte('starts_at', start)
       .lte('starts_at', end)

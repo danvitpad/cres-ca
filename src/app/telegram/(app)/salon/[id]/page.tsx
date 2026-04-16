@@ -59,7 +59,7 @@ export default function MiniAppSalonDetailPage() {
       // Team = masters whose profile.owner_id === salon.owner_id (best effort)
       const { data: teamRows } = await supabase
         .from('masters')
-        .select('id, display_name, specialization, avatar_url, profile:profiles(full_name)')
+        .select('id, display_name, specialization, avatar_url, profile:profiles!masters_profile_id_fkey(full_name)')
         .eq('is_active', true)
         .limit(20);
       const members: TeamMember[] = (teamRows ?? []).map((row: unknown) => {

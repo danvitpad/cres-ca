@@ -47,7 +47,7 @@ export function useMaster() {
     const supabase = createClient();
     const { data } = await supabase
       .from('masters')
-      .select('*, profile:profiles(full_name, first_name, last_name, phone, avatar_url)')
+      .select('*, profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, phone, avatar_url)')
       .eq('profile_id', userId)
       .single();
     if (data) setMaster(data as unknown as MasterData);

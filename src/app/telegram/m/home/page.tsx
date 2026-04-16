@@ -62,7 +62,7 @@ export default function MasterMiniAppHome() {
 
       const { data: todayRows } = await supabase
         .from('appointments')
-        .select('id, starts_at, ends_at, price, status, client:clients(profile:profiles(full_name)), service:services(name)')
+        .select('id, starts_at, ends_at, price, status, client:clients(profile:profiles!clients_profile_id_fkey(full_name)), service:services(name)')
         .eq('master_id', m.id)
         .gte('starts_at', dayStart)
         .lt('starts_at', dayEnd)

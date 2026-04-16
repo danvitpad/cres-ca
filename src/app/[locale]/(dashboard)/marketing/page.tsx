@@ -119,7 +119,7 @@ export default function MarketingPage() {
 
     const { data: guildData } = await supabase
       .from('guilds')
-      .select('id, name, created_by, guild_members(master_id, masters(profile:profiles(full_name)))')
+      .select('id, name, created_by, guild_members(master_id, masters(profile:profiles!masters_profile_id_fkey(full_name)))')
       .order('created_at', { ascending: false });
     setGuilds((guildData as unknown as Guild[]) || []);
     setLoading(false);

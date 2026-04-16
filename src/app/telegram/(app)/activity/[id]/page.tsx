@@ -99,7 +99,7 @@ export default function MiniAppAppointmentDetail() {
       const { data } = await supabase
         .from('appointments')
         .select(
-          'id, starts_at, ends_at, status, price, currency, master_id, service_id, notes, service:services(name, color, description), master:masters(id, display_name, specialization, avatar_url, address, city, latitude, longitude, cancellation_policy, profile:profiles(full_name, avatar_url, phone))',
+          'id, starts_at, ends_at, status, price, currency, master_id, service_id, notes, service:services(name, color, description), master:masters(id, display_name, specialization, avatar_url, address, city, latitude, longitude, cancellation_policy, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, phone))',
         )
         .eq('id', params.id)
         .in('client_id', clientIds)

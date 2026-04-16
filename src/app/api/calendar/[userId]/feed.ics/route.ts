@@ -54,7 +54,7 @@ export async function GET(
 
     const { data } = await supabase
       .from('appointments')
-      .select('id, starts_at, ends_at, notes, service:services(name), master:masters(address, profile:profiles(full_name))')
+      .select('id, starts_at, ends_at, notes, service:services(name), master:masters(address, profile:profiles!masters_profile_id_fkey(full_name))')
       .in('client_id', clientIds)
       .gte('starts_at', now)
       .in('status', ['confirmed', 'pending'])
