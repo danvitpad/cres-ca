@@ -131,17 +131,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   /* ── Fetch ── */
-  useEffect(() => {
-    if (masterLoading || !master?.id) {
-      if (!masterLoading) setLoading(false);
-      return;
-    }
+  const fetchDashboard = useCallback(async () => {
+    if (!master?.id) return;
     const supabase = createClient();
     const now = new Date();
     const prevMonthStart = startOfMonth(subMonths(now, 1));
     const weekEnd = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
 
-    Promise.all([
+    const [apptRes, expRes, clientRes, remRes, completedRes] = await Promise.all([
       supabase
         .from('appointments')
         .select('id, starts_at, ends_at, status, price, service:services(name, color), client:clients(full_name)')
@@ -173,15 +170,31 @@ export default function DashboardPage() {
         .eq('completed', true)
         .order('completed_at', { ascending: false })
         .limit(8),
-    ]).then(([apptRes, expRes, clientRes, remRes, completedRes]) => {
-      setAppointments((apptRes.data as unknown as Appointment[]) || []);
-      setExpenses((expRes.data as unknown as Expense[]) || []);
-      setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
-      setReminders((remRes.data as unknown as Reminder[]) || []);
-      setCompletedReminders((completedRes.data as unknown as Reminder[]) || []);
-      setLoading(false);
-    });
-  }, [master?.id, masterLoading]);
+    ]);
+    setAppointments((apptRes.data as unknown as Appointment[]) || []);
+    setExpenses((expRes.data as unknown as Expense[]) || []);
+    setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
+    setReminders((remRes.data as unknown as Reminder[]) || []);
+    setCompletedReminders((completedRes.data as unknown as Reminder[]) || []);
+    setLoading(false);
+  }, [master?.id]);
+
+  useEffect(() => {
+    if (masterLoading) return;
+    if (!master?.id) { setLoading(false); return; }
+    fetchDashboard();
+  }, [master?.id, masterLoading, fetchDashboard]);
+
+  // Realtime — refresh dashboard when appointments change
+  useEffect(() => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`dashboard_rt_${master.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `master_id=eq.${master.id}` }, () => { fetchDashboard(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [master?.id, fetchDashboard]);
 
   /* ── Computed ── */
   const now = new Date();
