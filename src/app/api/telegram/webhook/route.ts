@@ -183,7 +183,7 @@ async function routeVoiceAction(
       }
 
       const timeStr = intent.due_at
-        ? `⏰ ${new Date(intent.due_at).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+        ? `⏰ ${new Date(intent.due_at).toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
         : '📌 Без срока';
 
       await sendMessage(chatId, `✅ <b>Напоминание создано</b>\n\n${intent.text}\n${timeStr}`, {
@@ -273,7 +273,7 @@ async function routeVoiceAction(
       let msg = `📅 <b>Запись на создание</b>\n\n`;
       if (intent.client_name) msg += `👤 ${intent.client_name}\n`;
       if (intent.service_name) msg += `💇 ${intent.service_name}\n`;
-      if (intent.due_at) msg += `⏰ ${new Date(intent.due_at).toLocaleString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}\n`;
+      if (intent.due_at) msg += `⏰ ${new Date(intent.due_at).toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}\n`;
       msg += `\nСохранил как напоминание. Создай запись в календаре:`;
 
       await sendMessage(chatId, msg, {
@@ -282,6 +282,47 @@ async function routeVoiceAction(
           inline_keyboard: [[{ text: '📅 Открыть календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
         },
       });
+      break;
+    }
+
+    case 'revenue': {
+      // Master dictates today's clients/services/amounts
+      const items = intent.items || [];
+      let totalRevenue = intent.amount || 0;
+
+      if (items.length > 0) {
+        // Create completed appointments for each item
+        for (const item of items) {
+          await supabase.from('expenses').insert({
+            master_id: masterId,
+            amount: -(item.amount || 0), // negative = income
+            date: new Date().toISOString().split('T')[0],
+            description: `${item.service_name || 'Услуга'} — ${item.client_name || 'Клиент'}`,
+            category: 'revenue_voice',
+          });
+        }
+
+        let msg = `✅ <b>Выручка записана</b>\n\n`;
+        for (const item of items) {
+          msg += `👤 ${item.client_name || '—'} · ${item.service_name || '—'} · <b>${item.amount || 0} ₴</b>\n`;
+        }
+        msg += `\n💰 Итого: <b>${totalRevenue} ₴</b>`;
+
+        await sendMessage(chatId, msg, { parse_mode: 'HTML' });
+      } else if (totalRevenue > 0) {
+        await supabase.from('expenses').insert({
+          master_id: masterId,
+          amount: -totalRevenue,
+          date: new Date().toISOString().split('T')[0],
+          description: intent.text,
+          category: 'revenue_voice',
+        });
+        await sendMessage(chatId, `✅ <b>Выручка записана</b>\n\n${intent.text}\n💰 ${totalRevenue} ₴`, {
+          parse_mode: 'HTML',
+        });
+      } else {
+        await sendMessage(chatId, `❓ Не удалось определить суммы. Скажи ещё раз с суммами.`);
+      }
       break;
     }
 

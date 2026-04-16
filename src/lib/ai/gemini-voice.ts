@@ -15,6 +15,7 @@ export type VoiceAction =
   | 'reminder'
   | 'appointment'
   | 'expense'
+  | 'revenue'
   | 'client_note'
   | 'cancel'
   | 'reschedule'
@@ -30,6 +31,7 @@ export interface VoiceIntent {
   service_name: string | null;
   raw_transcript: string;
   confidence: number;
+  items?: { client_name: string; service_name: string; amount: number }[];
 }
 
 const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/service индустрии. Мастер отправляет голосовое сообщение.
@@ -38,33 +40,52 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
 1. Транскрибировать аудио
 2. Понять намерение
 3. Извлечь структурированные данные
+4. Перефразировать текст ЕСТЕСТВЕННО и КРАСИВО (не дословная транскрипция, а человечная формулировка)
+
+Примеры перефразирования:
+- "Антону отправить сообщение" → "Отправить сообщение Антону"
+- "краску купить завтра" → "Купить краску"
+- "Маше напомнить про окрашивание" → "Напомнить Маше про окрашивание"
+- "потратил пятьсот гривен на материалы" → "Материалы — 500 ₴"
+- "сегодня была Аня стрижка тысяча двести" → text: "Стрижка — Аня", amount: 1200
 
 Возможные действия (action):
 - "reminder" — напоминание (позвонить, купить, сделать что-то)
 - "appointment" — создать/записать клиента на услугу
-- "expense" — записать расход (купил краску, заплатил за аренду)
+- "expense" — записать расход (купил краску, заплатил за аренду, материалы)
+- "revenue" — записать приход/выручку (мастер рассказывает кто был и за что заплатил)
 - "client_note" — заметка о клиенте (аллергия, предпочтения)
 - "cancel" — отменить запись
 - "reschedule" — перенести запись
 - "query" — вопрос (сколько заработал, сколько записей)
 - "unknown" — не удалось понять
 
-Правила для дат:
+Если мастер перечисляет клиентов/услуги/суммы за день — это "revenue".
+Если мастер говорит что потратил деньги — это "expense".
+
+Правила для дат (таймзона мастера — Europe/Kyiv, UTC+3):
 - "завтра" = следующий день от текущей даты
 - "в пятницу" = ближайшая пятница
 - "через час" = текущее время + 1 час
 - "вечером" = 18:00 текущего дня
 - Если время не указано, но дата есть — ставь 09:00
 - Если ни дата ни время не указаны — due_at = null
+- ВСЕ даты возвращай в формате ISO с таймзоной +03:00
 
-Текущая дата/время: {{NOW}}
+Текущая дата/время: {{NOW}} (UTC). В Киеве сейчас {{NOW_KYIV}}.
 
-ВАЖНО: ответь ТОЛЬКО одним JSON-объектом, без комментариев:
-{"action":"reminder","text":"описание","due_at":null,"client_name":null,"amount":null,"service_name":null,"raw_transcript":"полная транскрипция","confidence":0.9}`;
+Для "revenue" — если перечислено несколько клиентов/услуг, верни массив items:
+{"action":"revenue","text":"Выручка за день","items":[{"client_name":"Аня","service_name":"Стрижка","amount":1200},{"client_name":"Маша","service_name":"Окрашивание","amount":2500}],"amount":3700,"raw_transcript":"...","confidence":0.9}
+
+Для остальных — обычный формат:
+{"action":"reminder","text":"Отправить сообщение Антону","due_at":"2026-04-17T10:00:00+03:00","client_name":"Антон","amount":null,"service_name":null,"raw_transcript":"полная транскрипция","confidence":0.9}
+
+ВАЖНО: ответь ТОЛЬКО одним JSON-объектом, без комментариев и без markdown.`;
 
 export async function parseVoiceIntent(audioBase64: string, mimeType: string = 'audio/ogg'): Promise<VoiceIntent> {
   const now = new Date().toISOString();
-  const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now);
+  const nowKyiv = new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', dateStyle: 'full', timeStyle: 'short' });
+  const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now).replace('{{NOW_KYIV}}', nowKyiv);
 
   const body = JSON.stringify({
     contents: [{
@@ -167,6 +188,7 @@ function normalizeIntent(obj: any): VoiceIntent {
     service_name: obj.service_name || null,
     raw_transcript: obj.raw_transcript || obj.text || '',
     confidence: obj.confidence || 0.5,
+    items: Array.isArray(obj.items) ? obj.items : undefined,
   };
 }
 
