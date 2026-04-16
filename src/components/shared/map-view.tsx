@@ -103,12 +103,13 @@ export default function MapView({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const map = L.map(containerRef.current).setView(center, zoom);
+    const map = L.map(containerRef.current, {
+      zoomControl: false,
+      attributionControl: false,
+    }).setView(center, zoom);
     mapRef.current = map;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     // Independent layer groups so updates of one set never wipe others
     masterLayerRef.current = L.layerGroup().addTo(map);

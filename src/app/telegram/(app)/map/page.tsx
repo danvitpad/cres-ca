@@ -46,13 +46,14 @@ export default function MiniAppMapPage() {
   const [selected, setSelected] = useState<MasterRow | null>(null);
   const [query, setQuery] = useState('');
 
-  const fetchMasters = useCallback(async (lat: number, lng: number) => {
+  const fetchMasters = useCallback(async (lat: number, lng: number, searchQuery?: string) => {
     setLoading(true);
     try {
+      const body: Record<string, unknown> = searchQuery ? { q: searchQuery } : { lat, lng };
       const res = await fetch('/api/telegram/nearby', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) { setLoading(false); return; }
       const { masters: data, salons: salonsData } = await res.json();
@@ -94,18 +95,22 @@ export default function MiniAppMapPage() {
       });
 
       setMasters(rows);
-      setMarkers(
-        rows
-          .filter((m) => m.latitude != null && m.longitude != null)
-          .map((m) => ({
-            lat: m.latitude!,
-            lng: m.longitude!,
-            name: m.display_name ?? m.full_name ?? 'Мастер',
-            rating: Number(m.rating ?? 0),
-            specialization: m.specialization ?? undefined,
-            masterId: m.id,
-          })),
-      );
+      const newMarkers = rows
+        .filter((m) => m.latitude != null && m.longitude != null)
+        .map((m) => ({
+          lat: m.latitude!,
+          lng: m.longitude!,
+          name: m.display_name ?? m.full_name ?? 'Мастер',
+          rating: Number(m.rating ?? 0),
+          specialization: m.specialization ?? undefined,
+          masterId: m.id,
+        }));
+      setMarkers(newMarkers);
+
+      // Pan map to first search result if it's from a name search
+      if (searchQuery && newMarkers.length > 0) {
+        setCenter([newMarkers[0].lat, newMarkers[0].lng]);
+      }
     } finally {
       setLoading(false);
     }
@@ -197,15 +202,24 @@ export default function MiniAppMapPage() {
     }
   }
 
-  const filteredMarkers = query.trim()
-    ? markers.filter((m) => {
-        const q = query.toLowerCase();
-        return (
-          m.name.toLowerCase().includes(q) ||
-          (m.specialization ?? '').toLowerCase().includes(q)
-        );
-      })
-    : markers;
+  // Debounced name search — fetches from API when query >= 2 chars
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
+      // Restore geo-based results
+      if (trimmed.length === 0 && center) {
+        fetchMasters(center[0], center[1]);
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchMasters(center[0], center[1], trimmed);
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  const filteredMarkers = markers;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
