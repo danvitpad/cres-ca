@@ -469,8 +469,8 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
 }
 
 function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
-  const [notifyWeb, setNotifyWeb] = useState((master as Record<string, unknown>).notify_web !== false);
-  const [notifyTelegram, setNotifyTelegram] = useState((master as Record<string, unknown>).notify_telegram !== false);
+  const [notifyWeb, setNotifyWeb] = useState((master as unknown as Record<string, unknown>).notify_web !== false);
+  const [notifyTelegram, setNotifyTelegram] = useState((master as unknown as Record<string, unknown>).notify_telegram !== false);
   const [saving, setSaving] = useState(false);
 
   const handleToggle = async (field: 'notify_web' | 'notify_telegram', value: boolean) => {

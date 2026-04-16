@@ -30,7 +30,7 @@ export function ReminderPopup() {
     if (!master?.id) return;
 
     // Check if web notifications are enabled
-    const notifyWeb = (master as Record<string, unknown>).notify_web;
+    const notifyWeb = (master as unknown as Record<string, unknown>).notify_web;
     if (notifyWeb === false) return;
 
     const supabase = createClient();
