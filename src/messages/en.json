@@ -413,7 +413,8 @@
       "myProfile": "My profile",
       "personalSettings": "Personal settings",
       "helpSupport": "Help & support",
-      "signOut": "Sign out"
+      "signOut": "Sign out",
+      "defaultName": "User"
     }
   },
   "calendar": {
@@ -1652,7 +1653,7 @@
     "inviteCopied": "Copied",
     "inviteShareTelegram": "Share on Telegram",
     "inviteShareText": "Book with me on CRES-CA",
-    "inviteSkip": "Skip — go to calendar",
+    "inviteSkip": "Go to dashboard",
     "businessNameTitle": "What is your business called?",
     "businessNameDesc": "This is the name your clients will see. You can add legal details later.",
     "businessName": "Business name",
@@ -1697,7 +1698,17 @@
     "categoryPrimary": "Primary",
     "onboardingComplete": "All set!",
     "onboardingCompleteDesc": "Your business profile is ready. Let's configure your services and schedule.",
-    "goToDashboard": "Go to dashboard"
+    "goToDashboard": "Go to dashboard",
+    "specializationDesc": "Choose the specialization that best fits you — this helps clients find you",
+    "servicesTitle": "Popular services",
+    "servicesDesc": "We picked popular services for your niche. Remove what you don't need or keep as is — you can edit later.",
+    "servicesEmpty": "Skip this step — you can add services manually in the Services section.",
+    "servicesCreating": "Creating...",
+    "servicesFinish": "Finish",
+    "servicesError": "Error",
+    "serviceMinutes": "min",
+    "serviceCurrency": "UAH",
+    "serviceOnRequest": "on request"
   },
   "team": {
     "sectionTitle": "Team",

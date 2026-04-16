@@ -30,12 +30,17 @@ export interface MasterData {
 }
 
 export function useMaster() {
-  const { userId } = useAuthStore();
+  const { userId, isLoading: authLoading } = useAuthStore();
   const [master, setMaster] = useState<MasterData | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function refetch() {
-    if (!userId) return;
+    if (!userId) {
+      setMaster(null);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const supabase = createClient();
     const { data } = await supabase
       .from('masters')
@@ -43,12 +48,14 @@ export function useMaster() {
       .eq('profile_id', userId)
       .single();
     if (data) setMaster(data as unknown as MasterData);
+    else setMaster(null);
     setLoading(false);
   }
 
   useEffect(() => {
+    if (authLoading) return;
     refetch();
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { master, loading, refetch };
+  return { master, loading: loading || authLoading, refetch };
 }

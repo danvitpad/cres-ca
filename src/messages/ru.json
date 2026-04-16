@@ -413,7 +413,8 @@
       "myProfile": "Мой профиль",
       "personalSettings": "Личные настройки",
       "helpSupport": "Помощь и поддержка",
-      "signOut": "Выйти"
+      "signOut": "Выйти",
+      "defaultName": "Пользователь"
     }
   },
   "calendar": {
@@ -1652,7 +1653,7 @@
     "inviteCopied": "Скопировано",
     "inviteShareTelegram": "Поделиться в Telegram",
     "inviteShareText": "Запишитесь ко мне через CRES-CA",
-    "inviteSkip": "Пропустить — перейти в календарь",
+    "inviteSkip": "Перейти к рабочей панели",
     "businessNameTitle": "Как называется ваша компания?",
     "businessNameDesc": "Это название будут видеть ваши клиенты. Наименование юридического лица можно указать позже.",
     "businessName": "Название компании",
@@ -1697,7 +1698,17 @@
     "categoryPrimary": "Основной",
     "onboardingComplete": "Всё готово!",
     "onboardingCompleteDesc": "Ваш бизнес-профиль создан. Давайте настроим услуги и расписание.",
-    "goToDashboard": "Перейти в панель управления"
+    "goToDashboard": "Перейти в панель управления",
+    "specializationDesc": "Выберите наиболее подходящую специализацию — это поможет клиентам найти вас",
+    "servicesTitle": "Популярные услуги",
+    "servicesDesc": "Мы подобрали популярные услуги для вашей ниши. Уберите ненужные или оставьте как есть — можно будет править позже.",
+    "servicesEmpty": "Пропустите шаг — добавите услуги вручную в разделе «Услуги».",
+    "servicesCreating": "Создаём...",
+    "servicesFinish": "Завершить",
+    "servicesError": "Ошибка",
+    "serviceMinutes": "мин",
+    "serviceCurrency": "₴",
+    "serviceOnRequest": "по запросу"
   },
   "team": {
     "sectionTitle": "Команда",

@@ -1,15 +1,17 @@
 /** --- YAML
  * name: Create Business Wizard
- * description: Fresha-style 5-step onboarding wizard for creating a new business with map and completion screen
+ * description: Fresha-style onboarding wizard for creating a new business with map and completion screen. Steps adapt based on user role and location type.
+ * created: 2026-04-13
+ * updated: 2026-04-16
  * --- */
 
 'use client';
 
-import { useState, useCallback, useRef, Suspense } from 'react';
+import { useState, useCallback, useRef, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
-import { getSpecializations } from '@/lib/verticals/specializations';
+import { getDefaultServices, getServicesForCategories, type DefaultService } from '@/lib/verticals/default-services';
+import { getSpecializations, getSpecializationsForCategories } from '@/lib/verticals/specializations';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -47,8 +49,6 @@ import {
 
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });
 
-const TOTAL_STEPS = 6;
-
 const CATEGORIES = [
   { key: 'categoryHairdressing', icon: Scissors },
   { key: 'categoryNails', icon: Sparkles },
@@ -83,6 +83,18 @@ interface GeoResult {
   lon: string;
 }
 
+/**
+ * Steps in the wizard (logical step numbers):
+ * 1 — Business name + photos + website
+ * 2 — Categories (sub-categories within vertical)
+ * 3 — Specialization (derived from selected categories)
+ * 4 — Account type: solo / team (SKIPPED if role known from registration)
+ * 5 — Location type
+ * 6 — Address + map (SKIPPED if not physical)
+ * 7 — Popular services (derived from selected categories)
+ * 8 — Completion / invite screen
+ */
+
 export default function CreateBusinessPage() {
   return (
     <Suspense fallback={null}>
@@ -93,22 +105,28 @@ export default function CreateBusinessPage() {
 
 function CreateBusinessWizard() {
   const t = useTranslations('onboarding');
-  const tc = useTranslations('common');
   const router = useRouter();
   const searchParams = useSearchParams();
   const vertical = searchParams.get('vertical');
+
+  // Detect user role from Supabase metadata to skip solo/team step
+  const [userRole, setUserRole] = useState<string | null>(null);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      const role = data.user?.user_metadata?.role as string | undefined;
+      if (role) setUserRole(role);
+    });
+  }, []);
+
+  const skipTeamStep = userRole === 'master' || userRole === 'salon_admin';
+  const inferredTeamType = userRole === 'salon_admin' ? 'team' : 'solo';
+
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  const initialServices = getDefaultServices(vertical);
-  const specializationOptions = getSpecializations(vertical);
-  const [specialization, setSpecialization] = useState<string | null>(specializationOptions[0] ?? null);
-  const [selectedServiceKeys, setSelectedServiceKeys] = useState<Set<string>>(
-    () => new Set(initialServices.map((s) => s.name)),
-  );
 
   // Form state
   const [businessName, setBusinessName] = useState('');
@@ -129,30 +147,86 @@ function CreateBusinessWizard() {
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const effectiveSteps = locationType === 'locationPhysical' ? TOTAL_STEPS : TOTAL_STEPS - 1;
+  // Specializations derived from selected categories
+  const specializationOptions = selectedCategories.length > 0
+    ? getSpecializationsForCategories(selectedCategories)
+    : getSpecializations(vertical);
+  const [specialization, setSpecialization] = useState<string | null>(null);
+
+  // Services derived from selected categories
+  const categoryServices = selectedCategories.length > 0
+    ? getServicesForCategories(selectedCategories)
+    : getDefaultServices(vertical);
+  const [selectedServiceKeys, setSelectedServiceKeys] = useState<Set<string>>(new Set());
+
+  // Re-sync selected services when categories change
+  const prevCategoriesRef = useRef<string[]>([]);
+  useEffect(() => {
+    const prev = prevCategoriesRef.current;
+    const changed = prev.length !== selectedCategories.length || prev.some((c, i) => c !== selectedCategories[i]);
+    if (changed) {
+      prevCategoriesRef.current = selectedCategories;
+      const newServices = selectedCategories.length > 0
+        ? getServicesForCategories(selectedCategories)
+        : getDefaultServices(vertical);
+      setSelectedServiceKeys(new Set(newServices.map((s) => s.name)));
+      // Reset specialization when categories change
+      const newSpecs = selectedCategories.length > 0
+        ? getSpecializationsForCategories(selectedCategories)
+        : getSpecializations(vertical);
+      if (newSpecs.length > 0 && (!specialization || !newSpecs.includes(specialization))) {
+        setSpecialization(newSpecs[0]);
+      }
+    }
+  }, [selectedCategories, vertical, specialization]);
+
+  // Build the ordered list of visible steps (skipping where needed)
+  const buildStepSequence = useCallback(() => {
+    const steps: number[] = [1, 2, 3]; // name, categories, specialization
+    if (!skipTeamStep) steps.push(4); // solo/team
+    steps.push(5); // location type
+    if (locationType === 'locationPhysical') steps.push(6); // address
+    steps.push(7); // services
+    return steps;
+  }, [skipTeamStep, locationType]);
+
+  const stepSequence = buildStepSequence();
+  const totalVisibleSteps = stepSequence.length;
+  const currentVisibleIndex = stepSequence.indexOf(step);
+  const visibleStep = currentVisibleIndex >= 0 ? currentVisibleIndex + 1 : totalVisibleSteps;
+  const isCompletion = step === 8;
 
   const canContinue = () => {
     switch (step) {
       case 1: return businessName.trim().length > 0;
       case 2: return selectedCategories.length > 0;
-      case 3: return teamType !== null;
-      case 4: return locationType !== null;
-      case 5: return selectedAddress !== null;
-      case 6: return true;
+      case 3: return specialization !== null;
+      case 4: return teamType !== null;
+      case 5: return locationType !== null;
+      case 6: return selectedAddress !== null;
+      case 7: return true;
       default: return false;
     }
   };
 
+  const getNextStep = (current: number): number => {
+    const idx = stepSequence.indexOf(current);
+    if (idx === -1 || idx >= stepSequence.length - 1) return 8; // completion
+    return stepSequence[idx + 1];
+  };
+
+  const getPrevStep = (current: number): number | null => {
+    const idx = stepSequence.indexOf(current);
+    if (idx <= 0) return null;
+    return stepSequence[idx - 1];
+  };
+
   const handleContinue = () => {
-    if (step === 4 && locationType !== 'locationPhysical') {
-      setStep(6); // skip address, go to services
+    if (step === 7) {
+      // Last content step -> submit, then completion
       return;
     }
-    if (step < TOTAL_STEPS) {
-      setStep(step + 1);
-    } else {
-      setStep(TOTAL_STEPS + 1); // completion
-    }
+    setStep(getNextStep(step));
   };
 
   const toggleService = (name: string) => {
@@ -165,12 +239,13 @@ function CreateBusinessWizard() {
   };
 
   const handleBack = () => {
-    if (step === TOTAL_STEPS + 1) {
-      setStep(6);
-    } else if (step === 6 && locationType !== 'locationPhysical') {
-      setStep(4);
-    } else if (step > 1) {
-      setStep(step - 1);
+    if (isCompletion) {
+      setStep(7);
+      return;
+    }
+    const prev = getPrevStep(step);
+    if (prev !== null) {
+      setStep(prev);
     } else {
       router.back();
     }
@@ -231,14 +306,15 @@ function CreateBusinessWizard() {
     setSubmitError(null);
     try {
       const { avatarUrl, coverUrl } = await uploadMedia();
-      const services: DefaultService[] = initialServices.filter((s) => selectedServiceKeys.has(s.name));
+      const services: DefaultService[] = categoryServices.filter((s) => selectedServiceKeys.has(s.name));
+      const effectiveTeamType = skipTeamStep ? inferredTeamType : (teamType ?? 'solo');
       const res = await fetch('/api/business/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: businessName,
           vertical,
-          teamType: teamType ?? 'solo',
+          teamType: effectiveTeamType,
           categories: selectedCategories,
           address: selectedAddress?.display_name ?? null,
           latitude: selectedAddress ? parseFloat(selectedAddress.lat) : null,
@@ -255,7 +331,7 @@ function CreateBusinessWizard() {
         throw new Error(j.error ?? 'failed');
       }
       if (j.inviteCode) setInviteCode(j.inviteCode);
-      setStep(TOTAL_STEPS + 1); // show completion / invite screen
+      setStep(8); // show completion / invite screen
       setSubmitting(false);
     } catch (e) {
       setSubmitError(e instanceof Error ? e.message : 'unknown');
@@ -313,27 +389,27 @@ function CreateBusinessWizard() {
     }
   };
 
-  const visibleStep = (() => {
-    if (step > TOTAL_STEPS) return effectiveSteps;
-    if (step === 6 && locationType !== 'locationPhysical') return 5;
-    return step;
-  })();
-  const progress = step <= TOTAL_STEPS ? (visibleStep / effectiveSteps) * 100 : 100;
-  const isCompletion = step === TOTAL_STEPS + 1;
+  // Suppress unused var warning
+  void isSearching;
 
   return (
     <div className="fixed inset-0 flex flex-col bg-background">
       {/* Top bar with progress — hidden on completion */}
       {!isCompletion && (
         <div className="shrink-0 border-b border-border">
-          {/* Progress bar */}
-          <div className="h-1 bg-muted">
-            <motion.div
-              className="h-full bg-primary"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-            />
+          {/* Segmented progress bar */}
+          <div className="flex h-1 gap-0.5 bg-muted px-0.5 pt-0.5">
+            {Array.from({ length: totalVisibleSteps }, (_, i) => (
+              <motion.div
+                key={i}
+                className={`h-full flex-1 rounded-full ${
+                  i < visibleStep ? 'bg-primary' : 'bg-muted-foreground/15'
+                }`}
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
+              />
+            ))}
           </div>
 
           {/* Navigation bar */}
@@ -347,7 +423,7 @@ function CreateBusinessWizard() {
             </button>
 
             <span className="text-sm text-muted-foreground">
-              {t('step', { current: visibleStep, total: effectiveSteps })}
+              {t('step', { current: visibleStep, total: totalVisibleSteps })}
             </span>
 
             <div className="flex items-center gap-2">
@@ -357,7 +433,7 @@ function CreateBusinessWizard() {
               >
                 {t('close')}
               </button>
-              {step !== 6 && (
+              {step !== 7 && (
                 <button
                   onClick={handleContinue}
                   disabled={!canContinue()}
@@ -465,27 +541,6 @@ function CreateBusinessWizard() {
                       autoFocus
                     />
                   </div>
-                  {specializationOptions.length > 0 && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">{t('specializationLabel')}</label>
-                      <div className="flex flex-wrap gap-2">
-                        {specializationOptions.map((s) => (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setSpecialization(s)}
-                            className={`rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
-                              specialization === s
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                            }`}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
@@ -551,9 +606,39 @@ function CreateBusinessWizard() {
               </StepWrapper>
             )}
 
-            {/* Step 3: Account type */}
+            {/* Step 3: Specialization (derived from selected categories) */}
             {step === 3 && (
               <StepWrapper key="step3">
+                <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                  {t('specializationLabel')}
+                </h1>
+                <p className="mt-2 text-muted-foreground">{t('specializationDesc')}</p>
+
+                {specializationOptions.length > 0 && (
+                  <div className="mt-8 flex flex-wrap gap-2">
+                    {specializationOptions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSpecialization(s)}
+                        className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${
+                          specialization === s
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </StepWrapper>
+            )}
+
+            {/* Step 4: Account type (SKIPPED if role known from registration) */}
+            {step === 4 && (
+              <StepWrapper key="step4">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
                   {t('accountTypeStepTitle')}
@@ -588,9 +673,9 @@ function CreateBusinessWizard() {
               </StepWrapper>
             )}
 
-            {/* Step 4: Location type */}
-            {step === 4 && (
-              <StepWrapper key="step4">
+            {/* Step 5: Location type */}
+            {step === 5 && (
+              <StepWrapper key="step5">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
                   {t('locationTitle')}
@@ -621,9 +706,9 @@ function CreateBusinessWizard() {
               </StepWrapper>
             )}
 
-            {/* Step 5: Address with map */}
-            {step === 5 && (
-              <StepWrapper key="step5">
+            {/* Step 6: Address with map */}
+            {step === 6 && (
+              <StepWrapper key="step6">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
                   {t('addressTitle')}
@@ -705,22 +790,22 @@ function CreateBusinessWizard() {
               </StepWrapper>
             )}
 
-            {/* Step 6: Default services preview */}
-            {step === 6 && (
-              <StepWrapper key="step6">
+            {/* Step 7: Default services preview (derived from selected categories) */}
+            {step === 7 && (
+              <StepWrapper key="step7">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                  Популярные услуги
+                  {t('servicesTitle')}
                 </h1>
                 <p className="mt-2 text-muted-foreground">
-                  {initialServices.length > 0
-                    ? 'Мы подобрали популярные услуги для твоей ниши. Убери ненужные или оставь как есть — можно будет править позже.'
-                    : 'Пропусти шаг — добавишь услуги вручную в разделе «Услуги».'}
+                  {categoryServices.length > 0
+                    ? t('servicesDesc')
+                    : t('servicesEmpty')}
                 </p>
 
-                {initialServices.length > 0 && (
+                {categoryServices.length > 0 && (
                   <div className="mt-8 space-y-2">
-                    {initialServices.map((s) => {
+                    {categoryServices.map((s) => {
                       const checked = selectedServiceKeys.has(s.name);
                       return (
                         <button
@@ -744,8 +829,8 @@ function CreateBusinessWizard() {
                             <span className="font-medium">{s.name}</span>
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {s.duration_minutes > 0 && `${s.duration_minutes} мин · `}
-                            {s.price > 0 ? `${s.price}₴` : 'по запросу'}
+                            {s.duration_minutes > 0 && `${s.duration_minutes} ${t('serviceMinutes')} · `}
+                            {s.price > 0 ? `${s.price}${t('serviceCurrency')}` : t('serviceOnRequest')}
                           </div>
                         </button>
                       );
@@ -759,11 +844,11 @@ function CreateBusinessWizard() {
                     disabled={submitting}
                     className="rounded-full bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity disabled:opacity-40"
                   >
-                    {submitting ? 'Создаём…' : 'Завершить'}
+                    {submitting ? t('servicesCreating') : t('servicesFinish')}
                   </button>
                 </div>
                 {submitError && (
-                  <p className="mt-3 text-right text-xs text-rose-500">Ошибка: {submitError}</p>
+                  <p className="mt-3 text-right text-xs text-rose-500">{t('servicesError')}: {submitError}</p>
                 )}
               </StepWrapper>
             )}
@@ -774,7 +859,7 @@ function CreateBusinessWizard() {
                 inviteCode={inviteCode}
                 copied={copied}
                 setCopied={setCopied}
-                onGoDashboard={() => router.push('/calendar')}
+                onGoDashboard={() => router.push('/dashboard')}
                 t={t}
               />
             )}

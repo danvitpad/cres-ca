@@ -541,7 +541,7 @@ export default function DashboardOverviewPage() {
       <div style={{
         maxWidth: 1184,
         margin: '0 auto',
-        padding: '32px 0 96px',
+        padding: '32px 40px 96px',
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: 32,
