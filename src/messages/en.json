@@ -361,6 +361,10 @@
     "greeting": "Good afternoon",
     "greetingMorning": "Good morning",
     "greetingEvening": "Good evening",
+    "clientRetention": "Haven't visited",
+    "noLostClients": "All clients are active",
+    "totalVisits": "{n} visits",
+    "daysAgo": "days ago",
     "nav": {
       "dashboard": "Dashboard",
       "calendar": "Calendar",

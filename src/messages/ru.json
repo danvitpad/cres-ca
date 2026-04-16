@@ -361,6 +361,10 @@
     "greeting": "Добрый день",
     "greetingMorning": "Доброе утро",
     "greetingEvening": "Добрый вечер",
+    "clientRetention": "Давно не были",
+    "noLostClients": "Все клиенты активны",
+    "totalVisits": "{n} визитов",
+    "daysAgo": "дн. назад",
     "nav": {
       "dashboard": "Главная",
       "calendar": "Календарь",
