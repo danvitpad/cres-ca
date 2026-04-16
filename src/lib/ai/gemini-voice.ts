@@ -1,11 +1,16 @@
 /** --- YAML
- * name: Gemini Voice Intent Parser
- * description: Sends Telegram voice .ogg to Gemini 2.5 Flash, returns structured intent (reminder, appointment, expense, client_note, query). One API call — audio natively understood.
+ * name: Voice Intent Parser
+ * description: Sends Telegram voice to AI (Gemini chain with OpenRouter fallback), returns structured intent. Handles 503/429 with model fallback.
  * created: 2026-04-16
+ * updated: 2026-04-16
  * --- */
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'] as const;
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+
+// Gemini models: try in order. 2.5-flash (best), 1.5-flash (stable fallback), 2.0-flash-lite (lightweight)
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'] as const;
+
 function geminiUrl(model: string) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 }
@@ -74,16 +79,11 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
   const now = new Date().toISOString();
   const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now);
 
-  const requestBody = JSON.stringify({
+  const geminiBody = JSON.stringify({
     contents: [{
       parts: [
         { text: prompt },
-        {
-          inline_data: {
-            mime_type: mimeType,
-            data: audioBase64,
-          },
-        },
+        { inline_data: { mime_type: mimeType, data: audioBase64 } },
       ],
     }],
     generationConfig: {
@@ -93,38 +93,101 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
     },
   });
 
-  // Try each model with retry on 503
-  for (const model of MODELS) {
+  // ── Try Gemini models ──
+  const errors: string[] = [];
+
+  for (const model of GEMINI_MODELS) {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const response = await fetch(geminiUrl(model), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: requestBody,
-      });
+      try {
+        const response = await fetch(geminiUrl(model), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: geminiBody,
+        });
 
-      if (response.status === 503) {
-        // Wait 1s then retry or try next model
-        await new Promise((r) => setTimeout(r, 1000));
-        continue;
+        if (response.status === 503 || response.status === 429) {
+          const retryAfter = response.status === 429 ? 3000 : 1500;
+          await new Promise((r) => setTimeout(r, retryAfter));
+          continue;
+        }
+
+        if (!response.ok) {
+          const err = await response.text();
+          errors.push(`${model}: ${response.status}`);
+          break; // try next model
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) {
+          errors.push(`${model}: empty response`);
+          break;
+        }
+
+        console.log(`[voice] Success with ${model}`);
+        return JSON.parse(text) as VoiceIntent;
+      } catch (e) {
+        errors.push(`${model}: ${(e as Error).message}`);
+        break;
       }
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Gemini API error ${response.status}: ${err}`);
-      }
-
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!text) {
-        throw new Error('Empty response from Gemini');
-      }
-
-      return JSON.parse(text) as VoiceIntent;
     }
   }
 
-  throw new Error('All Gemini models unavailable (503)');
+  // ── Fallback: OpenRouter (text-only, no audio — but we try with data URI) ──
+  if (OPENROUTER_API_KEY) {
+    console.log('[voice] All Gemini failed, trying OpenRouter');
+    try {
+      const result = await parseViaOpenRouter(audioBase64, mimeType, prompt);
+      if (result) return result;
+    } catch (e) {
+      errors.push(`openrouter: ${(e as Error).message}`);
+    }
+  }
+
+  throw new Error(`All models failed: ${errors.join('; ')}`);
+}
+
+/** OpenRouter fallback — uses a multimodal model that accepts audio as data URI */
+async function parseViaOpenRouter(audioBase64: string, mimeType: string, prompt: string): Promise<VoiceIntent | null> {
+  // Use google/gemini-2.0-flash-exp:free via OpenRouter (different quota pool)
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.0-flash-exp:free',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: { url: `data:${mimeType};base64,${audioBase64}` },
+            },
+          ],
+        },
+      ],
+      temperature: 0.1,
+      max_tokens: 512,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenRouter ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error('Empty OpenRouter response');
+
+  // Clean potential markdown wrapping
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  console.log('[voice] Success via OpenRouter');
+  return JSON.parse(cleaned) as VoiceIntent;
 }
 
 /**
@@ -133,7 +196,6 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
 export async function downloadTelegramFile(fileId: string): Promise<{ base64: string; mimeType: string }> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN!;
 
-  // Step 1: get file path
   const fileInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
   const fileData = await fileInfo.json();
   const filePath = fileData.result?.file_path;
@@ -142,14 +204,11 @@ export async function downloadTelegramFile(fileId: string): Promise<{ base64: st
     throw new Error('Could not get Telegram file path');
   }
 
-  // Step 2: download file
   const fileUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
   const fileResponse = await fetch(fileUrl);
   const buffer = await fileResponse.arrayBuffer();
   const base64 = Buffer.from(buffer).toString('base64');
 
-  // Telegram voice = .oga (Opus in Ogg), Gemini accepts audio/ogg
-  const mimeType = filePath.endsWith('.oga') || filePath.endsWith('.ogg') ? 'audio/ogg' : 'audio/mpeg';
-
-  return { base64, mimeType };
+  const detectedMime = filePath.endsWith('.oga') || filePath.endsWith('.ogg') ? 'audio/ogg' : 'audio/mpeg';
+  return { base64, mimeType: detectedMime };
 }
