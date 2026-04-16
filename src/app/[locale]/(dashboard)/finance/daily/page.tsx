@@ -63,7 +63,7 @@ export default function DailySalesPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [dayData, setDayData] = useState<DayData>({ sales: 0, returns: 0, total: 0, serviceCount: 0, productCount: 0 });
   const [weekData, setWeekData] = useState<{ label: string; total: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   const isToday = useMemo(() => {
     const now = new Date();
@@ -74,6 +74,8 @@ export default function DailySalesPage() {
     return format(selectedDate, 'EEEE d MMM, yyyy', { locale: dfLocale });
   }, [selectedDate, dfLocale]);
 
+  const [methodBreakdown, setMethodBreakdown] = useState<{ method: string; collected: number; refunded: number; tips: number }[]>([]);
+
   const loadDayData = useCallback(async () => {
     if (!master?.id) return;
     setLoading(true);
@@ -83,18 +85,36 @@ export default function DailySalesPage() {
 
     const { data: payments } = await supabase
       .from('payments')
-      .select('amount, type, status')
+      .select('amount, type, status, payment_method, tip_amount')
+      .eq('master_id', master.id)
       .gte('created_at', dayStart)
       .lte('created_at', dayEnd)
       .eq('status', 'completed');
 
-    const completed = payments || [];
+    const completed = (payments || []) as { amount: number; type: string; status: string; payment_method: string | null; tip_amount: number | null }[];
     const salesTotal = completed.filter(p => p.type !== 'refund').reduce((s, p) => s + Number(p.amount), 0);
     const returnsTotal = completed.filter(p => p.type === 'refund').reduce((s, p) => s + Number(p.amount), 0);
+    // Payment method breakdown
+    const methodMap = new Map<string, { collected: number; refunded: number; tips: number }>();
+    for (const p of completed) {
+      const m = p.payment_method || 'other';
+      const cur = methodMap.get(m) || { collected: 0, refunded: 0, tips: 0 };
+      if (p.type === 'refund') {
+        cur.refunded += Number(p.amount);
+      } else {
+        cur.collected += Number(p.amount);
+      }
+      cur.tips += Number(p.tip_amount ?? 0);
+      methodMap.set(m, cur);
+    }
+    setMethodBreakdown(
+      Array.from(methodMap.entries()).map(([method, v]) => ({ method, ...v }))
+    );
 
     const { data: appts } = await supabase
       .from('appointments')
       .select('id, status, price')
+      .eq('master_id', master.id)
       .gte('starts_at', dayStart)
       .lte('starts_at', dayEnd)
       .eq('status', 'completed');
@@ -116,6 +136,7 @@ export default function DailySalesPage() {
       const { data: dp } = await supabase
         .from('payments')
         .select('amount')
+        .eq('master_id', master.id)
         .gte('created_at', ds)
         .lte('created_at', de)
         .eq('status', 'completed');
@@ -140,12 +161,20 @@ export default function DailySalesPage() {
     { label: t('giftToClient'), sales: 0, returns: 0, total: 0 },
   ];
 
+  const methodLabels: Record<string, string> = {
+    cash: t('cash'), card: t('card') ?? 'Card', online: t('online') ?? 'Online',
+    gift_card: t('giftCardRedemption'), other: t('other'),
+  };
+
   const cashFlowRows = [
-    { label: t('cash'), collected: 0, refunded: 0 },
-    { label: t('other'), collected: 0, refunded: 0 },
-    { label: t('giftCardRedemption'), collected: 0, refunded: 0 },
+    ...methodBreakdown.map(m => ({
+      label: methodLabels[m.method] || m.method,
+      collected: m.collected,
+      refunded: m.refunded,
+    })),
+    ...(methodBreakdown.length === 0 ? [{ label: t('cash'), collected: 0, refunded: 0 }, { label: t('other'), collected: 0, refunded: 0 }] : []),
     { label: t('collectedPayments'), collected: dayData.total, refunded: 0 },
-    { label: t('ofWhichTips'), collected: 0, refunded: 0 },
+    { label: t('ofWhichTips'), collected: methodBreakdown.reduce((s, m) => s + m.tips, 0), refunded: 0 },
   ];
 
   const weekMax = Math.max(...weekData.map(d => d.total), 1);

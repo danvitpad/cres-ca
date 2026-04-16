@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppMasterDetail
- * description: Mini App master profile — avatar, rating, services list, book CTA. Dark theme.
+ * description: Mini App master profile — avatar, rating, services, portfolio gallery, reviews, working hours, book CTA. Dark theme.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-16
  * --- */
 
 'use client';
@@ -23,6 +23,22 @@ interface ServiceItem {
   description: string | null;
 }
 
+interface PortfolioItem {
+  id: string;
+  image_url: string;
+  caption: string | null;
+}
+
+interface ReviewItem {
+  id: string;
+  score: number;
+  comment: string | null;
+  created_at: string;
+  reviewer_name: string | null;
+}
+
+type WorkingHoursMap = Record<string, { start: string; end: string } | null>;
+
 interface MasterDetail {
   id: string;
   display_name: string | null;
@@ -34,7 +50,10 @@ interface MasterDetail {
   total_reviews: number;
   avatar_url: string | null;
   full_name: string | null;
+  working_hours: WorkingHoursMap | null;
   services: ServiceItem[];
+  portfolio: PortfolioItem[];
+  reviews: ReviewItem[];
 }
 
 export default function MiniAppMasterDetailPage() {
@@ -50,7 +69,7 @@ export default function MiniAppMasterDetailPage() {
     (async () => {
       const { data } = await supabase
         .from('masters')
-        .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, profile:profiles(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, is_active)')
+        .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, profile:profiles(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, is_active)')
         .eq('id', params.id)
         .eq('is_active', true)
         .maybeSingle();
@@ -68,10 +87,49 @@ export default function MiniAppMasterDetailPage() {
         rating: number | null;
         total_reviews: number | null;
         avatar_url: string | null;
+        working_hours: WorkingHoursMap | null;
         profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
         services: Array<ServiceItem & { is_active: boolean }>;
       };
       const p = Array.isArray(m.profile) ? m.profile[0] : m.profile;
+
+      // Load portfolio
+      const { data: portfolioData } = await supabase
+        .from('master_portfolio')
+        .select('id, image_url, caption')
+        .eq('master_id', params.id)
+        .eq('is_published', true)
+        .order('sort_order', { ascending: false })
+        .limit(12);
+
+      // Load reviews
+      const { data: reviewsData } = await supabase
+        .from('reviews')
+        .select('id, score, comment, created_at, reviewer:profiles!reviewer_id(full_name)')
+        .eq('target_id', params.id)
+        .eq('target_type', 'master')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      const reviews: ReviewItem[] = (reviewsData ?? []).map((r: unknown) => {
+        const rv = r as {
+          id: string;
+          score: number;
+          comment: string | null;
+          created_at: string;
+          reviewer: { full_name: string | null } | { full_name: string | null }[] | null;
+        };
+        const reviewer = Array.isArray(rv.reviewer) ? rv.reviewer[0] : rv.reviewer;
+        return {
+          id: rv.id,
+          score: rv.score,
+          comment: rv.comment,
+          created_at: rv.created_at,
+          reviewer_name: reviewer?.full_name ?? null,
+        };
+      });
+
       setMaster({
         id: m.id,
         display_name: m.display_name,
@@ -83,7 +141,10 @@ export default function MiniAppMasterDetailPage() {
         total_reviews: Number(m.total_reviews ?? 0),
         avatar_url: m.avatar_url ?? p?.avatar_url ?? null,
         full_name: p?.full_name ?? null,
+        working_hours: m.working_hours,
         services: (m.services ?? []).filter((s) => s.is_active),
+        portfolio: (portfolioData ?? []) as PortfolioItem[],
+        reviews,
       });
       setLoading(false);
     })();
@@ -177,7 +238,7 @@ export default function MiniAppMasterDetailPage() {
                 <button
                   onClick={() => {
                     haptic('light');
-                    router.push(`/book?master_id=${master.id}&service_id=${s.id}`);
+                    router.push(`/telegram/book?master_id=${master.id}&service_id=${s.id}`);
                   }}
                   className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left active:scale-[0.99] transition-transform"
                 >
@@ -198,8 +259,81 @@ export default function MiniAppMasterDetailPage() {
         )}
       </div>
 
+      {/* Portfolio gallery */}
+      {master.portfolio.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold">Портфолио</h2>
+          <div className="grid grid-cols-3 gap-1.5 overflow-hidden rounded-2xl">
+            {master.portfolio.map((item) => (
+              <div key={item.id} className="relative aspect-square overflow-hidden bg-white/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.image_url} alt={item.caption ?? ''} className="size-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Reviews */}
+      {master.reviews.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold">
+            Отзывы <span className="text-white/40">({master.total_reviews})</span>
+          </h2>
+          <ul className="space-y-2">
+            {master.reviews.map((r) => (
+              <li key={r.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-[13px] font-semibold">{r.reviewer_name ?? 'Клиент'}</p>
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`size-3 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-white/15'}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                {r.comment && (
+                  <p className="mt-2 text-[12px] leading-relaxed text-white/65">{r.comment}</p>
+                )}
+                <p className="mt-1.5 text-[10px] text-white/30">
+                  {new Date(r.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Working hours */}
+      {master.working_hours && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold">Часы работы</h2>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <ul className="space-y-1.5">
+              {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => {
+                const dayNames: Record<string, string> = {
+                  monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср', thursday: 'Чт',
+                  friday: 'Пт', saturday: 'Сб', sunday: 'Вс',
+                };
+                const h = master.working_hours?.[day];
+                return (
+                  <li key={day} className="flex items-center justify-between text-[12px]">
+                    <span className="text-white/60">{dayNames[day]}</span>
+                    <span className={h ? 'font-semibold' : 'text-white/30'}>
+                      {h ? `${h.start} — ${h.end}` : 'Выходной'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+
       <button
-        onClick={() => { haptic('selection'); router.push(`/book?master_id=${master.id}`); }}
+        onClick={() => { haptic('selection'); router.push(`/telegram/book?master_id=${master.id}`); }}
         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform"
       >
         <Calendar className="size-4" /> Записаться

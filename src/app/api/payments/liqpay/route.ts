@@ -47,13 +47,21 @@ export async function POST(request: Request) {
     .select('appointment_id')
     .single();
 
-  // If payment succeeded, confirm the appointment
+  // If payment succeeded, confirm the appointment and log receipt URL
   if (paymentStatus === 'completed' && payment?.appointment_id) {
     await supabase
       .from('appointments')
       .update({ status: 'confirmed' })
       .eq('id', payment.appointment_id)
       .eq('status', 'booked');
+
+    // Store receipt reference for the client (receipt is generated on-demand at /api/receipts/:apt_id)
+    await supabase
+      .from('payments')
+      .update({
+        description: `LiqPay tx:${callback.transaction_id} | receipt: /api/receipts/${payment.appointment_id}`,
+      })
+      .eq('id', orderId);
   }
 
   // Handle subscription payments

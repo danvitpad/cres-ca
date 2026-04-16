@@ -197,7 +197,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => setMounted(true), []);
 
   const F: FTheme = mounted && resolvedTheme === 'dark' ? F_DARK : F_LIGHT;
-  const masterName = master?.profile?.full_name || t('header.defaultName');
+  const masterName = master?.profile?.full_name || '';
   const sidebarNav = useMemo(() => buildSidebarNav(t), [t]);
 
   /* Auto-open flyout when current route matches a submenu item (like Fresha) */

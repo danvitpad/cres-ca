@@ -167,6 +167,41 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
       }).eq('id', appointment.client_id);
     }
 
+    // Notify client about status change via Telegram
+    if (['confirmed', 'cancelled', 'completed'].includes(newStatus)) {
+      const { data: clientRow } = await supabase
+        .from('clients')
+        .select('profile_id')
+        .eq('id', appointment.client_id)
+        .single();
+      if (clientRow?.profile_id) {
+        const statusMessages: Record<string, { title: string; body: string }> = {
+          confirmed: {
+            title: '✅ Запись подтверждена',
+            body: `${appointment.service?.name ?? 'Услуга'} — ${new Date(appointment.starts_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+          },
+          cancelled: {
+            title: '❌ Запись отменена мастером',
+            body: `${appointment.service?.name ?? 'Услуга'} — ${new Date(appointment.starts_at).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+          },
+          completed: {
+            title: '🎉 Визит завершён',
+            body: `${appointment.service?.name ?? 'Услуга'} — спасибо! Оставьте отзыв в приложении.`,
+          },
+        };
+        const msg = statusMessages[newStatus];
+        if (msg) {
+          await supabase.from('notifications').insert({
+            profile_id: clientRow.profile_id,
+            channel: 'telegram',
+            title: msg.title,
+            body: msg.body,
+            scheduled_for: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
     setUpdating(false);
     toast.success(tc('success'));
     onOpenChange(false);

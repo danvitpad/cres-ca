@@ -30,6 +30,7 @@ interface Payment {
   amount: number;
   type: string;
   status: string;
+  payment_method: string | null;
   created_at: string;
 }
 
@@ -42,6 +43,7 @@ export default function SplitPaymentsPage({ params }: { params: Promise<{ apt_id
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState('');
   const [kind, setKind] = useState<'prepayment' | 'remainder' | 'full'>('prepayment');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'online' | 'other'>('cash');
 
   const load = useCallback(async () => {
     if (!apt_id) return;
@@ -54,7 +56,7 @@ export default function SplitPaymentsPage({ params }: { params: Promise<{ apt_id
         .maybeSingle(),
       supabase
         .from('payments')
-        .select('id, amount, type, status, created_at')
+        .select('id, amount, type, status, payment_method, created_at')
         .eq('appointment_id', apt_id)
         .order('created_at', { ascending: true }),
     ]);
@@ -67,26 +69,27 @@ export default function SplitPaymentsPage({ params }: { params: Promise<{ apt_id
     load();
   }, [load]);
 
-  const paidSuccess = payments.filter((p) => p.status === 'success' && p.type !== 'refund');
+  const paidSuccess = payments.filter((p) => (p.status === 'success' || p.status === 'completed') && p.type !== 'refund');
   const totalPaid = paidSuccess.reduce((a, p) => a + Number(p.amount ?? 0), 0);
   const totalDue = Number(apt?.price ?? 0);
   const balance = totalDue - totalPaid;
 
   async function addPayment() {
-    if (!apt || !master?.profile_id || !amount) return;
+    if (!apt || !master?.id || !amount) return;
     const val = Number(amount);
     if (!val || val <= 0) return;
     const { data, error } = await supabase
       .from('payments')
       .insert({
         appointment_id: apt.id,
-        profile_id: master.profile_id,
+        master_id: master.id,
         amount: val,
         currency: apt.currency,
         type: kind,
-        status: 'success',
+        payment_method: paymentMethod,
+        status: 'completed',
       })
-      .select('id, amount, type, status, created_at')
+      .select('id, amount, type, status, payment_method, created_at')
       .single();
     if (error) {
       toast.error(error.message);
@@ -150,10 +153,23 @@ export default function SplitPaymentsPage({ params }: { params: Promise<{ apt_id
             Полная сумма
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
             <Label>Сумма</Label>
             <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div>
+            <Label>Способ оплаты</Label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'card' | 'online' | 'other')}
+              className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="cash">Наличные</option>
+              <option value="card">Карта</option>
+              <option value="online">Онлайн</option>
+              <option value="other">Другое</option>
+            </select>
           </div>
           <div className="flex items-end">
             <Button onClick={addPayment} disabled={!amount}>
@@ -174,6 +190,11 @@ export default function SplitPaymentsPage({ params }: { params: Promise<{ apt_id
                 <div>
                   <div className="font-medium">
                     {p.type === 'prepayment' ? 'Предоплата' : p.type === 'remainder' ? 'Остаток' : p.type === 'full' ? 'Полная сумма' : p.type}
+                    {p.payment_method && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({p.payment_method === 'cash' ? 'Наличные' : p.payment_method === 'card' ? 'Карта' : p.payment_method === 'online' ? 'Онлайн' : p.payment_method})
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(p.created_at).toLocaleString('ru-RU')} · {p.status}

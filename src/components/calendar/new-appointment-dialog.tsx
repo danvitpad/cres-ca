@@ -95,6 +95,26 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
     setSaving(false);
 
     if (error) { toast.error(error.message); return; }
+
+    // Create notification for client about the new appointment
+    const client = clients.find((c) => c.id === clientId);
+    if (client) {
+      const { data: clientRow } = await supabase
+        .from('clients')
+        .select('profile_id')
+        .eq('id', clientId)
+        .single();
+      if (clientRow?.profile_id) {
+        await supabase.from('notifications').insert({
+          profile_id: clientRow.profile_id,
+          channel: 'telegram',
+          title: '📅 Новая запись',
+          body: `${service.name} — ${new Date(startsAt).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+          scheduled_for: new Date().toISOString(),
+        });
+      }
+    }
+
     toast.success(tb('bookingSuccess'));
     onOpenChange(false);
     onCreated();

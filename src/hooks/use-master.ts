@@ -18,6 +18,7 @@ export interface MasterData {
   address: string | null;
   city: string | null;
   working_hours: Record<string, { start: string; end: string; break_start?: string; break_end?: string } | null>;
+  vertical: string | null;
   invite_code: string | null;
   is_active: boolean;
   tax_rate_percent: number | null;

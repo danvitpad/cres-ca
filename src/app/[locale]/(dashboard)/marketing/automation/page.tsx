@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, ExternalLink } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
@@ -188,6 +188,36 @@ export default function AutomationPage() {
           })}
         </div>
       )}
+
+      {/* Birthday automation is managed in Settings (masters table) — show info card */}
+      <div className="rounded-2xl border bg-card p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div
+              className="flex size-10 items-center justify-center rounded-xl"
+              style={{ backgroundColor: '#f472b615', color: '#f472b6' }}
+            >
+              <Cake className="size-5" />
+            </div>
+            <div>
+              <div className="font-semibold">Поздравления с днём рождения</div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Автоматическое поздравление клиентов + скидка/бонус на день рождения
+              </div>
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Settings className="size-3" />
+                Cron · ежедневно в 09:00
+              </div>
+            </div>
+          </div>
+          <Link
+            href="/ru/settings"
+            className="flex items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted"
+          >
+            Настройки <ExternalLink className="size-3" />
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

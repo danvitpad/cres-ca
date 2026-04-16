@@ -80,6 +80,7 @@ export default function MiniAppAppointmentDetail() {
   const [ratingComment, setRatingComment] = useState('');
   const [cancelOpen, setCancelOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [beforeAfterPhotos, setBeforeAfterPhotos] = useState<{ id: string; before_url: string; after_url: string; caption: string | null }[]>([]);
 
   useEffect(() => {
     if (!userId || !params?.id) return;
@@ -111,14 +112,21 @@ export default function MiniAppAppointmentDetail() {
       }
       setRow(data as unknown as DetailRow);
 
-      const { data: rev } = await supabase
-        .from('reviews')
-        .select('id')
-        .eq('appointment_id', params.id)
-        .eq('reviewer_id', userId)
-        .eq('target_type', 'master')
-        .maybeSingle();
+      const [{ data: rev }, { data: baPhotos }] = await Promise.all([
+        supabase
+          .from('reviews')
+          .select('id')
+          .eq('appointment_id', params.id)
+          .eq('reviewer_id', userId)
+          .eq('target_type', 'master')
+          .maybeSingle(),
+        supabase
+          .from('before_after_photos')
+          .select('id, before_url, after_url, caption')
+          .eq('appointment_id', params.id),
+      ]);
       setReviewExists(!!rev);
+      setBeforeAfterPhotos((baPhotos ?? []) as typeof beforeAfterPhotos);
       setLoading(false);
     })();
   }, [userId, params?.id]);
@@ -381,6 +389,32 @@ export default function MiniAppAppointmentDetail() {
         </div>
       )}
 
+      {/* Before/After photos */}
+      {beforeAfterPhotos.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">До / После</p>
+          {beforeAfterPhotos.map((photo) => (
+            <div key={photo.id} className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl">
+                <div className="relative aspect-[3/4] overflow-hidden bg-white/5">
+                  <p className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-semibold">До</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.before_url} alt="До" className="size-full object-cover" />
+                </div>
+                <div className="relative aspect-[3/4] overflow-hidden bg-white/5">
+                  <p className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-semibold">После</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={photo.after_url} alt="После" className="size-full object-cover" />
+                </div>
+              </div>
+              {photo.caption && (
+                <p className="text-[12px] text-white/60">{photo.caption}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Actions */}
       <div className="space-y-2 pt-2">
         {isCompleted && !reviewExists && (
@@ -396,7 +430,7 @@ export default function MiniAppAppointmentDetail() {
         )}
         {isCompleted && (
           <button
-            onClick={() => router.push(`/book?master_id=${row.master_id}&service_id=${row.service_id}`)}
+            onClick={() => router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`)}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
           >
             <RefreshCw className="size-5" /> Повторить запись
@@ -404,7 +438,7 @@ export default function MiniAppAppointmentDetail() {
         )}
         {canReschedule && (
           <button
-            onClick={() => router.push(`/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`)}
+            onClick={() => router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`)}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
           >
             <Sparkles className="size-5" /> Перенести

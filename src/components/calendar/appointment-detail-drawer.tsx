@@ -164,17 +164,81 @@ export function AppointmentDetailDrawer({
     // Completion stats (visits/spent/bonus) handled by `appointments_on_completed` trigger (J1)
 
     if (newStatus === 'cancelled') {
-      const { data: cl } = await supabase.from('clients').select('cancellation_count').eq('id', appointment.client_id).single();
+      const { data: cl } = await supabase.from('clients').select('cancellation_count, behavior_indicators').eq('id', appointment.client_id).single();
+      const newCount = (cl?.cancellation_count || 0) + 1;
+      const indicators: string[] = Array.isArray(cl?.behavior_indicators) ? [...cl.behavior_indicators] : [];
+      if (newCount >= 3 && !indicators.includes('frequent_canceller')) {
+        indicators.push('frequent_canceller');
+      }
       await supabase.from('clients').update({
-        cancellation_count: (cl?.cancellation_count || 0) + 1,
+        cancellation_count: newCount,
+        behavior_indicators: indicators,
       }).eq('id', appointment.client_id);
+
+      // Late-cancel detection: record lost revenue if < free_hours before appointment
+      const hoursUntil = Math.max(0, (new Date(appointment.starts_at).getTime() - Date.now()) / 3_600_000);
+      const { data: masterRow } = await supabase
+        .from('masters')
+        .select('cancellation_policy')
+        .eq('id', appointment.master_id)
+        .single();
+      const policy = (masterRow?.cancellation_policy as { free_hours: number } | null) ?? { free_hours: 24 };
+      if (hoursUntil < policy.free_hours) {
+        await supabase.from('appointments').update({
+          cancelled_at: new Date().toISOString(),
+          cancellation_reason: hoursUntil < 2 ? 'late_cancel' : 'short_notice',
+        }).eq('id', appointment.id);
+      }
+
+      // Notify everyone on waitlist for this date
+      const aptDate = new Date(appointment.starts_at).toISOString().split('T')[0];
+      const slotTime = new Date(appointment.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const { data: waitlistEntries } = await supabase
+        .from('waitlist')
+        .select('id, client_id, clients(profile_id)')
+        .eq('master_id', appointment.master_id)
+        .eq('desired_date', aptDate)
+        .order('created_at', { ascending: true });
+
+      if (waitlistEntries?.length) {
+        const notifyRows = waitlistEntries
+          .map((w) => {
+            const c = w.clients as unknown as { profile_id: string | null } | null;
+            if (!c?.profile_id) return null;
+            return {
+              profile_id: c.profile_id,
+              channel: 'telegram',
+              title: '🎉 Слот освободился!',
+              body: `Появилось время ${aptDate} в ${slotTime}. Забронируйте прямо сейчас! [waitlist:${appointment.id}]`,
+              scheduled_for: new Date().toISOString(),
+            };
+          })
+          .filter((x): x is NonNullable<typeof x> => !!x);
+        if (notifyRows.length) await supabase.from('notifications').insert(notifyRows);
+        await supabase
+          .from('waitlist')
+          .delete()
+          .in('id', waitlistEntries.map((w) => w.id));
+      }
     }
 
     if (newStatus === 'no_show') {
-      const { data: cl } = await supabase.from('clients').select('no_show_count').eq('id', appointment.client_id).single();
+      const { data: cl } = await supabase.from('clients').select('no_show_count, behavior_indicators').eq('id', appointment.client_id).single();
+      const newCount = (cl?.no_show_count || 0) + 1;
+      const indicators: string[] = Array.isArray(cl?.behavior_indicators) ? [...cl.behavior_indicators] : [];
+      if (newCount >= 2 && !indicators.includes('frequent_canceller')) {
+        indicators.push('frequent_canceller');
+      }
       await supabase.from('clients').update({
-        no_show_count: (cl?.no_show_count || 0) + 1,
+        no_show_count: newCount,
+        behavior_indicators: indicators,
       }).eq('id', appointment.client_id);
+
+      // Record as lost revenue — no-show = full price lost
+      await supabase.from('appointments').update({
+        cancelled_at: new Date().toISOString(),
+        cancellation_reason: 'no_show',
+      }).eq('id', appointment.id);
     }
 
     setUpdating(false);

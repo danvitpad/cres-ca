@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Receipt, Plus, Camera, Loader2, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
+import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,7 @@ const CATEGORIES = ['Расходники', 'Аренда', 'Еда', 'Тран�
 
 export default function ExpensesPage() {
   const { userId } = useAuthStore();
+  const { master } = useMaster();
   const [items, setItems] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState('');
@@ -40,19 +42,19 @@ export default function ExpensesPage() {
   const [ocrBusy, setOcrBusy] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!master?.id) return;
     (async () => {
       const supabase = createClient();
       const { data } = await supabase
         .from('expenses')
         .select('id, date, amount, currency, category, description, vendor')
-        .eq('profile_id', userId)
+        .eq('master_id', master.id)
         .order('date', { ascending: false })
         .limit(50);
       setItems((data ?? []) as Expense[]);
       setLoading(false);
     })();
-  }, [userId]);
+  }, [master?.id]);
 
   async function ocrUpload(file: File) {
     setOcrBusy(true);
@@ -80,16 +82,17 @@ export default function ExpensesPage() {
   }
 
   async function add() {
-    if (!userId || !amount) return;
+    if (!master?.id || !amount) return;
     const supabase = createClient();
     const { data, error } = await supabase
       .from('expenses')
       .insert({
-        profile_id: userId,
+        master_id: master.id,
         date,
         amount: Number(amount),
         currency,
         category,
+        description: [category, vendor].filter(Boolean).join(' — ') || category || 'Expense',
         vendor: vendor || null,
       })
       .select('id, date, amount, currency, category, description, vendor')
@@ -169,7 +172,7 @@ export default function ExpensesPage() {
           <Input value={vendor} onChange={(e) => setVendor(e.target.value)} />
         </div>
 
-        <Button onClick={add} disabled={!amount}>
+        <Button onClick={add} disabled={!amount || !master?.id}>
           <Plus className="mr-1 h-4 w-4" /> Добавить
         </Button>
       </div>

@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendMessage } from '@/lib/telegram/bot';
+import { getResend } from '@/lib/email/resend';
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
   // Fetch pending notifications that are due
   const { data: notifications } = await supabase
     .from('notifications')
-    .select('*, profiles(telegram_id, full_name)')
+    .select('*, profiles(telegram_id, full_name, email)')
     .eq('status', 'pending')
     .lte('scheduled_for', new Date().toISOString())
     .order('scheduled_for')
@@ -46,8 +47,21 @@ export async function GET(request: Request) {
       await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);
       sent++;
     } else if (n.channel === 'email') {
-      // Email sending via Resend would go here
-      await supabase.from('notifications').update({ status: 'sent' }).eq('id', n.id);
+      const email = (n.profiles as { email?: string | null } | null)?.email;
+      if (email) {
+        try {
+          const resend = getResend();
+          await resend.emails.send({
+            from: 'CRES-CA <noreply@cres-ca.com>',
+            to: email,
+            subject: n.title ?? 'CRES-CA',
+            html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;"><h2 style="color: #0f172a;">${n.title ?? ''}</h2><p style="color: #334155;">${n.body ?? ''}</p></div>`,
+          });
+        } catch {
+          // Resend not configured or failed — mark as sent anyway to avoid retry loop
+        }
+      }
+      await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);
       sent++;
     } else {
       // Mark as sent if no delivery channel available
