@@ -25,7 +25,7 @@ import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 import {
-  CalendarPlus, UserPlus, Calendar,
+  Calendar,
   Cake, Clock, ArrowUpRight, ArrowDownRight, Minus,
   Bell, Check, Mic,
 } from 'lucide-react';
@@ -126,6 +126,8 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [completedReminders, setCompletedReminders] = useState<Reminder[]>([]);
+  const [reminderTab, setReminderTab] = useState<'active' | 'completed'>('active');
   const [loading, setLoading] = useState(true);
 
   /* ── Fetch ── */
@@ -164,11 +166,19 @@ export default function DashboardPage() {
         .eq('completed', false)
         .order('due_at', { ascending: true, nullsFirst: false })
         .limit(8),
-    ]).then(([apptRes, expRes, clientRes, remRes]) => {
+      supabase
+        .from('reminders')
+        .select('id, text, due_at, source, created_at')
+        .eq('master_id', master.id)
+        .eq('completed', true)
+        .order('completed_at', { ascending: false })
+        .limit(8),
+    ]).then(([apptRes, expRes, clientRes, remRes, completedRes]) => {
       setAppointments((apptRes.data as unknown as Appointment[]) || []);
       setExpenses((expRes.data as unknown as Expense[]) || []);
       setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
       setReminders((remRes.data as unknown as Reminder[]) || []);
+      setCompletedReminders((completedRes.data as unknown as Reminder[]) || []);
       setLoading(false);
     });
   }, [master?.id, masterLoading]);
@@ -420,14 +430,14 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* ── Block 2: Reminders + Quick Actions ── */}
+        {/* ── Block 2: Reminders (Active / Completed tabs) ── */}
         <motion.div {...stagger(5)} style={{ ...card, gap: 0, minHeight: 0 }}>
-          {/* Reminders */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, flexShrink: 0 }}>
+          {/* Header with tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <Bell style={{ width: 14, height: 14, color: C.accent }} />
               <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{t('remindersTitle')}</span>
-              {reminders.length > 0 && (
+              {reminders.length > 0 && reminderTab === 'active' && (
                 <span style={{
                   fontSize: 11, fontWeight: 600, color: C.accent,
                   backgroundColor: isDark ? 'rgba(94,106,210,0.12)' : 'rgba(94,106,210,0.08)',
@@ -437,8 +447,31 @@ export default function DashboardPage() {
                 </span>
               )}
             </div>
+            <div style={{ display: 'flex', gap: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 6, padding: 2 }}>
+              {(['active', 'completed'] as const).map(tab => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setReminderTab(tab)}
+                  style={{
+                    fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 5,
+                    border: 'none', cursor: 'pointer', transition: 'all 150ms',
+                    backgroundColor: reminderTab === tab
+                      ? (isDark ? 'rgba(255,255,255,0.08)' : '#ffffff')
+                      : 'transparent',
+                    color: reminderTab === tab ? C.text : C.textTertiary,
+                    boxShadow: reminderTab === tab ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                  }}
+                >
+                  {tab === 'active' ? 'Активные' : 'Завершённые'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-            {reminders.length === 0 ? (
+          {/* List */}
+          {reminderTab === 'active' ? (
+            reminders.length === 0 ? (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Mic style={{ width: 20, height: 20, color: C.textTertiary, opacity: 0.4 }} />
                 <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, textAlign: 'center', maxWidth: 180, lineHeight: '16px' }}>
@@ -457,7 +490,6 @@ export default function DashboardPage() {
                       flexShrink: 0,
                     }}
                   >
-                    {/* Complete button */}
                     <button
                       type="button"
                       onClick={() => completeReminder(rem.id)}
@@ -500,38 +532,49 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* Quick Actions */}
-          <div style={{ flexShrink: 0, marginTop: 8 }}>
-            <div style={{ height: 1, backgroundColor: C.border, marginBottom: 8 }} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              {[
-                { href: `/${locale}/calendar`, icon: CalendarPlus, label: t('newAppointment'), accent: true },
-                { href: `/${locale}/clients`, icon: UserPlus, label: t('addClient'), accent: false },
-              ].map(({ href, icon: Icon, label, accent }) => (
-                <Link
-                  key={label}
-                  href={href}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 10px', borderRadius: 8,
-                    backgroundColor: accent ? C.accent : C.blockBg,
-                    color: accent ? '#ffffff' : C.text,
-                    textDecoration: 'none', fontSize: 12, fontWeight: 500,
-                    transition: 'transform 160ms cubic-bezier(0.23,1,0.32,1)',
-                  }}
-                  onMouseDown={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(0.97)'; }}
-                  onMouseUp={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; }}
-                >
-                  <Icon style={{ width: 13, height: 13, opacity: 0.8 }} />
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
+            )
+          ) : (
+            completedReminders.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <p style={{ fontSize: 12, color: C.textTertiary, margin: 0 }}>Нет завершённых</p>
+              </div>
+            ) : (
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                {completedReminders.map((rem, i) => (
+                  <div
+                    key={rem.id}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      padding: '6px 2px', opacity: 0.5,
+                      borderBottom: i < completedReminders.length - 1 ? `1px solid ${C.border}` : undefined,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                      backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(5,150,105,0.1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Check style={{ width: 10, height: 10, color: C.success }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 12, fontWeight: 500, color: C.textSecondary,
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                        lineHeight: '16px', textDecoration: 'line-through',
+                      }}>
+                        {rem.text}
+                      </div>
+                    </div>
+                    {rem.source === 'voice' && (
+                      <Mic style={{ width: 10, height: 10, color: C.textTertiary, flexShrink: 0, marginTop: 3 }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
         </motion.div>
 
         {/* ── Block 3: Birthdays (narrow) ── */}
