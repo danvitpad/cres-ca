@@ -25,6 +25,8 @@ export interface MasterData {
   bonus_points: number | null;
   profile: {
     full_name: string;
+    first_name: string | null;
+    last_name: string | null;
     phone: string | null;
     avatar_url: string | null;
   };
@@ -45,7 +47,7 @@ export function useMaster() {
     const supabase = createClient();
     const { data } = await supabase
       .from('masters')
-      .select('*, profile:profiles(full_name, phone, avatar_url)')
+      .select('*, profile:profiles(full_name, first_name, last_name, phone, avatar_url)')
       .eq('profile_id', userId)
       .single();
     if (data) setMaster(data as unknown as MasterData);

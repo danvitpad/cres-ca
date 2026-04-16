@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, role, full_name, phone, public_id, date_of_birth')
+    .select('id, role, full_name, first_name, last_name, phone, public_id, date_of_birth')
     .eq('telegram_id', tg.id)
     .maybeSingle();
 
@@ -102,7 +102,9 @@ export async function POST(request: Request) {
     role: profile.role,
     tier: sub?.tier ?? 'trial',
     publicId: profile.public_id,
-    fullName: profile.full_name,
+    fullName: profile.first_name || profile.full_name,
+    firstName: profile.first_name,
+    lastName: profile.last_name,
     missing: needsPhone ? ['phone'] : [],
   });
 }

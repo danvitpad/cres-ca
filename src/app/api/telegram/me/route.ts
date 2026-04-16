@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'id, full_name, bio, slug, public_id, avatar_url, phone, email, bonus_balance, bonus_points, followers_count, following_count',
+      'id, full_name, first_name, last_name, bio, slug, public_id, avatar_url, phone, email, bonus_balance, bonus_points, followers_count, following_count',
     )
     .eq('telegram_id', result.user.id)
     .maybeSingle();
