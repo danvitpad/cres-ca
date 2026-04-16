@@ -201,6 +201,20 @@ export default function CalendarPage() {
     useState<AppointmentData | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
 
+  /* ── Calendar settings (persisted in localStorage) ── */
+  const SCALE_VALUES = [5, 10, 15, 30, 60];
+  const [calendarScaleIdx, setCalendarScaleIdx] = useState(1); // default 10 min
+  const [quickActionsEnabled, setQuickActionsEnabled] = useState(true);
+  useEffect(() => {
+    try {
+      const savedScale = localStorage.getItem('calendar_scale');
+      if (savedScale) setCalendarScaleIdx(Number(savedScale));
+      const savedQA = localStorage.getItem('calendar_quick_actions');
+      if (savedQA !== null) setQuickActionsEnabled(savedQA !== 'false');
+    } catch { /* noop */ }
+  }, []);
+  const slotMinutes = SCALE_VALUES[calendarScaleIdx] ?? 10;
+
   /* ── Side panel state (Fresha-style new appointment) ── */
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [sidePanelTime, setSidePanelTime] = useState('');
@@ -392,7 +406,7 @@ export default function CalendarPage() {
 
     setSidePanelSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from('appointments').insert({
+    const { data: inserted, error } = await supabase.from('appointments').insert({
       client_id: sidePanelSelectedClient,
       master_id: master.id,
       service_id: serviceId,
@@ -402,10 +416,31 @@ export default function CalendarPage() {
       currency: service.currency,
       status: 'booked',
       booked_via: 'manual',
-    });
+    }).select('id').single();
     setSidePanelSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success(t('appointmentCreated'));
+
+    // Notify client if they have a profile
+    if (inserted?.id) {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('profile_id')
+        .eq('id', sidePanelSelectedClient)
+        .single();
+      if (client?.profile_id) {
+        const timeStr = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dateStr2 = startsAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        await supabase.from('notifications').insert({
+          profile_id: client.profile_id,
+          title: 'Новая запись',
+          body: `${masterName || 'Мастер'} записал вас на "${service.name}" — ${dateStr2}, ${timeStr}`,
+          channel: 'push',
+          data: { type: 'new_appointment', appointment_id: inserted.id },
+        });
+      }
+    }
+
     closeSidePanel();
     refetch();
   }
@@ -706,6 +741,7 @@ export default function CalendarPage() {
           {/* Connected group: Reset + View selector */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <button
+              onClick={() => { setCurrentDate(new Date()); setView('day'); setActiveDrawer(null); closeSidePanel(); setActionsOpen(false); }}
               style={pillBtn(F, {
                 width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
                 borderRadius: '999px 0 0 999px',
@@ -845,6 +881,8 @@ export default function CalendarPage() {
               masterName={master.profile?.full_name}
               masterAvatar={master.profile?.avatar_url}
               masterId={master.id}
+              slotMinutes={slotMinutes}
+              showQuickActions={quickActionsEnabled}
               onSlotClick={handleSlotClick}
               onAppointmentClick={handleAppointmentClick}
               onRefetch={refetchAll}
@@ -866,6 +904,7 @@ export default function CalendarPage() {
               appointments={appointments}
               workStart={workStart}
               workEnd={workEnd}
+              slotMinutes={slotMinutes}
               onSlotClick={handleSlotClick}
               onAppointmentClick={handleAppointmentClick}
               onDayClick={(d) => { setCurrentDate(d); setView('day'); }}
@@ -1132,7 +1171,17 @@ export default function CalendarPage() {
         >
           <SettingsDrawerContent
             theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
-            onApply={() => setActiveDrawer(null)}
+            initialScale={calendarScaleIdx}
+            initialQuickActions={quickActionsEnabled}
+            onApply={(settings) => {
+              setCalendarScaleIdx(settings.scale);
+              setQuickActionsEnabled(settings.quickActions);
+              try {
+                localStorage.setItem('calendar_scale', String(settings.scale));
+                localStorage.setItem('calendar_quick_actions', String(settings.quickActions));
+              } catch { /* noop */ }
+              setActiveDrawer(null);
+            }}
           />
         </CalendarDrawer>
 

@@ -55,6 +55,8 @@ interface ThreeDayViewProps {
   appointments: AppointmentData[];
   workStart: number;
   workEnd: number;
+  /** Slot interval in minutes (5/10/15/30/60). Controls sub-hour grid lines. Default 10. */
+  slotMinutes?: number;
   onSlotClick: (time: string) => void;
   onAppointmentClick: (appointment: AppointmentData) => void;
   onDayClick: (date: Date) => void;
@@ -65,6 +67,7 @@ export function ThreeDayView({
   appointments,
   workStart,
   workEnd,
+  slotMinutes = 10,
   onSlotClick,
   onAppointmentClick,
   onDayClick,
@@ -217,9 +220,10 @@ export function ThreeDayView({
                   borderLeft: `1px solid ${C.gridBorder}`,
                 }}
               >
-                {/* Hour lines + working/non-working zones */}
+                {/* Hour lines + working/non-working zones + sub-hour lines */}
                 {Array.from({ length: TOTAL_HOURS }, (_, hour) => {
                   const isWorking = hour >= workStart && hour < workEnd;
+                  const subsPerHour = 60 / slotMinutes;
                   return (
                     <div
                       key={hour}
@@ -233,16 +237,23 @@ export function ThreeDayView({
                         backgroundColor: !isWorking ? C.nonWorkingBg : (isTodayDay ? C.todayBg : 'transparent'),
                       }}
                     >
-                      {/* Half-hour line */}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          right: 0,
-                          top: HOUR_HEIGHT / 2,
-                          borderTop: `1px solid ${C.gridBorderSub}`,
-                        }}
-                      />
+                      {/* Sub-hour lines based on slotMinutes */}
+                      {Array.from({ length: subsPerHour - 1 }, (__, si) => {
+                        const subY = ((si + 1) / subsPerHour) * HOUR_HEIGHT;
+                        const isHalf = (si + 1) * slotMinutes === 30;
+                        return (
+                          <div
+                            key={si}
+                            style={{
+                              position: 'absolute',
+                              left: 0,
+                              right: 0,
+                              top: subY,
+                              borderTop: `1px solid ${isHalf ? C.gridBorderSub : 'rgba(229,229,229,0.2)'}`,
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   );
                 })}

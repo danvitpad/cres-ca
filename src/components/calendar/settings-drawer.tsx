@@ -9,6 +9,8 @@ import { useState } from 'react';
 
 type SettingsDrawerProps = {
   theme: 'light' | 'dark';
+  initialScale?: number;
+  initialQuickActions?: boolean;
   onApply?: (settings: { scale: number; quickActions: boolean }) => void;
 };
 
@@ -36,10 +38,10 @@ const DARK = {
   btnText: '#ffffff',
 };
 
-export function SettingsDrawerContent({ theme, onApply }: SettingsDrawerProps) {
+export function SettingsDrawerContent({ theme, initialScale, initialQuickActions, onApply }: SettingsDrawerProps) {
   const C = theme === 'dark' ? DARK : LIGHT;
-  const [scale, setScale] = useState(3);
-  const [quickActions, setQuickActions] = useState(true);
+  const [scale, setScale] = useState(initialScale ?? 1);
+  const [quickActions, setQuickActions] = useState(initialQuickActions ?? true);
 
   const scaleLabels = ['5 мин', '10 мин', '15 мин', '30 мин', '60 мин'];
 

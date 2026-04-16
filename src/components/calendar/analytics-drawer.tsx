@@ -70,6 +70,7 @@ interface SalesData {
   totalSales: number;
   totalAppointments: number;
   completedAppointments: number;
+  uniqueClients: number;
   avgCheck: number;
   trend: number; // percentage vs previous period
   channelBreakdown: Array<{ channel: string; count: number; amount: number }>;
@@ -131,73 +132,78 @@ export function AnalyticsDrawerContent({ masterId, theme = 'light' }: AnalyticsD
       const supabase = createClient();
       const { start, end } = getDateRange(activeTab);
 
-      // Fetch completed appointments for sales
-      const { data: completedAppts } = await supabase
-        .from('appointments')
-        .select('id, starts_at, status, services(price, currency)')
-        .eq('master_id', masterId)
-        .gte('starts_at', start.toISOString())
-        .lt('starts_at', end.toISOString())
-        .eq('status', 'completed');
-
-      // Fetch all appointments for the period
+      // Fetch all appointments for the period with booked_via and client_id
       const { data: allAppts } = await supabase
         .from('appointments')
-        .select('id, starts_at, status')
+        .select('id, starts_at, status, price, currency, booked_via, client_id')
         .eq('master_id', masterId)
         .gte('starts_at', start.toISOString())
         .lt('starts_at', end.toISOString());
 
-      const completed = completedAppts || [];
       const all = allAppts || [];
+      const completed = all.filter(a => a.status === 'completed');
 
-      const totalSales = completed.reduce((sum, a) => {
-        const svc = a.services as unknown as { price: number; currency: string } | null;
-        return sum + (svc?.price || 0);
-      }, 0);
-
+      const totalSales = completed.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
       const avgCheck = completed.length > 0 ? totalSales / completed.length : 0;
+      const uniqueClients = new Set(completed.map(a => a.client_id)).size;
 
-      // Simulate channel breakdown (real data would come from a source field on appointments)
-      const onlineCount = Math.floor(all.length * 0.6);
-      const manualCount = Math.floor(all.length * 0.25);
-      const tgCount = Math.floor(all.length * 0.1);
-      const walkInCount = all.length - onlineCount - manualCount - tgCount;
+      // Real channel breakdown from booked_via field
+      const channelMap: Record<string, string> = { web: 'online', manual: 'manual', telegram: 'telegram' };
+      const channelCounts: Record<string, { count: number; amount: number }> = {
+        online: { count: 0, amount: 0 }, manual: { count: 0, amount: 0 },
+        telegram: { count: 0, amount: 0 }, walk_in: { count: 0, amount: 0 },
+      };
+      for (const a of all) {
+        const ch = channelMap[a.booked_via as string] || 'walk_in';
+        channelCounts[ch].count++;
+        if (a.status === 'completed') channelCounts[ch].amount += Number(a.price) || 0;
+      }
+
+      // Trend: compare with previous equivalent period
+      const periodMs = end.getTime() - start.getTime();
+      const prevStart = new Date(start.getTime() - periodMs);
+      const prevEnd = new Date(start);
+      const { data: prevAppts } = await supabase
+        .from('appointments')
+        .select('id')
+        .eq('master_id', masterId)
+        .gte('starts_at', prevStart.toISOString())
+        .lt('starts_at', prevEnd.toISOString());
+      const prevCount = (prevAppts || []).length;
+      const trend = prevCount > 0 ? Math.round(((all.length - prevCount) / prevCount) * 100) : 0;
 
       setSales({
         totalSales,
         totalAppointments: all.length,
         completedAppointments: completed.length,
+        uniqueClients,
         avgCheck: Math.round(avgCheck),
-        trend: all.length > 0 ? 12 : 0,
-        channelBreakdown: [
-          { channel: 'online', count: onlineCount, amount: Math.round(totalSales * 0.6) },
-          { channel: 'manual', count: manualCount, amount: Math.round(totalSales * 0.25) },
-          { channel: 'telegram', count: tgCount, amount: Math.round(totalSales * 0.1) },
-          { channel: 'walk_in', count: walkInCount, amount: Math.round(totalSales * 0.05) },
-        ],
+        trend,
+        channelBreakdown: Object.entries(channelCounts).map(([channel, data]) => ({
+          channel, count: data.count, amount: Math.round(data.amount),
+        })),
       });
 
-      // Fetch upcoming 7 days
+      // Fetch upcoming 7 days with real booked_via
       const futureEnd = new Date();
       futureEnd.setDate(futureEnd.getDate() + 7);
       const { data: upcomingAppts } = await supabase
         .from('appointments')
-        .select('id, status')
+        .select('id, status, booked_via')
         .eq('master_id', masterId)
         .gte('starts_at', new Date().toISOString())
         .lt('starts_at', futureEnd.toISOString())
         .in('status', ['booked', 'confirmed']);
 
       const upAll = upcomingAppts || [];
+      const upChannelCounts: Record<string, number> = { online: 0, manual: 0, telegram: 0, walk_in: 0 };
+      for (const a of upAll) {
+        const ch = channelMap[a.booked_via as string] || 'walk_in';
+        upChannelCounts[ch]++;
+      }
       setUpcoming({
         scheduledAppointments: upAll.length,
-        channelBreakdown: [
-          { channel: 'online', count: Math.floor(upAll.length * 0.55) },
-          { channel: 'manual', count: Math.floor(upAll.length * 0.3) },
-          { channel: 'telegram', count: Math.floor(upAll.length * 0.1) },
-          { channel: 'walk_in', count: upAll.length - Math.floor(upAll.length * 0.55) - Math.floor(upAll.length * 0.3) - Math.floor(upAll.length * 0.1) },
-        ],
+        channelBreakdown: Object.entries(upChannelCounts).map(([channel, count]) => ({ channel, count })),
       });
 
       setLoading(false);
@@ -299,7 +305,7 @@ export function AnalyticsDrawerContent({ masterId, theme = 'light' }: AnalyticsD
                   <Users style={{ width: 14, height: 14, color: C.accent }} />
                   <span style={{ fontSize: 12, color: C.textMuted }}>Клиентов</span>
                 </div>
-                <div style={{ fontSize: 22, fontWeight: 700 }}>{sales?.completedAppointments || 0}</div>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{sales?.uniqueClients || 0}</div>
               </div>
             </div>
 

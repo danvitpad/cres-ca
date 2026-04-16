@@ -20,12 +20,8 @@ const TOTAL_HOURS = 24;
 const TOTAL_HEIGHT = TOTAL_HOURS * HOUR_HEIGHT; // 2304px
 const HEADER_HEIGHT = 110;
 const AVATAR_SIZE = 56;
-const SLOT_MINUTES = 10;
-const SLOTS_PER_HOUR = 6;
-const SLOT_HEIGHT = HOUR_HEIGHT / SLOTS_PER_HOUR; // 16px
+const DEFAULT_SLOT_MINUTES = 10;
 const TIME_COL_WIDTH = 80; // wider for "12:00 дня" labels
-const INTERVALS_PER_HOUR = 6; // 10-min intervals (6 per hour)
-const INTERVAL_HEIGHT = HOUR_HEIGHT / INTERVALS_PER_HOUR; // 16px
 const DRAG_SNAP_MINUTES = 15; // snap to 15-min intervals during drag
 
 const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -127,6 +123,10 @@ interface DayViewProps {
   masterName?: string;
   masterAvatar?: string | null;
   masterId?: string;
+  /** Slot interval in minutes (5/10/15/30/60). Controls grid granularity. Default 10. */
+  slotMinutes?: number;
+  /** When false, clicking a slot opens side panel directly instead of popup. Default true. */
+  showQuickActions?: boolean;
   onSlotClick: (time: string) => void;
   onAppointmentClick: (appointment: AppointmentData) => void;
   onRefetch: () => void;
@@ -143,8 +143,7 @@ interface SlotPopup {
   time: string;
 }
 
-/* Default new-appointment block height: 3 slots = 30min */
-const NEW_BLOCK_SLOTS = 3;
+/* Default new-appointment preview block: ~30min worth of slots (computed dynamically) */
 
 export function DayView({
   date,
@@ -155,6 +154,8 @@ export function DayView({
   masterName,
   masterAvatar,
   masterId,
+  slotMinutes: slotMinutesProp,
+  showQuickActions = true,
   onSlotClick,
   onAppointmentClick,
   onRefetch,
@@ -173,6 +174,13 @@ export function DayView({
   const [hoveredSlot, setHoveredSlot] = useState<number | null>(null);
   const [slotPopup, setSlotPopup] = useState<SlotPopup | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  /* ─── Derived from slotMinutes prop ─── */
+  const SLOT_MINUTES = slotMinutesProp ?? DEFAULT_SLOT_MINUTES;
+  const SLOTS_PER_HOUR = 60 / SLOT_MINUTES;
+  const SLOT_HEIGHT = HOUR_HEIGHT / SLOTS_PER_HOUR;
+  const INTERVALS_PER_HOUR = SLOTS_PER_HOUR;
+  const INTERVAL_HEIGHT = SLOT_HEIGHT;
 
   useEffect(() => setMounted(true), []);
   useEffect(() => { if (clearSelection) setSlotPopup(null); }, [clearSelection]);
@@ -265,6 +273,11 @@ export function DayView({
   function handleSlotClick(i: number, e: React.MouseEvent) {
     if (!isSlotWorking(i) || isSlotOccupied(i)) return;
     const time = slotToTime(i);
+    // Quick actions disabled → open side panel directly
+    if (!showQuickActions) {
+      onSlotClick(time);
+      return;
+    }
     // Get click position relative to grid for popup positioning
     const rect = gridRef.current?.getBoundingClientRect();
     const x = rect ? e.clientX - rect.left : 0;
@@ -623,7 +636,8 @@ export function DayView({
           {/* ── New appointment preview block + Fresha popup menu ── */}
           {slotPopup && (() => {
             const blockTop = slotPopup.slotIndex * SLOT_HEIGHT;
-            const blockHeight = NEW_BLOCK_SLOTS * SLOT_HEIGHT;
+            const newBlockSlots = Math.max(1, Math.round(30 / SLOT_MINUTES));
+            const blockHeight = newBlockSlots * SLOT_HEIGHT;
             const slotMin = slotPopup.slotIndex * SLOT_MINUTES;
             const h = Math.floor(slotMin / 60);
             const m = slotMin % 60;

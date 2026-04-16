@@ -47,5 +47,20 @@ export function useAppointments(masterId: string | undefined, startDate: Date, e
 
   useEffect(() => { fetchData(true); }, [fetchData]);
 
+  // Realtime subscription — auto-refetch on any appointment change
+  useEffect(() => {
+    if (!masterId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`calendar-appts:${masterId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'appointments', filter: `master_id=eq.${masterId}` },
+        () => fetchData(false),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [masterId, fetchData]);
+
   return { appointments, isLoading, refetch };
 }

@@ -80,7 +80,7 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
 
     setSaving(true);
     const supabase = createClient();
-    const { error } = await supabase.from('appointments').insert({
+    const { data: inserted, error } = await supabase.from('appointments').insert({
       client_id: clientId,
       master_id: masterId,
       service_id: serviceId,
@@ -91,14 +91,13 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
       notes: notes || null,
       status: 'booked',
       booked_via: 'manual',
-    });
+    }).select('id').single();
     setSaving(false);
 
     if (error) { toast.error(error.message); return; }
 
     // Create notification for client about the new appointment
-    const client = clients.find((c) => c.id === clientId);
-    if (client) {
+    if (clientId) {
       const { data: clientRow } = await supabase
         .from('clients')
         .select('profile_id')
@@ -107,10 +106,10 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
       if (clientRow?.profile_id) {
         await supabase.from('notifications').insert({
           profile_id: clientRow.profile_id,
-          channel: 'telegram',
-          title: '📅 Новая запись',
+          channel: 'push',
+          title: 'Новая запись',
           body: `${service.name} — ${new Date(startsAt).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
-          scheduled_for: new Date().toISOString(),
+          data: { type: 'new_appointment', appointment_id: inserted?.id },
         });
       }
     }
