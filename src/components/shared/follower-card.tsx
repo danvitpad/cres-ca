@@ -1,24 +1,33 @@
 /** --- YAML
  * name: FollowerCard
- * description: Card showing a follower profile with avatar, name, follow date, and follow-back/unfollow actions.
+ * description: Universal card for follower/user — shows avatar, name, entity type badge, follow/unfollow actions.
  * created: 2026-04-16
+ * updated: 2026-04-16
  * --- */
 
 'use client';
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { UserCheck, UserPlus } from 'lucide-react';
+import { UserCheck, UserPlus, Scissors, Building2, User } from 'lucide-react';
+
+export type EntityType = 'client' | 'master' | 'salon';
 
 interface FollowerCardProps {
   profileId: string;
   fullName: string;
   avatarUrl: string | null;
-  phone: string | null;
-  linkedAt: string;
+  phone?: string | null;
+  entityType: EntityType;
+  entityMeta?: {
+    specialization?: string | null;
+    salonName?: string | null;
+    city?: string | null;
+  } | null;
+  followedAt?: string | null;
   mutual: boolean;
-  onFollowBack: () => Promise<void>;
-  onUnfollowBack: () => Promise<void>;
+  onFollow: () => Promise<void>;
+  onUnfollow: () => Promise<void>;
 }
 
 function getInitials(name: string) {
@@ -37,14 +46,22 @@ function hashColor(name: string) {
   return colors[Math.abs(hash) % colors.length];
 }
 
+const ENTITY_BADGE: Record<EntityType, { bg: string; color: string; Icon: typeof User }> = {
+  client: { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6', Icon: User },
+  master: { bg: 'rgba(139,92,246,0.12)', color: '#8b5cf6', Icon: Scissors },
+  salon: { bg: 'rgba(16,185,129,0.12)', color: '#10b981', Icon: Building2 },
+};
+
 export function FollowerCard({
   fullName,
   avatarUrl,
   phone,
-  linkedAt,
+  entityType,
+  entityMeta,
+  followedAt,
   mutual,
-  onFollowBack,
-  onUnfollowBack,
+  onFollow,
+  onUnfollow,
 }: FollowerCardProps) {
   const tf = useTranslations('followSystem');
   const [busy, setBusy] = useState(false);
@@ -53,20 +70,25 @@ export function FollowerCard({
     setBusy(true);
     try {
       if (mutual) {
-        await onUnfollowBack();
+        await onUnfollow();
       } else {
-        await onFollowBack();
+        await onFollow();
       }
     } finally {
       setBusy(false);
     }
   };
 
-  const dateLabel = new Date(linkedAt).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  const badge = ENTITY_BADGE[entityType];
+  const subtitle = entityType === 'master' && entityMeta?.specialization
+    ? entityMeta.specialization
+    : entityType === 'salon' && entityMeta?.salonName
+      ? entityMeta.salonName
+      : phone || null;
+
+  const dateLabel = followedAt
+    ? new Date(followedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
 
   return (
     <div style={{
@@ -100,6 +122,15 @@ export function FollowerCard({
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground, #f0f0f0)' }}>
             {fullName}
           </span>
+          {/* Entity type badge */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 3,
+            fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 999,
+            backgroundColor: badge.bg, color: badge.color,
+          }}>
+            <badge.Icon style={{ width: 10, height: 10 }} />
+            {tf(`entity${entityType.charAt(0).toUpperCase() + entityType.slice(1)}` as 'entityClient' | 'entityMaster' | 'entitySalon')}
+          </span>
           {mutual && (
             <span style={{
               fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
@@ -110,12 +141,14 @@ export function FollowerCard({
           )}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 2 }}>
-          {phone && (
-            <span style={{ fontSize: 12, color: 'var(--muted-foreground, #8a8f98)' }}>{phone}</span>
+          {subtitle && (
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground, #8a8f98)' }}>{subtitle}</span>
           )}
-          <span style={{ fontSize: 12, color: 'var(--muted-foreground, #62666d)' }}>
-            {tf('followedSince', { date: dateLabel })}
-          </span>
+          {dateLabel && (
+            <span style={{ fontSize: 12, color: 'var(--muted-foreground, #62666d)' }}>
+              {tf('followedSince', { date: dateLabel })}
+            </span>
+          )}
         </div>
       </div>
 

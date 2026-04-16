@@ -1,6 +1,8 @@
 /** --- YAML
- * name: Follow Toggle API
- * description: POST {targetId} → toggles follow. Returns {following: boolean, followers_count}.
+ * name: Universal Follow Toggle
+ * description: POST {targetId} → toggles follow in universal follows table. Sends notifications, detects mutual.
+ * created: 2026-04-14
+ * updated: 2026-04-16
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -24,17 +26,53 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (existing) {
+    // Unfollow
     await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
-  } else {
-    const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
-    if (error) return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+    return NextResponse.json({ following: false, mutual: false });
   }
 
-  const { data: target } = await supabase
-    .from('profiles')
-    .select('followers_count')
-    .eq('id', targetId)
+  // Follow
+  const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
+  if (error) return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+
+  // Check if mutual (reverse row exists)
+  const { data: reverse } = await supabase
+    .from('follows')
+    .select('follower_id')
+    .eq('follower_id', targetId)
+    .eq('following_id', user.id)
     .maybeSingle();
 
-  return NextResponse.json({ following: !existing, followersCount: target?.followers_count ?? 0 });
+  const mutual = !!reverse;
+
+  // Get names for notification
+  const [{ data: myProfile }, { data: targetProfile }] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+    supabase.from('profiles').select('full_name').eq('id', targetId).maybeSingle(),
+  ]);
+
+  const myName = myProfile?.full_name || 'Пользователь';
+
+  // Notify target about new follower
+  await supabase.from('notifications').insert({
+    profile_id: targetId,
+    channel: 'push',
+    title: 'Новый подписчик',
+    body: `${myName} подписался на вас`,
+    data: { type: 'new_follower', follower_profile_id: user.id },
+  });
+
+  // If mutual — notify both
+  if (mutual) {
+    const targetName = targetProfile?.full_name || 'Пользователь';
+    await supabase.from('notifications').insert({
+      profile_id: user.id,
+      channel: 'push',
+      title: 'Взаимная подписка',
+      body: `${targetName} тоже подписан на вас`,
+      data: { type: 'mutual_follow', profile_id: targetId },
+    });
+  }
+
+  return NextResponse.json({ following: true, mutual });
 }

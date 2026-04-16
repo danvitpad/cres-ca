@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { FollowerCard } from '@/components/shared/follower-card';
+import { GlobalSearchBar } from '@/components/shared/global-search-bar';
 import type { BehaviorIndicator } from '@/types';
 
 const PAGE_SIZE = 20;
@@ -71,19 +72,17 @@ interface ClientRow {
 }
 
 type FilterType = 'all' | 'recent' | 'frequent' | 'inactive';
-type TabType = 'clients' | 'followers' | 'mutual';
+type TabType = 'clients' | 'users' | 'subscribers';
 
 interface FollowerRow {
   profileId: string;
-  linkedAt: string;
+  fullName: string;
+  avatarUrl: string | null;
+  phone: string | null;
+  entityType: 'client' | 'master' | 'salon';
+  entityMeta: { specialization?: string; salonName?: string; city?: string } | null;
+  followedAt: string | null;
   mutual: boolean;
-  profile: {
-    id: string;
-    full_name: string;
-    avatar_url: string | null;
-    phone: string | null;
-    email: string | null;
-  } | null;
 }
 
 function getInitials(name: string) {
@@ -117,8 +116,8 @@ export default function ClientsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tab, setTab] = useState<TabType>('clients');
-  const [followers, setFollowers] = useState<FollowerRow[]>([]);
-  const [followersLoading, setFollowersLoading] = useState(false);
+  const [followList, setFollowList] = useState<FollowerRow[]>([]);
+  const [followListLoading, setFollowListLoading] = useState(false);
 
   const loadClients = useCallback(async (append = false) => {
     if (!master) return;
@@ -144,17 +143,17 @@ export default function ClientsPage() {
     setLoading(false);
   }, [master, search, clients]);
 
-  const loadFollowers = useCallback(async (type: 'followers' | 'mutual') => {
+  const loadFollowList = useCallback(async (listType: 'followers' | 'mutual') => {
     if (!master) return;
-    setFollowersLoading(true);
+    setFollowListLoading(true);
     try {
-      const res = await fetch(`/api/follow/crm/list?masterId=${master.id}&type=${type}`);
+      const res = await fetch(`/api/follow/list?profileId=${master.profile_id}&type=${listType}`);
       const json = await res.json();
-      setFollowers(json.list ?? []);
+      setFollowList(json.list ?? []);
     } catch {
-      setFollowers([]);
+      setFollowList([]);
     }
-    setFollowersLoading(false);
+    setFollowListLoading(false);
   }, [master]);
 
   useEffect(() => {
@@ -162,10 +161,10 @@ export default function ClientsPage() {
   }, [master, search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (master && (tab === 'followers' || tab === 'mutual')) {
-      loadFollowers(tab);
-    }
-  }, [master, tab, loadFollowers]);
+    if (!master) return;
+    if (tab === 'users') loadFollowList('followers');
+    else if (tab === 'subscribers') loadFollowList('mutual');
+  }, [master, tab, loadFollowList]);
 
   async function addClient(formData: { full_name: string; phone: string; email: string; date_of_birth: string; notes: string }) {
     if (!master) return;
@@ -229,15 +228,18 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── Global Search ── */}
+      <GlobalSearchBar />
+
       {/* ── Tab Switcher ── */}
       <div style={{
         display: 'flex', gap: 0, marginBottom: 20,
         borderBottom: `1px solid ${C.tableBorder}`,
       }}>
         {([
-          { key: 'clients' as TabType, label: tf('allClients'), icon: Users },
-          { key: 'followers' as TabType, label: tf('followers'), icon: Heart },
-          { key: 'mutual' as TabType, label: tf('mutualClients'), icon: UserCheck },
+          { key: 'clients' as TabType, label: tf('clients'), icon: Users },
+          { key: 'users' as TabType, label: tf('users'), icon: Heart },
+          { key: 'subscribers' as TabType, label: tf('subscribers'), icon: UserCheck },
         ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -258,14 +260,14 @@ export default function ClientsPage() {
         ))}
       </div>
 
-      {/* ── Followers / Mutual Tab ── */}
-      {(tab === 'followers' || tab === 'mutual') && (
+      {/* ── Users / Subscribers Tab ── */}
+      {(tab === 'users' || tab === 'subscribers') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {followersLoading ? (
+          {followListLoading ? (
             [...Array(3)].map((_, i) => (
               <div key={i} style={{ height: 72, backgroundColor: C.searchBg, borderRadius: 12 }} />
             ))
-          ) : followers.length === 0 ? (
+          ) : followList.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -276,11 +278,11 @@ export default function ClientsPage() {
             >
               <Heart style={{ width: 40, height: 40, color: C.textLight, marginBottom: 12 }} />
               <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT }}>
-                {tf('noFollowers')}
+                {tab === 'users' ? tf('noUsers') : tf('noFollowers')}
               </p>
             </motion.div>
           ) : (
-            followers.map((f, i) => (
+            followList.map((f, i) => (
               <motion.div
                 key={f.profileId}
                 initial={{ opacity: 0, y: 8 }}
@@ -289,24 +291,28 @@ export default function ClientsPage() {
               >
                 <FollowerCard
                   profileId={f.profileId}
-                  fullName={f.profile?.full_name ?? '—'}
-                  avatarUrl={f.profile?.avatar_url ?? null}
-                  phone={f.profile?.phone ?? null}
-                  linkedAt={f.linkedAt}
+                  fullName={f.fullName ?? '—'}
+                  avatarUrl={f.avatarUrl}
+                  phone={f.phone}
+                  entityType={f.entityType}
+                  entityMeta={f.entityMeta}
+                  followedAt={f.followedAt}
                   mutual={f.mutual}
-                  onFollowBack={async () => {
-                    await fetch('/api/follow/crm/back', {
+                  onFollow={async () => {
+                    await fetch('/api/follow', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ clientProfileId: f.profileId }),
+                      body: JSON.stringify({ targetId: f.profileId }),
                     });
-                    loadFollowers(tab);
+                    loadFollowList(tab === 'users' ? 'followers' : 'mutual');
                   }}
-                  onUnfollowBack={async () => {
-                    await fetch(`/api/follow/crm/back?clientProfileId=${f.profileId}`, {
-                      method: 'DELETE',
+                  onUnfollow={async () => {
+                    await fetch('/api/follow', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ targetId: f.profileId }),
                     });
-                    loadFollowers(tab);
+                    loadFollowList(tab === 'users' ? 'followers' : 'mutual');
                   }}
                 />
               </motion.div>
