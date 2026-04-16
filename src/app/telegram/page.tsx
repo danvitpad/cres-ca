@@ -69,7 +69,7 @@ export default function TelegramEntryPage() {
       );
 
       if (data.linked && !data.needsRegistration) {
-        setAuth(data.userId, data.role, data.tier);
+        setAuth(data.userId, data.role, data.tier, data.fullName);
 
         // Deep link: u_<publicId|slug> → public Instagram-style profile page
         if (startParam?.startsWith('u_')) {
@@ -103,7 +103,7 @@ export default function TelegramEntryPage() {
 
       if (data.linked && data.needsRegistration) {
         // Profile exists but missing required fields → complete registration
-        setAuth(data.userId, data.role, data.tier);
+        setAuth(data.userId, data.role, data.tier, data.fullName);
         router.replace('/telegram/register');
         return;
       }

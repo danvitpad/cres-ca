@@ -53,7 +53,7 @@ interface FeedPost {
 
 export default function MiniAppHomePage() {
   const { user, ready, haptic } = useTelegram();
-  const { userId } = useAuthStore();
+  const { userId, fullName } = useAuthStore();
 
   const [next, setNext] = useState<NextAppointment | null>(null);
   const [stories, setStories] = useState<StoryMaster[]>([]);
@@ -61,7 +61,6 @@ export default function MiniAppHomePage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [dbFirstName, setDbFirstName] = useState<string | null>(null);
 
   const loadFeed = useCallback(
     async (cursor?: string) => {
@@ -80,16 +79,6 @@ export default function MiniAppHomePage() {
     const supabase = createClient();
 
     (async () => {
-      // Fetch DB profile name (not Telegram name)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', userId)
-        .maybeSingle();
-      if (profile?.full_name) {
-        setDbFirstName(profile.full_name.split(' ')[0]);
-      }
-
       // Next appointment
       const { data: clientRows } = await supabase.from('clients').select('id').eq('profile_id', userId);
       const clientIds = (clientRows ?? []).map((c: { id: string }) => c.id);
@@ -182,7 +171,7 @@ export default function MiniAppHomePage() {
     }
   }
 
-  const firstName = dbFirstName ?? user?.first_name ?? 'друг';
+  const firstName = (fullName ? fullName.split(' ')[0] : null) ?? user?.first_name ?? 'друг';
 
   if (!ready || loading) {
     return (
