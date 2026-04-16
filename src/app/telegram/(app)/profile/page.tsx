@@ -20,7 +20,6 @@ import {
   X,
   Loader2,
   Settings,
-  Camera,
   Share2,
   LogOut,
 } from 'lucide-react';
@@ -284,9 +283,11 @@ export default function MiniAppProfilePage() {
             ) : (
               (displayName[0] ?? 'U').toUpperCase()
             )}
-            <div className="absolute bottom-0 right-0 flex size-6 items-center justify-center rounded-full border-2 border-[#1f2023] bg-white text-black">
-              {avatarBusy ? <Loader2 className="size-3 animate-spin" /> : <Camera className="size-3" />}
-            </div>
+            {avatarBusy && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Loader2 className="size-5 animate-spin" />
+              </div>
+            )}
           </button>
           <input
             ref={fileInputRef}
