@@ -8,8 +8,8 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-// Gemini models: try in order. 2.5-flash (best), 1.5-flash (stable fallback), 2.0-flash-lite (lightweight)
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'] as const;
+// Gemini models: try in order
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash-latest', 'gemini-2.0-flash'] as const;
 
 function geminiUrl(model: string) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
@@ -75,6 +75,47 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
   "confidence": 0.95
 }`;
 
+/** Try to parse JSON robustly — handle truncated strings, markdown wrapping, etc. */
+function safeParseJSON(raw: string): VoiceIntent | null {
+  // Strip markdown code blocks if present
+  let text = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Try to fix truncated JSON — find the last complete field and close the object
+    // Common issue: Gemini truncates the output mid-string
+    try {
+      // Find last complete key-value pair
+      const lastComma = text.lastIndexOf(',');
+      const lastColon = text.lastIndexOf(':');
+      if (lastComma > lastColon) {
+        // Truncated after a comma — remove trailing incomplete field
+        text = text.slice(0, lastComma) + '}';
+      } else {
+        // Try closing any open strings and the object
+        if (!text.endsWith('}')) {
+          text = text.replace(/,?\s*"[^"]*$/, '') + '}';
+        }
+      }
+      const fixed = JSON.parse(text);
+      // Ensure required fields have defaults
+      return {
+        action: fixed.action || 'unknown',
+        text: fixed.text || fixed.raw_transcript || '',
+        due_at: fixed.due_at || null,
+        client_name: fixed.client_name || null,
+        amount: fixed.amount || null,
+        service_name: fixed.service_name || null,
+        raw_transcript: fixed.raw_transcript || fixed.text || '',
+        confidence: fixed.confidence || 0.5,
+      };
+    } catch {
+      return null;
+    }
+  }
+}
+
 export async function parseVoiceIntent(audioBase64: string, mimeType: string = 'audio/ogg'): Promise<VoiceIntent> {
   const now = new Date().toISOString();
   const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now);
@@ -88,7 +129,7 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
     }],
     generationConfig: {
       temperature: 0.1,
-      maxOutputTokens: 512,
+      maxOutputTokens: 1024,
       responseMimeType: 'application/json',
     },
   });
@@ -118,14 +159,21 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
         }
 
         const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) {
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!rawText) {
           errors.push(`${model}: empty response`);
           break;
         }
 
+        console.log(`[voice] ${model} raw:`, rawText.slice(0, 300));
+        const parsed = safeParseJSON(rawText);
+        if (!parsed) {
+          errors.push(`${model}: invalid JSON`);
+          break;
+        }
+
         console.log(`[voice] Success with ${model}`);
-        return JSON.parse(text) as VoiceIntent;
+        return parsed;
       } catch (e) {
         errors.push(`${model}: ${(e as Error).message}`);
         break;
