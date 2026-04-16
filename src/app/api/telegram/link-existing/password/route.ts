@@ -106,6 +106,9 @@ export async function POST(req: Request) {
     })
     .eq('id', profile.id);
 
+  // Record telegram session for voice/bot interactions
+  await admin.from('telegram_sessions').upsert({ chat_id: tg.id, profile_id: profile.id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
+
   return NextResponse.json({
     userId: profile.id,
     role: profile.role,

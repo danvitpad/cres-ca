@@ -118,6 +118,9 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   await supabase.auth.signInWithPassword({ email, password: tempPassword });
 
+  // Record telegram session for voice/bot interactions
+  await admin.from('telegram_sessions').upsert({ chat_id: tg.id, profile_id: profile.id, logged_in_at: now }, { onConflict: 'chat_id' });
+
   return NextResponse.json({
     ok: true,
     userId: profile.id,

@@ -149,6 +149,7 @@ export async function POST(request: Request) {
       await admin.from('profiles').update({ role: 'salon_admin', full_name: fullName }).eq('id', byTg.id);
       await ensureSalonAndMaster(admin, byTg.id, fullName);
     }
+    await admin.from('telegram_sessions').upsert({ chat_id: tg.id, profile_id: byTg.id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
     const resolvedRole = safeRole === 'client' ? byTg.role : safeRole;
     return NextResponse.json({ userId: byTg.id, role: resolvedRole, publicId: byTg.public_id, isNew: false });
   }
@@ -171,6 +172,7 @@ export async function POST(request: Request) {
       await admin.from('profiles').update({ role: 'salon_admin', full_name: fullName }).eq('id', byPhone.id);
       await ensureSalonAndMaster(admin, byPhone.id, fullName);
     }
+    await admin.from('telegram_sessions').upsert({ chat_id: tg.id, profile_id: byPhone.id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
     const resolvedRole = safeRole === 'client' ? byPhone.role : safeRole;
     return NextResponse.json({ userId: byPhone.id, role: resolvedRole, publicId: byPhone.public_id, isNew: false, linkedExisting: true });
   }
@@ -248,6 +250,9 @@ export async function POST(request: Request) {
     .select('public_id')
     .eq('id', created.user.id)
     .single();
+
+  // Record telegram session for voice/bot interactions
+  await admin.from('telegram_sessions').upsert({ chat_id: tg.id, profile_id: created.user.id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
 
   return NextResponse.json({
     userId: created.user.id,

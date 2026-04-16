@@ -87,6 +87,12 @@ export async function POST(request: Request) {
     });
   }
 
+  // Record telegram session: this chat_id → this CRES-CA profile
+  // In private chats, chat_id == user_id
+  await admin
+    .from('telegram_sessions')
+    .upsert({ chat_id: tg.id, profile_id: profile.id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
+
   const needsPhone = !profile.phone;
 
   const { data: sub } = await admin

@@ -5,9 +5,16 @@
  * --- */
 
 import { NextResponse } from 'next/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { sendMessage } from '@/lib/telegram/bot';
-import { createClient } from '@/lib/supabase/server';
 import { parseVoiceIntent, downloadTelegramFile, type VoiceIntent } from '@/lib/ai/gemini-voice';
+
+function createServiceClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 interface TelegramUpdate {
   message?: {
@@ -106,27 +113,28 @@ export async function POST(request: Request) {
 /* ─── Voice Message Handler ─── */
 
 async function handleVoiceMessage(chatId: number, telegramId: number, fileId: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
-  // Find master by telegram_id
-  console.log('[voice] looking up telegram_id:', telegramId, typeof telegramId);
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('telegram_id', telegramId)
+  // Find CRES-CA account via telegram_sessions (chat_id → profile_id)
+  const { data: session } = await supabase
+    .from('telegram_sessions')
+    .select('profile_id')
+    .eq('chat_id', chatId)
     .single();
 
-  console.log('[voice] profile lookup result:', profile, 'error:', profileError);
-
-  if (!profile) {
-    await sendMessage(chatId, '❌ Аккаунт не привязан. Подключи Telegram в настройках CRES-CA.');
+  if (!session) {
+    await sendMessage(chatId, '❌ Сначала войди в CRES-CA через Mini App, чтобы использовать голосового ассистента.', {
+      reply_markup: {
+        inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
+      },
+    });
     return;
   }
 
   const { data: master } = await supabase
     .from('masters')
     .select('id')
-    .eq('profile_id', profile.id)
+    .eq('profile_id', session.profile_id)
     .single();
 
   if (!master) {
@@ -158,7 +166,7 @@ async function routeVoiceAction(
   chatId: number,
   masterId: string,
   intent: VoiceIntent,
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createServiceClient>,
 ) {
   switch (intent.action) {
     case 'reminder': {
@@ -306,7 +314,7 @@ async function routeVoiceAction(
 /* ─── Existing handlers (unchanged) ─── */
 
 async function handleMasterAccountLink(chatId: number, telegramId: number, token: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: tokenRow } = await supabase
     .from('telegram_link_tokens')
@@ -344,6 +352,9 @@ async function handleMasterAccountLink(chatId: number, telegramId: number, token
     .update({ consumed_at: new Date().toISOString() })
     .eq('token', token);
 
+  // Record telegram session
+  await supabase.from('telegram_sessions').upsert({ chat_id: chatId, profile_id: tokenRow.profile_id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
+
   await sendMessage(
     chatId,
     '✅ <b>Telegram подключён!</b>\n\nТеперь ты будешь получать уведомления о новых записях и отменах прямо сюда.\n\n🎤 Отправляй голосовые — я создам напоминания и заметки.',
@@ -357,7 +368,7 @@ async function handleMasterAccountLink(chatId: number, telegramId: number, token
 }
 
 async function handleMasterLink(chatId: number, telegramId: number, inviteCode: string, firstName: string) {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: master } = await supabase
     .from('masters')
@@ -372,15 +383,16 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
 
   const masterName = (master.profile as unknown as { full_name: string })?.full_name || 'Master';
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('telegram_id', telegramId)
+  // Check if this chat has a logged-in CRES-CA session
+  const { data: session } = await supabase
+    .from('telegram_sessions')
+    .select('profile_id')
+    .eq('chat_id', chatId)
     .single();
 
-  if (profile) {
+  if (session) {
     await supabase.from('client_master_links').upsert({
-      profile_id: profile.id,
+      profile_id: session.profile_id,
       master_id: master.id,
     }, { onConflict: 'profile_id,master_id' });
   }

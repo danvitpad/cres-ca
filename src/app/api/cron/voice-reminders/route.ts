@@ -1,7 +1,8 @@
 /** --- YAML
  * name: Voice Reminders Cron
- * description: Sends Telegram notifications for due voice/manual reminders from the reminders table. Runs every minute via Vercel Cron.
+ * description: Sends Telegram notifications for due reminders. Looks up all linked Telegram chats via telegram_sessions.
  * created: 2026-04-16
+ * updated: 2026-04-16
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -24,10 +25,7 @@ export async function GET(request: Request) {
   // Find due reminders (due_at <= now, not completed)
   const { data: reminders, error } = await supabase
     .from('reminders')
-    .select(`
-      id, text, due_at, master_id,
-      master:masters!inner(profile_id, profile:profiles!masters_profile_id_fkey(telegram_id))
-    `)
+    .select('id, text, due_at, master_id, master:masters!inner(profile_id)')
     .eq('completed', false)
     .not('due_at', 'is', null)
     .lte('due_at', new Date().toISOString())
@@ -40,15 +38,22 @@ export async function GET(request: Request) {
   let sent = 0;
 
   for (const r of reminders) {
-    const master = r.master as unknown as { profile_id: string; profile: { telegram_id: string | null } };
-    const telegramId = master?.profile?.telegram_id;
+    const master = r.master as unknown as { profile_id: string };
 
-    if (telegramId) {
-      await sendMessage(
-        telegramId,
-        `🔔 <b>Напоминание</b>\n\n${r.text}`,
-        { parse_mode: 'HTML' },
-      );
+    // Find ALL telegram chats linked to this master's profile
+    const { data: sessions } = await supabase
+      .from('telegram_sessions')
+      .select('chat_id')
+      .eq('profile_id', master.profile_id);
+
+    if (sessions?.length) {
+      for (const s of sessions) {
+        await sendMessage(
+          s.chat_id,
+          `🔔 <b>Напоминание</b>\n\n${r.text}`,
+          { parse_mode: 'HTML' },
+        );
+      }
       sent++;
     }
 
