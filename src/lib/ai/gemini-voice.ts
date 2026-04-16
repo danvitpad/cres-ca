@@ -5,7 +5,10 @@
  * --- */
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'] as const;
+function geminiUrl(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+}
 
 export type VoiceAction =
   | 'reminder'
@@ -71,43 +74,57 @@ export async function parseVoiceIntent(audioBase64: string, mimeType: string = '
   const now = new Date().toISOString();
   const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now);
 
-  const response = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: prompt },
-          {
-            inline_data: {
-              mime_type: mimeType,
-              data: audioBase64,
-            },
+  const requestBody = JSON.stringify({
+    contents: [{
+      parts: [
+        { text: prompt },
+        {
+          inline_data: {
+            mime_type: mimeType,
+            data: audioBase64,
           },
-        ],
-      }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 512,
-        responseMimeType: 'application/json',
-      },
-    }),
+        },
+      ],
+    }],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 512,
+      responseMimeType: 'application/json',
+    },
   });
 
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${err}`);
+  // Try each model with retry on 503
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fetch(geminiUrl(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: requestBody,
+      });
+
+      if (response.status === 503) {
+        // Wait 1s then retry or try next model
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Gemini API error ${response.status}: ${err}`);
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        throw new Error('Empty response from Gemini');
+      }
+
+      return JSON.parse(text) as VoiceIntent;
+    }
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) {
-    throw new Error('Empty response from Gemini');
-  }
-
-  const parsed: VoiceIntent = JSON.parse(text);
-  return parsed;
+  throw new Error('All Gemini models unavailable (503)');
 }
 
 /**
