@@ -1,18 +1,24 @@
 /** --- YAML
  * name: MiniAppMasterDetail
- * description: Mini App master profile — avatar, rating, services, portfolio gallery, reviews, working hours, book CTA. Dark theme.
+ * description: Master profile page in Telegram Mini App — hero, info, tabs (services/portfolio/reviews/about), sticky bottom CTA. Spotify+Pinterest dark theme.
  * created: 2026-04-13
  * updated: 2026-04-16
  * --- */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Star, MapPin, Clock, Loader2, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowLeft, Star, MapPin, Clock, Loader2, Heart, Share2,
+  ChevronRight, Camera, MessageSquare, CalendarCheck,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useAuthStore } from '@/stores/auth-store';
+
+/* ─── types ─── */
 
 interface ServiceItem {
   id: string;
@@ -21,6 +27,15 @@ interface ServiceItem {
   currency: string;
   duration_minutes: number;
   description: string | null;
+  color: string | null;
+  category_id: string | null;
+}
+
+interface ServiceCategory {
+  id: string;
+  name: string;
+  color: string | null;
+  sort_order: number;
 }
 
 interface PortfolioItem {
@@ -37,7 +52,8 @@ interface ReviewItem {
   reviewer_name: string | null;
 }
 
-type WorkingHoursMap = Record<string, { start: string; end: string } | null>;
+type WorkingHoursEntry = { start: string; end: string } | null;
+type WorkingHoursMap = Record<string, WorkingHoursEntry>;
 
 interface MasterDetail {
   id: string;
@@ -51,33 +67,130 @@ interface MasterDetail {
   avatar_url: string | null;
   full_name: string | null;
   working_hours: WorkingHoursMap | null;
+  latitude: number | null;
+  longitude: number | null;
   services: ServiceItem[];
+  categories: ServiceCategory[];
   portfolio: PortfolioItem[];
   reviews: ReviewItem[];
 }
+
+/* ─── constants ─── */
+
+const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+const DAY_NAMES_FULL: Record<string, string> = {
+  monday: 'Понедельник', tuesday: 'Вторник', wednesday: 'Среда', thursday: 'Четверг',
+  friday: 'Пятница', saturday: 'Суббота', sunday: 'Воскресенье',
+};
+const JS_DAY_TO_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+
+const TAB_ITEMS = [
+  { key: 'services', label: 'Услуги' },
+  { key: 'portfolio', label: 'Портфолио' },
+  { key: 'reviews', label: 'Отзывы' },
+  { key: 'about', label: 'О нас' },
+] as const;
+
+type TabKey = (typeof TAB_ITEMS)[number]['key'];
+
+/* ─── helpers ─── */
+
+function getOpenStatus(wh: WorkingHoursMap | null): { isOpen: boolean; label: string } {
+  if (!wh) return { isOpen: false, label: 'Нет расписания' };
+  const now = new Date();
+  const dayKey = JS_DAY_TO_KEY[now.getDay()];
+  const entry = wh[dayKey];
+  if (!entry) return { isOpen: false, label: 'Сегодня выходной' };
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const [startH, startM] = entry.start.split(':').map(Number);
+  const [endH, endM] = entry.end.split(':').map(Number);
+  const start = startH * 60 + startM;
+  const end = endH * 60 + endM;
+
+  if (currentMinutes >= start && currentMinutes < end) {
+    return { isOpen: true, label: `Открыто до ${entry.end}` };
+  }
+  if (currentMinutes < start) {
+    return { isOpen: false, label: `Откроется в ${entry.start}` };
+  }
+  return { isOpen: false, label: 'Закрыто' };
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/* ─── component ─── */
 
 export default function MiniAppMasterDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { haptic } = useTelegram();
+  const userId = useAuthStore((s) => s.userId);
+
   const [master, setMaster] = useState<MasterDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('services');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [showBottomBar, setShowBottomBar] = useState(false);
+  const [portfolioOpen, setPortfolioOpen] = useState<string | null>(null);
 
+  // Refs for scroll-to-section
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Record<TabKey, HTMLDivElement | null>>({
+    services: null,
+    portfolio: null,
+    reviews: null,
+    about: null,
+  });
+  const tabBarRef = useRef<HTMLDivElement>(null);
+
+  /* ─── data fetching ─── */
   useEffect(() => {
     if (!params?.id) return;
     const supabase = createClient();
+
     (async () => {
-      const { data } = await supabase
-        .from('masters')
-        .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, is_active)')
-        .eq('id', params.id)
-        .eq('is_active', true)
-        .maybeSingle();
-      if (!data) {
+      // Parallel fetches
+      const [masterRes, portfolioRes, reviewsRes, categoriesRes] = await Promise.all([
+        supabase
+          .from('masters')
+          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
+          .eq('id', params.id)
+          .eq('is_active', true)
+          .maybeSingle(),
+        supabase
+          .from('master_portfolio')
+          .select('id, image_url, caption')
+          .eq('master_id', params.id)
+          .eq('is_published', true)
+          .order('sort_order', { ascending: true })
+          .limit(18),
+        supabase
+          .from('reviews')
+          .select('id, score, comment, created_at, reviewer:profiles!reviewer_id(full_name)')
+          .eq('target_id', params.id)
+          .eq('target_type', 'master')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('service_categories')
+          .select('id, name, color, sort_order')
+          .eq('master_id', params.id)
+          .order('sort_order', { ascending: true }),
+      ]);
+
+      if (!masterRes.data) {
         setLoading(false);
         return;
       }
-      const m = data as unknown as {
+
+      const m = masterRes.data as unknown as {
         id: string;
         display_name: string | null;
         specialization: string | null;
@@ -88,31 +201,15 @@ export default function MiniAppMasterDetailPage() {
         total_reviews: number | null;
         avatar_url: string | null;
         working_hours: WorkingHoursMap | null;
+        latitude: number | null;
+        longitude: number | null;
         profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
         services: Array<ServiceItem & { is_active: boolean }>;
       };
+
       const p = Array.isArray(m.profile) ? m.profile[0] : m.profile;
 
-      // Load portfolio
-      const { data: portfolioData } = await supabase
-        .from('master_portfolio')
-        .select('id, image_url, caption')
-        .eq('master_id', params.id)
-        .eq('is_published', true)
-        .order('sort_order', { ascending: false })
-        .limit(12);
-
-      // Load reviews
-      const { data: reviewsData } = await supabase
-        .from('reviews')
-        .select('id, score, comment, created_at, reviewer:profiles!reviewer_id(full_name)')
-        .eq('target_id', params.id)
-        .eq('target_type', 'master')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      const reviews: ReviewItem[] = (reviewsData ?? []).map((r: unknown) => {
+      const reviews: ReviewItem[] = (reviewsRes.data ?? []).map((r: unknown) => {
         const rv = r as {
           id: string;
           score: number;
@@ -142,202 +239,681 @@ export default function MiniAppMasterDetailPage() {
         avatar_url: m.avatar_url ?? p?.avatar_url ?? null,
         full_name: p?.full_name ?? null,
         working_hours: m.working_hours,
+        latitude: m.latitude ?? null,
+        longitude: m.longitude ?? null,
         services: (m.services ?? []).filter((s) => s.is_active),
-        portfolio: (portfolioData ?? []) as PortfolioItem[],
+        categories: (categoriesRes.data ?? []) as ServiceCategory[],
+        portfolio: (portfolioRes.data ?? []) as PortfolioItem[],
         reviews,
       });
       setLoading(false);
     })();
   }, [params?.id]);
 
+  /* ─── like status check ─── */
+  useEffect(() => {
+    if (!params?.id || !userId) return;
+    const supabase = createClient();
+    supabase
+      .from('master_likes')
+      .select('master_id')
+      .eq('master_id', params.id)
+      .eq('profile_id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setLiked(true);
+      });
+  }, [params?.id, userId]);
+
+  /* ─── like toggle ─── */
+  const toggleLike = useCallback(async () => {
+    if (!master || !userId || likeLoading) return;
+    setLikeLoading(true);
+    haptic(liked ? 'light' : 'success');
+    const supabase = createClient();
+
+    if (liked) {
+      await supabase
+        .from('master_likes')
+        .delete()
+        .eq('master_id', master.id)
+        .eq('profile_id', userId);
+      setLiked(false);
+    } else {
+      await supabase
+        .from('master_likes')
+        .insert({ master_id: master.id, profile_id: userId });
+      setLiked(true);
+    }
+    setLikeLoading(false);
+  }, [master, userId, liked, likeLoading, haptic]);
+
+  /* ─── share ─── */
+  const handleShare = useCallback(() => {
+    if (!master) return;
+    haptic('light');
+    const url = `${window.location.origin}/telegram/search/${master.id}`;
+    const text = `${master.display_name ?? master.full_name ?? 'Мастер'} — ${master.specialization ?? 'Профессионал'}`;
+
+    // Try Telegram share first
+    if (typeof window !== 'undefined' && (window as unknown as { Telegram?: { WebApp?: { openTelegramLink?: (url: string) => void } } }).Telegram?.WebApp?.openTelegramLink) {
+      (window as unknown as { Telegram: { WebApp: { openTelegramLink: (url: string) => void } } }).Telegram.WebApp.openTelegramLink(
+        `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+      );
+      return;
+    }
+
+    // Fallback: copy to clipboard
+    navigator.clipboard?.writeText(url);
+  }, [master, haptic]);
+
+  /* ─── intersection observer for active tab ─── */
+  useEffect(() => {
+    if (!master) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const key = entry.target.getAttribute('data-section') as TabKey | null;
+            if (key) setActiveTab(key);
+          }
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0.1 }
+    );
+
+    for (const key of Object.keys(sectionRefs.current) as TabKey[]) {
+      const el = sectionRefs.current[key];
+      if (el) observer.observe(el);
+    }
+
+    return () => observer.disconnect();
+  }, [master]);
+
+  /* ─── show bottom bar after scrolling past hero ─── */
+  useEffect(() => {
+    const onScroll = () => {
+      setShowBottomBar(window.scrollY > 240);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  /* ─── scroll to section ─── */
+  const scrollToSection = useCallback((key: TabKey) => {
+    haptic('light');
+    setActiveTab(key);
+    const el = sectionRefs.current[key];
+    if (el) {
+      const offset = 60; // tab bar height
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }, [haptic]);
+
+  /* ─── filtered services ─── */
+  const filteredServices = useMemo(() => {
+    if (!master) return [];
+    if (!activeCategory) return master.services;
+    return master.services.filter((s) => s.category_id === activeCategory);
+  }, [master, activeCategory]);
+
+  /* ─── open status ─── */
+  const openStatus = useMemo(() => {
+    return master ? getOpenStatus(master.working_hours) : { isOpen: false, label: '' };
+  }, [master]);
+
+  const todayKey = JS_DAY_TO_KEY[new Date().getDay()];
+
+  /* ─── loading ─── */
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+      <div className="flex min-h-[80vh] items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Loader2 className="size-8 animate-spin text-white/30" />
+        </motion.div>
       </div>
     );
   }
 
+  /* ─── not found ─── */
   if (!master) {
     return (
-      <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-white/60">Мастер не найден</p>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-5"
+      >
+        <div className="flex size-16 items-center justify-center rounded-full bg-white/5">
+          <MapPin className="size-6 text-white/30" />
+        </div>
+        <p className="text-sm text-white/50">Мастер не найден</p>
+        <button
+          onClick={() => router.back()}
+          className="mt-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-medium text-white/80 active:scale-95 transition-transform"
+        >
+          Назад
+        </button>
+      </motion.div>
     );
   }
 
   const name = master.display_name ?? master.full_name ?? '—';
+  const activeServicesCount = master.services.length;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6 px-5 pt-6 pb-10"
-    >
-      <button
-        onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5"
-      >
-        <ArrowLeft className="size-4" />
-      </button>
+    <div ref={scrollContainerRef} className="relative min-h-screen pb-28">
+      {/* ━━━ HERO ━━━ */}
+      <div ref={heroRef} className="relative h-[200px] overflow-hidden">
+        {/* Background */}
+        {master.avatar_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={master.avatar_url}
+              alt=""
+              className="absolute inset-0 size-full object-cover scale-110 blur-sm brightness-50"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-rose-500">
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/60" />
+          </div>
+        )}
 
-      <div className="flex items-start gap-4">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-rose-500 text-2xl font-bold">
-          {master.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={master.avatar_url} alt={name} className="size-full object-cover" />
-          ) : (
-            name[0] ?? 'M'
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-xl font-bold">{name}</h1>
-          {master.specialization && (
-            <p className="mt-0.5 truncate text-[13px] text-white/60">{master.specialization}</p>
-          )}
-          <div className="mt-2 flex items-center gap-3 text-[12px] text-white/70">
-            {master.rating > 0 && (
-              <div className="flex items-center gap-1">
-                <Star className="size-3 fill-amber-400 text-amber-400" />
-                <span className="font-semibold">{master.rating.toFixed(1)}</span>
-                <span className="text-white/40">({master.total_reviews})</span>
-              </div>
-            )}
-            {master.city && (
-              <div className="flex items-center gap-1 truncate">
-                <MapPin className="size-3" />
-                <span className="truncate">{master.city}</span>
-              </div>
+        {/* Overlay buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+          className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-4"
+          style={{ paddingTop: 'calc(var(--tg-content-top, 0px) + 16px)' }}
+        >
+          <button
+            onClick={() => { haptic('light'); router.back(); }}
+            className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform"
+          >
+            <ArrowLeft className="size-[18px] text-white" />
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform"
+            >
+              <Share2 className="size-[18px] text-white" />
+            </button>
+            <button
+              onClick={toggleLike}
+              disabled={likeLoading || !userId}
+              className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform disabled:opacity-40"
+            >
+              <Heart
+                className={`size-[18px] transition-colors duration-200 ${
+                  liked ? 'fill-rose-500 text-rose-500' : 'text-white'
+                }`}
+              />
+            </button>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ━━━ INFO SECTION ━━━ */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="relative z-10 -mt-10 px-5"
+      >
+        {/* Avatar */}
+        <div className="flex items-end gap-4">
+          <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-rose-500 text-2xl font-bold ring-4 ring-[#121212] shadow-2xl">
+            {master.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={master.avatar_url} alt={name} className="size-full object-cover" />
+            ) : (
+              <span className="text-white">{name[0]?.toUpperCase() ?? 'M'}</span>
             )}
           </div>
+          <div className="min-w-0 flex-1 pb-1">
+            <h1 className="truncate text-xl font-bold leading-tight text-white">{name}</h1>
+            {master.specialization && (
+              <p className="mt-0.5 truncate text-[13px] text-white/60">{master.specialization}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Meta row */}
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]">
+          {master.rating > 0 && (
+            <div className="flex items-center gap-1 text-white/80">
+              <Star className="size-3.5 fill-amber-400 text-amber-400" />
+              <span className="font-semibold">{master.rating.toFixed(1)}</span>
+              <span className="text-white/40">({master.total_reviews})</span>
+            </div>
+          )}
+          {master.city && (
+            <div className="flex items-center gap-1 text-white/60">
+              <MapPin className="size-3" />
+              <span className="truncate">{master.city}</span>
+            </div>
+          )}
+          <div className={`flex items-center gap-1.5 ${openStatus.isOpen ? 'text-emerald-400' : 'text-white/40'}`}>
+            <div className={`size-1.5 rounded-full ${openStatus.isOpen ? 'bg-emerald-400' : 'bg-white/30'}`} />
+            <span className="text-[11px] font-medium">{openStatus.label}</span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ━━━ TAB BAR (sticky) ━━━ */}
+      <div
+        ref={tabBarRef}
+        className="sticky top-0 z-30 mt-5 border-b border-white/[0.06] bg-[#121212]/95 backdrop-blur-xl"
+      >
+        <div className="flex gap-0 px-5">
+          {TAB_ITEMS.map((tab) => {
+            // Hide portfolio/reviews tabs if empty
+            if (tab.key === 'portfolio' && master.portfolio.length === 0) return null;
+            if (tab.key === 'reviews' && master.reviews.length === 0) return null;
+
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => scrollToSection(tab.key)}
+                className={`relative px-3 py-3 text-[13px] font-medium transition-colors ${
+                  isActive ? 'text-white' : 'text-white/50'
+                }`}
+              >
+                {tab.label}
+                {isActive && (
+                  <motion.div
+                    layoutId="tab-underline"
+                    className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-white"
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {master.bio && (
-        <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] leading-relaxed text-white/75">
-          {master.bio}
-        </p>
-      )}
+      {/* ━━━ SECTIONS ━━━ */}
+      <div className="mt-1 space-y-8 px-5 pt-4">
 
-      <div>
-        <h2 className="mb-3 text-sm font-semibold">Услуги</h2>
-        {master.services.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center text-[12px] text-white/50">
-            Пока нет активных услуг
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {master.services.map((s, i) => (
-              <motion.li
-                key={s.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
+        {/* ── Services ── */}
+        <div
+          ref={(el) => { sectionRefs.current.services = el; }}
+          data-section="services"
+        >
+          <h2 className="mb-3 text-[15px] font-bold text-white">
+            Услуги
+            {activeServicesCount > 0 && (
+              <span className="ml-2 text-[12px] font-normal text-white/40">{activeServicesCount}</span>
+            )}
+          </h2>
+
+          {/* Category pills */}
+          {master.categories.length > 0 && (
+            <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => { haptic('light'); setActiveCategory(null); }}
+                className={`shrink-0 rounded-full px-4 py-1.5 text-[12px] font-medium transition-all ${
+                  !activeCategory
+                    ? 'bg-white text-black'
+                    : 'bg-white/[0.08] text-white/60'
+                }`}
               >
+                Все
+              </button>
+              {master.categories.map((cat) => (
                 <button
-                  onClick={() => {
-                    haptic('light');
-                    router.push(`/telegram/book?master_id=${master.id}&service_id=${s.id}`);
-                  }}
-                  className="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left active:scale-[0.99] transition-transform"
+                  key={cat.id}
+                  onClick={() => { haptic('light'); setActiveCategory(cat.id); }}
+                  className={`shrink-0 rounded-full px-4 py-1.5 text-[12px] font-medium transition-all ${
+                    activeCategory === cat.id
+                      ? 'bg-white text-black'
+                      : 'bg-white/[0.08] text-white/60'
+                  }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{s.name}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-white/60">
-                      <Clock className="size-3" />
-                      {s.duration_minutes} мин
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Service list */}
+          {filteredServices.length === 0 ? (
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-8 text-center">
+              <p className="text-[13px] text-white/40">Пока нет активных услуг</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              <AnimatePresence mode="popLayout">
+                {filteredServices.map((s, i) => (
+                  <motion.li
+                    key={s.id}
+                    layout
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ delay: i * 0.03, duration: 0.25 }}
+                  >
+                    <div className="group rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4 transition-colors hover:bg-white/[0.06]">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          {/* Color dot + name */}
+                          <div className="flex items-center gap-2">
+                            {s.color && (
+                              <div
+                                className="size-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: s.color }}
+                              />
+                            )}
+                            <p className="truncate text-[14px] font-semibold text-white">{s.name}</p>
+                          </div>
+
+                          {/* Duration */}
+                          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white/50">
+                            <Clock className="size-3" />
+                            <span>{s.duration_minutes} мин</span>
+                          </div>
+
+                          {/* Description */}
+                          {s.description && (
+                            <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-white/40">
+                              {s.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Price + book button */}
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <p className="text-[15px] font-bold text-white">
+                            {Number(s.price).toFixed(0)}<span className="ml-0.5 text-[12px] font-normal text-white/50">{s.currency === 'UAH' ? '₴' : s.currency}</span>
+                          </p>
+                          <button
+                            onClick={() => {
+                              haptic('light');
+                              router.push(`/telegram/book?master_id=${master.id}&service_id=${s.id}`);
+                            }}
+                            className="rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-[11px] font-medium text-white/80 active:scale-95 transition-all hover:bg-white/10"
+                          >
+                            Записаться
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          )}
+        </div>
+
+        {/* ── Portfolio ── */}
+        {master.portfolio.length > 0 && (
+          <div
+            ref={(el) => { sectionRefs.current.portfolio = el; }}
+            data-section="portfolio"
+          >
+            <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-white">
+              <Camera className="size-4 text-white/50" />
+              Портфолио
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
+                {master.portfolio.length}
+              </span>
+            </h2>
+
+            <div className="grid grid-cols-3 gap-1 overflow-hidden rounded-2xl">
+              {master.portfolio.map((item, i) => (
+                <motion.button
+                  key={item.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.04, duration: 0.3 }}
+                  onClick={() => { haptic('light'); setPortfolioOpen(item.id); }}
+                  className="relative aspect-square overflow-hidden bg-white/5 active:scale-[0.97] transition-transform"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={item.image_url}
+                    alt={item.caption ?? ''}
+                    className="size-full object-cover"
+                    loading="lazy"
+                  />
+                </motion.button>
+              ))}
+            </div>
+
+            {/* Lightbox */}
+            <AnimatePresence>
+              {portfolioOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-lg p-4"
+                  onClick={() => setPortfolioOpen(null)}
+                >
+                  {(() => {
+                    const item = master.portfolio.find((p) => p.id === portfolioOpen);
+                    if (!item) return null;
+                    return (
+                      <motion.div
+                        initial={{ scale: 0.85, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.85, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                        className="relative max-h-[80vh] max-w-full overflow-hidden rounded-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={item.image_url} alt={item.caption ?? ''} className="max-h-[80vh] object-contain" />
+                        {item.caption && (
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-8">
+                            <p className="text-[13px] text-white/90">{item.caption}</p>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })()}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* ── Reviews ── */}
+        {master.reviews.length > 0 && (
+          <div
+            ref={(el) => { sectionRefs.current.reviews = el; }}
+            data-section="reviews"
+          >
+            <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-white">
+              <MessageSquare className="size-4 text-white/50" />
+              Отзывы
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
+                {master.total_reviews}
+              </span>
+            </h2>
+
+            {/* Rating summary */}
+            <div className="mb-4 flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
+              <div className="text-center">
+                <p className="text-3xl font-bold text-white">{master.rating.toFixed(1)}</p>
+                <div className="mt-1 flex items-center gap-0.5">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`size-3 ${i < Math.round(master.rating) ? 'fill-amber-400 text-amber-400' : 'text-white/15'}`}
+                    />
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] text-white/40">{master.total_reviews} отзывов</p>
+              </div>
+            </div>
+
+            {/* Review cards */}
+            <ul className="space-y-2.5">
+              {master.reviews.map((r, i) => (
+                <motion.li
+                  key={r.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04, duration: 0.25 }}
+                  className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex size-8 items-center justify-center rounded-full bg-white/10 text-[12px] font-bold text-white/60">
+                        {(r.reviewer_name ?? 'К')[0]?.toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-white">{r.reviewer_name ?? 'Клиент'}</p>
+                        <p className="text-[10px] text-white/30">{formatDate(r.created_at)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`size-3 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-white/15'}`}
+                        />
+                      ))}
                     </div>
                   </div>
-                  <div className="shrink-0 text-right">
-                    <p className="text-sm font-bold">{Number(s.price).toFixed(0)} ₴</p>
-                  </div>
-                </button>
-              </motion.li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {/* Portfolio gallery */}
-      {master.portfolio.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-sm font-semibold">Портфолио</h2>
-          <div className="grid grid-cols-3 gap-1.5 overflow-hidden rounded-2xl">
-            {master.portfolio.map((item) => (
-              <div key={item.id} className="relative aspect-square overflow-hidden bg-white/5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image_url} alt={item.caption ?? ''} className="size-full object-cover" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Reviews */}
-      {master.reviews.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-sm font-semibold">
-            Отзывы <span className="text-white/40">({master.total_reviews})</span>
-          </h2>
-          <ul className="space-y-2">
-            {master.reviews.map((r) => (
-              <li key={r.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-[13px] font-semibold">{r.reviewer_name ?? 'Клиент'}</p>
-                  <div className="flex items-center gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`size-3 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-white/15'}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-                {r.comment && (
-                  <p className="mt-2 text-[12px] leading-relaxed text-white/65">{r.comment}</p>
-                )}
-                <p className="mt-1.5 text-[10px] text-white/30">
-                  {new Date(r.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Working hours */}
-      {master.working_hours && (
-        <div>
-          <h2 className="mb-3 text-sm font-semibold">Часы работы</h2>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <ul className="space-y-1.5">
-              {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => {
-                const dayNames: Record<string, string> = {
-                  monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср', thursday: 'Чт',
-                  friday: 'Пт', saturday: 'Сб', sunday: 'Вс',
-                };
-                const h = master.working_hours?.[day];
-                return (
-                  <li key={day} className="flex items-center justify-between text-[12px]">
-                    <span className="text-white/60">{dayNames[day]}</span>
-                    <span className={h ? 'font-semibold' : 'text-white/30'}>
-                      {h ? `${h.start} — ${h.end}` : 'Выходной'}
-                    </span>
-                  </li>
-                );
-              })}
+                  {r.comment && (
+                    <p className="mt-2.5 text-[12px] leading-relaxed text-white/60">{r.comment}</p>
+                  )}
+                </motion.li>
+              ))}
             </ul>
           </div>
-        </div>
-      )}
+        )}
 
-      <button
-        onClick={() => { haptic('selection'); router.push(`/telegram/book?master_id=${master.id}`); }}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform"
-      >
-        <Calendar className="size-4" /> Записаться
-      </button>
-    </motion.div>
+        {/* ── About ── */}
+        <div
+          ref={(el) => { sectionRefs.current.about = el; }}
+          data-section="about"
+        >
+          <h2 className="mb-3 text-[15px] font-bold text-white">О нас</h2>
+
+          {/* Bio */}
+          {master.bio && (
+            <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
+              <p className="text-[13px] leading-relaxed text-white/70">{master.bio}</p>
+            </div>
+          )}
+
+          {/* Working hours */}
+          {master.working_hours && (
+            <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
+              <h3 className="mb-3 text-[13px] font-semibold text-white/80">Часы работы</h3>
+              <ul className="space-y-2">
+                {DAYS_ORDER.map((day) => {
+                  const h = master.working_hours?.[day];
+                  const isToday = day === todayKey;
+                  return (
+                    <li
+                      key={day}
+                      className={`flex items-center justify-between text-[12px] ${
+                        isToday ? 'font-bold' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`size-2 rounded-full ${
+                            h ? 'bg-emerald-500' : 'bg-white/20'
+                          }`}
+                        />
+                        <span className={isToday ? 'text-white' : 'text-white/60'}>
+                          {DAY_NAMES_FULL[day]}
+                        </span>
+                      </div>
+                      <span
+                        className={
+                          h
+                            ? isToday
+                              ? 'text-white font-bold'
+                              : 'text-white/70 font-medium'
+                            : 'text-white/30'
+                        }
+                      >
+                        {h ? `${h.start} — ${h.end}` : 'Выходной'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Address */}
+          {(master.city || master.address) && (
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
+              <div className="flex items-start gap-3">
+                <MapPin className="mt-0.5 size-4 shrink-0 text-white/40" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] text-white/70">
+                    {[master.address, master.city].filter(Boolean).join(', ')}
+                  </p>
+                  {(master.latitude && master.longitude) && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${master.latitude},${master.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-violet-400 active:text-violet-300 transition-colors"
+                      onClick={() => haptic('light')}
+                    >
+                      Проложить маршрут
+                      <ChevronRight className="size-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ━━━ STICKY BOTTOM BAR ━━━ */}
+      <AnimatePresence>
+        {showBottomBar && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.06] bg-black/80 backdrop-blur-xl"
+            style={{ paddingBottom: 'calc(var(--tg-content-bottom, 0px) + 8px)' }}
+          >
+            <div className="flex items-center justify-between px-5 py-3">
+              <div className="text-[13px] text-white/50">
+                <span className="font-semibold text-white">{activeServicesCount}</span>{' '}
+                {activeServicesCount === 1 ? 'услуга' : activeServicesCount < 5 ? 'услуги' : 'услуг'}
+              </div>
+              <button
+                onClick={() => {
+                  haptic('selection');
+                  router.push(`/telegram/book?master_id=${master.id}`);
+                }}
+                className="flex items-center gap-2 rounded-2xl bg-white px-6 py-2.5 text-[14px] font-semibold text-black active:scale-[0.97] transition-transform shadow-lg shadow-white/10"
+              >
+                <CalendarCheck className="size-4" />
+                Записаться
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
