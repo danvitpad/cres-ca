@@ -30,6 +30,8 @@ export async function POST(request: Request) {
   const telegramId = update.message.from.id;
   const firstName = update.message.from.first_name;
 
+  console.log('[webhook] from:', telegramId, firstName, 'chat:', chatId);
+
   // ── Voice message → Gemini AI ──
   const voiceFileId = update.message.voice?.file_id || update.message.audio?.file_id;
   if (voiceFileId) {
@@ -107,11 +109,14 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
   const supabase = await createClient();
 
   // Find master by telegram_id
-  const { data: profile } = await supabase
+  console.log('[voice] looking up telegram_id:', telegramId, typeof telegramId);
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('id')
     .eq('telegram_id', telegramId)
     .single();
+
+  console.log('[voice] profile lookup result:', profile, 'error:', profileError);
 
   if (!profile) {
     await sendMessage(chatId, '❌ Аккаунт не привязан. Подключи Telegram в настройках CRES-CA.');
