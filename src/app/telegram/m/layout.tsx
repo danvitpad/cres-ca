@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Calendar, Users, User, Loader2 } from 'lucide-react';
+import { Home, Calendar, Users, User, Bell, Loader2 } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
@@ -20,6 +20,7 @@ const tabs = [
   { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Сегодня' },
   { key: 'calendar', href: '/telegram/m/calendar', icon: Calendar, label: 'Календарь' },
   { key: 'clients', href: '/telegram/m/clients', icon: Users, label: 'Клиенты' },
+  { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
   { key: 'profile', href: '/telegram/m/profile', icon: User, label: 'Профиль' },
 ] as const;
 
@@ -28,6 +29,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const [checking, setChecking] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!userId) {
@@ -44,6 +46,49 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       setChecking(false);
     })();
   }, [userId, router]);
+
+  // Realtime unread notifications badge
+  useEffect(() => {
+    if (!userId) return;
+    const supabase = createClient();
+    let mounted = true;
+
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('profile_id', userId)
+        .is('read_at', null);
+      if (mounted) setUnreadCount(count ?? 0);
+    };
+
+    fetchCount();
+
+    const channel = supabase
+      .channel(`master-notif:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications', filter: `profile_id=eq.${userId}` },
+        () => fetchCount(),
+      )
+      .subscribe();
+
+    const onFocus = () => fetchCount();
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (pathname === '/telegram/m/notifications' && unreadCount > 0) {
+      const t = setTimeout(() => setUnreadCount(0), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [pathname, unreadCount]);
 
   if (checking) {
     return (
@@ -75,6 +120,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
             {tabs.map((tab) => {
               const active = pathname.startsWith(tab.href);
               const Icon = tab.icon;
+              const showBadge = tab.key === 'notifications' && unreadCount > 0;
               return (
                 <li key={tab.key} className="flex-1">
                   <Link
@@ -84,7 +130,14 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
                       active ? 'text-white' : 'text-white/40 hover:text-white/70',
                     )}
                   >
-                    <Icon className={cn('size-[22px] transition-transform', active && 'scale-110')} strokeWidth={active ? 2.5 : 2} />
+                    <div className="relative">
+                      <Icon className={cn('size-[22px] transition-transform', active && 'scale-110')} strokeWidth={active ? 2.5 : 2} />
+                      {showBadge && (
+                        <span className="absolute -right-1.5 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </div>
                     <span>{tab.label}</span>
                     {active && (
                       <span className="absolute -top-[9px] left-1/2 h-[3px] w-8 -translate-x-1/2 rounded-full bg-white" />

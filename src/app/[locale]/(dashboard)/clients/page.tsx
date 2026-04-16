@@ -25,9 +25,6 @@ import {
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import {
   AlertTriangle,
-  Search,
-  SlidersHorizontal,
-  ChevronDown,
   Users,
   Star,
   Heart,
@@ -321,47 +318,9 @@ export default function ClientsPage() {
         </div>
       )}
 
-      {/* ── Search + Filters (Fresha style) — only on clients tab ── */}
+      {/* ── Clients Tab ── */}
       {tab === 'clients' && (
       <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 420,
-          padding: '10px 14px', borderRadius: 999,
-          backgroundColor: C.searchBg, border: `1px solid ${C.searchBorder}`,
-        }}>
-          <Search style={{ width: 16, height: 16, color: C.textLight, flexShrink: 0 }} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('searchPlaceholder') || 'Имя, эл. почта или телефон'}
-            style={{
-              border: 'none', outline: 'none', backgroundColor: 'transparent',
-              fontSize: 14, color: C.text, width: '100%', fontFamily: FONT,
-            }}
-          />
-        </div>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '10px 16px', borderRadius: 999,
-          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
-          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
-        }}>
-          <SlidersHorizontal style={{ width: 14, height: 14 }} />
-          {t('filters') || 'Фильтры'}
-        </button>
-        <div style={{ flex: 1 }} />
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '10px 16px', borderRadius: 999,
-          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
-          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
-        }}>
-          {t('sortByDate') || 'Дата создания (от новых к старым)'}
-          <ChevronDown style={{ width: 14, height: 14 }} />
-        </button>
-      </div>
-
       {/* ── Client table (Fresha style) ── */}
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

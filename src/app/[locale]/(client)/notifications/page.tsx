@@ -11,13 +11,20 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Sparkles, Star, Sliders } from 'lucide-react';
+import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Sparkles, Star, Sliders, UserPlus, UserCheck, Users, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+
+interface NotifData {
+  type?: string;
+  follower_profile_id?: string;
+  profile_id?: string;
+  [key: string]: unknown;
+}
 
 interface NotifRow {
   id: string;
@@ -26,6 +33,8 @@ interface NotifRow {
   channel: string | null;
   status: string | null;
   created_at: string;
+  read_at: string | null;
+  data: NotifData | null;
 }
 
 interface Prefs {
@@ -58,7 +67,8 @@ const defaults: Prefs = {
 
 type Category = 'all' | 'important' | 'bookings' | 'reminders' | 'promos' | 'reviews';
 
-function categorize(n: NotifRow): Exclude<Category, 'all' | 'important'> | 'system' {
+function categorize(n: NotifRow): Exclude<Category, 'all' | 'important'> | 'system' | 'social' {
+  if (n.data?.type === 'new_follower' || n.data?.type === 'mutual_follow') return 'social';
   const text = `${n.title ?? ''} ${n.body ?? ''}`.toLowerCase();
   if (/cancel|cancelled|booking|appointment|записал|отмен|подтвержд/.test(text)) return 'bookings';
   if (/remind|reminder|reminded|напомин/.test(text)) return 'reminders';
@@ -67,11 +77,12 @@ function categorize(n: NotifRow): Exclude<Category, 'all' | 'important'> | 'syst
   return 'system';
 }
 
-const CATEGORY_META: Record<Exclude<Category, 'all' | 'important'> | 'system', { icon: React.ComponentType<{ className?: string }>; color: string }> = {
+const CATEGORY_META: Record<Exclude<Category, 'all' | 'important'> | 'system' | 'social', { icon: React.ComponentType<{ className?: string }>; color: string }> = {
   bookings: { icon: Calendar, color: 'oklch(0.65 0.2 264)' },
   reminders: { icon: Clock, color: 'oklch(0.7 0.18 75)' },
   promos: { icon: Sparkles, color: 'oklch(0.65 0.22 320)' },
   reviews: { icon: Star, color: 'oklch(0.75 0.18 75)' },
+  social: { icon: UserPlus, color: 'oklch(0.65 0.18 250)' },
   system: { icon: Bell, color: 'oklch(0.6 0 0)' },
 };
 
@@ -83,6 +94,7 @@ export default function NotificationsPage() {
   const [feed, setFeed] = useState<NotifRow[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [category, setCategory] = useState<Category>('all');
+  const [followStates, setFollowStates] = useState<Record<string, boolean | 'loading'>>({});
 
   useEffect(() => {
     if (!userId) return;
@@ -99,11 +111,31 @@ export default function NotificationsPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('notifications')
-        .select('id, title, body, channel, status, created_at')
+        .select('id, title, body, channel, status, created_at, read_at, data')
         .eq('profile_id', userId)
         .order('created_at', { ascending: false })
         .limit(50);
       setFeed((data ?? []) as NotifRow[]);
+
+      // Check follow states for new_follower notifications
+      const followerIds = (data ?? [])
+        .filter((n: { data: NotifData | null }) => n.data?.type === 'new_follower' && n.data?.follower_profile_id)
+        .map((n: { data: NotifData }) => n.data.follower_profile_id as string);
+
+      if (followerIds.length > 0 && userId) {
+        const { data: myFollows } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', userId)
+          .in('following_id', followerIds);
+        const followingSet = new Set((myFollows ?? []).map(f => f.following_id));
+        const states: Record<string, boolean> = {};
+        for (const fId of followerIds) {
+          states[fId] = followingSet.has(fId);
+        }
+        setFollowStates(states);
+      }
+
       setFeedLoading(false);
     }
     load();
@@ -131,6 +163,24 @@ export default function NotificationsPage() {
     else {
       toast.success('✓');
       setDirty(false);
+    }
+  }
+
+  async function toggleFollow(targetId: string) {
+    setFollowStates(prev => ({ ...prev, [targetId]: 'loading' }));
+    try {
+      const res = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setFollowStates(prev => ({ ...prev, [targetId]: data.following }));
+        toast.success(data.following ? 'Подписка оформлена' : 'Подписка отменена');
+      }
+    } catch {
+      setFollowStates(prev => ({ ...prev, [targetId]: false }));
     }
   }
 
@@ -216,9 +266,17 @@ export default function NotificationsPage() {
                     {items.map((n) => {
                       const cat = categorize(n);
                       const meta = CATEGORY_META[cat];
-                      const Icon = meta.icon;
+                      const notifType = n.data?.type ?? '';
+                      const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
+                      const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
+                      const followState = followerProfileId ? followStates[followerProfileId] : undefined;
+                      const Icon = notifType === 'mutual_follow' ? Users : notifType === 'new_follower' ? UserPlus : meta.icon;
                       return (
-                        <div key={n.id} className="group/notif flex gap-3 rounded-2xl border border-border/60 bg-card p-4 transition-all hover:border-[var(--ds-accent)]/40 hover:shadow-sm">
+                        <div key={n.id} className={cn(
+                          'group/notif flex gap-3 rounded-2xl border p-4 transition-all hover:shadow-sm',
+                          n.read_at ? 'border-border/60 bg-card' : 'border-[var(--ds-accent)]/30 bg-[var(--ds-accent)]/5',
+                          'hover:border-[var(--ds-accent)]/40',
+                        )}>
                           <div
                             className="flex size-10 shrink-0 items-center justify-center rounded-xl"
                             style={{ backgroundColor: `color-mix(in oklch, ${meta.color} 15%, transparent)`, color: meta.color }}
@@ -234,6 +292,35 @@ export default function NotificationsPage() {
                             </div>
                             {n.body && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{cleanBody(n.body)}</p>}
                           </div>
+
+                          {/* Follow-back button for new_follower */}
+                          {isFollowNotif && notifType === 'new_follower' && followerProfileId && (
+                            <button
+                              onClick={() => toggleFollow(followerProfileId)}
+                              disabled={followState === 'loading'}
+                              className={cn(
+                                'shrink-0 flex items-center gap-1.5 self-center rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-60',
+                                followState === true
+                                  ? 'border border-border bg-card text-muted-foreground'
+                                  : 'bg-[var(--ds-accent)] text-white',
+                              )}
+                            >
+                              {followState === 'loading' ? (
+                                <Loader2 className="size-3 animate-spin" />
+                              ) : followState === true ? (
+                                <><UserCheck className="size-3" /> Взаимно</>
+                              ) : (
+                                <><UserPlus className="size-3" /> Подписаться</>
+                              )}
+                            </button>
+                          )}
+
+                          {/* Mutual badge */}
+                          {notifType === 'mutual_follow' && (
+                            <span className="shrink-0 self-center rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              Взаимно
+                            </span>
+                          )}
                         </div>
                       );
                     })}
