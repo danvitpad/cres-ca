@@ -35,6 +35,7 @@ export default function MasterMiniAppHome() {
   const { user, ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
   const [masterId, setMasterId] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
   const [next, setNext] = useState<NextApt | null>(null);
   const [stats, setStats] = useState<TodayStats>({ count: 0, revenue: 0, done: 0, upcoming: 0 });
   const [loading, setLoading] = useState(true);
@@ -44,16 +45,16 @@ export default function MasterMiniAppHome() {
     if (!userId) return;
     const supabase = createClient();
     (async () => {
-      const { data: m } = await supabase
-        .from('masters')
-        .select('id, is_busy')
-        .eq('profile_id', userId)
-        .maybeSingle();
+      const [{ data: m }, { data: prof }] = await Promise.all([
+        supabase.from('masters').select('id, is_busy').eq('profile_id', userId).maybeSingle(),
+        supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle(),
+      ]);
       if (!m) {
         setLoading(false);
         return;
       }
       setMasterId(m.id);
+      setProfileName(prof?.full_name?.split(' ')[0] || null);
       setIsBusy(Boolean((m as { is_busy: boolean | null }).is_busy));
 
       const now = new Date();
@@ -129,7 +130,7 @@ export default function MasterMiniAppHome() {
       {/* Greeting */}
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">CRES-CA · Мастер</p>
-        <h1 className="mt-1 text-2xl font-bold">Привет, {user?.first_name ?? 'мастер'} 💼</h1>
+        <h1 className="mt-1 text-2xl font-bold">Привет, {profileName ?? user?.first_name ?? 'мастер'} 💼</h1>
         <p className="mt-0.5 text-[12px] text-white/50">
           {new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
