@@ -517,10 +517,10 @@ export default function MiniAppBookPage() {
       const dateFormatted = selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
       await supabase.from('notifications').insert({
         profile_id: master.profile_id,
-        channel: 'telegram',
+        channel: 'push',
         title: 'Новая запись',
         body: `${serviceNames} — ${dateFormatted} в ${selectedTime}`,
-        scheduled_for: new Date().toISOString(),
+        data: { type: 'new_booking', client_id: clientId, action_url: '/calendar' },
       });
     }
 

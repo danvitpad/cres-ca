@@ -434,10 +434,10 @@ export default function BookPage() {
         const forWhom = bookingFor ? ` (for ${bookingFor.member_name})` : '';
         await supabase.from('notifications').insert({
           profile_id: masterProfile.profile_id,
-          channel: 'telegram',
-          title: '🆕 New booking!',
-          body: `${selectedService.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime}${forWhom}`,
-          scheduled_for: new Date().toISOString(),
+          channel: 'push',
+          title: 'Новая запись',
+          body: `${selectedService.name} — ${selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' })} в ${selectedTime}${forWhom}`,
+          data: { type: 'new_booking', action_url: '/calendar' },
         });
       }
     }
