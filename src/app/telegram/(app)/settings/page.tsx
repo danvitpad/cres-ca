@@ -59,16 +59,20 @@ export default function MiniAppSettingsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('email, phone')
-        .eq('id', userId)
-        .maybeSingle();
-      if (data) {
-        setEmail(data.email ?? null);
-        setPhone(data.phone ?? null);
+      const stash = sessionStorage.getItem('cres:tg');
+      const initData = stash ? JSON.parse(stash).initData : null;
+      if (initData) {
+        const res = await fetch('/api/telegram/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+        if (res.ok) {
+          const { profile: data } = await res.json();
+          setEmail(data.email ?? null);
+          setPhone(data.phone ?? null);
+        }
       }
     })();
   }, [userId]);

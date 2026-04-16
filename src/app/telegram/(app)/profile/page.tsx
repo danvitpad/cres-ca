@@ -76,27 +76,29 @@ export default function MiniAppProfilePage() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select(
-          'full_name, bio, slug, bonus_balance, bonus_points, public_id, avatar_url, followers_count, following_count, phone, email',
-        )
-        .eq('id', userId)
-        .maybeSingle();
-      if (data) {
-        setBalance(Number(data.bonus_balance ?? 0));
-        setBonusPoints(Number(data.bonus_points ?? 0));
-        setFullName(data.full_name ?? null);
-        setBio(data.bio ?? null);
-        setSlug(data.slug ?? null);
-        setPublicId(data.public_id ?? null);
-        setAvatarUrl(data.avatar_url ?? null);
-        setPhone(data.phone ?? null);
-        setEmail(data.email ?? null);
-        setFollowersCount(Number(data.followers_count ?? 0));
-        setFollowingCount(Number(data.following_count ?? 0));
+      const stash = sessionStorage.getItem('cres:tg');
+      const initData = stash ? JSON.parse(stash).initData : null;
+      if (initData) {
+        const res = await fetch('/api/telegram/me', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+        if (res.ok) {
+          const { profile: data } = await res.json();
+          setBalance(Number(data.bonus_balance ?? 0));
+          setBonusPoints(Number(data.bonus_points ?? 0));
+          setFullName(data.full_name ?? null);
+          setBio(data.bio ?? null);
+          setSlug(data.slug ?? null);
+          setPublicId(data.public_id ?? null);
+          setAvatarUrl(data.avatar_url ?? null);
+          setPhone(data.phone ?? null);
+          setEmail(data.email ?? null);
+          setFollowersCount(Number(data.followers_count ?? 0));
+          setFollowingCount(Number(data.following_count ?? 0));
+        }
       }
       setProfileLoaded(true);
     })();
