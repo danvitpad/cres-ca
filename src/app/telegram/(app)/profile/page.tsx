@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Sparkles,
   UserPlus,
@@ -40,6 +40,7 @@ interface FollowListEntry {
 
 export default function MiniAppProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, haptic } = useTelegram();
   const { userId, clearAuth } = useAuthStore();
   const [balance, setBalance] = useState(0);
@@ -247,6 +248,15 @@ export default function MiniAppProfilePage() {
   // Only use Telegram avatar if DB full_name is empty or exactly matches Telegram name
   const showTgPhoto = profileLoaded && !!user?.photo_url && (!fullName || fullName.trim() === tgFullName.trim());
 
+  // Auto-open edit modal when navigated from settings with ?edit=true
+  useEffect(() => {
+    if (profileLoaded && searchParams.get('edit') === 'true') {
+      openEdit();
+      router.replace('/telegram/profile', { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileLoaded]);
+
   return (
     <>
       <motion.div
@@ -297,9 +307,16 @@ export default function MiniAppProfilePage() {
               <div className="h-6 w-36 animate-pulse rounded-lg bg-white/10" />
             )}
             {profileLoaded && publicId && (
-              <p className="mt-0.5 truncate font-mono text-[12px] text-white/35">
+              <button
+                onClick={() => {
+                  const id = slug ?? publicId.toLowerCase();
+                  navigator.clipboard.writeText(`cres-id//${id}`);
+                  haptic('success');
+                }}
+                className="mt-0.5 truncate font-mono text-[12px] text-white/35 active:text-white/50 transition-colors"
+              >
                 cres-id//{slug ?? publicId.toLowerCase()}
-              </p>
+              </button>
             )}
           </div>
         </div>

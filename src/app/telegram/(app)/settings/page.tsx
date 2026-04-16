@@ -194,7 +194,7 @@ export default function MiniAppSettingsPage() {
         <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
           <li>
             <Link
-              href="/telegram/profile"
+              href="/telegram/profile?edit=true"
               onClick={() => haptic('light')}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >

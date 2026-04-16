@@ -12,7 +12,6 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navigation, Loader2, Star, ChevronRight, Search, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import type { MapMarker, SalonMarker } from '@/components/shared/map-view';
@@ -49,85 +48,67 @@ export default function MiniAppMapPage() {
 
   const fetchMasters = useCallback(async (lat: number, lng: number) => {
     setLoading(true);
-    const supabase = createClient();
-    const [mastersRes, salonsRes] = await Promise.all([
-      supabase
-        .from('masters')
-        .select('id, specialization, rating, latitude, longitude, display_name, avatar_url, profile:profiles(full_name)')
-        .eq('is_active', true)
-        .gte('latitude', lat - RADIUS_DEG)
-        .lte('latitude', lat + RADIUS_DEG)
-        .gte('longitude', lng - RADIUS_DEG)
-        .lte('longitude', lng + RADIUS_DEG)
-        .limit(50),
-      supabase
-        .from('salons')
-        .select('id, name, address, latitude, longitude')
-        .gte('latitude', lat - RADIUS_DEG)
-        .lte('latitude', lat + RADIUS_DEG)
-        .gte('longitude', lng - RADIUS_DEG)
-        .lte('longitude', lng + RADIUS_DEG)
-        .limit(50),
-    ]);
-    const data = mastersRes.data;
-    const salonsData = (salonsRes.data ?? []) as Array<{
-      id: string;
-      name: string | null;
-      address: string | null;
-      latitude: number | null;
-      longitude: number | null;
-    }>;
+    try {
+      const res = await fetch('/api/telegram/nearby', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng }),
+      });
+      if (!res.ok) { setLoading(false); return; }
+      const { masters: data, salons: salonsData } = await res.json();
 
-    setSalonMarkers(
-      salonsData
-        .filter((s) => s.latitude != null && s.longitude != null)
-        .map((s) => ({
-          lat: s.latitude!,
-          lng: s.longitude!,
-          name: s.name ?? 'Салон',
-          address: s.address ?? undefined,
-          salonId: s.id,
-        })),
-    );
+      setSalonMarkers(
+        (salonsData ?? [])
+          .filter((s: { latitude: number | null; longitude: number | null }) => s.latitude != null && s.longitude != null)
+          .map((s: { id: string; name: string | null; address: string | null; latitude: number; longitude: number }) => ({
+            lat: s.latitude,
+            lng: s.longitude,
+            name: s.name ?? 'Салон',
+            address: s.address ?? undefined,
+            salonId: s.id,
+          })),
+      );
 
-    const rows: MasterRow[] = (data ?? []).map((m: unknown) => {
-      const row = m as {
-        id: string;
-        specialization: string | null;
-        rating: number | null;
-        latitude: number | null;
-        longitude: number | null;
-        display_name: string | null;
-        avatar_url: string | null;
-        profile: { full_name: string | null } | { full_name: string | null }[] | null;
-      };
-      const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
-      return {
-        id: row.id,
-        specialization: row.specialization,
-        rating: row.rating,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        display_name: row.display_name,
-        avatar_url: row.avatar_url,
-        full_name: p?.full_name ?? null,
-      };
-    });
+      const rows: MasterRow[] = (data ?? []).map((m: unknown) => {
+        const row = m as {
+          id: string;
+          specialization: string | null;
+          rating: number | null;
+          latitude: number | null;
+          longitude: number | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          profile: { full_name: string | null } | { full_name: string | null }[] | null;
+        };
+        const p = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+        return {
+          id: row.id,
+          specialization: row.specialization,
+          rating: row.rating,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          display_name: row.display_name,
+          avatar_url: row.avatar_url,
+          full_name: p?.full_name ?? null,
+        };
+      });
 
-    setMasters(rows);
-    setMarkers(
-      rows
-        .filter((m) => m.latitude != null && m.longitude != null)
-        .map((m) => ({
-          lat: m.latitude!,
-          lng: m.longitude!,
-          name: m.display_name ?? m.full_name ?? 'Мастер',
-          rating: Number(m.rating ?? 0),
-          specialization: m.specialization ?? undefined,
-          masterId: m.id,
-        })),
-    );
-    setLoading(false);
+      setMasters(rows);
+      setMarkers(
+        rows
+          .filter((m) => m.latitude != null && m.longitude != null)
+          .map((m) => ({
+            lat: m.latitude!,
+            lng: m.longitude!,
+            name: m.display_name ?? m.full_name ?? 'Мастер',
+            rating: Number(m.rating ?? 0),
+            specialization: m.specialization ?? undefined,
+            masterId: m.id,
+          })),
+      );
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const locate = useCallback(
@@ -135,67 +116,71 @@ export default function MiniAppMapPage() {
       setGeoBusy(true);
       if (interactive) haptic('light');
       try {
-        const pos = await getLocation();
-        if (pos) {
-          const coords: [number, number] = [pos.lat, pos.lng];
-          setCenter(coords);
-          setUserLocation(coords);
-          setGeoDenied(false);
-          await fetchMasters(pos.lat, pos.lng);
-          if (interactive) haptic('success');
-          return;
-        }
-      } catch {
-        // geolocation failed, try IP fallbacks
-      }
-
-      // IP-level fallback — try multiple services
-      const ipServices = [
-        async () => {
-          const r = await fetch('https://ipwho.is/', { cache: 'no-store' });
-          const j = await r.json();
-          if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
-            return { lat: j.latitude, lng: j.longitude };
-          }
-          return null;
-        },
-        async () => {
-          const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-          const j = await r.json();
-          if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
-            return { lat: j.latitude, lng: j.longitude };
-          }
-          return null;
-        },
-        async () => {
-          const r = await fetch('https://ip-api.com/json/?fields=lat,lon', { cache: 'no-store' });
-          const j = await r.json();
-          if (typeof j.lat === 'number' && typeof j.lon === 'number') {
-            return { lat: j.lat, lng: j.lon };
-          }
-          return null;
-        },
-      ];
-
-      for (const svc of ipServices) {
         try {
-          const result = await svc();
-          if (result) {
-            const coords: [number, number] = [result.lat, result.lng];
+          const pos = await getLocation();
+          if (pos) {
+            const coords: [number, number] = [pos.lat, pos.lng];
             setCenter(coords);
             setUserLocation(coords);
-            setGeoDenied(true);
-            await fetchMasters(result.lat, result.lng);
+            setGeoDenied(false);
+            await fetchMasters(pos.lat, pos.lng);
+            if (interactive) haptic('success');
             return;
           }
         } catch {
-          // try next service
+          // geolocation failed, try IP fallbacks
         }
-      }
 
-      setGeoDenied(true);
-      await fetchMasters(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
-      if (interactive) haptic('warning');
+        // IP-level fallback — try multiple services
+        const ipServices = [
+          async () => {
+            const r = await fetch('https://ipwho.is/', { cache: 'no-store' });
+            const j = await r.json();
+            if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
+              return { lat: j.latitude, lng: j.longitude };
+            }
+            return null;
+          },
+          async () => {
+            const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+            const j = await r.json();
+            if (typeof j.latitude === 'number' && typeof j.longitude === 'number') {
+              return { lat: j.latitude, lng: j.longitude };
+            }
+            return null;
+          },
+          async () => {
+            const r = await fetch('https://ip-api.com/json/?fields=lat,lon', { cache: 'no-store' });
+            const j = await r.json();
+            if (typeof j.lat === 'number' && typeof j.lon === 'number') {
+              return { lat: j.lat, lng: j.lon };
+            }
+            return null;
+          },
+        ];
+
+        for (const svc of ipServices) {
+          try {
+            const result = await svc();
+            if (result) {
+              const coords: [number, number] = [result.lat, result.lng];
+              setCenter(coords);
+              setUserLocation(coords);
+              setGeoDenied(true);
+              await fetchMasters(result.lat, result.lng);
+              return;
+            }
+          } catch {
+            // try next service
+          }
+        }
+
+        setGeoDenied(true);
+        await fetchMasters(DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
+        if (interactive) haptic('warning');
+      } finally {
+        setGeoBusy(false);
+      }
     },
     [fetchMasters, haptic],
   );
