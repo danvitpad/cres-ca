@@ -361,10 +361,8 @@
     "greeting": "Добрый день",
     "greetingMorning": "Доброе утро",
     "greetingEvening": "Добрый вечер",
-    "clientRetention": "Давно не были",
-    "noLostClients": "Все клиенты активны",
-    "totalVisits": "{n} визитов",
-    "daysAgo": "дн. назад",
+    "remindersTitle": "Напоминания",
+    "noReminders": "Отправь голосовое в Telegram — я создам напоминание",
     "nav": {
       "dashboard": "Главная",
       "calendar": "Календарь",

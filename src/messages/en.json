@@ -361,10 +361,8 @@
     "greeting": "Good afternoon",
     "greetingMorning": "Good morning",
     "greetingEvening": "Good evening",
-    "clientRetention": "Haven't visited",
-    "noLostClients": "All clients are active",
-    "totalVisits": "{n} visits",
-    "daysAgo": "days ago",
+    "remindersTitle": "Reminders",
+    "noReminders": "Send a voice message in Telegram to create a reminder",
     "nav": {
       "dashboard": "Dashboard",
       "calendar": "Calendar",

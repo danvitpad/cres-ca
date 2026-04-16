@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Dashboard Overview
- * description: Master's operational dashboard — compact single-screen. Finance strip + 3-block grid (schedule, retention+actions, birthdays). Linear.app tokens.
+ * description: Master's operational dashboard — compact single-screen. 3 finance cards + 3-block grid (schedule, reminders+actions, birthdays). Linear.app tokens.
  * created: 2026-04-13
  * updated: 2026-04-16
  * --- */
@@ -25,9 +25,9 @@ import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 import {
-  CalendarPlus, UserPlus, Calendar, TrendingUp,
+  CalendarPlus, UserPlus, Calendar,
   Cake, Clock, ArrowUpRight, ArrowDownRight, Minus,
-  UserCheck,
+  Bell, Check, Mic,
 } from 'lucide-react';
 
 /* ─── Tokens ─── */
@@ -44,7 +44,6 @@ const DARK = {
   warning: '#f59e0b',
   danger: '#ef4444',
   border: 'rgba(255,255,255,0.05)',
-  stripBg: '#0c0d0e',
   blockBg: '#141516',
 };
 
@@ -58,7 +57,6 @@ const LIGHT = {
   warning: '#d97706',
   danger: '#dc2626',
   border: '#e6e6e6',
-  stripBg: '#f0f1f2',
   blockBg: '#f5f6f7',
 };
 
@@ -76,7 +74,7 @@ interface Appointment {
 
 interface Expense { id: string; amount: number; date: string }
 interface ClientBirthday { id: string; full_name: string; date_of_birth: string }
-interface LostClient { id: string; full_name: string; last_visit_at: string; total_visits: number }
+interface Reminder { id: string; text: string; due_at: string | null; source: string; created_at: string }
 
 /* ─── Helpers ─── */
 
@@ -127,7 +125,7 @@ export default function DashboardPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
-  const [lostClients, setLostClients] = useState<LostClient[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
 
   /* ── Fetch ── */
@@ -140,7 +138,6 @@ export default function DashboardPage() {
     const now = new Date();
     const prevMonthStart = startOfMonth(subMonths(now, 1));
     const weekEnd = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
-    const thirtyDaysAgo = subDays(now, 30).toISOString();
 
     Promise.all([
       supabase
@@ -160,21 +157,18 @@ export default function DashboardPage() {
         .select('id, full_name, date_of_birth')
         .eq('master_id', master.id)
         .not('date_of_birth', 'is', null),
-      // Clients who haven't visited in 30+ days but have visited at least once
       supabase
-        .from('clients')
-        .select('id, full_name, last_visit_at, total_visits')
+        .from('reminders')
+        .select('id, text, due_at, source, created_at')
         .eq('master_id', master.id)
-        .not('last_visit_at', 'is', null)
-        .lt('last_visit_at', thirtyDaysAgo)
-        .gt('total_visits', 0)
-        .order('last_visit_at', { ascending: false })
+        .eq('completed', false)
+        .order('due_at', { ascending: true, nullsFirst: false })
         .limit(8),
-    ]).then(([apptRes, expRes, clientRes, lostRes]) => {
+    ]).then(([apptRes, expRes, clientRes, remRes]) => {
       setAppointments((apptRes.data as unknown as Appointment[]) || []);
       setExpenses((expRes.data as unknown as Expense[]) || []);
       setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
-      setLostClients((lostRes.data as unknown as LostClient[]) || []);
+      setReminders((remRes.data as unknown as Reminder[]) || []);
       setLoading(false);
     });
   }, [master?.id, masterLoading]);
@@ -238,6 +232,13 @@ export default function DashboardPage() {
     new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ₴',
   [locale]);
 
+  /* ── Complete reminder ── */
+  const completeReminder = useCallback(async (id: string) => {
+    const supabase = createClient();
+    await supabase.from('reminders').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', id);
+    setReminders(prev => prev.filter(r => r.id !== id));
+  }, []);
+
   /* ── Styles ── */
   const card: React.CSSProperties = {
     backgroundColor: C.cardBg,
@@ -255,8 +256,10 @@ export default function DashboardPage() {
     return (
       <div style={{ padding: '20px 24px', fontFamily: FONT, height: '100%' }}>
         <Skeleton className="mb-4 h-6 w-48" />
-        <Skeleton className="mb-4 h-20 rounded-[10px]" />
-        <div className="grid grid-cols-3 gap-4" style={{ flex: 1 }}>
+        <div className="mb-4 grid grid-cols-3 gap-3">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-[10px]" />)}
+        </div>
+        <div className="grid grid-cols-3 gap-3" style={{ flex: 1 }}>
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 rounded-[10px]" />)}
         </div>
       </div>
@@ -269,7 +272,7 @@ export default function DashboardPage() {
   const financeItems = [
     { label: t('today').toUpperCase(), data: profit.today },
     { label: t('thisWeek').toUpperCase(), data: profit.week },
-    { label: (monthName.charAt(0).toUpperCase() + monthName.slice(1)).toUpperCase(), data: profit.month },
+    { label: monthName.toUpperCase(), data: profit.month },
   ];
 
   return (
@@ -297,19 +300,8 @@ export default function DashboardPage() {
         </span>
       </motion.div>
 
-      {/* ═══ Row 2: Finance strip ═══ */}
-      <motion.div
-        {...stagger(1)}
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
-          backgroundColor: C.stripBg,
-          borderRadius: 12,
-          border: `1px solid ${C.border}`,
-          overflow: 'hidden',
-          flexShrink: 0,
-        }}
-      >
+      {/* ═══ Row 2: Finance — 3 separate cards ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, flexShrink: 0 }}>
         {financeItems.map((item, i) => {
           const ch = item.data.change;
           const changeColor = !ch ? C.textTertiary
@@ -318,14 +310,16 @@ export default function DashboardPage() {
             : C.textSecondary;
 
           return (
-            <div
+            <motion.div
               key={item.label}
+              {...stagger(i + 1)}
               style={{
-                padding: '14px 20px 12px',
-                borderRight: i < 2 ? `1px solid ${C.border}` : undefined,
+                ...card,
+                padding: '14px 18px 12px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              {/* Label + badge */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.6px' }}>
                   {item.label}
                 </span>
@@ -345,22 +339,24 @@ export default function DashboardPage() {
                   </span>
                 )}
               </div>
+              {/* Big number */}
               <div style={{ fontSize: 24, fontWeight: 700, color: C.text, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
                 {fmtMoney(item.data.net)}
               </div>
-              <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 3 }}>
+              {/* Subtitle */}
+              <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 4 }}>
                 {t('netProfit')}
               </div>
-            </div>
+            </motion.div>
           );
         })}
-      </motion.div>
+      </div>
 
       {/* ═══ Row 3: Three blocks ═══ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 0.6fr', gap: 12, flex: 1, minHeight: 0 }}>
 
         {/* ── Block 1: Today's Schedule ── */}
-        <motion.div {...stagger(2)} style={{ ...card, minHeight: 0 }}>
+        <motion.div {...stagger(4)} style={{ ...card, minHeight: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
               <Clock style={{ width: 14, height: 14, color: C.accent }} />
@@ -424,67 +420,90 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* ── Block 2: Client Retention + Quick Actions ── */}
-        <motion.div {...stagger(3)} style={{ ...card, gap: 0, minHeight: 0 }}>
-          {/* Client retention */}
+        {/* ── Block 2: Reminders + Quick Actions ── */}
+        <motion.div {...stagger(5)} style={{ ...card, gap: 0, minHeight: 0 }}>
+          {/* Reminders */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10, flexShrink: 0 }}>
-              <UserCheck style={{ width: 14, height: 14, color: C.warning }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{t('clientRetention')}</span>
-              {lostClients.length > 0 && (
+              <Bell style={{ width: 14, height: 14, color: C.accent }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{t('remindersTitle')}</span>
+              {reminders.length > 0 && (
                 <span style={{
-                  fontSize: 11, fontWeight: 600, color: C.warning,
-                  backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.08)',
+                  fontSize: 11, fontWeight: 600, color: C.accent,
+                  backgroundColor: isDark ? 'rgba(94,106,210,0.12)' : 'rgba(94,106,210,0.08)',
                   padding: '1px 7px', borderRadius: 5,
                 }}>
-                  {lostClients.length}
+                  {reminders.length}
                 </span>
               )}
             </div>
 
-            {lostClients.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, textAlign: 'center' }}>
-                  {t('noLostClients')}
+            {reminders.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Mic style={{ width: 20, height: 20, color: C.textTertiary, opacity: 0.4 }} />
+                <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, textAlign: 'center', maxWidth: 180, lineHeight: '16px' }}>
+                  {t('noReminders')}
                 </p>
               </div>
             ) : (
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                {lostClients.map((client, i) => {
-                  const daysSince = differenceInDays(now, new Date(client.last_visit_at));
-                  return (
-                    <Link
-                      key={client.id}
-                      href={`/${locale}/clients/${client.id}`}
+                {reminders.map((rem, i) => (
+                  <div
+                    key={rem.id}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      padding: '6px 2px',
+                      borderBottom: i < reminders.length - 1 ? `1px solid ${C.border}` : undefined,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {/* Complete button */}
+                    <button
+                      type="button"
+                      onClick={() => completeReminder(rem.id)}
                       style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '6px 2px', textDecoration: 'none', color: 'inherit',
-                        borderBottom: i < lostClients.length - 1 ? `1px solid ${C.border}` : undefined,
-                        flexShrink: 0,
+                        width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                        border: `1.5px solid ${C.border}`,
+                        backgroundColor: 'transparent', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'border-color 150ms, background-color 150ms',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = C.success;
+                        e.currentTarget.style.backgroundColor = isDark ? 'rgba(16,185,129,0.1)' : 'rgba(5,150,105,0.06)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = C.border;
+                        e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {client.full_name}
-                        </div>
-                        <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 1 }}>
-                          {t('totalVisits', { n: client.total_visits })}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, flexShrink: 0, marginLeft: 8,
-                        color: daysSince > 60 ? C.danger : C.warning,
+                      <Check style={{ width: 10, height: 10, color: C.success, opacity: 0 }} />
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 12, fontWeight: 500, color: C.text,
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                        lineHeight: '16px',
                       }}>
-                        {daysSince} {t('daysAgo')}
-                      </span>
-                    </Link>
-                  );
-                })}
+                        {rem.text}
+                      </div>
+                      {rem.due_at && (
+                        <div style={{ fontSize: 10, color: C.textTertiary, marginTop: 2 }}>
+                          {format(new Date(rem.due_at), 'd MMM, HH:mm', { locale: dfLocale })}
+                        </div>
+                      )}
+                    </div>
+                    {rem.source === 'voice' && (
+                      <Mic style={{ width: 10, height: 10, color: C.textTertiary, flexShrink: 0, marginTop: 3 }} />
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Separator + Quick Actions */}
+          {/* Quick Actions */}
           <div style={{ flexShrink: 0, marginTop: 8 }}>
             <div style={{ height: 1, backgroundColor: C.border, marginBottom: 8 }} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -516,7 +535,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* ── Block 3: Birthdays (narrow) ── */}
-        <motion.div {...stagger(4)} style={{ ...card, minHeight: 0, padding: '14px 12px' }}>
+        <motion.div {...stagger(6)} style={{ ...card, minHeight: 0, padding: '14px 12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexShrink: 0 }}>
             <Cake style={{ width: 13, height: 13, color: C.warning }} />
             <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{t('birthdays')}</span>

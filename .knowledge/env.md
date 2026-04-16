@@ -22,6 +22,9 @@ RESEND_API_KEY=re_...
 # OpenRouter (AI)
 OPENROUTER_API_KEY=sk-or-...
 
+# Gemini (voice-to-action AI)
+GEMINI_API_KEY=AIza...
+
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_DEFAULT_LOCALE=uk
