@@ -498,6 +498,9 @@ function ServiceForm({
   const [price, setPrice] = useState(String(editing?.price ?? 0));
   const [currency, setCurrency] = useState(editing?.currency ?? 'UAH');
   const [categoryId, setCategoryId] = useState<string | null>(editing?.category_id ?? null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [recommendedMasterId, setRecommendedMasterId] = useState<string | null>(((editing as any)?.recommended_master_id as string | null | undefined) ?? null);
+  const [partners, setPartners] = useState<{ id: string; full_name: string }[]>([]);
   const [color, setColor] = useState(editing?.color ?? '#6366f1');
   const [requiresPrepayment, setRequiresPrepayment] = useState(editing?.requires_prepayment ?? false);
   const [prepaymentAmount, setPrepaymentAmount] = useState(String(editing?.prepayment_amount ?? 0));
@@ -539,6 +542,20 @@ function ServiceForm({
         }
         setRecipeMap(map);
       }
+
+      // Load active partners for the "recommend another master" dropdown
+      try {
+        const res = await fetch('/api/partners/list');
+        if (res.ok) {
+          const json = await res.json();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const list = (json.active as any[] || []).map(p => ({
+            id: p.partner.id,
+            full_name: p.partner.full_name || 'Без имени',
+          }));
+          setPartners(list);
+        }
+      } catch { /* partners optional */ }
     })();
   }, [masterId, editing]);
 
@@ -578,7 +595,7 @@ function ServiceForm({
 
     setSaving(true);
     const supabase = createClient();
-    const payload = { ...parsed.data, master_id: masterId, is_mobile: isMobile, travel_buffer_minutes: Number(travelBuffer) || 0 };
+    const payload = { ...parsed.data, master_id: masterId, is_mobile: isMobile, travel_buffer_minutes: Number(travelBuffer) || 0, recommended_master_id: recommendedMasterId };
 
     const { error } = editing
       ? await supabase.from('services').update(payload).eq('id', editing.id)
@@ -715,6 +732,40 @@ function ServiceForm({
           Цвет услуги в календаре определяется категорией.
         </p>
       </div>
+
+      {/* Recommend partner with this service */}
+      {partners.length > 0 && (
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Рекомендовать мастера
+          </Label>
+          <Select
+            value={recommendedMasterId ?? ''}
+            onValueChange={(v) => setRecommendedMasterId(v || null)}
+          >
+            <SelectTrigger className="flex-1 border-2 border-border">
+              <SelectValue placeholder="Никого не рекомендовать" />
+            </SelectTrigger>
+            <SelectContent>
+              {partners.map(p => (
+                <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-[11px] text-muted-foreground">
+            Партнёр будет показан как «Также рекомендую» на публичной карточке услуги.
+          </p>
+          {recommendedMasterId && (
+            <button
+              type="button"
+              onClick={() => setRecommendedMasterId(null)}
+              className="text-[11px] text-primary hover:underline"
+            >
+              × Убрать рекомендацию
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Toggles */}
       <div className="flex flex-col gap-3 rounded-lg border-2 border-border p-3">

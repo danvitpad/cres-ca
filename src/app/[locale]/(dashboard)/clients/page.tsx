@@ -589,79 +589,8 @@ export default function ClientsPage() {
         </>
       )}
 
-      {/* ═══ USERS / SUBSCRIBERS TAB ═══ */}
-      {tab === 'users' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {followListLoading ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} style={{ height: 72, background: C.surfaceElevated, borderRadius: 12 }} />
-            ))
-          ) : followList.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-                padding: '60px 24px', textAlign: 'center',
-              }}
-            >
-              <Heart size={40} style={{ color: C.textTertiary, opacity: 0.4, margin: '0 auto 12px' }} />
-              <p style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>
-                {tab === 'users' ? tf('noUsers') : tf('noFollowers')}
-              </p>
-            </motion.div>
-          ) : (
-            followList.map((f, i) => (
-              <motion.div
-                key={f.profileId}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-              >
-                <FollowerCard
-                  profileId={f.profileId}
-                  fullName={f.fullName ?? '—'}
-                  avatarUrl={f.avatarUrl}
-                  phone={f.phone}
-                  entityType={f.entityType}
-                  entityMeta={f.entityMeta}
-                  followedAt={f.followedAt}
-                  mutual={f.mutual}
-                  isClient={clientProfileIds.has(f.profileId)}
-                  onFollow={async () => {
-                    await fetch('/api/follow', {
-                      method: 'POST', headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ targetId: f.profileId }),
-                    });
-                    loadFollowList('followers');
-                  }}
-                  onUnfollow={async () => {
-                    await fetch('/api/follow', {
-                      method: 'POST', headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ targetId: f.profileId }),
-                    });
-                    loadFollowList('followers');
-                  }}
-                  onAddToClients={async () => {
-                    if (!master) return;
-                    const supabase = createClient();
-                    const { error } = await supabase.from('clients').insert({
-                      master_id: master.id,
-                      profile_id: f.profileId,
-                      full_name: f.fullName ?? '—',
-                      phone: f.phone || null,
-                    });
-                    if (error) { toast.error(error.message); return; }
-                    toast.success(tc('success'));
-                    setClientProfileIds(prev => new Set([...prev, f.profileId]));
-                    loadClients();
-                  }}
-                />
-              </motion.div>
-            ))
-          )}
-        </div>
-      )}
+      {/* ═══ PARTNERS TAB — master↔master recommendation agreements ═══ */}
+      {tab === 'users' && <PartnersSection C={C} />}
     </div>
   );
 }
@@ -706,5 +635,313 @@ function AddClientForm({ onSubmit }: { onSubmit: (data: { full_name: string; pho
       </div>
       <Button type="submit" className="w-full">{tc('save')}</Button>
     </form>
+  );
+}
+
+/* ─── Partners (master↔master recommendation) ─── */
+
+interface PartnerItem {
+  id: string; // partnership row id
+  status: 'active' | 'pending' | 'declined' | 'ended';
+  note: string | null;
+  initiated_at: string;
+  accepted_at: string | null;
+  youInitiated: boolean;
+  partner: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    slug: string | null;
+    specialization: string | null;
+  };
+}
+
+interface SearchResult {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  slug: string | null;
+  specialization: string | null;
+  city: string | null;
+}
+
+function PartnersSection({ C }: { C: PageTheme }) {
+  const [active, setActive] = useState<PartnerItem[]>([]);
+  const [incoming, setIncoming] = useState<PartnerItem[]>([]);
+  const [outgoing, setOutgoing] = useState<PartnerItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Search
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const load = useCallback(async () => {
+    const res = await fetch('/api/partners/list');
+    if (res.ok) {
+      const data = await res.json();
+      setActive(data.active || []);
+      setIncoming(data.incoming || []);
+      setOutgoing(data.outgoing || []);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Debounced search
+  useEffect(() => {
+    if (q.trim().length < 2) { setResults([]); return; }
+    setSearching(true);
+    const h = setTimeout(async () => {
+      const res = await fetch(`/api/partners/search?q=${encodeURIComponent(q)}`);
+      if (res.ok) { const d = await res.json(); setResults(d.results || []); }
+      setSearching(false);
+    }, 350);
+    return () => clearTimeout(h);
+  }, [q]);
+
+  async function invite(partnerId: string) {
+    const res = await fetch('/api/partners/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partner_id: partnerId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      toast.success('Приглашение отправлено');
+      setQ(''); setResults([]);
+      load();
+    } else {
+      toast.error(data.error || 'Не удалось отправить');
+    }
+  }
+
+  async function respond(id: string, action: 'accept' | 'decline' | 'end' | 'withdraw') {
+    const res = await fetch('/api/partners/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action }),
+    });
+    if (res.ok) {
+      toast.success(
+        action === 'accept' ? 'Партнёрство активно' :
+        action === 'decline' ? 'Отклонено' :
+        action === 'withdraw' ? 'Запрос отозван' : 'Партнёрство завершено',
+      );
+      load();
+    } else {
+      const d = await res.json();
+      toast.error(d.error || 'Ошибка');
+    }
+  }
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary }}>Загрузка...</div>;
+  }
+
+  const cardBase: React.CSSProperties = {
+    background: C.surface, border: `1px solid ${C.border}`,
+    borderRadius: 14, padding: 16,
+  };
+  const avatarCss = (name: string): React.CSSProperties => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    const grads = [
+      'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)',
+      'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
+      'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
+      'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+    ];
+    return {
+      width: 44, height: 44, borderRadius: 999,
+      background: grads[Math.abs(hash) % grads.length],
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff', fontWeight: 600, fontSize: 14, flexShrink: 0,
+    };
+  };
+  const initials = (name: string) => name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+      {/* Find new partner */}
+      <div style={cardBase}>
+        <h3 style={{ fontSize: 14, fontWeight: 650, color: C.text, margin: 0, marginBottom: 10 }}>
+          Найти партнёра
+        </h3>
+        <p style={{ fontSize: 12, color: C.textSecondary, margin: '0 0 12px' }}>
+          Договоритесь с другим мастером взаимно рекомендовать друг друга — расширьте аудиторию.
+        </p>
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Имя или @handle мастера"
+          style={{
+            width: '100%', padding: '10px 14px',
+            background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10,
+            color: C.text, fontSize: 14, outline: 'none', fontFamily: FONT,
+          }}
+        />
+        {searching && <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 8 }}>Поиск...</div>}
+        {results.length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {results.map(r => (
+              <div key={r.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10,
+              }}>
+                <div style={avatarCss(r.full_name || '?')}>{initials(r.full_name || '?')}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 550, color: C.text }}>{r.full_name || '—'}</div>
+                  <div style={{ fontSize: 12, color: C.textTertiary }}>
+                    {[r.specialization, r.city].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => invite(r.id)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 8, border: 'none',
+                    background: C.accent, color: '#fff', fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Пригласить
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Incoming requests */}
+      {incoming.length > 0 && (
+        <div>
+          <h3 style={{ fontSize: 13, fontWeight: 650, color: C.textSecondary, margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Входящие приглашения ({incoming.length})
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {incoming.map(p => (
+              <div key={p.id} style={{
+                ...cardBase,
+                display: 'flex', alignItems: 'center', gap: 12,
+                borderColor: C.accent, background: C.accentSoft,
+              }}>
+                <div style={avatarCss(p.partner.full_name || '?')}>{initials(p.partner.full_name || '?')}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 550 }}>{p.partner.full_name || '—'}</div>
+                  <div style={{ fontSize: 12, color: C.textSecondary }}>
+                    {p.partner.specialization || 'Хочет стать партнёром'}
+                  </div>
+                  {p.note && <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 3, fontStyle: 'italic' }}>«{p.note}»</div>}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => respond(p.id, 'accept')}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: 'none', background: C.success, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Принять
+                  </button>
+                  <button
+                    onClick={() => respond(p.id, 'decline')}
+                    style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    Отклонить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active partners */}
+      <div>
+        <h3 style={{ fontSize: 13, fontWeight: 650, color: C.textSecondary, margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          Мои партнёры ({active.length})
+        </h3>
+        {active.length === 0 ? (
+          <div style={{ ...cardBase, padding: '40px 20px', textAlign: 'center' }}>
+            <Heart size={32} style={{ color: C.textTertiary, opacity: 0.4, margin: '0 auto 10px' }} />
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Пока нет партнёров</div>
+            <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>
+              Найдите коллег-мастеров выше и отправьте приглашение.
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+            {active.map(p => (
+              <div key={p.id} style={cardBase}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <div style={avatarCss(p.partner.full_name || '?')}>{initials(p.partner.full_name || '?')}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.partner.full_name || '—'}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textTertiary }}>
+                      {p.partner.specialization || 'Мастер'}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                  {p.partner.slug && (
+                    <Link
+                      href={`/m/${p.partner.slug}`}
+                      target="_blank"
+                      style={{
+                        flex: 1, textAlign: 'center',
+                        padding: '6px 10px', borderRadius: 8,
+                        background: C.accentSoft, color: C.accent,
+                        fontSize: 12, fontWeight: 600, textDecoration: 'none',
+                      }}
+                    >
+                      Профиль
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => respond(p.id, 'end')}
+                    style={{
+                      padding: '6px 10px', borderRadius: 8, border: `1px solid ${C.border}`,
+                      background: 'transparent', color: C.textTertiary,
+                      fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                    }}
+                  >
+                    Завершить
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Outgoing (pending) */}
+      {outgoing.length > 0 && (
+        <div>
+          <h3 style={{ fontSize: 13, fontWeight: 650, color: C.textSecondary, margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Ожидают ответа ({outgoing.length})
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {outgoing.map(p => (
+              <div key={p.id} style={{
+                ...cardBase,
+                display: 'flex', alignItems: 'center', gap: 12, opacity: 0.7,
+              }}>
+                <div style={avatarCss(p.partner.full_name || '?')}>{initials(p.partner.full_name || '?')}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 550 }}>{p.partner.full_name || '—'}</div>
+                  <div style={{ fontSize: 12, color: C.textTertiary }}>Ожидает ответа</div>
+                </div>
+                <button
+                  onClick={() => respond(p.id, 'withdraw')}
+                  style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', color: C.textSecondary, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                >
+                  Отозвать
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -125,6 +125,33 @@ async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
   return (data as PortfolioItem[]) ?? [];
 }
 
+interface PartnerRow {
+  id: string;
+  display_name: string | null;
+  specialization: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  invite_code: string | null;
+}
+
+async function loadPartners(masterId: string): Promise<PartnerRow[]> {
+  // Active partnerships (either direction)
+  const { data: rows } = await admin()
+    .from('master_partnerships')
+    .select('master_id, partner_id')
+    .or(`master_id.eq.${masterId},partner_id.eq.${masterId}`)
+    .eq('status', 'active');
+  if (!rows?.length) return [];
+
+  const otherIds = rows.map(r => r.master_id === masterId ? r.partner_id : r.master_id);
+  const { data: partners } = await admin()
+    .from('masters')
+    .select('id, display_name, specialization, city, avatar_url, invite_code')
+    .in('id', otherIds)
+    .eq('is_active', true);
+  return (partners as PartnerRow[] | null) ?? [];
+}
+
 async function loadStories(masterId: string): Promise<StoryRow[]> {
   const { data } = await admin()
     .from('master_stories')
@@ -173,11 +200,12 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const [services, stories, portfolio, reviewsList] = await Promise.all([
+  const [services, stories, portfolio, reviewsList, partners] = await Promise.all([
     loadServices(master.id),
     loadStories(master.id),
     loadPortfolio(master.id),
     loadReviews(master.id),
+    loadPartners(master.id),
   ]);
   const displayName = master.display_name ?? 'Master';
   const rating = Number(master.rating ?? 0);
@@ -346,6 +374,44 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         )}
 
         <PortfolioGrid items={portfolio} />
+
+        {/* ─── Рекомендую — partners ─── */}
+        {partners.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-4 text-xl font-semibold">Рекомендую</h2>
+            <p className="mb-4 text-sm text-neutral-500">Мастера, с которыми я работаю и доверяю.</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {partners.map(p => (
+                <Link
+                  key={p.id}
+                  href={p.invite_code ? `/m/${p.invite_code}` : '#'}
+                  className="group flex flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-center transition hover:border-violet-400 hover:shadow"
+                >
+                  {p.avatar_url ? (
+                    <img
+                      src={p.avatar_url}
+                      alt={p.display_name || ''}
+                      className="size-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-pink-400 text-lg font-semibold text-white">
+                      {(p.display_name || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div className="text-sm font-semibold leading-tight text-neutral-800 group-hover:text-violet-700">
+                    {p.display_name || 'Мастер'}
+                  </div>
+                  {p.specialization && (
+                    <div className="text-xs text-neutral-500">{p.specialization}</div>
+                  )}
+                  {p.city && (
+                    <div className="text-xs text-neutral-400">{p.city}</div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {reviewsList.length > 0 && (
           <div className="mt-12">
