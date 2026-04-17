@@ -2,7 +2,7 @@
  * name: Client Detail Page
  * description: Full client card with tabs — Info, History, Notes, Health, Files, Family, Analytics. Includes voice note recording, manual blacklist, dynamic anamnesis per vertical, CLV analytics.
  * created: 2026-04-12
- * updated: 2026-04-16
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useSubscription } from '@/hooks/use-subscription';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+// Card/CardContent/CardHeader/CardTitle replaced with inline cardStyle(C)
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,10 @@ import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
   Mic, Square, Users, BarChart3, Bell,
 } from 'lucide-react';
+import {
+  FONT, FONT_FEATURES, usePageTheme, pageContainer, cardStyle, headingStyle, labelStyle,
+  type PageTheme,
+} from '@/lib/dashboard-theme';
 import type { BehaviorIndicator, AppointmentStatus } from '@/types';
 
 /* ────────────────────── Types ────────────────────── */
@@ -92,6 +96,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const locale = useLocale();
   const { master } = useMaster();
+  const { C } = usePageTheme();
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [intake, setIntake] = useState<ClientIntake | null>(null);
   const [blacklist, setBlacklist] = useState<{ warning: boolean; total: number } | null>(null);
@@ -157,14 +162,20 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   }, [loadClient, loadAppointments]);
 
   if (loading) {
-    return <div className="space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-64 w-full" /></div>;
+    return (
+      <div style={{ ...pageContainer, background: C.bg, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Skeleton className="h-8 w-64" /><Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
   if (!client) {
     return (
-      <div className="space-y-4">
-        <Button variant="ghost" onClick={() => router.back()}><ArrowLeft className="h-4 w-4 mr-2" />{tc('back')}</Button>
-        <p className="text-muted-foreground">{tc('error')}</p>
+      <div style={{ ...pageContainer, background: C.bg, color: C.text, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Button variant="ghost" onClick={() => router.back()}>
+          <ArrowLeft style={{ width: 16, height: 16, marginRight: 8 }} />{tc('back')}
+        </Button>
+        <p style={{ color: C.textSecondary }}>{tc('error')}</p>
       </div>
     );
   }
@@ -172,13 +183,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const vertical = master?.vertical ?? null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div style={{ ...pageContainer, background: C.bg, color: C.text, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft style={{ width: 16, height: 16 }} />
         </Button>
-        <h2 className="text-2xl font-bold">
-          {client.has_health_alert && <AlertTriangle className="inline h-5 w-5 text-red-500 mr-1" />}
+        <h2 style={{ ...headingStyle(C), fontSize: 22, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {client.has_health_alert && <AlertTriangle style={{ width: 18, height: 18, color: C.danger }} />}
           {client.full_name}
         </h2>
         <BehaviorIndicators indicators={client.behavior_indicators} />
@@ -192,11 +204,15 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       )}
 
       {blacklist?.warning && (
-        <div className="flex items-start gap-3 rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
-          <ShieldAlert className="mt-0.5 size-5 shrink-0 text-red-600 dark:text-red-400" />
-          <div className="space-y-1">
-            <p className="font-medium text-red-900 dark:text-red-200">{t('blacklistWarning')}</p>
-            <p className="text-sm text-red-800/80 dark:text-red-300/80">
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: 12, borderRadius: 12,
+          border: `1px solid ${C.danger}33`, background: C.dangerSoft,
+          padding: 16,
+        }}>
+          <ShieldAlert style={{ marginTop: 2, width: 20, height: 20, flexShrink: 0, color: C.danger }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <p style={{ fontWeight: 510, color: C.danger, margin: 0, fontSize: 14 }}>{t('blacklistWarning')}</p>
+            <p style={{ fontSize: 13, color: C.danger, opacity: 0.8, margin: 0 }}>
               {t('blacklistWarningDesc', { count: blacklist.total })}
             </p>
           </div>
@@ -215,32 +231,31 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </TabsList>
 
         <TabsContent value="info">
-          <InfoTab client={client} onSaved={loadClient} />
+          <InfoTab client={client} onSaved={loadClient} C={C} />
         </TabsContent>
         <TabsContent value="history">
-          <HistoryTab appointments={appointments} clientId={id} />
+          <HistoryTab appointments={appointments} clientId={id} C={C} />
         </TabsContent>
         <TabsContent value="notes">
-          <NotesTab client={client} clientId={id} onSaved={loadClient} />
+          <NotesTab client={client} clientId={id} onSaved={loadClient} C={C} />
         </TabsContent>
         <TabsContent value="health">
-          <HealthTab client={client} intake={intake} vertical={vertical} onSaved={loadClient} />
+          <HealthTab client={client} intake={intake} vertical={vertical} onSaved={loadClient} C={C} />
         </TabsContent>
         <TabsContent value="files">
           <FileUpload clientId={id} />
-          <BeforeAfterSection clientId={id} />
+          <BeforeAfterSection clientId={id} C={C} />
         </TabsContent>
         <TabsContent value="family">
-          <FamilyTab members={familyMembers} />
+          <FamilyTab members={familyMembers} C={C} />
         </TabsContent>
         <TabsContent value="analytics">
-          <AnalyticsTab client={client} appointments={appointments} />
+          <AnalyticsTab client={client} appointments={appointments} C={C} />
         </TabsContent>
       </Tabs>
 
-      {/* D5: Manual blacklist button */}
       {!client.is_blacklisted && (
-        <BlacklistButton clientId={id} onDone={loadClient} />
+        <BlacklistButton clientId={id} onDone={loadClient} C={C} />
       )}
     </div>
   );
@@ -248,7 +263,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
 /* ────────────────────── Info Tab ────────────────────── */
 
-function InfoTab({ client, onSaved }: { client: ClientDetail; onSaved: () => void }) {
+function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => void; C: PageTheme }) {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const [saving, setSaving] = useState(false);
@@ -272,75 +287,74 @@ function InfoTab({ client, onSaved }: { client: ClientDetail; onSaved: () => voi
   }
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-4">
-        <div className="grid gap-4 grid-cols-2 text-sm">
-          <div><span className="text-muted-foreground">{t('totalVisits')}:</span> {client.total_visits}</div>
-          <div><span className="text-muted-foreground">{t('totalSpent')}:</span> {client.total_spent}</div>
-          <div><span className="text-muted-foreground">{t('avgCheck')}:</span> {client.avg_check}</div>
-          <div><span className="text-muted-foreground">{t('rating')}:</span> {client.rating}</div>
+    <div style={{ ...cardStyle(C), display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+        <div><span style={{ color: C.textSecondary }}>{t('totalVisits')}:</span> {client.total_visits}</div>
+        <div><span style={{ color: C.textSecondary }}>{t('totalSpent')}:</span> {client.total_spent}</div>
+        <div><span style={{ color: C.textSecondary }}>{t('avgCheck')}:</span> {client.avg_check}</div>
+        <div><span style={{ color: C.textSecondary }}>{t('rating')}:</span> {client.rating}</div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Label>{t('name')}</Label>
+          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t('name')}</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('phone')}</Label>
-            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('email')}</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('dateOfBirth')}</Label>
-            <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Label>{t('phone')}</Label>
+          <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
-        <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
-      </CardContent>
-    </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Label>{t('email')}</Label>
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Label>{t('dateOfBirth')}</Label>
+          <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+        </div>
+      </div>
+      <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
+    </div>
   );
 }
 
 /* ────────────────────── History Tab ────────────────────── */
 
-function HistoryTab({ appointments, clientId }: { appointments: AppointmentRow[]; clientId: string }) {
+function HistoryTab({ appointments, clientId, C }: { appointments: AppointmentRow[]; clientId: string; C: PageTheme }) {
   const tc = useTranslations('calendar');
   const router = useRouter();
 
   if (appointments.length === 0) {
-    return <p className="text-sm text-muted-foreground p-4">{tc('noAppointments')}</p>;
+    return <p style={{ fontSize: 13, color: C.textSecondary, padding: 16 }}>{tc('noAppointments')}</p>;
   }
 
   return (
-    <div className="space-y-2">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {appointments.map((a) => (
-        <Card key={a.id}>
-          <CardContent className="p-3 flex items-center justify-between">
-            <div>
-              <p className="font-medium text-sm">{a.service?.name ?? '—'}</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(a.starts_at).toLocaleDateString()} {new Date(a.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </p>
-              <Badge variant="outline" className="text-xs mt-1">{tc(`status.${a.status}`)}</Badge>
-            </div>
-            <div className="flex items-center gap-2">
-              {a.service && <span className="text-sm font-medium">{a.service.price}</span>}
-              {a.service && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={() => router.push(`/calendar?repeat=${a.id}&client=${clientId}&service=${a.service!.id}&duration=${a.service!.duration_minutes}`)}
-                >
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div key={a.id} style={{
+          ...cardStyle(C), display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px',
+        }}>
+          <div>
+            <p style={{ fontWeight: 510, fontSize: 13, margin: 0, color: C.text }}>{a.service?.name ?? '—'}</p>
+            <p style={{ fontSize: 12, color: C.textSecondary, margin: '2px 0 0' }}>
+              {new Date(a.starts_at).toLocaleDateString()} {new Date(a.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </p>
+            <Badge variant="outline" className="text-xs mt-1">{tc(`status.${a.status}`)}</Badge>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {a.service && <span style={{ fontSize: 13, fontWeight: 510, color: C.text }}>{a.service.price}</span>}
+            {a.service && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => router.push(`/calendar?repeat=${a.id}&client=${clientId}&service=${a.service!.id}&duration=${a.service!.duration_minutes}`)}
+              >
+                <RefreshCw style={{ width: 12, height: 12 }} />
+              </Button>
+            )}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -359,7 +373,7 @@ interface SpeechRecognitionAlt {
   onend: (() => void) | null;
 }
 
-function NotesTab({ client, clientId, onSaved }: { client: ClientDetail; clientId: string; onSaved: () => void }) {
+function NotesTab({ client, clientId, onSaved, C }: { client: ClientDetail; clientId: string; onSaved: () => void; C: PageTheme }) {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const [notes, setNotes] = useState(client.notes ?? '');
@@ -447,56 +461,54 @@ function NotesTab({ client, clientId, onSaved }: { client: ClientDetail; clientI
   }
 
   return (
-    <Card>
-      <CardContent className="p-4 space-y-4">
-        <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={6} placeholder={t('notes')} />
-        <div className="flex items-center gap-2">
-          <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
+    <div style={{ ...cardStyle(C), display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={6} placeholder={t('notes')} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
 
-          {/* D8: Voice note mic button */}
-          {speechSupported && (
-            <Button
-              variant={recording ? 'destructive' : 'outline'}
-              size="icon"
-              onClick={toggleRecord}
-              title={t('recordVoiceNote')}
-            >
-              {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
+        {speechSupported && (
+          <Button
+            variant={recording ? 'destructive' : 'outline'}
+            size="icon"
+            onClick={toggleRecord}
+            title={t('recordVoiceNote')}
+          >
+            {recording ? <Square style={{ width: 16, height: 16 }} /> : <Mic style={{ width: 16, height: 16 }} />}
+          </Button>
+        )}
+      </div>
+
+      {(recording || transcript) && (
+        <div style={{
+          borderRadius: 8, border: `1px solid ${C.border}`,
+          background: C.surfaceElevated, padding: 12,
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          {recording && (
+            <p style={{ fontSize: 12, color: C.danger, margin: 0 }}>{t('recording')}</p>
+          )}
+          {transcript && (
+            <>
+              <p style={{ fontSize: 13, margin: 0, color: C.text }}>{transcript}</p>
+              <Button size="sm" onClick={appendVoiceNote} disabled={transcribing}>
+                {transcribing ? t('transcribing') : t('voiceNote')}
+              </Button>
+            </>
           )}
         </div>
-
-        {(recording || transcript) && (
-          <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-            {recording && (
-              <p className="text-xs text-red-500 animate-pulse">{t('recording')}</p>
-            )}
-            {transcript && (
-              <>
-                <p className="text-sm">{transcript}</p>
-                <Button
-                  size="sm"
-                  onClick={appendVoiceNote}
-                  disabled={transcribing}
-                >
-                  {transcribing ? t('transcribing') : t('voiceNote')}
-                </Button>
-              </>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
 
 /* ────────────────────── Health Tab (D2: dynamic per vertical) ────────────────────── */
 
-function HealthTab({ client, intake, vertical, onSaved }: {
+function HealthTab({ client, intake, vertical, onSaved, C }: {
   client: ClientDetail;
   intake: ClientIntake | null;
   vertical: string | null;
   onSaved: () => void;
+  C: PageTheme;
 }) {
   const t = useTranslations('clients');
   const ti = useTranslations('clients.intake');
@@ -508,16 +520,13 @@ function HealthTab({ client, intake, vertical, onSaved }: {
 
   const intakeFields = getIntakeFields(vertical);
 
-  if (!canUse('allergies')) return <p className="p-4 text-sm text-muted-foreground">Upgrade to Pro for health tracking.</p>;
+  if (!canUse('allergies')) return <p style={{ padding: 16, fontSize: 13, color: C.textSecondary }}>Upgrade to Pro for health tracking.</p>;
 
-  // D2: If vertical has no anamnesis fields (e.g., auto), show message
   if (intakeFields.length === 0) {
     return (
-      <Card>
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">{ti('noAnamnesisNeeded')}</p>
-        </CardContent>
-      </Card>
+      <div style={{ ...cardStyle(C) }}>
+        <p style={{ fontSize: 13, color: C.textSecondary, margin: 0 }}>{ti('noAnamnesisNeeded')}</p>
+      </div>
     );
   }
 
@@ -544,18 +553,16 @@ function HealthTab({ client, intake, vertical, onSaved }: {
   }
 
   return (
-    <div className="space-y-4">
-      {/* D2: Dynamic intake fields display based on vertical */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            {intakeHasContent && <AlertTriangle className="h-4 w-4 text-red-500" />}
-            {t('intakeFromClient')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-3 text-sm">
-          {!intake && <p className="text-muted-foreground">{t('noIntakeYet')}</p>}
-          {intake && !intakeHasContent && <p className="text-muted-foreground">{t('intakeEmpty')}</p>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Intake from client */}
+      <div style={cardStyle(C)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          {intakeHasContent && <AlertTriangle style={{ width: 16, height: 16, color: C.danger }} />}
+          <span style={{ fontSize: 15, fontWeight: 510, color: C.text }}>{t('intakeFromClient')}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+          {!intake && <p style={{ color: C.textSecondary, margin: 0 }}>{t('noIntakeYet')}</p>}
+          {intake && !intakeHasContent && <p style={{ color: C.textSecondary, margin: 0 }}>{t('intakeEmpty')}</p>}
           {intake && intakeHasContent && (
             <>
               {intakeFields.map((field) => {
@@ -565,82 +572,80 @@ function HealthTab({ client, intake, vertical, onSaved }: {
                 if (field.type === 'boolean' && val !== true) return null;
                 return (
                   <div key={field.key}>
-                    <span className="text-muted-foreground">{ti(field.labelKey)}:</span>{' '}
+                    <span style={{ color: C.textSecondary }}>{ti(field.labelKey)}:</span>{' '}
                     {field.type === 'boolean' ? '✓' : String(val)}
                   </div>
                 );
               })}
               {intake.updated_at && (
-                <div className="text-xs text-muted-foreground pt-1">
+                <div style={{ fontSize: 12, color: C.textTertiary, paddingTop: 4 }}>
                   {t('intakeUpdatedAt')}: {new Date(intake.updated_at).toLocaleDateString()}
                 </div>
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t('masterNotes')}</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0 space-y-4">
-          <div className="space-y-2">
+      {/* Master notes */}
+      <div style={cardStyle(C)}>
+        <div style={{ fontSize: 15, fontWeight: 510, color: C.text, marginBottom: 16 }}>{t('masterNotes')}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Label>{t('allergies')}</Label>
             <TagInput value={allergies} onChange={setAllergies} placeholder={t('addAllergy')} />
           </div>
-          <div className="space-y-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Label>{t('contraindications')}</Label>
             <TagInput value={contraindications} onChange={setContraindications} placeholder={t('addContraindication')} />
           </div>
           <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ────────────────────── Family Tab (D6) ────────────────────── */
 
-function FamilyTab({ members }: { members: FamilyMember[] }) {
+function FamilyTab({ members, C }: { members: FamilyMember[]; C: PageTheme }) {
   const t = useTranslations('clients');
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          {t('familyMembers')}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-4 pt-0">
-        {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('noFamilyMembers')}</p>
-        ) : (
-          <div className="space-y-2">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border p-3">
-                <div>
-                  <p className="text-sm font-medium">{m.member_name}</p>
-                  <p className="text-xs text-muted-foreground">{m.relationship}</p>
-                </div>
-                {m.linked_profile_id && (
-                  <Badge variant="outline" className="text-xs">
-                    {t('infoTab')}
-                  </Badge>
-                )}
+    <div style={cardStyle(C)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <Users style={{ width: 16, height: 16, color: C.accent }} />
+        <span style={{ fontSize: 15, fontWeight: 510, color: C.text }}>{t('familyMembers')}</span>
+      </div>
+      {members.length === 0 ? (
+        <p style={{ fontSize: 13, color: C.textSecondary, margin: 0 }}>{t('noFamilyMembers')}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {members.map((m) => (
+            <div key={m.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderRadius: 8, border: `1px solid ${C.border}`, padding: 12,
+            }}>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 510, margin: 0, color: C.text }}>{m.member_name}</p>
+                <p style={{ fontSize: 12, color: C.textSecondary, margin: '2px 0 0' }}>{m.relationship}</p>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              {m.linked_profile_id && (
+                <Badge variant="outline" className="text-xs">
+                  {t('infoTab')}
+                </Badge>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
 /* ────────────────────── Analytics Tab (D7) ────────────────────── */
 
-function AnalyticsTab({ client, appointments }: { client: ClientDetail; appointments: AppointmentRow[] }) {
+function AnalyticsTab({ client, appointments, C }: { client: ClientDetail; appointments: AppointmentRow[]; C: PageTheme }) {
   const t = useTranslations('clients');
 
   // CLV = avg_check * estimated_annual_visits
@@ -678,71 +683,68 @@ function AnalyticsTab({ client, appointments }: { client: ClientDetail; appointm
   const shouldRemind = daysSinceLastVisit !== null && daysSinceLastVisit > averageCadence;
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Reminder badge */}
       {shouldRemind && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/30">
-          <Bell className="h-4 w-4 text-amber-600" />
-          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, borderRadius: 8,
+          border: `1px solid ${C.warning}33`, background: C.warningSoft, padding: 12,
+        }}>
+          <Bell style={{ width: 16, height: 16, color: C.warning }} />
+          <span style={{ fontSize: 13, fontWeight: 510, color: C.warning }}>
             {t('timeToRemind')} — {daysSinceLastVisit}d
           </span>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">{t('clv')}</p>
-            <p className="text-2xl font-bold">{clv}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">{t('estimatedAnnualVisits')}</p>
-            <p className="text-2xl font-bold">{estimatedAnnualVisits}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">{t('avgCheck')}</p>
-            <p className="text-2xl font-bold">{client.avg_check}</p>
-          </CardContent>
-        </Card>
+      {/* KPI cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        {[
+          { label: t('clv'), value: clv },
+          { label: t('estimatedAnnualVisits'), value: estimatedAnnualVisits },
+          { label: t('avgCheck'), value: client.avg_check },
+        ].map((kpi) => (
+          <div key={kpi.label} style={{ ...cardStyle(C), textAlign: 'center' as const }}>
+            <p style={{ ...labelStyle(C), margin: '0 0 4px' }}>{kpi.label}</p>
+            <p style={{ fontSize: 24, fontWeight: 510, letterSpacing: '-0.5px', color: C.text, margin: 0 }}>{kpi.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Sparkline */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            {t('visitFrequency')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="flex items-end gap-1 h-16">
-            {monthBuckets.map((count, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-t bg-primary/70 transition-all"
-                style={{ height: `${(count / maxBucket) * 100}%`, minHeight: count > 0 ? '4px' : '1px' }}
-                title={`${count} visits`}
-              />
-            ))}
-          </div>
-          <div className="flex justify-between mt-1 text-[10px] text-muted-foreground">
-            <span>-12m</span>
-            <span>-6m</span>
-            <span>now</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div style={cardStyle(C)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <BarChart3 style={{ width: 16, height: 16, color: C.accent }} />
+          <span style={{ fontSize: 15, fontWeight: 510, color: C.text }}>{t('visitFrequency')}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 64 }}>
+          {monthBuckets.map((count, i) => (
+            <div
+              key={i}
+              style={{
+                flex: 1, borderRadius: '3px 3px 0 0',
+                background: `${C.accent}b3`,
+                height: `${(count / maxBucket) * 100}%`,
+                minHeight: count > 0 ? 4 : 1,
+                transition: 'height 0.2s ease',
+              }}
+              title={`${count} visits`}
+            />
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: C.textTertiary }}>
+          <span>-12m</span>
+          <span>-6m</span>
+          <span>now</span>
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ────────────────────── Blacklist Button (D5) ────────────────────── */
 
-function BlacklistButton({ clientId, onDone }: { clientId: string; onDone: () => void }) {
+function BlacklistButton({ clientId, onDone, C }: { clientId: string; onDone: () => void; C: PageTheme }) {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
@@ -770,9 +772,9 @@ function BlacklistButton({ clientId, onDone }: { clientId: string; onDone: () =>
 
   if (!open) {
     return (
-      <div className="pt-4 border-t">
-        <Button variant="outline" size="sm" className="text-red-600" onClick={() => setOpen(true)}>
-          <ShieldAlert className="h-4 w-4 mr-1" />
+      <div style={{ paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+        <Button variant="outline" size="sm" style={{ color: C.danger }} onClick={() => setOpen(true)}>
+          <ShieldAlert style={{ width: 16, height: 16, marginRight: 4 }} />
           {t('addToBlacklist')}
         </Button>
       </div>
@@ -780,7 +782,7 @@ function BlacklistButton({ clientId, onDone }: { clientId: string; onDone: () =>
   }
 
   return (
-    <div className="pt-4 border-t space-y-3">
+    <div style={{ paddingTop: 16, borderTop: `1px solid ${C.border}`, display: 'flex', flexDirection: 'column', gap: 12 }}>
       <Label>{t('blacklistReason')}</Label>
       <Textarea
         value={reason}
@@ -788,7 +790,7 @@ function BlacklistButton({ clientId, onDone }: { clientId: string; onDone: () =>
         placeholder={t('blacklistReasonPlaceholder')}
         rows={3}
       />
-      <div className="flex gap-2">
+      <div style={{ display: 'flex', gap: 8 }}>
         <Button variant="destructive" size="sm" onClick={handleBlacklist} disabled={saving || !reason.trim()}>
           {saving ? tc('loading') : t('addToBlacklist')}
         </Button>
@@ -802,7 +804,7 @@ function BlacklistButton({ clientId, onDone }: { clientId: string; onDone: () =>
 
 /* ────────────────────── Before/After Section ────────────────────── */
 
-function BeforeAfterSection({ clientId }: { clientId: string }) {
+function BeforeAfterSection({ clientId, C }: { clientId: string; C: PageTheme }) {
   const { canUse } = useSubscription();
   const [files, setFiles] = useState<{ id: string; file_url: string; is_before_photo: boolean }[]>([]);
 
@@ -828,9 +830,9 @@ function BeforeAfterSection({ clientId }: { clientId: string }) {
   if (!beforeImg || !afterImg) return null;
 
   return (
-    <div className="mt-6 space-y-2">
-      <h4 className="text-sm font-medium">Before / After</h4>
-      <div className="rounded-xl border overflow-hidden aspect-[16/10]">
+    <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <h4 style={{ fontSize: 13, fontWeight: 510, color: C.text, margin: 0 }}>Before / After</h4>
+      <div style={{ borderRadius: 12, border: `1px solid ${C.border}`, overflow: 'hidden', aspectRatio: '16/10' }}>
         <ImageComparisonSlider
           leftImage={beforeImg}
           rightImage={afterImg}

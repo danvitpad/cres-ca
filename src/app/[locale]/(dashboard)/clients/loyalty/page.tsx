@@ -2,7 +2,7 @@
  * name: Client Loyalty — Punch Card
  * description: Master sets N (every Nth visit free); page shows progress per client.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer, cardStyle } from '@/lib/dashboard-theme';
 
 interface ClientRow {
   id: string;
@@ -24,6 +25,7 @@ interface ClientRow {
 
 export default function LoyaltyPage() {
   const { master } = useMaster();
+  const { C } = usePageTheme();
   const [every, setEvery] = useState(0);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<ClientRow[]>([]);
@@ -64,77 +66,78 @@ export default function LoyaltyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Gift className="h-6 w-6 text-primary" />
-          Punch-card лояльность
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Каждый N-ый визит — бесплатный. Укажи N = 0 чтобы отключить.
-        </p>
-      </div>
-
-      <div className="flex items-end gap-3 rounded-lg border bg-card p-5">
-        <div className="flex-1 max-w-xs space-y-2">
-          <Label>Каждый N-ый визит — бесплатный</Label>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            value={every}
-            onChange={(e) => setEvery(parseInt(e.target.value || '0', 10))}
-          />
+    <div style={{ ...pageContainer, background: C.bg, color: C.text }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 24, fontWeight: 600, margin: 0, color: C.text }}>
+            <Gift style={{ width: 24, height: 24, color: C.accent }} />
+            Punch-card лояльность
+          </h1>
+          <p style={{ fontSize: 14, color: C.textSecondary, margin: '4px 0 0' }}>
+            Каждый N-ый визит — бесплатный. Укажи N = 0 чтобы отключить.
+          </p>
         </div>
-        <Button onClick={save} disabled={saving}>
-          <Save className="mr-1 h-4 w-4" />
-          {saving ? '...' : 'Сохранить'}
-        </Button>
-      </div>
 
-      {every > 0 && (
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground">Прогресс клиентов</h2>
-          {clients.length === 0 ? (
-            <p className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-              Пока нет визитов.
-            </p>
-          ) : (
-            clients.map((c) => {
-              const progress = c.total_visits % every;
-              const ready = progress === 0;
-              const pct = ready ? 100 : (progress / every) * 100;
-              return (
-                <div key={c.id} className="rounded-lg border bg-card p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-medium">{c.full_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {c.total_visits} визит(ов)
+        <div style={{ ...cardStyle(C), display: 'flex', alignItems: 'flex-end', gap: 12, padding: 20 }}>
+          <div style={{ flex: 1, maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Label>Каждый N-ый визит — бесплатный</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={every}
+              onChange={(e) => setEvery(parseInt(e.target.value || '0', 10))}
+            />
+          </div>
+          <Button onClick={save} disabled={saving}>
+            <Save className="mr-1 h-4 w-4" />
+            {saving ? '...' : 'Сохранить'}
+          </Button>
+        </div>
+
+        {every > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Прогресс клиентов</h2>
+            {clients.length === 0 ? (
+              <p style={{ ...cardStyle(C), padding: 24, textAlign: 'center', fontSize: 14, color: C.textSecondary, margin: 0 }}>
+                Пока нет визитов.
+              </p>
+            ) : (
+              clients.map((c) => {
+                const progress = c.total_visits % every;
+                const ready = progress === 0;
+                const pct = ready ? 100 : (progress / every) * 100;
+                return (
+                  <div key={c.id} style={{ ...cardStyle(C), padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 510 }}>{c.full_name}</div>
+                        <div style={{ fontSize: 12, color: C.textSecondary }}>
+                          {c.total_visits} визит(ов)
+                        </div>
                       </div>
+                      {ready ? (
+                        <span style={{ borderRadius: 999, background: C.successSoft, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: C.success }}>
+                          🎁 Следующий визит бесплатный
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 12, color: C.textSecondary }}>
+                          {progress} / {every}
+                        </span>
+                      )}
                     </div>
-                    {ready ? (
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                        🎁 Следующий визит бесплатный
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        {progress} / {every}
-                      </span>
-                    )}
+                    <div style={{ marginTop: 8, height: 6, overflow: 'hidden', borderRadius: 999, background: C.surfaceElevated }}>
+                      <div
+                        style={{ height: '100%', background: C.accent, transition: 'all 0.2s', width: `${pct}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

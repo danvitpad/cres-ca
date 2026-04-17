@@ -2,7 +2,7 @@
  * name: Clients CSV Import
  * description: Импорт клиентов из CSV — парсит первую строку как заголовки, мастер маппит колонки на поля (full_name, phone, email, date_of_birth, notes), затем bulk insert в clients.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -12,8 +12,10 @@ import { toast } from 'sonner';
 import { Upload, Users, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import {
+  FONT, FONT_FEATURES, usePageTheme, pageContainer, cardStyle, headingStyle, labelStyle,
+  type PageTheme,
+} from '@/lib/dashboard-theme';
 
 type FieldKey = 'full_name' | 'phone' | 'email' | 'date_of_birth' | 'notes' | 'ignore';
 
@@ -64,8 +66,32 @@ function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim()));
 }
 
+/* ─── Inline button ─── */
+function ActionButton({ onClick, disabled, children, C }: {
+  onClick: () => void; disabled: boolean; children: React.ReactNode; C: PageTheme;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '8px 16px', borderRadius: 8, border: 'none',
+        background: C.accent, color: '#fff',
+        fontSize: 13, fontWeight: 510, fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'background 0.15s',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function ClientsImportPage() {
   const { master } = useMaster();
+  const { C } = usePageTheme();
   const [rows, setRows] = useState<string[][]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<number, FieldKey>>({});
@@ -82,7 +108,6 @@ export default function ClientsImportPage() {
       if (!parsed.length) return toast.error('Пустой файл');
       setHeaders(parsed[0]);
       setRows(parsed.slice(1));
-      // Auto-detect common columns
       const auto: Record<number, FieldKey> = {};
       parsed[0].forEach((h, i) => {
         const low = h.toLowerCase();
@@ -134,54 +159,76 @@ export default function ClientsImportPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Users className="h-6 w-6 text-primary" />
+    <div style={{ ...pageContainer, background: C.bg, color: C.text }}>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ ...headingStyle(C), display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Users style={{ width: 22, height: 22, color: C.accent }} />
           Импорт клиентов из CSV
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 6, lineHeight: 1.5 }}>
           Загрузите CSV-файл с клиентами. Первая строка — заголовки колонок. Затем выберите какая колонка куда сохраняется.
         </p>
       </div>
 
+      {/* Success banner */}
       {done !== null && (
-        <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-700">
-          <Check className="h-4 w-4" />
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '12px 16px', borderRadius: 10, marginBottom: 20,
+          background: C.successSoft, border: `1px solid ${C.success}33`,
+          fontSize: 13, fontWeight: 510, color: C.success,
+        }}>
+          <Check style={{ width: 16, height: 16 }} />
           Успешно импортировано {done} клиентов.
         </div>
       )}
 
-      <div className="rounded-lg border bg-card p-5">
-        <Label className="mb-2 block">CSV-файл</Label>
+      {/* File input card */}
+      <div style={{ ...cardStyle(C), marginBottom: 20 }}>
+        <div style={{ ...labelStyle(C), marginBottom: 8 }}>CSV-файл</div>
         <input
           type="file"
           accept=".csv,text/csv"
           onChange={onFile}
-          className="text-sm"
+          style={{
+            fontSize: 13, fontFamily: FONT, color: C.text,
+            background: C.surfaceElevated, border: `1px solid ${C.border}`,
+            borderRadius: 6, padding: '6px 10px',
+          }}
         />
       </div>
 
       {headers.length > 0 && (
         <>
-          <div className="rounded-lg border bg-card p-5">
-            <div className="mb-3 text-sm font-semibold">Маппинг колонок</div>
-            <div className="space-y-2">
+          {/* Column mapping card */}
+          <div style={{ ...cardStyle(C), marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 510, color: C.text, marginBottom: 14 }}>
+              Маппинг колонок
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {headers.map((h, i) => (
-                <div key={i} className="flex items-center gap-3 text-sm">
-                  <div className="w-48 truncate font-mono text-muted-foreground">{h}</div>
-                  <span className="text-muted-foreground">→</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13 }}>
+                  <div style={{
+                    width: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    fontFamily: 'monospace', color: C.textSecondary,
+                  }}>
+                    {h}
+                  </div>
+                  <span style={{ color: C.textTertiary }}>→</span>
                   <select
                     value={mapping[i] ?? 'ignore'}
                     onChange={(e) =>
                       setMapping((p) => ({ ...p, [i]: e.target.value as FieldKey }))
                     }
-                    className="flex-1 rounded border bg-background px-2 py-1"
+                    style={{
+                      flex: 1, borderRadius: 6, padding: '5px 8px',
+                      border: `1px solid ${C.border}`, background: C.surface,
+                      color: C.text, fontSize: 13, fontFamily: FONT,
+                    }}
                   >
                     {FIELDS.map((f) => (
-                      <option key={f.key} value={f.key}>
-                        {f.label}
-                      </option>
+                      <option key={f.key} value={f.key}>{f.label}</option>
                     ))}
                   </select>
                 </div>
@@ -189,14 +236,22 @@ export default function ClientsImportPage() {
             </div>
           </div>
 
-          <div className="rounded-lg border bg-card p-5">
-            <div className="mb-2 text-sm font-semibold">Превью ({rows.length} строк)</div>
-            <div className="max-h-64 overflow-auto text-xs">
-              <table className="w-full">
-                <thead className="sticky top-0 bg-card">
+          {/* Preview card */}
+          <div style={{ ...cardStyle(C), marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 510, color: C.text, marginBottom: 10 }}>
+              Превью ({rows.length} строк)
+            </div>
+            <div style={{ maxHeight: 260, overflowY: 'auto', overflowX: 'auto', borderRadius: 6 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
                   <tr>
                     {headers.map((h, i) => (
-                      <th key={i} className="border-b p-2 text-left font-medium">
+                      <th key={i} style={{
+                        textAlign: 'left', padding: '8px 10px', fontWeight: 510,
+                        borderBottom: `1px solid ${C.border}`,
+                        background: C.surfaceElevated, color: C.text,
+                        position: 'sticky', top: 0,
+                      }}>
                         {h}
                       </th>
                     ))}
@@ -206,7 +261,11 @@ export default function ClientsImportPage() {
                   {rows.slice(0, 5).map((r, i) => (
                     <tr key={i}>
                       {r.map((c, j) => (
-                        <td key={j} className="border-b p-2 text-muted-foreground">
+                        <td key={j} style={{
+                          padding: '6px 10px',
+                          borderBottom: `1px solid ${C.border}`,
+                          color: C.textSecondary,
+                        }}>
                           {c}
                         </td>
                       ))}
@@ -217,11 +276,12 @@ export default function ClientsImportPage() {
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <Button onClick={doImport} disabled={importing || !rows.length}>
-              <Upload className="mr-1 h-4 w-4" />
+          {/* Import button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <ActionButton onClick={doImport} disabled={importing || !rows.length} C={C}>
+              <Upload style={{ width: 14, height: 14 }} />
               {importing ? 'Импорт…' : `Импортировать ${rows.length}`}
-            </Button>
+            </ActionButton>
           </div>
         </>
       )}

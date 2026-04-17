@@ -2,7 +2,7 @@
  * name: Visit Cadence Analyzer
  * description: Computes median interval between visits per client and flags overdue ones with one-click reminder.
  * created: 2026-04-12
- * updated: 2026-04-12
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -14,7 +14,8 @@ import { Clock3, BellRing } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer, cardStyle, labelStyle } from '@/lib/dashboard-theme';
+import type { PageTheme } from '@/lib/dashboard-theme';
 
 type AppointmentRow = {
   client_id: string;
@@ -45,6 +46,7 @@ function median(values: number[]): number {
 export default function CadencePage() {
   const supabase = createClient();
   const { master } = useMaster();
+  const { C } = usePageTheme();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -126,87 +128,85 @@ export default function CadencePage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Clock3 className="h-6 w-6 text-primary" />
-          Периодичность визитов
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Медианный интервал между визитами. Просроченные — приоритет на напоминание.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Stat label="Постоянных" value={rows.length.toString()} />
-        <Stat label="Просрочено" value={overdue.length.toString()} accent={overdue.length > 0} />
-        <Stat
-          label="Сред. интервал"
-          value={rows.length > 0 ? `${Math.round(rows.reduce((a, r) => a + r.median, 0) / rows.length)} дн` : '—'}
-        />
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Нет клиентов с 2+ визитами — анализ невозможен.</p>
-      ) : (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 text-left">Клиент</th>
-                <th className="px-4 py-2 text-right">Визитов</th>
-                <th className="px-4 py-2 text-right">Раз в</th>
-                <th className="px-4 py-2 text-right">Прошло</th>
-                <th className="px-4 py-2 text-right">Статус</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const isOverdue = r.overdueBy > 0;
-                return (
-                  <tr key={r.id} className="border-t">
-                    <td className="px-4 py-3">
-                      <Link href={`/clients/${r.id}`} className="font-medium hover:underline">
-                        {r.full_name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{r.visits}</td>
-                    <td className="px-4 py-3 text-right">{r.median} дн</td>
-                    <td className="px-4 py-3 text-right">{r.daysSinceLast} дн</td>
-                    <td
-                      className={cn(
-                        'px-4 py-3 text-right font-semibold',
-                        isOverdue ? 'text-red-600' : 'text-emerald-600',
-                      )}
-                    >
-                      {isOverdue ? `+${r.overdueBy} дн` : 'в графике'}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {isOverdue && (
-                        <Button size="sm" variant="outline" onClick={() => nudge(r)}>
-                          <BellRing className="mr-1 h-3 w-3" /> Напомнить
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    <div style={{ ...pageContainer, maxWidth: 1024, background: C.bg, color: C.text }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div>
+          <h1 style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 24, fontWeight: 600, margin: 0, color: C.text }}>
+            <Clock3 style={{ width: 24, height: 24, color: C.accent }} />
+            Периодичность визитов
+          </h1>
+          <p style={{ fontSize: 14, color: C.textSecondary, margin: '4px 0 0' }}>
+            Медианный интервал между визитами. Просроченные — приоритет на напоминание.
+          </p>
         </div>
-      )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <Stat C={C} label="Постоянных" value={rows.length.toString()} />
+          <Stat C={C} label="Просрочено" value={overdue.length.toString()} accent={overdue.length > 0} />
+          <Stat
+            C={C}
+            label="Сред. интервал"
+            value={rows.length > 0 ? `${Math.round(rows.reduce((a, r) => a + r.median, 0) / rows.length)} дн` : '—'}
+          />
+        </div>
+
+        {loading ? (
+          <p style={{ fontSize: 14, color: C.textSecondary }}>Загрузка…</p>
+        ) : rows.length === 0 ? (
+          <p style={{ fontSize: 14, color: C.textSecondary }}>Нет клиентов с 2+ визитами — анализ невозможен.</p>
+        ) : (
+          <div style={{ overflow: 'hidden', borderRadius: 10, border: `1px solid ${C.border}` }}>
+            <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES }}>
+              <thead>
+                <tr style={{ background: C.surfaceElevated }}>
+                  <th style={{ padding: '8px 16px', textAlign: 'left', fontSize: 12, textTransform: 'uppercase', color: C.textTertiary, fontWeight: 510 }}>Клиент</th>
+                  <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 12, textTransform: 'uppercase', color: C.textTertiary, fontWeight: 510 }}>Визитов</th>
+                  <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 12, textTransform: 'uppercase', color: C.textTertiary, fontWeight: 510 }}>Раз в</th>
+                  <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 12, textTransform: 'uppercase', color: C.textTertiary, fontWeight: 510 }}>Прошло</th>
+                  <th style={{ padding: '8px 16px', textAlign: 'right', fontSize: 12, textTransform: 'uppercase', color: C.textTertiary, fontWeight: 510 }}>Статус</th>
+                  <th style={{ padding: '8px 16px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => {
+                  const isOverdue = r.overdueBy > 0;
+                  return (
+                    <tr key={r.id} style={{ borderTop: `1px solid ${C.border}` }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <Link href={`/clients/${r.id}`} style={{ fontWeight: 510, color: C.text, textDecoration: 'none' }}>
+                          {r.full_name}
+                        </Link>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', color: C.textSecondary }}>{r.visits}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>{r.median} дн</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>{r.daysSinceLast} дн</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: isOverdue ? C.danger : C.success }}>
+                        {isOverdue ? `+${r.overdueBy} дн` : 'в графике'}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {isOverdue && (
+                          <Button size="sm" variant="outline" onClick={() => nudge(r)}>
+                            <BellRing className="mr-1 h-3 w-3" /> Напомнить
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Stat({ C, label, value, accent }: { C: PageTheme; label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={cn('text-lg font-semibold', accent && 'text-red-600')}>{value}</div>
+    <div style={{ ...cardStyle(C), padding: 12 }}>
+      <div style={{ ...labelStyle(C) }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 600, color: accent ? C.danger : C.text }}>{value}</div>
     </div>
   );
 }

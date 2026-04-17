@@ -206,7 +206,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
+    <div style={{ padding: '32px 40px', maxWidth: 960, margin: '0 auto', width: '100%', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, color: C.text }}>
       <PageHeader
         title={t('clientList') || t('clientCard')}
         count={clients.length}
