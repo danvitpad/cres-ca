@@ -1,17 +1,18 @@
 /** --- YAML
  * name: CategoryManager
- * description: Inline component for creating/editing service categories (name + color)
+ * description: Inline manager for service categories — list of chips + form to add (name + 12 color swatches). Listens for 'services:refresh' to sync with child dialogs.
+ * created: 2026-04-12
+ * updated: 2026-04-17
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Plus, X } from 'lucide-react';
 
 export interface Category {
@@ -25,19 +26,21 @@ interface CategoryManagerProps {
   onCategoriesChange?: (categories: Category[]) => void;
 }
 
+const COLOR_SWATCHES = [
+  '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+  '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
+  '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+];
+
 export function CategoryManager({ masterId, onCategoriesChange }: CategoryManagerProps) {
   const t = useTranslations('profile');
-  const tc = useTranslations('common');
   const [categories, setCategories] = useState<Category[]>([]);
   const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState('#6366f1');
+  const [newColor, setNewColor] = useState(COLOR_SWATCHES[0]);
   const [loading, setLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  useEffect(() => {
-    loadCategories();
-  }, [masterId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadCategories() {
+  const loadCategories = useCallback(async () => {
     const supabase = createClient();
     const { data } = await supabase
       .from('service_categories')
@@ -49,7 +52,15 @@ export function CategoryManager({ masterId, onCategoriesChange }: CategoryManage
       onCategoriesChange?.(data);
     }
     setLoading(false);
-  }
+  }, [masterId, onCategoriesChange]);
+
+  useEffect(() => {
+    loadCategories();
+    // Reload when services:refresh event fires (from ServiceForm's CategoryDialog)
+    const handler = () => loadCategories();
+    window.addEventListener('services:refresh', handler);
+    return () => window.removeEventListener('services:refresh', handler);
+  }, [loadCategories]);
 
   async function addCategory() {
     if (!newName.trim()) return;
@@ -60,7 +71,10 @@ export function CategoryManager({ masterId, onCategoriesChange }: CategoryManage
       color: newColor,
     });
     if (error) { toast.error(error.message); return; }
+    toast.success('Категория создана');
     setNewName('');
+    setNewColor(COLOR_SWATCHES[0]);
+    setIsExpanded(false);
     loadCategories();
   }
 
@@ -75,39 +89,103 @@ export function CategoryManager({ masterId, onCategoriesChange }: CategoryManage
 
   return (
     <div className="space-y-3">
+      {/* Category chips */}
       <div className="flex flex-wrap gap-2">
-        {categories.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t('noCategories')}</p>
+        {categories.length === 0 && !isExpanded && (
+          <p className="text-sm text-muted-foreground">{t('noCategories') || 'Пока нет категорий'}</p>
         )}
         {categories.map((cat) => (
-          <Badge key={cat.id} variant="outline" className="gap-1 pl-1">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
-            {cat.name}
-            <button onClick={() => deleteCategory(cat.id)} className="ml-1 hover:text-destructive">
-              <X className="h-3 w-3" />
+          <div
+            key={cat.id}
+            className="group inline-flex items-center gap-2 h-8 pl-2.5 pr-1 rounded-full border-2 border-border bg-card"
+          >
+            <span
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: cat.color }}
+            />
+            <span className="text-sm font-medium">{cat.name}</span>
+            <button
+              onClick={() => deleteCategory(cat.id)}
+              className="w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition"
+              aria-label={`Удалить ${cat.name}`}
+            >
+              <X className="w-3 h-3" />
             </button>
-          </Badge>
+          </div>
         ))}
+        {!isExpanded && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border-2 border-dashed border-border text-sm font-medium text-muted-foreground hover:border-primary hover:text-primary transition"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Добавить категорию
+          </button>
+        )}
       </div>
-      <div className="flex gap-2 items-center">
-        <Input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder={t('categoryName')}
-          className="max-w-48 h-8"
-          onKeyDown={(e) => e.key === 'Enter' && addCategory()}
-        />
-        <input
-          type="color"
-          value={newColor}
-          onChange={(e) => setNewColor(e.target.value)}
-          className="h-8 w-8 cursor-pointer rounded border"
-        />
-        <Button size="sm" variant="outline" onClick={addCategory}>
-          <Plus className="h-3 w-3 mr-1" />
-          {tc('create')}
-        </Button>
-      </div>
+
+      {/* Inline add form (expands on click) */}
+      {isExpanded && (
+        <div className="rounded-lg border-2 border-border bg-card p-4 space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Название категории
+            </label>
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Напр.: Стрижки и укладки"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addCategory();
+                if (e.key === 'Escape') setIsExpanded(false);
+              }}
+              className="border-2 border-border focus-visible:border-primary"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Цвет
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setNewColor(c)}
+                  style={{
+                    width: 30, height: 30, borderRadius: 999,
+                    background: c,
+                    border: newColor === c ? '3px solid #fff' : '2px solid transparent',
+                    boxShadow: newColor === c ? `0 0 0 2px ${c}` : '0 0 0 1px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={c}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-end pt-2 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setIsExpanded(false); setNewName(''); }}
+            >
+              Отмена
+            </Button>
+            <Button
+              type="button"
+              onClick={addCategory}
+              disabled={!newName.trim()}
+            >
+              Создать
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -611,242 +611,322 @@ function ServiceForm({
     onSaved();
   }
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>{t('serviceName')}</Label>
-        <Input value={name} onChange={(e) => setName(e.target.value)} required />
+    <>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Name */}
+      <div className="space-y-1.5">
+        <Label htmlFor="sname" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Название услуги
+        </Label>
+        <Input
+          id="sname"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Напр.: Женская стрижка"
+          required
+          className="border-2 border-border focus-visible:border-primary"
+        />
       </div>
 
+      {/* Duration + Price */}
       <div className="grid gap-4 grid-cols-2">
-        <div className="space-y-2">
-          <Label>Время сеанса</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {[15, 30, 45, 60, 75, 90, 120, 150, 180, 240].map((mins) => {
-              const isActive = parseInt(duration) === mins;
-              const h = Math.floor(mins / 60);
-              const m = mins % 60;
-              const label = h === 0 ? `${m}м` : m === 0 ? `${h}ч` : `${h}ч ${m}м`;
-              return (
-                <button
-                  key={mins}
-                  type="button"
-                  onClick={() => setDuration(String(mins))}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-foreground border-border hover:border-primary/50'
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <Input
-            type="number" min={5} max={480}
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            placeholder="Или введите вручную (в минутах)"
-            className="h-8 text-xs"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>{t('price')}</Label>
-          <Input type="number" min={0} step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="grid gap-4 grid-cols-2">
-        <div className="space-y-2">
-          <Label>{tp('currency')}</Label>
-          <Select value={currency} onValueChange={(v) => v && setCurrency(v)}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Время сеанса
+          </Label>
+          <Select value={duration} onValueChange={(v) => v && setDuration(v)}>
+            <SelectTrigger className="w-full border-2 border-border">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="UAH">UAH</SelectItem>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="EUR">EUR</SelectItem>
+              {[15, 30, 45, 60, 75, 90, 120, 150, 180, 210, 240].map((mins) => {
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const label = h === 0 ? `${m} минут` : m === 0 ? (h === 1 ? '1 час' : `${h} часа`) : `${h} ч ${m} м`;
+                return <SelectItem key={mins} value={String(mins)}>{label}</SelectItem>;
+              })}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>{t('category')}</Label>
-          <Select value={categoryId ?? '__none'} onValueChange={(v) => v && setCategoryId(v === '__none' ? null : v)}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+        <div className="space-y-1.5">
+          <Label htmlFor="sprice" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Цена, ₴
+          </Label>
+          <Input
+            id="sprice"
+            type="number"
+            min={0}
+            step="1"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="500"
+            className="border-2 border-border focus-visible:border-primary"
+          />
+        </div>
+      </div>
+
+      {/* Category with inline "add new" */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Категория
+        </Label>
+        <div className="flex gap-2">
+          <Select
+            value={categoryId ?? '__none'}
+            onValueChange={(v) => v && setCategoryId(v === '__none' ? null : v)}
+          >
+            <SelectTrigger className="flex-1 border-2 border-border">
+              <SelectValue placeholder="Без категории" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">—</SelectItem>
+              <SelectItem value="__none">Без категории</SelectItem>
               {categories.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                <SelectItem key={c.id} value={c.id}>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: c.color || '#64748b' }} />
+                    {c.name}
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-2 border-border"
+            onClick={() => setCategoryDialogOpen(true)}
+          >
+            + Создать
+          </Button>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>{tp('color')}</Label>
-        <div className="flex flex-wrap gap-2">
-          {[
-            '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
-            '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
-            '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
-          ].map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              style={{
-                width: 28, height: 28, borderRadius: 999,
-                background: c,
-                border: color === c ? '3px solid #fff' : '2px solid transparent',
-                boxShadow: color === c ? `0 0 0 2px ${c}` : `0 0 0 1px rgba(0,0,0,0.1)`,
-                cursor: 'pointer',
-                transition: 'transform 0.15s',
-              }}
-              aria-label={`Выбрать цвет ${c}`}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Switch checked={requiresPrepayment} onCheckedChange={setRequiresPrepayment} />
-        <Label>{tp('prepayment')}</Label>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Switch checked={isMobile} onCheckedChange={setIsMobile} />
-        <Label>Выездная услуга</Label>
-      </div>
-
-      {isMobile && (
-        <div className="space-y-2">
-          <Label>Буфер на дорогу (мин)</Label>
-          <Input type="number" min={0} max={180} value={travelBuffer} onChange={(e) => setTravelBuffer(e.target.value)} />
-        </div>
-      )}
-
-      {requiresPrepayment && (
-        <div className="space-y-2">
-          <Label>{tp('prepaymentAmount')}</Label>
-          <Input type="number" min={0} step="0.01" value={prepaymentAmount} onChange={(e) => setPrepaymentAmount(e.target.value)} />
-        </div>
-      )}
-
-      {upsellCandidates.length > 0 && (
-        <div className="space-y-2">
-          <Label>{t('upsellServicesLabel')}</Label>
-          <p className="text-xs text-muted-foreground">{t('upsellServicesHint')}</p>
-          <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border p-2">
-            {upsellCandidates.map((s) => {
-              const checked = upsellServices.includes(s.id);
-              return (
-                <label
-                  key={s.id}
-                  className="flex cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                >
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() =>
-                        setUpsellServices((prev) =>
-                          prev.includes(s.id) ? prev.filter((id) => id !== s.id) : [...prev, s.id],
-                        )
-                      }
-                    />
-                    <span>{s.name}</span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    +{s.duration_minutes}m · +{Number(s.price).toFixed(0)} {s.currency}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <Label>Как подготовиться</Label>
-        <Textarea
-          rows={3}
-          value={preparation}
-          onChange={(e) => setPreparation(e.target.value)}
-          placeholder="Напр.: Приходи без макияжа, волосы чистые и сухие"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Уход после</Label>
-        <Textarea
-          rows={3}
-          value={aftercare}
-          onChange={(e) => setAftercare(e.target.value)}
-          placeholder="Напр.: Не мыть голову первые 24 часа"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>FAQ — одна пара на строку: «Вопрос :: Ответ»</Label>
-        <Textarea
-          rows={4}
-          value={faqText}
-          onChange={(e) => setFaqText(e.target.value)}
-          placeholder="Сколько держится? :: В среднем 3-4 недели"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Чеклист визита — один пункт на строку</Label>
-        <Textarea
-          rows={4}
-          value={checklistText}
-          onChange={(e) => setChecklistText(e.target.value)}
-          placeholder={'Поздороваться и предложить воду\nЗафиксировать до-фото\nПровести процедуру\nСнять после-фото\nОбъяснить домашний уход'}
-        />
-        <p className="text-xs text-muted-foreground">
-          Эти пункты будут показаны во время визита — ничего не забудешь.
+        <p className="text-[11px] text-muted-foreground">
+          Цвет услуги в календаре определяется категорией.
         </p>
       </div>
 
-      {inventoryItems.length > 0 && (
-        <div className="space-y-2">
-          <Label>Рецепт (авто-списание со склада после визита)</Label>
-          <p className="text-xs text-muted-foreground">
-            Укажите сколько каждого материала расходуется на одну услугу. Пустое = не тратится.
-          </p>
-          <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2">
-            {inventoryItems.map((it) => (
-              <div key={it.id} className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm">
-                <span className="flex-1 truncate">{it.name}</span>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className="h-7 w-24"
-                  value={recipeMap[it.id] ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setRecipeMap((prev) => {
-                      const next = { ...prev };
-                      if (v === '') delete next[it.id];
-                      else next[it.id] = parseFloat(v) || 0;
-                      return next;
-                    });
-                  }}
-                />
-                <span className="w-10 text-xs text-muted-foreground">{it.unit}</span>
-              </div>
-            ))}
+      {/* Toggles */}
+      <div className="flex flex-col gap-3 rounded-lg border-2 border-border p-3">
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-sm">Выездная услуга (я еду к клиенту)</span>
+          <Switch checked={isMobile} onCheckedChange={setIsMobile} />
+        </label>
+        {isMobile && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Буфер на дорогу, мин</Label>
+            <Input
+              type="number" min={0} max={180}
+              value={travelBuffer}
+              onChange={(e) => setTravelBuffer(e.target.value)}
+              className="border-2 border-border h-9"
+            />
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="flex gap-2 justify-end">
+        <label className="flex items-center justify-between cursor-pointer">
+          <span className="text-sm">Предоплата обязательна</span>
+          <Switch checked={requiresPrepayment} onCheckedChange={setRequiresPrepayment} />
+        </label>
+        {requiresPrepayment && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Сумма предоплаты, ₴</Label>
+            <Input
+              type="number" min={0} step="1"
+              value={prepaymentAmount}
+              onChange={(e) => setPrepaymentAmount(e.target.value)}
+              className="border-2 border-border h-9"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Advanced — collapsed by default */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+          className="text-sm text-primary font-medium hover:underline"
+        >
+          {advancedOpen ? '− Скрыть' : '+ Расширенные настройки'}
+        </button>
+        {advancedOpen && (
+          <div className="mt-3 space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Как подготовиться (опц.)
+              </Label>
+              <Textarea
+                rows={2}
+                value={preparation}
+                onChange={(e) => setPreparation(e.target.value)}
+                placeholder="Приходи без макияжа, волосы чистые и сухие"
+                className="border-2 border-border focus-visible:border-primary"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Уход после (опц.)
+              </Label>
+              <Textarea
+                rows={2}
+                value={aftercare}
+                onChange={(e) => setAftercare(e.target.value)}
+                placeholder="Не мыть голову первые 24 часа"
+                className="border-2 border-border focus-visible:border-primary"
+              />
+            </div>
+            {inventoryItems.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Расходники на визит (опц.)
+                </Label>
+                <p className="text-[11px] text-muted-foreground -mt-1">
+                  Автоматически спишется со склада когда услуга завершена.
+                </p>
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border-2 border-border p-2">
+                  {inventoryItems.map((it) => (
+                    <div key={it.id} className="flex items-center gap-2 text-sm">
+                      <span className="flex-1 truncate">{it.name}</span>
+                      <Input
+                        type="number" min={0} step="0.01"
+                        className="h-7 w-20 border border-border"
+                        value={recipeMap[it.id] ?? ''}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setRecipeMap((prev) => {
+                            const next = { ...prev };
+                            if (v === '') delete next[it.id]; else next[it.id] = parseFloat(v) || 0;
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className="w-8 text-[11px] text-muted-foreground">{it.unit}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex gap-2 justify-end pt-2 border-t border-border">
         <Button type="button" variant="outline" onClick={onCancel}>{tc('cancel')}</Button>
-        <Button type="submit" disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
+        <Button type="submit" disabled={saving}>
+          {saving ? tc('loading') : editing ? 'Сохранить' : 'Создать услугу'}
+        </Button>
       </div>
     </form>
+
+    {/* Category creation dialog */}
+    <CategoryDialog
+      open={categoryDialogOpen}
+      onOpenChange={setCategoryDialogOpen}
+      masterId={masterId}
+      onCreated={(newId) => {
+        setCategoryId(newId);
+        setCategoryDialogOpen(false);
+        // Trigger parent to refetch categories
+        window.dispatchEvent(new Event('services:refresh'));
+      }}
+    />
+    </>
+  );
+}
+
+/* ─── Category Dialog — name + color swatches ─── */
+function CategoryDialog({
+  open,
+  onOpenChange,
+  masterId,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  masterId: string;
+  onCreated: (id: string) => void;
+}) {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#7c3aed');
+  const [saving, setSaving] = useState(false);
+
+  const SWATCHES = [
+    '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+    '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
+    '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+  ];
+
+  async function save() {
+    if (!name.trim()) { toast.error('Введите название категории'); return; }
+    setSaving(true);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('service_categories')
+      .insert({ master_id: masterId, name: name.trim(), color })
+      .select('id')
+      .single();
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Категория создана');
+    setName('');
+    setColor('#7c3aed');
+    if (data?.id) onCreated(data.id);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="!max-w-md">
+        <DialogHeader>
+          <DialogTitle>Новая категория услуг</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Название категории
+            </Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Напр.: Стрижки и укладки"
+              autoFocus
+              className="border-2 border-border focus-visible:border-primary"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Цвет
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {SWATCHES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  style={{
+                    width: 32, height: 32, borderRadius: 999,
+                    background: c,
+                    border: color === c ? '3px solid #fff' : '2px solid transparent',
+                    boxShadow: color === c ? `0 0 0 2px ${c}` : '0 0 0 1px rgba(0,0,0,0.1)',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={c}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>Отмена</Button>
+            <Button onClick={save} disabled={saving || !name.trim()}>
+              {saving ? 'Сохранение...' : 'Создать'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
