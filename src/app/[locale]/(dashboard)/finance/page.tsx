@@ -260,12 +260,13 @@ export default function FinanceSummaryPage() {
   return (
     <div style={{
       fontFamily: FONT,
-      fontFeatureSettings: '"cv01", "ss03"',
+      fontFeatureSettings: FONT_FEATURES,
       color: C.text,
-      height: '100%',
-      overflowY: 'auto',
-      padding: '24px 28px',
-      maxWidth: 800,
+      background: C.bg,
+      padding: '32px 40px',
+      maxWidth: 860,
+      margin: '0 auto',
+      width: '100%',
     }}>
       {/* ─── Header row: Title + Period dropdown ─── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>

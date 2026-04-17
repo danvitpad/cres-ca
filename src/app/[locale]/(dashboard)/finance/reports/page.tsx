@@ -255,7 +255,7 @@ export default function FinanceReportsPage() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, height: '100%', overflowY: 'auto', padding: '24px 28px', maxWidth: 860 }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Отчёты</h1>
         <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>Налоги, потери, прогнозы и платежи.</p>

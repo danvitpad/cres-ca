@@ -310,7 +310,7 @@ export default function DealsPage() {
   /* ── render ────────────────────────────────────────── */
 
   return (
-    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, color: C.text, height: '100%', overflowY: 'auto' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, color: C.text, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>

@@ -145,10 +145,10 @@ export const CURRENCY = '₴';
 export const pageContainer = {
   fontFamily: FONT,
   fontFeatureSettings: FONT_FEATURES,
-  height: '100%' as const,
-  overflowY: 'auto' as const,
-  padding: '24px 28px',
+  padding: '32px 40px',
   maxWidth: 860,
+  margin: '0 auto' as const,
+  width: '100%' as const,
 };
 
 export const cardStyle = (C: PageTheme) => ({
