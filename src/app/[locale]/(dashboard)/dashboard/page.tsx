@@ -1,8 +1,8 @@
 /** --- YAML
  * name: Dashboard Overview
- * description: Master's operational dashboard — compact single-screen. 3 finance cards + 3-block grid (schedule, reminders+actions, birthdays). Linear.app tokens.
+ * description: Master's operational dashboard — FINCHECK-style structure. 4 gradient KPI cards + revenue chart + expense donut + appointments + birthdays.
  * created: 2026-04-13
- * updated: 2026-04-16
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -13,25 +13,21 @@ import { useTranslations, useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { FONT, FONT_FEATURES, usePageTheme } from '@/lib/dashboard-theme';
-import type { PageTheme } from '@/lib/dashboard-theme';
+import { FONT, FONT_FEATURES, CURRENCY, KPI_GRADIENTS, usePageTheme, pageContainer } from '@/lib/dashboard-theme';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek,
   startOfMonth, endOfMonth, subMonths, subWeeks, subDays,
-  differenceInDays, getYear, setYear,
+  differenceInDays, getYear, setYear, eachDayOfInterval,
   type Locale,
 } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 import {
-  Calendar,
   Cake, Clock, ArrowUpRight, ArrowDownRight, Minus,
-  Bell, Check, Mic,
+  Bell, Check, Mic, Calendar as CalendarIcon,
 } from 'lucide-react';
-
-/* ─── Tokens — from dashboard-theme ─── */
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -45,11 +41,9 @@ interface Appointment {
   client: { full_name: string } | null;
 }
 
-interface Expense { id: string; amount: number; date: string }
+interface Expense { id: string; amount: number; date: string; category: string | null }
 interface ClientBirthday { id: string; full_name: string; date_of_birth: string }
 interface Reminder { id: string; text: string; due_at: string | null; source: string; created_at: string }
-
-/* ─── Helpers ─── */
 
 function getGreeting(t: ReturnType<typeof useTranslations>) {
   const h = new Date().getHours();
@@ -74,15 +68,87 @@ function pctChange(current: number, previous: number): { value: number; label: s
   return { value: pct, label: (pct > 0 ? '+' : '') + pct + '%' };
 }
 
-/* ─── Easing ─── */
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const stagger = (i: number) => ({
-  initial: { opacity: 0, y: 6 } as const,
+  initial: { opacity: 0, y: 8 } as const,
   animate: { opacity: 1, y: 0 } as const,
-  transition: { delay: i * 0.04, duration: 0.25, ease: EASE_OUT } as const,
+  transition: { delay: i * 0.05, duration: 0.3, ease: EASE_OUT } as const,
 });
 
-/* ─── Page ─── */
+/* ─── Mini SVG area chart ─── */
+function AreaChart({ data, color, height = 180, width = 600 }: { data: number[]; color: string; height?: number; width?: number }) {
+  if (data.length === 0) return null;
+  const max = Math.max(...data, 1);
+  const padding = 12;
+  const chartH = height - padding * 2;
+  const chartW = width - padding * 2;
+  const stepX = chartW / Math.max(data.length - 1, 1);
+  const points = data.map((v, i) => {
+    const x = padding + i * stepX;
+    const y = padding + chartH - (v / max) * chartH;
+    return [x, y];
+  });
+  // Smooth path via cubic bezier
+  let path = `M ${points[0][0]} ${points[0][1]}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[i + 1];
+    const midX = (x1 + x2) / 2;
+    path += ` C ${midX},${y1} ${midX},${y2} ${x2},${y2}`;
+  }
+  const areaPath = `${path} L ${points[points.length - 1][0]} ${height - padding} L ${padding} ${height - padding} Z`;
+
+  const gradId = `grad-${color.replace(/[^a-z0-9]/gi, '')}`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ width: '100%', height }}>
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#${gradId})`} />
+      <path d={path} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ─── Mini donut chart ─── */
+interface DonutSlice { label: string; value: number; color: string }
+function DonutChart({ slices, size = 140, strokeWidth = 22 }: { slices: DonutSlice[]; size?: number; strokeWidth?: number }) {
+  const total = slices.reduce((s, sl) => s + sl.value, 0);
+  if (total === 0) return null;
+  const r = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.04)" strokeWidth={strokeWidth} />
+      {slices.map((sl, i) => {
+        const frac = sl.value / total;
+        const dash = frac * circumference;
+        const el = (
+          <circle
+            key={i}
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={sl.color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${dash} ${circumference - dash}`}
+            strokeDashoffset={-offset}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            strokeLinecap="butt"
+          />
+        );
+        offset += dash;
+        return el;
+      })}
+    </svg>
+  );
+}
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
@@ -95,11 +161,8 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [completedReminders, setCompletedReminders] = useState<Reminder[]>([]);
-  const [reminderTab, setReminderTab] = useState<'active' | 'completed'>('active');
   const [loading, setLoading] = useState(true);
 
-  /* ── Fetch ── */
   const fetchDashboard = useCallback(async () => {
     if (!master?.id) return;
     const supabase = createClient();
@@ -107,7 +170,7 @@ export default function DashboardPage() {
     const prevMonthStart = startOfMonth(subMonths(now, 1));
     const weekEnd = endOfWeek(addDays(now, 7), { weekStartsOn: 1 });
 
-    const [apptRes, expRes, clientRes, remRes, completedRes] = await Promise.all([
+    const [apptRes, expRes, clientRes, remRes] = await Promise.all([
       supabase
         .from('appointments')
         .select('id, starts_at, ends_at, status, price, service:services(name, color), client:clients(full_name)')
@@ -117,7 +180,7 @@ export default function DashboardPage() {
         .order('starts_at', { ascending: true }),
       supabase
         .from('expenses')
-        .select('id, amount, date')
+        .select('id, amount, date, category')
         .eq('master_id', master.id)
         .gte('date', format(prevMonthStart, 'yyyy-MM-dd')),
       supabase
@@ -131,20 +194,12 @@ export default function DashboardPage() {
         .eq('master_id', master.id)
         .eq('completed', false)
         .order('due_at', { ascending: true, nullsFirst: false })
-        .limit(8),
-      supabase
-        .from('reminders')
-        .select('id, text, due_at, source, created_at')
-        .eq('master_id', master.id)
-        .eq('completed', true)
-        .order('completed_at', { ascending: false })
-        .limit(8),
+        .limit(6),
     ]);
     setAppointments((apptRes.data as unknown as Appointment[]) || []);
     setExpenses((expRes.data as unknown as Expense[]) || []);
     setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
     setReminders((remRes.data as unknown as Reminder[]) || []);
-    setCompletedReminders((completedRes.data as unknown as Reminder[]) || []);
     setLoading(false);
   }, [master?.id]);
 
@@ -154,7 +209,6 @@ export default function DashboardPage() {
     fetchDashboard();
   }, [master?.id, masterLoading, fetchDashboard]);
 
-  // Realtime — refresh dashboard when appointments change
   useEffect(() => {
     if (!master?.id) return;
     const supabase = createClient();
@@ -178,32 +232,72 @@ export default function DashboardPage() {
   const prevMonthStart = startOfMonth(subMonths(now, 1));
   const prevMonthEnd = endOfMonth(subMonths(now, 1));
 
-  const profit = useMemo(() => {
-    function sumPeriod(from: Date, to: Date) {
-      let income = 0, expense = 0;
-      for (const a of appointments) {
-        if (a.status !== 'completed') continue;
-        const d = new Date(a.starts_at);
-        if (d >= from && d <= to) income += Number(a.price) || 0;
-      }
-      for (const e of expenses) {
-        const d = new Date(e.date + 'T00:00:00');
-        if (d >= from && d <= to) expense += Number(e.amount) || 0;
-      }
-      return income - expense;
+  const sumRevenue = useCallback((from: Date, to: Date) => {
+    let s = 0;
+    for (const a of appointments) {
+      if (a.status !== 'completed') continue;
+      const d = new Date(a.starts_at);
+      if (d >= from && d <= to) s += Number(a.price) || 0;
     }
+    return s;
+  }, [appointments]);
+
+  const sumExpenses = useCallback((from: Date, to: Date) => {
+    let s = 0;
+    for (const e of expenses) {
+      const d = new Date(e.date + 'T00:00:00');
+      if (d >= from && d <= to) s += Number(e.amount) || 0;
+    }
+    return s;
+  }, [expenses]);
+
+  const kpi = useMemo(() => {
+    const todayRev = sumRevenue(todayStart, todayEnd);
+    const yestRev = sumRevenue(yesterdayStart, yesterdayEnd);
+    const weekRev = sumRevenue(weekStart, todayEnd);
+    const prevWeekRev = sumRevenue(prevWeekStart, prevWeekEnd);
+    const monthRev = sumRevenue(monthStart, todayEnd);
+    const prevMonthRev = sumRevenue(prevMonthStart, prevMonthEnd);
+    const monthExp = sumExpenses(monthStart, todayEnd);
+    const prevMonthExp = sumExpenses(prevMonthStart, prevMonthEnd);
+    const net = monthRev - monthExp;
+    const prevNet = prevMonthRev - prevMonthExp;
     return {
-      today: { net: sumPeriod(todayStart, todayEnd), change: pctChange(sumPeriod(todayStart, todayEnd), sumPeriod(yesterdayStart, yesterdayEnd)) },
-      week: { net: sumPeriod(weekStart, todayEnd), change: pctChange(sumPeriod(weekStart, todayEnd), sumPeriod(prevWeekStart, prevWeekEnd)) },
-      month: { net: sumPeriod(monthStart, todayEnd), change: pctChange(sumPeriod(monthStart, todayEnd), sumPeriod(prevMonthStart, prevMonthEnd)) },
+      today:  { value: todayRev, change: pctChange(todayRev, yestRev) },
+      week:   { value: weekRev, change: pctChange(weekRev, prevWeekRev) },
+      month:  { value: monthRev, change: pctChange(monthRev, prevMonthRev) },
+      net:    { value: net, change: pctChange(net, prevNet) },
     };
-  }, [appointments, expenses, todayStart, todayEnd, yesterdayStart, yesterdayEnd, weekStart, prevWeekStart, prevWeekEnd, monthStart, prevMonthStart, prevMonthEnd]);
+  }, [sumRevenue, sumExpenses, todayStart, todayEnd, yesterdayStart, yesterdayEnd, weekStart, prevWeekStart, prevWeekEnd, monthStart, prevMonthStart, prevMonthEnd]);
+
+  /* Revenue chart — last 30 days */
+  const revenueSeries = useMemo(() => {
+    const from = subDays(todayStart, 29);
+    const days = eachDayOfInterval({ start: from, end: todayEnd });
+    return days.map(d => sumRevenue(startOfDay(d), endOfDay(d)));
+  }, [sumRevenue, todayStart, todayEnd]);
+
+  /* Expense breakdown by category — current month */
+  const expenseByCategory = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of expenses) {
+      const d = new Date(e.date + 'T00:00:00');
+      if (d < monthStart || d > todayEnd) continue;
+      const cat = e.category || 'Прочее';
+      map.set(cat, (map.get(cat) || 0) + Number(e.amount));
+    }
+    const colors = ['#7c3aed', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e'];
+    return Array.from(map.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 7)
+      .map(([label, value], i) => ({ label, value, color: colors[i % colors.length] }));
+  }, [expenses, monthStart, todayEnd]);
 
   const todaySchedule = useMemo(() =>
     appointments.filter(a => {
       const d = new Date(a.starts_at);
       return d >= todayStart && d <= todayEnd && a.status !== 'cancelled';
-    }),
+    }).slice(0, 6),
   [appointments, todayStart, todayEnd]);
 
   const upcomingBirthdays = useMemo(() => {
@@ -216,168 +310,244 @@ export default function DashboardPage() {
       })
       .filter(c => c.daysUntil >= 0 && c.daysUntil <= 30)
       .sort((a, b) => a.daysUntil - b.daysUntil)
-      .slice(0, 6);
+      .slice(0, 5);
   }, [birthdays, todayStart]);
 
-  /* ── Currency ── */
   const fmtMoney = useCallback((n: number) =>
-    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ₴',
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ' + CURRENCY,
   [locale]);
 
-  /* ── Complete reminder ── */
   const completeReminder = useCallback(async (id: string) => {
     const supabase = createClient();
     await supabase.from('reminders').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', id);
     setReminders(prev => prev.filter(r => r.id !== id));
   }, []);
 
-  /* ── Styles ── */
-  const card: React.CSSProperties = {
-    backgroundColor: C.surface,
-    borderRadius: 10,
-    border: `1px solid ${C.border}`,
-    padding: 14,
-    fontFamily: FONT,
-    fontFeatureSettings: FONT_FEATURES,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  };
-
   /* ── Loading ── */
   if (masterLoading || loading) {
     return (
-      <div style={{ padding: '20px 24px', fontFamily: FONT, height: '100%' }}>
-        <Skeleton className="mb-4 h-6 w-48" />
-        <div className="mb-4 grid grid-cols-3 gap-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-[10px]" />)}
+      <div style={{ ...pageContainer, background: C.bg, minHeight: '100%' }}>
+        <Skeleton className="mb-6 h-6 w-64" />
+        <div className="mb-6 grid grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
         </div>
-        <div className="grid grid-cols-3 gap-3" style={{ flex: 1 }}>
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-64 rounded-[10px]" />)}
+        <div className="mb-5 grid grid-cols-3 gap-4">
+          <Skeleton className="h-72 rounded-2xl col-span-2" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <Skeleton className="h-64 rounded-2xl col-span-2" />
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
       </div>
     );
   }
 
   const firstName = master?.profile?.full_name?.split(' ')[0] || '';
-  const monthName = format(now, 'LLLL', { locale: dfLocale });
+  const totalMonthExp = expenseByCategory.reduce((s, sl) => s + sl.value, 0);
 
-  const financeItems = [
-    { label: t('today').toUpperCase(), data: profit.today },
-    { label: t('thisWeek').toUpperCase(), data: profit.week },
-    { label: monthName.toUpperCase(), data: profit.month },
+  const kpiCards = [
+    { label: 'Сегодня',        value: kpi.today.value, change: kpi.today.change, gradient: KPI_GRADIENTS.revenue,  subtitle: t('netProfit') },
+    { label: 'Эта неделя',      value: kpi.week.value,  change: kpi.week.change,  gradient: KPI_GRADIENTS.profit,   subtitle: t('netProfit') },
+    { label: 'Этот месяц',      value: kpi.month.value, change: kpi.month.change, gradient: KPI_GRADIENTS.neutral,  subtitle: 'доход' },
+    { label: 'Чистая прибыль',  value: kpi.net.value,   change: kpi.net.change,   gradient: KPI_GRADIENTS.expenses, subtitle: 'за месяц' },
   ];
 
+  const cardBase: React.CSSProperties = {
+    background: C.surface,
+    borderRadius: 16,
+    border: `1px solid ${C.border}`,
+    padding: 22,
+    fontFamily: FONT,
+    fontFeatureSettings: FONT_FEATURES,
+    display: 'flex',
+    flexDirection: 'column',
+  };
+
   return (
-    <div
-      style={{
-        fontFamily: FONT,
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '16px 24px 12px',
-        gap: 12,
-        overflow: 'hidden',
-      }}
-    >
-      {/* ═══ Row 1: Greeting ═══ */}
+    <div style={{
+      ...pageContainer,
+      color: C.text,
+      background: C.bg,
+      minHeight: '100%',
+    }}>
+      {/* ═══ Row 1: Greeting + date ═══ */}
       <motion.div
         {...stagger(0)}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexShrink: 0 }}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}
       >
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: C.text, letterSpacing: '-0.3px', margin: 0 }}>
-          {getGreeting(t)}, {firstName}
-        </h1>
-        <span style={{ fontSize: 13, color: C.textTertiary, textTransform: 'capitalize' }}>
-          {format(now, 'EEEE, d MMMM', { locale: dfLocale })}
-        </span>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px', margin: 0 }}>
+            {getGreeting(t)}, {firstName}
+          </h1>
+          <p style={{ fontSize: 14, color: C.textTertiary, margin: '4px 0 0', textTransform: 'capitalize' }}>
+            {format(now, 'EEEE, d MMMM yyyy', { locale: dfLocale })}
+          </p>
+        </div>
       </motion.div>
 
-      {/* ═══ Row 2: Finance — 3 separate cards ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, flexShrink: 0 }}>
-        {financeItems.map((item, i) => {
-          const ch = item.data.change;
-          const changeColor = !ch ? C.textTertiary
-            : ch.value > 0 ? C.success
-            : ch.value < 0 ? C.danger
-            : C.textSecondary;
-
+      {/* ═══ Row 2: 4 KPI gradient cards ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+        {kpiCards.map((card, i) => {
+          const ch = card.change;
           return (
             <motion.div
-              key={item.label}
+              key={card.label}
               {...stagger(i + 1)}
               style={{
-                ...card,
-                padding: '14px 18px 12px',
+                background: card.gradient,
+                borderRadius: 18,
+                padding: '22px 24px',
+                position: 'relative',
+                overflow: 'hidden',
+                color: '#ffffff',
+                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(124,58,237,0.1)',
               }}
             >
-              {/* Label + badge */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.6px' }}>
-                  {item.label}
-                </span>
-                {ch && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 2,
-                    fontSize: 11, fontWeight: 600, color: changeColor,
-                    backgroundColor: isDark
-                      ? (ch.value > 0 ? 'rgba(16,185,129,0.12)' : ch.value < 0 ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.05)')
-                      : (ch.value > 0 ? 'rgba(5,150,105,0.08)' : ch.value < 0 ? 'rgba(220,38,38,0.08)' : 'rgba(0,0,0,0.04)'),
-                    padding: '2px 7px', borderRadius: 5,
-                  }}>
-                    {ch.value > 0 && <ArrowUpRight style={{ width: 10, height: 10 }} />}
-                    {ch.value < 0 && <ArrowDownRight style={{ width: 10, height: 10 }} />}
-                    {ch.value === 0 && <Minus style={{ width: 10, height: 10 }} />}
-                    {ch.label}
-                  </span>
-                )}
+              {/* Decorative */}
+              <div style={{ position: 'absolute', right: -24, top: -24, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+              <div style={{ position: 'absolute', right: 18, bottom: -32, width: 70, height: 70, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
+
+              <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 12 }}>
+                {card.label}
               </div>
-              {/* Big number */}
-              <div style={{ fontSize: 24, fontWeight: 700, color: C.text, letterSpacing: '-0.5px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                {fmtMoney(item.data.net)}
+              <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.1, marginBottom: 8, fontVariantNumeric: 'tabular-nums' }}>
+                {new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(card.value)}
+                <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.7, marginLeft: 4 }}>{CURRENCY}</span>
               </div>
-              {/* Subtitle */}
-              <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 4 }}>
-                {t('netProfit')}
-              </div>
+              {ch && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 600,
+                  background: 'rgba(255,255,255,0.22)',
+                  padding: '3px 9px', borderRadius: 6,
+                }}>
+                  {ch.value > 0 && <ArrowUpRight size={11} />}
+                  {ch.value < 0 && <ArrowDownRight size={11} />}
+                  {ch.value === 0 && <Minus size={11} />}
+                  {ch.label}
+                  <span style={{ opacity: 0.65, fontWeight: 400 }}>· {card.subtitle}</span>
+                </div>
+              )}
+              {!ch && (
+                <div style={{ fontSize: 11, opacity: 0.7 }}>{card.subtitle}</div>
+              )}
             </motion.div>
           );
         })}
       </div>
 
-      {/* ═══ Row 3: Three blocks ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 0.6fr', gap: 12, flex: 1, minHeight: 0 }}>
+      {/* ═══ Row 3: Chart (wide) + Donut (narrow) ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
+        {/* Revenue chart */}
+        <motion.div {...stagger(5)} style={cardBase}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>Динамика дохода</h3>
+              <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>Последние 30 дней</p>
+            </div>
+            <div style={{
+              padding: '4px 10px', borderRadius: 7,
+              background: C.accentSoft, color: C.accent,
+              fontSize: 12, fontWeight: 600,
+            }}>
+              {fmtMoney(kpi.month.value)}
+            </div>
+          </div>
+          <div style={{ flex: 1, minHeight: 180 }}>
+            <AreaChart data={revenueSeries} color={C.accent} height={200} />
+          </div>
+        </motion.div>
 
-        {/* ── Block 1: Today's Schedule ── */}
-        <motion.div {...stagger(4)} style={{ ...card, minHeight: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <Clock style={{ width: 14, height: 14, color: C.accent }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{t('todaySchedule')}</span>
+        {/* Expense donut */}
+        <motion.div {...stagger(6)} style={cardBase}>
+          <div style={{ marginBottom: 14 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>Структура расходов</h3>
+            <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>За текущий месяц</p>
+          </div>
+
+          {expenseByCategory.length === 0 ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textTertiary, fontSize: 13 }}>
+              Нет расходов
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <div style={{ position: 'relative' }}>
+                <DonutChart slices={expenseByCategory} size={140} strokeWidth={20} />
+                <div style={{
+                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 11, color: C.textTertiary, marginBottom: 2 }}>Всего</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontVariantNumeric: 'tabular-nums' }}>
+                    {fmtMoney(totalMonthExp)}
+                  </div>
+                </div>
+              </div>
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {expenseByCategory.slice(0, 4).map(sl => {
+                  const pct = Math.round((sl.value / totalMonthExp) * 100);
+                  return (
+                    <div key={sl.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: sl.color, flexShrink: 0 }} />
+                      <span style={{ color: C.textSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {sl.label}
+                      </span>
+                      <span style={{ color: C.textTertiary, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* ═══ Row 4: Appointments table (wide) + Birthdays/Reminders (narrow) ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+        {/* Today's appointments */}
+        <motion.div {...stagger(7)} style={cardBase}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Clock size={15} style={{ color: C.accent }} />
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>{t('todaySchedule')}</h3>
               {todaySchedule.length > 0 && (
                 <span style={{
                   fontSize: 11, fontWeight: 600, color: C.accent,
-                  backgroundColor: isDark ? 'rgba(94,106,210,0.12)' : 'rgba(94,106,210,0.08)',
-                  padding: '1px 7px', borderRadius: 5,
+                  background: C.accentSoft, padding: '2px 8px', borderRadius: 6,
                 }}>
                   {todaySchedule.length}
                 </span>
               )}
             </div>
-            <Link href={`/${locale}/calendar`} style={{ fontSize: 12, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
+            <Link href={`/${locale}/calendar`} style={{ fontSize: 12, color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
               {t('goToCalendar')} →
             </Link>
           </div>
 
           {todaySchedule.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Calendar style={{ width: 24, height: 24, color: C.textTertiary, opacity: 0.4 }} />
-              <p style={{ fontSize: 13, fontWeight: 500, color: C.textSecondary, margin: 0 }}>{t('noAppointmentsToday')}</p>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '32px 0' }}>
+              <CalendarIcon size={28} style={{ color: C.textTertiary, opacity: 0.35 }} />
+              <p style={{ fontSize: 14, fontWeight: 500, color: C.textSecondary, margin: 0 }}>{t('noAppointmentsToday')}</p>
               <p style={{ fontSize: 12, color: C.textTertiary, margin: 0 }}>{t('freeDay')}</p>
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              {todaySchedule.map((appt, i) => {
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Table header */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: '70px 3px 1fr 1fr 100px',
+                padding: '8px 4px', gap: 10,
+                fontSize: 11, fontWeight: 600, color: C.textTertiary,
+                letterSpacing: '0.04em', textTransform: 'uppercase',
+                borderBottom: `1px solid ${C.border}`,
+              }}>
+                <span>Время</span>
+                <span />
+                <span>Услуга</span>
+                <span>Клиент</span>
+                <span style={{ textAlign: 'right' }}>Сумма</span>
+              </div>
+              {todaySchedule.map((appt) => {
                 const start = new Date(appt.starts_at);
                 const end = new Date(appt.ends_at);
                 const isPast = end < now;
@@ -387,25 +557,28 @@ export default function DashboardPage() {
                     key={appt.id}
                     href={`/${locale}/calendar`}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '7px 4px', borderRadius: 6, textDecoration: 'none', color: 'inherit',
-                      opacity: isPast ? 0.4 : 1,
-                      backgroundColor: isNow ? (isDark ? 'rgba(94,106,210,0.08)' : 'rgba(94,106,210,0.04)') : 'transparent',
-                      borderBottom: i < todaySchedule.length - 1 ? `1px solid ${C.border}` : undefined,
-                      flexShrink: 0,
+                      display: 'grid', gridTemplateColumns: '70px 3px 1fr 1fr 100px',
+                      padding: '12px 4px', gap: 10, alignItems: 'center',
+                      textDecoration: 'none', color: 'inherit',
+                      borderBottom: `1px solid ${C.border}`,
+                      background: isNow ? C.accentSoft : 'transparent',
+                      opacity: isPast ? 0.5 : 1,
+                      transition: 'background 0.15s',
                     }}
                   >
-                    <div style={{ minWidth: 38, textAlign: 'right', fontSize: 13, fontWeight: 600, color: isNow ? C.accent : C.text, fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: isNow ? C.accent : C.text, fontVariantNumeric: 'tabular-nums' }}>
                       {format(start, 'HH:mm')}
-                    </div>
-                    <div style={{ width: 3, height: 26, borderRadius: 2, backgroundColor: appt.service?.color || C.accent, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {appt.service?.name || '—'}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 1 }}>{appt.client?.full_name || '—'}</div>
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: C.text, flexShrink: 0 }}>{fmtMoney(Number(appt.price) || 0)}</div>
+                    </span>
+                    <div style={{ width: 3, height: 28, borderRadius: 2, background: appt.service?.color || C.accent }} />
+                    <span style={{ fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {appt.service?.name || '—'}
+                    </span>
+                    <span style={{ fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {appt.client?.full_name || '—'}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtMoney(Number(appt.price) || 0)}
+                    </span>
                   </Link>
                 );
               })}
@@ -413,94 +586,92 @@ export default function DashboardPage() {
           )}
         </motion.div>
 
-        {/* ── Block 2: Reminders (Active / Completed tabs) ── */}
-        <motion.div {...stagger(5)} style={{ ...card, gap: 0, minHeight: 0 }}>
-          {/* Header with tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              <Bell style={{ width: 14, height: 14, color: C.accent }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{t('remindersTitle')}</span>
-              {reminders.length > 0 && reminderTab === 'active' && (
+        {/* Birthdays + Reminders */}
+        <motion.div {...stagger(8)} style={cardBase}>
+          {/* Birthdays header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Cake size={15} style={{ color: C.warning }} />
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>{t('birthdays')}</h3>
+          </div>
+
+          {upcomingBirthdays.length === 0 ? (
+            <div style={{ padding: '12px 0', textAlign: 'center', color: C.textTertiary, fontSize: 13 }}>
+              {t('noBirthdays')}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', marginBottom: reminders.length > 0 ? 16 : 0 }}>
+              {upcomingBirthdays.map((client, i) => (
+                <Link
+                  key={client.id}
+                  href={`/${locale}/clients/${client.id}`}
+                  style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '10px 0', textDecoration: 'none', color: 'inherit',
+                    borderBottom: i < upcomingBirthdays.length - 1 ? `1px solid ${C.border}` : undefined,
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {client.full_name}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>
+                      {t('turnsAge', { age: client.age })}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, flexShrink: 0,
+                    padding: '3px 8px', borderRadius: 6,
+                    color: client.daysUntil === 0 ? '#fff' : client.daysUntil <= 1 ? C.accent : C.textSecondary,
+                    background: client.daysUntil === 0 ? C.warning : client.daysUntil <= 1 ? C.accentSoft : 'transparent',
+                  }}>
+                    {client.daysUntil === 0
+                      ? t('birthdayToday')
+                      : client.daysUntil === 1
+                        ? t('birthdayTomorrow')
+                        : t('birthdayInDays', { n: client.daysUntil })}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Reminders */}
+          {reminders.length > 0 && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, marginTop: 8, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                <Bell size={15} style={{ color: C.accent }} />
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>{t('remindersTitle')}</h3>
                 <span style={{
                   fontSize: 11, fontWeight: 600, color: C.accent,
-                  backgroundColor: isDark ? 'rgba(94,106,210,0.12)' : 'rgba(94,106,210,0.08)',
-                  padding: '1px 7px', borderRadius: 5,
+                  background: C.accentSoft, padding: '1px 7px', borderRadius: 5,
                 }}>
                   {reminders.length}
                 </span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 2, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)', borderRadius: 6, padding: 2 }}>
-              {(['active', 'completed'] as const).map(tab => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setReminderTab(tab)}
-                  style={{
-                    fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 5,
-                    border: 'none', cursor: 'pointer', transition: 'all 150ms',
-                    backgroundColor: reminderTab === tab
-                      ? (isDark ? 'rgba(255,255,255,0.08)' : '#ffffff')
-                      : 'transparent',
-                    color: reminderTab === tab ? C.text : C.textTertiary,
-                    boxShadow: reminderTab === tab ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                  }}
-                >
-                  {tab === 'active' ? 'Активные' : 'Завершённые'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* List */}
-          {reminderTab === 'active' ? (
-            reminders.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Mic style={{ width: 20, height: 20, color: C.textTertiary, opacity: 0.4 }} />
-                <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, textAlign: 'center', maxWidth: 180, lineHeight: '16px' }}>
-                  {t('noReminders')}
-                </p>
               </div>
-            ) : (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                {reminders.map((rem, i) => (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {reminders.slice(0, 4).map((rem, i) => (
                   <div
                     key={rem.id}
                     style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 8,
-                      padding: '6px 2px',
-                      borderBottom: i < reminders.length - 1 ? `1px solid ${C.border}` : undefined,
-                      flexShrink: 0,
+                      display: 'flex', alignItems: 'flex-start', gap: 10,
+                      padding: '8px 0',
+                      borderBottom: i < Math.min(reminders.length, 4) - 1 ? `1px solid ${C.border}` : undefined,
                     }}
                   >
                     <button
                       type="button"
                       onClick={() => completeReminder(rem.id)}
                       style={{
-                        width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 1,
-                        border: `1.5px solid ${C.border}`,
-                        backgroundColor: 'transparent', cursor: 'pointer',
+                        width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 1,
+                        border: `1.5px solid ${C.borderStrong}`,
+                        background: 'transparent', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'border-color 150ms, background-color 150ms',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = C.success;
-                        e.currentTarget.style.backgroundColor = isDark ? 'rgba(16,185,129,0.1)' : 'rgba(5,150,105,0.06)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = C.border;
-                        e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      <Check style={{ width: 10, height: 10, color: C.success, opacity: 0 }} />
+                      <Check size={10} style={{ color: C.success, opacity: 0 }} />
                     </button>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 12, fontWeight: 500, color: C.text,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
-                        lineHeight: '16px',
-                      }}>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: C.text, lineHeight: 1.4 }}>
                         {rem.text}
                       </div>
                       {rem.due_at && (
@@ -510,99 +681,12 @@ export default function DashboardPage() {
                       )}
                     </div>
                     {rem.source === 'voice' && (
-                      <Mic style={{ width: 10, height: 10, color: C.textTertiary, flexShrink: 0, marginTop: 3 }} />
+                      <Mic size={10} style={{ color: C.textTertiary, flexShrink: 0, marginTop: 3 }} />
                     )}
                   </div>
                 ))}
               </div>
-            )
-          ) : (
-            completedReminders.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <p style={{ fontSize: 12, color: C.textTertiary, margin: 0 }}>Нет завершённых</p>
-              </div>
-            ) : (
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                {completedReminders.map((rem, i) => (
-                  <div
-                    key={rem.id}
-                    style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 8,
-                      padding: '6px 2px', opacity: 0.5,
-                      borderBottom: i < completedReminders.length - 1 ? `1px solid ${C.border}` : undefined,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <div style={{
-                      width: 18, height: 18, borderRadius: 4, flexShrink: 0, marginTop: 1,
-                      backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(5,150,105,0.1)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Check style={{ width: 10, height: 10, color: C.success }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 12, fontWeight: 500, color: C.textSecondary,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
-                        lineHeight: '16px', textDecoration: 'line-through',
-                      }}>
-                        {rem.text}
-                      </div>
-                    </div>
-                    {rem.source === 'voice' && (
-                      <Mic style={{ width: 10, height: 10, color: C.textTertiary, flexShrink: 0, marginTop: 3 }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          )}
-        </motion.div>
-
-        {/* ── Block 3: Birthdays (narrow) ── */}
-        <motion.div {...stagger(6)} style={{ ...card, minHeight: 0, padding: '14px 12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexShrink: 0 }}>
-            <Cake style={{ width: 13, height: 13, color: C.warning }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{t('birthdays')}</span>
-          </div>
-
-          {upcomingBirthdays.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, textAlign: 'center' }}>{t('noBirthdays')}</p>
-            </div>
-          ) : (
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-              {upcomingBirthdays.map((client, i) => (
-                <Link
-                  key={client.id}
-                  href={`/${locale}/clients/${client.id}`}
-                  style={{
-                    display: 'flex', flexDirection: 'column', gap: 1,
-                    padding: '6px 2px', textDecoration: 'none', color: 'inherit',
-                    borderBottom: i < upcomingBirthdays.length - 1 ? `1px solid ${C.border}` : undefined,
-                    flexShrink: 0,
-                  }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {client.full_name}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: C.textTertiary }}>{t('turnsAge', { age: client.age })}</span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 600,
-                      color: client.daysUntil === 0 ? C.warning : client.daysUntil === 1 ? C.accent : C.textSecondary,
-                    }}>
-                      {client.daysUntil === 0
-                        ? t('birthdayToday')
-                        : client.daysUntil === 1
-                          ? t('birthdayTomorrow')
-                          : t('birthdayInDays', { n: client.daysUntil })}
-                    </span>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            </>
           )}
         </motion.div>
       </div>
