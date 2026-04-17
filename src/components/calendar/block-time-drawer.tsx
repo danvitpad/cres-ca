@@ -10,8 +10,7 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { Pencil, UtensilsCrossed, Clock, ChevronDown, X } from 'lucide-react';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   bg: '#ffffff',

@@ -10,10 +10,11 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { FONT, FONT_FEATURES, usePageTheme } from '@/lib/dashboard-theme';
+import type { PageTheme } from '@/lib/dashboard-theme';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   format, addDays, startOfDay, endOfDay, startOfWeek, endOfWeek,
@@ -30,35 +31,7 @@ import {
   Bell, Check, Mic,
 } from 'lucide-react';
 
-/* ─── Tokens ─── */
-
-const FONT = 'Inter, "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-const DARK = {
-  cardBg: '#0f1011',
-  text: '#f7f8f8',
-  textSecondary: '#8a8f98',
-  textTertiary: '#62666d',
-  accent: '#5e6ad2',
-  success: '#10b981',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  border: 'rgba(255,255,255,0.05)',
-  blockBg: '#141516',
-};
-
-const LIGHT = {
-  cardBg: '#ffffff',
-  text: '#0d0d0d',
-  textSecondary: '#62666d',
-  textTertiary: '#8a8f98',
-  accent: '#5e6ad2',
-  success: '#059669',
-  warning: '#d97706',
-  danger: '#dc2626',
-  border: '#e6e6e6',
-  blockBg: '#f5f6f7',
-};
+/* ─── Tokens — from dashboard-theme ─── */
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -115,11 +88,7 @@ export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
-  const isDark = mounted && resolvedTheme === 'dark';
+  const { C, isDark } = usePageTheme();
 
   const { master, loading: masterLoading } = useMaster();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -264,11 +233,12 @@ export default function DashboardPage() {
 
   /* ── Styles ── */
   const card: React.CSSProperties = {
-    backgroundColor: C.cardBg,
+    backgroundColor: C.surface,
     borderRadius: 10,
     border: `1px solid ${C.border}`,
     padding: 14,
     fontFamily: FONT,
+    fontFeatureSettings: FONT_FEATURES,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',

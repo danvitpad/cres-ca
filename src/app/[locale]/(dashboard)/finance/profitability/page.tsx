@@ -2,7 +2,7 @@
  * name: Service Profitability Report
  * description: Real profit per service — material cost from inventory recipe vs revenue, sorted by margin.
  * created: 2026-04-12
- * updated: 2026-04-12
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -12,7 +12,7 @@ import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { useFxRates, SUPPORTED_CURRENCIES, type SupportedCurrency } from '@/hooks/use-fx-rates';
-import { cn } from '@/lib/utils';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer, cardStyle, headingStyle, labelStyle } from '@/lib/dashboard-theme';
 
 type RecipeItem = { item_id: string; quantity: number };
 type Service = { id: string; name: string; price: number | null; inventory_recipe: RecipeItem[] | null };
@@ -28,6 +28,7 @@ type Row = {
 };
 
 export default function ProfitabilityReportPage() {
+  const { C } = usePageTheme();
   const supabase = createClient();
   const { master } = useMaster();
   const [rows, setRows] = useState<Row[]>([]);
@@ -38,7 +39,7 @@ export default function ProfitabilityReportPage() {
   const fmt = useCallback(
     (amount: number) => {
       const v = convert(amount, 'UAH', displayCurrency);
-      return `${v.toFixed(2)} ${displayCurrency}`;
+      return `${v.toFixed(2)} ${displayCurrency === 'UAH' ? CURRENCY : displayCurrency}`;
     },
     [convert, displayCurrency],
   );
@@ -107,98 +108,110 @@ export default function ProfitabilityReportPage() {
     return { price, cost, profit, margin };
   }, [rows]);
 
+  function marginColor(margin: number): string {
+    if (margin >= 60) return C.success;
+    if (margin >= 30) return C.warning;
+    return C.danger;
+  }
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
+    <div style={{ ...pageContainer, background: C.bg, color: C.text }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24 }}>
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <TrendingUp className="h-6 w-6 text-primary" />
+          <h1 style={{ ...headingStyle(C), display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TrendingUp size={22} style={{ color: C.accent }} />
             Реальная прибыль по услугам
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Себестоимость рассчитывается из техкарты услуги (inventory recipe) × стоимость единицы из склада.
+          <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 6 }}>
+            Себестоимость рассчитывается из техкарты услуги × стоимость единицы из склада.
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
           <select
-            className="rounded-md border bg-background px-3 py-1.5 text-sm"
             value={displayCurrency}
             onChange={(e) => setDisplayCurrency(e.target.value as SupportedCurrency)}
+            style={{
+              padding: '6px 12px', borderRadius: 8, fontSize: 13,
+              border: `1px solid ${C.border}`, background: C.surface, color: C.text,
+              fontFamily: FONT, outline: 'none', cursor: 'pointer',
+            }}
           >
             {SUPPORTED_CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
-          <span className="text-[10px] text-muted-foreground">
+          <span style={{ fontSize: 10, color: C.textTertiary }}>
             {fxReady ? `курс на ${ratesDate}` : 'курс не загружен'}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Услуг" value={rows.length.toString()} />
-        <Stat label="Выручка" value={fmt(totals.price)} />
-        <Stat label="Себестоимость" value={fmt(totals.cost)} />
-        <Stat label="Средняя маржа" value={`${totals.margin.toFixed(0)}%`} accent={totals.margin >= 60} />
+      {/* KPI cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+        <StatCard C={C} label="Услуг" value={rows.length.toString()} />
+        <StatCard C={C} label="Выручка" value={fmt(totals.price)} />
+        <StatCard C={C} label="Себестоимость" value={fmt(totals.cost)} />
+        <StatCard C={C} label="Средняя маржа" value={`${totals.margin.toFixed(0)}%`} color={marginColor(totals.margin)} />
       </div>
 
+      {/* Table */}
       {loading ? (
-        <p className="text-sm text-muted-foreground">Загрузка…</p>
+        <p style={{ fontSize: 13, color: C.textSecondary }}>Загрузка…</p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Нет активных услуг. Добавь услуги на /services.</p>
+        <p style={{ fontSize: 13, color: C.textSecondary }}>Нет активных услуг. Добавь услуги на /services.</p>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 text-left">Услуга</th>
-                <th className="px-4 py-2 text-right">Цена</th>
-                <th className="px-4 py-2 text-right">Себестоимость</th>
-                <th className="px-4 py-2 text-right">Прибыль</th>
-                <th className="px-4 py-2 text-right">Маржа</th>
+        <div style={{ ...cardStyle(C), padding: 0, overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                {['Услуга', 'Цена', 'Себестоимость', 'Прибыль', 'Маржа'].map((h, i) => (
+                  <th key={h} style={{
+                    padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right',
+                    fontSize: 11, fontWeight: 510, color: C.textTertiary, textTransform: 'uppercase' as const,
+                    letterSpacing: '0.04em', background: C.surfaceElevated,
+                  }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
-                const marginColor =
-                  r.margin >= 60
-                    ? 'text-emerald-600'
-                    : r.margin >= 30
-                      ? 'text-amber-600'
-                      : 'text-red-600';
-                return (
-                  <tr key={r.id} className="border-t">
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{r.name}</div>
-                      {r.lines.length > 0 ? (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          {r.lines.map((l, i) => (
-                            <span key={i}>
-                              {i > 0 ? ' · ' : ''}
-                              {l.name} ({l.quantity} {l.unit})
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="mt-1 text-xs text-muted-foreground">Нет техкарты</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">{fmt(r.price)}</td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{fmt(r.cost)}</td>
-                    <td className={cn('px-4 py-3 text-right font-semibold', r.profit < 0 && 'text-red-600')}>
-                      {fmt(r.profit)}
-                    </td>
-                    <td className={cn('px-4 py-3 text-right font-bold', marginColor)}>
-                      <span className="inline-flex items-center gap-1">
-                        {r.margin < 30 && <AlertTriangle className="h-3 w-3" />}
-                        {r.margin.toFixed(0)}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {rows.map((r) => (
+                <tr
+                  key={r.id}
+                  style={{ borderTop: `1px solid ${C.border}`, transition: 'background 0.1s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ fontWeight: 510, fontSize: 13, color: C.text }}>{r.name}</div>
+                    {r.lines.length > 0 ? (
+                      <div style={{ marginTop: 4, fontSize: 11, color: C.textTertiary }}>
+                        {r.lines.map((l, i) => (
+                          <span key={i}>
+                            {i > 0 ? ' · ' : ''}
+                            {l.name} ({l.quantity} {l.unit})
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 4, fontSize: 11, color: C.textTertiary }}>Нет техкарты</div>
+                    )}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 510, fontSize: 13, color: C.text }}>{fmt(r.price)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textSecondary }}>{fmt(r.cost)}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, fontSize: 13, color: r.profit < 0 ? C.danger : C.text }}>
+                    {fmt(r.profit)}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, fontSize: 13, color: marginColor(r.margin) }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {r.margin < 30 && <AlertTriangle size={12} />}
+                      {r.margin.toFixed(0)}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -207,11 +220,11 @@ export default function ProfitabilityReportPage() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function StatCard({ C, label, value, color }: { C: any; label: string; value: string; color?: string }) {
   return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="text-xs text-muted-foreground">{label}</div>
-      <div className={cn('text-lg font-semibold', accent && 'text-emerald-600')}>{value}</div>
+    <div style={{ ...cardStyle(C) }}>
+      <div style={{ ...labelStyle(C) }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4, color: color || C.text }}>{value}</div>
     </div>
   );
 }

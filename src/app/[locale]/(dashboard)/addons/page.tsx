@@ -5,38 +5,10 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
 import { CreditCard, Headphones, BarChart3, Star, Heart, MessageSquare, Zap, Globe, Shield, Smartphone } from 'lucide-react';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-const LIGHT = {
-  pageBg: '#ffffff',
-  cardBg: '#ffffff',
-  cardBorder: '0.8px solid #e0e0e0',
-  text: '#0d0d0d',
-  textSecondary: '#737373',
-  textMuted: '#a3a3a3',
-  accent: '#6950f3',
-  accentSoft: '#f0edff',
-  btnBg: '#f5f5f5',
-  btnHover: '#ebebeb',
-};
-const DARK = {
-  pageBg: '#000000',
-  cardBg: '#000000',
-  cardBorder: '0.8px solid #1a1a1a',
-  text: '#f5f5f5',
-  textSecondary: '#bfbfbf',
-  textMuted: '#666666',
-  accent: '#8880ff',
-  accentSoft: '#1a1840',
-  btnBg: '#000000',
-  btnHover: '#0a0a0a',
-};
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 
 interface Addon {
   id: string;
@@ -61,13 +33,10 @@ const ADDONS: Addon[] = [
 
 export default function AddonsPage() {
   const t = useTranslations('addons');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 40px', fontFamily: FONT }}>
+    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <h1 style={{ fontSize: 24, fontWeight: 600, color: C.text, lineHeight: '32px', margin: '0 0 8px' }}>
@@ -79,7 +48,7 @@ export default function AddonsPage() {
       </div>
 
       {/* Category label */}
-      <div style={{ fontSize: 13, fontWeight: 600, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>
         {t('addonsLabel')}
       </div>
 
@@ -94,8 +63,8 @@ export default function AddonsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
               style={{
-                backgroundColor: C.cardBg,
-                border: C.cardBorder,
+                backgroundColor: C.surface,
+                border: `1px solid ${C.border}`,
                 borderRadius: 8,
                 padding: 24,
                 display: 'flex',
@@ -103,8 +72,8 @@ export default function AddonsPage() {
                 gap: 16,
                 transition: 'background-color 0.15s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#1e1e1e' : '#fafafa')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.cardBg)}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = isDark ? '#1e1e1e' : '#fafafa')}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.surface)}
             >
               <div style={{
                 width: 44, height: 44, borderRadius: 10,
@@ -130,7 +99,7 @@ export default function AddonsPage() {
                   fontSize: 14,
                   fontWeight: 500,
                   color: C.text,
-                  backgroundColor: C.btnBg,
+                  backgroundColor: C.surfaceElevated,
                   border: 'none',
                   borderRadius: 6,
                   cursor: 'pointer',
@@ -138,8 +107,8 @@ export default function AddonsPage() {
                   transition: 'background-color 0.15s',
                   alignSelf: 'flex-start',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.btnHover)}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.btnBg)}
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.rowHover)}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.surfaceElevated)}
               >
                 {t('viewDetails')}
               </button>

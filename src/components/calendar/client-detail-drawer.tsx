@@ -10,8 +10,7 @@ import { X, Phone, Mail, Calendar, Star, CreditCard, AlertTriangle, Clock } from
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   bg: '#ffffff',

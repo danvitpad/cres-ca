@@ -54,7 +54,7 @@ const S = {
   iconBtnRadius: 8,
   iconSize: 24,
   avatarSize: 48,
-  fontFamily: '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontFamily: '"Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 } as const;
 
 /* Theme palettes imported from @/lib/dashboard-theme */
@@ -751,7 +751,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           )}
         </AnimatePresence>
 
-        {/* ═══ Content area — Fresha: white bg, full remaining width ═══ */}
+        {/* ═══ Content area — shifts right when flyout submenu is open ═══ */}
         <main
           onClick={() => { if (openFlyout) setOpenFlyout(null); }}
           style={{
@@ -762,6 +762,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
+            marginLeft: openFlyout ? 240 : 0,
+            transition: 'margin-left 0.15s ease',
           }}
         >
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

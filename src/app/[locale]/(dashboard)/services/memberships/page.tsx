@@ -9,30 +9,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
 import { Plus, CreditCard, Trash2, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-const LIGHT = {
-  bg: '#ffffff', text: '#0d0d0d', textMuted: '#737373',
-  accent: '#6950f3', emptyBg: '#f9fafb', emptyBorder: '#e5e5e5',
-  cardBg: '#ffffff', cardBorder: '#e5e5e5',
-  inputBg: '#ffffff', inputBorder: '#e0e0e0',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#2a2a2a', rowHover: '#111111',
-};
-const DARK = {
-  bg: '#000000', text: '#f5f5f5', textMuted: '#999999',
-  accent: '#8b7cf6', emptyBg: '#000000', emptyBorder: '#1a1a1a',
-  cardBg: '#000000', cardBorder: '#1a1a1a',
-  inputBg: '#000000', inputBorder: '#1a1a1a',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#1a1a1a', rowHover: '#0a0a0a',
-};
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 
 interface ServicePackage {
   id: string;
@@ -55,10 +36,7 @@ interface ServiceOption {
 
 export default function MembershipsPage() {
   const t = useTranslations('catalogue');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [packages, setPackages] = useState<ServicePackage[]>([]);
@@ -140,12 +118,12 @@ export default function MembershipsPage() {
 
   const inputStyle = {
     width: '100%', padding: '8px 12px', borderRadius: 8,
-    border: `1px solid ${C.inputBorder}`, background: C.inputBg, color: C.text,
+    border: `1px solid ${C.border}`, background: C.surface, color: C.text,
     fontSize: 13, fontFamily: FONT, outline: 'none',
   };
 
   return (
-    <div style={{ fontFamily: FONT, padding: '32px 40px' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, padding: '32px 40px', background: C.bg }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <h1 style={{ fontSize: 28, fontWeight: 600, color: C.text, margin: 0 }}>
           {t('memberships')}
@@ -165,7 +143,7 @@ export default function MembershipsPage() {
           {t('addMembership')}
         </button>
       </div>
-      <p style={{ fontSize: 15, color: C.textMuted, margin: '0 0 32px', lineHeight: '22px' }}>
+      <p style={{ fontSize: 15, color: C.textSecondary, margin: '0 0 32px', lineHeight: '22px' }}>
         {t('membershipsDesc')}
       </p>
 
@@ -175,40 +153,40 @@ export default function MembershipsPage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           style={{
-            background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 12,
+            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
             padding: 20, marginBottom: 24,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{t('addMembership')}</div>
-            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted }}><X size={16} /></button>
+            <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSecondary }}><X size={16} /></button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>{t('name') ?? 'Name'}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>{t('name') ?? 'Name'}</div>
               <input value={name} onChange={e => setName(e.target.value)} placeholder="VIP 10 visits" style={inputStyle} />
             </div>
             <div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>{t('service') ?? 'Service'}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>{t('service') ?? 'Service'}</div>
               <select value={serviceId} onChange={e => setServiceId(e.target.value)} style={inputStyle}>
                 <option value="">— {t('all') ?? 'All services'} —</option>
                 {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </div>
             <div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>{t('totalVisits') ?? 'Total visits'}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>{t('totalVisits') ?? 'Total visits'}</div>
               <input type="number" value={totalVisits} onChange={e => setTotalVisits(e.target.value)} style={inputStyle} />
             </div>
             <div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>{t('bonusVisits') ?? 'Bonus visits'}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>{t('bonusVisits') ?? 'Bonus visits'}</div>
               <input type="number" value={bonusVisits} onChange={e => setBonusVisits(e.target.value)} style={inputStyle} />
             </div>
             <div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>{t('price') ?? 'Price'} (UAH)</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>{t('price') ?? 'Price'} ({CURRENCY})</div>
               <input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="5000" style={inputStyle} />
             </div>
             <div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 4 }}>{t('validityDays') ?? 'Validity (days)'}</div>
+              <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 4 }}>{t('validityDays') ?? 'Validity (days)'}</div>
               <input type="number" value={validityDays} onChange={e => setValidityDays(e.target.value)} style={inputStyle} />
             </div>
           </div>
@@ -231,9 +209,9 @@ export default function MembershipsPage() {
 
       {/* Content */}
       {loading ? (
-        <div style={{ background: C.emptyBg, borderRadius: 12, padding: '40px 20px' }}>
+        <div style={{ background: C.surface, borderRadius: 12, padding: '40px 20px' }}>
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} style={{ height: 48, borderRadius: 8, background: C.emptyBorder, marginBottom: 8 }} />
+            <div key={i} style={{ height: 48, borderRadius: 8, background: C.border, marginBottom: 8 }} />
           ))}
         </div>
       ) : packages.length === 0 && !showForm ? (
@@ -241,8 +219,8 @@ export default function MembershipsPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           style={{
-            backgroundColor: C.emptyBg,
-            border: `1px dashed ${C.emptyBorder}`,
+            backgroundColor: C.surface,
+            border: `1px dashed ${C.border}`,
             borderRadius: 12,
             padding: '64px 32px',
             textAlign: 'center',
@@ -259,7 +237,7 @@ export default function MembershipsPage() {
           <div style={{ fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>
             {t('noMemberships')}
           </div>
-          <div style={{ fontSize: 15, color: C.textMuted, maxWidth: 400, margin: '0 auto', lineHeight: '22px' }}>
+          <div style={{ fontSize: 15, color: C.textSecondary, maxWidth: 400, margin: '0 auto', lineHeight: '22px' }}>
             {t('noMembershipsDesc')}
           </div>
         </motion.div>
@@ -267,17 +245,17 @@ export default function MembershipsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}
+          style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
         >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('name') ?? 'Name'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('service') ?? 'Service'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('totalVisits') ?? 'Visits'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('price') ?? 'Price'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('validityDays') ?? 'Days'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('status')}</th>
+              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('name') ?? 'Name'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('service') ?? 'Service'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('totalVisits') ?? 'Visits'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('price') ?? 'Price'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('validityDays') ?? 'Days'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
                 <th style={{ padding: '12px 16px', width: 80 }} />
               </tr>
             </thead>
@@ -288,17 +266,17 @@ export default function MembershipsPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.02 }}
-                  style={{ borderBottom: `1px solid ${C.tableBorder}` }}
+                  style={{ borderBottom: `1px solid ${C.border}` }}
                 >
-                  <td style={{ padding: '12px 20px', fontSize: 13, color: C.tableText, fontWeight: 500 }}>{pkg.name}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.tableTextMuted }}>{pkg.service?.name ?? (t('all') ?? 'All')}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>
+                  <td style={{ padding: '12px 20px', fontSize: 13, color: C.text, fontWeight: 500 }}>{pkg.name}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>{pkg.service?.name ?? (t('all') ?? 'All')}</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>
                     {pkg.total_visits}{pkg.bonus_visits > 0 ? ` +${pkg.bonus_visits}` : ''}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
                     {pkg.price.toLocaleString()} {pkg.currency}
                   </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{pkg.validity_days}d</td>
+                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{pkg.validity_days}d</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <button
                       onClick={() => toggleActive(pkg.id, pkg.is_active)}
@@ -317,7 +295,7 @@ export default function MembershipsPage() {
                   <td style={{ padding: '12px 8px', textAlign: 'right' }}>
                     <button
                       onClick={() => deletePackage(pkg.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.tableTextMuted, padding: 4 }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textTertiary, padding: 4 }}
                     >
                       <Trash2 size={14} />
                     </button>

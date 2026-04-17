@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AlertTriangle, X, CalendarPlus, Users, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppointmentData } from '@/hooks/use-appointments';
+import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 /* ─── Layout constants ─── */
 const HOUR_HEIGHT = 96;
@@ -23,8 +24,6 @@ const AVATAR_SIZE = 56;
 const DEFAULT_SLOT_MINUTES = 10;
 const TIME_COL_WIDTH = 80; // wider for "12:00 дня" labels
 const DRAG_SNAP_MINUTES = 15; // snap to 15-min intervals during drag
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 /* ─── Fresha theme palettes (extracted from Playwright) ─── */
 const LIGHT = {

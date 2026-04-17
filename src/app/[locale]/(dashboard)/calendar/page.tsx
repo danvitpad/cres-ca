@@ -54,6 +54,7 @@ import {
   Banknote,
   BarChart3,
 } from 'lucide-react';
+import { FONT } from '@/lib/dashboard-theme';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
 type ViewMode = 'day' | '3day' | 'week' | 'month';
@@ -69,7 +70,7 @@ const TS = {
   popoverItemH: 40,
   popoverItemPx: 12,
   popoverItemRadius: 8,
-  fontFamily: '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontFamily: FONT,
 } as const;
 
 /* ─── Fresha theme palettes for toolbar ─── */

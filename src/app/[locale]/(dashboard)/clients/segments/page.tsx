@@ -5,34 +5,17 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { motion } from 'framer-motion';
 import { Plus, Users } from 'lucide-react';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-const LIGHT = {
-  bg: '#ffffff', text: '#0d0d0d', textMuted: '#737373',
-  cardBg: '#ffffff', cardBorder: '#e5e5e5', accent: '#6950f3',
-  emptyBg: '#f9fafb', emptyBorder: '#e5e5e5',
-};
-const DARK = {
-  bg: '#000000', text: '#f5f5f5', textMuted: '#999999',
-  cardBg: '#000000', cardBorder: '#1a1a1a', accent: '#8b7cf6',
-  emptyBg: '#000000', emptyBorder: '#1a1a1a',
-};
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 
 export default function ClientSegmentsPage() {
   const t = useTranslations('clients');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   return (
-    <div style={{ fontFamily: FONT, padding: '32px 40px' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, padding: '32px 40px', background: C.bg }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <h1 style={{ fontSize: 28, fontWeight: 600, color: C.text, margin: 0 }}>
           {t('segments')}
@@ -51,7 +34,7 @@ export default function ClientSegmentsPage() {
           {t('createSegment')}
         </button>
       </div>
-      <p style={{ fontSize: 15, color: C.textMuted, margin: '0 0 32px', lineHeight: '22px' }}>
+      <p style={{ fontSize: 15, color: C.textSecondary, margin: '0 0 32px', lineHeight: '22px' }}>
         {t('segmentsDesc')}
       </p>
 
@@ -60,8 +43,8 @@ export default function ClientSegmentsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{
-          backgroundColor: C.emptyBg,
-          border: `1px dashed ${C.emptyBorder}`,
+          backgroundColor: C.surface,
+          border: `1px dashed ${C.border}`,
           borderRadius: 12,
           padding: '64px 32px',
           textAlign: 'center',
@@ -78,7 +61,7 @@ export default function ClientSegmentsPage() {
         <div style={{ fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>
           {t('noSegments')}
         </div>
-        <div style={{ fontSize: 15, color: C.textMuted, maxWidth: 400, margin: '0 auto', lineHeight: '22px' }}>
+        <div style={{ fontSize: 15, color: C.textSecondary, maxWidth: 400, margin: '0 auto', lineHeight: '22px' }}>
           {t('noSegmentsDesc')}
         </div>
       </motion.div>

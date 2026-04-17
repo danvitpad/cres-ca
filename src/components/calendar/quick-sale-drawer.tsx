@@ -12,8 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   bg: '#ffffff',
@@ -191,7 +190,7 @@ export function QuickSaleDrawer({ open, onClose, theme = 'light', services, appo
         appointment_id: appointmentId || null,
         client_id: clientId || null,
         amount: total,
-        currency: 'UAH',
+        currency: '₴',
         type: 'full',
         status: 'completed',
         description: `[PRODUCT] ${cart.map((i) => `${i.name} x${i.quantity}`).join(', ')}`,

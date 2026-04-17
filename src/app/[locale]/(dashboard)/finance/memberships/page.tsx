@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useTheme } from 'next-themes';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, Ticket } from 'lucide-react';
 import Link from 'next/link';
@@ -18,28 +18,7 @@ import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
-
-const LIGHT = {
-  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
-  text: '#0d0d0d', textMuted: '#737373',
-  accent: '#6950f3', accentSoft: '#f0f0ff',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#2a2a2a', rowHover: '#111111',
-  inputBg: '#ffffff', inputBorder: '#e0e0e0',
-  emptyBg: '#000000',
-};
-
-const DARK = {
-  bg: '#000000', cardBg: '#000000', cardBorder: '#1a1a1a',
-  text: '#f0f0f0', textMuted: '#b3b3b3',
-  accent: '#8b7cf6', accentSoft: 'rgba(105,80,243,0.15)',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#1a1a1a', rowHover: '#0a0a0a',
-  inputBg: '#000000', inputBorder: '#1a1a1a',
-  emptyBg: '#000000',
-};
 
 interface MembershipRow {
   id: string;
@@ -55,10 +34,7 @@ export default function MembershipsPage() {
   const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [memberships, setMemberships] = useState<MembershipRow[]>([]);
@@ -89,19 +65,19 @@ export default function MembershipsPage() {
   }, [memberships, search]);
 
   return (
-    <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '24px 28px', maxWidth: 860, height: '100%', overflowY: 'auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t('memberships')}</h1>
-          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>
             {t('membershipsDesc')} <span style={{ color: C.accent, cursor: 'pointer' }}>{t('learnMore')}</span>
           </p>
         </div>
         <button
           style={{
-            padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.cardBorder}`,
-            background: C.cardBg, color: C.text, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.border}`,
+            background: C.surface, color: C.text, fontSize: 13, fontWeight: 500, cursor: 'pointer',
           }}
         >
           {t('options')}
@@ -111,22 +87,22 @@ export default function MembershipsPage() {
       {/* Search + filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: 320 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.textMuted }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.textSecondary }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('search')}
             style={{
               width: '100%', padding: '9px 12px 9px 36px', borderRadius: 8,
-              border: `1px solid ${C.inputBorder}`, background: C.inputBg, color: C.text,
+              border: `1px solid ${C.border}`, background: C.surface, color: C.text,
               fontSize: 13, outline: 'none', fontFamily: FONT,
             }}
           />
         </div>
         <button
           style={{
-            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.inputBorder}`,
-            background: C.inputBg, color: C.textMuted, fontSize: 13, cursor: 'pointer',
+            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+            background: C.surface, color: C.textSecondary, fontSize: 13, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT,
           }}
         >
@@ -137,7 +113,7 @@ export default function MembershipsPage() {
 
       {/* Content */}
       {loading ? (
-        <div style={{ background: C.emptyBg, borderRadius: 12, padding: '40px 20px' }}>
+        <div style={{ background: C.surface, borderRadius: 12, padding: '40px 20px' }}>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} style={{ height: 48, borderRadius: 8, background: C.rowHover, marginBottom: 8 }} />
           ))}
@@ -147,7 +123,7 @@ export default function MembershipsPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           style={{
-            background: C.emptyBg, borderRadius: 16, padding: '80px 40px',
+            background: C.surface, borderRadius: 16, padding: '80px 40px',
             display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
           }}
         >
@@ -158,8 +134,8 @@ export default function MembershipsPage() {
           }}>
             <Ticket size={32} style={{ color: C.accent }} />
           </div>
-          <p style={{ fontSize: 16, fontWeight: 600, color: C.tableText, marginBottom: 8 }}>{t('noMemberships')}</p>
-          <p style={{ fontSize: 13, color: C.tableTextMuted, maxWidth: 360, marginBottom: 20 }}>{t('noMembershipsDesc')}</p>
+          <p style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>{t('noMemberships')}</p>
+          <p style={{ fontSize: 13, color: C.textTertiary, maxWidth: 360, marginBottom: 20 }}>{t('noMembershipsDesc')}</p>
           <Link
             href={`/${locale}/services`}
             style={{
@@ -175,17 +151,17 @@ export default function MembershipsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}
+          style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
         >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>ID</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('service')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('teamMember')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('created')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('price')}</th>
-                <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('status')}</th>
+              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>ID</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('service')}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('teamMember')}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('created')}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('price')}</th>
+                <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -197,29 +173,27 @@ export default function MembershipsPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.02 }}
-                    style={{ borderBottom: `1px solid ${C.tableBorder}`, cursor: 'pointer' }}
+                    style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     <td style={{ padding: '12px 20px', fontSize: 13, color: C.accent, fontWeight: 500 }}>
                       #{m.id.slice(0, 7).toUpperCase()}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.tableText }}>{m.package?.name || '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.tableText }}>{m.client?.full_name || '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.tableTextMuted }}>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>{m.package?.name || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>{m.client?.full_name || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>
                       {format(new Date(m.purchased_at), 'd MMM yyyy', { locale: dfLocale })}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
-                      {(m.package?.price || 0).toLocaleString()} UAH
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
+                      {(m.package?.price || 0).toLocaleString()} {CURRENCY}
                     </td>
                     <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                       <span style={{
                         display: 'inline-block', padding: '4px 10px', borderRadius: 6,
                         fontSize: 12, fontWeight: 500,
-                        background: isExpired ? 'rgba(220,38,38,0.12)' : 'rgba(16,185,129,0.12)',
-                        color: isExpired
-                          ? (mounted && resolvedTheme === 'dark' ? '#ef4444' : '#dc2626')
-                          : (mounted && resolvedTheme === 'dark' ? '#34d399' : '#059669'),
+                        background: isExpired ? C.dangerSoft : C.successSoft,
+                        color: isExpired ? C.danger : C.success,
                       }}>
                         {isExpired ? t('cancelled') : `${m.visits_remaining}/${m.package?.total_visits || 0}`}
                       </span>

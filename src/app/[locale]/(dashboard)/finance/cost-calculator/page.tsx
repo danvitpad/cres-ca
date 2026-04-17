@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calculator,
@@ -60,62 +60,13 @@ type ServiceRow = {
   lines: CostLine[];
 };
 
-/* ── theme tokens (Linear-style) ───────────────────────── */
-
-const LIGHT = {
-  bg: '#ffffff',
-  cardBg: '#ffffff',
-  cardBorder: '#e5e5e5',
-  text: '#0d0d0d',
-  textMuted: '#737373',
-  textLight: '#a3a3a3',
-  accent: '#6950f3',
-  accentSoft: '#f0f0ff',
-  green: '#10b981',
-  greenBg: 'rgba(16,185,129,0.08)',
-  yellow: '#f59e0b',
-  yellowBg: 'rgba(245,158,11,0.08)',
-  red: '#ef4444',
-  redBg: 'rgba(239,68,68,0.08)',
-  tableBg: '#000000',
-  tableText: '#f0f0f0',
-  tableTextMuted: '#b3b3b3',
-  tableBorder: '#2a2a2a',
-  rowHover: '#111111',
-};
-
-const DARK = {
-  bg: '#000000',
-  cardBg: '#0a0a0a',
-  cardBorder: '#1a1a1a',
-  text: '#f0f0f0',
-  textMuted: '#b3b3b3',
-  textLight: '#666666',
-  accent: '#8b7cf6',
-  accentSoft: 'rgba(105,80,243,0.15)',
-  green: '#34d399',
-  greenBg: 'rgba(52,211,153,0.1)',
-  yellow: '#fbbf24',
-  yellowBg: 'rgba(251,191,36,0.1)',
-  red: '#ef4444',
-  redBg: 'rgba(239,68,68,0.1)',
-  tableBg: '#000000',
-  tableText: '#f0f0f0',
-  tableTextMuted: '#b3b3b3',
-  tableBorder: '#1a1a1a',
-  rowHover: '#0a0a0a',
-};
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+/* ── theme — unified dashboard tokens ─────────────────── */
 
 /* ── page ──────────────────────────────────────────────── */
 
 export default function CostCalculatorPage() {
   const t = useTranslations('finance');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master, loading: masterLoading } = useMaster();
   const [rows, setRows] = useState<ServiceRow[]>([]);
@@ -204,15 +155,15 @@ export default function CostCalculatorPage() {
   /* ── helpers ─────────────────────────────────────────── */
 
   function marginColor(margin: number) {
-    if (margin >= 50) return C.green;
-    if (margin >= 30) return C.yellow;
-    return C.red;
+    if (margin >= 50) return C.success;
+    if (margin >= 30) return C.warning;
+    return C.danger;
   }
 
   function marginBg(margin: number) {
-    if (margin >= 50) return C.greenBg;
-    if (margin >= 30) return C.yellowBg;
-    return C.redBg;
+    if (margin >= 50) return C.successSoft;
+    if (margin >= 30) return C.warningSoft;
+    return C.dangerSoft;
   }
 
   function marginLabel(margin: number) {
@@ -224,13 +175,13 @@ export default function CostCalculatorPage() {
   if (masterLoading || loading) {
     return (
       <div style={{ fontFamily: FONT, color: C.text, padding: 24 }}>
-        <div style={{ fontSize: 14, color: C.textMuted }}>Загрузка...</div>
+        <div style={{ fontSize: 14, color: C.textSecondary }}>Загрузка...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '24px 28px', maxWidth: 860, height: '100%', overflowY: 'auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
@@ -238,7 +189,7 @@ export default function CostCalculatorPage() {
             <Calculator size={24} style={{ color: C.accent }} />
             Калькулятор себестоимости
           </h1>
-          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 6 }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 6 }}>
             Реальная стоимость каждой процедуры на основе расходников из техкарты
           </p>
         </div>
@@ -247,15 +198,15 @@ export default function CostCalculatorPage() {
       {rows.length === 0 ? (
         <div
           style={{
-            background: C.cardBg,
-            border: `1px solid ${C.cardBorder}`,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
             borderRadius: 12,
             padding: '40px 24px',
             textAlign: 'center',
           }}
         >
-          <Package size={40} style={{ color: C.textLight, marginBottom: 12, display: 'inline-block' }} />
-          <p style={{ fontSize: 14, color: C.textMuted }}>
+          <Package size={40} style={{ color: C.textTertiary, marginBottom: 12, display: 'inline-block' }} />
+          <p style={{ fontSize: 14, color: C.textSecondary }}>
             Нет активных услуг с техкартой. Добавь услуги и укажи расходники в настройках услуги.
           </p>
         </div>
@@ -275,8 +226,8 @@ export default function CostCalculatorPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.03 }}
                   style={{
-                    background: C.tableBg,
-                    border: `1px solid ${C.tableBorder}`,
+                    background: C.surface,
+                    border: `1px solid ${C.border}`,
                     borderRadius: 12,
                     overflow: 'hidden',
                   }}
@@ -293,30 +244,30 @@ export default function CostCalculatorPage() {
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      color: C.tableText,
+                      color: C.text,
                       textAlign: 'left',
                       gap: 12,
                     }}
                   >
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{row.name}</div>
-                      <div style={{ fontSize: 11, color: C.tableTextMuted, marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>
                         {row.lines.length > 0
                           ? `${row.lines.length} материал${row.lines.length > 1 ? 'ов' : ''}`
                           : 'Нет техкарты'}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 11, color: C.tableTextMuted }}>Цена</div>
+                      <div style={{ fontSize: 11, color: C.textTertiary }}>Цена</div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>{row.price.toFixed(0)}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 11, color: C.tableTextMuted }}>Расход</div>
+                      <div style={{ fontSize: 11, color: C.textTertiary }}>Расход</div>
                       <div style={{ fontSize: 14, fontWeight: 500 }}>{row.materialsCost.toFixed(2)}</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 11, color: C.tableTextMuted }}>Прибыль</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: row.profit < 0 ? C.red : C.tableText }}>
+                      <div style={{ fontSize: 11, color: C.textTertiary }}>Прибыль</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: row.profit < 0 ? C.danger : C.text }}>
                         {row.profit.toFixed(2)}
                       </div>
                     </div>
@@ -341,7 +292,7 @@ export default function CostCalculatorPage() {
                     <ChevronDown
                       size={16}
                       style={{
-                        color: C.tableTextMuted,
+                        color: C.textTertiary,
                         transition: 'transform 0.2s',
                         transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
                       }}
@@ -360,45 +311,45 @@ export default function CostCalculatorPage() {
                       >
                         <div
                           style={{
-                            borderTop: `1px solid ${C.tableBorder}`,
+                            borderTop: `1px solid ${C.border}`,
                             padding: '16px 20px',
                           }}
                         >
                           {row.lines.length === 0 ? (
-                            <p style={{ fontSize: 13, color: C.tableTextMuted }}>
+                            <p style={{ fontSize: 13, color: C.textTertiary }}>
                               Техкарта пуста. Укажите расходники в настройках услуги.
                             </p>
                           ) : (
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                               <thead>
-                                <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                                  <th style={{ padding: '8px 0', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>
+                                <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                                  <th style={{ padding: '8px 0', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>
                                     Материал
                                   </th>
-                                  <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>
+                                  <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>
                                     Расход
                                   </th>
-                                  <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>
+                                  <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>
                                     Цена за ед.
                                   </th>
-                                  <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>
+                                  <th style={{ padding: '8px 0', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>
                                     Итого
                                   </th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {row.lines.map((line, li) => (
-                                  <tr key={li} style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                                    <td style={{ padding: '10px 0', fontSize: 13, color: C.tableText }}>
+                                  <tr key={li} style={{ borderBottom: `1px solid ${C.border}` }}>
+                                    <td style={{ padding: '10px 0', fontSize: 13, color: C.text }}>
                                       {line.name}
                                     </td>
-                                    <td style={{ padding: '10px 0', textAlign: 'right', fontSize: 13, color: C.tableText }}>
+                                    <td style={{ padding: '10px 0', textAlign: 'right', fontSize: 13, color: C.text }}>
                                       {line.quantity} {line.unit}
                                     </td>
-                                    <td style={{ padding: '10px 0', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>
+                                    <td style={{ padding: '10px 0', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>
                                       {line.costPerUnit.toFixed(2)}
                                     </td>
-                                    <td style={{ padding: '10px 0', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
+                                    <td style={{ padding: '10px 0', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
                                       {line.subtotal.toFixed(2)}
                                     </td>
                                   </tr>
@@ -406,11 +357,11 @@ export default function CostCalculatorPage() {
                               </tbody>
                               <tfoot>
                                 <tr>
-                                  <td colSpan={3} style={{ padding: '12px 0', fontSize: 13, fontWeight: 600, color: C.tableText }}>
+                                  <td colSpan={3} style={{ padding: '12px 0', fontSize: 13, fontWeight: 600, color: C.text }}>
                                     Итого себестоимость
                                   </td>
-                                  <td style={{ padding: '12px 0', textAlign: 'right', fontSize: 14, fontWeight: 700, color: C.tableText }}>
-                                    {row.materialsCost.toFixed(2)} UAH
+                                  <td style={{ padding: '12px 0', textAlign: 'right', fontSize: 14, fontWeight: 700, color: C.text }}>
+                                    {row.materialsCost.toFixed(2)} {CURRENCY}
                                   </td>
                                 </tr>
                               </tfoot>
@@ -424,7 +375,7 @@ export default function CostCalculatorPage() {
                                 flex: 1,
                                 height: 6,
                                 borderRadius: 3,
-                                background: C.tableBorder,
+                                background: C.border,
                                 overflow: 'hidden',
                               }}
                             >
@@ -467,15 +418,15 @@ export default function CostCalculatorPage() {
               {/* Average margin */}
               <div
                 style={{
-                  background: C.cardBg,
-                  border: `1px solid ${C.cardBorder}`,
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
                   borderRadius: 12,
                   padding: '20px 24px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <DollarSign size={14} style={{ color: C.accent }} />
-                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 500 }}>
+                  <span style={{ fontSize: 12, color: C.textSecondary, fontWeight: 500 }}>
                     Средняя маржа
                   </span>
                 </div>
@@ -488,7 +439,7 @@ export default function CostCalculatorPage() {
                 >
                   {summary.avgMargin.toFixed(1)}%
                 </div>
-                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 4 }}>
                   по {rows.length} активным услугам
                 </div>
               </div>
@@ -496,25 +447,25 @@ export default function CostCalculatorPage() {
               {/* Most profitable */}
               <div
                 style={{
-                  background: C.cardBg,
-                  border: `1px solid ${C.cardBorder}`,
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
                   borderRadius: 12,
                   padding: '20px 24px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <TrendingUp size={14} style={{ color: C.green }} />
-                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 500 }}>
+                  <TrendingUp size={14} style={{ color: C.success }} />
+                  <span style={{ fontSize: 12, color: C.textSecondary, fontWeight: 500 }}>
                     Самая прибыльная
                   </span>
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
                   {summary.mostProfitable.name}
                 </div>
-                <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: C.success, fontWeight: 600, marginTop: 4 }}>
                   {summary.mostProfitable.margin.toFixed(0)}% маржа
-                  <span style={{ color: C.textMuted, fontWeight: 400 }}>
-                    {' '}({summary.mostProfitable.profit.toFixed(0)} UAH прибыль)
+                  <span style={{ color: C.textSecondary, fontWeight: 400 }}>
+                    {' '}({summary.mostProfitable.profit.toFixed(0)} {CURRENCY} прибыль)
                   </span>
                 </div>
               </div>
@@ -522,25 +473,25 @@ export default function CostCalculatorPage() {
               {/* Least profitable */}
               <div
                 style={{
-                  background: C.cardBg,
-                  border: `1px solid ${C.cardBorder}`,
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
                   borderRadius: 12,
                   padding: '20px 24px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <TrendingDown size={14} style={{ color: C.red }} />
-                  <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 500 }}>
+                  <TrendingDown size={14} style={{ color: C.danger }} />
+                  <span style={{ fontSize: 12, color: C.textSecondary, fontWeight: 500 }}>
                     Наименее прибыльная
                   </span>
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
                   {summary.leastProfitable.name}
                 </div>
-                <div style={{ fontSize: 12, color: C.red, fontWeight: 600, marginTop: 4 }}>
+                <div style={{ fontSize: 12, color: C.danger, fontWeight: 600, marginTop: 4 }}>
                   {summary.leastProfitable.margin.toFixed(0)}% маржа
                   {summary.leastProfitable.margin < 30 && (
-                    <span style={{ color: C.textMuted, fontWeight: 400 }}>
+                    <span style={{ color: C.textSecondary, fontWeight: 400 }}>
                       {' '} — рекомендуем пересмотреть цену
                     </span>
                   )}

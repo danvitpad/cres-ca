@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import type { MasterData } from '@/hooks/use-master';
+import { FONT } from '@/lib/dashboard-theme';
 
 interface Props {
   master: MasterData | null;
@@ -24,8 +25,6 @@ interface Step {
   done: boolean;
   href: string;
 }
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 function hasWorkingHours(wh: MasterData['working_hours'] | null | undefined): boolean {
   if (!wh || typeof wh !== 'object') return false;

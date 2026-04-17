@@ -8,7 +8,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
@@ -34,25 +33,12 @@ import { PageHeader } from '@/components/shared/page-header';
 import { FollowerCard } from '@/components/shared/follower-card';
 import { GlobalSearchBar } from '@/components/shared/global-search-bar';
 import type { BehaviorIndicator } from '@/types';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 
 const PAGE_SIZE = 20;
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
-const LIGHT = {
-  bg: '#ffffff', text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
-  searchBg: '#f5f5f5', searchBorder: '#e5e5e5',
-  tableBg: '#ffffff', tableBorder: '#f0f0f0', tableHeaderText: '#737373',
-  rowHover: '#fafafa', btnBorder: '#e5e5e5',
-  avatarColors: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'],
-};
-
-const DARK = {
-  bg: '#000000', text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
-  searchBg: '#111111', searchBorder: '#2a2a2a',
-  tableBg: '#000000', tableBorder: '#1a1a1a', tableHeaderText: '#666666',
-  rowHover: '#0d0d0d', btnBorder: '#333333',
-  avatarColors: ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#22d3ee', '#818cf8', '#f472b6'],
-};
+const AVATAR_COLORS_LIGHT = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'];
+const AVATAR_COLORS_DARK = ['#60a5fa', '#a78bfa', '#34d399', '#fbbf24', '#f87171', '#22d3ee', '#818cf8', '#f472b6'];
 
 interface ClientRow {
   id: string;
@@ -101,11 +87,9 @@ export default function ClientsPage() {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const tf = useTranslations('followSystem');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { C, isDark, mounted } = usePageTheme();
+  const avatarColors = isDark ? AVATAR_COLORS_DARK : AVATAR_COLORS_LIGHT;
   const { master, loading: masterLoading } = useMaster();
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -214,15 +198,15 @@ export default function ClientsPage() {
 
   if (masterLoading) {
     return (
-      <div style={{ padding: '32px 40px', fontFamily: FONT }}>
-        <div style={{ height: 28, width: 200, backgroundColor: C.searchBg, borderRadius: 8, marginBottom: 16 }} />
-        <div style={{ height: 200, width: '100%', backgroundColor: C.searchBg, borderRadius: 12 }} />
+      <div style={{ padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
+        <div style={{ height: 28, width: 200, backgroundColor: C.surfaceElevated, borderRadius: 8, marginBottom: 16 }} />
+        <div style={{ height: 200, width: '100%', backgroundColor: C.surfaceElevated, borderRadius: 12 }} />
       </div>
     );
   }
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '32px 40px', fontFamily: FONT }}>
+    <div style={{ flex: 1, overflow: 'auto', padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
       <PageHeader
         title={t('clientList') || t('clientCard')}
         count={clients.length}
@@ -246,7 +230,7 @@ export default function ClientsPage() {
       {/* ── Tab Switcher ── */}
       <div style={{
         display: 'flex', gap: 0, marginBottom: 20,
-        borderBottom: `1px solid ${C.tableBorder}`,
+        borderBottom: `1px solid ${C.border}`,
       }}>
         {([
           { key: 'clients' as TabType, label: tf('clients'), icon: Users },
@@ -259,7 +243,7 @@ export default function ClientsPage() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '10px 20px', fontSize: 14, fontWeight: 500,
-              color: tab === key ? C.text : C.textMuted,
+              color: tab === key ? C.text : C.textSecondary,
               backgroundColor: 'transparent', border: 'none',
               borderBottom: tab === key ? '2px solid #5e6ad2' : '2px solid transparent',
               cursor: 'pointer', fontFamily: FONT,
@@ -277,7 +261,7 @@ export default function ClientsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {followListLoading ? (
             [...Array(3)].map((_, i) => (
-              <div key={i} style={{ height: 72, backgroundColor: C.searchBg, borderRadius: 12 }} />
+              <div key={i} style={{ height: 72, backgroundColor: C.surfaceElevated, borderRadius: 12 }} />
             ))
           ) : followList.length === 0 ? (
             <motion.div
@@ -288,7 +272,7 @@ export default function ClientsPage() {
                 padding: '60px 0', textAlign: 'center',
               }}
             >
-              <Heart style={{ width: 40, height: 40, color: C.textLight, marginBottom: 12 }} />
+              <Heart style={{ width: 40, height: 40, color: C.textTertiary, marginBottom: 12 }} />
               <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT }}>
                 {tab === 'users' ? tf('noUsers') : tf('noFollowers')}
               </p>
@@ -340,7 +324,7 @@ export default function ClientsPage() {
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[...Array(5)].map((_, i) => (
-            <div key={i} style={{ height: 56, backgroundColor: C.searchBg, borderRadius: 8 }} />
+            <div key={i} style={{ height: 56, backgroundColor: C.surfaceElevated, borderRadius: 8 }} />
           ))}
         </div>
       ) : filteredClients.length === 0 ? (
@@ -352,9 +336,9 @@ export default function ClientsPage() {
             padding: '80px 0', textAlign: 'center',
           }}
         >
-          <Users style={{ width: 48, height: 48, color: C.textLight, marginBottom: 12 }} />
+          <Users style={{ width: 48, height: 48, color: C.textTertiary, marginBottom: 12 }} />
           <p style={{ fontSize: 16, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t('noClients')}</p>
-          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 4, fontFamily: FONT }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4, fontFamily: FONT }}>
             {t('noClientsDesc') || t('noClients')}
           </p>
         </motion.div>
@@ -363,8 +347,8 @@ export default function ClientsPage() {
           {/* Table header */}
           <div style={{
             display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
-            padding: '10px 16px', borderBottom: `1px solid ${C.tableBorder}`,
-            fontSize: 13, fontWeight: 500, color: C.tableHeaderText, fontFamily: FONT,
+            padding: '10px 16px', borderBottom: `1px solid ${C.border}`,
+            fontSize: 13, fontWeight: 500, color: C.textTertiary, fontFamily: FONT,
           }}>
             <span>{t('clientName') || t('name')}</span>
             <span>{t('mobileNumber') || t('phone')}</span>
@@ -378,7 +362,7 @@ export default function ClientsPage() {
             const lastVisitLabel = c.last_visit_at
               ? new Date(c.last_visit_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
               : '—';
-            const avatarColor = C.avatarColors[getAvatarColorIdx(c.full_name)];
+            const avatarColor = avatarColors[getAvatarColorIdx(c.full_name)];
             return (
               <motion.div
                 key={c.id}
@@ -391,7 +375,7 @@ export default function ClientsPage() {
                   style={{
                     display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr',
                     alignItems: 'center', padding: '12px 16px',
-                    borderBottom: `1px solid ${C.tableBorder}`,
+                    borderBottom: `1px solid ${C.border}`,
                     textDecoration: 'none', color: 'inherit',
                     transition: 'background-color 100ms', cursor: 'pointer',
                   }}
@@ -426,7 +410,7 @@ export default function ClientsPage() {
                         )}
                       </div>
                       {c.email && (
-                        <span style={{ fontSize: 13, color: C.textMuted, fontFamily: FONT }}>
+                        <span style={{ fontSize: 13, color: C.textSecondary, fontFamily: FONT }}>
                           {c.email}
                         </span>
                       )}
@@ -434,9 +418,9 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   {/* Phone */}
-                  <span style={{ fontSize: 14, color: C.textMuted, fontFamily: FONT }}>{c.phone || '—'}</span>
+                  <span style={{ fontSize: 14, color: C.textSecondary, fontFamily: FONT }}>{c.phone || '—'}</span>
                   {/* Reviews */}
-                  <span style={{ fontSize: 14, color: C.textMuted, textAlign: 'center', fontFamily: FONT }}>
+                  <span style={{ fontSize: 14, color: C.textSecondary, textAlign: 'center', fontFamily: FONT }}>
                     {c.rating > 0 ? (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                         <Star style={{ width: 13, height: 13, fill: '#fbbf24', color: '#fbbf24' }} />
@@ -445,11 +429,11 @@ export default function ClientsPage() {
                     ) : '—'}
                   </span>
                   {/* Sales */}
-                  <span style={{ fontSize: 14, color: C.textMuted, textAlign: 'right', fontFamily: FONT }}>
-                    {c.avg_check > 0 ? `${(c.avg_check * c.total_visits).toLocaleString()} UAH` : '0 UAH'}
+                  <span style={{ fontSize: 14, color: C.textSecondary, textAlign: 'right', fontFamily: FONT }}>
+                    {c.avg_check > 0 ? `${(c.avg_check * c.total_visits).toLocaleString()} ${CURRENCY}` : `0 ${CURRENCY}`}
                   </span>
                   {/* Date */}
-                  <span style={{ fontSize: 13, color: C.textMuted, textAlign: 'right', fontFamily: FONT }}>
+                  <span style={{ fontSize: 13, color: C.textSecondary, textAlign: 'right', fontFamily: FONT }}>
                     {lastVisitLabel}
                   </span>
                 </Link>
@@ -460,7 +444,7 @@ export default function ClientsPage() {
           {/* Footer */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 4px', fontSize: 13, color: C.textMuted, fontFamily: FONT,
+            padding: '12px 4px', fontSize: 13, color: C.textSecondary, fontFamily: FONT,
           }}>
             <span>{t('showingResults') || `Просмотр результатов 1–${filteredClients.length} из ${filteredClients.length}`}</span>
             {hasMore && (
@@ -468,7 +452,7 @@ export default function ClientsPage() {
                 onClick={() => loadClients(true)}
                 style={{
                   padding: '6px 14px', borderRadius: 999,
-                  border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+                  border: `1px solid ${C.border}`, backgroundColor: 'transparent',
                   color: C.text, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
                 }}
               >

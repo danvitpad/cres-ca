@@ -10,12 +10,12 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { AlertTriangle } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
+import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 const HOUR_HEIGHT = 72;
 const TOTAL_HOURS = 24;
 const TOTAL_HEIGHT = TOTAL_HOURS * HOUR_HEIGHT;
 const TIME_COL_WIDTH = 64;
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 const LIGHT = {
   pageBg: '#ffffff',

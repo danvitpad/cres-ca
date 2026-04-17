@@ -10,8 +10,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import {
   Receipt, TrendingDown, TrendingUp, CreditCard, Download,
   AlertOctagon, Sparkles, Loader2,
@@ -24,34 +24,7 @@ import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 import { cn } from '@/lib/utils';
 
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
-
-const LIGHT = {
-  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
-  text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
-  accent: '#6950f3', accentSoft: '#f0f0ff',
-  success: '#10b981', successSoft: 'rgba(16,185,129,0.1)',
-  danger: '#d4163a', dangerSoft: 'rgba(212,22,58,0.08)',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#2a2a2a', rowHover: '#111111',
-  tabActive: '#6950f3', tabInactive: '#737373', tabBorder: '#e5e5e5',
-  aiCardBg: 'linear-gradient(135deg, #f8f7ff 0%, #f0edff 100%)',
-  aiCardBorder: '#e0dbff',
-};
-
-const DARK = {
-  bg: '#000000', cardBg: '#0a0a0a', cardBorder: '#1a1a1a',
-  text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
-  accent: '#8b7cf6', accentSoft: 'rgba(105,80,243,0.15)',
-  success: '#34d399', successSoft: 'rgba(52,211,153,0.12)',
-  danger: '#ef4444', dangerSoft: 'rgba(239,68,68,0.1)',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#1a1a1a', rowHover: '#0a0a0a',
-  tabActive: '#8b7cf6', tabInactive: '#666666', tabBorder: '#1a1a1a',
-  aiCardBg: 'linear-gradient(135deg, #0d0b1a 0%, #130f24 100%)',
-  aiCardBorder: '#2a2548',
-};
 
 type Tab = 'taxes' | 'lost' | 'forecast' | 'payments';
 
@@ -79,11 +52,7 @@ export default function FinanceReportsPage() {
   const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === 'dark';
-  const C = isDark ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [activeTab, setActiveTab] = useState<Tab>('taxes');
@@ -286,14 +255,14 @@ export default function FinanceReportsPage() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto', padding: '24px 32px' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, height: '100%', overflowY: 'auto', padding: '24px 28px', maxWidth: 860 }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Отчёты</h1>
-        <p style={{ fontSize: 14, color: C.textMuted, marginTop: 4 }}>Налоги, потери, прогнозы и платежи.</p>
+        <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>Налоги, потери, прогнозы и платежи.</p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${C.tabBorder}`, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${C.border}`, marginBottom: 24 }}>
         {tabs.map(tab => {
           const Icon = tab.icon;
           return (
@@ -303,8 +272,8 @@ export default function FinanceReportsPage() {
               style={{
                 padding: '12px 20px', border: 'none', background: 'transparent', cursor: 'pointer',
                 fontSize: 14, fontWeight: 600, fontFamily: FONT,
-                color: activeTab === tab.key ? C.tabActive : C.tabInactive,
-                borderBottom: activeTab === tab.key ? `2px solid ${C.tabActive}` : '2px solid transparent',
+                color: activeTab === tab.key ? C.accent : C.textTertiary,
+                borderBottom: activeTab === tab.key ? `2px solid ${C.accent}` : '2px solid transparent',
                 marginBottom: -2, transition: 'all 0.15s ease',
                 display: 'flex', alignItems: 'center', gap: 6,
               }}
@@ -317,7 +286,7 @@ export default function FinanceReportsPage() {
       </div>
 
       {loading && (
-        <div style={{ padding: 40, textAlign: 'center', color: C.textMuted }}>
+        <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary }}>
           <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
           Загрузка...
         </div>
@@ -328,7 +297,7 @@ export default function FinanceReportsPage() {
           {/* ═══ TAXES TAB ═══ */}
           {activeTab === 'taxes' && (
             <motion.div key="taxes" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>
                 Ставка: {taxRate}%. Последние 6 месяцев.
               </p>
 
@@ -342,40 +311,40 @@ export default function FinanceReportsPage() {
                   { label: 'Чистая прибыль', value: taxTotals.net, color: taxTotals.net > 0 ? C.success : C.danger },
                   { label: `Налог ${taxRate}%`, value: taxTotals.tax },
                 ].map((s, i) => (
-                  <div key={i} style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: s.color || C.text }}>{s.value.toFixed(0)} UAH</div>
+                  <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 11, color: C.textSecondary, marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: s.color || C.text }}>{s.value.toFixed(0)} {CURRENCY}</div>
                   </div>
                 ))}
               </div>
 
               {/* Table */}
-              <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                       {['Месяц', 'Выручка', 'Чай', 'Расходы', 'Себест.', 'Прибыль', 'Налог', 'После нал.', ''].map((h, i) => (
-                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>{h}</th>
+                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {months.map(m => (
-                      <tr key={m.key} style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: C.tableText }}>{MONTHS_RU[m.month - 1]} {m.year}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>{m.revenue.toFixed(0)}</td>
+                      <tr key={m.key} style={{ borderBottom: `1px solid ${C.border}` }}>
+                        <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: C.text }}>{MONTHS_RU[m.month - 1]} {m.year}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>{m.revenue.toFixed(0)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.success }}>{m.tips.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{m.expenses.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{m.inventoryCost.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: m.net < 0 ? C.danger : C.tableText }}>{m.net.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>{m.tax.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>{m.afterTax.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{m.expenses.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{m.inventoryCost.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: m.net < 0 ? C.danger : C.text }}>{m.net.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>{m.tax.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>{m.afterTax.toFixed(0)}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                           <button
                             onClick={() => window.open(`/api/reports/monthly?year=${m.year}&month=${m.month}`, '_blank')}
                             style={{
-                              padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.tableBorder}`,
-                              background: 'transparent', color: C.tableTextMuted, fontSize: 11, cursor: 'pointer',
+                              padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+                              background: 'transparent', color: C.textTertiary, fontSize: 11, cursor: 'pointer',
                               display: 'inline-flex', alignItems: 'center', gap: 4,
                             }}
                           >
@@ -393,7 +362,7 @@ export default function FinanceReportsPage() {
           {/* ═══ LOST REVENUE TAB ═══ */}
           {activeTab === 'lost' && (
             <motion.div key="lost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>За последние 30 дней.</p>
+              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>За последние 30 дней.</p>
 
               {/* Total lost */}
               <div style={{
@@ -401,15 +370,15 @@ export default function FinanceReportsPage() {
                 borderRadius: 12, padding: '20px 24px', marginBottom: 24,
               }}>
                 <div style={{ fontSize: 11, textTransform: 'uppercase', color: C.danger, fontWeight: 600 }}>Итого упущено</div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: C.danger, marginTop: 4 }}>{lostTotal.toFixed(0)} UAH</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: C.danger, marginTop: 4 }}>{lostTotal.toFixed(0)} {CURRENCY}</div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
                 {lostBuckets.map(b => (
-                  <div key={b.label} style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '16px 20px' }}>
-                    <div style={{ fontSize: 11, color: C.textMuted }}>{b.label}</div>
-                    <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{b.amount.toFixed(0)} UAH</div>
-                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>{b.count} &middot; {b.hint}</div>
+                  <div key={b.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '16px 20px' }}>
+                    <div style={{ fontSize: 11, color: C.textSecondary }}>{b.label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{b.amount.toFixed(0)} {CURRENCY}</div>
+                    <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 4 }}>{b.count} &middot; {b.hint}</div>
                   </div>
                 ))}
               </div>
@@ -420,13 +389,13 @@ export default function FinanceReportsPage() {
                     <AlertOctagon size={14} style={{ color: '#f59e0b' }} />
                     <span style={{ fontSize: 13, fontWeight: 600 }}>Кто отменяет чаще</span>
                   </div>
-                  <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <tbody>
                         {topCancellers.map((c, i) => (
-                          <tr key={i} style={{ borderBottom: i < topCancellers.length - 1 ? `1px solid ${C.tableBorder}` : 'none' }}>
-                            <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: C.tableText }}>{c.name}</td>
-                            <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{c.count} отмен</td>
+                          <tr key={i} style={{ borderBottom: i < topCancellers.length - 1 ? `1px solid ${C.border}` : 'none' }}>
+                            <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: C.text }}>{c.name}</td>
+                            <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{c.count} отмен</td>
                           </tr>
                         ))}
                       </tbody>
@@ -440,28 +409,28 @@ export default function FinanceReportsPage() {
           {/* ═══ FORECAST TAB ═══ */}
           {activeTab === 'forecast' && (
             <motion.div key="forecast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>
                 14-дневный прогноз по подтверждённым визитам.
               </p>
 
               {/* KPIs */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: C.textMuted }}>К поступлению</div>
-                  <div style={{ fontSize: 22, fontWeight: 600, color: C.success }}>{forecastTotals.sum.toFixed(0)} UAH</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: C.textSecondary }}>К поступлению</div>
+                  <div style={{ fontSize: 22, fontWeight: 600, color: C.success }}>{forecastTotals.sum.toFixed(0)} {CURRENCY}</div>
                 </div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: C.textMuted }}>Ожидаемые визиты</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: C.textSecondary }}>Ожидаемые визиты</div>
                   <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.visits}</div>
                 </div>
-                <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: C.textMuted }}>Пиковый день</div>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.maxDay.toFixed(0)} UAH</div>
+                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: C.textSecondary }}>Пиковый день</div>
+                  <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.maxDay.toFixed(0)} {CURRENCY}</div>
                 </div>
               </div>
 
               {/* Bar chart */}
-              <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
                 <div style={{ display: 'flex', height: 120, alignItems: 'flex-end', gap: 4 }}>
                   {forecastDays.map(b => {
                     const h = forecastTotals.maxDay > 0 ? (b.total / forecastTotals.maxDay) * 100 : 0;
@@ -473,9 +442,9 @@ export default function FinanceReportsPage() {
                             background: C.accent, height: `${h}%`,
                             minHeight: b.total > 0 ? 3 : 0, transition: 'height 0.3s ease',
                           }}
-                          title={`${b.date}: ${b.total.toFixed(0)} UAH`}
+                          title={`${b.date}: ${b.total.toFixed(0)} ${CURRENCY}`}
                         />
-                        <span style={{ fontSize: 9, color: C.textMuted }}>{new Date(b.date).getDate()}</span>
+                        <span style={{ fontSize: 9, color: C.textSecondary }}>{new Date(b.date).getDate()}</span>
                       </div>
                     );
                   })}
@@ -483,24 +452,24 @@ export default function FinanceReportsPage() {
               </div>
 
               {/* Table */}
-              <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+              <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                       {['Дата', 'Визиты', 'От визитов', 'Итого'].map((h, i) => (
-                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>{h}</th>
+                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {forecastDays.map(b => (
-                      <tr key={b.date} style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                        <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableText }}>
+                      <tr key={b.date} style={{ borderBottom: `1px solid ${C.border}` }}>
+                        <td style={{ padding: '10px 16px', fontSize: 13, color: C.text }}>
                           {new Date(b.date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{b.appointments || '—'}</td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>{b.aptRevenue ? b.aptRevenue.toFixed(0) : '—'}</td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>{b.total ? b.total.toFixed(0) : '—'}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{b.appointments || '—'}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>{b.aptRevenue ? b.aptRevenue.toFixed(0) : '—'}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>{b.total ? b.total.toFixed(0) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -509,7 +478,7 @@ export default function FinanceReportsPage() {
 
               {/* AI Forecast */}
               <div style={{
-                background: C.aiCardBg, border: `1px solid ${C.aiCardBorder}`, borderRadius: 12,
+                background: C.aiGradient, border: `1px solid ${C.aiBorder}`, borderRadius: 12,
                 padding: '20px 24px',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -517,7 +486,7 @@ export default function FinanceReportsPage() {
                   <span style={{ fontSize: 13, fontWeight: 600 }}>AI-прогноз</span>
                   {aiLoading && <Loader2 size={14} className="animate-spin" style={{ color: C.accent }} />}
                 </div>
-                <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.6, margin: 0 }}>
+                <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, margin: 0 }}>
                   {aiForecast || (aiLoading ? 'Генерируем прогноз...' : 'Прогноз станет доступен после накопления данных.')}
                 </p>
               </div>
@@ -527,48 +496,48 @@ export default function FinanceReportsPage() {
           {/* ═══ PAYMENTS TAB ═══ */}
           {activeTab === 'payments' && (
             <motion.div key="payments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>Все транзакции за последние 30 дней.</p>
+              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>Все транзакции за последние 30 дней.</p>
 
               {payments.length === 0 ? (
                 <div style={{
-                  background: C.tableBg, borderRadius: 12, padding: '60px 20px',
+                  background: C.surface, borderRadius: 12, padding: '60px 20px',
                   textAlign: 'center',
                 }}>
                   <CreditCard size={32} style={{ color: C.accent, margin: '0 auto 12px' }} />
-                  <p style={{ fontSize: 15, fontWeight: 600, color: C.tableText }}>Нет транзакций</p>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: C.text }}>Нет транзакций</p>
                 </div>
               ) : (
-                <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>ID</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Услуга</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Тип</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Метод</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Дата</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Сумма</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Статус</th>
+                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>ID</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Услуга</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Тип</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Метод</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Дата</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Сумма</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Статус</th>
                       </tr>
                     </thead>
                     <tbody>
                       {payments.map(p => (
                         <tr
                           key={p.id}
-                          style={{ borderBottom: `1px solid ${C.tableBorder}`, cursor: 'pointer', transition: 'background 0.1s' }}
+                          style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer', transition: 'background 0.1s' }}
                           onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
                           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                         >
                           <td style={{ padding: '10px 16px', fontSize: 13, color: C.accent, fontWeight: 500 }}>
                             #{p.id.slice(0, 7).toUpperCase()}
                           </td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableText }}>{p.services?.name || '—'}</td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableTextMuted }}>{p.type}</td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableTextMuted }}>{p.payment_method || '—'}</td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableTextMuted }}>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.text }}>{p.services?.name || '—'}</td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.textTertiary }}>{p.type}</td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.textTertiary }}>{p.payment_method || '—'}</td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.textTertiary }}>
                             {format(new Date(p.created_at), 'd MMM HH:mm', { locale: dfLocale })}
                           </td>
-                          <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
                             {Number(p.amount).toLocaleString()} {p.currency}
                           </td>
                           <td style={{ padding: '10px 16px', textAlign: 'right' }}>

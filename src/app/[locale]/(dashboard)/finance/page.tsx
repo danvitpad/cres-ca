@@ -9,7 +9,6 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, TrendingDown, Sparkles, Loader2,
@@ -18,6 +17,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { toast } from 'sonner';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import {
   format, startOfDay, endOfDay, startOfWeek, startOfMonth,
   startOfQuarter, startOfYear, subMonths,
@@ -27,53 +27,7 @@ import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 
-/* ─── Design tokens (Linear-inspired) ─── */
-const FONT = '"Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
-
-const LIGHT = {
-  bg: '#f7f8f8',
-  surface: '#ffffff',
-  surfaceElevated: '#f3f4f5',
-  border: 'rgba(0,0,0,0.06)',
-  borderStrong: 'rgba(0,0,0,0.1)',
-  text: '#0f1011',
-  textSecondary: '#5c5f66',
-  textTertiary: '#8a8f98',
-  accent: '#5e6ad2',
-  accentHover: '#828fff',
-  accentSoft: 'rgba(94,106,210,0.08)',
-  success: '#10b981',
-  successSoft: 'rgba(16,185,129,0.08)',
-  danger: '#ef4444',
-  dangerSoft: 'rgba(239,68,68,0.06)',
-  aiGradient: 'linear-gradient(135deg, rgba(94,106,210,0.06) 0%, rgba(113,112,255,0.04) 100%)',
-  aiBorder: 'rgba(94,106,210,0.15)',
-  tableBg: '#ffffff',
-  tableHover: '#f9fafb',
-};
-
-const DARK = {
-  bg: '#0f1011',
-  surface: '#191a1b',
-  surfaceElevated: '#28282c',
-  border: 'rgba(255,255,255,0.05)',
-  borderStrong: 'rgba(255,255,255,0.08)',
-  text: '#f7f8f8',
-  textSecondary: '#d0d6e0',
-  textTertiary: '#62666d',
-  accent: '#7170ff',
-  accentHover: '#828fff',
-  accentSoft: 'rgba(113,112,255,0.12)',
-  success: '#34d399',
-  successSoft: 'rgba(52,211,153,0.12)',
-  danger: '#ef4444',
-  dangerSoft: 'rgba(239,68,68,0.1)',
-  aiGradient: 'linear-gradient(135deg, rgba(113,112,255,0.08) 0%, rgba(94,106,210,0.04) 100%)',
-  aiBorder: 'rgba(113,112,255,0.2)',
-  tableBg: '#191a1b',
-  tableHover: '#1f2022',
-};
 
 /* ─── Period ─── */
 type Period = 'day' | 'week' | 'month' | 'quarter' | 'half' | 'year' | 'all';
@@ -136,11 +90,7 @@ export default function FinanceSummaryPage() {
   const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === 'dark';
-  const C = isDark ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [period, setPeriod] = useState<Period>('month');
@@ -540,7 +490,7 @@ export default function FinanceSummaryPage() {
                       transition: 'background 0.1s',
                       cursor: 'default',
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = C.tableHover}
+                    onMouseEnter={e => e.currentTarget.style.background = C.rowHover}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   >
                     <div style={{ minWidth: 0 }}>
@@ -665,7 +615,7 @@ export default function FinanceSummaryPage() {
                       transition: 'background 0.1s',
                       cursor: 'default',
                     }}
-                    onMouseEnter={ev => ev.currentTarget.style.background = C.tableHover}
+                    onMouseEnter={ev => ev.currentTarget.style.background = C.rowHover}
                     onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                   >
                     <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 10 }}>

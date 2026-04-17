@@ -8,7 +8,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
@@ -32,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -77,32 +77,6 @@ const emptyForm: FormData = {
   serviceIds: [],
 };
 
-/* ── theme tokens (Linear-style) ───────────────────────── */
-
-const LIGHT = {
-  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
-  text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
-  accent: '#6950f3', accentSoft: '#f0f0ff',
-  green: '#10b981', greenBg: 'rgba(16,185,129,0.08)',
-  red: '#ef4444', redBg: 'rgba(239,68,68,0.08)',
-  yellow: '#f59e0b',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#2a2a2a',
-};
-
-const DARK = {
-  bg: '#000000', cardBg: '#0a0a0a', cardBorder: '#1a1a1a',
-  text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
-  accent: '#8b7cf6', accentSoft: 'rgba(105,80,243,0.15)',
-  green: '#34d399', greenBg: 'rgba(52,211,153,0.1)',
-  red: '#ef4444', redBg: 'rgba(239,68,68,0.1)',
-  yellow: '#fbbf24',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#1a1a1a',
-};
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
 /* ── helpers ───────────────────────────────────────────── */
 
 function generateCode(): string {
@@ -115,10 +89,7 @@ function generateCode(): string {
 /* ── page ──────────────────────────────────────────────── */
 
 export default function DealsPage() {
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [codes, setCodes] = useState<PromoCode[]>([]);
@@ -339,7 +310,7 @@ export default function DealsPage() {
   /* ── render ────────────────────────────────────────── */
 
   return (
-    <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, color: C.text, height: '100%', overflowY: 'auto' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
@@ -347,7 +318,7 @@ export default function DealsPage() {
             <Tag size={24} style={{ color: C.accent }} />
             Промокоды и акции
           </h1>
-          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 6 }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 6 }}>
             Создавай промокоды со скидками, отправляй клиентам и отслеживай результаты
           </p>
         </div>
@@ -372,7 +343,7 @@ export default function DealsPage() {
           style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}
         >
           <StatCard icon={<Tag size={14} />} label="Всего промокодов" value={stats.totalCodes.toString()} C={C} />
-          <StatCard icon={<Check size={14} />} label="Активных" value={stats.activeCodes.toString()} color={C.green} C={C} />
+          <StatCard icon={<Check size={14} />} label="Активных" value={stats.activeCodes.toString()} color={C.success} C={C} />
           <StatCard icon={<Users size={14} />} label="Всего использований" value={stats.totalUses.toString()} C={C} />
           <StatCard
             icon={<BarChart3 size={14} />}
@@ -402,7 +373,7 @@ export default function DealsPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               style={{
-                background: C.cardBg, border: `1px solid ${C.cardBorder}`,
+                background: C.surface, border: `1px solid ${C.border}`,
                 borderRadius: 16, padding: 28, width: 520, maxHeight: '85vh', overflowY: 'auto',
               }}
             >
@@ -410,7 +381,7 @@ export default function DealsPage() {
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>
                   {editingId ? 'Редактировать промокод' : 'Новый промокод'}
                 </h2>
-                <button onClick={closeForm} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textMuted, padding: 4 }}>
+                <button onClick={closeForm} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textSecondary, padding: 4 }}>
                   <X size={18} />
                 </button>
               </div>
@@ -418,7 +389,7 @@ export default function DealsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Code */}
                 <div>
-                  <Label style={{ fontSize: 12, color: C.textMuted }}>Промокод</Label>
+                  <Label style={{ fontSize: 12, color: C.textSecondary }}>Промокод</Label>
                   <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                     <Input
                       value={form.code}
@@ -435,7 +406,7 @@ export default function DealsPage() {
                 {/* Discount type + value */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <Label style={{ fontSize: 12, color: C.textMuted }}>Тип скидки</Label>
+                    <Label style={{ fontSize: 12, color: C.textSecondary }}>Тип скидки</Label>
                     <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
                       {(['percentage', 'fixed'] as const).map((type) => (
                         <button
@@ -443,7 +414,7 @@ export default function DealsPage() {
                           onClick={() => setForm((f) => ({ ...f, discountType: type }))}
                           style={{
                             flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-                            border: `1px solid ${form.discountType === type ? C.accent : C.cardBorder}`,
+                            border: `1px solid ${form.discountType === type ? C.accent : C.border}`,
                             background: form.discountType === type ? C.accentSoft : 'transparent',
                             color: form.discountType === type ? C.accent : C.text,
                             cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
@@ -456,8 +427,8 @@ export default function DealsPage() {
                     </div>
                   </div>
                   <div>
-                    <Label style={{ fontSize: 12, color: C.textMuted }}>
-                      {form.discountType === 'percentage' ? 'Скидка (%)' : 'Скидка (UAH)'}
+                    <Label style={{ fontSize: 12, color: C.textSecondary }}>
+                      {form.discountType === 'percentage' ? 'Скидка (%)' : `Скидка (${CURRENCY})`}
                     </Label>
                     <Input
                       type="number"
@@ -473,7 +444,7 @@ export default function DealsPage() {
                 {/* Dates */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <Label style={{ fontSize: 12, color: C.textMuted }}>Действует с</Label>
+                    <Label style={{ fontSize: 12, color: C.textSecondary }}>Действует с</Label>
                     <Input
                       type="date"
                       value={form.validFrom}
@@ -482,7 +453,7 @@ export default function DealsPage() {
                     />
                   </div>
                   <div>
-                    <Label style={{ fontSize: 12, color: C.textMuted }}>Действует до</Label>
+                    <Label style={{ fontSize: 12, color: C.textSecondary }}>Действует до</Label>
                     <Input
                       type="date"
                       value={form.validUntil}
@@ -494,7 +465,7 @@ export default function DealsPage() {
 
                 {/* Max uses */}
                 <div>
-                  <Label style={{ fontSize: 12, color: C.textMuted }}>Макс. использований (пусто = безлимит)</Label>
+                  <Label style={{ fontSize: 12, color: C.textSecondary }}>Макс. использований (пусто = безлимит)</Label>
                   <Input
                     type="number"
                     min={1}
@@ -507,23 +478,23 @@ export default function DealsPage() {
 
                 {/* Applicable services */}
                 <div>
-                  <Label style={{ fontSize: 12, color: C.textMuted }}>Применимые услуги (пусто = все)</Label>
+                  <Label style={{ fontSize: 12, color: C.textSecondary }}>Применимые услуги (пусто = все)</Label>
                   <div style={{ marginTop: 4 }}>
                     <button
                       onClick={() => setShowServicePicker(!showServicePicker)}
                       style={{
                         width: '100%', padding: '8px 12px', borderRadius: 8,
-                        border: `1px solid ${C.cardBorder}`, background: 'transparent',
+                        border: `1px solid ${C.border}`, background: 'transparent',
                         color: C.text, fontSize: 13, cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       }}
                     >
-                      <span style={{ color: form.serviceIds.length > 0 ? C.text : C.textMuted }}>
+                      <span style={{ color: form.serviceIds.length > 0 ? C.text : C.textSecondary }}>
                         {form.serviceIds.length > 0
                           ? `Выбрано ${form.serviceIds.length} услуг`
                           : 'Все услуги'}
                       </span>
-                      <ChevronDown size={14} style={{ color: C.textMuted, transition: 'transform 0.2s', transform: showServicePicker ? 'rotate(180deg)' : 'none' }} />
+                      <ChevronDown size={14} style={{ color: C.textSecondary, transition: 'transform 0.2s', transform: showServicePicker ? 'rotate(180deg)' : 'none' }} />
                     </button>
                     <AnimatePresence>
                       {showServicePicker && (
@@ -535,12 +506,12 @@ export default function DealsPage() {
                         >
                           <div
                             style={{
-                              marginTop: 4, border: `1px solid ${C.cardBorder}`,
+                              marginTop: 4, border: `1px solid ${C.border}`,
                               borderRadius: 8, maxHeight: 180, overflowY: 'auto',
                             }}
                           >
                             {services.length === 0 ? (
-                              <div style={{ padding: 12, fontSize: 12, color: C.textMuted }}>Нет активных услуг</div>
+                              <div style={{ padding: 12, fontSize: 12, color: C.textSecondary }}>Нет активных услуг</div>
                             ) : (
                               services.map((s) => {
                                 const selected = form.serviceIds.includes(s.id);
@@ -551,7 +522,7 @@ export default function DealsPage() {
                                     style={{
                                       width: '100%', padding: '8px 12px', fontSize: 13,
                                       background: selected ? C.accentSoft : 'transparent',
-                                      border: 'none', borderBottom: `1px solid ${C.cardBorder}`,
+                                      border: 'none', borderBottom: `1px solid ${C.border}`,
                                       color: selected ? C.accent : C.text,
                                       cursor: 'pointer', textAlign: 'left',
                                       display: 'flex', alignItems: 'center', gap: 8,
@@ -560,7 +531,7 @@ export default function DealsPage() {
                                     <div
                                       style={{
                                         width: 16, height: 16, borderRadius: 4,
-                                        border: `2px solid ${selected ? C.accent : C.cardBorder}`,
+                                        border: `2px solid ${selected ? C.accent : C.border}`,
                                         background: selected ? C.accent : 'transparent',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                       }}
@@ -585,7 +556,7 @@ export default function DealsPage() {
                     onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
                     style={{
                       width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
-                      background: form.isActive ? C.green : C.cardBorder,
+                      background: form.isActive ? C.success : C.border,
                       position: 'relative', transition: 'background 0.2s',
                     }}
                   >
@@ -616,18 +587,18 @@ export default function DealsPage() {
 
       {/* Promo codes list */}
       {loading ? (
-        <div style={{ fontSize: 14, color: C.textMuted }}>Загрузка...</div>
+        <div style={{ fontSize: 14, color: C.textSecondary }}>Загрузка...</div>
       ) : codes.length === 0 ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           style={{
-            background: C.cardBg, border: `1px solid ${C.cardBorder}`,
+            background: C.surface, border: `1px solid ${C.border}`,
             borderRadius: 12, padding: '48px 24px', textAlign: 'center',
           }}
         >
-          <Tag size={40} style={{ color: C.textLight, marginBottom: 12, display: 'inline-block' }} />
-          <p style={{ fontSize: 14, color: C.textMuted, marginBottom: 16 }}>
+          <Tag size={40} style={{ color: C.textTertiary, marginBottom: 12, display: 'inline-block' }} />
+          <p style={{ fontSize: 14, color: C.textSecondary, marginBottom: 16 }}>
             Пока нет промокодов. Создай первый и отправь клиентам!
           </p>
           <button
@@ -659,8 +630,8 @@ export default function DealsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.03 }}
                 style={{
-                  background: C.tableBg,
-                  border: `1px solid ${C.tableBorder}`,
+                  background: C.surface,
+                  border: `1px solid ${C.border}`,
                   borderRadius: 12,
                   padding: '16px 20px',
                   opacity: isLive ? 1 : 0.6,
@@ -679,23 +650,23 @@ export default function DealsPage() {
                       >
                         {p.code}
                       </code>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: C.tableText }}>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: C.text }}>
                         {p.discount_type === 'fixed'
-                          ? `−${p.discount_value} UAH`
+                          ? `−${p.discount_value} ${CURRENCY}`
                           : `−${p.discount_percent || p.discount_value}%`}
                       </span>
                       {expired && (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.red, background: C.redBg, padding: '2px 8px', borderRadius: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.danger, background: C.dangerSoft, padding: '2px 8px', borderRadius: 10 }}>
                           Истёк
                         </span>
                       )}
                       {notStarted && (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.yellow, background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.warning, background: 'rgba(245,158,11,0.1)', padding: '2px 8px', borderRadius: 10 }}>
                           Ещё не начался
                         </span>
                       )}
                       {!p.is_active && (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: C.tableTextMuted, background: C.tableBorder, padding: '2px 8px', borderRadius: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, background: C.border, padding: '2px 8px', borderRadius: 10 }}>
                           На паузе
                         </span>
                       )}
@@ -703,12 +674,12 @@ export default function DealsPage() {
 
                     {/* Meta info */}
                     <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, color: C.tableTextMuted, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 12, color: C.textTertiary, display: 'flex', alignItems: 'center', gap: 4 }}>
                         <Users size={11} />
                         Использовано: {p.uses_count}{p.max_uses ? ` / ${p.max_uses}` : ''}
                       </span>
                       {(p.valid_from || p.valid_until) && (
-                        <span style={{ fontSize: 12, color: C.tableTextMuted, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 12, color: C.textTertiary, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <Calendar size={11} />
                           {p.valid_from ? new Date(p.valid_from).toLocaleDateString() : '...'}
                           {' — '}
@@ -719,18 +690,18 @@ export default function DealsPage() {
 
                     {/* Applicable services */}
                     {applicableNames.length > 0 && (
-                      <div style={{ marginTop: 6, fontSize: 11, color: C.tableTextMuted }}>
+                      <div style={{ marginTop: 6, fontSize: 11, color: C.textTertiary }}>
                         Услуги: {applicableNames.join(', ')}
                       </div>
                     )}
 
                     {/* Usage bar */}
                     {p.max_uses && (
-                      <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: C.tableBorder, overflow: 'hidden', maxWidth: 200 }}>
+                      <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: C.border, overflow: 'hidden', maxWidth: 200 }}>
                         <div
                           style={{
                             width: `${usagePct}%`, height: '100%', borderRadius: 2,
-                            background: usagePct >= 90 ? C.red : C.accent,
+                            background: usagePct >= 90 ? C.danger : C.accent,
                             transition: 'width 0.3s',
                           }}
                         />
@@ -750,8 +721,8 @@ export default function DealsPage() {
                       onClick={() => toggleActive(p)}
                       style={{
                         padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 500,
-                        border: `1px solid ${C.tableBorder}`, background: 'transparent',
-                        color: p.is_active ? C.yellow : C.green, cursor: 'pointer',
+                        border: `1px solid ${C.border}`, background: 'transparent',
+                        color: p.is_active ? C.warning : C.success, cursor: 'pointer',
                       }}
                     >
                       {p.is_active ? 'Пауза' : 'Вкл'}
@@ -779,18 +750,18 @@ function StatCard({
   label: string;
   value: string;
   color?: string;
-  C: typeof LIGHT;
+  C: Record<string, string>;
 }) {
   return (
     <div
       style={{
-        background: C.cardBg, border: `1px solid ${C.cardBorder}`,
+        background: C.surface, border: `1px solid ${C.border}`,
         borderRadius: 12, padding: '16px 20px',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <span style={{ color: color ?? C.accent }}>{icon}</span>
-        <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: 11, color: C.textSecondary, fontWeight: 500 }}>{label}</span>
       </div>
       <div style={{ fontSize: 18, fontWeight: 700, color: color ?? C.text }}>{value}</div>
     </div>
@@ -803,7 +774,7 @@ function IconBtn({
   children: React.ReactNode;
   onClick: () => void;
   title: string;
-  C: typeof LIGHT;
+  C: Record<string, string>;
   danger?: boolean;
 }) {
   return (
@@ -811,10 +782,10 @@ function IconBtn({
       onClick={onClick}
       title={title}
       style={{
-        width: 32, height: 32, borderRadius: 6, border: `1px solid ${C.tableBorder}`,
+        width: 32, height: 32, borderRadius: 6, border: `1px solid ${C.border}`,
         background: 'transparent', cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: danger ? C.red : C.tableTextMuted,
+        color: danger ? C.danger : C.textTertiary,
       }}
     >
       {children}

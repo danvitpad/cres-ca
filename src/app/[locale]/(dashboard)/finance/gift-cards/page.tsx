@@ -7,7 +7,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useTheme } from 'next-themes';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, Gift, Plus, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -17,28 +17,7 @@ import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
 
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
-
-const LIGHT = {
-  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
-  text: '#0d0d0d', textMuted: '#737373',
-  accent: '#6950f3', accentSoft: '#f0f0ff',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#2a2a2a', rowHover: '#111111',
-  inputBg: '#ffffff', inputBorder: '#e0e0e0',
-  emptyBg: '#000000',
-};
-
-const DARK = {
-  bg: '#000000', cardBg: '#000000', cardBorder: '#1a1a1a',
-  text: '#f0f0f0', textMuted: '#b3b3b3',
-  accent: '#8b7cf6', accentSoft: 'rgba(105,80,243,0.15)',
-  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
-  tableBorder: '#1a1a1a', rowHover: '#0a0a0a',
-  inputBg: '#000000', inputBorder: '#1a1a1a',
-  emptyBg: '#000000',
-};
 
 interface GiftCardRow {
   id: string;
@@ -54,10 +33,7 @@ export default function GiftCardsPage() {
   const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [cards, setCards] = useState<GiftCardRow[]>([]);
@@ -118,12 +94,12 @@ export default function GiftCardsPage() {
   }, [cards, search]);
 
   return (
-    <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto' }}>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, height: '100%', overflowY: 'auto', padding: '24px 28px', maxWidth: 860 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t('giftCardsTitle')}</h1>
-          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 4 }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>
             {t('giftCardsDesc')} <span style={{ color: C.accent, cursor: 'pointer' }}>{t('learnMore')}</span>
           </p>
         </div>
@@ -146,12 +122,12 @@ export default function GiftCardsPage() {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           style={{
-            background: C.tableBg, borderRadius: 12, padding: 20, marginBottom: 16,
+            background: C.surface, borderRadius: 12, padding: 20, marginBottom: 16,
             display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap',
           }}
         >
           <div style={{ flex: '1 1 120px' }}>
-            <div style={{ fontSize: 12, color: C.tableTextMuted, marginBottom: 4 }}>{t('totalAmount')}</div>
+            <div style={{ fontSize: 12, color: C.textTertiary, marginBottom: 4 }}>{t('totalAmount')}</div>
             <input
               type="number"
               value={newAmount}
@@ -159,20 +135,20 @@ export default function GiftCardsPage() {
               placeholder="500"
               style={{
                 width: '100%', padding: '8px 12px', borderRadius: 8,
-                border: `1px solid ${C.tableBorder}`, background: C.tableBg, color: C.tableText,
+                border: `1px solid ${C.border}`, background: C.surface, color: C.text,
                 fontSize: 13, fontFamily: FONT,
               }}
             />
           </div>
           <div style={{ flex: '1 1 160px' }}>
-            <div style={{ fontSize: 12, color: C.tableTextMuted, marginBottom: 4 }}>{t('expiryDate') ?? 'Expiry'}</div>
+            <div style={{ fontSize: 12, color: C.textTertiary, marginBottom: 4 }}>{t('expiryDate') ?? 'Expiry'}</div>
             <input
               type="date"
               value={newExpiry}
               onChange={e => setNewExpiry(e.target.value)}
               style={{
                 width: '100%', padding: '8px 12px', borderRadius: 8,
-                border: `1px solid ${C.tableBorder}`, background: C.tableBg, color: C.tableText,
+                border: `1px solid ${C.border}`, background: C.surface, color: C.text,
                 fontSize: 13, fontFamily: FONT,
               }}
             />
@@ -188,7 +164,7 @@ export default function GiftCardsPage() {
           </button>
           <button
             onClick={() => setShowCreate(false)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.tableTextMuted, padding: 4 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textTertiary, padding: 4 }}
           >
             <X size={16} />
           </button>
@@ -198,22 +174,22 @@ export default function GiftCardsPage() {
       {/* Search + filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, marginTop: 16, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: 320 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.textMuted }} />
+          <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.textSecondary }} />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('search')}
             style={{
               width: '100%', padding: '9px 12px 9px 36px', borderRadius: 8,
-              border: `1px solid ${C.inputBorder}`, background: C.inputBg, color: C.text,
+              border: `1px solid ${C.border}`, background: C.surface, color: C.text,
               fontSize: 13, outline: 'none', fontFamily: FONT,
             }}
           />
         </div>
         <button
           style={{
-            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.inputBorder}`,
-            background: C.inputBg, color: C.textMuted, fontSize: 13, cursor: 'pointer',
+            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
+            background: C.surface, color: C.textSecondary, fontSize: 13, cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT,
           }}
         >
@@ -224,7 +200,7 @@ export default function GiftCardsPage() {
 
       {/* Content */}
       {loading ? (
-        <div style={{ background: C.emptyBg, borderRadius: 12, padding: '40px 20px' }}>
+        <div style={{ background: C.surface, borderRadius: 12, padding: '40px 20px' }}>
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} style={{ height: 48, borderRadius: 8, background: C.rowHover, marginBottom: 8 }} />
           ))}
@@ -234,7 +210,7 @@ export default function GiftCardsPage() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           style={{
-            background: C.emptyBg, borderRadius: 16, padding: '80px 40px',
+            background: C.surface, borderRadius: 16, padding: '80px 40px',
             display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
           }}
         >
@@ -245,24 +221,24 @@ export default function GiftCardsPage() {
           }}>
             <Gift size={32} style={{ color: C.accent }} />
           </div>
-          <p style={{ fontSize: 16, fontWeight: 600, color: C.tableText, marginBottom: 8 }}>{t('noGiftCards')}</p>
-          <p style={{ fontSize: 13, color: C.tableTextMuted }}>{t('nothingFoundDesc')}</p>
+          <p style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 8 }}>{t('noGiftCards')}</p>
+          <p style={{ fontSize: 13, color: C.textTertiary }}>{t('nothingFoundDesc')}</p>
         </motion.div>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}
+          style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
         >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>Code</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('created')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('totalAmount')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('balance') ?? 'Balance'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('expiryDate') ?? 'Expires'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('status')}</th>
+              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>Code</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('created')}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('totalAmount')}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('balance') ?? 'Balance'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('expiryDate') ?? 'Expires'}</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
                 <th style={{ padding: '12px 16px', width: 40 }} />
               </tr>
             </thead>
@@ -277,21 +253,21 @@ export default function GiftCardsPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: i * 0.02 }}
-                    style={{ borderBottom: `1px solid ${C.tableBorder}`, cursor: 'pointer' }}
+                    style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}
                     onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
                     <td style={{ padding: '12px 20px', fontSize: 13, color: C.accent, fontWeight: 500 }}>{card.code}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.tableTextMuted }}>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>
                       {format(new Date(card.created_at), 'd MMM yyyy', { locale: dfLocale })}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
-                      {card.amount.toLocaleString()} UAH
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
+                      {card.amount.toLocaleString()} {CURRENCY}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: isPartial ? (mounted && resolvedTheme === 'dark' ? '#fbbf24' : '#d97706') : C.tableText }}>
-                      {balance.toLocaleString()} UAH
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: isPartial ? (isDark ? '#fbbf24' : '#d97706') : C.text }}>
+                      {balance.toLocaleString()} {CURRENCY}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: isExpired ? '#ef4444' : C.tableTextMuted }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: isExpired ? '#ef4444' : C.textTertiary }}>
                       {card.expires_at ? format(new Date(card.expires_at), 'd MMM yyyy', { locale: dfLocale }) : '—'}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -300,8 +276,8 @@ export default function GiftCardsPage() {
                         fontSize: 12, fontWeight: 500,
                         background: isExpired ? 'rgba(220,38,38,0.12)' : card.is_redeemed ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.12)',
                         color: isExpired ? '#ef4444' : card.is_redeemed
-                          ? (mounted && resolvedTheme === 'dark' ? '#fbbf24' : '#d97706')
-                          : (mounted && resolvedTheme === 'dark' ? '#34d399' : '#059669'),
+                          ? (isDark ? '#fbbf24' : '#d97706')
+                          : (isDark ? '#34d399' : '#059669'),
                       }}>
                         {isExpired ? (t('expired') ?? 'Expired') : card.is_redeemed ? t('completed') : (t('active') ?? 'Active')}
                       </span>
@@ -309,7 +285,7 @@ export default function GiftCardsPage() {
                     <td style={{ padding: '12px 8px' }}>
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.tableTextMuted, padding: 4 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textTertiary, padding: 4 }}
                       >
                         <Trash2 size={14} />
                       </button>

@@ -119,7 +119,7 @@ export const PAGE_DARK = {
   badgeText: '#7170ff',
 } as const;
 
-export type PageTheme = typeof PAGE_LIGHT;
+export type PageTheme = { [K in keyof typeof PAGE_LIGHT]: string };
 
 /* ─── Hook helper — use in pages ─── */
 /* Usage:
@@ -134,7 +134,7 @@ export function usePageTheme() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const isDark = mounted && resolvedTheme === 'dark';
-  const C = isDark ? PAGE_DARK : PAGE_LIGHT;
+  const C: PageTheme = isDark ? PAGE_DARK : PAGE_LIGHT;
   return { C, isDark, mounted };
 }
 

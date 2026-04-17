@@ -10,8 +10,7 @@ import Link from 'next/link';
 import { useLocale } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+import { FONT } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   sidebarBg: '#ffffff',

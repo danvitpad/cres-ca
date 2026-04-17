@@ -7,7 +7,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
@@ -33,30 +32,7 @@ import {
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
 import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-
-const LIGHT = {
-  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
-  text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
-  accent: '#6950f3', accentSoft: 'rgba(105,80,243,0.08)',
-  rowBorder: '#f0f0f0', rowHover: '#fafafa',
-  catBg: '#f5f5f5', catBorder: '#e5e5e5', catActive: '#6950f3', catActiveBg: 'rgba(105,80,243,0.12)',
-  badgeBg: '#f0f0f0', badgeText: '#737373',
-  searchBg: '#f5f5f5', searchBorder: '#e5e5e5',
-  btnBorder: '#e5e5e5', btnHover: '#fafafa',
-};
-
-const DARK = {
-  bg: '#000000', cardBg: '#111111', cardBorder: '#2a2a2a',
-  text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
-  accent: '#8b7cf6', accentSoft: 'rgba(139,124,246,0.12)',
-  rowBorder: '#1a1a1a', rowHover: '#0d0d0d',
-  catBg: '#111111', catBorder: '#2a2a2a', catActive: '#8b7cf6', catActiveBg: 'rgba(139,124,246,0.15)',
-  badgeBg: '#222222', badgeText: '#999999',
-  searchBg: '#111111', searchBorder: '#2a2a2a',
-  btnBorder: '#333333', btnHover: '#1a1a1a',
-};
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 
 const serviceSchema = z.object({
   name: z.string().min(1),
@@ -101,8 +77,7 @@ export default function ServicesPage() {
   const t = useTranslations('services');
   const tp = useTranslations('profile');
   const tc = useTranslations('common');
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const { C, isDark, mounted } = usePageTheme();
   const { master, loading: masterLoading } = useMaster();
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -112,8 +87,6 @@ export default function ServicesPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
 
   const loadServices = useCallback(async () => {
     if (!master) return;
@@ -160,9 +133,9 @@ export default function ServicesPage() {
 
   if (masterLoading || loading) {
     return (
-      <div style={{ padding: '32px 40px', fontFamily: FONT }}>
-        <div style={{ height: 32, width: 200, backgroundColor: C.catBg, borderRadius: 8, marginBottom: 16 }} />
-        <div style={{ height: 200, width: '100%', backgroundColor: C.catBg, borderRadius: 12 }} />
+      <div style={{ padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
+        <div style={{ height: 32, width: 200, backgroundColor: C.surfaceElevated, borderRadius: 8, marginBottom: 16 }} />
+        <div style={{ height: 200, width: '100%', backgroundColor: C.surfaceElevated, borderRadius: 12 }} />
       </div>
     );
   }
@@ -214,14 +187,14 @@ export default function ServicesPage() {
   }
 
   return (
-    <div style={{ padding: '32px 40px', fontFamily: FONT }}>
+    <div style={{ padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
       {/* ── Page header (Fresha style) ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.2 }}>
             {t('serviceMenu')}
           </h1>
-          <p style={{ fontSize: 14, color: C.textMuted, marginTop: 6, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 6, lineHeight: 1.5 }}>
             {t('servicesDescription') || `${services.length} ${t('servicesCount')}`}
           </p>
         </div>
@@ -249,9 +222,9 @@ export default function ServicesPage() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, flex: 1, maxWidth: 400,
           padding: '10px 14px', borderRadius: 999,
-          backgroundColor: C.searchBg, border: `1px solid ${C.searchBorder}`,
+          backgroundColor: C.surfaceElevated, border: `1px solid ${C.border}`,
         }}>
-          <Search style={{ width: 16, height: 16, color: C.textLight, flexShrink: 0 }} />
+          <Search style={{ width: 16, height: 16, color: C.textTertiary, flexShrink: 0 }} />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -265,7 +238,7 @@ export default function ServicesPage() {
         <button style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '10px 16px', borderRadius: 999,
-          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+          border: `1px solid ${C.border}`, backgroundColor: 'transparent',
           color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
         }}>
           <SlidersHorizontal style={{ width: 14, height: 14 }} />
@@ -275,7 +248,7 @@ export default function ServicesPage() {
         <button style={{
           display: 'flex', alignItems: 'center', gap: 6,
           padding: '10px 16px', borderRadius: 999,
-          border: `1px solid ${C.btnBorder}`, backgroundColor: 'transparent',
+          border: `1px solid ${C.border}`, backgroundColor: 'transparent',
           color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
         }}>
           <ArrowUpDown style={{ width: 14, height: 14 }} />
@@ -288,7 +261,7 @@ export default function ServicesPage() {
         {/* Categories card (Fresha style) */}
         <div style={{
           width: 280, flexShrink: 0,
-          border: `1px solid ${C.catBorder}`, borderRadius: 12,
+          border: `1px solid ${C.border}`, borderRadius: 12,
           padding: '20px 0', alignSelf: 'flex-start',
         }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 20px 16px', fontFamily: FONT }}>
@@ -300,17 +273,17 @@ export default function ServicesPage() {
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
-              backgroundColor: selectedCategory === 'all' ? C.catActiveBg : 'transparent',
-              borderLeft: selectedCategory === 'all' ? `3px solid ${C.catActive}` : '3px solid transparent',
-              color: selectedCategory === 'all' ? C.catActive : C.text,
+              backgroundColor: selectedCategory === 'all' ? C.accentSoft : 'transparent',
+              borderLeft: selectedCategory === 'all' ? `3px solid ${C.accent}` : '3px solid transparent',
+              color: selectedCategory === 'all' ? C.accent : C.text,
               fontSize: 14, fontWeight: selectedCategory === 'all' ? 600 : 400,
               fontFamily: FONT, transition: 'all 150ms',
             }}
           >
             <span>{t('allCategories') || 'Все категории'}</span>
             <span style={{
-              fontSize: 12, fontWeight: 500, color: C.badgeText,
-              backgroundColor: C.badgeBg, borderRadius: 999, padding: '2px 8px',
+              fontSize: 12, fontWeight: 500, color: C.textTertiary,
+              backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '2px 8px',
             }}>
               {services.length}
             </span>
@@ -322,17 +295,17 @@ export default function ServicesPage() {
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
-                backgroundColor: selectedCategory === key ? C.catActiveBg : 'transparent',
-                borderLeft: selectedCategory === key ? `3px solid ${C.catActive}` : '3px solid transparent',
-                color: selectedCategory === key ? C.catActive : C.text,
+                backgroundColor: selectedCategory === key ? C.accentSoft : 'transparent',
+                borderLeft: selectedCategory === key ? `3px solid ${C.accent}` : '3px solid transparent',
+                color: selectedCategory === key ? C.accent : C.text,
                 fontSize: 14, fontWeight: selectedCategory === key ? 600 : 400,
                 fontFamily: FONT, transition: 'all 150ms',
               }}
             >
               <span>{category?.name}</span>
               <span style={{
-                fontSize: 12, fontWeight: 500, color: C.badgeText,
-                backgroundColor: C.badgeBg, borderRadius: 999, padding: '2px 8px',
+                fontSize: 12, fontWeight: 500, color: C.textTertiary,
+                backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '2px 8px',
               }}>
                 {catServices.length}
               </span>
@@ -344,17 +317,17 @@ export default function ServicesPage() {
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
-                backgroundColor: selectedCategory === 'none' ? C.catActiveBg : 'transparent',
-                borderLeft: selectedCategory === 'none' ? `3px solid ${C.catActive}` : '3px solid transparent',
-                color: selectedCategory === 'none' ? C.catActive : C.text,
+                backgroundColor: selectedCategory === 'none' ? C.accentSoft : 'transparent',
+                borderLeft: selectedCategory === 'none' ? `3px solid ${C.accent}` : '3px solid transparent',
+                color: selectedCategory === 'none' ? C.accent : C.text,
                 fontSize: 14, fontWeight: selectedCategory === 'none' ? 600 : 400,
                 fontFamily: FONT, transition: 'all 150ms',
               }}
             >
               <span>{t('uncategorized')}</span>
               <span style={{
-                fontSize: 12, fontWeight: 500, color: C.badgeText,
-                backgroundColor: C.badgeBg, borderRadius: 999, padding: '2px 8px',
+                fontSize: 12, fontWeight: 500, color: C.textTertiary,
+                backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '2px 8px',
               }}>
                 {uncategorized.length}
               </span>
@@ -379,7 +352,7 @@ export default function ServicesPage() {
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               padding: '80px 0', textAlign: 'center',
             }}>
-              <Briefcase style={{ width: 48, height: 48, color: C.textLight, marginBottom: 12 }} />
+              <Briefcase style={{ width: 48, height: 48, color: C.textTertiary, marginBottom: 12 }} />
               <p style={{ fontSize: 16, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t('noServices')}</p>
             </div>
           ) : (
@@ -393,7 +366,7 @@ export default function ServicesPage() {
                   style={{
                     display: 'flex', alignItems: 'center',
                     padding: '16px 20px', borderRadius: 10,
-                    border: `1px solid ${C.rowBorder}`,
+                    border: `1px solid ${C.border}`,
                     borderLeft: `4px solid ${s.color}`,
                     backgroundColor: C.bg,
                     cursor: 'pointer', transition: 'background-color 150ms',
@@ -407,7 +380,7 @@ export default function ServicesPage() {
                     <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT }}>
                       {s.name}
                     </div>
-                    <div style={{ fontSize: 13, color: C.textMuted, marginTop: 3, fontFamily: FONT }}>
+                    <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 3, fontFamily: FONT }}>
                       {formatDuration(s.duration_minutes)}
                     </div>
                   </div>
@@ -422,7 +395,7 @@ export default function ServicesPage() {
                     style={{
                       width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
                       borderRadius: 6, border: 'none', backgroundColor: 'transparent',
-                      cursor: 'pointer', color: C.textMuted, transition: 'color 100ms',
+                      cursor: 'pointer', color: C.textSecondary, transition: 'color 100ms',
                     }}
                   >
                     <MoreVertical style={{ width: 18, height: 18 }} />
@@ -432,7 +405,7 @@ export default function ServicesPage() {
                     <div
                       style={{
                         position: 'absolute', right: 8, top: '100%', zIndex: 50,
-                        backgroundColor: C.cardBg, border: `1px solid ${C.cardBorder}`,
+                        backgroundColor: C.surface, border: `1px solid ${C.border}`,
                         borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                         overflow: 'hidden', minWidth: 160, fontFamily: FONT,
                       }}
