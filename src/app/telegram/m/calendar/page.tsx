@@ -25,9 +25,23 @@ import {
   Plus,
   CalendarDays,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
@@ -91,30 +105,44 @@ export default function MasterMiniAppCalendar() {
 
   const focusId = searchParams.get('id');
 
-  useEffect(() => {
-    if (!userId) return;
-    const supabase = createClient();
-    (async () => {
-      const { data: m } = await supabase.from('masters').select('id').eq('profile_id', userId).maybeSingle();
-      if (m) setMasterId(m.id);
-    })();
-  }, [userId]);
+  // Master ID resolved together with day data via /api/telegram/m/calendar
+  // (no separate fetch needed)
 
   const loadDay = useCallback(async () => {
-    if (!masterId) return;
     setLoading(true);
-    const supabase = createClient();
-    const from = day.toISOString();
-    const to = addDays(day, 1).toISOString();
-    const { data } = await supabase
-      .from('appointments')
-      .select(
-        'id, starts_at, ends_at, status, price, notes, client_id, client:clients(profile:profiles!clients_profile_id_fkey(full_name, phone)), service:services(name, duration_minutes)',
-      )
-      .eq('master_id', masterId)
-      .gte('starts_at', from)
-      .lt('starts_at', to)
-      .order('starts_at', { ascending: true });
+    const initData = getInitData();
+    if (!initData) {
+      setLoading(false);
+      return;
+    }
+    const res = await fetch('/api/telegram/m/calendar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, day_iso: day.toISOString(), focus_id: focusId ?? undefined }),
+    });
+    if (!res.ok) { setLoading(false); return; }
+    const json = await res.json();
+    if (json.masterId) setMasterId(json.masterId);
+    const data = json.appointments as Array<{
+      id: string;
+      starts_at: string;
+      ends_at: string;
+      status: Status;
+      price: number | null;
+      notes: string | null;
+      client_id: string | null;
+      client: { profile: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null } | null;
+      service: { name: string; duration_minutes: number } | { name: string; duration_minutes: number }[] | null;
+    }>;
+
+    // If focus_id was on a different day, jump there
+    if (json.focusedDayIso) {
+      const focusedDay = startOfDay(new Date(json.focusedDayIso));
+      if (!isSameDay(focusedDay, day)) {
+        setDay(focusedDay);
+        return; // useEffect will re-fire loadDay for that day
+      }
+    }
 
     type Row = {
       id: string;
@@ -127,7 +155,7 @@ export default function MasterMiniAppCalendar() {
       client: { profile: { full_name: string; phone: string | null } | { full_name: string; phone: string | null }[] | null } | null;
       service: { name: string; duration_minutes: number } | { name: string; duration_minutes: number }[] | null;
     };
-    const mapped: Appointment[] = ((data ?? []) as unknown as Row[]).map((r) => {
+    const mapped: Appointment[] = (data as unknown as Row[]).map((r) => {
       const cp = Array.isArray(r.client?.profile) ? r.client?.profile[0] : r.client?.profile;
       const svc = Array.isArray(r.service) ? r.service[0] : r.service;
       return {
@@ -146,41 +174,33 @@ export default function MasterMiniAppCalendar() {
     });
     setRows(mapped);
     setLoading(false);
-  }, [masterId, day]);
+  }, [day, focusId]);
 
   useEffect(() => {
     loadDay();
   }, [loadDay]);
 
-  // If ?id=X was passed and points to a different day, jump to its day
+  // If ?id=X was passed and corresponds to a row in the current day, focus it
   useEffect(() => {
-    if (!focusId || !masterId) return;
+    if (!focusId) return;
     const inList = rows.find((r) => r.id === focusId);
     if (inList) {
       setActiveId(focusId);
-      return;
     }
-    const supabase = createClient();
-    supabase
-      .from('appointments')
-      .select('starts_at')
-      .eq('id', focusId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.starts_at) {
-          const d = startOfDay(new Date(data.starts_at));
-          if (!isSameDay(d, day)) setDay(d);
-          setActiveId(focusId);
-        }
-      });
-  }, [focusId, masterId, rows, day]);
+    // Cross-day jump is now handled inside loadDay via the API's focusedDayIso response.
+  }, [focusId, rows]);
 
   const active = useMemo(() => rows.find((r) => r.id === activeId) ?? null, [rows, activeId]);
 
   async function updateStatus(id: string, status: Status, extra: Record<string, unknown> = {}) {
     setActing(true);
-    const supabase = createClient();
-    const { error } = await supabase.from('appointments').update({ status, ...extra }).eq('id', id);
+    const initData = getInitData();
+    const res = initData ? await fetch('/api/telegram/m/appointment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, id, status, extra }),
+    }) : null;
+    const error = !res || !res.ok ? { message: 'request_failed' } : null;
     if (!error) {
       haptic('success');
       await loadDay();

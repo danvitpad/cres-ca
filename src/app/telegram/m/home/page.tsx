@@ -11,7 +11,20 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Calendar, TrendingUp, Users, Clock, ChevronRight, Sparkles, AlertCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -43,60 +56,62 @@ export default function MasterMiniAppHome() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
-      const [{ data: m }, { data: prof }] = await Promise.all([
-        supabase.from('masters').select('id, is_busy').eq('profile_id', userId).maybeSingle(),
-        supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle(),
-      ]);
-      if (!m) {
-        setLoading(false);
-        return;
-      }
-      setMasterId(m.id);
-      setProfileName(prof?.full_name?.split(' ')[0] || null);
-      setIsBusy(Boolean((m as { is_busy: boolean | null }).is_busy));
+      const initData = getInitData();
+      if (!initData) { setLoading(false); return; }
 
-      const now = new Date();
-      const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+      // Step 1 — basic context (master/profile/today aggregates)
+      const ctxRes = await fetch('/api/telegram/m/home', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (!ctxRes.ok) { setLoading(false); return; }
+      const ctx = await ctxRes.json();
+      if (!ctx.master) { setLoading(false); return; }
+      setMasterId(ctx.master.id);
+      setProfileName(ctx.profile?.full_name?.split(' ')[0] || null);
+      setIsBusy(Boolean(ctx.master.is_busy));
 
-      const { data: todayRows } = await supabase
-        .from('appointments')
-        .select('id, starts_at, ends_at, price, status, client:clients(profile:profiles!clients_profile_id_fkey(full_name)), service:services(name)')
-        .eq('master_id', m.id)
-        .gte('starts_at', dayStart)
-        .lt('starts_at', dayEnd)
-        .order('starts_at', { ascending: true });
+      // Step 2 — full today appointments (for "next" card)
+      const today = new Date();
+      const calRes = await fetch('/api/telegram/m/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, day_iso: today.toISOString() }),
+      });
+      if (calRes.ok) {
+        const calJson = await calRes.json();
+        type Row = {
+          id: string;
+          starts_at: string;
+          ends_at: string;
+          price: number | null;
+          status: string;
+          client: { profile: { full_name: string } | { full_name: string }[] | null } | null;
+          service: { name: string } | { name: string }[] | null;
+        };
+        const rows = (calJson.appointments ?? []) as Row[];
+        const now = new Date();
+        const active = rows.filter((r) => r.status !== 'cancelled_by_client' && r.status !== 'cancelled_by_master' && r.status !== 'no_show');
+        const done = active.filter((r) => r.status === 'completed');
+        const upcoming = active.filter((r) => r.status !== 'completed' && new Date(r.starts_at) >= now);
+        const revenue = done.reduce((acc, r) => acc + Number(r.price ?? 0), 0);
+        setStats({ count: active.length, revenue, done: done.length, upcoming: upcoming.length });
 
-      type Row = {
-        id: string;
-        starts_at: string;
-        ends_at: string;
-        price: number | null;
-        status: string;
-        client: { profile: { full_name: string } | { full_name: string }[] | null } | null;
-        service: { name: string } | { name: string }[] | null;
-      };
-      const rows = (todayRows ?? []) as unknown as Row[];
-      const active = rows.filter((r) => r.status !== 'cancelled_by_client' && r.status !== 'cancelled_by_master' && r.status !== 'no_show');
-      const done = active.filter((r) => r.status === 'completed');
-      const upcoming = active.filter((r) => r.status !== 'completed' && new Date(r.starts_at) >= now);
-      const revenue = done.reduce((acc, r) => acc + Number(r.price ?? 0), 0);
-      setStats({ count: active.length, revenue, done: done.length, upcoming: upcoming.length });
-
-      const firstUpcoming = upcoming[0];
-      if (firstUpcoming) {
-        const cp = Array.isArray(firstUpcoming.client?.profile) ? firstUpcoming.client?.profile[0] : firstUpcoming.client?.profile;
-        const svc = Array.isArray(firstUpcoming.service) ? firstUpcoming.service[0] : firstUpcoming.service;
-        setNext({
-          id: firstUpcoming.id,
-          starts_at: firstUpcoming.starts_at,
-          ends_at: firstUpcoming.ends_at,
-          price: Number(firstUpcoming.price ?? 0),
-          client_name: cp?.full_name ?? 'Клиент',
-          service_name: svc?.name ?? '—',
-        });
+        const firstUpcoming = upcoming[0];
+        if (firstUpcoming) {
+          const cp = Array.isArray(firstUpcoming.client?.profile) ? firstUpcoming.client?.profile[0] : firstUpcoming.client?.profile;
+          const svc = Array.isArray(firstUpcoming.service) ? firstUpcoming.service[0] : firstUpcoming.service;
+          setNext({
+            id: firstUpcoming.id,
+            starts_at: firstUpcoming.starts_at,
+            ends_at: firstUpcoming.ends_at,
+            price: Number(firstUpcoming.price ?? 0),
+            client_name: cp?.full_name ?? 'Клиент',
+            service_name: svc?.name ?? '—',
+          });
+        }
       }
       setLoading(false);
     })();
@@ -140,10 +155,16 @@ export default function MasterMiniAppHome() {
       <button
         onClick={async () => {
           haptic('medium');
-          const supabase = createClient();
           const newVal = !isBusy;
           setIsBusy(newVal);
-          await supabase.from('masters').update({ is_busy: newVal }).eq('id', masterId!);
+          const initData = getInitData();
+          if (initData) {
+            await fetch('/api/telegram/m/home', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ initData, is_busy: newVal }),
+            });
+          }
         }}
         className={`w-full rounded-2xl border p-4 text-left transition-colors ${
           isBusy

@@ -11,9 +11,26 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Search, AlertTriangle, Star, Crown, Loader2 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+
+function getInitData(): string | null {
+  // 1) Live initData from Telegram WebApp
+  if (typeof window !== 'undefined') {
+    const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+    const live = w.Telegram?.WebApp?.initData;
+    if (live) return live;
+    // 2) Fallback to sessionStorage stash from /telegram entry
+    try {
+      const stash = sessionStorage.getItem('cres:tg');
+      if (stash) {
+        const parsed = JSON.parse(stash) as { initData?: string };
+        if (parsed.initData) return parsed.initData;
+      }
+    } catch { /* ignore */ }
+  }
+  return null;
+}
 
 interface ClientRow {
   id: string;
@@ -57,21 +74,26 @@ export default function MasterMiniAppClientsPage() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
-      const { data: m } = await supabase.from('masters').select('id').eq('profile_id', userId).maybeSingle();
-      if (!m) {
+      const initData = getInitData();
+      if (!initData) {
         setLoading(false);
         return;
       }
-      setMasterId(m.id);
-      const { data } = await supabase
-        .from('clients')
-        .select('id, full_name, phone, total_visits, total_spent, last_visit_at, has_health_alert, behavior_indicators')
-        .eq('master_id', m.id)
-        .order('last_visit_at', { ascending: false, nullsFirst: false })
-        .limit(500);
-      setRows((data ?? []) as ClientRow[]);
+      try {
+        const res = await fetch('/api/telegram/m/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+        if (!res.ok) {
+          setLoading(false);
+          return;
+        }
+        const json = await res.json();
+        setMasterId(json.masterId ?? null);
+        setRows((json.clients ?? []) as ClientRow[]);
+      } catch { /* network error */ }
       setLoading(false);
     })();
   }, [userId]);
