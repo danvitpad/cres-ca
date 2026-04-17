@@ -22,9 +22,23 @@ import {
   Crown,
   TrendingUp,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 interface ClientFull {
   id: string;
@@ -74,36 +88,22 @@ export default function MasterMiniAppClientCard() {
 
   useEffect(() => {
     if (!params?.id || !userId) return;
-    const supabase = createClient();
     (async () => {
-      const { data: m } = await supabase.from('masters').select('id').eq('profile_id', userId).maybeSingle();
-      if (!m) {
-        setLoading(false);
-        return;
-      }
+      const initData = getInitData();
+      if (!initData) { setLoading(false); return; }
 
-      const { data: c } = await supabase
-        .from('clients')
-        .select(
-          'id, full_name, phone, email, date_of_birth, notes, allergies, contraindications, has_health_alert, behavior_indicators, total_visits, total_spent, avg_check, last_visit_at',
-        )
-        .eq('id', params.id)
-        .eq('master_id', m.id)
-        .maybeSingle();
-      if (!c) {
-        setLoading(false);
-        return;
-      }
-      setClient(c as ClientFull);
-      setNoteDraft((c as ClientFull).notes ?? '');
+      const res = await fetch('/api/telegram/m/client-detail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, client_id: params.id }),
+      });
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json();
+      if (!json.client) { setLoading(false); return; }
 
-      const { data: apts } = await supabase
-        .from('appointments')
-        .select('id, starts_at, status, price, service:services(name)')
-        .eq('client_id', params.id)
-        .eq('master_id', m.id)
-        .order('starts_at', { ascending: false })
-        .limit(20);
+      setClient(json.client as ClientFull);
+      setNoteDraft((json.client.notes as string) ?? '');
+
       type A = {
         id: string;
         starts_at: string;
@@ -111,7 +111,7 @@ export default function MasterMiniAppClientCard() {
         price: number | null;
         service: { name: string } | { name: string }[] | null;
       };
-      const mapped: VisitRow[] = ((apts ?? []) as unknown as A[]).map((r) => {
+      const mapped: VisitRow[] = ((json.visits ?? []) as A[]).map((r) => {
         const svc = Array.isArray(r.service) ? r.service[0] : r.service;
         return {
           id: r.id,
@@ -122,15 +122,7 @@ export default function MasterMiniAppClientCard() {
         };
       });
       setVisits(mapped);
-
-      const { data: fls } = await supabase
-        .from('client_files')
-        .select('id, file_url, file_type, description, is_before_photo, created_at')
-        .eq('client_id', params.id)
-        .eq('master_id', m.id)
-        .order('created_at', { ascending: false })
-        .limit(12);
-      setFiles((fls ?? []) as FileRow[]);
+      setFiles((json.files ?? []) as FileRow[]);
       setLoading(false);
     })();
   }, [params?.id, userId]);
@@ -138,9 +130,14 @@ export default function MasterMiniAppClientCard() {
   async function saveNote() {
     if (!client) return;
     setSavingNote(true);
-    const supabase = createClient();
-    const { error } = await supabase.from('clients').update({ notes: noteDraft }).eq('id', client.id);
-    if (!error) {
+    const initData = getInitData();
+    if (!initData) { setSavingNote(false); return; }
+    const res = await fetch('/api/telegram/m/client-detail', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, client_id: client.id, save_note: noteDraft }),
+    });
+    if (res.ok) {
       haptic('success');
       setClient({ ...client, notes: noteDraft });
     } else {

@@ -10,7 +10,6 @@
 import { useState } from 'react';
 import { Mic, Square, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 
 interface Parsed {
@@ -31,8 +30,22 @@ type SRClass = new () => {
   stop: () => void;
 };
 
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 export default function VoiceBookPage() {
-  const supabase = createClient();
   const { userId } = useAuthStore();
   const [listening, setListening] = useState(false);
   const [text, setText] = useState('');
@@ -89,58 +102,27 @@ export default function VoiceBookPage() {
       return;
     }
     setSaving(true);
-
-    const { data: master } = await supabase
-      .from('masters')
-      .select('id')
-      .eq('profile_id', userId)
-      .single();
-    if (!master) {
-      toast.error('Master not found');
+    const initData = getInitData();
+    if (!initData) {
+      toast.error('Нет данных сессии');
       setSaving(false);
       return;
     }
-
-    const { data: client } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('master_id', master.id)
-      .ilike('full_name', `%${parsed.client_name}%`)
-      .limit(1)
-      .maybeSingle();
-
-    let clientId = client?.id;
-    if (!clientId) {
-      const { data: newClient, error } = await supabase
-        .from('clients')
-        .insert({ master_id: master.id, full_name: parsed.client_name })
-        .select('id')
-        .single();
-      if (error) {
-        toast.error(error.message);
-        setSaving(false);
-        return;
-      }
-      clientId = newClient.id;
-    }
-
-    const dur = parsed.duration_min ?? 60;
-    const startsAt = new Date(`${parsed.date}T${parsed.time}:00`);
-    const endsAt = new Date(startsAt.getTime() + dur * 60 * 1000);
-
-    const { error: aptErr } = await supabase.from('appointments').insert({
-      master_id: master.id,
-      client_id: clientId,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      status: 'booked',
-      price: 0,
-      currency: 'UAH',
+    const res = await fetch('/api/telegram/m/voice-book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        client_name: parsed.client_name,
+        date: parsed.date,
+        time: parsed.time,
+        duration_min: parsed.duration_min,
+      }),
     });
-
     setSaving(false);
-    if (aptErr) {
-      toast.error(aptErr.message);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast.error(j.error ?? 'Не удалось создать запись');
       return;
     }
     toast.success('Запись создана');

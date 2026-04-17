@@ -10,7 +10,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Calendar, Target, Loader2, Award, XCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -33,23 +46,17 @@ export default function MasterMiniAppStats() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
       setLoading(true);
-      const { data: m } = await supabase.from('masters').select('id').eq('profile_id', userId).maybeSingle();
-      if (!m) {
-        setLoading(false);
-        return;
-      }
-      const now = new Date();
-      const from = new Date(now);
-      from.setDate(from.getDate() - (period === 'week' ? 7 : 30));
-      const { data } = await supabase
-        .from('appointments')
-        .select('id, starts_at, status, price, service:services(name)')
-        .eq('master_id', m.id)
-        .gte('starts_at', from.toISOString())
-        .lte('starts_at', now.toISOString());
+      const initData = getInitData();
+      if (!initData) { setLoading(false); return; }
+      const res = await fetch('/api/telegram/m/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, period }),
+      });
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json();
       type R = {
         id: string;
         starts_at: string;
@@ -57,7 +64,7 @@ export default function MasterMiniAppStats() {
         price: number | null;
         service: { name: string } | { name: string }[] | null;
       };
-      const mapped: AptRow[] = ((data ?? []) as unknown as R[]).map((r) => {
+      const mapped: AptRow[] = ((json.appointments ?? []) as R[]).map((r) => {
         const svc = Array.isArray(r.service) ? r.service[0] : r.service;
         return {
           id: r.id,

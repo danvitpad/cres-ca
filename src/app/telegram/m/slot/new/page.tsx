@@ -11,9 +11,23 @@ import { useCallback, useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Search, Check, ChevronRight, Clock, Loader2, User as UserIcon } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 interface ClientOpt {
   id: string;
@@ -56,31 +70,20 @@ function MasterMiniAppQuickBookingInner() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
-      const { data: m } = await supabase.from('masters').select('id').eq('profile_id', userId).maybeSingle();
-      if (!m) {
-        setLoading(false);
-        return;
-      }
-      setMasterId(m.id);
-      const [cRes, sRes] = await Promise.all([
-        supabase
-          .from('clients')
-          .select('id, full_name, phone')
-          .eq('master_id', m.id)
-          .order('last_visit_at', { ascending: false, nullsFirst: false })
-          .limit(300),
-        supabase
-          .from('services')
-          .select('id, name, duration_minutes, price, currency')
-          .eq('master_id', m.id)
-          .eq('is_active', true)
-          .order('name', { ascending: true }),
-      ]);
-      const cs = (cRes.data ?? []) as ClientOpt[];
+      const initData = getInitData();
+      if (!initData) { setLoading(false); return; }
+      const res = await fetch('/api/telegram/m/slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json();
+      setMasterId(json.masterId);
+      const cs = (json.clients ?? []) as ClientOpt[];
       setClients(cs);
-      setServices((sRes.data ?? []) as ServiceOpt[]);
+      setServices((json.services ?? []) as ServiceOpt[]);
 
       if (preClientId) {
         const pre = cs.find((c) => c.id === preClientId);
@@ -103,33 +106,35 @@ function MasterMiniAppQuickBookingInner() {
     if (!masterId || !selectedClient || !selectedService) return;
     setStep('saving');
     setError(null);
-    const supabase = createClient();
+    const initData = getInitData();
+    if (!initData) { setError('Нет данных сессии'); setStep('time'); return; }
     const [h, m] = time.split(':').map(Number);
     const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0);
     const end = new Date(start.getTime() + selectedService.duration_minutes * 60000);
-    const { data, error: insErr } = await supabase
-      .from('appointments')
-      .insert({
-        master_id: masterId,
+    const res = await fetch('/api/telegram/m/slot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        mode: 'create',
         client_id: selectedClient.id,
         service_id: selectedService.id,
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
-        status: 'confirmed',
         price: selectedService.price,
         currency: selectedService.currency,
-        booked_via: 'master_miniapp',
-      })
-      .select('id')
-      .single();
-    if (insErr || !data) {
+      }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
       haptic('error');
-      setError(insErr?.message ?? 'Не удалось сохранить');
+      setError(j.error ?? 'Не удалось сохранить');
       setStep('time');
       return;
     }
+    const json = await res.json();
     haptic('success');
-    router.replace(`/telegram/m/calendar?id=${data.id}`);
+    router.replace(`/telegram/m/calendar?id=${json.id}`);
   }, [masterId, selectedClient, selectedService, day, time, haptic, router]);
 
   if (loading) {
