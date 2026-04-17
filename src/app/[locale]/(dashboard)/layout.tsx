@@ -79,16 +79,7 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
   return [
     { key: 'dashboard', icon: FreshaHome, href: '/dashboard', tooltip: t('nav.dashboard') },
     { key: 'calendar', icon: FreshaCalendar, href: '/calendar', tooltip: t('nav.calendar') },
-    {
-      key: 'sales', icon: FreshaTag, title: t('nav.sales'),
-      submenu: [
-        { label: t('nav.salesSub.summary'), href: '/finance' },
-        { label: t('nav.salesSub.appointments'), href: '/finance/appointments' },
-        { label: t('nav.salesSub.profitability'), href: '/finance/profitability' },
-        { label: t('nav.salesSub.calculator'), href: '/finance/cost-calculator' },
-        { label: t('nav.salesSub.reports'), href: '/finance/reports' },
-      ],
-    },
+    { key: 'sales', icon: FreshaTag, href: '/finance', tooltip: t('nav.sales') },
     {
       key: 'clients', icon: FreshaSmile, title: t('nav.clients'),
       submenu: [
@@ -126,7 +117,7 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
       ],
     },
     // team removed — MVP is solo master, team features deferred
-    { key: 'analytics', icon: FreshaAnalytics, href: '/finance/reports', tooltip: t('nav.analytics') },
+    { key: 'analytics', icon: FreshaAnalytics, href: '/finance?tab=reports', tooltip: t('nav.analytics') },
     { key: 'addons', icon: FreshaAddons, href: '/addons', tooltip: t('nav.addons') },
     { key: 'settings', icon: FreshaSettings, href: '/settings', tooltip: t('nav.settings') },
   ];
@@ -470,7 +461,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Analytics — 44×44 */}
           <button
-            onClick={() => router.push('/finance/reports')}
+            onClick={() => router.push('/finance?tab=reports')}
             style={{
               width: S.iconBtnSize,
               height: S.iconBtnSize,

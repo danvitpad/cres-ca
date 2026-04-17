@@ -35,10 +35,8 @@ export const ROUTE_FEATURES: Record<string, RouteFeatureRule> = {
 
   '/finance/gift-cards': { feature: 'gift_certificates', requiredTier: 'pro', label: 'Gift cards' },
   '/finance/memberships': { feature: 'gift_certificates', requiredTier: 'pro', label: 'Memberships' },
-  '/finance/tax-report': { feature: 'tax_reports', requiredTier: 'business', label: 'Tax reports' },
-  '/finance/reports': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Reports' },
-  '/finance/profitability': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Profitability' },
-  '/finance/lost-revenue': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Lost revenue' },
+  '/finance?tab=reports': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Reports' },
+  '/finance?tab=services': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Services profitability' },
 
   '/marketing/campaigns': { feature: 'auto_messages', requiredTier: 'pro', label: 'Campaigns' },
   '/marketing/automation': { feature: 'auto_messages', requiredTier: 'pro', label: 'Automation' },

@@ -1,7 +1,6 @@
 /** --- YAML
- * name: FinanceReportsPage
- * description: Finance Reports — 4 tabs (Taxes / Lost Revenue / Forecast / Payments) with real data from Supabase.
- *              Replaces old mock analytics catalog + standalone pages (tax-report, lost-revenue, cashflow, payments).
+ * name: ReportsTab
+ * description: Reports tab — 4 sub-tabs (Taxes / Lost Revenue / Forecast / Payments) extracted from reports page.
  * created: 2026-04-17
  * updated: 2026-04-17
  * --- */
@@ -11,7 +10,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { type PageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import {
   Receipt, TrendingDown, TrendingUp, CreditCard, Download,
   AlertOctagon, Sparkles, Loader2,
@@ -22,7 +21,6 @@ import { format, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import { cn } from '@/lib/utils';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -48,11 +46,10 @@ interface PaymentRow {
   services: { name: string } | null;
 }
 
-export default function FinanceReportsPage() {
+export function ReportsTab({ C }: { C: PageTheme }) {
   const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { C, isDark, mounted } = usePageTheme();
 
   const { master } = useMaster();
   const [activeTab, setActiveTab] = useState<Tab>('taxes');
@@ -247,6 +244,8 @@ export default function FinanceReportsPage() {
     maxDay: Math.max(0, ...forecastDays.map(b => b.total)),
   }), [forecastDays]);
 
+  const isDark = C.bg !== '#ffffff' && C.bg !== '#fff' && C.bg !== 'white';
+
   const tabs: { key: Tab; label: string; icon: typeof Receipt }[] = [
     { key: 'taxes', label: 'Налоги', icon: Receipt },
     { key: 'lost', label: 'Упущенная выручка', icon: TrendingDown },
@@ -255,9 +254,9 @@ export default function FinanceReportsPage() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
+    <>
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Отчёты</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text }}>Отчёты</h1>
         <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>Налоги, потери, прогнозы и платежи.</p>
       </div>
 
@@ -294,7 +293,7 @@ export default function FinanceReportsPage() {
 
       {!loading && (
         <AnimatePresence mode="wait">
-          {/* ═══ TAXES TAB ═══ */}
+          {/* === TAXES TAB === */}
           {activeTab === 'taxes' && (
             <motion.div key="taxes" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>
@@ -359,7 +358,7 @@ export default function FinanceReportsPage() {
             </motion.div>
           )}
 
-          {/* ═══ LOST REVENUE TAB ═══ */}
+          {/* === LOST REVENUE TAB === */}
           {activeTab === 'lost' && (
             <motion.div key="lost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>За последние 30 дней.</p>
@@ -406,7 +405,7 @@ export default function FinanceReportsPage() {
             </motion.div>
           )}
 
-          {/* ═══ FORECAST TAB ═══ */}
+          {/* === FORECAST TAB === */}
           {activeTab === 'forecast' && (
             <motion.div key="forecast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>
@@ -493,7 +492,7 @@ export default function FinanceReportsPage() {
             </motion.div>
           )}
 
-          {/* ═══ PAYMENTS TAB ═══ */}
+          {/* === PAYMENTS TAB === */}
           {activeTab === 'payments' && (
             <motion.div key="payments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>Все транзакции за последние 30 дней.</p>
@@ -559,6 +558,6 @@ export default function FinanceReportsPage() {
           )}
         </AnimatePresence>
       )}
-    </div>
+    </>
   );
 }

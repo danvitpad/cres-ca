@@ -1,6 +1,8 @@
 /** --- YAML
- * name: AppointmentsListPage
- * description: Fresha-exact appointments list — filterable table with status badges, search, date range, sorting
+ * name: AppointmentsTab
+ * description: Appointments tab — filterable table with status badges, search, date range, sorting, tip editing. Extracted from appointments page for use inside finance tabs layout.
+ * created: 2026-04-17
+ * updated: 2026-04-17
  * --- */
 
 'use client';
@@ -12,7 +14,7 @@ import { Search, SlidersHorizontal, Download, ChevronDown, Check } from 'lucide-
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { FONT, FONT_FEATURES, CURRENCY, type PageTheme } from '@/lib/dashboard-theme';
 import { format, subMonths, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
@@ -36,11 +38,10 @@ interface AppointmentRow {
   master?: { profile?: { full_name: string } | null } | null;
 }
 
-export default function AppointmentsListPage() {
+export function AppointmentsTab({ C }: { C: PageTheme }) {
   const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { C } = usePageTheme();
 
   const { master } = useMaster();
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
@@ -138,10 +139,10 @@ export default function AppointmentsListPage() {
   ];
 
   return (
-    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
+    <>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{t('appointments')}</h1>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: C.text }}>{t('appointments')}</h1>
         <button
           style={{
             padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.border}`,
@@ -376,6 +377,6 @@ export default function AppointmentsListPage() {
           </div>
         )}
       </motion.div>
-    </div>
+    </>
   );
 }
