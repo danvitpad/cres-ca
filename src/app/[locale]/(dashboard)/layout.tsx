@@ -89,7 +89,7 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
   ];
 }
 
-const sidebarHelp: SidebarNavItem = { key: 'help', icon: FreshaHelp, href: '/contact' };
+const sidebarHelp: SidebarNavItem = { key: 'help', icon: FreshaHelp, href: '/help', tooltip: 'Помощь' };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('dashboard');
@@ -517,8 +517,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 },
               ]}
             >
-              <button
-                type="button"
+              <div
+                role="button"
+                aria-label={t('userMenu')}
                 style={{
                   width: S.avatarSize,
                   height: S.avatarSize,
@@ -531,7 +532,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   overflow: 'hidden',
                   cursor: 'pointer',
                 }}
-                aria-label={t('userMenu')}
               >
                 {master?.profile?.avatar_url ? (
                   <img
@@ -544,7 +544,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {getInitials(masterName)}
                   </span>
                 )}
-              </button>
+              </div>
             </UserProfileDropdown>
           </div>
         </div>
