@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, Save } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -70,6 +71,7 @@ export default function MessageTemplatesPage() {
   const tKind = useTranslations('marketing.messagesPage.kinds');
   const supabase = createClient();
   const { master } = useMaster();
+  const confirm = useConfirm();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatingKind, setCreatingKind] = useState<Kind | null>(null);
@@ -122,7 +124,7 @@ export default function MessageTemplatesPage() {
   }
 
   async function deleteTemplate(id: string) {
-    if (!confirm(t('deleteConfirm'))) return;
+    if (!(await confirm({ title: 'Удалить шаблон?', confirmLabel: 'Удалить', destructive: true }))) return;
     const { error } = await supabase.from('message_templates').delete().eq('id', id);
     if (error) {
       toast.error(error.message);

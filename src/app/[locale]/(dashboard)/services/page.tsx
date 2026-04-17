@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -77,6 +78,7 @@ export default function ServicesPage() {
   const t = useTranslations('services');
   const tp = useTranslations('profile');
   const tc = useTranslations('common');
+  const confirm = useConfirm();
   const { C, isDark, mounted } = usePageTheme();
   const { master, loading: masterLoading } = useMaster();
   const [services, setServices] = useState<ServiceRow[]>([]);
@@ -124,7 +126,13 @@ export default function ServicesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm(tp('deleteConfirm'))) return;
+    const ok = await confirm({
+      title: 'Удалить услугу?',
+      description: 'Услугу нельзя будет восстановить. Прошлые записи с ней останутся.',
+      confirmLabel: 'Удалить',
+      destructive: true,
+    });
+    if (!ok) return;
     const supabase = createClient();
     const { error } = await supabase.from('services').delete().eq('id', id);
     if (error) toast.error(error.message);
@@ -448,7 +456,7 @@ export default function ServicesPage() {
 
       {/* ── Edit/Add dialog ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="!max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? tp('editService') : t('addService')}</DialogTitle>
           </DialogHeader>
@@ -612,8 +620,36 @@ function ServiceForm({
 
       <div className="grid gap-4 grid-cols-2">
         <div className="space-y-2">
-          <Label>{t('duration')}</Label>
-          <Input type="number" min={5} max={480} value={duration} onChange={(e) => setDuration(e.target.value)} />
+          <Label>Время сеанса</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {[15, 30, 45, 60, 75, 90, 120, 150, 180, 240].map((mins) => {
+              const isActive = parseInt(duration) === mins;
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              const label = h === 0 ? `${m}м` : m === 0 ? `${h}ч` : `${h}ч ${m}м`;
+              return (
+                <button
+                  key={mins}
+                  type="button"
+                  onClick={() => setDuration(String(mins))}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium border transition ${
+                    isActive
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <Input
+            type="number" min={5} max={480}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="Или введите вручную (в минутах)"
+            className="h-8 text-xs"
+          />
         </div>
         <div className="space-y-2">
           <Label>{t('price')}</Label>
@@ -647,9 +683,30 @@ function ServiceForm({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="space-y-2">
         <Label>{tp('color')}</Label>
-        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-8 w-8 cursor-pointer rounded border" />
+        <div className="flex flex-wrap gap-2">
+          {[
+            '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+            '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
+            '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+          ].map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              style={{
+                width: 28, height: 28, borderRadius: 999,
+                background: c,
+                border: color === c ? '3px solid #fff' : '2px solid transparent',
+                boxShadow: color === c ? `0 0 0 2px ${c}` : `0 0 0 1px rgba(0,0,0,0.1)`,
+                cursor: 'pointer',
+                transition: 'transform 0.15s',
+              }}
+              aria-label={`Выбрать цвет ${c}`}
+            />
+          ))}
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

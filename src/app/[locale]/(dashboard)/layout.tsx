@@ -20,18 +20,16 @@ import {
 
   FreshaMegaphone,
 
-  FreshaAnalytics,
   FreshaAddons,
-  FreshaSettings,
   FreshaHelp,
   FreshaSearch,
-  FreshaBarChart,
   FreshaBell,
 } from '@/components/shared/fresha-icons';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
+import { ConfirmProvider } from '@/hooks/use-confirm';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -336,6 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <ConfirmProvider>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
       {/* ═══ Top header bar — Fresha: full width, 65px, white, border-bottom ═══ */}
       <header
@@ -423,29 +422,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             aria-label={t('search')}
           >
             <FreshaSearch style={{ width: S.iconSize, height: S.iconSize }} />
-          </button>
-
-          {/* Analytics — 44×44 */}
-          <button
-            onClick={() => router.push('/finance?tab=reports')}
-            style={{
-              width: S.iconBtnSize,
-              height: S.iconBtnSize,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: S.iconBtnRadius,
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: F.textPrimary,
-              transition: 'background-color 100ms',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = F.hoverBg; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-            aria-label={t('analyticsLabel')}
-          >
-            <FreshaBarChart style={{ width: S.iconSize, height: S.iconSize }} />
           </button>
 
           {/* Bell with badge — 44×44, red badge + live notifications panel */}
@@ -583,14 +559,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     </div>
                     {[
-                      { label: t('header.myProfile') || 'Мой профиль', href: '/settings?section=profile' },
-                      { label: 'Моя сфера', href: '/settings?section=vertical' },
-                      { label: 'Модули', href: '/settings?section=features' },
-                      { label: 'Рабочие часы', href: '/settings?section=hours' },
-                      { label: 'Безопасность', href: '/settings?section=security' },
-                      { label: 'Подписка', href: '/settings?section=subscription' },
-                      { label: 'Уведомления', href: '/settings?section=notifications' },
-                      { label: t('header.helpSupport') || 'Помощь', href: '/contact' },
+                      { label: 'Мой профиль', href: '/settings?section=profile' },
+                      { label: 'Настройки', href: '/settings' },
+                      { label: 'Помощь и поддержка', href: '/help' },
                     ].map((item) => (
                       <Link
                         key={item.label}
@@ -739,5 +710,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <DashboardRealtimeToasts />
       <ReminderPopup />
     </div>
+    </ConfirmProvider>
   );
 }

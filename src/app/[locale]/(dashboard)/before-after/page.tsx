@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useConfirm } from '@/hooks/use-confirm';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ type ServiceOpt = { id: string; name: string };
 
 export default function BeforeAfterPage() {
   const supabase = createClient();
+  const confirm = useConfirm();
   const { master } = useMaster();
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [services, setServices] = useState<ServiceOpt[]>([]);
@@ -109,7 +111,7 @@ export default function BeforeAfterPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Удалить эту пару?')) return;
+    if (!(await confirm({ title: 'Удалить эту пару?', confirmLabel: 'Удалить', destructive: true }))) return;
     const { error } = await supabase.from('before_after_photos').delete().eq('id', id);
     if (error) {
       toast.error(error.message);

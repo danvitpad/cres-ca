@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,7 @@ type Story = {
 export default function StoriesPage() {
   const supabase = createClient();
   const { master } = useMaster();
+  const confirm = useConfirm();
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
@@ -94,7 +96,7 @@ export default function StoriesPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Удалить альбом?')) return;
+    if (!(await confirm({ title: 'Удалить альбом?', confirmLabel: 'Удалить', destructive: true }))) return;
     const { error } = await supabase.from('master_stories').delete().eq('id', id);
     if (error) {
       toast.error(error.message);

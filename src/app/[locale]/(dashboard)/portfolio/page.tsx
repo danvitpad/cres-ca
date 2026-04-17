@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Plus, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +32,7 @@ type ServiceOpt = { id: string; name: string };
 export default function PortfolioPage() {
   const supabase = createClient();
   const { master } = useMaster();
+  const confirm = useConfirm();
   const [items, setItems] = useState<Item[]>([]);
   const [services, setServices] = useState<ServiceOpt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,7 @@ export default function PortfolioPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Удалить работу?')) return;
+    if (!(await confirm({ title: 'Удалить работу?', confirmLabel: 'Удалить', destructive: true }))) return;
     const { error } = await supabase.from('master_portfolio').delete().eq('id', id);
     if (error) {
       toast.error(error.message);

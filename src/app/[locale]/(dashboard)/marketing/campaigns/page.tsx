@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Megaphone, Users, Send } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -37,6 +38,7 @@ const SEGMENTS: { key: Segment; label: string; desc: string }[] = [
 
 export default function CampaignsPage() {
   const { master } = useMaster();
+  const confirm = useConfirm();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [segment, setSegment] = useState<Segment>('all');
   const [content, setContent] = useState('');
@@ -87,7 +89,7 @@ export default function CampaignsPage() {
       toast.error('Пустой сегмент');
       return;
     }
-    if (!confirm(`Отправить ${targets.length} клиентам?`)) return;
+    if (!(await confirm({ title: 'Отправить рассылку?', description: `Сообщение уйдёт ${targets.length} клиентам.`, confirmLabel: 'Отправить' }))) return;
     setSending(true);
     const supabase = createClient();
     const campaignId = crypto.randomUUID().slice(0, 8);

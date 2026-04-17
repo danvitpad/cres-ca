@@ -75,6 +75,14 @@ Toolbox читается первым на любом новом проекте 
 
 ## Triggers that must never be forgotten
 
+0. **НЕ изобретай велосипед — используй готовые компоненты.** Прежде чем писать кастомный dropdown/modal/tabs/color picker/etc. — сначала проверь:
+   1. `src/components/ui/` — shadcn компоненты (dialog, alert-dialog, tabs, select, switch...)
+   2. `references/ui-snippets-21st/` — 107 сниппетов с 21st.dev (ru-название файла)
+   3. https://21st.dev/community/components (community компоненты shadcn-style)
+   4. https://ui.aceternity.com/components (motion-rich компоненты)
+   
+   **Хук `useConfirm()`** (в `src/hooks/use-confirm.tsx`) заменяет `window.confirm()` на кастомный AlertDialog — всегда использовать его, **никаких native browser popups**.
+
 1. **`@/` imports only** — never relative `../../..`
 2. **YAML header on every new component/page** — `name`, `description`, `created`, `updated`
 3. **Supabase: two clients** — `createClient()` server-side (cookies), `createBrowserClient()` client-side. Never mix.
