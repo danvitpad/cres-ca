@@ -44,7 +44,7 @@ export default function BeforeAfterPage() {
   const afterRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    if (!master?.id) return;
+    if (!master?.id) { setLoading(false); return; }
     setLoading(true);
     const [{ data: p }, { data: s }] = await Promise.all([
       supabase

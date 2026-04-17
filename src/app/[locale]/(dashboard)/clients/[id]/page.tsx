@@ -716,7 +716,7 @@ function HealthTab({ client, intake, vertical, onSaved, C }: {
 
   const intakeFields = getIntakeFields(vertical);
 
-  if (!canUse('allergies')) return <p style={{ padding: 16, fontSize: 13, color: C.textSecondary }}>Upgrade to Pro for health tracking.</p>;
+  if (!canUse('allergies')) return <p style={{ padding: 16, fontSize: 13, color: C.textSecondary }}>Перейдите на тариф Pro для ведения медицинских данных клиентов.</p>;
 
   if (intakeFields.length === 0) {
     return (

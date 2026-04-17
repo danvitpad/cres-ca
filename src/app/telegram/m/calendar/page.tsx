@@ -59,6 +59,14 @@ interface Appointment {
   duration_min: number;
 }
 
+function plural(n: number, forms: [string, string, string]): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1];
+  return forms[2];
+}
+
 function startOfDay(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -245,7 +253,7 @@ export default function MasterMiniAppCalendar() {
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Календарь</p>
           <h1 className="mt-1 text-2xl font-bold capitalize">{formatDayHeader(day)}</h1>
           <p className="mt-0.5 text-[11px] text-white/40">
-            {totals.count} записей · {totals.revenue.toFixed(0)} ₴
+            {totals.count} {plural(totals.count, ['запись', 'записи', 'записей'])} · {totals.revenue.toFixed(0)} ₴
           </p>
         </div>
         <Link

@@ -39,7 +39,7 @@ export default function StoriesPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    if (!master?.id) return;
+    if (!master?.id) { setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase
       .from('master_stories')
