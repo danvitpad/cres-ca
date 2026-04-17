@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertTriangle, Users, Star, Heart, UserCheck, Search,
-  Cake, Clock, ShieldAlert, Sparkles, Plus, Upload,
+  Cake, Clock, Sparkles, Plus, Upload,
 } from 'lucide-react';
 import { FollowerCard } from '@/components/shared/follower-card';
 import type { BehaviorIndicator } from '@/types';
@@ -61,11 +61,9 @@ interface ClientRow {
   avg_check: number;
   last_visit_at: string | null;
   created_at: string;
-  rating: number;
   has_health_alert: boolean;
   behavior_indicators: BehaviorIndicator[];
   tier: 'new' | 'regular' | 'vip';
-  is_blacklisted: boolean;
   cancellation_count: number;
   no_show_count: number;
 }
@@ -128,9 +126,7 @@ function ClientCard({ client, C, isDark, index }: {
 
   // Determine primary badge (priority order)
   let badge: { label: string; color: string; bg: string; icon: typeof Star } | null = null;
-  if (client.is_blacklisted) {
-    badge = { label: 'Блок', color: '#fff', bg: C.danger, icon: ShieldAlert };
-  } else if ((client.cancellation_count || 0) + (client.no_show_count || 0) >= 3) {
+  if ((client.cancellation_count || 0) + (client.no_show_count || 0) >= 3) {
     badge = { label: 'Риск', color: '#fff', bg: C.warning, icon: AlertTriangle };
   } else if (daysToBday !== null && daysToBday <= 7) {
     badge = { label: daysToBday === 0 ? 'ДР сегодня!' : `ДР ${daysToBday}д`, color: '#fff', bg: C.warning, icon: Cake };
@@ -240,8 +236,8 @@ function ClientCard({ client, C, isDark, index }: {
           </div>
         </div>
 
-        {/* Last visit / rating / notes indicators */}
-        {(daysSince !== null || client.rating > 0 || client.notes) && (
+        {/* Last visit / notes indicators */}
+        {(daysSince !== null || client.notes) && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 10,
             marginTop: 10, paddingTop: 10,
@@ -252,12 +248,6 @@ function ClientCard({ client, C, isDark, index }: {
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Clock size={11} style={{ opacity: 0.6 }} />
                 {daysSince === 0 ? 'сегодня' : `${daysSince}д назад`}
-              </span>
-            )}
-            {client.rating > 0 && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                <Star size={11} style={{ fill: C.warning, color: C.warning }} />
-                {client.rating.toFixed(1)}
               </span>
             )}
             {client.notes && (
@@ -294,7 +284,7 @@ export default function ClientsPage() {
     const supabase = createClient();
     let query = supabase
       .from('clients')
-      .select('id, full_name, phone, email, date_of_birth, notes, total_visits, avg_check, last_visit_at, created_at, rating, has_health_alert, behavior_indicators, tier, is_blacklisted, cancellation_count, no_show_count')
+      .select('id, full_name, phone, email, date_of_birth, notes, total_visits, avg_check, last_visit_at, created_at, has_health_alert, behavior_indicators, tier, cancellation_count, no_show_count')
       .eq('master_id', master.id)
       .order('last_visit_at', { ascending: false, nullsFirst: false })
       .limit(PAGE_SIZE * 3);
@@ -379,7 +369,7 @@ export default function ClientsPage() {
         const days = (now - new Date(c.last_visit_at).getTime()) / 86400000;
         if (days > 60) overdue++;
       }
-      if (c.is_blacklisted || (c.cancellation_count || 0) + (c.no_show_count || 0) >= 3) risk++;
+      if ((c.cancellation_count || 0) + (c.no_show_count || 0) >= 3) risk++;
       if (c.total_visits === 0) newC++;
       if (c.date_of_birth) {
         const days = daysUntilBirthday(c.date_of_birth);
@@ -399,7 +389,7 @@ export default function ClientsPage() {
         if (!c.last_visit_at) return false;
         return (now - new Date(c.last_visit_at).getTime()) / 86400000 > 60;
       }
-      if (filter === 'risk') return c.is_blacklisted || (c.cancellation_count || 0) + (c.no_show_count || 0) >= 3;
+      if (filter === 'risk') return (c.cancellation_count || 0) + (c.no_show_count || 0) >= 3;
       if (filter === 'new') return c.total_visits === 0;
       if (filter === 'birthday') {
         if (!c.date_of_birth) return false;

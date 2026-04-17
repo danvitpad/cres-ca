@@ -10,7 +10,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, Download, ChevronDown, Check } from 'lucide-react';
+import { Search, SlidersHorizontal, Download, ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -124,6 +124,18 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
     toast.success('Чаевые сохранены');
   }
 
+  // AI-banner: detect no-show pattern in last 30 days
+  const noShowCount = useMemo(
+    () => appointments.filter(a => a.status === 'no_show').length,
+    [appointments]
+  );
+  const cancelledCount = useMemo(
+    () => appointments.filter(a =>
+      a.status === 'cancelled' || a.status === 'cancelled_by_client' || a.status === 'cancelled_by_master'
+    ).length,
+    [appointments]
+  );
+
   const sortLabels: Record<SortOrder, string> = {
     newest: t('scheduledDateNewest'),
     oldest: t('scheduledDateOldest'),
@@ -155,6 +167,45 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
         </button>
       </div>
       <p style={{ fontSize: 14, color: C.textSecondary, marginBottom: 20 }}>{t('appointmentsDesc')}</p>
+
+      {/* AI-banner: no-show / cancellation warning */}
+      {(noShowCount >= 3 || cancelledCount >= 5) && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: 12,
+            padding: '14px 18px',
+            background: C.warningSoft,
+            border: `1px solid ${C.warning}`,
+            borderRadius: 12,
+            marginBottom: 20,
+          }}
+        >
+          <div style={{
+            width: 32, height: 32, borderRadius: 8,
+            background: 'rgba(245,158,11,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <AlertTriangle size={16} style={{ color: C.warning }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 4,
+            }}>
+              {noShowCount >= 3
+                ? `${noShowCount} неявки за месяц`
+                : `${cancelledCount} отмен за месяц`}
+            </div>
+            <div style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>
+              {noShowCount >= 3
+                ? 'Рекомендуем включить предоплату или депозит для новых клиентов — это снизит потери от неявок.'
+                : 'Высокий уровень отмен. Попробуйте автоматические напоминания за 24 часа до записи.'}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Search + filters row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -315,7 +366,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>—</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
-                        {(appt.price || 0).toLocaleString()} ${CURRENCY}
+                        {(appt.price || 0).toLocaleString()} {CURRENCY}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                         {editingTip === appt.id ? (

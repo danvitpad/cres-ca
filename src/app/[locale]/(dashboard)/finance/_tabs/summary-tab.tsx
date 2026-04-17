@@ -1,6 +1,8 @@
 /** --- YAML
  * name: SummaryTab
- * description: Finance summary tab — KPI cards, AI insight, income/expense lists with period selector.
+ * description: Finance Сводка — 3 inner sub-tabs (Обзор / Доходы / Расходы) + period selector at top.
+ *              Обзор: KPI + AI-insight + last appointments + top services.
+ *              Доходы: payments table. Расходы: CRUD + table.
  * created: 2026-04-17
  * updated: 2026-04-17
  * --- */
@@ -13,6 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Loader2, Plus, Trash2,
   ArrowUpRight, ArrowDownRight,
+  LayoutDashboard, TrendingUp, Receipt,
+  Calendar as CalendarIcon, Trophy,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -32,7 +36,7 @@ const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 type Period = 'day' | 'week' | 'month' | 'quarter' | 'half' | 'year' | 'all';
 
 const PERIOD_LABELS: Record<Period, string> = {
-  day: 'Сегодня', week: 'Эта неделя', month: 'Этот месяц',
+  day: 'День', week: 'Неделя', month: 'Месяц',
   quarter: 'Квартал', half: 'Полгода', year: 'Год', all: 'Всё время',
 };
 
@@ -56,7 +60,7 @@ function prevPeriodRange(period: Period): { from: Date; to: Date } {
   return { from: new Date(from.getTime() - ms), to: new Date(from.getTime() - 1) };
 }
 
-type SubTab = 'income' | 'expenses';
+type SubTab = 'overview' | 'income' | 'expenses';
 const EXPENSE_CATEGORIES = ['Расходники', 'Аренда', 'Еда', 'Транспорт', 'Коммунальные', 'Реклама', 'Оборудование', 'Прочее'];
 
 interface PaymentRow {
@@ -71,6 +75,18 @@ interface ExpenseRow {
   category: string | null; description: string | null; vendor: string | null;
 }
 
+interface AppointmentRow {
+  id: string; starts_at: string; status: string;
+  services: { name: string } | null;
+  clients: { full_name: string } | null;
+}
+
+interface TopServiceRow {
+  name: string;
+  total: number;
+  count: number;
+}
+
 export function SummaryTab({ C, isDark, period, setPeriod }: {
   C: PageTheme; isDark: boolean;
   period: Period; setPeriod: (p: Period) => void;
@@ -78,7 +94,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
   const { master } = useMaster();
-  const [activeTab, setActiveTab] = useState<SubTab>('income');
+  const [activeTab, setActiveTab] = useState<SubTab>('overview');
 
   const [revenue, setRevenue] = useState(0);
   const [expenseTotal, setExpenseTotal] = useState(0);
@@ -90,6 +106,8 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
 
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [lastAppointments, setLastAppointments] = useState<AppointmentRow[]>([]);
+  const [topServices, setTopServices] = useState<TopServiceRow[]>([]);
 
   const [expAmount, setExpAmount] = useState('');
   const [expCategory, setExpCategory] = useState('Расходники');
@@ -102,7 +120,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
     const { from, to } = periodRange(period);
     const prev = prevPeriodRange(period);
 
-    const [curP, curE, prevP, prevE, allPayments, allExpenses] = await Promise.all([
+    const [curP, curE, prevP, prevE, allPayments, allExpenses, apts] = await Promise.all([
       supabase.from('payments').select('amount, type')
         .eq('master_id', master.id).eq('status', 'completed')
         .gte('created_at', from.toISOString()).lte('created_at', to.toISOString()),
@@ -123,6 +141,11 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
         .eq('master_id', master.id)
         .gte('date', from.toISOString().slice(0, 10)).lte('date', to.toISOString().slice(0, 10))
         .order('date', { ascending: false }),
+      // Last 5 appointments in period
+      supabase.from('appointments').select('id, starts_at, status, services(name), clients(full_name)')
+        .eq('master_id', master.id)
+        .gte('starts_at', from.toISOString()).lte('starts_at', to.toISOString())
+        .order('starts_at', { ascending: false }).limit(5),
     ]);
 
     const cp = (curP.data || []) as { amount: number; type: string }[];
@@ -133,8 +156,26 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
     setPrevRevenue(pp.filter(p => p.type !== 'refund').reduce((s, p) => s + Number(p.amount), 0));
     setPrevExpenseTotal((prevE.data || []).reduce((s, e: any) => s + Number(e.amount), 0)); // eslint-disable-line @typescript-eslint/no-explicit-any
 
-    setPayments((allPayments.data as unknown as PaymentRow[]) || []);
+    const paymentsData = (allPayments.data as unknown as PaymentRow[]) || [];
+    setPayments(paymentsData);
     setExpenses((allExpenses.data ?? []) as ExpenseRow[]);
+    setLastAppointments((apts.data as unknown as AppointmentRow[]) || []);
+
+    // Compute top services from paymentsData
+    const svcMap = new Map<string, { total: number; count: number }>();
+    paymentsData.forEach(p => {
+      if (p.type === 'refund') return;
+      const name = p.services?.name || 'Без услуги';
+      const entry = svcMap.get(name) || { total: 0, count: 0 };
+      entry.total += Number(p.amount);
+      entry.count += 1;
+      svcMap.set(name, entry);
+    });
+    const top = Array.from(svcMap.entries())
+      .map(([name, { total, count }]) => ({ name, total, count }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 3);
+    setTopServices(top);
   }, [master?.id, period]);
 
   useEffect(() => {
@@ -167,7 +208,6 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
       });
       if (res.ok) {
         const { insight } = await res.json();
-        // Client-side filter — reject generic/useless responses
         const cleaned = insight?.trim() || null;
         const GENERIC_PATTERNS = [
           /нет данных для анализа/i,
@@ -179,7 +219,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
           /всё хорошо/i,
         ];
         if (cleaned && GENERIC_PATTERNS.some(rx => rx.test(cleaned))) {
-          setAiInsight(null); // hide useless generic response
+          setAiInsight(null);
         } else {
           setAiInsight(cleaned);
         }
@@ -225,11 +265,9 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
   const netProfit = revenue - expenseTotal;
   const prevNet = prevRevenue - prevExpenseTotal;
 
-  // Returns percent change, or null when comparison makes no sense
-  // (both periods zero, or previous is zero — can't divide).
   function pctChange(cur: number, prev: number): number | null {
     if (cur === prev) return 0;
-    if (prev === 0) return null; // no previous baseline — show "—" instead of fake 100%
+    if (prev === 0) return null;
     return Math.round(((cur - prev) / Math.abs(prev)) * 100);
   }
 
@@ -244,146 +282,323 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
     fontFeatureSettings: FONT_FEATURES, outline: 'none',
   };
 
+  const SUB_TABS: { key: SubTab; label: string; icon: typeof LayoutDashboard }[] = [
+    { key: 'overview', label: 'Обзор',  icon: LayoutDashboard },
+    { key: 'income',   label: 'Доходы', icon: TrendingUp },
+    { key: 'expenses', label: 'Расходы', icon: Receipt },
+  ];
+
+  const periods: Period[] = ['day', 'week', 'month', 'quarter', 'half', 'year', 'all'];
+
   return (
     <>
-      {/* AI Insight — only shown when AI has something real to say */}
-      {(aiLoading || aiInsight) && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-          style={{
-            background: C.aiGradient,
-            border: `1px solid ${C.aiBorder}`,
-            borderRadius: 14, padding: '18px 22px', marginBottom: 24,
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Sparkles size={14} style={{ color: C.accent }} />
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              AI-помощник
-            </span>
-            {aiLoading && <Loader2 size={13} className="animate-spin" style={{ color: C.accent }} />}
-          </div>
-          <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
-            {aiInsight ?? 'Анализирую ваши данные...'}
-          </p>
-        </motion.div>
-      )}
-
-      {/* KPI cards — gradient style */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
-        {[
-          { label: 'Доход', value: revenue, change: revChange, showChange: true, gradient: KPI_GRADIENTS.revenue },
-          { label: 'Расходы', value: expenseTotal, extra: expenses.length > 0 ? `${expenses.length} записей` : undefined, gradient: KPI_GRADIENTS.expenses },
-          { label: 'Чистая прибыль', value: netProfit, change: netChange, showChange: true, danger: netProfit < 0, gradient: KPI_GRADIENTS.profit },
-        ].map((card, idx) => (
-          <motion.div
-            key={card.label}
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.06, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            style={{
-              background: card.gradient,
-              borderRadius: 16,
-              padding: '22px 24px',
-              position: 'relative',
-              overflow: 'hidden',
-              boxShadow: isDark
-                ? '0 4px 20px rgba(0,0,0,0.3)'
-                : '0 4px 20px rgba(124,58,237,0.1)',
-            }}
-          >
-            {/* Decorative circle */}
-            <div style={{
-              position: 'absolute', right: -20, top: -20,
-              width: 100, height: 100, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.1)',
-            }} />
-            <div style={{
-              position: 'absolute', right: 20, bottom: -30,
-              width: 60, height: 60, borderRadius: '50%',
-              background: 'rgba(255,255,255,0.06)',
-            }} />
-
-            <div style={{
-              fontSize: 12, fontWeight: 510, color: 'rgba(255,255,255,0.75)',
-              marginBottom: 10, letterSpacing: '0.03em', textTransform: 'uppercase',
-            }}>
-              {card.label}
-            </div>
-            <div style={{
-              fontSize: 28, fontWeight: 650, letterSpacing: '-0.5px', marginBottom: 8,
-              color: '#ffffff',
-            }}>
-              {loading ? '—' : (
-                <>
-                  {card.value.toLocaleString()}
-                  <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.6, marginLeft: 2 }}>{CURRENCY}</span>
-                </>
-              )}
-            </div>
-            {!loading && card.showChange && card.change !== null && card.change !== undefined && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 12, fontWeight: 550,
-                background: 'rgba(255,255,255,0.18)',
-                padding: '3px 8px', borderRadius: 6,
-                color: '#ffffff',
-              }}>
-                {card.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                {card.change >= 0 ? '+' : ''}{card.change}%
-                <span style={{ opacity: 0.6, fontWeight: 400 }}>к прошлому периоду</span>
-              </div>
-            )}
-            {!loading && card.showChange && card.change === null && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.6)',
-              }}>
-                первый период — нет предыдущих данных
-              </div>
-            )}
-            {!loading && card.extra && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{card.extra}</div>
-            )}
-          </motion.div>
-        ))}
+      {/* Period selector pills */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 6,
+        marginBottom: 20,
+      }}>
+        {periods.map(p => {
+          const active = p === period;
+          return (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 999,
+                border: active ? `1px solid ${C.accent}` : `1px solid ${C.border}`,
+                background: active ? C.accentSoft : 'transparent',
+                color: active ? C.accent : C.textSecondary,
+                fontSize: 12, fontWeight: active ? 600 : 500,
+                fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+                cursor: 'pointer', transition: 'all 0.15s ease',
+              }}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Sub-tabs: Доходы / Расходы */}
+      {/* Sub-tabs bar */}
       <div style={{
         display: 'inline-flex', gap: 2,
         background: C.surfaceElevated,
         borderRadius: 10, padding: 3, marginBottom: 22,
       }}>
-        {(['income', 'expenses'] as SubTab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '8px 18px', border: 'none',
-              background: activeTab === tab ? C.surface : 'transparent',
-              cursor: 'pointer',
-              fontSize: 13, fontWeight: 550, fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
-              color: activeTab === tab ? C.text : C.textTertiary,
-              borderRadius: 7,
-              transition: 'all 0.15s ease',
-              boxShadow: activeTab === tab
-                ? (isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.06)')
-                : 'none',
-            }}
-          >
-            {tab === 'income' ? 'Доходы' : 'Расходы'}
-          </button>
-        ))}
+        {SUB_TABS.map(tab => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', border: 'none',
+                background: active ? C.surface : 'transparent',
+                cursor: 'pointer',
+                fontSize: 13, fontWeight: 550, fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+                color: active ? C.text : C.textTertiary,
+                borderRadius: 7,
+                transition: 'all 0.15s ease',
+                boxShadow: active
+                  ? (isDark ? '0 1px 4px rgba(0,0,0,0.3)' : '0 1px 4px rgba(0,0,0,0.06)')
+                  : 'none',
+              }}
+            >
+              <Icon size={14} style={{ opacity: active ? 1 : 0.65 }} />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <AnimatePresence mode="wait">
+        {activeTab === 'overview' && (
+          <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            {/* AI Insight */}
+            {(aiLoading || aiInsight) && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
+                style={{
+                  background: C.aiGradient,
+                  border: `1px solid ${C.aiBorder}`,
+                  borderRadius: 14, padding: '18px 22px', marginBottom: 24,
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Sparkles size={14} style={{ color: C.accent }} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    AI-помощник
+                  </span>
+                  {aiLoading && <Loader2 size={13} className="animate-spin" style={{ color: C.accent }} />}
+                </div>
+                <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
+                  {aiInsight ?? 'Анализирую ваши данные...'}
+                </p>
+              </motion.div>
+            )}
+
+            {/* KPI cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
+              {[
+                { label: 'Доход', value: revenue, change: revChange, showChange: true, gradient: KPI_GRADIENTS.revenue },
+                { label: 'Расходы', value: expenseTotal, extra: expenses.length > 0 ? `${expenses.length} записей` : undefined, gradient: KPI_GRADIENTS.expenses },
+                { label: 'Чистая прибыль', value: netProfit, change: netChange, showChange: true, danger: netProfit < 0, gradient: KPI_GRADIENTS.profit },
+              ].map((card, idx) => (
+                <motion.div
+                  key={card.label}
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.06, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  style={{
+                    background: card.gradient,
+                    borderRadius: 16,
+                    padding: '22px 24px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: isDark
+                      ? '0 4px 20px rgba(0,0,0,0.3)'
+                      : '0 4px 20px rgba(124,58,237,0.1)',
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', right: -20, top: -20,
+                    width: 100, height: 100, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.1)',
+                  }} />
+                  <div style={{
+                    position: 'absolute', right: 20, bottom: -30,
+                    width: 60, height: 60, borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.06)',
+                  }} />
+                  <div style={{
+                    fontSize: 12, fontWeight: 510, color: 'rgba(255,255,255,0.75)',
+                    marginBottom: 10, letterSpacing: '0.03em', textTransform: 'uppercase',
+                  }}>
+                    {card.label}
+                  </div>
+                  <div style={{
+                    fontSize: 28, fontWeight: 650, letterSpacing: '-0.5px', marginBottom: 8,
+                    color: '#ffffff',
+                  }}>
+                    {loading ? '—' : (
+                      <>
+                        {card.value.toLocaleString()}
+                        <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.6, marginLeft: 2 }}>{CURRENCY}</span>
+                      </>
+                    )}
+                  </div>
+                  {!loading && card.showChange && card.change !== null && card.change !== undefined && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 12, fontWeight: 550,
+                      background: 'rgba(255,255,255,0.18)',
+                      padding: '3px 8px', borderRadius: 6,
+                      color: '#ffffff',
+                    }}>
+                      {card.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                      {card.change >= 0 ? '+' : ''}{card.change}%
+                      <span style={{ opacity: 0.6, fontWeight: 400 }}>к прошлому периоду</span>
+                    </div>
+                  )}
+                  {!loading && card.showChange && card.change === null && (
+                    <div style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.6)',
+                    }}>
+                      первый период — нет предыдущих данных
+                    </div>
+                  )}
+                  {!loading && card.extra && (
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>{card.extra}</div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Two-column: Top services + Last appointments */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 18, marginBottom: 12,
+            }}>
+              {/* Top services */}
+              <div style={{
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: 14, padding: '18px 20px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <Trophy size={16} style={{ color: C.accent }} />
+                  <h3 style={{
+                    fontSize: 14, fontWeight: 600, color: C.text,
+                    margin: 0, letterSpacing: '-0.1px',
+                  }}>
+                    Топ услуги
+                  </h3>
+                </div>
+                {topServices.length === 0 ? (
+                  <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>
+                    Нет продаж за период
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {topServices.map((s, i) => {
+                      const medals = ['#f59e0b', '#94a3b8', '#b45309'];
+                      return (
+                        <div key={s.name} style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '10px 12px',
+                          background: i === 0 ? C.accentSoft : 'transparent',
+                          border: `1px solid ${i === 0 ? C.aiBorder : C.border}`,
+                          borderRadius: 10,
+                        }}>
+                          <div style={{
+                            width: 24, height: 24, borderRadius: '50%',
+                            background: medals[i],
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', fontSize: 11, fontWeight: 700,
+                            flexShrink: 0,
+                          }}>
+                            {i + 1}
+                          </div>
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{
+                              fontSize: 13, fontWeight: 550, color: C.text,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {s.name}
+                            </div>
+                            <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>
+                              {s.count} {s.count === 1 ? 'продажа' : 'продаж'}
+                            </div>
+                          </div>
+                          <div style={{
+                            fontSize: 13, fontWeight: 600, color: C.success,
+                            fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                          }}>
+                            {s.total.toLocaleString()} {CURRENCY}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Last appointments */}
+              <div style={{
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: 14, padding: '18px 20px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  <CalendarIcon size={16} style={{ color: C.accent }} />
+                  <h3 style={{
+                    fontSize: 14, fontWeight: 600, color: C.text,
+                    margin: 0, letterSpacing: '-0.1px',
+                  }}>
+                    Последние записи
+                  </h3>
+                </div>
+                {lastAppointments.length === 0 ? (
+                  <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>
+                    Нет записей за период
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {lastAppointments.map((a, i) => {
+                      const d = new Date(a.starts_at);
+                      const dateStr = format(d, 'd MMM, HH:mm', { locale: dfLocale });
+                      const statusColor =
+                        a.status === 'completed' ? C.success :
+                        a.status === 'cancelled' ? C.danger :
+                        a.status === 'no_show'   ? C.warning : C.textTertiary;
+                      return (
+                        <div key={a.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 0',
+                          borderBottom: i < lastAppointments.length - 1 ? `1px solid ${C.border}` : 'none',
+                        }}>
+                          <span style={{
+                            width: 8, height: 8, borderRadius: '50%',
+                            background: statusColor, flexShrink: 0,
+                          }} />
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{
+                              fontSize: 13, fontWeight: 550, color: C.text,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {a.clients?.full_name || 'Клиент'}
+                            </div>
+                            <div style={{
+                              fontSize: 11, color: C.textTertiary, marginTop: 2,
+                              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            }}>
+                              {a.services?.name || '—'}
+                            </div>
+                          </div>
+                          <div style={{
+                            fontSize: 12, color: C.textSecondary,
+                            fontVariantNumeric: 'tabular-nums', flexShrink: 0,
+                          }}>
+                            {dateStr}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {activeTab === 'income' && (
           <motion.div key="income" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {payments.length === 0 ? (
@@ -420,23 +635,19 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                       onMouseEnter={e => e.currentTarget.style.background = C.rowHover}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
-                      {/* Date */}
                       <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>{dateStr}</span>
-                      {/* Service (category) */}
                       <span style={{
                         fontSize: 14, fontWeight: 550, color: C.text,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {serviceName}
                       </span>
-                      {/* Client (description) */}
                       <span style={{
                         fontSize: 13, color: C.textSecondary,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {clientName}
                       </span>
-                      {/* Amount */}
                       <span style={{
                         fontSize: 14, fontWeight: 600, color: C.success,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
@@ -469,7 +680,6 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
 
         {activeTab === 'expenses' && (
           <motion.div key="expenses" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            {/* Quick add */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
               padding: '14px 18px', background: C.surface, border: `1px solid ${C.border}`,
@@ -541,32 +751,27 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                       onMouseEnter={ev => ev.currentTarget.style.background = C.rowHover}
                       onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                     >
-                      {/* Date */}
                       <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
                         {dateStr}
                       </span>
-                      {/* Category */}
                       <span style={{
                         fontSize: 14, fontWeight: 550, color: C.text,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {category}
                       </span>
-                      {/* Description */}
                       <span style={{
                         fontSize: 13, color: C.textSecondary,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
                         {description || '—'}
                       </span>
-                      {/* Amount */}
                       <span style={{
                         fontSize: 14, fontWeight: 600, color: C.danger,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
                       }}>
                         −{Number(e.amount).toLocaleString()} {CURRENCY}
                       </span>
-                      {/* Action */}
                       <button
                         onClick={() => removeExpense(e.id, Number(e.amount))}
                         style={{

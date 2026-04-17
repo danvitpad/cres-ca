@@ -133,7 +133,9 @@ export function usePageTheme() {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const isDark = mounted && resolvedTheme === 'dark';
+  // Default to dark pre-mount — matches ThemeProvider defaultTheme="dark" in root layout.
+  // Prevents light-mode flash on dashboard pages.
+  const isDark = !mounted ? true : resolvedTheme === 'dark';
   const C: PageTheme = isDark ? PAGE_DARK : PAGE_LIGHT;
   return { C, isDark, mounted };
 }

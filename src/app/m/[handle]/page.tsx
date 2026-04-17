@@ -15,6 +15,7 @@ import { PortfolioGrid } from '@/components/master/portfolio-grid';
 import { MasterLikeButton } from '@/components/master/like-button';
 import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
+import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -64,6 +65,13 @@ interface PortfolioItem {
   image_url: string;
   caption: string | null;
   tags: string[];
+}
+
+interface BeforeAfterItem {
+  id: string;
+  before_url: string;
+  after_url: string;
+  caption: string | null;
 }
 
 interface ReviewRow {
@@ -123,6 +131,16 @@ async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
     .order('sort_order', { ascending: false })
     .order('created_at', { ascending: false });
   return (data as PortfolioItem[]) ?? [];
+}
+
+async function loadBeforeAfter(masterId: string): Promise<BeforeAfterItem[]> {
+  const { data } = await admin()
+    .from('before_after_photos')
+    .select('id, before_url, after_url, caption')
+    .eq('master_id', masterId)
+    .order('created_at', { ascending: false })
+    .limit(12);
+  return (data as BeforeAfterItem[]) ?? [];
 }
 
 interface PartnerRow {
@@ -200,10 +218,11 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const [services, stories, portfolio, reviewsList, partners] = await Promise.all([
+  const [services, stories, portfolio, beforeAfter, reviewsList, partners] = await Promise.all([
     loadServices(master.id),
     loadStories(master.id),
     loadPortfolio(master.id),
+    loadBeforeAfter(master.id),
     loadReviews(master.id),
     loadPartners(master.id),
   ]);
@@ -374,6 +393,25 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         )}
 
         <PortfolioGrid items={portfolio} />
+
+        {/* ─── До / После — интерактивные слайдеры ─── */}
+        {beforeAfter.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-1 text-xl font-semibold">До и после</h2>
+            <p className="mb-4 text-sm text-neutral-500">Перетащите разделитель, чтобы сравнить результат.</p>
+            <div className="grid gap-5 sm:grid-cols-2">
+              {beforeAfter.map((pair) => (
+                <div key={pair.id}>
+                  <BeforeAfterSlider
+                    beforeUrl={pair.before_url}
+                    afterUrl={pair.after_url}
+                    caption={pair.caption}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─── Рекомендую — partners ─── */}
         {partners.length > 0 && (

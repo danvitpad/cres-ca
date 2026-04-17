@@ -8,7 +8,7 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ChevronDown } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -119,6 +119,20 @@ export function ServicesTab({ C }: { C: PageTheme }) {
     return C.danger;
   }
 
+  // AI-insight: find worst offenders — services with margin < 30% AND cost > 0
+  const unprofitable = useMemo(() => {
+    return rows
+      .filter(r => r.cost > 0 && r.margin < 30)
+      .sort((a, b) => a.margin - b.margin)
+      .slice(0, 3);
+  }, [rows]);
+
+  // Recommended price = cost * 2 (50% margin target), rounded to nearest 10
+  function recommendedPrice(cost: number): number {
+    const target = cost * 2;
+    return Math.ceil(target / 10) * 10;
+  }
+
   /* ─── Styles ─── */
 
   const thStyle = (align: 'left' | 'right'): React.CSSProperties => ({
@@ -153,8 +167,63 @@ export function ServicesTab({ C }: { C: PageTheme }) {
         </span>
       </div>
 
+      {/* AI-insight: unprofitable services */}
+      {unprofitable.length > 0 && !loading && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          style={{
+            background: C.aiGradient,
+            border: `1px solid ${C.aiBorder}`,
+            borderRadius: 14, padding: '16px 20px', marginBottom: 20,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Sparkles size={14} style={{ color: C.accent }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              AI-рекомендация
+            </span>
+          </div>
+          <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, margin: '0 0 10px 0' }}>
+            {unprofitable.length === 1
+              ? 'Одна услуга с низкой маржой — рекомендуем пересмотреть цену:'
+              : `${unprofitable.length} услуги с низкой маржой — рекомендуем пересмотреть цены:`}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {unprofitable.map(r => {
+              const newPrice = recommendedPrice(r.cost);
+              return (
+                <div key={r.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                  fontSize: 13, color: C.text,
+                }}>
+                  <span style={{ fontWeight: 550 }}>{r.name}</span>
+                  <span style={{
+                    fontSize: 11, padding: '2px 7px', borderRadius: 999,
+                    background: C.dangerSoft, color: C.danger, fontWeight: 600,
+                  }}>
+                    {r.margin.toFixed(0)}%
+                  </span>
+                  <span style={{ color: C.textTertiary }}>→</span>
+                  <span style={{ fontSize: 12, color: C.textSecondary }}>
+                    поднять до <b style={{ color: C.accent }}>{fmt(newPrice)}</b> для 50% маржи
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
       {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginBottom: 24 }}>
         {[
           { label: 'Услуг', value: rows.length.toString() },
           { label: 'Выручка (потенц.)', value: fmt(totals.price) },
