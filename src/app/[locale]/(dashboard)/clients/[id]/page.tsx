@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useSubscription } from '@/hooks/use-subscription';
+import { useFeatures } from '@/hooks/use-features';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -101,6 +102,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const router = useRouter();
   const locale = useLocale();
   const { master } = useMaster();
+  const features = useFeatures();
   const { C } = usePageTheme();
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [intake, setIntake] = useState<ClientIntake | null>(null);
@@ -407,11 +409,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <NotesTab client={client} clientId={id} onSaved={loadClient} C={C} />
       </motion.section>
 
-      {/* ═══ Section: Health / consents ═══ */}
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><Heart size={15} style={{ color: C.danger }} />Медицинское и согласия</h3>
-        <HealthTab client={client} intake={intake} vertical={vertical} onSaved={loadClient} C={C} />
-      </motion.section>
+      {/* ═══ Section: Health / consents (hidden when healthProfile disabled) ═══ */}
+      {features.healthProfile && (
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} style={sectionStyle}>
+          <h3 style={sectionTitle}><Heart size={15} style={{ color: C.danger }} />Медицинское и согласия</h3>
+          <HealthTab client={client} intake={intake} vertical={vertical} onSaved={loadClient} C={C} />
+        </motion.section>
+      )}
 
       {/* ═══ Section: Visit history ═══ */}
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} style={sectionStyle}>
@@ -425,20 +429,22 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <AnalyticsTab client={client} appointments={appointments} C={C} />
       </motion.section>
 
-      {/* ═══ Section: Family ═══ */}
-      {familyMembers.length > 0 && (
+      {/* ═══ Section: Family (only if familyLinks feature on) ═══ */}
+      {features.familyLinks && familyMembers.length > 0 && (
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }} style={sectionStyle}>
           <h3 style={sectionTitle}><Users size={15} style={{ color: C.accent }} />{t('familyTab')}</h3>
           <FamilyTab members={familyMembers} C={C} />
         </motion.section>
       )}
 
-      {/* ═══ Section: Files + Before/After ═══ */}
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><Camera size={15} style={{ color: C.accent }} />Файлы и фото до/после</h3>
-        <FileUpload clientId={id} />
-        <BeforeAfterSection clientId={id} C={C} />
-      </motion.section>
+      {/* ═══ Section: Files + Before/After (only if gallery feature on) ═══ */}
+      {features.gallery && (
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} style={sectionStyle}>
+          <h3 style={sectionTitle}><Camera size={15} style={{ color: C.accent }} />Файлы и фото до/после</h3>
+          <FileUpload clientId={id} />
+          <BeforeAfterSection clientId={id} C={C} />
+        </motion.section>
+      )}
 
       {/* ═══ Blacklist action (bottom) ═══ */}
       {!client.is_blacklisted && (

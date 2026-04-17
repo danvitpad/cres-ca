@@ -28,7 +28,13 @@ import {
   Shield,
   ChevronLeft,
   BellRing,
+  Layers,
+  KeyRound,
+  Briefcase,
 } from 'lucide-react';
+import { DEFAULT_FEATURES, type VerticalFeatures } from '@/lib/verticals/feature-flags';
+import type { VerticalKey } from '@/lib/verticals/default-services';
+import { useFeatures } from '@/hooks/use-features';
 import { motion } from 'framer-motion';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
@@ -63,7 +69,10 @@ export default function SettingsPage() {
 
   const settingSections = [
     { key: 'profile', icon: UserCircle, title: t('editProfile'), desc: t('profileDesc') || t('editProfile') },
+    { key: 'vertical', icon: Briefcase, title: 'Моя сфера', desc: 'Индустрия и шаблоны услуг' },
+    { key: 'features', icon: Layers, title: 'Модули', desc: 'Что включено в дашборде' },
     { key: 'hours', icon: CalendarClock, title: t('workingHours'), desc: t('hoursDesc') || t('workingHours') },
+    { key: 'security', icon: KeyRound, title: 'Безопасность', desc: 'Email, пароль, телефон' },
     { key: 'subscription', icon: CreditCard, title: t('subscription'), desc: t('subscriptionDesc') || t('subscription') },
     { key: 'invite', icon: LinkIcon, title: t('inviteLink'), desc: t('inviteDesc') || t('inviteLink') },
     { key: 'policies', icon: Shield, title: t('policies'), desc: t('policiesDesc') || t('policies') },
@@ -81,7 +90,10 @@ export default function SettingsPage() {
           {t('editProfile')}
         </button>
         {activeSection === 'profile' && <ProfileTab master={master} userId={userId!} onSaved={refetch} />}
+        {activeSection === 'vertical' && <VerticalTab master={master} onSaved={refetch} />}
+        {activeSection === 'features' && <FeaturesTab master={master} onSaved={refetch} />}
         {activeSection === 'hours' && <WorkingHoursTab master={master} onSaved={refetch} />}
+        {activeSection === 'security' && <SecurityTab />}
         {activeSection === 'subscription' && <SubscriptionTab />}
         {activeSection === 'invite' && <InviteLinkTab master={master} />}
         {activeSection === 'policies' && <PoliciesTab master={master} onSaved={refetch} />}
@@ -535,5 +547,222 @@ function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ─── Vertical (industry) selector ─── */
+const VERTICAL_LABELS: Record<VerticalKey, { label: string; icon: string }> = {
+  beauty:    { label: 'Красота и волосы',   icon: '💇' },
+  health:    { label: 'Здоровье / мед.',    icon: '🩺' },
+  auto:      { label: 'Авто / сантехника',  icon: '🔧' },
+  tattoo:    { label: 'Тату / пирсинг',      icon: '🎨' },
+  pets:      { label: 'Животные',            icon: '🐾' },
+  craft:     { label: 'Ремесло',             icon: '🔨' },
+  fitness:   { label: 'Фитнес / йога',       icon: '🧘' },
+  events:    { label: 'Фото / event',        icon: '📷' },
+  education: { label: 'Обучение / коучинг',  icon: '📚' },
+  other:     { label: 'Другое',              icon: '➕' },
+};
+
+function VerticalTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const [saving, setSaving] = useState(false);
+  const current = (master.vertical as VerticalKey) || 'other';
+
+  async function setVertical(v: VerticalKey) {
+    if (v === current) return;
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('masters').update({ vertical: v }).eq('id', master.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Сфера обновлена. Обновите страницу для применения шаблонов.');
+    onSaved();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Моя сфера деятельности</CardTitle>
+        <p className="text-sm text-muted-foreground">Влияет на шаблоны услуг, анамнез, доп. поля клиента и модули дашборда.</p>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {(Object.keys(VERTICAL_LABELS) as VerticalKey[]).map(k => {
+            const v = VERTICAL_LABELS[k];
+            const active = k === current;
+            return (
+              <button
+                key={k}
+                onClick={() => setVertical(k)}
+                disabled={saving}
+                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
+                  active ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
+                }`}
+              >
+                <span className="text-2xl">{v.icon}</span>
+                <span className="text-xs font-medium text-center">{v.label}</span>
+                {active && <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Активно</span>}
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Features toggle per module ─── */
+const FEATURE_LABELS: Record<keyof VerticalFeatures, { label: string; desc: string }> = {
+  healthProfile:  { label: 'Медицинская карта',   desc: 'Аллергии, противопоказания, согласия' },
+  gallery:        { label: 'Галерея фото',        desc: 'Before / after снимки клиентов' },
+  familyLinks:    { label: 'Семейные связи',      desc: 'Связь клиентов (родитель-ребёнок)' },
+  memberships:    { label: 'Абонементы',           desc: 'Пакеты визитов для клиентов' },
+  giftCards:      { label: 'Подарочные карты',    desc: 'Сертификаты с балансом' },
+  inventory:      { label: 'Склад материалов',    desc: 'Учёт расходников, запчастей' },
+  loyalty:        { label: 'Лояльность',           desc: 'Punch card (N-й визит бесплатно)' },
+  smartRebooking: { label: 'Умные напоминания',   desc: 'Автопредложение записи' },
+  mobileVisits:   { label: 'Выездные визиты',      desc: 'Геолокация, адрес объекта' },
+  onlineConsults: { label: 'Онлайн-консультации', desc: 'Zoom / Google Meet' },
+  portfolio:      { label: 'Портфолио',            desc: 'Работы на публичной странице' },
+  reviews:        { label: 'Отзывы',               desc: 'Сбор и модерация' },
+  voiceNotes:     { label: 'Голосовые заметки',    desc: 'Запись через микрофон + AI' },
+};
+
+function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const features = useFeatures();
+  const [saving, setSaving] = useState(false);
+  const vertical = (master.vertical as VerticalKey) || 'other';
+  const defaults = DEFAULT_FEATURES[vertical];
+
+  async function toggleFeature(key: keyof VerticalFeatures, value: boolean) {
+    setSaving(true);
+    const overrides = { ...(master.feature_overrides || {}) };
+    // If toggling back to default, remove override; otherwise add
+    if (defaults[key] === value) {
+      delete overrides[key];
+    } else {
+      overrides[key] = value;
+    }
+    const supabase = createClient();
+    const { error } = await supabase.from('masters').update({ feature_overrides: overrides }).eq('id', master.id);
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    onSaved();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Модули дашборда</CardTitle>
+        <p className="text-sm text-muted-foreground">Включите только то, что нужно. Дефолты зависят от вашей сферы ({VERTICAL_LABELS[vertical].label}).</p>
+      </CardHeader>
+      <CardContent className="space-y-0 divide-y">
+        {(Object.keys(FEATURE_LABELS) as (keyof VerticalFeatures)[]).map(key => {
+          const meta = FEATURE_LABELS[key];
+          const active = features[key];
+          const isDefault = defaults[key] === active;
+          return (
+            <div key={key} className="flex items-center justify-between py-3">
+              <div className="flex-1 min-w-0 pr-4">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium">{meta.label}</p>
+                  {!isDefault && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold uppercase">изменено</span>}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
+              </div>
+              <Switch
+                checked={active}
+                onCheckedChange={(v) => toggleFeature(key, v)}
+                disabled={saving}
+              />
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ─── Security: email / password / phone ─── */
+function SecurityTab() {
+  const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
+  const [passSaving, setPassSaving] = useState(false);
+
+  async function changeEmail() {
+    if (!newEmail || !newEmail.includes('@')) { toast.error('Некорректный email'); return; }
+    setEmailSaving(true);
+    const supabase = createClient();
+    // Supabase sends confirmation to the NEW email by default when email confirmations are enabled
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    setEmailSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('На новый email отправлено письмо с подтверждением. Email обновится после перехода по ссылке.');
+    setNewEmail('');
+  }
+
+  async function changePassword() {
+    if (newPassword.length < 6) { toast.error('Пароль минимум 6 символов'); return; }
+    if (newPassword !== confirmPassword) { toast.error('Пароли не совпадают'); return; }
+    setPassSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPassSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Пароль изменён');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Изменить email</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            На новый email придёт письмо с подтверждением. Пока не подтвердите — старый email остаётся активным.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Новый email</Label>
+            <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="new@example.com" />
+          </div>
+          <Button onClick={changeEmail} disabled={emailSaving || !newEmail}>
+            {emailSaving ? 'Отправка...' : 'Отправить подтверждение'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Изменить пароль</CardTitle>
+          <p className="text-sm text-muted-foreground">Минимум 6 символов.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Текущий пароль (для подтверждения)</Label>
+            <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Новый пароль</Label>
+              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Повторите новый пароль</Label>
+              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+            </div>
+          </div>
+          <Button onClick={changePassword} disabled={passSaving || !newPassword || newPassword !== confirmPassword}>
+            {passSaving ? 'Сохранение...' : 'Сменить пароль'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
