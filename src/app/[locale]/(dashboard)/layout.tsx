@@ -80,18 +80,7 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
     { key: 'dashboard', icon: FreshaHome, href: '/dashboard', tooltip: t('nav.dashboard') },
     { key: 'calendar', icon: FreshaCalendar, href: '/calendar', tooltip: t('nav.calendar') },
     { key: 'sales', icon: FreshaTag, href: '/finance', tooltip: t('nav.sales') },
-    {
-      key: 'clients', icon: FreshaSmile, title: t('nav.clients'),
-      submenu: [
-        { label: t('nav.clientsSub.list'), href: '/clients' },
-        { label: t('nav.clientsSub.segments'), href: '/clients/segments' },
-        { label: t('nav.clientsSub.loyalty'), href: '/clients/loyalty' },
-        { label: t('nav.clientsSub.blacklist'), href: '/clients/blacklist' },
-        { label: t('nav.clientsSub.cadence'), href: '/clients/cadence' },
-        { label: t('nav.clientsSub.consents'), href: '/consents' },
-        { label: t('nav.clientsSub.voiceNotes'), href: '/voice-notes' },
-      ],
-    },
+    { key: 'clients', icon: FreshaSmile, href: '/clients', tooltip: t('nav.clients') },
     {
       key: 'catalogue', icon: FreshaBook, title: t('nav.catalogue'),
       submenu: [

@@ -19,16 +19,14 @@ export interface RouteFeatureRule {
 export const ROUTE_FEATURES: Record<string, RouteFeatureRule> = {
   '/inventory': { feature: 'inventory', requiredTier: 'pro', label: 'Inventory' },
   '/before-after': { feature: 'before_after', requiredTier: 'pro', label: 'Before/After' },
-  '/consents': { feature: 'consent_forms', requiredTier: 'pro', label: 'Consent forms' },
+  // '/consents' merged into client detail page
   '/recommend': { feature: 'auto_upsell', requiredTier: 'pro', label: 'Recommendations' },
   '/queue': { feature: 'waitlist', requiredTier: 'pro', label: 'Waitlist' },
-  '/voice-notes': { feature: 'voice_ai', requiredTier: 'business', label: 'Voice AI' },
+  // '/voice-notes' merged into client detail page notes section
   '/network': { feature: 'guild_marketing', requiredTier: 'business', label: 'Network marketing' },
   '/addons': { feature: 'ai_features', requiredTier: 'business', label: 'AI add-ons' },
 
-  '/clients/blacklist': { feature: 'behavior_indicators', requiredTier: 'business', label: 'Behavior indicators' },
-  '/clients/loyalty': { feature: 'punch_card_loyalty', requiredTier: 'pro', label: 'Loyalty' },
-  '/clients/cadence': { feature: 'smart_rebooking', requiredTier: 'pro', label: 'Smart rebooking' },
+  // blacklist/loyalty/cadence became filter chips on /clients and sections in /clients/[id]
   '/clients/segments': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Client segments' },
 
   '/services/memberships': { feature: 'gift_certificates', requiredTier: 'pro', label: 'Memberships' },
