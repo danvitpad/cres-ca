@@ -21,12 +21,9 @@ import { NewAppointmentDialog } from '@/components/calendar/new-appointment-dial
 import { AppointmentDetailDrawer } from '@/components/calendar/appointment-detail-drawer';
 import { CalendarDrawer } from '@/components/calendar/calendar-drawer';
 import { SettingsDrawerContent } from '@/components/calendar/settings-drawer';
-import { WaitlistDrawerContent } from '@/components/calendar/waitlist-drawer';
 import { FiltersDrawerContent } from '@/components/calendar/filters-drawer';
 import { AnalyticsDrawerContent } from '@/components/calendar/analytics-drawer';
 import { BlockTimeDrawerContent } from '@/components/calendar/block-time-drawer';
-import { QuickSaleDrawer } from '@/components/calendar/quick-sale-drawer';
-import { QuickPaymentModal } from '@/components/calendar/quick-payment-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -50,8 +47,6 @@ import {
   Check,
   X,
   UserPlus,
-  ShoppingBag,
-  Banknote,
   BarChart3,
 } from 'lucide-react';
 import { FONT } from '@/lib/dashboard-theme';
@@ -235,8 +230,6 @@ export default function CalendarPage() {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   /* Quick sale / quick payment state */
-  const [saleOpen, setSaleOpen] = useState(false);
-  const [paymentOpen, setPaymentOpen] = useState(false);
 
   /* Right-side drawer state */
   type DrawerType = 'settings' | 'waitlist' | 'filters' | 'analytics' | 'blockTime' | null;
@@ -1161,17 +1154,7 @@ export default function CalendarPage() {
           />
         </CalendarDrawer>
 
-        <CalendarDrawer
-          open={activeDrawer === 'waitlist'}
-          onClose={() => setActiveDrawer(null)}
-          title="Лист ожидания"
-          width={380}
-          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
-        >
-          <WaitlistDrawerContent
-            theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
-          />
-        </CalendarDrawer>
+        {/* Waitlist drawer removed — not MVP feature */}
 
         <CalendarDrawer
           open={activeDrawer === 'filters'}
@@ -1229,21 +1212,7 @@ export default function CalendarPage() {
         />
       </div>
 
-      {/* Quick sale drawer */}
-      <QuickSaleDrawer
-        open={saleOpen}
-        onClose={() => setSaleOpen(false)}
-        theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
-        services={sidePanelServices.map(s => ({ id: s.id, name: s.name, price: s.price, color: '#6950f3', currency: s.currency }))}
-      />
-
-      {/* Quick payment modal */}
-      {paymentOpen && (
-        <QuickPaymentModal
-          onClose={() => setPaymentOpen(false)}
-          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
-        />
-      )}
+      {/* Quick sale / quick payment drawers removed — income comes from auto-close flow */}
 
       {/* Dialogs (fallback for repeat / add-button actions) */}
       <NewAppointmentDialog
