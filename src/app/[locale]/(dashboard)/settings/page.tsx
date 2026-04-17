@@ -5,7 +5,8 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -47,7 +48,14 @@ export default function SettingsPage() {
   const tc = useTranslations('common');
   const { master, loading, refetch } = useMaster();
   const { userId } = useAuthStore();
+  const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Sync with URL ?section=... (deep-link from header dropdown)
+  useEffect(() => {
+    const s = searchParams.get('section');
+    if (s) setActiveSection(s);
+  }, [searchParams]);
 
   if (loading) {
     return (

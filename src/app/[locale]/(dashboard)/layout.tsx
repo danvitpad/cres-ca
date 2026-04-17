@@ -81,34 +81,11 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
     { key: 'calendar', icon: FreshaCalendar, href: '/calendar', tooltip: t('nav.calendar') },
     { key: 'sales', icon: FreshaTag, href: '/finance', tooltip: t('nav.sales') },
     { key: 'clients', icon: FreshaSmile, href: '/clients', tooltip: t('nav.clients') },
-    {
-      key: 'catalogue', icon: FreshaBook, title: t('nav.catalogue'),
-      submenu: [
-        { label: t('nav.catalogueSub.services'), href: '/services' },
-        { label: t('nav.catalogueSub.memberships'), href: '/services/memberships' },
-        { label: t('nav.catalogueSub.products'), href: '/inventory' },
-        { label: t('nav.catalogueSub.scan'), href: '/inventory/scan' },
-        { label: t('nav.catalogueSub.beforeAfter'), href: '/before-after' },
-        { label: t('nav.catalogueSub.recommend'), href: '/recommend' },
-        { label: t('nav.catalogueSub.network'), href: '/network' },
-      ],
-    },
-    // online-booking removed — lives in client Mini App, not master dashboard
-    {
-      key: 'marketing', icon: FreshaMegaphone, title: t('nav.messaging'),
-      submenu: [
-        { label: t('nav.messagingSub.campaigns'), href: '/marketing/campaigns' },
-        { label: t('nav.messagingSub.automation'), href: '/marketing/automation' },
-        { label: t('nav.messagingSub.notifications'), href: '/marketing/messages' },
-        { label: t('nav.messagingSub.deals'), href: '/marketing/deals' },
-        { label: t('nav.messagingSub.pricing'), href: '/marketing/pricing' },
-        { label: t('nav.messagingSub.reviews'), href: '/marketing/reviews' },
-      ],
-    },
-    // team removed — MVP is solo master, team features deferred
-    { key: 'analytics', icon: FreshaAnalytics, href: '/finance?tab=reports', tooltip: t('nav.analytics') },
+    { key: 'catalogue', icon: FreshaBook, href: '/services', tooltip: t('nav.catalogue') },
+    { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', tooltip: t('nav.messaging') },
     { key: 'addons', icon: FreshaAddons, href: '/addons', tooltip: t('nav.addons') },
-    { key: 'settings', icon: FreshaSettings, href: '/settings', tooltip: t('nav.settings') },
+    // Analytics removed — duplicates /finance?tab=reports
+    // Settings moved to header dropdown under profile avatar
   ];
 }
 
@@ -606,9 +583,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       </div>
                     </div>
                     {[
-                      { label: t('header.myProfile'), href: '/settings' },
-                      { label: t('header.personalSettings'), href: '/settings' },
-                      { label: t('header.helpSupport'), href: '/contact' },
+                      { label: t('header.myProfile') || 'Мой профиль', href: '/settings?section=profile' },
+                      { label: 'Моя сфера', href: '/settings?section=vertical' },
+                      { label: 'Модули', href: '/settings?section=features' },
+                      { label: 'Рабочие часы', href: '/settings?section=hours' },
+                      { label: 'Безопасность', href: '/settings?section=security' },
+                      { label: 'Подписка', href: '/settings?section=subscription' },
+                      { label: 'Уведомления', href: '/settings?section=notifications' },
+                      { label: t('header.helpSupport') || 'Помощь', href: '/contact' },
                     ].map((item) => (
                       <Link
                         key={item.label}

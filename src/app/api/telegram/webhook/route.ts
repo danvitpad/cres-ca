@@ -24,10 +24,22 @@ interface TelegramUpdate {
     voice?: { file_id: string; duration: number };
     audio?: { file_id: string; duration: number };
   };
+  callback_query?: {
+    id: string;
+    from: { id: number; first_name: string };
+    message: { chat: { id: number }; message_id: number };
+    data: string;
+  };
 }
 
 export async function POST(request: Request) {
   const update: TelegramUpdate = await request.json();
+
+  // Handle inline button callbacks first
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query);
+    return NextResponse.json({ ok: true });
+  }
 
   if (!update.message) {
     return NextResponse.json({ ok: true });
@@ -307,15 +319,37 @@ async function routeVoiceAction(
 
       const client = clientsMatch[0]; // take first match
 
-      // Find service (fuzzy if provided)
+      // Find service (multi-pass fuzzy)
       let service: { id: string; name: string; duration_minutes: number; price: number } | null = null;
       if (intent.service_name) {
-        const { data: servicesMatch } = await supabase
+        // Strip common prepositions/articles
+        const cleaned = intent.service_name
+          .toLowerCase()
+          .replace(/^(на |в |под |про |для )/i, '')
+          .trim();
+
+        // Pass 1: full phrase ilike
+        let { data: servicesMatch } = await supabase
           .from('services')
           .select('id, name, duration_minutes, price')
           .eq('master_id', masterId)
-          .ilike('name', `%${intent.service_name}%`)
+          .ilike('name', `%${cleaned}%`)
           .limit(1);
+
+        // Pass 2: first meaningful word (skip words <4 chars)
+        if (!servicesMatch || servicesMatch.length === 0) {
+          const words = cleaned.split(/\s+/).filter(w => w.length >= 4);
+          for (const w of words) {
+            const { data: r } = await supabase
+              .from('services')
+              .select('id, name, duration_minutes, price')
+              .eq('master_id', masterId)
+              .ilike('name', `%${w}%`)
+              .limit(1);
+            if (r && r.length > 0) { servicesMatch = r; break; }
+          }
+        }
+
         service = servicesMatch?.[0] || null;
       }
 
@@ -344,7 +378,12 @@ async function routeVoiceAction(
 
       // Confirm to master
       const dateStr = startsAt.toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-      await sendMessage(chatId, `✅ <b>Запись создана</b>\n\n👤 ${client.full_name}\n💇 ${service?.name || '(без услуги)'}\n⏰ ${dateStr}\n\nКлиент получит уведомление.`, { parse_mode: 'HTML' });
+      const serviceLine = service
+        ? `💇 ${service.name}`
+        : intent.service_name
+          ? `💇 ${intent.service_name} <i>(услуги нет в каталоге — добавь в /services)</i>`
+          : `💇 <i>(услуга не указана)</i>`;
+      await sendMessage(chatId, `✅ <b>Запись создана</b>\n\n👤 ${client.full_name}\n${serviceLine}\n⏰ ${dateStr}\n\nКлиент получит уведомление.`, { parse_mode: 'HTML' });
 
       // Notify client (in-app + Telegram if linked)
       if (client.profile_id) {
@@ -367,8 +406,7 @@ async function routeVoiceAction(
           .single();
 
         if (clientProfile?.telegram_id) {
-          const clientMsg = `📅 <b>Вам записали визит</b>\n\n💇 ${service?.name || 'Услуга'}\n⏰ ${dateStr}\n\nЕсли нужно отменить — напишите мастеру.`;
-          // Send via Telegram Bot API directly
+          const clientMsg = `📅 <b>Вам записали визит</b>\n\n💇 ${service?.name || intent.service_name || 'Услуга'}\n⏰ ${dateStr}`;
           try {
             await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
               method: 'POST',
@@ -377,6 +415,12 @@ async function routeVoiceAction(
                 chat_id: clientProfile.telegram_id,
                 text: clientMsg,
                 parse_mode: 'HTML',
+                reply_markup: {
+                  inline_keyboard: [
+                    [{ text: '❌ Отменить запись', callback_data: `cancel_appt:${created?.id}` }],
+                    [{ text: '📱 Открыть приложение', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/activity/${created?.id}` } }],
+                  ],
+                },
               }),
             });
           } catch (e) {
@@ -582,4 +626,116 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
       ]],
     },
   });
+}
+
+/* ─── Inline button callbacks ─── */
+
+async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_query']>) {
+  const supabase = createServiceClient();
+  const chatId = cb.message.chat.id;
+  const telegramId = cb.from.id;
+  const data = cb.data;
+
+  // Acknowledge to remove loading spinner
+  try {
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: cb.id }),
+    });
+  } catch {}
+
+  // cancel_appt:<uuid>
+  if (data.startsWith('cancel_appt:')) {
+    const apptId = data.split(':')[1];
+
+    // Find profile by telegram_id
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('telegram_id', telegramId)
+      .single();
+
+    if (!profile) {
+      await sendMessage(chatId, '⚠️ Профиль не найден. Войди через /start в приложение.');
+      return;
+    }
+
+    // Find appointment, verify ownership (client matches this profile)
+    const { data: appt } = await supabase
+      .from('appointments')
+      .select('id, status, starts_at, master_id, client:clients!inner(profile_id, full_name), service:services(name)')
+      .eq('id', apptId)
+      .single();
+
+    if (!appt) {
+      await sendMessage(chatId, '⚠️ Запись не найдена.');
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = appt.client as any;
+    if (client?.profile_id !== profile.id) {
+      await sendMessage(chatId, '⚠️ Это не ваша запись.');
+      return;
+    }
+
+    if (appt.status === 'cancelled') {
+      await sendMessage(chatId, 'Запись уже отменена.');
+      return;
+    }
+
+    // Check cancellation policy
+    const { data: masterRow } = await supabase
+      .from('masters')
+      .select('cancellation_policy, profile_id')
+      .eq('id', appt.master_id)
+      .single();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const policy: any = masterRow?.cancellation_policy || { free_hours: 24 };
+    const hoursUntil = (new Date(appt.starts_at).getTime() - Date.now()) / (1000 * 60 * 60);
+    const isFree = hoursUntil >= (policy.free_hours ?? 24);
+
+    if (!isFree && policy.require_contact_master) {
+      await sendMessage(chatId, `⚠️ <b>До визита меньше ${policy.free_hours ?? 24} ч</b>\n\nОтмена в этот срок требует связи с мастером. Напишите мастеру чтобы обсудить.`, {
+        parse_mode: 'HTML',
+      });
+      return;
+    }
+
+    // Cancel
+    await supabase.from('appointments').update({
+      status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: 'client',
+    }).eq('id', apptId);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const serviceName = (appt.service as any)?.name || 'Услуга';
+    const feeNote = isFree ? '\n\n✅ Без штрафа.' : '\n\n⚠️ Отмена в штрафной период — предоплата может не возвращаться. Свяжитесь с мастером.';
+    await sendMessage(chatId, `✅ <b>Запись отменена</b>\n\n${serviceName}${feeNote}`, { parse_mode: 'HTML' });
+
+    // Notify master
+    const { data: masterProfile } = await supabase
+      .from('profiles')
+      .select('telegram_id')
+      .eq('id', masterRow?.profile_id)
+      .single();
+
+    if (masterProfile?.telegram_id) {
+      try {
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: masterProfile.telegram_id,
+            text: `❌ <b>Клиент отменил запись</b>\n\n👤 ${client?.full_name || '—'}\n💇 ${serviceName}\n⏰ ${new Date(appt.starts_at).toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
+            parse_mode: 'HTML',
+          }),
+        });
+      } catch {}
+    }
+    return;
+  }
 }
