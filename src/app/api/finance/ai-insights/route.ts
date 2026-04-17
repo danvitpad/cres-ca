@@ -137,15 +137,31 @@ export async function POST(req: NextRequest) {
           methodCounts[m] = (methodCounts[m] || 0) + 1;
         }
 
-        prompt = `Проанализируй финансы мастера за период "${period || 'month'}":
+        // If no data at all — return fixed empty message, don't call AI
+        if ((payments || []).length === 0 && (expenses || []).length === 0) {
+          return NextResponse.json({ insight: null });
+        }
 
-Доходы: ${totalRevenue} UAH (${(payments || []).length} платежей)
-Расходы: ${totalExpenses} UAH
-Чистая прибыль: ${totalRevenue - totalExpenses} UAH
+        const paymentsCount = (payments || []).length;
+        const expensesCount = (expenses || []).length;
+        const net = totalRevenue - totalExpenses;
+
+        prompt = `Ты финансовый аналитик AI для мастера. Отвечай конкретно по цифрам, без общих фраз.
+
+Период: "${period || 'month'}"
+Доходов: ${totalRevenue} ₴ (${paymentsCount} платежей)
+Расходов: ${totalExpenses} ₴ (${expensesCount} записей)
+Чистая прибыль: ${net} ₴
 Категории расходов: ${JSON.stringify(categoryCounts)}
-Методы оплаты: ${JSON.stringify(methodCounts)}
 
-Дай 2-3 коротких инсайта: что хорошо, что можно улучшить, на что обратить внимание. Ответ на русском, без форматирования, простым текстом.`;
+ПРАВИЛА:
+- НЕ пиши: "хорошее начало", "стабильный доход", "есть куда расти", "продолжайте в том же духе", "молодец", "отлично"
+- НЕ хвали если данных мало (<5 записей) — скажи: "Пока мало данных, добавь больше записей чтобы увидеть паттерны"
+- Если прибыль отрицательная — называй это прямо: "Минус ${Math.abs(net)} ₴ — расходы превышают доходы"
+- Давай КОНКРЕТНУЮ рекомендацию с цифрой, а не общий совет
+- Максимум 2 предложения, на русском, простым текстом
+
+Пример хорошего ответа: "Расходники съели 80% бюджета. Повысь цены на 15% — при том же объёме клиентов это добавит 1200 ₴/мес."`;
         break;
       }
 

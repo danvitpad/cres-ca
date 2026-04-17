@@ -458,51 +458,84 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
                 overflow: 'hidden',
               }}>
-                {expenses.map((e, i) => (
-                  <motion.div
-                    key={e.id}
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    transition={{ delay: Math.min(i * 0.02, 0.2) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '14px 20px',
-                      borderBottom: i < expenses.length - 1 ? `1px solid ${C.border}` : 'none',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={ev => ev.currentTarget.style.background = C.rowHover}
-                    onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
-                  >
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 550 }}>{e.vendor || e.category || 'Расход'}</div>
-                      <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 3 }}>
-                        {e.date}{e.category && ` · ${e.category}`}
+                {expenses.map((e, i) => {
+                  // Primary text: real description > vendor > category
+                  const main = e.description || e.vendor || e.category || 'Расход';
+                  // Sub: category tag (if not already in main)
+                  const sub = e.category && e.category !== main ? e.category : null;
+                  const d = new Date(e.date + 'T00:00:00');
+                  const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                  return (
+                    <motion.div
+                      key={e.id}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      transition={{ delay: Math.min(i * 0.02, 0.2) }}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '80px 1fr 140px 32px',
+                        alignItems: 'center',
+                        gap: 14,
+                        padding: '14px 20px',
+                        borderBottom: i < expenses.length - 1 ? `1px solid ${C.border}` : 'none',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={ev => ev.currentTarget.style.background = C.rowHover}
+                      onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Date column */}
+                      <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
+                        {dateStr}
+                      </span>
+                      {/* Description column */}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 14, fontWeight: 550, color: C.text,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {main}
+                        </div>
+                        {sub && (
+                          <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>{sub}</div>
+                        )}
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: C.danger }}>
+                      {/* Amount column */}
+                      <span style={{
+                        fontSize: 14, fontWeight: 600, color: C.danger,
+                        textAlign: 'right', fontVariantNumeric: 'tabular-nums',
+                      }}>
                         −{Number(e.amount).toLocaleString()} {CURRENCY}
                       </span>
+                      {/* Action column */}
                       <button
                         onClick={() => removeExpense(e.id, Number(e.amount))}
                         style={{
                           background: 'transparent', border: 'none', cursor: 'pointer',
-                          color: C.textTertiary, padding: 2, borderRadius: 4, opacity: 0.4, transition: 'opacity 0.15s',
+                          color: C.textTertiary, padding: 4, borderRadius: 4,
+                          opacity: 0.35, transition: 'opacity 0.15s',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                         onMouseEnter={ev => ev.currentTarget.style.opacity = '1'}
-                        onMouseLeave={ev => ev.currentTarget.style.opacity = '0.4'}
+                        onMouseLeave={ev => ev.currentTarget.style.opacity = '0.35'}
                       >
                         <Trash2 size={14} />
                       </button>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
                 <div style={{
-                  display: 'flex', justifyContent: 'space-between', padding: '14px 20px',
+                  display: 'grid',
+                  gridTemplateColumns: '80px 1fr 140px 32px',
+                  gap: 14,
+                  padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,
                   background: C.surfaceElevated,
                 }}>
+                  <span />
                   <span style={{ color: C.textSecondary }}>Итого</span>
-                  <span style={{ color: C.danger }}>{expensesListTotal.toLocaleString()} {CURRENCY}</span>
+                  <span style={{ color: C.danger, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    −{expensesListTotal.toLocaleString()} {CURRENCY}
+                  </span>
+                  <span />
                 </div>
               </div>
             )}

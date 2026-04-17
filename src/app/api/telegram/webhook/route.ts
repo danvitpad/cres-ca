@@ -206,12 +206,26 @@ async function routeVoiceAction(
 
     case 'expense': {
       if (intent.amount && intent.amount > 0) {
+        // Guess category from description text
+        const descLower = (intent.text || '').toLowerCase();
+        const category = (() => {
+          if (/(аренд|помещен|кабинет|зал)/i.test(descLower)) return 'Аренда';
+          if (/(еда|обед|кофе|ресторан|перекус|завтрак|ужин)/i.test(descLower)) return 'Еда';
+          if (/(такси|транспорт|бензин|парков|метро|автобус)/i.test(descLower)) return 'Транспорт';
+          if (/(свет|газ|вода|интернет|коммунал)/i.test(descLower)) return 'Коммунальные';
+          if (/(реклам|таргет|инстаграм|маркетинг|продвижен)/i.test(descLower)) return 'Реклама';
+          if (/(оборудован|инструмент|станок|машинк|фен|аппарат)/i.test(descLower)) return 'Оборудование';
+          // Default — расходники (materials): гель, лак, краска, etc.
+          return 'Расходники';
+        })();
+
         const { error } = await supabase.from('expenses').insert({
           master_id: masterId,
           amount: intent.amount,
           date: new Date().toISOString().split('T')[0],
           description: intent.text,
-          category: 'other',
+          vendor: null,
+          category,
         });
 
         if (error) {
@@ -219,7 +233,7 @@ async function routeVoiceAction(
           return;
         }
 
-        await sendMessage(chatId, `✅ <b>Расход записан</b>\n\n${intent.text}\n💰 ${intent.amount} ₴`, {
+        await sendMessage(chatId, `✅ <b>Расход записан</b>\n\n📦 ${intent.text}\n🏷️ ${category}\n💰 ${intent.amount} ₴`, {
           parse_mode: 'HTML',
         });
       } else {
