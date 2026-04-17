@@ -97,6 +97,56 @@ mv DESIGN.md .knowledge/design-md/<brand>/DESIGN.md
 
 ---
 
+## 4.1. Единые дизайн-токены для dashboard (ОБЯЗАТЕЛЬНО)
+
+**Проблема:** страницы писались с разными цветами, шрифтами, подходами. Три системы на одном разделе = хаос.
+
+**Решение:** `src/lib/dashboard-theme.ts` — **единственный источник правды** для всех `(dashboard)/**` страниц.
+
+### Что запрещено на dashboard-страницах:
+
+1. **НЕ создавать локальные `LIGHT`/`DARK` объекты** в файле страницы. Импортируй из `@/lib/dashboard-theme`.
+2. **НЕ использовать Tailwind `className`** для page-level стилей. Inline styles + токены из theme.
+3. **НЕ использовать `Roobert PRO`** — шрифт: `FONT` из `dashboard-theme.ts` (Inter Variable).
+4. **НЕ писать `UAH`** — всегда `CURRENCY` (`₴`) из `dashboard-theme.ts`.
+5. **НЕ выдумывать цвета** (`#6950f3`, `#8b7cf6` и т.д.) — всё через `C.accent`, `C.success`, `C.danger`.
+
+### Как правильно:
+
+```tsx
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer, cardStyle } from '@/lib/dashboard-theme';
+
+export default function SomePage() {
+  const { C, isDark } = usePageTheme();
+
+  return (
+    <div style={{ ...pageContainer, color: C.text }}>
+      <div style={cardStyle(C)}>
+        <span style={{ color: C.accent }}>1,500 {CURRENCY}</span>
+      </div>
+    </div>
+  );
+}
+```
+
+### Токены:
+
+| Назначение | Light | Dark | Переменная |
+|---|---|---|---|
+| Фон страницы | `#f7f8f8` | `#0f1011` | `C.bg` |
+| Карточка/Surface | `#ffffff` | `#191a1b` | `C.surface` |
+| Текст основной | `#0f1011` | `#f7f8f8` | `C.text` |
+| Текст вторичный | `#5c5f66` | `#d0d6e0` | `C.textSecondary` |
+| Текст третичный | `#8a8f98` | `#62666d` | `C.textTertiary` |
+| Акцент (Linear indigo) | `#5e6ad2` | `#7170ff` | `C.accent` |
+| Успех | `#10b981` | `#34d399` | `C.success` |
+| Опасность | `#ef4444` | `#ef4444` | `C.danger` |
+| Граница | `rgba(0,0,0,0.06)` | `rgba(255,255,255,0.05)` | `C.border` |
+
+Шрифт: `Inter Variable` с OpenType features `"cv01", "ss03"`. Weight: **510** (Linear signature weight) для emphasis, **400** для body.
+
+---
+
 ## 5. Premium feel — обязательные слои
 
 Продукт позиционируется как premium (конкуренты — Linear, Raycast, Instagram). Каждый компонент получает:
