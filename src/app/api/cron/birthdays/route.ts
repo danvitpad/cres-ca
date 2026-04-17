@@ -51,60 +51,66 @@ export async function GET(request: Request) {
     return dob.getMonth() + 1 === month && dob.getDate() === day;
   });
 
+  interface BirthdayCfg {
+    enabled: boolean;
+    send_tg_greeting: boolean;
+    greeting_message: string;
+    offer_discount: boolean;
+    discount_percent: number;
+    discount_visits: number;
+    discount_validity_days: number;
+    discount_services: string[];
+  }
   const masterIds = [...new Set(clientHits.map((c) => c.master_id))];
   const masterMap = new Map<
     string,
-    { profile_id: string | null; birthday_auto_greet: boolean | null; birthday_discount_percent: number | null; birthday_bonus_amount: number | null }
+    { profile_id: string | null; cfg: BirthdayCfg | null; birthday_auto_greet: boolean | null }
   >();
   if (masterIds.length) {
     const { data: masters } = await supabase
       .from('masters')
-      .select('id, profile_id, birthday_auto_greet, birthday_discount_percent, birthday_bonus_amount')
+      .select('id, profile_id, birthday_auto_greet, birthday_settings')
       .in('id', masterIds);
-    for (const m of masters ?? []) masterMap.set(m.id, m);
+    for (const m of masters ?? []) {
+      const r = m as unknown as { id: string; profile_id: string | null; birthday_auto_greet: boolean | null; birthday_settings: BirthdayCfg | null };
+      masterMap.set(r.id, { profile_id: r.profile_id, cfg: r.birthday_settings, birthday_auto_greet: r.birthday_auto_greet });
+    }
   }
 
   for (const client of clientHits) {
     const master = masterMap.get(client.master_id);
     if (!master?.profile_id) continue;
 
+    // Always notify the master themselves
     const masterMarker = `[bday:master:${client.id}:${dayKey}]`;
     if (!sentMarkers.has(masterMarker)) {
       inserts.push({
         profile_id: master.profile_id,
         channel: 'telegram',
-        title: '🎂 Birthday today',
-        body: `${client.full_name} has a birthday today! ${masterMarker}`,
+        title: '🎂 День рождения сегодня',
+        body: `У клиента ${client.full_name} день рождения сегодня! ${masterMarker}`,
         scheduled_for: new Date().toISOString(),
       });
     }
 
-    if (master.birthday_auto_greet && client.profile_id) {
+    // Send greeting to client per cfg
+    const cfg = master.cfg;
+    if (cfg?.enabled && cfg.send_tg_greeting && client.profile_id) {
       const clientMarker = `[bday:client:${client.id}:${dayKey}]`;
       if (!sentMarkers.has(clientMarker)) {
-        const discount = master.birthday_discount_percent ?? 0;
-        const bonus = Number(master.birthday_bonus_amount ?? 0);
-        const discountText = discount > 0 ? ` Use BDAY for ${discount}% off your next visit!` : '';
-        const bonusText = bonus > 0 ? ` 🎁 We credited ${bonus} to your bonus balance.` : '';
+        const discountText = cfg.offer_discount
+          ? `${cfg.discount_percent}% скидка на ${cfg.discount_visits === 1 ? 'следующий визит' : `${cfg.discount_visits} визитов`}, действует ${cfg.discount_validity_days} дней`
+          : '🎁';
+        const body = (cfg.greeting_message || 'С днём рождения, {client_name}!')
+          .replace('{client_name}', client.full_name || 'друг')
+          .replace('{discount_text}', discountText) + ` ${clientMarker}`;
         inserts.push({
           profile_id: client.profile_id,
           channel: 'telegram',
-          title: 'Happy Birthday! 🎂',
-          body: `Happy Birthday, ${client.full_name}!${discountText}${bonusText} ${clientMarker}`,
+          title: '🎂 С днём рождения!',
+          body,
           scheduled_for: new Date().toISOString(),
         });
-        if (bonus > 0) {
-          const { data: cur } = await supabase
-            .from('clients')
-            .select('bonus_balance')
-            .eq('id', client.id)
-            .single();
-          const newBalance = Number((cur as { bonus_balance: number } | null)?.bonus_balance ?? 0) + bonus;
-          await supabase
-            .from('clients')
-            .update({ bonus_balance: newBalance })
-            .eq('id', client.id);
-        }
       }
     }
   }
@@ -127,15 +133,15 @@ export async function GET(request: Request) {
     const extraMasterIds = [...new Set(anniHits.map((c) => c.master_id))];
     const { data: masters2 } = await supabase
       .from('masters')
-      .select('id, profile_id, birthday_auto_greet')
+      .select('id, profile_id, birthday_auto_greet, birthday_settings')
       .in('id', extraMasterIds);
     for (const m of masters2 ?? []) {
       if (!masterMap.has(m.id)) {
-        masterMap.set(m.id, {
-          profile_id: m.profile_id ?? null,
-          birthday_auto_greet: m.birthday_auto_greet ?? null,
-          birthday_discount_percent: null,
-          birthday_bonus_amount: null,
+        const r = m as unknown as { id: string; profile_id: string | null; birthday_auto_greet: boolean | null; birthday_settings: BirthdayCfg | null };
+        masterMap.set(r.id, {
+          profile_id: r.profile_id,
+          cfg: r.birthday_settings,
+          birthday_auto_greet: r.birthday_auto_greet,
         });
       }
     }
@@ -143,7 +149,8 @@ export async function GET(request: Request) {
 
   for (const c of anniHits) {
     const master = masterMap.get(c.master_id);
-    if (!master?.birthday_auto_greet || !c.profile_id) continue;
+    // Anniversaries fire only when birthday automation enabled
+    if (!master?.cfg?.enabled || !master.cfg.send_tg_greeting || !c.profile_id) continue;
     const years = today.getFullYear() - new Date(c.created_at!).getFullYear();
     const marker = `[bday:anni:${c.id}:${dayKey}]`;
     if (sentMarkers.has(marker)) continue;

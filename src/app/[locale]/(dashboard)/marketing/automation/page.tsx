@@ -8,12 +8,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, ExternalLink } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
+import { BirthdaySettingsDialog } from '@/components/marketing/birthday-settings-dialog';
 
 type AutomationKey =
   | 'reminder_24h'
@@ -104,6 +104,7 @@ export default function AutomationPage() {
   const { master } = useMaster();
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
+  const [bdayDialogOpen, setBdayDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!master?.id) return;
@@ -185,7 +186,7 @@ export default function AutomationPage() {
         </div>
       )}
 
-      {/* Birthday automation is managed in Settings (masters table) — show info card */}
+      {/* Birthday automation — opens settings dialog inline */}
       <div className="rounded-2xl border bg-card p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -198,7 +199,7 @@ export default function AutomationPage() {
             <div>
               <div className="font-semibold">Поздравления с днём рождения</div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Автоматическое поздравление клиентов + скидка/бонус на день рождения
+                Автоматическое поздравление клиентов + скидка-подарок (% / визиты / услуги)
               </div>
               <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Settings className="size-3" />
@@ -206,14 +207,23 @@ export default function AutomationPage() {
               </div>
             </div>
           </div>
-          <Link
-            href="/ru/settings"
+          <button
+            type="button"
+            onClick={() => setBdayDialogOpen(true)}
             className="flex items-center gap-1 whitespace-nowrap rounded-lg border px-3 py-1.5 text-xs font-medium hover:bg-muted"
           >
-            Настройки <ExternalLink className="size-3" />
-          </Link>
+            <Settings className="size-3" /> Настроить
+          </button>
         </div>
       </div>
+
+      {master?.id && (
+        <BirthdaySettingsDialog
+          open={bdayDialogOpen}
+          onOpenChange={setBdayDialogOpen}
+          masterId={master.id}
+        />
+      )}
     </div>
   );
 }
