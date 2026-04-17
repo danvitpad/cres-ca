@@ -99,6 +99,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Skip intl handling for: api routes, static assets, telegram mini-app,
-  // and public master pages (/m/*) that live outside the [locale] segment.
-  matcher: ['/((?!api|_next|_vercel|telegram|m/|.*\\..*).*)'],
+  // and root-level pages (outside [locale]): public master (/m/*), /leaderboard,
+  // /confirm, /consent, /invoice, /review. These render without locale prefix.
+  matcher: [
+    '/((?!api|_next|_vercel|telegram|m/|leaderboard|confirm|consent|invoice|review|.*\\..*).*)',
+  ],
 };
