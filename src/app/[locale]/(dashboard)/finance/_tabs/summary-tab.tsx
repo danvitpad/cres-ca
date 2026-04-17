@@ -40,6 +40,15 @@ const PERIOD_LABELS: Record<Period, string> = {
   quarter: 'Квартал', half: 'Полгода', year: 'Год', all: 'Всё время',
 };
 
+/** Russian plural for "запись/записи/записей" */
+function pluralRecord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'запись';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'записи';
+  return 'записей';
+}
+
 function periodRange(period: Period): { from: Date; to: Date } {
   const now = new Date();
   const to = endOfDay(now);
@@ -391,7 +400,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
               {[
                 { label: 'Доход', value: revenue, change: revChange, showChange: true, gradient: KPI_GRADIENTS.revenue },
-                { label: 'Расходы', value: expenseTotal, extra: expenses.length > 0 ? `${expenses.length} записей` : undefined, gradient: KPI_GRADIENTS.expenses },
+                { label: 'Расходы', value: expenseTotal, extra: expenses.length > 0 ? `${expenses.length} ${pluralRecord(expenses.length)}` : undefined, gradient: KPI_GRADIENTS.expenses },
                 { label: 'Чистая прибыль', value: netProfit, change: netChange, showChange: true, danger: netProfit < 0, gradient: KPI_GRADIENTS.profit },
               ].map((card, idx) => (
                 <motion.div

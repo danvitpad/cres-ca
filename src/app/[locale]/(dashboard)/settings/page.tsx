@@ -120,8 +120,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-5" style={{ padding: '32px 40px', maxWidth: 1024 }}>
       <div>
-        <h2 className="text-xl font-bold">{t('editProfile')}</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">{t('settingsDesc') || t('editProfile')}</p>
+        <h2 className="text-xl font-bold">{t('settingsTitle') || 'Настройки'}</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">{t('settingsDesc') || 'Управляйте настройками рабочего пространства'}</p>
       </div>
 
       {/* Fresha-style card grid */}

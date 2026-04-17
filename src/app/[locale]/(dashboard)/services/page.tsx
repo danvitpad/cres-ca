@@ -185,13 +185,13 @@ function ServicesCatalogueView() {
       ? t('uncategorized')
       : Array.from(grouped.entries()).find(([k]) => k === selectedCategory)?.[1]?.category?.name;
 
-  // Duration formatter
+  // Duration formatter — "30 мин" / "1 ч" / "1 ч 30 мин"
   function formatDuration(min: number): string {
     const h = Math.floor(min / 60);
     const m = min % 60;
-    if (h === 0) return `${m} ${t('duration')}`;
-    if (m === 0) return `${h} ${t('hours') || 'ч'}`;
-    return `${h} ${t('hours') || 'ч'} ${m} ${t('duration')}`;
+    if (h === 0) return `${m} мин`;
+    if (m === 0) return `${h} ч`;
+    return `${h} ч ${m} мин`;
   }
 
   return (
