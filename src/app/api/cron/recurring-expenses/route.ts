@@ -1,76 +1,63 @@
 /** --- YAML
  * name: Recurring Expenses Cron
- * description: Daily cron that auto-creates expense records for recurring expenses due today
+ * description: Runs daily. For each active recurring_expenses row with day_of_month == today, posts a row into expenses (idempotent — skips if already posted this month). Updates last_posted_date.
+ * created: 2026-04-17
+ * updated: 2026-04-17
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
-  const today = new Date().toISOString().split('T')[0];
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
 
-  // Find recurring expenses due today or earlier
-  const { data: dueExpenses } = await supabase
-    .from('expenses')
-    .select('*')
-    .eq('is_recurring', true)
-    .lte('next_recurrence_date', today);
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const todayIso = today.toISOString().slice(0, 10);
+  const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
 
-  if (!dueExpenses || dueExpenses.length === 0) {
-    return NextResponse.json({ created: 0 });
+  const { data: recs, error } = await supabase
+    .from('recurring_expenses')
+    .select('id, master_id, name, amount, currency, category, last_posted_date')
+    .eq('active', true)
+    .eq('day_of_month', dayOfMonth);
+
+  if (error || !recs?.length) {
+    return NextResponse.json({ ok: true, posted: 0 });
   }
 
-  let created = 0;
+  let posted = 0;
+  for (const r of recs) {
+    if (r.last_posted_date && r.last_posted_date >= firstOfMonth) continue;
 
-  for (const expense of dueExpenses) {
-    // Create new expense record (non-recurring copy)
-    await supabase.from('expenses').insert({
-      master_id: expense.master_id,
-      amount: expense.amount,
-      category: expense.category,
-      description: expense.description,
-      date: today,
-      is_recurring: false,
+    const { error: insErr } = await supabase.from('expenses').insert({
+      master_id: r.master_id,
+      amount: r.amount,
+      currency: r.currency || 'UAH',
+      date: todayIso,
+      description: r.name,
+      vendor: null,
+      category: r.category || 'Аренда',
     });
 
-    // Calculate next recurrence date
-    const current = new Date(expense.next_recurrence_date);
-    let next: Date;
-
-    switch (expense.recurrence_interval) {
-      case 'weekly':
-        next = new Date(current.getTime() + 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'monthly':
-        next = new Date(current);
-        next.setMonth(next.getMonth() + 1);
-        break;
-      case 'quarterly':
-        next = new Date(current);
-        next.setMonth(next.getMonth() + 3);
-        break;
-      case 'yearly':
-        next = new Date(current);
-        next.setFullYear(next.getFullYear() + 1);
-        break;
-      default:
-        next = new Date(current);
-        next.setMonth(next.getMonth() + 1);
+    if (!insErr) {
+      await supabase
+        .from('recurring_expenses')
+        .update({ last_posted_date: todayIso })
+        .eq('id', r.id);
+      posted++;
     }
-
-    await supabase
-      .from('expenses')
-      .update({ next_recurrence_date: next.toISOString().split('T')[0] })
-      .eq('id', expense.id);
-
-    created++;
   }
 
-  return NextResponse.json({ created });
+  return NextResponse.json({ ok: true, posted });
 }

@@ -33,7 +33,7 @@ import {
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
 import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer } from '@/lib/dashboard-theme';
 
 const serviceSchema = z.object({
   name: z.string().min(1),
@@ -74,7 +74,7 @@ interface ServiceRow {
   category: { name: string; color: string } | null;
 }
 
-export default function ServicesPage() {
+function ServicesCatalogueView() {
   const t = useTranslations('services');
   const tp = useTranslations('profile');
   const tc = useTranslations('common');
@@ -933,5 +933,78 @@ function CategoryDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ─── Catalogue tab router: Услуги / Склад / Постоянные расходы ─── */
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { Scissors as ScissorsIcon, Package as PackageIcon, Repeat as RepeatIcon } from 'lucide-react';
+import InventoryPage from '../inventory/page';
+import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
+
+type CatalogueTab = 'services' | 'inventory' | 'recurring';
+
+const CAT_TABS: { key: CatalogueTab; label: string; icon: typeof ScissorsIcon }[] = [
+  { key: 'services',  label: 'Услуги',              icon: ScissorsIcon },
+  { key: 'inventory', label: 'Склад',               icon: PackageIcon },
+  { key: 'recurring', label: 'Постоянные расходы',  icon: RepeatIcon },
+];
+
+export default function ServicesPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { C } = usePageTheme();
+
+  const raw = searchParams.get('tab') || 'services';
+  const active = (CAT_TABS.some(t => t.key === raw) ? raw : 'services') as CatalogueTab;
+
+  function setTab(key: CatalogueTab) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (key === 'services') params.delete('tab');
+    else params.set('tab', key);
+    const qs = params.toString();
+    router.replace(`${pathname}${qs ? `?${qs}` : ''}`, { scroll: false });
+  }
+
+  return (
+    <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%' }}>
+      {/* Tab bar — pill style like /finance and /marketing */}
+      <div style={{
+        display: 'flex', gap: 2,
+        background: C.surface, border: `1px solid ${C.border}`,
+        borderRadius: 12, padding: 4, marginBottom: 24,
+      }}>
+        {CAT_TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = active === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setTab(tab.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '10px 20px', border: 'none',
+                background: isActive ? C.accent : 'transparent',
+                cursor: 'pointer',
+                fontSize: 13, fontWeight: 550,
+                fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+                color: isActive ? '#ffffff' : C.textTertiary,
+                borderRadius: 8, transition: 'all 0.2s ease',
+                flex: 1, justifyContent: 'center',
+              }}
+            >
+              <Icon size={16} style={{ opacity: isActive ? 1 : 0.6 }} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab content */}
+      {active === 'services' && <ServicesCatalogueView />}
+      {active === 'inventory' && <InventoryPage />}
+      {active === 'recurring' && <RecurringExpensesTab />}
+    </div>
   );
 }
