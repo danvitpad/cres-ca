@@ -36,14 +36,10 @@ export const ROUTE_FEATURES: Record<string, RouteFeatureRule> = {
   '/finance?tab=reports': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Reports' },
   '/finance?tab=services': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Services profitability' },
 
-  '/marketing/campaigns': { feature: 'auto_messages', requiredTier: 'pro', label: 'Campaigns' },
-  '/marketing/automation': { feature: 'auto_messages', requiredTier: 'pro', label: 'Automation' },
-  '/marketing/messages': { feature: 'auto_messages', requiredTier: 'pro', label: 'Messaging' },
-  '/marketing/deals': { feature: 'auto_upsell', requiredTier: 'pro', label: 'Deals' },
-  '/marketing/pricing': { feature: 'burning_slots', requiredTier: 'pro', label: 'Smart pricing' },
-  '/marketing/reviews': { feature: 'auto_review_request', requiredTier: 'pro', label: 'Reviews' },
-  '/marketing/google': { feature: 'google_business', requiredTier: 'business', label: 'Google Business' },
-  '/marketing/social': { feature: 'social_posting', requiredTier: 'business', label: 'Social posting' },
+  '/marketing?tab=campaigns':  { feature: 'auto_messages', requiredTier: 'pro', label: 'Campaigns' },
+  '/marketing?tab=automation': { feature: 'auto_messages', requiredTier: 'pro', label: 'Automation' },
+  '/marketing?tab=deals':      { feature: 'auto_upsell', requiredTier: 'pro', label: 'Deals' },
+  '/marketing?tab=reviews':    { feature: 'auto_review_request', requiredTier: 'pro', label: 'Reviews' },
 
   '/settings/equipment': { feature: 'equipment_booking', requiredTier: 'business', label: 'Equipment booking' },
 };

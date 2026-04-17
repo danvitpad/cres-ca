@@ -144,11 +144,7 @@ export default function AutomationPage() {
         <div>
           <h1 className="text-2xl font-semibold">Автоматизация</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Встроенные правила автоматических сообщений. Шаблоны редактируются в{' '}
-            <Link href="/ru/marketing/messages" className="text-violet-600 hover:underline">
-              Шаблоны сообщений
-            </Link>
-            .
+            Встроенные правила автоматических сообщений. Настраивай таймеры, включай/выключай нужные автоматизации.
           </p>
         </div>
       </div>
