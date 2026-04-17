@@ -417,7 +417,7 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ═══ Row 2: 4 KPI gradient cards ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
         {kpiCards.map((card, i) => {
           const ch = card.change;
           return (
@@ -468,7 +468,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ═══ Row 3: Income combo | Expense combo (2 equal columns, each has dynamics + structure stacked) ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 20 }}>
         {/* Income combo */}
         <motion.div {...stagger(5)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '18px 22px 8px' }}>
@@ -539,7 +539,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ═══ Row 4: Appointments table (wide) + Birthdays/Reminders (narrow) ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
         {/* Today's appointments */}
         <motion.div {...stagger(7)} style={cardBase}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -567,10 +567,11 @@ export default function DashboardPage() {
               <p style={{ fontSize: 12, color: C.textTertiary, margin: 0 }}>{t('freeDay')}</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', overflowX: 'auto' }}>
               {/* Table header */}
               <div style={{
                 display: 'grid', gridTemplateColumns: '70px 3px 1fr 1fr 100px',
+                minWidth: 520,
                 padding: '8px 4px', gap: 10,
                 fontSize: 11, fontWeight: 600, color: C.textTertiary,
                 letterSpacing: '0.04em', textTransform: 'uppercase',
@@ -593,6 +594,7 @@ export default function DashboardPage() {
                     href={`/${locale}/calendar`}
                     style={{
                       display: 'grid', gridTemplateColumns: '70px 3px 1fr 1fr 100px',
+                      minWidth: 520,
                       padding: '12px 4px', gap: 10, alignItems: 'center',
                       textDecoration: 'none', color: 'inherit',
                       borderBottom: `1px solid ${C.border}`,

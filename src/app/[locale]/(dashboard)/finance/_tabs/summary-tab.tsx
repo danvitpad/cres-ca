@@ -277,7 +277,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
       )}
 
       {/* KPI cards — gradient style */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
         {[
           { label: 'Доход', value: revenue, change: revChange, showChange: true, gradient: KPI_GRADIENTS.revenue },
           { label: 'Расходы', value: expenseTotal, extra: expenses.length > 0 ? `${expenses.length} записей` : undefined, gradient: KPI_GRADIENTS.expenses },
@@ -396,7 +396,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
             ) : (
               <div style={{
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
-                overflow: 'hidden',
+                overflowX: 'auto',
               }}>
                 {payments.map((p, i) => {
                   const dateStr = format(new Date(p.created_at), 'd MMM', { locale: dfLocale });
@@ -410,6 +410,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '80px 1.2fr 1fr 140px',
+                        minWidth: 520,
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px 20px',
@@ -448,6 +449,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '80px 1.2fr 1fr 140px',
+                  minWidth: 520,
                   gap: 14,
                   padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,
@@ -469,7 +471,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
           <motion.div key="expenses" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {/* Quick add */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
               padding: '14px 18px', background: C.surface, border: `1px solid ${C.border}`,
               borderRadius: 14, marginBottom: 16,
             }}>
@@ -513,7 +515,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
             ) : (
               <div style={{
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
-                overflow: 'hidden',
+                overflowX: 'auto',
               }}>
                 {expenses.map((e, i) => {
                   let category = e.category || 'Прочее';
@@ -529,6 +531,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '80px 1.2fr 1fr 140px 32px',
+                        minWidth: 560,
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px 20px',
@@ -583,6 +586,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '80px 1.2fr 1fr 140px 32px',
+                  minWidth: 560,
                   gap: 14,
                   padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,

@@ -65,7 +65,7 @@ export default function MarketingPage() {
 
       {/* Tab bar */}
       <div style={{
-        display: 'flex',
+        display: 'flex', flexWrap: 'wrap',
         gap: 2,
         background: C.surface,
         border: `1px solid ${C.border}`,

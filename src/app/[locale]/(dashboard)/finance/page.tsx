@@ -64,7 +64,7 @@ export default function FinancePage() {
       {/* ─── Tab bar ─── */}
       <div style={{
         display: 'flex',
-        gap: 2,
+        gap: 2, flexWrap: 'wrap',
         background: C.surface,
         border: `1px solid ${C.border}`,
         borderRadius: 12,

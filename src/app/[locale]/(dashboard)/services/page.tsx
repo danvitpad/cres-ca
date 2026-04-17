@@ -265,10 +265,10 @@ function ServicesCatalogueView() {
       </div>
 
       {/* ── Main content: categories card + service rows ── */}
-      <div style={{ display: 'flex', gap: 24 }}>
+      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         {/* Categories card (Fresha style) */}
         <div style={{
-          width: 280, flexShrink: 0,
+          width: 280, flexShrink: 0, maxWidth: '100%',
           border: `1px solid ${C.border}`, borderRadius: 12,
           padding: '20px 0', alignSelf: 'flex-start',
         }}>
@@ -1022,7 +1022,7 @@ export default function ServicesPage() {
     <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%' }}>
       {/* Tab bar — pill style like /finance and /marketing */}
       <div style={{
-        display: 'flex', gap: 2,
+        display: 'flex', gap: 2, flexWrap: 'wrap',
         background: C.surface, border: `1px solid ${C.border}`,
         borderRadius: 12, padding: 4, marginBottom: 24,
       }}>

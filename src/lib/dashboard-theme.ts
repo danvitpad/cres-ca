@@ -145,7 +145,7 @@ export const CURRENCY = '₴';
 export const pageContainer = {
   fontFamily: FONT,
   fontFeatureSettings: FONT_FEATURES,
-  padding: '28px 36px 56px', // extra bottom breathing room
+  padding: 'clamp(16px, 3vw, 28px) clamp(16px, 3vw, 36px) 56px',
   maxWidth: 1280,
   margin: '0 auto' as const,
   width: '100%' as const,
