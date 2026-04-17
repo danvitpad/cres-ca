@@ -59,6 +59,7 @@ export default function FinancePage() {
       color: C.text,
       background: C.bg,
       minHeight: '100%',
+      paddingBottom: 48,
     }}>
       {/* ─── Tab bar ─── */}
       <div style={{

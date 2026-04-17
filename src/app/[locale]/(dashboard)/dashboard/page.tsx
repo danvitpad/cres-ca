@@ -370,6 +370,7 @@ export default function DashboardPage() {
       color: C.text,
       background: C.bg,
       minHeight: '100%',
+      paddingBottom: 48, // breathing room at bottom, no cut-off feel
     }}>
       {/* ═══ Row 1: Greeting + date ═══ */}
       <motion.div

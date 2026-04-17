@@ -230,7 +230,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   };
 
   return (
-    <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%' }}>
+    <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%', paddingBottom: 48 }}>
       {/* ═══ Back button ═══ */}
       <button
         onClick={() => router.back()}

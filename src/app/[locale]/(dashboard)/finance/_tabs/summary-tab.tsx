@@ -63,6 +63,7 @@ interface PaymentRow {
   id: string; amount: number; currency: string; type: string;
   payment_method: string | null; created_at: string;
   services: { name: string } | null;
+  appointment: { client: { full_name: string } | null } | null;
 }
 
 interface ExpenseRow {
@@ -114,7 +115,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
       supabase.from('expenses').select('amount')
         .eq('master_id', master.id)
         .gte('date', prev.from.toISOString().slice(0, 10)).lte('date', prev.to.toISOString().slice(0, 10)),
-      supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, services(name)')
+      supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, services(name), appointment:appointments(client:clients(full_name))')
         .eq('master_id', master.id).eq('status', 'completed')
         .gte('created_at', from.toISOString()).lte('created_at', to.toISOString())
         .order('created_at', { ascending: false }).limit(50),
@@ -166,7 +167,22 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
       });
       if (res.ok) {
         const { insight } = await res.json();
-        setAiInsight(insight || null);
+        // Client-side filter — reject generic/useless responses
+        const cleaned = insight?.trim() || null;
+        const GENERIC_PATTERNS = [
+          /нет данных для анализа/i,
+          /хорош(ее|ий) начал/i,
+          /стабильн(ый|ое) доход/i,
+          /продолжайте в том же духе/i,
+          /молодец/i,
+          /есть куда расти/i,
+          /всё хорошо/i,
+        ];
+        if (cleaned && GENERIC_PATTERNS.some(rx => rx.test(cleaned))) {
+          setAiInsight(null); // hide useless generic response
+        } else {
+          setAiInsight(cleaned);
+        }
       }
     } catch { /* AI is optional */ }
     setAiLoading(false);
@@ -209,9 +225,12 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
   const netProfit = revenue - expenseTotal;
   const prevNet = prevRevenue - prevExpenseTotal;
 
-  function pctChange(cur: number, prev: number): number {
-    if (prev === 0) return cur > 0 ? 100 : 0;
-    return Math.round(((cur - prev) / prev) * 100);
+  // Returns percent change, or null when comparison makes no sense
+  // (both periods zero, or previous is zero — can't divide).
+  function pctChange(cur: number, prev: number): number | null {
+    if (cur === prev) return 0;
+    if (prev === 0) return null; // no previous baseline — show "—" instead of fake 100%
+    return Math.round(((cur - prev) / Math.abs(prev)) * 100);
   }
 
   const revChange = pctChange(revenue, prevRevenue);
@@ -227,33 +246,35 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
 
   return (
     <>
-      {/* AI Insight */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        style={{
-          background: C.aiGradient,
-          border: `1px solid ${C.aiBorder}`,
-          borderRadius: 14, padding: '18px 22px', marginBottom: 24,
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-          <div style={{
-            width: 28, height: 28, borderRadius: 8,
-            background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Sparkles size={14} style={{ color: C.accent }} />
+      {/* AI Insight — only shown when AI has something real to say */}
+      {(aiLoading || aiInsight) && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          style={{
+            background: C.aiGradient,
+            border: `1px solid ${C.aiBorder}`,
+            borderRadius: 14, padding: '18px 22px', marginBottom: 24,
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Sparkles size={14} style={{ color: C.accent }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              AI-помощник
+            </span>
+            {aiLoading && <Loader2 size={13} className="animate-spin" style={{ color: C.accent }} />}
           </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            AI-помощник
-          </span>
-          {aiLoading && <Loader2 size={13} className="animate-spin" style={{ color: C.accent }} />}
-        </div>
-        <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
-          {aiInsight ?? (aiLoading ? 'Анализирую ваши данные...' : 'Добавьте записи и расходы — я подскажу, как улучшить доход.')}
-        </p>
-      </motion.div>
+          <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
+            {aiInsight ?? 'Анализирую ваши данные...'}
+          </p>
+        </motion.div>
+      )}
 
       {/* KPI cards — gradient style */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
@@ -306,7 +327,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 </>
               )}
             </div>
-            {!loading && card.showChange && card.change !== undefined && (
+            {!loading && card.showChange && card.change !== null && card.change !== undefined && (
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 fontSize: 12, fontWeight: 550,
@@ -316,7 +337,15 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
               }}>
                 {card.change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                 {card.change >= 0 ? '+' : ''}{card.change}%
-                <span style={{ opacity: 0.6, fontWeight: 400 }}>vs пред.</span>
+                <span style={{ opacity: 0.6, fontWeight: 400 }}>к прошлому периоду</span>
+              </div>
+            )}
+            {!loading && card.showChange && card.change === null && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.6)',
+              }}>
+                первый период — нет предыдущих данных
               </div>
             )}
             {!loading && card.extra && (
@@ -369,39 +398,67 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14,
                 overflow: 'hidden',
               }}>
-                {payments.map((p, i) => (
-                  <motion.div
-                    key={p.id}
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    transition={{ delay: Math.min(i * 0.02, 0.2) }}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '14px 20px',
-                      borderBottom: i < payments.length - 1 ? `1px solid ${C.border}` : 'none',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = C.rowHover}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 550 }}>{p.services?.name || 'Оплата'}</div>
-                      <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 3 }}>
-                        {format(new Date(p.created_at), 'd MMM, HH:mm', { locale: dfLocale })}
-                        {p.payment_method && ` · ${p.payment_method === 'cash' ? 'Нал' : p.payment_method === 'card' ? 'Карта' : p.payment_method}`}
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.success, flexShrink: 0 }}>
-                      +{Number(p.amount).toLocaleString()} {CURRENCY}
-                    </div>
-                  </motion.div>
-                ))}
+                {payments.map((p, i) => {
+                  const dateStr = format(new Date(p.created_at), 'd MMM', { locale: dfLocale });
+                  const serviceName = p.services?.name || 'Оплата';
+                  const clientName = p.appointment?.client?.full_name || '—';
+                  return (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                      transition={{ delay: Math.min(i * 0.02, 0.2) }}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '80px 1.2fr 1fr 140px',
+                        alignItems: 'center',
+                        gap: 14,
+                        padding: '14px 20px',
+                        borderBottom: i < payments.length - 1 ? `1px solid ${C.border}` : 'none',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = C.rowHover}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Date */}
+                      <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>{dateStr}</span>
+                      {/* Service (category) */}
+                      <span style={{
+                        fontSize: 14, fontWeight: 550, color: C.text,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {serviceName}
+                      </span>
+                      {/* Client (description) */}
+                      <span style={{
+                        fontSize: 13, color: C.textSecondary,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {clientName}
+                      </span>
+                      {/* Amount */}
+                      <span style={{
+                        fontSize: 14, fontWeight: 600, color: C.success,
+                        textAlign: 'right', fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        +{Number(p.amount).toLocaleString()} {CURRENCY}
+                      </span>
+                    </motion.div>
+                  );
+                })}
                 <div style={{
-                  display: 'flex', justifyContent: 'space-between', padding: '14px 20px',
+                  display: 'grid',
+                  gridTemplateColumns: '80px 1.2fr 1fr 140px',
+                  gap: 14,
+                  padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,
                   background: C.surfaceElevated,
                 }}>
+                  <span />
                   <span style={{ color: C.textSecondary }}>Итого</span>
-                  <span style={{ color: C.success }}>{revenue.toLocaleString()} {CURRENCY}</span>
+                  <span />
+                  <span style={{ color: C.success, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    +{revenue.toLocaleString()} {CURRENCY}
+                  </span>
                 </div>
               </div>
             )}
@@ -459,10 +516,8 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 overflow: 'hidden',
               }}>
                 {expenses.map((e, i) => {
-                  // Primary text: real description > vendor > category
-                  const main = e.description || e.vendor || e.category || 'Расход';
-                  // Sub: category tag (if not already in main)
-                  const sub = e.category && e.category !== main ? e.category : null;
+                  const category = e.category || 'Прочее';
+                  const description = e.description || e.vendor || '';
                   const d = new Date(e.date + 'T00:00:00');
                   const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
                   return (
@@ -472,7 +527,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                       transition={{ delay: Math.min(i * 0.02, 0.2) }}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '80px 1fr 140px 32px',
+                        gridTemplateColumns: '80px 1.2fr 1fr 140px 32px',
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px 20px',
@@ -482,30 +537,32 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                       onMouseEnter={ev => ev.currentTarget.style.background = C.rowHover}
                       onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
                     >
-                      {/* Date column */}
+                      {/* Date */}
                       <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
                         {dateStr}
                       </span>
-                      {/* Description column */}
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{
-                          fontSize: 14, fontWeight: 550, color: C.text,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {main}
-                        </div>
-                        {sub && (
-                          <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>{sub}</div>
-                        )}
-                      </div>
-                      {/* Amount column */}
+                      {/* Category */}
+                      <span style={{
+                        fontSize: 14, fontWeight: 550, color: C.text,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {category}
+                      </span>
+                      {/* Description */}
+                      <span style={{
+                        fontSize: 13, color: C.textSecondary,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {description || '—'}
+                      </span>
+                      {/* Amount */}
                       <span style={{
                         fontSize: 14, fontWeight: 600, color: C.danger,
                         textAlign: 'right', fontVariantNumeric: 'tabular-nums',
                       }}>
                         −{Number(e.amount).toLocaleString()} {CURRENCY}
                       </span>
-                      {/* Action column */}
+                      {/* Action */}
                       <button
                         onClick={() => removeExpense(e.id, Number(e.amount))}
                         style={{
@@ -524,7 +581,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 })}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '80px 1fr 140px 32px',
+                  gridTemplateColumns: '80px 1.2fr 1fr 140px 32px',
                   gap: 14,
                   padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,
@@ -532,6 +589,7 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 }}>
                   <span />
                   <span style={{ color: C.textSecondary }}>Итого</span>
+                  <span />
                   <span style={{ color: C.danger, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                     −{expensesListTotal.toLocaleString()} {CURRENCY}
                   </span>

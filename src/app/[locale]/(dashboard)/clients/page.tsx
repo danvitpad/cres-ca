@@ -436,7 +436,7 @@ export default function ClientsPage() {
   return (
     <div style={{
       ...pageContainer,
-      color: C.text, background: C.bg, minHeight: '100%',
+      color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 48,
     }}>
       {/* ═══ Header ═══ */}
       <div style={{
