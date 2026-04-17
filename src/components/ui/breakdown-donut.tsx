@@ -31,17 +31,26 @@ interface Props {
 export function BreakdownDonut({ title, subtitle, icon, slices, emptyText, C, isDark }: Props) {
   const total = slices.reduce((s, sl) => s + sl.value, 0);
 
-  const cardStyle: React.CSSProperties = {
-    background: C.surface,
-    border: `1px solid ${C.border}`,
-    borderRadius: 16,
-    padding: 22,
-    fontFamily: FONT,
-    fontFeatureSettings: FONT_FEATURES,
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 320,
-  };
+  // When no title → used inside a parent card (inline) → no extra chrome
+  const inline = !title;
+  const cardStyle: React.CSSProperties = inline
+    ? {
+        fontFamily: FONT,
+        fontFeatureSettings: FONT_FEATURES,
+        display: 'flex',
+        flexDirection: 'column',
+      }
+    : {
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 16,
+        padding: 22,
+        fontFamily: FONT,
+        fontFeatureSettings: FONT_FEATURES,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 320,
+      };
 
   const fmt = (n: number) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
@@ -53,19 +62,21 @@ export function BreakdownDonut({ title, subtitle, icon, slices, emptyText, C, is
       transition={{ duration: 0.3 }}
       style={cardStyle}
     >
-      {/* Header */}
-      <div style={{ marginBottom: 14 }}>
-        <h3 style={{
-          fontSize: 15, fontWeight: 650, color: C.text, margin: 0,
-          display: 'flex', alignItems: 'center', gap: 8,
-        }}>
-          {icon}
-          {title}
-        </h3>
-        {subtitle && (
-          <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>{subtitle}</p>
-        )}
-      </div>
+      {/* Header — hidden when no title (used inside combo cards) */}
+      {title && (
+        <div style={{ marginBottom: 14 }}>
+          <h3 style={{
+            fontSize: 15, fontWeight: 650, color: C.text, margin: 0,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            {icon}
+            {title}
+          </h3>
+          {subtitle && (
+            <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>{subtitle}</p>
+          )}
+        </div>
+      )}
 
       {slices.length === 0 || total === 0 ? (
         <div style={{

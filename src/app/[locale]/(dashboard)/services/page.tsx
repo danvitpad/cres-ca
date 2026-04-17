@@ -393,7 +393,7 @@ export default function ServicesPage() {
                     </div>
                   </div>
                   <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginRight: 12, whiteSpace: 'nowrap', fontFamily: FONT }}>
-                    {s.price.toLocaleString()} {s.currency}
+                    {s.price.toLocaleString()} ₴
                   </div>
                   <button
                     onClick={(e) => {
@@ -676,14 +676,13 @@ function ServiceForm({
         </Label>
         <div className="flex gap-2">
           <Select
-            value={categoryId ?? '__none'}
-            onValueChange={(v) => v && setCategoryId(v === '__none' ? null : v)}
+            value={categoryId ?? ''}
+            onValueChange={(v) => v && setCategoryId(v)}
           >
             <SelectTrigger className="flex-1 border-2 border-border">
-              <SelectValue placeholder="Без категории" />
+              <SelectValue placeholder={categories.length === 0 ? 'Сначала создайте категорию →' : 'Выберите категорию'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__none">Без категории</SelectItem>
               {categories.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   <span className="flex items-center gap-2">
@@ -756,8 +755,7 @@ function ServiceForm({
           <div className="mt-3 space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Как подготовиться (опц.)
-              </Label>
+                Как подготовиться              </Label>
               <Textarea
                 rows={2}
                 value={preparation}
@@ -768,8 +766,7 @@ function ServiceForm({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Уход после (опц.)
-              </Label>
+                Уход после              </Label>
               <Textarea
                 rows={2}
                 value={aftercare}
@@ -781,8 +778,7 @@ function ServiceForm({
             {inventoryItems.length > 0 && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Расходники на визит (опц.)
-                </Label>
+                  Расходники на визит                </Label>
                 <p className="text-[11px] text-muted-foreground -mt-1">
                   Автоматически спишется со склада когда услуга завершена.
                 </p>

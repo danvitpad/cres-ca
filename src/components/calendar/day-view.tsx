@@ -122,6 +122,8 @@ interface DayViewProps {
   masterName?: string;
   masterAvatar?: string | null;
   masterId?: string;
+  /** Show the master avatar header above the grid. Defaults to true. For solo mode pass false to hide. */
+  showMasterHeader?: boolean;
   /** Slot interval in minutes (5/10/15/30/60). Controls grid granularity. Default 10. */
   slotMinutes?: number;
   /** When false, clicking a slot opens side panel directly instead of popup. Default true. */
@@ -153,6 +155,7 @@ export function DayView({
   masterName,
   masterAvatar,
   masterId,
+  showMasterHeader = true,
   slotMinutes: slotMinutesProp,
   showQuickActions = true,
   onSlotClick,
@@ -370,7 +373,8 @@ export function DayView({
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', position: 'relative', backgroundColor: C.pageBg }}>
 
-        {/* ═══ Avatar header ═══ */}
+        {/* ═══ Avatar header — shown only in team/salon mode ═══ */}
+        {showMasterHeader && (
         <div
           style={{
             position: 'sticky',
@@ -446,6 +450,7 @@ export function DayView({
             </span>
           </div>
         </div>
+        )}
 
         {/* ═══ Grid container ═══ */}
         <div

@@ -563,7 +563,8 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          {/* "Команда смены" dropdown */}
+          {/* "Команда смены" dropdown — only for salons (team mode), hidden for solo masters */}
+          {master.salon_id && (
           <div ref={teamDropdownRef} style={{ position: 'relative' }}>
             <button
               onClick={() => { setTeamDropdownOpen(!teamDropdownOpen); setViewDropdownOpen(false); setAddDropdownOpen(false); }}
@@ -687,6 +688,7 @@ export default function CalendarPage() {
               </div>
             )}
           </div>
+          )}
 
           {/* Filters visibility icon button */}
           <button
@@ -879,8 +881,9 @@ export default function CalendarPage() {
               blockedTimes={blockedTimes}
               workStart={workStart}
               workEnd={workEnd}
-              masterName={master.profile?.full_name}
-              masterAvatar={master.profile?.avatar_url}
+              masterName={master.salon_id ? master.profile?.full_name : undefined}
+              masterAvatar={master.salon_id ? master.profile?.avatar_url : undefined}
+              showMasterHeader={!!master.salon_id}
               masterId={master.id}
               slotMinutes={slotMinutes}
               showQuickActions={quickActionsEnabled}
