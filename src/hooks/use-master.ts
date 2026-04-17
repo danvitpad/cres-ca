@@ -45,15 +45,20 @@ export function useMaster() {
       return;
     }
     setLoading(true);
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('masters')
-      .select('*, profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, phone, avatar_url)')
-      .eq('profile_id', userId)
-      .single();
-    if (data) setMaster(data as unknown as MasterData);
-    else setMaster(null);
-    setLoading(false);
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('masters')
+        .select('*, profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, phone, avatar_url)')
+        .eq('profile_id', userId)
+        .single();
+      if (data) setMaster(data as unknown as MasterData);
+      else setMaster(null);
+    } catch {
+      setMaster(null);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

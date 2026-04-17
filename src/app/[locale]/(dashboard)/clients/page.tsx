@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
+import { formatPhone } from '@/lib/phone';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -208,7 +209,7 @@ function ClientCard({ client, C, isDark, index }: {
           <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 2 }}>
             {age !== null ? `${age} лет` : 'возраст не указан'}
             {client.phone && <span style={{ margin: '0 6px' }}>·</span>}
-            {client.phone}
+            {formatPhone(client.phone)}
           </div>
         </div>
 

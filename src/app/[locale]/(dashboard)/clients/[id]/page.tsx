@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { formatPhone } from '@/lib/phone';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useFeatures } from '@/hooks/use-features';
 import { Input } from '@/components/ui/input';
@@ -304,7 +305,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               {client.phone && (
                 <a href={`tel:${client.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: C.textSecondary, textDecoration: 'none' }}>
                   <Phone size={13} style={{ color: C.textTertiary }} />
-                  {client.phone}
+                  {formatPhone(client.phone)}
                 </a>
               )}
               {client.email && (

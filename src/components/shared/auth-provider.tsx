@@ -16,20 +16,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     async function loadSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
+          clearAuth();
+          return;
+        }
+        const { data: profile } = await supabase
+          .from('profiles').select('role').eq('id', session.user.id).single();
+        if (!profile) {
+          clearAuth();
+          return;
+        }
+        const { data: sub } = await supabase
+          .from('subscriptions').select('tier').eq('profile_id', session.user.id).maybeSingle();
+        setAuth(session.user.id, profile.role, sub?.tier ?? null);
+      } catch {
         clearAuth();
-        return;
       }
-      const { data: profile } = await supabase
-        .from('profiles').select('role').eq('id', session.user.id).single();
-      if (!profile) {
-        clearAuth();
-        return;
-      }
-      const { data: sub } = await supabase
-        .from('subscriptions').select('tier').eq('profile_id', session.user.id).maybeSingle();
-      setAuth(session.user.id, profile.role, sub?.tier ?? null);
     }
 
     loadSession();

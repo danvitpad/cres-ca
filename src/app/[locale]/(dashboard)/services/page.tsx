@@ -91,16 +91,22 @@ function ServicesCatalogueView() {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const loadServices = useCallback(async () => {
-    if (!master) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('services')
-      .select('*, category:service_categories(name, color)')
-      .eq('master_id', master.id)
-      .order('created_at');
-    if (data) setServices(data as unknown as ServiceRow[]);
-    setLoading(false);
-  }, [master]);
+    if (!master) {
+      if (!masterLoading) setLoading(false);
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('services')
+        .select('*, category:service_categories(name, color)')
+        .eq('master_id', master.id)
+        .order('created_at');
+      if (data) setServices(data as unknown as ServiceRow[]);
+    } finally {
+      setLoading(false);
+    }
+  }, [master, masterLoading]);
 
   useEffect(() => { loadServices(); }, [loadServices]);
 

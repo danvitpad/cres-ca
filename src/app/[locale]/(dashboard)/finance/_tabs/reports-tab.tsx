@@ -67,7 +67,7 @@ function periodRange(p: Period): { from: Date; to: Date } {
 export function ReportsTab({ C }: { C: PageTheme }) {
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-  const { master } = useMaster();
+  const { master, loading: masterLoading } = useMaster();
 
   const [period, setPeriod] = useState<Period>('month');
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
@@ -75,24 +75,30 @@ export function ReportsTab({ C }: { C: PageTheme }) {
   const [taxLoading, setTaxLoading] = useState(false);
 
   const load = useCallback(async () => {
-    if (!master?.id) return;
+    if (!master?.id) {
+      if (!masterLoading) setLoading(false);
+      return;
+    }
     setLoading(true);
-    const supabase = createClient();
-    const { from, to } = periodRange(period);
-    const { data } = await supabase
-      .from('appointments')
-      .select(`
-        id, starts_at, ends_at, status, price, client_id, service_id,
-        service:services(name, price),
-        client:clients(id, full_name, created_at, total_visits)
-      `)
-      .eq('master_id', master.id)
-      .gte('starts_at', from.toISOString())
-      .lte('starts_at', to.toISOString())
-      .order('starts_at', { ascending: true });
-    setAppointments((data as unknown as AppointmentRow[]) || []);
-    setLoading(false);
-  }, [master?.id, period]);
+    try {
+      const supabase = createClient();
+      const { from, to } = periodRange(period);
+      const { data } = await supabase
+        .from('appointments')
+        .select(`
+          id, starts_at, ends_at, status, price, client_id, service_id,
+          service:services(name, price),
+          client:clients(id, full_name, created_at, total_visits)
+        `)
+        .eq('master_id', master.id)
+        .gte('starts_at', from.toISOString())
+        .lte('starts_at', to.toISOString())
+        .order('starts_at', { ascending: true });
+      setAppointments((data as unknown as AppointmentRow[]) || []);
+    } finally {
+      setLoading(false);
+    }
+  }, [master?.id, masterLoading, period]);
 
   useEffect(() => { load(); }, [load]);
 
