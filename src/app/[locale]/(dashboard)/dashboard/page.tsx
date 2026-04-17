@@ -295,7 +295,9 @@ export default function DashboardPage() {
     for (const e of expenses) {
       const d = new Date(e.date + 'T00:00:00');
       if (d < monthStart || d > todayEnd) continue;
-      const cat = e.category || 'Прочее';
+      let cat = e.category || 'Прочее';
+      // Translate legacy voice-action 'other' to readable RU
+      if (cat === 'other' || cat === 'Other' || cat === 'revenue_voice') cat = 'Прочее';
       map.set(cat, (map.get(cat) || 0) + Number(e.amount));
     }
     return Array.from(map.entries())

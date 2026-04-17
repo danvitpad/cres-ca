@@ -71,7 +71,7 @@ interface ClientRow {
 }
 
 type FilterKey = 'all' | 'vip' | 'overdue' | 'risk' | 'new' | 'birthday';
-type TabType = 'clients' | 'users' | 'subscribers';
+type TabType = 'clients' | 'users';
 
 interface FollowerRow {
   profileId: string;
@@ -350,7 +350,7 @@ export default function ClientsPage() {
   useEffect(() => {
     if (!master) return;
     if (tab === 'users') loadFollowList('followers');
-    else if (tab === 'subscribers') loadFollowList('mutual');
+    // 'users' now consolidates followers + mutual (partners)
   }, [master, tab, loadFollowList]);
 
   async function addClient(formData: { full_name: string; phone: string; email: string; date_of_birth: string; notes: string }) {
@@ -451,36 +451,8 @@ export default function ClientsPage() {
             Всего {counts.all} · активных {counts.all - counts.overdue}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Link
-            href="/clients/import"
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '9px 14px', borderRadius: 10,
-              background: C.surface, border: `1px solid ${C.border}`,
-              color: C.text, textDecoration: 'none',
-              fontSize: 13, fontWeight: 550,
-              transition: 'border-color 0.15s',
-            }}
-          >
-            <Upload size={14} />
-            Импорт
-          </Link>
-          <button
-            onClick={() => setDialogOpen(true)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '9px 16px', borderRadius: 10,
-              background: C.accent, border: 'none',
-              color: '#fff', cursor: 'pointer',
-              fontSize: 13, fontWeight: 600,
-              transition: 'background 0.15s',
-            }}
-          >
-            <Plus size={14} />
-            Добавить
-          </button>
-        </div>
+        {/* Import + manual "Добавить" removed — clients now come via Instagram-style follow/add
+            from /clients subtab "Подписчики" or when a user books online. */}
       </div>
 
       {/* Add Client Dialog */}
@@ -498,10 +470,9 @@ export default function ClientsPage() {
         borderRadius: 10, padding: 3, marginBottom: 18,
       }}>
         {([
-          { key: 'clients' as TabType, label: tf('clients'), icon: Users, count: counts.all },
-          { key: 'users' as TabType, label: tf('users'), icon: Heart },
-          { key: 'subscribers' as TabType, label: tf('subscribers'), icon: UserCheck },
-        ]).map(({ key, label, icon: Icon, count }) => (
+          { key: 'clients' as TabType, label: 'Клиенты', icon: Users },
+          { key: 'users' as TabType, label: 'Партнёры', icon: Heart },
+        ]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -521,16 +492,6 @@ export default function ClientsPage() {
           >
             <Icon size={13} />
             {label}
-            {count !== undefined && count > 0 && (
-              <span style={{
-                fontSize: 11, fontWeight: 600,
-                background: tab === key ? C.accentSoft : 'transparent',
-                color: tab === key ? C.accent : C.textTertiary,
-                padding: '0 6px', borderRadius: 5,
-              }}>
-                {count}
-              </span>
-            )}
           </button>
         ))}
       </div>
@@ -577,7 +538,7 @@ export default function ClientsPage() {
                   onClick={() => setFilter(f.key)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '7px 13px', borderRadius: 999,
+                    padding: '7px 14px', borderRadius: 999,
                     background: active ? C.accent : C.surface,
                     color: active ? '#fff' : C.text,
                     border: `1px solid ${active ? C.accent : C.border}`,
@@ -589,15 +550,6 @@ export default function ClientsPage() {
                 >
                   {Icon && <Icon size={12} style={{ color: active ? '#fff' : f.color || C.textSecondary }} />}
                   {f.label}
-                  <span style={{
-                    fontSize: 11, fontWeight: 600,
-                    background: active ? 'rgba(255,255,255,0.22)' : C.surfaceElevated,
-                    color: active ? '#fff' : C.textTertiary,
-                    padding: '0 6px', borderRadius: 5,
-                    minWidth: 18, textAlign: 'center',
-                  }}>
-                    {f.count}
-                  </span>
                 </button>
               );
             })}
@@ -638,7 +590,7 @@ export default function ClientsPage() {
       )}
 
       {/* ═══ USERS / SUBSCRIBERS TAB ═══ */}
-      {(tab === 'users' || tab === 'subscribers') && (
+      {tab === 'users' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {followListLoading ? (
             [...Array(3)].map((_, i) => (
@@ -681,14 +633,14 @@ export default function ClientsPage() {
                       method: 'POST', headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ targetId: f.profileId }),
                     });
-                    loadFollowList(tab === 'users' ? 'followers' : 'mutual');
+                    loadFollowList('followers');
                   }}
                   onUnfollow={async () => {
                     await fetch('/api/follow', {
                       method: 'POST', headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ targetId: f.profileId }),
                     });
-                    loadFollowList(tab === 'users' ? 'followers' : 'mutual');
+                    loadFollowList('followers');
                   }}
                   onAddToClients={async () => {
                     if (!master) return;

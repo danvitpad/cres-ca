@@ -246,11 +246,10 @@ export function ReportsTab({ C }: { C: PageTheme }) {
 
   const isDark = C.bg !== '#ffffff' && C.bg !== '#fff' && C.bg !== 'white';
 
+  // Simplified to just Taxes — lost/forecast/payments removed as unclear-purpose reports
+  // per user feedback. Taxes provides concrete tax obligation + CSV export.
   const tabs: { key: Tab; label: string; icon: typeof Receipt }[] = [
     { key: 'taxes', label: 'Налоги', icon: Receipt },
-    { key: 'lost', label: 'Упущенная выручка', icon: TrendingDown },
-    { key: 'forecast', label: 'Прогноз', icon: TrendingUp },
-    { key: 'payments', label: 'Платежи', icon: CreditCard },
   ];
 
   return (

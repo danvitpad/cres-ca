@@ -635,22 +635,31 @@ function ServiceForm({
       {/* Duration + Price */}
       <div className="grid gap-4 grid-cols-2">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Время сеанса
+          <Label htmlFor="sdur" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Время сеанса, мин
           </Label>
-          <Select value={duration} onValueChange={(v) => v && setDuration(v)}>
-            <SelectTrigger className="w-full border-2 border-border">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[15, 30, 45, 60, 75, 90, 120, 150, 180, 210, 240].map((mins) => {
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
-                const label = h === 0 ? `${m} минут` : m === 0 ? (h === 1 ? '1 час' : `${h} часа`) : `${h} ч ${m} м`;
-                return <SelectItem key={mins} value={String(mins)}>{label}</SelectItem>;
-              })}
-            </SelectContent>
-          </Select>
+          <Input
+            id="sdur"
+            type="number"
+            min={5}
+            max={480}
+            step="5"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            placeholder="60"
+            className="border-2 border-border focus-visible:border-primary"
+            list="duration-suggestions"
+          />
+          <datalist id="duration-suggestions">
+            <option value="15" />
+            <option value="30" />
+            <option value="45" />
+            <option value="60" />
+            <option value="90" />
+            <option value="120" />
+            <option value="180" />
+            <option value="240" />
+          </datalist>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="sprice" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

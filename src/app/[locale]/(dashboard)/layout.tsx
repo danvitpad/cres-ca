@@ -31,7 +31,7 @@ import { CommandPalette, useCommandPalette } from '@/components/shared/primitive
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
-import { UserCircle, Settings as SettingsIcon, HelpCircle, LogOut } from 'lucide-react';
+import { UserCircle, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -505,7 +505,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               menuItems={[
                 { icon: UserCircle,     label: 'Мой профиль',        onClick: () => router.push('/settings?section=profile') },
                 { icon: SettingsIcon,   label: 'Настройки',           onClick: () => router.push('/settings') },
-                { icon: HelpCircle,     label: 'Помощь и поддержка',  onClick: () => router.push('/help') },
                 {
                   icon: LogOut,
                   label: t('header.signOut') || 'Выход',

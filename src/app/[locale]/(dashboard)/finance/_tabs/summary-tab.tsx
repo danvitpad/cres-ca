@@ -516,7 +516,8 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
                 overflow: 'hidden',
               }}>
                 {expenses.map((e, i) => {
-                  const category = e.category || 'Прочее';
+                  let category = e.category || 'Прочее';
+                  if (category === 'other' || category === 'Other' || category === 'revenue_voice') category = 'Прочее';
                   const description = e.description || e.vendor || '';
                   const d = new Date(e.date + 'T00:00:00');
                   const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });

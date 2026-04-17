@@ -717,17 +717,7 @@ export default function CalendarPage() {
             <Settings style={{ width: 20, height: 20 }} />
           </button>
 
-          {/* Waitlist icon */}
-          <button
-            onClick={() => setActiveDrawer(activeDrawer === 'waitlist' ? null : 'waitlist')}
-            style={pillBtn(F, {
-              width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
-              ...(activeDrawer === 'waitlist' ? { backgroundColor: F.popoverItemActiveBg, borderColor: F.accent } : {}),
-            })}
-            aria-label="Waitlist"
-          >
-            <ListTodo style={{ width: 20, height: 20 }} />
-          </button>
+          {/* Waitlist removed — not MVP feature */}
 
           {/* Analytics icon */}
           <button
@@ -841,26 +831,8 @@ export default function CalendarPage() {
                     <span>{t('blockTime')}</span>
                   </button>
 
-                  <div style={{ height: 1, backgroundColor: F.toolbarBorder, margin: '4px 0' }} />
-
-                  <button
-                    onClick={() => { setAddDropdownOpen(false); setSaleOpen(true); }}
-                    style={popoverItemStyle(F,false, hoveredItem === 'add-sale')}
-                    onMouseEnter={() => setHoveredItem('add-sale')}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <ShoppingBag style={{ width: 20, height: 20, color: F.textMuted }} />
-                    <span>{t('sale') || 'Продажа'}</span>
-                  </button>
-                  <button
-                    onClick={() => { setAddDropdownOpen(false); setPaymentOpen(true); }}
-                    style={popoverItemStyle(F,false, hoveredItem === 'add-payment')}
-                    onMouseEnter={() => setHoveredItem('add-payment')}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <Banknote style={{ width: 20, height: 20, color: F.textMuted }} />
-                    <span>{t('quickPayment') || 'Быстрая оплата'}</span>
-                  </button>
+                  {/* "Продажа" and "Быстрая оплата" removed — income now comes from completed
+                      appointments via auto-close flow. No separate "sale" concept needed. */}
                 </div>
               </div>
             )}

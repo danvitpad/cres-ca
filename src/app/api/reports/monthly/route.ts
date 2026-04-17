@@ -17,14 +17,16 @@ export async function GET(request: Request) {
   const year = parseInt(searchParams.get('year') ?? String(new Date().getFullYear()), 10);
   const month = parseInt(searchParams.get('month') ?? String(new Date().getMonth() + 1), 10);
 
-  const { data: master } = await supabase
+  const { data: master, error: masterErr } = await supabase
     .from('masters')
     .select('id, tax_rate_percent')
     .eq('profile_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (!master) {
-    return NextResponse.json({ error: 'Not a master' }, { status: 403 });
+  if (masterErr || !master) {
+    return NextResponse.json({
+      error: 'Профиль мастера не найден. Завершите онбординг на /onboarding, затем повторите.',
+    }, { status: 403 });
   }
 
   const startDate = new Date(year, month - 1, 1);

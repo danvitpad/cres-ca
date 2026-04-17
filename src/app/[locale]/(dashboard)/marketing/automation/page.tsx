@@ -53,7 +53,7 @@ const RULES: {
     key: 'reminder_24h',
     title: 'Напоминание за 24 часа',
     description: 'TG-пуш клиенту и мастеру за день до визита',
-    trigger: 'Cron · ежедневно в 08:00',
+    trigger: 'За 24 часа до визита',
     icon: Clock,
     accent: '#6366f1',
   },
@@ -61,7 +61,7 @@ const RULES: {
     key: 'reminder_2h',
     title: 'Напоминание за 2 часа',
     description: 'TG-пуш клиенту за 2 часа до визита',
-    trigger: 'Cron · ежедневно в 08:00',
+    trigger: 'За 2 часа до визита',
     icon: Bell,
     accent: '#8b5cf6',
   },
@@ -69,7 +69,7 @@ const RULES: {
     key: 'review_request',
     title: 'Запрос отзыва',
     description: 'Через 2 часа после визита — предложение оставить отзыв',
-    trigger: 'Cron · каждый день в 10:00',
+    trigger: 'Через 2 часа после визита',
     icon: Star,
     accent: '#f59e0b',
   },
@@ -77,7 +77,7 @@ const RULES: {
     key: 'cadence',
     title: 'Smart rebooking',
     description: 'Клиент перестал приходить по своей привычке — напомнить',
-    trigger: 'Cron · ежедневно в 11:00',
+    trigger: 'При просрочке визита',
     icon: TrendingUp,
     accent: '#10b981',
   },
@@ -85,7 +85,7 @@ const RULES: {
     key: 'win_back',
     title: 'Win-back',
     description: 'Клиент не был 60+ дней — вернуть со скидкой',
-    trigger: 'Cron · понедельник в 12:00',
+    trigger: 'После 60 дней без визита',
     icon: Heart,
     accent: '#ec4899',
   },
@@ -93,7 +93,7 @@ const RULES: {
     key: 'nps',
     title: 'NPS опрос',
     description: 'После 3, 10, 20, 50 визитов — короткий опрос лояльности',
-    trigger: 'Cron · ежедневно в 13:00',
+    trigger: 'После 3/10/20/50 визитов',
     icon: BarChart3,
     accent: '#06b6d4',
   },
@@ -202,7 +202,7 @@ export default function AutomationPage() {
               </div>
               <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Settings className="size-3" />
-                Cron · ежедневно в 09:00
+                В день рождения клиента
               </div>
             </div>
           </div>

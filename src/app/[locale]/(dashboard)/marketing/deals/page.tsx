@@ -598,19 +598,9 @@ export default function DealsPage() {
           }}
         >
           <Tag size={40} style={{ color: C.textTertiary, marginBottom: 12, display: 'inline-block' }} />
-          <p style={{ fontSize: 14, color: C.textSecondary, marginBottom: 16 }}>
-            Пока нет промокодов. Создай первый и отправь клиентам!
+          <p style={{ fontSize: 14, color: C.textSecondary }}>
+            Пока нет промокодов. Нажми «Новый промокод» вверху, чтобы создать.
           </p>
-          <button
-            onClick={openCreate}
-            style={{
-              padding: '8px 20px', borderRadius: 8, border: 'none',
-              background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <Plus size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            Создать промокод
-          </button>
         </motion.div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
