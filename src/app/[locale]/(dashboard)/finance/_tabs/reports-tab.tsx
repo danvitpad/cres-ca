@@ -1,6 +1,6 @@
 /** --- YAML
  * name: ReportsTab
- * description: Reports tab — 4 sub-tabs (Taxes / Lost Revenue / Forecast / Payments) extracted from reports page.
+ * description: Analytics — top clients / top services / capacity utilization / new vs returning / tax CSV. Period switcher.
  * created: 2026-04-17
  * updated: 2026-04-17
  * --- */
@@ -8,555 +8,474 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useTranslations, useLocale } from 'next-intl';
-import { motion, AnimatePresence } from 'framer-motion';
-import { type PageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { useLocale } from 'next-intl';
+import { motion } from 'framer-motion';
 import {
-  Receipt, TrendingDown, TrendingUp, CreditCard, Download,
-  AlertOctagon, Sparkles, Loader2,
+  Receipt, Crown, Star, Calendar as CalendarIcon, UserPlus, RotateCcw,
+  Download, Loader2, BarChart3,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { format, type Locale } from 'date-fns';
+import {
+  type PageTheme, FONT, FONT_FEATURES, CURRENCY, KPI_GRADIENTS,
+} from '@/lib/dashboard-theme';
+import {
+  startOfWeek, endOfWeek, startOfMonth, endOfMonth,
+  startOfQuarter, endOfQuarter, subMonths,
+  format, getDay, getHours, type Locale,
+} from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
+import {
+  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RTooltip,
+} from 'recharts';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
-type Tab = 'taxes' | 'lost' | 'forecast' | 'payments';
+type Period = 'week' | 'month' | 'quarter' | 'year';
+const PERIOD_LABEL: Record<Period, string> = {
+  week: 'Эта неделя',
+  month: 'Этот месяц',
+  quarter: 'Этот квартал',
+  year: 'Этот год',
+};
+const DAY_LABELS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
-const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-
-interface MonthStat {
-  key: string; year: number; month: number;
-  revenue: number; tips: number; expenses: number; inventoryCost: number;
-  net: number; tax: number; afterTax: number;
+interface AppointmentRow {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  price: number;
+  client_id: string | null;
+  service_id: string | null;
+  service: { name: string; price: number } | null;
+  client: { id: string; full_name: string; created_at: string; total_visits: number } | null;
 }
 
-interface LostBucket { label: string; count: number; amount: number; hint: string; }
-
-interface DayBucket {
-  date: string; appointments: number; aptRevenue: number; subscriptions: number; total: number;
-}
-
-interface PaymentRow {
-  id: string; amount: number; currency: string; type: string; status: string;
-  payment_method: string | null; created_at: string;
-  services: { name: string } | null;
+function periodRange(p: Period): { from: Date; to: Date } {
+  const now = new Date();
+  switch (p) {
+    case 'week':    return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+    case 'month':   return { from: startOfMonth(now), to: endOfMonth(now) };
+    case 'quarter': return { from: startOfQuarter(now), to: endOfQuarter(now) };
+    case 'year':    return { from: new Date(now.getFullYear(), 0, 1), to: new Date(now.getFullYear(), 11, 31, 23, 59, 59) };
+  }
 }
 
 export function ReportsTab({ C }: { C: PageTheme }) {
-  const t = useTranslations('sales');
   const locale = useLocale();
   const dfLocale = dateFnsLocales[locale] || ru;
-
   const { master } = useMaster();
-  const [activeTab, setActiveTab] = useState<Tab>('taxes');
+
+  const [period, setPeriod] = useState<Period>('month');
+  const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [taxLoading, setTaxLoading] = useState(false);
 
-  // Tax data
-  const [months, setMonths] = useState<MonthStat[]>([]);
-  const [taxRate, setTaxRate] = useState(5);
-
-  // Lost revenue data
-  const [lostBuckets, setLostBuckets] = useState<LostBucket[]>([]);
-  const [topCancellers, setTopCancellers] = useState<{ name: string; count: number }[]>([]);
-
-  // Forecast data
-  const [forecastDays, setForecastDays] = useState<DayBucket[]>([]);
-
-  // Payments data
-  const [payments, setPayments] = useState<PaymentRow[]>([]);
-
-  // AI forecast
-  const [aiForecast, setAiForecast] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
-  /* ─── Loaders ─── */
-
-  const loadTaxes = useCallback(async () => {
+  const load = useCallback(async () => {
     if (!master?.id) return;
-    const supabase = createClient();
-    const rate = master.tax_rate_percent ?? 5;
-    setTaxRate(rate);
-    const now = new Date();
-    const stats: MonthStat[] = [];
-
-    for (let i = 0; i < 6; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-
-      const [{ data: apts }, { data: exps }, { data: usage }] = await Promise.all([
-        supabase.from('appointments')
-          .select('id, tip_amount, payment:payments(amount)')
-          .eq('master_id', master.id).eq('status', 'completed')
-          .gte('starts_at', start.toISOString()).lte('starts_at', end.toISOString()),
-        supabase.from('expenses')
-          .select('amount').eq('master_id', master.id)
-          .gte('date', start.toISOString().slice(0, 10)).lte('date', end.toISOString().slice(0, 10)),
-        supabase.from('inventory_usage')
-          .select('quantity_used, item:inventory_items!inner(cost_per_unit, master_id)')
-          .eq('item.master_id', master.id)
-          .gte('recorded_at', start.toISOString()).lte('recorded_at', end.toISOString()),
-      ]);
-
-      let revenue = 0, tips = 0;
-      for (const a of (apts ?? []) as unknown as { tip_amount: number | null; payment: { amount: number } | { amount: number }[] | null }[]) {
-        const p = a.payment;
-        const amt = Array.isArray(p) ? (p[0]?.amount ?? 0) : (p?.amount ?? 0);
-        revenue += Number(amt);
-        tips += Number(a.tip_amount ?? 0);
-      }
-      const expenses = (exps ?? []).reduce((a: number, e: any) => a + Number(e.amount ?? 0), 0);
-      let inventoryCost = 0;
-      for (const u of (usage ?? []) as unknown as { quantity_used: number; item: { cost_per_unit: number | null } | { cost_per_unit: number | null }[] | null }[]) {
-        const item = Array.isArray(u.item) ? u.item[0] : u.item;
-        inventoryCost += Number(u.quantity_used ?? 0) * Number(item?.cost_per_unit ?? 0);
-      }
-      const net = revenue - expenses - inventoryCost;
-      const tax = net > 0 ? net * (rate / 100) : 0;
-      stats.push({
-        key: `${d.getFullYear()}-${d.getMonth() + 1}`,
-        year: d.getFullYear(), month: d.getMonth() + 1,
-        revenue, tips, expenses, inventoryCost, net, tax, afterTax: net - tax,
-      });
-    }
-    setMonths(stats);
-  }, [master?.id, master?.tax_rate_percent]);
-
-  const loadLostRevenue = useCallback(async () => {
-    if (!master?.id) return;
-    const supabase = createClient();
-    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-
-    const [{ data: cancelled }, { data: noShows }, { data: waitlistRows }] = await Promise.all([
-      supabase.from('appointments')
-        .select('id, price, client:clients(full_name)')
-        .eq('master_id', master.id)
-        .in('status', ['cancelled', 'cancelled_by_client', 'cancelled_by_master'])
-        .gte('starts_at', since),
-      supabase.from('appointments')
-        .select('id, price').eq('master_id', master.id).eq('status', 'no_show').gte('starts_at', since),
-      supabase.from('waitlist')
-        .select('id, service:services(price)').eq('master_id', master.id).gte('created_at', since),
-    ]);
-
-    const cancelledRows = ((cancelled ?? []) as unknown as { id: string; price: number; client: { full_name: string } | { full_name: string }[] | null }[])
-      .map(r => ({ id: r.id, price: r.price, client: Array.isArray(r.client) ? r.client[0] ?? null : r.client }));
-    const cancelledAmt = cancelledRows.reduce((a, r) => a + Number(r.price ?? 0), 0);
-    const noShowAmt = (noShows ?? []).reduce((a: number, r: any) => a + Number(r.price ?? 0), 0);
-    const waitlistAmt = ((waitlistRows ?? []) as unknown as { service: { price: number } | { price: number }[] | null }[])
-      .reduce((a, r) => { const svc = Array.isArray(r.service) ? r.service[0] : r.service; return a + Number(svc?.price ?? 0); }, 0);
-
-    setLostBuckets([
-      { label: 'Отмены', count: cancelledRows.length, amount: cancelledAmt, hint: 'клиент отменил' },
-      { label: 'No-show', count: (noShows ?? []).length, amount: noShowAmt, hint: 'не пришёл' },
-      { label: 'Лист ожидания', count: (waitlistRows ?? []).length, amount: waitlistAmt, hint: 'не вписали' },
-    ]);
-
-    const counts = new Map<string, number>();
-    for (const r of cancelledRows) {
-      const name = r.client?.full_name ?? '—';
-      counts.set(name, (counts.get(name) ?? 0) + 1);
-    }
-    setTopCancellers(
-      Array.from(counts.entries()).map(([name, count]) => ({ name, count }))
-        .sort((a, b) => b.count - a.count).slice(0, 5)
-    );
-  }, [master?.id]);
-
-  const loadForecast = useCallback(async () => {
-    if (!master?.id) return;
-    const supabase = createClient();
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const horizon = new Date(today); horizon.setDate(horizon.getDate() + 14);
-
-    const empty: DayBucket[] = [];
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(today); d.setDate(d.getDate() + i);
-      empty.push({ date: d.toISOString().slice(0, 10), appointments: 0, aptRevenue: 0, subscriptions: 0, total: 0 });
-    }
-    const byKey = new Map(empty.map(b => [b.date, b]));
-
-    const { data: apts } = await supabase.from('appointments')
-      .select('starts_at, price, status').eq('master_id', master.id)
-      .in('status', ['confirmed', 'booked'])
-      .gte('starts_at', today.toISOString()).lt('starts_at', horizon.toISOString());
-
-    for (const a of (apts ?? []) as { starts_at: string; price: number | null }[]) {
-      const b = byKey.get(a.starts_at.slice(0, 10));
-      if (!b) continue;
-      b.appointments += 1;
-      b.aptRevenue += Number(a.price ?? 0);
-    }
-
-    for (const b of byKey.values()) b.total = b.aptRevenue + b.subscriptions;
-    setForecastDays(Array.from(byKey.values()));
-  }, [master?.id]);
-
-  const loadPayments = useCallback(async () => {
-    if (!master?.id) return;
-    const supabase = createClient();
-    const monthAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
-
-    const { data } = await supabase.from('payments')
-      .select('id, amount, currency, type, status, payment_method, created_at, services(name)')
-      .gte('created_at', monthAgo).order('created_at', { ascending: false });
-
-    setPayments((data as unknown as PaymentRow[]) || []);
-  }, [master?.id]);
-
-  useEffect(() => {
     setLoading(true);
-    Promise.all([loadTaxes(), loadLostRevenue(), loadForecast(), loadPayments()])
-      .finally(() => setLoading(false));
-  }, [loadTaxes, loadLostRevenue, loadForecast, loadPayments]);
+    const supabase = createClient();
+    const { from, to } = periodRange(period);
+    const { data } = await supabase
+      .from('appointments')
+      .select(`
+        id, starts_at, ends_at, status, price, client_id, service_id,
+        service:services(name, price),
+        client:clients(id, full_name, created_at, total_visits)
+      `)
+      .eq('master_id', master.id)
+      .gte('starts_at', from.toISOString())
+      .lte('starts_at', to.toISOString())
+      .order('starts_at', { ascending: true });
+    setAppointments((data as unknown as AppointmentRow[]) || []);
+    setLoading(false);
+  }, [master?.id, period]);
 
-  // AI forecast
-  const fetchAiForecast = useCallback(async () => {
-    if (!master?.id || activeTab !== 'forecast') return;
-    setAiLoading(true);
-    try {
-      const res = await fetch('/api/finance/ai-insights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'forecast', master_id: master.id }),
-      });
-      if (res.ok) { const { insight } = await res.json(); setAiForecast(insight); }
-    } catch { /* optional */ }
-    setAiLoading(false);
-  }, [master?.id, activeTab]);
+  useEffect(() => { load(); }, [load]);
 
-  useEffect(() => { fetchAiForecast(); }, [fetchAiForecast]);
+  /* ─── Computations ─── */
 
-  /* ─── Computed ─── */
-  const taxTotals = useMemo(() => months.reduce(
-    (acc, m) => ({ revenue: acc.revenue + m.revenue, tips: acc.tips + m.tips, expenses: acc.expenses + m.expenses, inventoryCost: acc.inventoryCost + m.inventoryCost, net: acc.net + m.net, tax: acc.tax + m.tax }),
-    { revenue: 0, tips: 0, expenses: 0, inventoryCost: 0, net: 0, tax: 0 }
-  ), [months]);
+  const completed = useMemo(() => appointments.filter(a => a.status === 'completed'), [appointments]);
 
-  const lostTotal = lostBuckets.reduce((a, b) => a + b.amount, 0);
-  const forecastTotals = useMemo(() => ({
-    sum: forecastDays.reduce((a, b) => a + b.total, 0),
-    visits: forecastDays.reduce((a, b) => a + b.appointments, 0),
-    maxDay: Math.max(0, ...forecastDays.map(b => b.total)),
-  }), [forecastDays]);
+  // Top clients by revenue in period
+  const topClients = useMemo(() => {
+    const map = new Map<string, { name: string; revenue: number; visits: number; clientId: string }>();
+    for (const a of completed) {
+      if (!a.client_id || !a.client) continue;
+      const existing = map.get(a.client_id) || { name: a.client.full_name || '—', revenue: 0, visits: 0, clientId: a.client_id };
+      existing.revenue += Number(a.price) || 0;
+      existing.visits += 1;
+      map.set(a.client_id, existing);
+    }
+    return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+  }, [completed]);
 
-  const isDark = C.bg !== '#ffffff' && C.bg !== '#fff' && C.bg !== 'white';
+  // Top services
+  const topServices = useMemo(() => {
+    const map = new Map<string, { name: string; revenue: number; bookings: number }>();
+    for (const a of completed) {
+      const key = a.service_id || 'no-service';
+      const name = a.service?.name || 'Без услуги';
+      const existing = map.get(key) || { name, revenue: 0, bookings: 0 };
+      existing.revenue += Number(a.price) || 0;
+      existing.bookings += 1;
+      map.set(key, existing);
+    }
+    return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+  }, [completed]);
 
-  // Simplified to just Taxes — lost/forecast/payments removed as unclear-purpose reports
-  // per user feedback. Taxes provides concrete tax obligation + CSV export.
-  const tabs: { key: Tab; label: string; icon: typeof Receipt }[] = [
-    { key: 'taxes', label: 'Налоги', icon: Receipt },
-  ];
+  // Workload by day-of-week
+  const workloadByDay = useMemo(() => {
+    const counts = [0, 0, 0, 0, 0, 0, 0]; // Sun..Sat
+    for (const a of appointments) {
+      if (a.status === 'cancelled') continue;
+      const dow = getDay(new Date(a.starts_at));
+      counts[dow]++;
+    }
+    // Re-arrange: Mon..Sun for European locale
+    return [1, 2, 3, 4, 5, 6, 0].map(i => ({ day: DAY_LABELS[i], count: counts[i] }));
+  }, [appointments]);
+
+  // Workload by hour
+  const workloadByHour = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (const a of appointments) {
+      if (a.status === 'cancelled') continue;
+      const h = getHours(new Date(a.starts_at));
+      counts[h] = (counts[h] || 0) + 1;
+    }
+    return Array.from({ length: 24 }, (_, h) => ({ hour: `${h}:00`, count: counts[h] || 0 }))
+      .filter(r => r.count > 0);
+  }, [appointments]);
+
+  // New vs returning clients
+  const clientsBreakdown = useMemo(() => {
+    const { from } = periodRange(period);
+    const newClients = new Set<string>();
+    const returningClients = new Set<string>();
+    for (const a of appointments) {
+      if (!a.client_id || !a.client) continue;
+      const created = new Date(a.client.created_at);
+      if (created >= from) newClients.add(a.client_id);
+      else returningClients.add(a.client_id);
+    }
+    return {
+      newCount: newClients.size,
+      returningCount: returningClients.size,
+      total: newClients.size + returningClients.size,
+    };
+  }, [appointments, period]);
+
+  // Top stats
+  const stats = useMemo(() => {
+    const revenue = completed.reduce((s, a) => s + (Number(a.price) || 0), 0);
+    const bookings = completed.length;
+    const avgCheck = bookings > 0 ? Math.round(revenue / bookings) : 0;
+    const cancelled = appointments.filter(a => a.status === 'cancelled' || a.status === 'no_show').length;
+    const cancelRate = appointments.length > 0 ? Math.round((cancelled / appointments.length) * 100) : 0;
+    return { revenue, bookings, avgCheck, cancelRate };
+  }, [appointments, completed]);
+
+  const downloadCsv = async () => {
+    if (!master?.id) return;
+    setTaxLoading(true);
+    const now = new Date();
+    window.open(`/api/reports/monthly?year=${now.getFullYear()}&month=${now.getMonth() + 1}`, '_blank');
+    setTaxLoading(false);
+  };
+
+  const fmtMoney = (n: number) =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ' + CURRENCY;
+
+  const cardBase: React.CSSProperties = {
+    background: C.surface, border: `1px solid ${C.border}`,
+    borderRadius: 14, padding: 22,
+    fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: C.textSecondary }}>
+        <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+        Загрузка аналитики...
+      </div>
+    );
+  }
 
   return (
-    <>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text }}>Отчёты</h1>
-        <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>Налоги, потери, прогнозы и платежи.</p>
-      </div>
+    <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text }}>
+      {/* Header + period switcher */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 14 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 650, margin: 0, letterSpacing: '-0.3px' }}>Аналитика</h2>
+          <p style={{ fontSize: 13, color: C.textSecondary, margin: '4px 0 0' }}>
+            Топ клиенты, услуги, загрузка, налоги.
+          </p>
+        </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${C.border}`, marginBottom: 24 }}>
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          return (
+        {/* Period pill */}
+        <div style={{
+          display: 'inline-flex', gap: 2, background: C.surfaceElevated,
+          borderRadius: 10, padding: 3,
+        }}>
+          {(['week', 'month', 'quarter', 'year'] as Period[]).map(p => (
             <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              key={p}
+              onClick={() => setPeriod(p)}
               style={{
-                padding: '12px 20px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontSize: 14, fontWeight: 600, fontFamily: FONT,
-                color: activeTab === tab.key ? C.accent : C.textTertiary,
-                borderBottom: activeTab === tab.key ? `2px solid ${C.accent}` : '2px solid transparent',
-                marginBottom: -2, transition: 'all 0.15s ease',
-                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 7, border: 'none',
+                background: period === p ? C.surface : 'transparent',
+                color: period === p ? C.text : C.textTertiary,
+                fontSize: 12, fontWeight: 550, cursor: 'pointer',
+                fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+                transition: 'all 0.15s',
+                boxShadow: period === p ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
               }}
             >
-              <Icon size={15} />
-              {tab.label}
+              {PERIOD_LABEL[p]}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      {loading && (
-        <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary }}>
-          <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-          Загрузка...
+      {/* Top KPI gradient cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+        {[
+          { label: 'Выручка', value: fmtMoney(stats.revenue), grad: KPI_GRADIENTS.revenue },
+          { label: 'Записей', value: String(stats.bookings), grad: KPI_GRADIENTS.profit },
+          { label: 'Средний чек', value: fmtMoney(stats.avgCheck), grad: KPI_GRADIENTS.neutral },
+          { label: 'Отмен / no-show', value: stats.cancelRate + '%', grad: KPI_GRADIENTS.expenses },
+        ].map((k, i) => (
+          <motion.div
+            key={k.label}
+            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.04 }}
+            style={{
+              background: k.grad, borderRadius: 16, padding: '18px 20px',
+              color: '#fff', position: 'relative', overflow: 'hidden',
+            }}
+          >
+            <div style={{ position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
+            <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.85, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>
+              {k.label}
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums' }}>
+              {k.value}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* New vs Returning */}
+      <div style={{ ...cardBase, marginBottom: 16 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <UserPlus size={15} style={{ color: C.accent }} />
+          Клиенты в этом периоде
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          <div>
+            <div style={{ fontSize: 11, color: C.textTertiary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Новые
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: C.success, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+              {clientsBreakdown.newCount}
+            </div>
+            <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>
+              {clientsBreakdown.total > 0 ? Math.round((clientsBreakdown.newCount / clientsBreakdown.total) * 100) : 0}% от всех
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.textTertiary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Вернулись
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: C.accent, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+              {clientsBreakdown.returningCount}
+            </div>
+            <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>
+              {clientsBreakdown.total > 0 ? Math.round((clientsBreakdown.returningCount / clientsBreakdown.total) * 100) : 0}% от всех
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: C.textTertiary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Всего активных
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: C.text, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+              {clientsBreakdown.total}
+            </div>
+            <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>
+              уникальных клиентов
+            </div>
+          </div>
         </div>
-      )}
+      </div>
 
-      {!loading && (
-        <AnimatePresence mode="wait">
-          {/* === TAXES TAB === */}
-          {activeTab === 'taxes' && (
-            <motion.div key="taxes" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>
-                Ставка: {taxRate}%. Последние 6 месяцев.
-              </p>
-
-              {/* Summary cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
-                {[
-                  { label: 'Выручка', value: taxTotals.revenue },
-                  { label: 'Чаевые', value: taxTotals.tips, color: C.success },
-                  { label: 'Расходы', value: taxTotals.expenses },
-                  { label: 'Себестоимость', value: taxTotals.inventoryCost },
-                  { label: 'Чистая прибыль', value: taxTotals.net, color: taxTotals.net > 0 ? C.success : C.danger },
-                  { label: `Налог ${taxRate}%`, value: taxTotals.tax },
-                ].map((s, i) => (
-                  <div key={i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
-                    <div style={{ fontSize: 11, color: C.textSecondary, marginBottom: 4 }}>{s.label}</div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: s.color || C.text }}>{s.value.toFixed(0)} {CURRENCY}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Table */}
-              <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                      {['Месяц', 'Выручка', 'Чай', 'Расходы', 'Себест.', 'Прибыль', 'Налог', 'После нал.', ''].map((h, i) => (
-                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {months.map(m => (
-                      <tr key={m.key} style={{ borderBottom: `1px solid ${C.border}` }}>
-                        <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: C.text }}>{MONTHS_RU[m.month - 1]} {m.year}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>{m.revenue.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.success }}>{m.tips.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{m.expenses.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{m.inventoryCost.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: m.net < 0 ? C.danger : C.text }}>{m.net.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>{m.tax.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>{m.afterTax.toFixed(0)}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                          <button
-                            onClick={() => window.open(`/api/reports/monthly?year=${m.year}&month=${m.month}`, '_blank')}
-                            style={{
-                              padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
-                              background: 'transparent', color: C.textTertiary, fontSize: 11, cursor: 'pointer',
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                            }}
-                          >
-                            <Download size={12} /> CSV
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          )}
-
-          {/* === LOST REVENUE TAB === */}
-          {activeTab === 'lost' && (
-            <motion.div key="lost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>За последние 30 дней.</p>
-
-              {/* Total lost */}
-              <div style={{
-                background: C.dangerSoft, border: `1px solid ${isDark ? '#7f1d1d' : '#fecaca'}`,
-                borderRadius: 12, padding: '20px 24px', marginBottom: 24,
-              }}>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', color: C.danger, fontWeight: 600 }}>Итого упущено</div>
-                <div style={{ fontSize: 32, fontWeight: 700, color: C.danger, marginTop: 4 }}>{lostTotal.toFixed(0)} {CURRENCY}</div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-                {lostBuckets.map(b => (
-                  <div key={b.label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '16px 20px' }}>
-                    <div style={{ fontSize: 11, color: C.textSecondary }}>{b.label}</div>
-                    <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{b.amount.toFixed(0)} {CURRENCY}</div>
-                    <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 4 }}>{b.count} &middot; {b.hint}</div>
-                  </div>
-                ))}
-              </div>
-
-              {topCancellers.length > 0 && (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                    <AlertOctagon size={14} style={{ color: '#f59e0b' }} />
-                    <span style={{ fontSize: 13, fontWeight: 600 }}>Кто отменяет чаще</span>
-                  </div>
-                  <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <tbody>
-                        {topCancellers.map((c, i) => (
-                          <tr key={i} style={{ borderBottom: i < topCancellers.length - 1 ? `1px solid ${C.border}` : 'none' }}>
-                            <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: C.text }}>{c.name}</td>
-                            <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{c.count} отмен</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* === FORECAST TAB === */}
-          {activeTab === 'forecast' && (
-            <motion.div key="forecast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>
-                14-дневный прогноз по подтверждённым визитам.
-              </p>
-
-              {/* KPIs */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
-                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: C.textSecondary }}>К поступлению</div>
-                  <div style={{ fontSize: 22, fontWeight: 600, color: C.success }}>{forecastTotals.sum.toFixed(0)} {CURRENCY}</div>
-                </div>
-                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: C.textSecondary }}>Ожидаемые визиты</div>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.visits}</div>
-                </div>
-                <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ fontSize: 11, color: C.textSecondary }}>Пиковый день</div>
-                  <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.maxDay.toFixed(0)} {CURRENCY}</div>
-                </div>
-              </div>
-
-              {/* Bar chart */}
-              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
-                <div style={{ display: 'flex', height: 120, alignItems: 'flex-end', gap: 4 }}>
-                  {forecastDays.map(b => {
-                    const h = forecastTotals.maxDay > 0 ? (b.total / forecastTotals.maxDay) * 100 : 0;
-                    return (
-                      <div key={b.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <div
-                          style={{
-                            width: '100%', borderRadius: '4px 4px 0 0',
-                            background: C.accent, height: `${h}%`,
-                            minHeight: b.total > 0 ? 3 : 0, transition: 'height 0.3s ease',
-                          }}
-                          title={`${b.date}: ${b.total.toFixed(0)} ${CURRENCY}`}
-                        />
-                        <span style={{ fontSize: 9, color: C.textSecondary }}>{new Date(b.date).getDate()}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Table */}
-              <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                      {['Дата', 'Визиты', 'От визитов', 'Итого'].map((h, i) => (
-                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {forecastDays.map(b => (
-                      <tr key={b.date} style={{ borderBottom: `1px solid ${C.border}` }}>
-                        <td style={{ padding: '10px 16px', fontSize: 13, color: C.text }}>
-                          {new Date(b.date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })}
-                        </td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{b.appointments || '—'}</td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>{b.aptRevenue ? b.aptRevenue.toFixed(0) : '—'}</td>
-                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>{b.total ? b.total.toFixed(0) : '—'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* AI Forecast */}
-              <div style={{
-                background: C.aiGradient, border: `1px solid ${C.aiBorder}`, borderRadius: 12,
-                padding: '20px 24px',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <Sparkles size={14} style={{ color: C.accent }} />
-                  <span style={{ fontSize: 13, fontWeight: 600 }}>AI-прогноз</span>
-                  {aiLoading && <Loader2 size={14} className="animate-spin" style={{ color: C.accent }} />}
-                </div>
-                <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.6, margin: 0 }}>
-                  {aiForecast || (aiLoading ? 'Генерируем прогноз...' : 'Прогноз станет доступен после накопления данных.')}
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* === PAYMENTS TAB === */}
-          {activeTab === 'payments' && (
-            <motion.div key="payments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-              <p style={{ fontSize: 13, color: C.textSecondary, marginBottom: 16 }}>Все транзакции за последние 30 дней.</p>
-
-              {payments.length === 0 ? (
-                <div style={{
-                  background: C.surface, borderRadius: 12, padding: '60px 20px',
-                  textAlign: 'center',
+      {/* Top clients + Top services side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        {/* Top clients */}
+        <div style={cardBase}>
+          <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Crown size={15} style={{ color: C.warning }} />
+            Топ клиенты по выручке
+          </h3>
+          {topClients.length === 0 ? (
+            <p style={{ fontSize: 13, color: C.textTertiary, padding: '20px 0', textAlign: 'center' }}>
+              Нет завершённых записей за период
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {topClients.map((c, i) => (
+                <div key={c.clientId} style={{
+                  display: 'grid', gridTemplateColumns: '24px 1fr auto auto', gap: 10, alignItems: 'center',
+                  padding: '8px 10px', borderRadius: 8,
+                  background: i < 3 ? C.accentSoft : 'transparent',
                 }}>
-                  <CreditCard size={32} style={{ color: C.accent, margin: '0 auto 12px' }} />
-                  <p style={{ fontSize: 15, fontWeight: 600, color: C.text }}>Нет транзакций</p>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: i < 3 ? C.accent : C.textTertiary,
+                    textAlign: 'center',
+                  }}>
+                    {i + 1}
+                  </span>
+                  <span style={{
+                    fontSize: 13, fontWeight: 550, color: C.text,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {c.name}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
+                    {c.visits} {c.visits === 1 ? 'визит' : 'визита'}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text, fontVariantNumeric: 'tabular-nums', minWidth: 70, textAlign: 'right' }}>
+                    {fmtMoney(c.revenue)}
+                  </span>
                 </div>
-              ) : (
-                <div style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>ID</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Услуга</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Тип</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Метод</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Дата</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Сумма</th>
-                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.textTertiary }}>Статус</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments.map(p => (
-                        <tr
-                          key={p.id}
-                          style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer', transition: 'background 0.1s' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                        >
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.accent, fontWeight: 500 }}>
-                            #{p.id.slice(0, 7).toUpperCase()}
-                          </td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.text }}>{p.services?.name || '—'}</td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.textTertiary }}>{p.type}</td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.textTertiary }}>{p.payment_method || '—'}</td>
-                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.textTertiary }}>
-                            {format(new Date(p.created_at), 'd MMM HH:mm', { locale: dfLocale })}
-                          </td>
-                          <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
-                            {Number(p.amount).toLocaleString()} {p.currency}
-                          </td>
-                          <td style={{ padding: '10px 16px', textAlign: 'right' }}>
-                            <span style={{
-                              display: 'inline-block', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500,
-                              background: p.status === 'completed' ? C.successSoft : C.dangerSoft,
-                              color: p.status === 'completed' ? C.success : C.danger,
-                            }}>
-                              {p.status === 'completed' ? 'Завершён' : p.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </motion.div>
+              ))}
+            </div>
           )}
-        </AnimatePresence>
-      )}
-    </>
+        </div>
+
+        {/* Top services */}
+        <div style={cardBase}>
+          <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Star size={15} style={{ color: C.warning }} />
+            Топ услуги по выручке
+          </h3>
+          {topServices.length === 0 ? (
+            <p style={{ fontSize: 13, color: C.textTertiary, padding: '20px 0', textAlign: 'center' }}>
+              Нет завершённых записей за период
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {topServices.map((s, i) => (
+                <div key={s.name} style={{
+                  display: 'grid', gridTemplateColumns: '24px 1fr auto auto', gap: 10, alignItems: 'center',
+                  padding: '8px 10px', borderRadius: 8,
+                  background: i < 3 ? C.accentSoft : 'transparent',
+                }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: i < 3 ? C.accent : C.textTertiary, textAlign: 'center',
+                  }}>
+                    {i + 1}
+                  </span>
+                  <span style={{
+                    fontSize: 13, fontWeight: 550, color: C.text,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {s.name}
+                  </span>
+                  <span style={{ fontSize: 11, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
+                    {s.bookings} {s.bookings === 1 ? 'запись' : 'записи'}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text, fontVariantNumeric: 'tabular-nums', minWidth: 70, textAlign: 'right' }}>
+                    {fmtMoney(s.revenue)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Workload by day-of-week + by hour */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={cardBase}>
+          <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalendarIcon size={15} style={{ color: C.accent }} />
+            Загрузка по дням недели
+          </h3>
+          <div style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={workloadByDay} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: C.textTertiary }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: C.textTertiary }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <RTooltip
+                  contentStyle={{ background: C.surface, border: `1px solid ${C.borderStrong}`, borderRadius: 8, fontSize: 12 }}
+                  cursor={{ fill: C.accentSoft }}
+                />
+                <Bar dataKey="count" fill={C.accent} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div style={cardBase}>
+          <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BarChart3 size={15} style={{ color: C.accent }} />
+            Загрузка по часам
+          </h3>
+          {workloadByHour.length === 0 ? (
+            <p style={{ fontSize: 13, color: C.textTertiary, padding: '40px 0', textAlign: 'center' }}>
+              Нет данных
+            </p>
+          ) : (
+            <div style={{ height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={workloadByHour} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
+                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: C.textTertiary }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: C.textTertiary }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <RTooltip
+                    contentStyle={{ background: C.surface, border: `1px solid ${C.borderStrong}`, borderRadius: 8, fontSize: 12 }}
+                    cursor={{ fill: C.accentSoft }}
+                  />
+                  <Bar dataKey="count" fill={C.success} radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tax / CSV export */}
+      <div style={cardBase}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Receipt size={15} style={{ color: C.accent }} />
+              Налоговый отчёт
+            </h3>
+            <p style={{ fontSize: 12, color: C.textTertiary, margin: '4px 0 0' }}>
+              Скачайте CSV с выручкой и расходами за текущий месяц для бухгалтера/налоговой.
+            </p>
+          </div>
+          <button
+            onClick={downloadCsv}
+            disabled={taxLoading}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '10px 18px', borderRadius: 10, border: 'none',
+              background: C.accent, color: '#fff', cursor: 'pointer',
+              fontSize: 13, fontWeight: 600,
+            }}
+          >
+            {taxLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            Скачать CSV за {format(new Date(), 'LLLL yyyy', { locale: dfLocale })}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
