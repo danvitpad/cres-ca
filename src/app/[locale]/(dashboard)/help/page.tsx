@@ -11,10 +11,11 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Calendar, Users, Scissors, DollarSign,
-  MessageSquare, Settings as SettingsIcon, Zap, BookOpen,
+  MessageSquare, Settings as SettingsIcon, Zap,
   HelpCircle, ExternalLink, Mic, Bell, Shield,
 } from 'lucide-react';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
+import { BentoGrid, type BentoItem } from '@/components/ui/bento-grid';
 
 const TELEGRAM_SUPPORT_URL = 'https://t.me/cres_ca_support'; // TODO: replace with real bot
 
@@ -210,79 +211,22 @@ export default function HelpPage() {
         </a>
       </motion.div>
 
-      {/* ─── Categories grid ─── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-        gap: 16,
-      }}>
-        {CATEGORIES.map((cat, i) => {
+      {/* ─── Categories (BentoGrid — 21st.dev) ─── */}
+      <BentoGrid
+        columns={3}
+        items={CATEGORIES.map((cat): BentoItem => {
           const Icon = cat.icon;
-          return (
-            <motion.div
-              key={cat.key}
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.04, duration: 0.25 }}
-              style={{
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                borderRadius: 16,
-                padding: '20px 22px',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {/* Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10,
-                  background: C.accentSoft, color: C.accent,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <Icon size={18} />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <h3 style={{
-                    fontSize: 15, fontWeight: 650, color: C.text, margin: 0,
-                  }}>
-                    {cat.title}
-                  </h3>
-                  <p style={{
-                    fontSize: 12, color: C.textTertiary,
-                    margin: '2px 0 0',
-                  }}>
-                    {cat.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Articles */}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {cat.articles.map((a, ai) => (
-                  <Link
-                    key={a.slug}
-                    href={`/help/${cat.key}/${a.slug}`}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '10px 0',
-                      borderBottom: ai < cat.articles.length - 1 ? `1px solid ${C.border}` : 'none',
-                      textDecoration: 'none', color: 'inherit',
-                      fontSize: 13,
-                    }}
-                  >
-                    <span style={{
-                      color: C.textSecondary, flex: 1, minWidth: 0,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    }}>
-                      {a.title}
-                    </span>
-                    <BookOpen size={12} style={{ color: C.textTertiary, flexShrink: 0, marginLeft: 8, opacity: 0.5 }} />
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-          );
+          return {
+            title: cat.title,
+            description: cat.description,
+            icon: <Icon className="w-4 h-4" />,
+            meta: `${cat.articles.length} статей`,
+            tags: cat.articles.slice(0, 2).map(a => a.title.split(' ')[0]),
+            cta: 'Открыть →',
+            href: `/help/${cat.key}`,
+          };
         })}
-      </div>
+      />
 
       {/* ─── Contact block bottom ─── */}
       <motion.div

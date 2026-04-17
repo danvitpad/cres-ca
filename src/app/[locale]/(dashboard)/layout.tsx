@@ -30,6 +30,8 @@ import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { ConfirmProvider } from '@/hooks/use-confirm';
+import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
+import { UserCircle, Settings as SettingsIcon, HelpCircle, LogOut } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -98,7 +100,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openFlyout, setOpenFlyout] = useState<string | null>(null);
   const [flyoutTop, setFlyoutTop] = useState(0);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -493,123 +494,59 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </AnimatePresence>
           </div>
 
-          {/* Avatar — 48×48, light blue bg, rounded + user menu dropdown */}
-          <div style={{ paddingLeft: 8, position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
-              style={{
-                width: S.avatarSize,
-                height: S.avatarSize,
-                borderRadius: 999,
-                backgroundColor: F.avatarBg,
-                border: `0.8px solid ${F.avatarBorder}`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                cursor: 'pointer',
+          {/* Avatar — 21st.dev UserProfileDropdown */}
+          <div style={{ paddingLeft: 8 }}>
+            <UserProfileDropdown
+              user={{
+                name: masterName,
+                handle: master?.profile?.full_name || '',
+                avatarUrl: master?.profile?.avatar_url || null,
               }}
-              aria-label={t('userMenu')}
+              menuItems={[
+                { icon: UserCircle,     label: 'Мой профиль',        onClick: () => router.push('/settings?section=profile') },
+                { icon: SettingsIcon,   label: 'Настройки',           onClick: () => router.push('/settings') },
+                { icon: HelpCircle,     label: 'Помощь и поддержка',  onClick: () => router.push('/help') },
+                {
+                  icon: LogOut,
+                  label: t('header.signOut') || 'Выход',
+                  isDestructive: true,
+                  onClick: async () => {
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
+                    router.push('/login');
+                  },
+                },
+              ]}
             >
-              {master?.profile?.avatar_url ? (
-                <img
-                  src={master.profile.avatar_url}
-                  alt={masterName}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 999 }}
-                />
-              ) : (
-                <span style={{ color: F.textPrimary, fontSize: 16, fontWeight: 600 }}>
-                  {getInitials(masterName)}
-                </span>
-              )}
-            </button>
-
-            {/* User menu dropdown — Fresha style */}
-            <AnimatePresence>
-              {userMenuOpen && (
-                <>
-                  <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 899 }}
-                    onClick={() => setUserMenuOpen(false)}
+              <button
+                type="button"
+                style={{
+                  width: S.avatarSize,
+                  height: S.avatarSize,
+                  borderRadius: 999,
+                  backgroundColor: F.avatarBg,
+                  border: `0.8px solid ${F.avatarBorder}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                }}
+                aria-label={t('userMenu')}
+              >
+                {master?.profile?.avatar_url ? (
+                  <img
+                    src={master.profile.avatar_url}
+                    alt={masterName}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 999 }}
                   />
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.12 }}
-                    style={{
-                      position: 'absolute',
-                      top: S.avatarSize + 8,
-                      right: 0,
-                      minWidth: 220,
-                      backgroundColor: F.contentBg,
-                      borderRadius: 12,
-                      border: `0.8px solid ${F.headerBorder}`,
-                      boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.08)',
-                      padding: '8px 0',
-                      zIndex: 900,
-                    }}
-                  >
-                    {/* User info */}
-                    <div style={{ padding: '8px 16px 12px', borderBottom: `0.8px solid ${F.headerBorder}` }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: F.textPrimary }}>{masterName}</div>
-                      <div style={{ fontSize: 13, color: mounted && resolvedTheme === 'dark' ? '#d4d4d4' : '#737373', marginTop: 2 }}>
-                        {master?.profile?.full_name || ''}
-                      </div>
-                    </div>
-                    {[
-                      { label: 'Мой профиль', href: '/settings?section=profile' },
-                      { label: 'Настройки', href: '/settings' },
-                      { label: 'Помощь и поддержка', href: '/help' },
-                    ].map((item) => (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        onClick={() => setUserMenuOpen(false)}
-                        style={{
-                          display: 'block',
-                          padding: '10px 16px',
-                          fontSize: 14,
-                          color: F.textPrimary,
-                          textDecoration: 'none',
-                          transition: 'background 100ms',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#f5f5f5'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
-                    <div style={{ borderTop: `0.8px solid ${F.headerBorder}`, margin: '4px 0' }} />
-                    <button
-                      onClick={async () => {
-                        setUserMenuOpen(false);
-                        const supabase = createClient();
-                        await supabase.auth.signOut();
-                        router.push('/login');
-                      }}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: '10px 16px',
-                        fontSize: 14,
-                        color: '#d4163a',
-                        textAlign: 'left',
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        cursor: 'pointer',
-                        transition: 'background 100ms',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#1a1a1a' : '#f5f5f5'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      {t('header.signOut')}
-                    </button>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+                ) : (
+                  <span style={{ color: F.textPrimary, fontSize: 16, fontWeight: 600 }}>
+                    {getInitials(masterName)}
+                  </span>
+                )}
+              </button>
+            </UserProfileDropdown>
           </div>
         </div>
       </header>
