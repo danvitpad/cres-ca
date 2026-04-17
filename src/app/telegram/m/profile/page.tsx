@@ -71,24 +71,33 @@ export default function MasterMiniAppProfile() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     (async () => {
-      const [mRes, pRes, sRes] = await Promise.all([
-        supabase
-          .from('masters')
-          .select('id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, invite_code')
-          .eq('profile_id', userId)
-          .maybeSingle(),
-        supabase.from('profiles').select('full_name').eq('id', userId).maybeSingle(),
-        supabase
-          .from('subscriptions')
-          .select('tier, status, trial_ends_at, current_period_end')
-          .eq('profile_id', userId)
-          .maybeSingle(),
-      ]);
-      if (mRes.data) setMaster(mRes.data as MasterSelf);
-      if (pRes.data) setFullName((pRes.data as { full_name: string }).full_name ?? '');
-      if (sRes.data) setSub(sRes.data as SubInfo);
+      const initData = (() => {
+        if (typeof window === 'undefined') return null;
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        const live = w.Telegram?.WebApp?.initData;
+        if (live) return live;
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) {
+            const parsed = JSON.parse(stash) as { initData?: string };
+            if (parsed.initData) return parsed.initData;
+          }
+        } catch { /* ignore */ }
+        return null;
+      })();
+      if (!initData) { setLoading(false); return; }
+
+      const res = await fetch('/api/telegram/m/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json();
+      if (json.master) setMaster(json.master as MasterSelf);
+      if (json.profile?.full_name) setFullName(json.profile.full_name as string);
+      if (json.subscription) setSub(json.subscription as SubInfo);
       setLoading(false);
     })();
   }, [userId]);
