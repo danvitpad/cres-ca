@@ -9,7 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { aiChat } from '@/lib/ai/openrouter';
 
-const GOOGLE_AI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+];
+const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 type InsightType = 'period_summary' | 'expense_categorize' | 'price_recommendation' | 'forecast';
 
@@ -17,38 +21,57 @@ async function callGemini(prompt: string): Promise<string> {
   const key = process.env.GOOGLE_AI_STUDIO_KEY;
   if (!key) return '';
 
-  try {
-    const res = await fetch(`${GOOGLE_AI_URL}?key=${key}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
-      }),
-    });
+  for (const model of GEMINI_MODELS) {
+    try {
+      const res = await fetch(`${GOOGLE_AI_BASE}/${model}:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 200 },
+        }),
+      });
 
-    if (!res.ok) {
-      console.error('[Finance AI] Gemini error:', res.status, await res.text());
-      return '';
+      if (res.status === 429) {
+        console.warn(`[Finance AI] Gemini ${model} rate limited, trying next...`);
+        continue;
+      }
+
+      if (!res.ok) {
+        console.error(`[Finance AI] Gemini ${model} error:`, res.status);
+        continue;
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (text.length > 10) return text;
+    } catch (err) {
+      console.error(`[Finance AI] Gemini ${model} call failed:`, err);
+      continue;
     }
-
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  } catch (err) {
-    console.error('[Finance AI] Gemini call failed:', err);
-    return '';
   }
+  return '';
 }
 
+const FALLBACK_MODELS = [
+  'openai/gpt-oss-120b:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+];
+
 async function callOpenRouter(prompt: string): Promise<string> {
-  try {
-    return await aiChat([
-      { role: 'system', content: 'You are a financial analyst AI for a service business CRM. Respond in the same language as the user data (Ukrainian/Russian). Be concise — 2-3 sentences.' },
-      { role: 'user', content: prompt },
-    ], { temperature: 0.5, maxTokens: 300 });
-  } catch {
-    return '';
+  for (const model of FALLBACK_MODELS) {
+    try {
+      const result = await aiChat([
+        { role: 'system', content: 'Ты финансовый аналитик AI для CRM бьюти-мастеров. Отвечай ТОЛЬКО на русском. Будь краток — 2-3 предложения максимум. Никаких списков, вопросов или маркдауна. Только короткий текстовый инсайт.' },
+        { role: 'user', content: prompt },
+      ], { model, temperature: 0.5, maxTokens: 150 });
+      if (result && result.length > 10) return result;
+    } catch {
+      continue;
+    }
   }
+  return '';
 }
 
 /** Try Google AI Studio first, fallback to OpenRouter */
@@ -179,9 +202,7 @@ export async function POST(req: NextRequest) {
     const insight = await callAI(prompt);
 
     if (!insight) {
-      return NextResponse.json({
-        insight: 'AI-анализ временно недоступен. Проверьте ключи API.',
-      });
+      return NextResponse.json({ insight: null, error: 'ai_unavailable' });
     }
 
     return NextResponse.json({ insight });

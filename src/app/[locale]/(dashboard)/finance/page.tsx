@@ -190,7 +190,7 @@ export default function FinanceSummaryPage() {
       });
       if (res.ok) {
         const { insight } = await res.json();
-        setAiInsight(insight);
+        setAiInsight(insight || null);
       }
     } catch { /* AI is optional */ }
     setAiLoading(false);

@@ -4,7 +4,7 @@
  * --- */
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
+const DEFAULT_MODEL = 'openai/gpt-oss-120b:free';
 
 /** System prompt that constrains the AI to CRES-CA domain */
 const CRES_CA_SYSTEM = `You are CRES-CA AI — an intelligent assistant embedded in a CRM platform for service businesses (beauty salons, dental clinics, massage therapists, etc.).
