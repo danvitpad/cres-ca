@@ -1,7 +1,7 @@
 /** --- YAML
  * name: Dashboard Theme
  * description: Single source of truth for ALL dashboard styling — layout, pages, cards, tables, badges.
- *              Based on Linear.app design system. Every dashboard page MUST import from here.
+ *              Purple-accent design system inspired by FinSet/FINCHECK. Every dashboard page MUST import from here.
  *              NO page-level LIGHT/DARK objects. NO Tailwind for page content. NO Roobert PRO.
  * created: 2026-04-16
  * updated: 2026-04-17
@@ -14,61 +14,61 @@ export const FONT_FEATURES = '"cv01", "ss03"';
 /* ─── Layout tokens (sidebar, header) ─── */
 export const F_LIGHT = {
   headerBg: '#ffffff',
-  headerBorder: '#e5e5e5',
-  sidebarBg: '#0d0d0d',
-  sidebarBorder: '#e5e5e5',
-  sidebarActiveBg: '#5e6ad2',
+  headerBorder: '#ece8f4',
+  sidebarBg: '#0b0d17',
+  sidebarBorder: '#1a1d30',
+  sidebarActiveBg: '#7c3aed',
   sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#f5f5f5',
-  textPrimary: '#0d0d0d',
-  textSecondary: '#737373',
-  avatarBg: '#ebf8fe',
+  sidebarInactiveIconColor: '#a8a3be',
+  textPrimary: '#1a1530',
+  textSecondary: '#64607a',
+  avatarBg: '#f0ecfa',
   avatarBorder: '#ffffff',
-  badgeBg: '#d4163a',
+  badgeBg: '#ef4444',
   badgeText: '#ffffff',
-  contentBg: '#ffffff',
-  hoverBg: '#f5f5f5',
+  contentBg: '#f4f2fa',
+  hoverBg: '#f0ecfa',
 } as const;
 
 export const F_DARK = {
-  headerBg: '#0d0d0d',
-  headerBorder: '#333333',
-  sidebarBg: '#0d0d0d',
-  sidebarBorder: '#333333',
-  sidebarActiveBg: '#5e6ad2',
+  headerBg: '#0e1020',
+  headerBorder: '#1a1d30',
+  sidebarBg: '#080a12',
+  sidebarBorder: '#141730',
+  sidebarActiveBg: '#8b5cf6',
   sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#f5f5f5',
-  textPrimary: '#f5f5f5',
-  textSecondary: '#d4d4d4',
-  avatarBg: '#1a1a1a',
-  avatarBorder: '#333333',
-  badgeBg: '#d4163a',
+  sidebarInactiveIconColor: '#706c87',
+  textPrimary: '#eae8f4',
+  textSecondary: '#a8a3be',
+  avatarBg: '#1a1d30',
+  avatarBorder: '#252840',
+  badgeBg: '#ef4444',
   badgeText: '#ffffff',
-  contentBg: '#131313',
-  hoverBg: '#1a1a1a',
+  contentBg: '#0b0d17',
+  hoverBg: '#141730',
 } as const;
 
 export type FTheme = { [K in keyof typeof F_LIGHT]: string };
 
-/* ─── Page content tokens (Linear-inspired) ─── */
-/* Every dashboard page uses these. No page-level color objects allowed. */
+/* ─── Page content tokens ─── */
+/* Purple-accent palette: lavender light, navy dark. */
 
 export const PAGE_LIGHT = {
   // Surfaces
-  bg: '#f7f8f8',
+  bg: '#f4f2fa',
   surface: '#ffffff',
-  surfaceElevated: '#f3f4f5',
+  surfaceElevated: '#ede9f7',
   // Borders
-  border: 'rgba(0,0,0,0.06)',
-  borderStrong: 'rgba(0,0,0,0.1)',
+  border: 'rgba(124,58,237,0.07)',
+  borderStrong: 'rgba(124,58,237,0.13)',
   // Text
-  text: '#0f1011',
-  textSecondary: '#5c5f66',
-  textTertiary: '#8a8f98',
-  // Accent (Linear indigo)
-  accent: '#5e6ad2',
-  accentHover: '#828fff',
-  accentSoft: 'rgba(94,106,210,0.08)',
+  text: '#1a1530',
+  textSecondary: '#64607a',
+  textTertiary: '#9994ad',
+  // Accent (vivid purple)
+  accent: '#7c3aed',
+  accentHover: '#6d28d9',
+  accentSoft: 'rgba(124,58,237,0.08)',
   // Status
   success: '#10b981',
   successSoft: 'rgba(16,185,129,0.08)',
@@ -77,46 +77,46 @@ export const PAGE_LIGHT = {
   warning: '#f59e0b',
   warningSoft: 'rgba(245,158,11,0.08)',
   // Tables & lists
-  rowHover: '#f9fafb',
+  rowHover: '#f8f6fd',
   // AI surfaces
-  aiGradient: 'linear-gradient(135deg, rgba(94,106,210,0.06) 0%, rgba(113,112,255,0.04) 100%)',
-  aiBorder: 'rgba(94,106,210,0.15)',
+  aiGradient: 'linear-gradient(135deg, rgba(124,58,237,0.07) 0%, rgba(168,85,247,0.04) 100%)',
+  aiBorder: 'rgba(124,58,237,0.15)',
   // Badges
-  badgeBg: 'rgba(94,106,210,0.08)',
-  badgeText: '#5e6ad2',
+  badgeBg: 'rgba(124,58,237,0.08)',
+  badgeText: '#7c3aed',
 } as const;
 
 export const PAGE_DARK = {
-  // Surfaces
-  bg: '#0f1011',
-  surface: '#191a1b',
-  surfaceElevated: '#28282c',
-  // Borders
-  border: 'rgba(255,255,255,0.05)',
-  borderStrong: 'rgba(255,255,255,0.08)',
-  // Text
-  text: '#f7f8f8',
-  textSecondary: '#d0d6e0',
-  textTertiary: '#62666d',
-  // Accent (Linear indigo)
-  accent: '#7170ff',
-  accentHover: '#828fff',
-  accentSoft: 'rgba(113,112,255,0.12)',
+  // Surfaces — navy, not gray
+  bg: '#0b0d17',
+  surface: '#111425',
+  surfaceElevated: '#1a1d30',
+  // Borders — purple-tinted
+  border: 'rgba(139,92,246,0.08)',
+  borderStrong: 'rgba(139,92,246,0.16)',
+  // Text — slightly warm
+  text: '#eae8f4',
+  textSecondary: '#a8a3be',
+  textTertiary: '#5c5876',
+  // Accent (bright purple)
+  accent: '#8b5cf6',
+  accentHover: '#a78bfa',
+  accentSoft: 'rgba(139,92,246,0.12)',
   // Status
   success: '#34d399',
   successSoft: 'rgba(52,211,153,0.12)',
-  danger: '#ef4444',
-  dangerSoft: 'rgba(239,68,68,0.1)',
+  danger: '#f87171',
+  dangerSoft: 'rgba(248,113,113,0.1)',
   warning: '#fbbf24',
   warningSoft: 'rgba(251,191,36,0.1)',
   // Tables & lists
-  rowHover: '#1f2022',
+  rowHover: '#151830',
   // AI surfaces
-  aiGradient: 'linear-gradient(135deg, rgba(113,112,255,0.08) 0%, rgba(94,106,210,0.04) 100%)',
-  aiBorder: 'rgba(113,112,255,0.2)',
+  aiGradient: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(124,58,237,0.05) 100%)',
+  aiBorder: 'rgba(139,92,246,0.2)',
   // Badges
-  badgeBg: 'rgba(113,112,255,0.12)',
-  badgeText: '#7170ff',
+  badgeBg: 'rgba(139,92,246,0.12)',
+  badgeText: '#8b5cf6',
 } as const;
 
 export type PageTheme = { [K in keyof typeof PAGE_LIGHT]: string };
@@ -145,8 +145,8 @@ export const CURRENCY = '₴';
 export const pageContainer = {
   fontFamily: FONT,
   fontFeatureSettings: FONT_FEATURES,
-  padding: '32px 40px',
-  maxWidth: 860,
+  padding: '28px 36px',
+  maxWidth: 1280,
   margin: '0 auto' as const,
   width: '100%' as const,
 };
@@ -154,14 +154,14 @@ export const pageContainer = {
 export const cardStyle = (C: PageTheme) => ({
   background: C.surface,
   border: `1px solid ${C.border}`,
-  borderRadius: 10,
-  padding: '18px 20px',
+  borderRadius: 14,
+  padding: '20px 22px',
 });
 
 export const headingStyle = (C: PageTheme) => ({
-  fontSize: 20,
-  fontWeight: 510,
-  letterSpacing: '-0.3px',
+  fontSize: 22,
+  fontWeight: 600,
+  letterSpacing: '-0.4px',
   margin: 0,
   color: C.text,
   fontFamily: FONT,
@@ -172,12 +172,21 @@ export const labelStyle = (C: PageTheme) => ({
   fontSize: 12,
   fontWeight: 510,
   color: C.textTertiary,
-  letterSpacing: '0.01em',
+  letterSpacing: '0.02em',
+  textTransform: 'uppercase' as const,
 });
 
 export const bigNumberStyle = (C: PageTheme) => ({
-  fontSize: 24,
-  fontWeight: 510,
+  fontSize: 28,
+  fontWeight: 600,
   letterSpacing: '-0.5px',
   color: C.text,
 });
+
+/* ─── KPI card gradients (FINCHECK-inspired) ─── */
+export const KPI_GRADIENTS = {
+  revenue: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)',
+  expenses: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
+  profit: 'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
+  neutral: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
+} as const;

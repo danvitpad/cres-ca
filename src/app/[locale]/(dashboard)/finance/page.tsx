@@ -1,6 +1,6 @@
 /** --- YAML
  * name: FinancePage
- * description: Finance hub — 4 tabs (Сводка / Услуги / Отчёты / Записи). Tab state in URL search params.
+ * description: Finance hub — 4 tabs (Сводка / Услуги / Отчёты / Записи). Tab state in URL search params. Full-width layout.
  * created: 2026-04-17
  * updated: 2026-04-17
  * --- */
@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Scissors, FileBarChart, CalendarCheck,
 } from 'lucide-react';
-import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 
 import { SummaryTab } from './_tabs/summary-tab';
 import { ServicesTab } from './_tabs/services-tab';
@@ -55,21 +55,20 @@ export default function FinancePage() {
 
   return (
     <div style={{
-      fontFamily: FONT,
-      fontFeatureSettings: FONT_FEATURES,
+      ...pageContainer,
       color: C.text,
       background: C.bg,
-      padding: '32px 40px',
-      maxWidth: 900,
-      margin: '0 auto',
-      width: '100%',
+      minHeight: '100%',
     }}>
       {/* ─── Tab bar ─── */}
       <div style={{
         display: 'flex',
-        gap: 0,
-        borderBottom: `1px solid ${C.border}`,
-        marginBottom: 24,
+        gap: 2,
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: 4,
+        marginBottom: 28,
       }}>
         {TABS.map(tab => {
           const Icon = tab.icon;
@@ -79,20 +78,22 @@ export default function FinancePage() {
               key={tab.key}
               onClick={() => setTab(tab.key)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '10px 18px',
-                border: 'none', background: 'transparent',
+                display: 'flex', alignItems: 'center', gap: 7,
+                padding: '10px 20px',
+                border: 'none',
+                background: isActive ? C.accent : 'transparent',
                 cursor: 'pointer',
-                fontSize: 13, fontWeight: 510,
+                fontSize: 13, fontWeight: 550,
                 fontFamily: FONT,
                 fontFeatureSettings: '"cv01", "ss03"',
-                color: isActive ? C.text : C.textTertiary,
-                borderBottom: isActive ? `2px solid ${C.accent}` : '2px solid transparent',
-                marginBottom: -1,
-                transition: 'all 0.15s ease',
+                color: isActive ? '#ffffff' : C.textTertiary,
+                borderRadius: 8,
+                transition: 'all 0.2s ease',
+                flex: 1,
+                justifyContent: 'center',
               }}
             >
-              <Icon size={15} style={{ opacity: isActive ? 1 : 0.5 }} />
+              <Icon size={16} style={{ opacity: isActive ? 1 : 0.6 }} />
               {tab.label}
             </button>
           );
@@ -102,9 +103,9 @@ export default function FinancePage() {
       {/* ─── Tab content ─── */}
       <motion.div
         key={activeTab}
-        initial={{ opacity: 0, y: 4 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.15 }}
+        transition={{ duration: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
         {activeTab === 'summary' && (
           <SummaryTab C={C} isDark={isDark} period={period} setPeriod={setPeriod} />
