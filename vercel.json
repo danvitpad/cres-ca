@@ -1,23 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    { "path": "/api/cron/birthdays", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/reminders", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/reviews", "schedule": "0 10 * * *" },
-    { "path": "/api/cron/burning-slots", "schedule": "0 18 * * *" },
-    { "path": "/api/cron/fx", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/cadence", "schedule": "0 11 * * *" },
-    { "path": "/api/cron/subscriptions", "schedule": "0 6 * * *" },
-    { "path": "/api/cron/winback", "schedule": "0 12 * * 1" },
-    { "path": "/api/cron/nps", "schedule": "0 13 * * *" },
-    { "path": "/api/cron/notifications", "schedule": "30 8 * * *" },
-    { "path": "/api/cron/recommendations", "schedule": "0 15 * * *" },
-    { "path": "/api/cron/purge-clients", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/badges", "schedule": "0 4 * * *" },
-    { "path": "/api/cron/daily-closeout", "schedule": "0 22 * * *" },
-    { "path": "/api/cron/debts", "schedule": "0 14 * * 1" },
-    { "path": "/api/cron/low-stock", "schedule": "0 5 * * *" },
-    { "path": "/api/cron/post-visit-upsell", "schedule": "0 14 * * *" },
-    { "path": "/api/cron/voice-reminders", "schedule": "* * * * *" }
-  ]
+  "comment": "Crons moved to Supabase pg_cron (see migration 00042_pg_cron_schedules.sql). Vercel Hobby tier limits crons to 2/daily, so we scheduled via pg_cron which is free on Supabase and supports per-minute precision. All cron endpoints still live at /api/cron/* and are called from pg_cron via pg_net using CRON_SECRET env var."
 }
