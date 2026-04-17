@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 
 export type FxRates = Record<string, number>;
 
-export const SUPPORTED_CURRENCIES = ['UAH', 'USD', 'EUR', 'PLN', 'GBP'] as const;
+export const SUPPORTED_CURRENCIES = ['UAH', 'USD', 'EUR'] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
 export function useFxRates() {

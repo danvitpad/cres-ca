@@ -532,7 +532,8 @@ function HistoryTab({ appointments, clientId, C }: { appointments: AppointmentRo
           <div>
             <p style={{ fontWeight: 510, fontSize: 13, margin: 0, color: C.text }}>{a.service?.name ?? '—'}</p>
             <p style={{ fontSize: 12, color: C.textSecondary, margin: '2px 0 0' }}>
-              {new Date(a.starts_at).toLocaleDateString()} {new Date(a.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {new Date(a.starts_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}{' '}
+              {new Date(a.starts_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}
             </p>
             <Badge variant="outline" className="text-xs mt-1">{tc(`status.${a.status}`)}</Badge>
           </div>
@@ -631,7 +632,7 @@ function NotesTab({ client, clientId, onSaved, C }: { client: ClientDetail; clie
       }
     } catch { /* use raw transcript */ }
 
-    const timestamp = new Date().toLocaleString();
+    const timestamp = new Date().toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
     const updated = notes
       ? `${notes}\n\n[${timestamp}] ${parsedText}`
       : `[${timestamp}] ${parsedText}`;
@@ -774,7 +775,7 @@ function HealthTab({ client, intake, vertical, onSaved, C }: {
               })}
               {intake.updated_at && (
                 <div style={{ fontSize: 12, color: C.textTertiary, paddingTop: 4 }}>
-                  {t('intakeUpdatedAt')}: {new Date(intake.updated_at).toLocaleDateString()}
+                  {t('intakeUpdatedAt')}: {new Date(intake.updated_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                 </div>
               )}
             </>

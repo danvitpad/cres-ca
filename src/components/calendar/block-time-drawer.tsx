@@ -92,10 +92,9 @@ function formatDuration(mins: number): string {
 }
 
 function formatTime12(time: string): string {
+  // Kept name for call-site stability; now outputs 24-hour European format (17:30)
   const [h, m] = time.split(':').map(Number);
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  const period = h < 12 ? 'AM' : 'PM';
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 export function BlockTimeDrawerContent({

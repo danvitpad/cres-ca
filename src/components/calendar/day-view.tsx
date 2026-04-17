@@ -22,7 +22,7 @@ const TOTAL_HEIGHT = TOTAL_HOURS * HOUR_HEIGHT; // 2304px
 const HEADER_HEIGHT = 110;
 const AVATAR_SIZE = 56;
 const DEFAULT_SLOT_MINUTES = 10;
-const TIME_COL_WIDTH = 80; // wider for "12:00 дня" labels
+const TIME_COL_WIDTH = 60; // 24-hour labels "12:00"
 const DRAG_SNAP_MINUTES = 15; // snap to 15-min intervals during drag
 
 /* ─── Fresha theme palettes (extracted from Playwright) ─── */
@@ -86,20 +86,13 @@ const DARK = {
   emptyText: 'rgba(234,232,244,0.25)',
 };
 
-/* ─── Fresha-style time label: "5:00\nвечера" ─── */
+/* ─── 24-hour time label (European format) ─── */
 function freshaTimeLabel(hour: number): { time: string; suffix: string } {
-  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  let suffix: string;
-  if (hour >= 0 && hour < 5) suffix = 'ночи';
-  else if (hour >= 5 && hour < 12) suffix = 'утра';
-  else if (hour >= 12 && hour < 17) suffix = 'дня';
-  else suffix = 'вечера';
-  return { time: `${h12}:00`, suffix };
+  return { time: `${String(hour).padStart(2, '0')}:00`, suffix: '' };
 }
 
 function freshaTimeLabelMin(hour: number, min: number): string {
-  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${h12}:${String(min).padStart(2, '0')}`;
+  return `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
 function fmtTime(h: number, m: number): string {
@@ -596,8 +589,7 @@ export function DayView({
             const slotMin = i * SLOT_MINUTES;
             const h = Math.floor(slotMin / 60);
             const m = slotMin % 60;
-            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            const timeStr = `${h12}:${String(m).padStart(2, '0')}`;
+            const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
             return (
               <div
                 key={`s-${i}`}
@@ -646,8 +638,7 @@ export function DayView({
             const h = Math.floor(slotMin / 60);
             const m = slotMin % 60;
             const timeStr24 = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-            const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            const timeStr = `${h12}:${String(m).padStart(2, '0')}`;
+            const timeStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
             /* Popup position: centered on click, clamped to grid bounds */
             const popupW = 280;
             const popupH = 220;
