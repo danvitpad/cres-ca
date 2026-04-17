@@ -2072,6 +2072,8 @@
     "filterAll": "Все",
     "filterClients": "Клиенты",
     "filterMasters": "Мастера",
-    "filterSalons": "Салоны"
+    "filterSalons": "Салоны",
+    "addToClients": "В клиенты",
+    "alreadyClient": "Уже клиент"
   }
 }

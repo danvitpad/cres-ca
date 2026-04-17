@@ -2043,6 +2043,8 @@
     "filterAll": "Усі",
     "filterClients": "Клієнти",
     "filterMasters": "Майстри",
-    "filterSalons": "Салони"
+    "filterSalons": "Салони",
+    "addToClients": "До клієнтів",
+    "alreadyClient": "Вже клієнт"
   }
 }

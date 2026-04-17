@@ -99,6 +99,7 @@ export default function ClientsPage() {
   const [tab, setTab] = useState<TabType>('clients');
   const [followList, setFollowList] = useState<FollowerRow[]>([]);
   const [followListLoading, setFollowListLoading] = useState(false);
+  const [clientProfileIds, setClientProfileIds] = useState<Set<string>>(new Set());
 
   const loadClients = useCallback(async (append = false) => {
     if (!master) return;
@@ -130,7 +131,20 @@ export default function ClientsPage() {
     try {
       const res = await fetch(`/api/follow/list?profileId=${master.profile_id}&type=${listType}`);
       const json = await res.json();
-      setFollowList(json.list ?? []);
+      const list = json.list ?? [];
+      setFollowList(list);
+
+      // Check which followers are already clients (by profile_id)
+      if (list.length > 0) {
+        const supabase = createClient();
+        const profileIds = list.map((f: FollowerRow) => f.profileId);
+        const { data: existingClients } = await supabase
+          .from('clients')
+          .select('profile_id')
+          .eq('master_id', master.id)
+          .in('profile_id', profileIds);
+        setClientProfileIds(new Set((existingClients ?? []).map(c => c.profile_id).filter(Boolean)));
+      }
     } catch {
       setFollowList([]);
     }
@@ -294,6 +308,7 @@ export default function ClientsPage() {
                   entityMeta={f.entityMeta}
                   followedAt={f.followedAt}
                   mutual={f.mutual}
+                  isClient={clientProfileIds.has(f.profileId)}
                   onFollow={async () => {
                     await fetch('/api/follow', {
                       method: 'POST',
@@ -309,6 +324,23 @@ export default function ClientsPage() {
                       body: JSON.stringify({ targetId: f.profileId }),
                     });
                     loadFollowList(tab === 'users' ? 'followers' : 'mutual');
+                  }}
+                  onAddToClients={async () => {
+                    if (!master) return;
+                    const supabase = createClient();
+                    const { error } = await supabase.from('clients').insert({
+                      master_id: master.id,
+                      profile_id: f.profileId,
+                      full_name: f.fullName ?? '—',
+                      phone: f.phone || null,
+                    });
+                    if (error) {
+                      toast.error(error.message);
+                      return;
+                    }
+                    toast.success(tc('success'));
+                    setClientProfileIds(prev => new Set([...prev, f.profileId]));
+                    loadClients();
                   }}
                 />
               </motion.div>

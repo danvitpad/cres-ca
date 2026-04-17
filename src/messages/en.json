@@ -2063,6 +2063,8 @@
     "filterAll": "All",
     "filterClients": "Clients",
     "filterMasters": "Masters",
-    "filterSalons": "Salons"
+    "filterSalons": "Salons",
+    "addToClients": "Add to clients",
+    "alreadyClient": "Already a client"
   }
 }

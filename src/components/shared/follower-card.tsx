@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { UserCheck, UserPlus, Scissors, Building2, User } from 'lucide-react';
+import { UserCheck, UserPlus, Scissors, Building2, User, UserRoundPlus } from 'lucide-react';
 
 export type EntityType = 'client' | 'master' | 'salon';
 
@@ -26,8 +26,10 @@ interface FollowerCardProps {
   } | null;
   followedAt?: string | null;
   mutual: boolean;
+  isClient?: boolean;
   onFollow: () => Promise<void>;
   onUnfollow: () => Promise<void>;
+  onAddToClients?: () => Promise<void>;
 }
 
 function getInitials(name: string) {
@@ -60,11 +62,14 @@ export function FollowerCard({
   entityMeta,
   followedAt,
   mutual,
+  isClient,
   onFollow,
   onUnfollow,
+  onAddToClients,
 }: FollowerCardProps) {
   const tf = useTranslations('followSystem');
   const [busy, setBusy] = useState(false);
+  const [addingClient, setAddingClient] = useState(false);
 
   const handleAction = async () => {
     setBusy(true);
@@ -152,33 +157,70 @@ export function FollowerCard({
         </div>
       </div>
 
-      {/* Action */}
-      <button
-        onClick={handleAction}
-        disabled={busy}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '8px 16px', borderRadius: 8,
-          border: mutual ? '1px solid var(--border, rgba(255,255,255,0.08))' : 'none',
-          backgroundColor: mutual ? 'transparent' : '#5e6ad2',
-          color: mutual ? 'var(--muted-foreground, #8a8f98)' : '#ffffff',
-          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          opacity: busy ? 0.5 : 1,
-          transition: 'opacity 150ms',
-        }}
-      >
-        {mutual ? (
-          <>
-            <UserCheck style={{ width: 13, height: 13 }} />
-            {tf('unfollowBack')}
-          </>
-        ) : (
-          <>
-            <UserPlus style={{ width: 13, height: 13 }} />
-            {tf('followBack')}
-          </>
+      {/* Actions */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Add to clients button — only for non-client entity types */}
+        {onAddToClients && !isClient && entityType === 'client' && (
+          <button
+            onClick={async () => {
+              setAddingClient(true);
+              try { await onAddToClients(); } finally { setAddingClient(false); }
+            }}
+            disabled={addingClient}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '8px 14px', borderRadius: 8,
+              border: 'none',
+              backgroundColor: '#10b981',
+              color: '#ffffff',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              opacity: addingClient ? 0.5 : 1,
+              transition: 'opacity 150ms',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <UserRoundPlus style={{ width: 13, height: 13 }} />
+            {tf('addToClients')}
+          </button>
         )}
-      </button>
+        {isClient && entityType === 'client' && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '6px 12px', borderRadius: 8,
+            backgroundColor: 'rgba(16,185,129,0.12)', color: '#10b981',
+            fontSize: 11, fontWeight: 600,
+          }}>
+            <UserCheck style={{ width: 12, height: 12 }} />
+            {tf('alreadyClient')}
+          </span>
+        )}
+        <button
+          onClick={handleAction}
+          disabled={busy}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 8,
+            border: mutual ? '1px solid var(--border, rgba(255,255,255,0.08))' : 'none',
+            backgroundColor: mutual ? 'transparent' : '#5e6ad2',
+            color: mutual ? 'var(--muted-foreground, #8a8f98)' : '#ffffff',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer',
+            opacity: busy ? 0.5 : 1,
+            transition: 'opacity 150ms',
+          }}
+        >
+          {mutual ? (
+            <>
+              <UserCheck style={{ width: 13, height: 13 }} />
+              {tf('unfollowBack')}
+            </>
+          ) : (
+            <>
+              <UserPlus style={{ width: 13, height: 13 }} />
+              {tf('followBack')}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }
