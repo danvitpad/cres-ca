@@ -147,11 +147,12 @@
 | 9.4 | Link existing TG | ✅ `/api/telegram/link-existing` |
 | 9.5 | Email OTP fallback | ✅ `/api/telegram/email-otp` |
 | 9.6 | Mini App (`/telegram/*` pages) | ✅ |
-| 9.7 | **Voice voice-to-note в карточку клиента** | ❌ **BLOCK B** |
-| 9.8 | **Voice → booking** | 🟡 API `/api/voice-booking/parse` есть, в TG webhook не подключено полностью |
-| 9.9 | Voice → expense | 🟡 OCR есть, voice expense — нет |
-| 9.10 | Client notifications on appointment | ✅ через `pending notifications` + cron |
-| 9.11 | Reminder 24h/2h | ✅ через автоматизации |
+| 9.7 | **Voice voice-to-note в карточку клиента** | ✅ **DONE** — voice_notes + clients.notes + TG кнопка "Открыть клиента" |
+| 9.8 | **Voice → реальное booking (appointment)** | ✅ **DONE** — fuzzy client+service match, insert appointment, TG + in-app уведомление клиенту |
+| 9.9 | Voice → expense | ✅ DONE (давно) |
+| 9.10 | Voice → inventory списание | ✅ **DONE** — regex парсинг, ilike match, update quantity |
+| 9.11 | Client notifications on voice booking | ✅ **DONE** — in_app + Telegram DM если client.telegram_id |
+| 9.12 | Reminder 24h/2h | ✅ через автоматизации |
 
 ---
 
