@@ -29,6 +29,7 @@ Do NOT load everything. Read only the files relevant to the current task.
 | If the task involves… | Read |
 |---|---|
 | **🎨 ЛЮБАЯ UI/фронт-задача (читать первым перед кодом)** | `.knowledge/FRONTEND.md` ← **единая точка входа, консолидирует rules + patterns + ui-libraries + design-md + premium правила** |
+| **🌐 Мульти-вертикальность + модульность + symmetry rules** | `.knowledge/universal-system.md` ← **читать перед любой работой по мастер/салон-дашборду, онбордингу, настройкам** |
 | Project overview, personas, business model | `.knowledge/project.md` |
 | **User's raw feature vision** (источник истины для "что делаем и почему") | `.knowledge/vision.md` |
 | **Карта индустриальных вертикалей** — дефолты per-industry (анамнез, шаблоны услуг, спец. сущности: pets/vehicles/events) | `.knowledge/verticals.md` |
