@@ -1,4 +1,3 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "comment": "Crons moved to Supabase pg_cron (see migration 00042_pg_cron_schedules.sql). Vercel Hobby tier limits crons to 2/daily, so we scheduled via pg_cron which is free on Supabase and supports per-minute precision. All cron endpoints still live at /api/cron/* and are called from pg_cron via pg_net using CRON_SECRET env var."
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }

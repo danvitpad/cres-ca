@@ -35,7 +35,7 @@ DECLARE
   v_url text;
   v_secret text;
 BEGIN
-  v_url := 'https://cres-ca.vercel.app' || p_path;
+  v_url := 'https://www.cres-ca.com' || p_path;
   SELECT decrypted_secret INTO v_secret
   FROM vault.decrypted_secrets WHERE name = 'cron_secret' LIMIT 1;
   IF v_secret IS NULL THEN RETURN; END IF;
