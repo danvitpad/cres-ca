@@ -47,39 +47,48 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     })();
   }, [userId, router]);
 
-  // Realtime unread notifications badge
+  // Unread notifications badge — polled (Telegram WebView doesn't keep
+  // Supabase JWT, so realtime channels won't authenticate either)
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     let mounted = true;
 
     const fetchCount = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('profile_id', userId)
-        .is('read_at', null);
-      if (mounted) setUnreadCount(count ?? 0);
+      const initData = (() => {
+        if (typeof window === 'undefined') return null;
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        const live = w.Telegram?.WebApp?.initData;
+        if (live) return live;
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) {
+            const parsed = JSON.parse(stash) as { initData?: string };
+            if (parsed.initData) return parsed.initData;
+          }
+        } catch { /* ignore */ }
+        return null;
+      })();
+      if (!initData) return;
+      const res = await fetch('/api/telegram/m/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (mounted) setUnreadCount(json.unread ?? 0);
     };
 
     fetchCount();
 
-    const channel = supabase
-      .channel(`master-notif:${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `profile_id=eq.${userId}` },
-        () => fetchCount(),
-      )
-      .subscribe();
-
     const onFocus = () => fetchCount();
     window.addEventListener('focus', onFocus);
+    const interval = setInterval(fetchCount, 60_000);
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
       window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
     };
   }, [userId]);
 
