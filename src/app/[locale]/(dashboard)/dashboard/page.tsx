@@ -27,7 +27,9 @@ import { enUS } from 'date-fns/locale/en-US';
 import {
   Cake, Clock, ArrowUpRight, ArrowDownRight, Minus,
   Bell, Check, Mic, Calendar as CalendarIcon,
+  TrendingUp, TrendingDown,
 } from 'lucide-react';
+import { BreakdownDonut } from '@/components/ui/breakdown-donut';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -277,6 +279,8 @@ export default function DashboardPage() {
     return days.map(d => sumRevenue(startOfDay(d), endOfDay(d)));
   }, [sumRevenue, todayStart, todayEnd]);
 
+  const PALETTE = ['#7c3aed', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e'];
+
   /* Expense breakdown by category — current month */
   const expenseByCategory = useMemo(() => {
     const map = new Map<string, number>();
@@ -286,12 +290,27 @@ export default function DashboardPage() {
       const cat = e.category || 'Прочее';
       map.set(cat, (map.get(cat) || 0) + Number(e.amount));
     }
-    const colors = ['#7c3aed', '#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#f43f5e'];
     return Array.from(map.entries())
       .sort(([, a], [, b]) => b - a)
       .slice(0, 7)
-      .map(([label, value], i) => ({ label, value, color: colors[i % colors.length] }));
+      .map(([label, value], i) => ({ label, value, color: PALETTE[i % PALETTE.length] }));
   }, [expenses, monthStart, todayEnd]);
+
+  /* Revenue breakdown BY SERVICE — current month */
+  const revenueByService = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of appointments) {
+      if (a.status !== 'completed') continue;
+      const d = new Date(a.starts_at);
+      if (d < monthStart || d > todayEnd) continue;
+      const name = a.service?.name || 'Без услуги';
+      map.set(name, (map.get(name) || 0) + (Number(a.price) || 0));
+    }
+    return Array.from(map.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 7)
+      .map(([label, value], i) => ({ label, value, color: PALETTE[i % PALETTE.length] }));
+  }, [appointments, monthStart, todayEnd]);
 
   const todaySchedule = useMemo(() =>
     appointments.filter(a => {
@@ -438,70 +457,44 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* ═══ Row 3: Chart (wide) + Donut (narrow) ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 20 }}>
-        {/* Revenue chart */}
-        <motion.div {...stagger(5)} style={cardBase}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>Динамика дохода</h3>
-              <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>Последние 30 дней</p>
-            </div>
-            <div style={{
-              padding: '4px 10px', borderRadius: 7,
-              background: C.accentSoft, color: C.accent,
-              fontSize: 12, fontWeight: 600,
-            }}>
-              {fmtMoney(kpi.month.value)}
-            </div>
+      {/* ═══ Row 3a: Revenue dynamics (full width, smaller) ═══ */}
+      <motion.div {...stagger(5)} style={{ ...cardBase, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 650, color: C.text, margin: 0 }}>Динамика дохода</h3>
+            <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>Последние 30 дней</p>
           </div>
-          <div style={{ flex: 1, minHeight: 180 }}>
-            <AreaChart data={revenueSeries} color={C.accent} height={200} />
+          <div style={{
+            padding: '4px 10px', borderRadius: 7,
+            background: C.accentSoft, color: C.accent,
+            fontSize: 12, fontWeight: 600,
+          }}>
+            {fmtMoney(kpi.month.value)}
           </div>
-        </motion.div>
+        </div>
+        <AreaChart data={revenueSeries} color={C.accent} height={140} />
+      </motion.div>
 
-        {/* Expense donut */}
-        <motion.div {...stagger(6)} style={cardBase}>
-          <div style={{ marginBottom: 14 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>Структура расходов</h3>
-            <p style={{ fontSize: 12, color: C.textTertiary, margin: '3px 0 0' }}>За текущий месяц</p>
-          </div>
-
-          {expenseByCategory.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textTertiary, fontSize: 13 }}>
-              Нет расходов
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-              <div style={{ position: 'relative' }}>
-                <DonutChart slices={expenseByCategory} size={140} strokeWidth={20} />
-                <div style={{
-                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                  textAlign: 'center',
-                }}>
-                  <div style={{ fontSize: 11, color: C.textTertiary, marginBottom: 2 }}>Всего</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text, fontVariantNumeric: 'tabular-nums' }}>
-                    {fmtMoney(totalMonthExp)}
-                  </div>
-                </div>
-              </div>
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {expenseByCategory.slice(0, 4).map(sl => {
-                  const pct = Math.round((sl.value / totalMonthExp) * 100);
-                  return (
-                    <div key={sl.label} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: sl.color, flexShrink: 0 }} />
-                      <span style={{ color: C.textSecondary, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {sl.label}
-                      </span>
-                      <span style={{ color: C.textTertiary, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </motion.div>
+      {/* ═══ Row 3b: 2 equal donuts — Income by service | Expense by category ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+        <BreakdownDonut
+          title="Структура доходов"
+          subtitle="По услугам · за месяц"
+          icon={<TrendingUp size={15} style={{ color: C.success }} />}
+          slices={revenueByService}
+          emptyText="Пока нет завершённых записей"
+          C={C}
+          isDark={isDark}
+        />
+        <BreakdownDonut
+          title="Структура расходов"
+          subtitle="По категориям · за месяц"
+          icon={<TrendingDown size={15} style={{ color: C.danger }} />}
+          slices={expenseByCategory}
+          emptyText="Пока нет расходов"
+          C={C}
+          isDark={isDark}
+        />
       </div>
 
       {/* ═══ Row 4: Appointments table (wide) + Birthdays/Reminders (narrow) ═══ */}
