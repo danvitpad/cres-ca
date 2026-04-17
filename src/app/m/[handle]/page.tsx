@@ -348,7 +348,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-opacity hover:opacity-90"
           >
             <Calendar className="size-4" />
-            Book an appointment
+            Записаться
           </Link>
         </div>
 
@@ -493,7 +493,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           <div className="mt-12 mb-16">
             <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
               <Sparkles className="size-5 text-violet-600" />
-              Services
+              Услуги
             </h2>
             <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
               {services.map(s => (
@@ -511,7 +511,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                         <div className="mt-0.5 text-sm text-neutral-500">{s.description}</div>
                       )}
                       {s.duration_minutes && (
-                        <div className="mt-1 text-xs text-neutral-400">{s.duration_minutes} min</div>
+                        <div className="mt-1 text-xs text-neutral-400">{s.duration_minutes} мин</div>
                       )}
                     </Link>
                     {(s.preparation || s.aftercare || (s.faq && s.faq.length > 0)) && (
