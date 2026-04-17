@@ -752,4 +752,67 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
     }
     return;
   }
+
+  // close_ok:<uuid> / close_no:<uuid> — master confirms appointment end
+  if (data.startsWith('close_ok:') || data.startsWith('close_no:')) {
+    const confirmed = data.startsWith('close_ok:');
+    const apptId = data.split(':')[1];
+
+    // Verify master authority via profile.telegram_id
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('telegram_id', telegramId)
+      .single();
+    if (!profile) {
+      await sendMessage(chatId, '⚠️ Профиль не найден.');
+      return;
+    }
+    const { data: masterRow } = await supabase
+      .from('masters')
+      .select('id')
+      .eq('profile_id', profile.id)
+      .single();
+    if (!masterRow) {
+      await sendMessage(chatId, '⚠️ Только мастер может подтвердить.');
+      return;
+    }
+
+    const { data: appt } = await supabase
+      .from('appointments')
+      .select('id, master_id, status, price, client:clients(full_name), service:services(name)')
+      .eq('id', apptId)
+      .single();
+
+    if (!appt || appt.master_id !== masterRow.id) {
+      await sendMessage(chatId, '⚠️ Запись не найдена или не ваша.');
+      return;
+    }
+
+    if (appt.status === 'completed' || appt.status === 'no_show' || appt.status === 'cancelled') {
+      await sendMessage(chatId, 'Уже закрыта.');
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const svc = (appt.service as any)?.name || 'Услуга';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cli = (appt.client as any)?.full_name || 'Клиент';
+    const price = Number(appt.price) || 0;
+
+    if (confirmed) {
+      await supabase
+        .from('appointments')
+        .update({ status: 'completed' })
+        .eq('id', apptId);
+      await sendMessage(chatId, `✅ <b>Запись подтверждена</b>\n\n👤 ${cli}\n💇 ${svc}\n💰 ${price} ₴ зачислено в кассу.`, { parse_mode: 'HTML' });
+    } else {
+      await supabase
+        .from('appointments')
+        .update({ status: 'no_show' })
+        .eq('id', apptId);
+      await sendMessage(chatId, `❌ <b>Запись помечена как "не состоялась"</b>\n\n👤 ${cli}\n💇 ${svc}\n\nДеньги в кассу не зачислены.`, { parse_mode: 'HTML' });
+    }
+    return;
+  }
 }

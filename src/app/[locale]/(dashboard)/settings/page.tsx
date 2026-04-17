@@ -541,6 +541,9 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
 function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
   const [notifyWeb, setNotifyWeb] = useState((master as unknown as Record<string, unknown>).notify_web !== false);
   const [notifyTelegram, setNotifyTelegram] = useState((master as unknown as Record<string, unknown>).notify_telegram !== false);
+  const [closeMode, setCloseMode] = useState<'confirm' | 'auto'>(
+    (((master as unknown as Record<string, unknown>).appointment_close_mode as string) || 'confirm') as 'confirm' | 'auto',
+  );
   const [saving, setSaving] = useState(false);
 
   const handleToggle = async (field: 'notify_web' | 'notify_telegram', value: boolean) => {
@@ -564,6 +567,17 @@ function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<
     }
     setSaving(false);
   };
+
+  async function setCloseModeAndSave(v: 'confirm' | 'auto') {
+    setCloseMode(v);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('masters')
+      .update({ appointment_close_mode: v })
+      .eq('id', master.id);
+    if (error) toast.error('Не удалось сохранить');
+    else { toast.success('Сохранено'); onSaved(); }
+  }
 
   return (
     <Card>
@@ -602,6 +616,52 @@ function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<
             onCheckedChange={(v) => handleToggle('notify_telegram', v)}
             disabled={saving}
           />
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* Appointment close mode */}
+        <div>
+          <p className="text-sm font-medium mb-1">Закрытие записей</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Когда время записи прошло — как засчитывать доход?
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+              closeMode === 'confirm' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+            }`}>
+              <input
+                type="radio"
+                name="closeMode"
+                className="mt-1"
+                checked={closeMode === 'confirm'}
+                onChange={() => setCloseModeAndSave('confirm')}
+              />
+              <div>
+                <div className="text-sm font-semibold">С подтверждением</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Бот напишет «Состоялась?» после записи — подтверждаю сам.
+                </div>
+              </div>
+            </label>
+            <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
+              closeMode === 'auto' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+            }`}>
+              <input
+                type="radio"
+                name="closeMode"
+                className="mt-1"
+                checked={closeMode === 'auto'}
+                onChange={() => setCloseModeAndSave('auto')}
+              />
+              <div>
+                <div className="text-sm font-semibold">Автоматически</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Как только время записи прошло — засчитываю доход без вопросов.
+                </div>
+              </div>
+            </label>
+          </div>
         </div>
       </CardContent>
     </Card>
