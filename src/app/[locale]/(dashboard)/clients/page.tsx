@@ -71,7 +71,7 @@ interface ClientRow {
 }
 
 type FilterKey = 'all' | 'vip' | 'overdue' | 'risk' | 'new' | 'birthday';
-type TabType = 'clients' | 'users';
+type TabType = 'clients' | 'audience' | 'users';
 
 interface FollowerRow {
   profileId: string;
@@ -349,8 +349,7 @@ export default function ClientsPage() {
 
   useEffect(() => {
     if (!master) return;
-    if (tab === 'users') loadFollowList('followers');
-    // 'users' now consolidates followers + mutual (partners)
+    if (tab === 'audience') loadFollowList('followers');
   }, [master, tab, loadFollowList]);
 
   async function addClient(formData: { full_name: string; phone: string; email: string; date_of_birth: string; notes: string }) {
@@ -471,6 +470,7 @@ export default function ClientsPage() {
       }}>
         {([
           { key: 'clients' as TabType, label: 'Клиенты', icon: Users },
+          { key: 'audience' as TabType, label: 'Аудитория', icon: UserCheck },
           { key: 'users' as TabType, label: 'Партнёры', icon: Heart },
         ]).map(({ key, label, icon: Icon }) => (
           <button
@@ -587,6 +587,88 @@ export default function ClientsPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* ═══ AUDIENCE TAB — followers (regular users who follow this master) ═══ */}
+      {tab === 'audience' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {followListLoading ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} style={{ height: 72, background: C.surfaceElevated, borderRadius: 12 }} />
+            ))
+          ) : followList.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
+                padding: '60px 24px', textAlign: 'center',
+              }}
+            >
+              <UserCheck size={40} style={{ color: C.textTertiary, opacity: 0.4, margin: '0 auto 12px' }} />
+              <p style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>
+                Пока никто не подписан
+              </p>
+              <p style={{ fontSize: 13, color: C.textSecondary, margin: '6px 0 0', maxWidth: 380, marginInline: 'auto' }}>
+                Поделитесь ссылкой на свой профиль <code style={{ color: C.accent }}>cres-ca.com/m/{master?.invite_code}</code> — пользователи смогут подписаться и видеть ваши работы в ленте.
+              </p>
+            </motion.div>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: C.textTertiary, marginBottom: 8 }}>
+                Эти люди подписаны на вас. Они видят ваши работы в ленте — превратите их в клиентов кнопкой ниже.
+              </p>
+              {followList.map((f, i) => (
+                <motion.div
+                  key={f.profileId}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                >
+                  <FollowerCard
+                    profileId={f.profileId}
+                    fullName={f.fullName ?? '—'}
+                    avatarUrl={f.avatarUrl}
+                    phone={f.phone}
+                    entityType={f.entityType}
+                    entityMeta={f.entityMeta}
+                    followedAt={f.followedAt}
+                    mutual={f.mutual}
+                    isClient={clientProfileIds.has(f.profileId)}
+                    onFollow={async () => {
+                      await fetch('/api/follow', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ targetId: f.profileId }),
+                      });
+                      loadFollowList('followers');
+                    }}
+                    onUnfollow={async () => {
+                      await fetch('/api/follow', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ targetId: f.profileId }),
+                      });
+                      loadFollowList('followers');
+                    }}
+                    onAddToClients={async () => {
+                      if (!master) return;
+                      const supabase = createClient();
+                      const { error } = await supabase.from('clients').insert({
+                        master_id: master.id,
+                        profile_id: f.profileId,
+                        full_name: f.fullName ?? '—',
+                        phone: f.phone || null,
+                      });
+                      if (error) { toast.error(error.message); return; }
+                      toast.success(tc('success'));
+                      setClientProfileIds(prev => new Set([...prev, f.profileId]));
+                      loadClients();
+                    }}
+                  />
+                </motion.div>
+              ))}
+            </>
+          )}
+        </div>
       )}
 
       {/* ═══ PARTNERS TAB — master↔master recommendation agreements ═══ */}
