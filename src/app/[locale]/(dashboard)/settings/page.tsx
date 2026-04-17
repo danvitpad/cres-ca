@@ -34,6 +34,13 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { DEFAULT_FEATURES, type VerticalFeatures } from '@/lib/verticals/feature-flags';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { useConfirm } from '@/hooks/use-confirm';
 import type { VerticalKey } from '@/lib/verticals/default-services';
 import { useFeatures } from '@/hooks/use-features';
 import { motion } from 'framer-motion';
@@ -149,8 +156,17 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
   const t = useTranslations('profile');
   const tc = useTranslations('common');
   const [saving, setSaving] = useState(false);
-  const [fullName, setFullName] = useState(master.profile.full_name);
+
+  // Personal: last/first/middle/DOB/phone
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialProfile = master.profile as any;
+  const [firstName, setFirstName] = useState<string>(initialProfile.first_name || '');
+  const [lastName, setLastName] = useState<string>(initialProfile.last_name || '');
+  const [middleName, setMiddleName] = useState<string>(initialProfile.middle_name || '');
+  const [dob, setDob] = useState<string>(initialProfile.date_of_birth || '');
   const [phone, setPhone] = useState(master.profile.phone ?? '');
+
+  // Professional
   const [specialization, setSpecialization] = useState(master.specialization ?? '');
   const [bio, setBio] = useState(master.bio ?? '');
   const [address, setAddress] = useState(master.address ?? '');
@@ -159,9 +175,17 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
+    const fullName = [lastName, firstName, middleName].filter(Boolean).join(' ').trim();
 
     const [profileRes, masterRes] = await Promise.all([
-      supabase.from('profiles').update({ full_name: fullName, phone: phone || null }).eq('id', userId),
+      supabase.from('profiles').update({
+        full_name: fullName || firstName || '—',
+        first_name: firstName || null,
+        last_name: lastName || null,
+        middle_name: middleName || null,
+        date_of_birth: dob || null,
+        phone: phone || null,
+      }).eq('id', userId),
       supabase.from('masters').update({ specialization, bio, address, city }).eq('id', master.id),
     ]);
 
@@ -174,48 +198,74 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
     }
   }
 
+  const inputCls = 'border-2 border-border focus-visible:border-primary';
+  const labelCls = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground';
+
   return (
-    <Card>
-      <CardHeader><CardTitle>{t('editProfile')}</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t('specialization')}</Label>
-            <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('specializationPlaceholder')} />
+    <Accordion multiple defaultValue={['personal', 'professional']} className="!max-w-none w-full rounded-xl border bg-card">
+      {/* Personal */}
+      <AccordionItem value="personal">
+        <AccordionTrigger>Личные данные</AccordionTrigger>
+        <AccordionContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Фамилия</Label>
+              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Иванова" className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Имя</Label>
+              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Мария" required className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Отчество</Label>
+              <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Андреевна" className={inputCls} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>{t('city')}</Label>
-            <Input value={city} onChange={(e) => setCity(e.target.value)} required />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Дата рождения</Label>
+              <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Телефон</Label>
+              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380..." className={inputCls} />
+            </div>
           </div>
-        </div>
+        </AccordionContent>
+      </AccordionItem>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t('address')}</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
+      {/* Professional */}
+      <AccordionItem value="professional">
+        <AccordionTrigger>Профессиональная информация</AccordionTrigger>
+        <AccordionContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Специализация</Label>
+              <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('specializationPlaceholder')} className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Город</Label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)} required className={inputCls} />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>{t('bio')}</Label>
-            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} />
+          <div className="space-y-1.5">
+            <Label className={labelCls}>Адрес</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ул., дом, кабинет" className={inputCls} />
           </div>
-        </div>
+          <div className="space-y-1.5">
+            <Label className={labelCls}>О себе</Label>
+            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="Коротко о себе и услугах (публично)" className={inputCls} />
+          </div>
+        </AccordionContent>
+      </AccordionItem>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>{t('fullName')}</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('phone')}</Label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" />
-          </div>
-        </div>
-
+      {/* Save */}
+      <div className="p-4 border-t flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? tc('loading') : tc('save')}
+          {saving ? tc('loading') : 'Сохранить изменения'}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </Accordion>
   );
 }
 
@@ -691,14 +741,44 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   );
 }
 
-/* ─── Security: email / password / phone ─── */
+/* ─── Security: email / password / delete account ─── */
 function SecurityTab() {
+  const confirm = useConfirm();
   const [newEmail, setNewEmail] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
   const [passSaving, setPassSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function deleteAccount() {
+    const ok1 = await confirm({
+      title: 'Удалить аккаунт?',
+      description: 'Будут удалены все ваши данные: клиенты, записи, услуги, расходы. Это необратимо.',
+      confirmLabel: 'Понимаю, продолжить',
+      destructive: true,
+    });
+    if (!ok1) return;
+    const ok2 = await confirm({
+      title: 'Точно удалить?',
+      description: 'Последнее подтверждение. Отменить после удаления нельзя.',
+      confirmLabel: 'Удалить навсегда',
+      destructive: true,
+    });
+    if (!ok2) return;
+
+    setDeleting(true);
+    const res = await fetch('/api/account/delete', { method: 'POST' });
+    setDeleting(false);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Не удалось удалить' }));
+      toast.error(error || 'Ошибка удаления');
+      return;
+    }
+    toast.success('Аккаунт удалён');
+    window.location.href = '/login';
+  }
 
   async function changeEmail() {
     if (!newEmail || !newEmail.includes('@')) { toast.error('Некорректный email'); return; }
@@ -768,6 +848,26 @@ function SecurityTab() {
           </div>
           <Button onClick={changePassword} disabled={passSaving || !newPassword || newPassword !== confirmPassword}>
             {passSaving ? 'Сохранение...' : 'Сменить пароль'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Danger zone — delete account */}
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive">Опасная зона</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Удаление аккаунта необратимо. Все данные (клиенты, записи, услуги, расходы) будут удалены безвозвратно.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="outline"
+            className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            onClick={deleteAccount}
+            disabled={deleting}
+          >
+            {deleting ? 'Удаление...' : 'Удалить аккаунт'}
           </Button>
         </CardContent>
       </Card>
