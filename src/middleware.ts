@@ -98,5 +98,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|telegram|.*\\..*).*)'],
+  // Skip intl handling for: api routes, static assets, telegram mini-app,
+  // and public master pages (/m/*) that live outside the [locale] segment.
+  matcher: ['/((?!api|_next|_vercel|telegram|m/|.*\\..*).*)'],
 };
