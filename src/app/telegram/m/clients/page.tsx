@@ -53,7 +53,7 @@ function initials(name: string) {
 }
 
 function daysAgo(iso: string | null): string {
-  if (!iso) return 'никогда';
+  if (!iso) return '—';
   const d = new Date(iso);
   const diff = Math.round((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
   if (diff === 0) return 'сегодня';
@@ -62,6 +62,14 @@ function daysAgo(iso: string | null): string {
   if (diff < 30) return `${Math.round(diff / 7)} нед. назад`;
   if (diff < 365) return `${Math.round(diff / 30)} мес. назад`;
   return `${Math.round(diff / 365)} г. назад`;
+}
+
+function plural(n: number, forms: [string, string, string]): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return forms[0];
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return forms[1];
+  return forms[2];
 }
 
 export default function MasterMiniAppClientsPage() {
@@ -121,7 +129,7 @@ export default function MasterMiniAppClientsPage() {
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">База</p>
         <h1 className="mt-1 text-2xl font-bold">Клиенты</h1>
-        <p className="mt-0.5 text-[11px] text-white/40">{rows.length} записей</p>
+        <p className="mt-0.5 text-[11px] text-white/40">{rows.length} {plural(rows.length, ['клиент', 'клиента', 'клиентов'])}</p>
       </div>
 
       {/* Search */}
@@ -186,9 +194,11 @@ export default function MasterMiniAppClientsPage() {
                       {isExcellent && <Star className="size-3 fill-amber-300 text-amber-300" />}
                     </div>
                     <p className="mt-0.5 truncate text-[11px] text-white/50">
-                      {c.total_visits} визит{c.total_visits === 1 ? '' : c.total_visits < 5 ? 'а' : 'ов'} · {Number(c.total_spent).toFixed(0)} ₴
+                      {c.total_visits} {plural(c.total_visits, ['визит', 'визита', 'визитов'])} · {Number(c.total_spent).toFixed(0)} ₴
                     </p>
-                    <p className="mt-0.5 truncate text-[10px] text-white/40">Был {daysAgo(c.last_visit_at)}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-white/40">
+                      {c.last_visit_at ? `Был ${daysAgo(c.last_visit_at)}` : 'Ещё не приходил'}
+                    </p>
                   </div>
                   {isRisky && (
                     <span className="shrink-0 rounded-full bg-rose-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-rose-300">

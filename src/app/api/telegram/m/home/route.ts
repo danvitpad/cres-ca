@@ -44,11 +44,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ master: null, profile });
   }
 
-  // Today stats
+  // Today stats — server-side UTC day boundaries
+  // (close enough for KPI counts; precise per-user day handled by /calendar endpoint)
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  today.setUTCHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
   const [{ data: todayApts }, { data: upcoming }] = await Promise.all([
     admin

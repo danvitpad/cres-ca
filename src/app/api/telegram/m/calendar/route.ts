@@ -44,12 +44,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ appointments: [], masterId: null });
   }
 
-  // Day range
-  const day = day_iso ? new Date(day_iso) : new Date();
-  const from = new Date(day);
-  from.setHours(0, 0, 0, 0);
-  const to = new Date(from);
-  to.setDate(to.getDate() + 1);
+  // Day range — client already passes the local-day-start as ISO,
+  // so just use it as `from` and add 24h for `to`. Don't reset hours
+  // (server is UTC, but the client's intent is "their local day").
+  const from = day_iso ? new Date(day_iso) : new Date();
+  const to = new Date(from.getTime() + 24 * 60 * 60 * 1000);
 
   const { data: appointments } = await admin
     .from('appointments')
