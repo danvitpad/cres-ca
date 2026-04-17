@@ -376,15 +376,11 @@
       "messaging": "Обмен сообщениями",
       "team": "Команда",
       "salesSub": {
-        "daily": "Ежедневные продажи",
-        "appointments": "Список записей",
-        "list": "Список продаж",
-        "profitability": "Реальная прибыль",
-        "taxReport": "Налоговый отчёт",
-        "lostRevenue": "Упущенная выгода",
-        "payments": "Платежи",
-        "giftCards": "Подарочные карты",
-        "memberships": "Купленные абонементы"
+        "summary": "Сводка",
+        "appointments": "Записи",
+        "profitability": "Рентабельность",
+        "calculator": "Калькулятор",
+        "reports": "Отчёты"
       },
       "clientsSub": {
         "list": "Список клиентов",
@@ -777,7 +773,16 @@
     "learnMore": "Подробнее...",
     "showing": "Показано {count} из {total} результатов",
     "weekTrend": "Тренд за неделю",
-    "duration": "Длительность"
+    "duration": "Длительность",
+    "summary": "Сводка",
+    "summaryDesc": "Доходы, расходы и ключевые показатели за выбранный период.",
+    "periodDay": "День",
+    "periodWeek": "Неделя",
+    "periodMonth": "Месяц",
+    "periodQuarter": "Квартал",
+    "periodHalf": "Полгода",
+    "periodYear": "Год",
+    "periodAll": "Всё время"
   },
   "reports": {
     "title": "Финансовые отчёты",

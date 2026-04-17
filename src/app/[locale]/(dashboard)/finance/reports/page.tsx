@@ -1,360 +1,595 @@
 /** --- YAML
- * name: AnalyticsReportsPage
- * description: Fresha-exact analytics/reports hub — categorized report cards with favorites, search, and filtering
+ * name: FinanceReportsPage
+ * description: Finance Reports — 4 tabs (Taxes / Lost Revenue / Forecast / Payments) with real data from Supabase.
+ *              Replaces old mock analytics catalog + standalone pages (tax-report, lost-revenue, cashflow, payments).
+ * created: 2026-04-17
+ * updated: 2026-04-17
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from 'next-themes';
-import { motion } from 'framer-motion';
-import { Search, Star, BarChart3, DollarSign, Users, CalendarDays, ShoppingBag, TrendingUp, Heart, Briefcase } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Receipt, TrendingDown, TrendingUp, CreditCard, Download,
+  AlertOctagon, Sparkles, Loader2,
+} from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useMaster } from '@/hooks/use-master';
+import { format, type Locale } from 'date-fns';
+import { ru } from 'date-fns/locale/ru';
+import { uk } from 'date-fns/locale/uk';
+import { enUS } from 'date-fns/locale/en-US';
+import { cn } from '@/lib/utils';
 
 const FONT = '"Roobert PRO", AktivGroteskVF, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
 const LIGHT = {
-  pageBg: '#ffffff',
-  cardBg: '#ffffff',
-  cardBorder: '0.8px solid #e0e0e0',
-  text: '#0d0d0d',
-  textSecondary: '#737373',
-  textMuted: '#a3a3a3',
-  accent: '#6950f3',
-  sidebarBg: '#0d0d0d',
-  sidebarText: '#f5f5f5',
-  sidebarTextSecondary: '#999999',
-  sidebarTextMuted: '#737373',
-  sidebarHover: '#222222',
-  sidebarBorder: '#e5e5e5',
-  divider: '#e5e5e5',
-  searchBg: '#f5f5f5',
-  premiumBadge: '#6950f3',
+  bg: '#ffffff', cardBg: '#ffffff', cardBorder: '#e5e5e5',
+  text: '#0d0d0d', textMuted: '#737373', textLight: '#a3a3a3',
+  accent: '#6950f3', accentSoft: '#f0f0ff',
+  success: '#10b981', successSoft: 'rgba(16,185,129,0.1)',
+  danger: '#d4163a', dangerSoft: 'rgba(212,22,58,0.08)',
+  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
+  tableBorder: '#2a2a2a', rowHover: '#111111',
+  tabActive: '#6950f3', tabInactive: '#737373', tabBorder: '#e5e5e5',
+  aiCardBg: 'linear-gradient(135deg, #f8f7ff 0%, #f0edff 100%)',
+  aiCardBorder: '#e0dbff',
 };
+
 const DARK = {
-  pageBg: '#000000',
-  cardBg: '#000000',
-  cardBorder: '0.8px solid #1a1a1a',
-  text: '#f5f5f5',
-  textSecondary: '#bfbfbf',
-  textMuted: '#666666',
-  accent: '#8880ff',
-  sidebarBg: '#000000',
-  sidebarText: '#e5e5e5',
-  sidebarTextSecondary: '#999999',
-  sidebarTextMuted: '#666666',
-  sidebarHover: '#0a0a0a',
-  sidebarBorder: '#1a1a1a',
-  divider: '#1a1a1a',
-  searchBg: '#000000',
-  premiumBadge: '#8880ff',
+  bg: '#000000', cardBg: '#0a0a0a', cardBorder: '#1a1a1a',
+  text: '#f0f0f0', textMuted: '#b3b3b3', textLight: '#666666',
+  accent: '#8b7cf6', accentSoft: 'rgba(105,80,243,0.15)',
+  success: '#34d399', successSoft: 'rgba(52,211,153,0.12)',
+  danger: '#ef4444', dangerSoft: 'rgba(239,68,68,0.1)',
+  tableBg: '#000000', tableText: '#f0f0f0', tableTextMuted: '#b3b3b3',
+  tableBorder: '#1a1a1a', rowHover: '#0a0a0a',
+  tabActive: '#8b7cf6', tabInactive: '#666666', tabBorder: '#1a1a1a',
+  aiCardBg: 'linear-gradient(135deg, #0d0b1a 0%, #130f24 100%)',
+  aiCardBorder: '#2a2548',
 };
 
-type ReportCategory = 'all' | 'sales' | 'finance' | 'appointments' | 'team' | 'clients' | 'catalogue';
+type Tab = 'taxes' | 'lost' | 'forecast' | 'payments';
 
-interface Report {
-  id: string;
-  titleKey: string;
-  descKey: string;
-  category: ReportCategory;
-  isPremium: boolean;
-  icon: typeof BarChart3;
+const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+interface MonthStat {
+  key: string; year: number; month: number;
+  revenue: number; tips: number; expenses: number; inventoryCost: number;
+  net: number; tax: number; afterTax: number;
 }
 
-const REPORTS: Report[] = [
-  { id: 'performance-dashboard', titleKey: 'performanceDashboard', descKey: 'performanceDashboardDesc', category: 'all', isPremium: false, icon: TrendingUp },
-  { id: 'online-dashboard', titleKey: 'onlineDashboard', descKey: 'onlineDashboardDesc', category: 'all', isPremium: false, icon: BarChart3 },
-  { id: 'loyalty-dashboard', titleKey: 'loyaltyDashboard', descKey: 'loyaltyDashboardDesc', category: 'all', isPremium: false, icon: Heart },
-  { id: 'performance-summary', titleKey: 'performanceSummary', descKey: 'performanceSummaryDesc', category: 'all', isPremium: true, icon: TrendingUp },
-  { id: 'performance-over-time', titleKey: 'performanceOverTime', descKey: 'performanceOverTimeDesc', category: 'all', isPremium: true, icon: BarChart3 },
-  { id: 'sales-summary', titleKey: 'salesSummary', descKey: 'salesSummaryDesc', category: 'sales', isPremium: false, icon: DollarSign },
-  { id: 'sales-by-service', titleKey: 'salesByService', descKey: 'salesByServiceDesc', category: 'sales', isPremium: false, icon: DollarSign },
-  { id: 'sales-by-product', titleKey: 'salesByProduct', descKey: 'salesByProductDesc', category: 'sales', isPremium: false, icon: ShoppingBag },
-  { id: 'sales-by-team', titleKey: 'salesByTeam', descKey: 'salesByTeamDesc', category: 'sales', isPremium: false, icon: Users },
-  { id: 'daily-sales', titleKey: 'dailySales', descKey: 'dailySalesDesc', category: 'sales', isPremium: false, icon: DollarSign },
-  { id: 'discount-summary', titleKey: 'discountSummary', descKey: 'discountSummaryDesc', category: 'sales', isPremium: false, icon: DollarSign },
-  { id: 'tax-summary', titleKey: 'taxSummary', descKey: 'taxSummaryDesc', category: 'finance', isPremium: false, icon: Briefcase },
-  { id: 'payment-summary', titleKey: 'paymentSummary', descKey: 'paymentSummaryDesc', category: 'finance', isPremium: false, icon: DollarSign },
-  { id: 'tips-report', titleKey: 'tipsReport', descKey: 'tipsReportDesc', category: 'finance', isPremium: false, icon: DollarSign },
-  { id: 'gift-card-report', titleKey: 'giftCardReport', descKey: 'giftCardReportDesc', category: 'finance', isPremium: false, icon: DollarSign },
-  { id: 'expense-report', titleKey: 'expenseReport', descKey: 'expenseReportDesc', category: 'finance', isPremium: false, icon: Briefcase },
-  { id: 'appointments-summary', titleKey: 'appointmentsSummary', descKey: 'appointmentsSummaryDesc', category: 'appointments', isPremium: false, icon: CalendarDays },
-  { id: 'cancellation-report', titleKey: 'cancellationReport', descKey: 'cancellationReportDesc', category: 'appointments', isPremium: false, icon: CalendarDays },
-  { id: 'no-show-report', titleKey: 'noShowReport', descKey: 'noShowReportDesc', category: 'appointments', isPremium: false, icon: CalendarDays },
-  { id: 'booking-sources', titleKey: 'bookingSources', descKey: 'bookingSourcesDesc', category: 'appointments', isPremium: false, icon: CalendarDays },
-  { id: 'team-performance', titleKey: 'teamPerformance', descKey: 'teamPerformanceDesc', category: 'team', isPremium: false, icon: Users },
-  { id: 'team-commission', titleKey: 'teamCommission', descKey: 'teamCommissionDesc', category: 'team', isPremium: false, icon: Users },
-  { id: 'team-hours', titleKey: 'teamHours', descKey: 'teamHoursDesc', category: 'team', isPremium: false, icon: Users },
-  { id: 'client-list-report', titleKey: 'clientListReport', descKey: 'clientListReportDesc', category: 'clients', isPremium: false, icon: Users },
-  { id: 'client-retention', titleKey: 'clientRetention', descKey: 'clientRetentionDesc', category: 'clients', isPremium: false, icon: Users },
-  { id: 'new-clients-report', titleKey: 'newClientsReport', descKey: 'newClientsReportDesc', category: 'clients', isPremium: false, icon: Users },
-  { id: 'product-stock', titleKey: 'productStock', descKey: 'productStockDesc', category: 'catalogue', isPremium: false, icon: ShoppingBag },
-  { id: 'inventory-usage', titleKey: 'inventoryUsage', descKey: 'inventoryUsageDesc', category: 'catalogue', isPremium: false, icon: ShoppingBag },
-];
+interface LostBucket { label: string; count: number; amount: number; hint: string; }
 
-const SIDEBAR_ITEMS: { key: string; labelKey: string; count: number }[] = [
-  { key: 'all', labelKey: 'allReports', count: REPORTS.length },
-  { key: 'favorites', labelKey: 'favorites', count: 0 },
-];
+interface DayBucket {
+  date: string; appointments: number; aptRevenue: number; subscriptions: number; total: number;
+}
 
-const CATEGORY_FILTERS: { key: ReportCategory; labelKey: string }[] = [
-  { key: 'all', labelKey: 'catAll' },
-  { key: 'sales', labelKey: 'catSales' },
-  { key: 'finance', labelKey: 'catFinance' },
-  { key: 'appointments', labelKey: 'catAppointments' },
-  { key: 'team', labelKey: 'catTeam' },
-  { key: 'clients', labelKey: 'catClients' },
-  { key: 'catalogue', labelKey: 'catCatalogue' },
-];
+interface PaymentRow {
+  id: string; amount: number; currency: string; type: string; status: string;
+  payment_method: string | null; created_at: string;
+  services: { name: string } | null;
+}
 
-export default function AnalyticsReportsPage() {
-  const t = useTranslations('analytics');
+export default function FinanceReportsPage() {
+  const t = useTranslations('sales');
+  const locale = useLocale();
+  const dfLocale = dateFnsLocales[locale] || ru;
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const C = mounted && resolvedTheme === 'dark' ? DARK : LIGHT;
+  const isDark = mounted && resolvedTheme === 'dark';
+  const C = isDark ? DARK : LIGHT;
 
-  const [sidebarItem, setSidebarItem] = useState('all');
-  const [category, setCategory] = useState<ReportCategory>('all');
-  const [search, setSearch] = useState('');
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const { master } = useMaster();
+  const [activeTab, setActiveTab] = useState<Tab>('taxes');
+  const [loading, setLoading] = useState(true);
 
-  const filteredReports = REPORTS.filter(r => {
-    if (sidebarItem === 'favorites' && !favorites.has(r.id)) return false;
-    if (sidebarItem === 'standard' && r.isPremium) return false;
-    if (sidebarItem === 'premium' && !r.isPremium) return false;
-    if (category !== 'all' && r.category !== category) return false;
-    if (search) {
-      const s = search.toLowerCase();
-      const title = t(r.titleKey).toLowerCase();
-      const desc = t(r.descKey).toLowerCase();
-      if (!title.includes(s) && !desc.includes(s)) return false;
+  // Tax data
+  const [months, setMonths] = useState<MonthStat[]>([]);
+  const [taxRate, setTaxRate] = useState(5);
+
+  // Lost revenue data
+  const [lostBuckets, setLostBuckets] = useState<LostBucket[]>([]);
+  const [topCancellers, setTopCancellers] = useState<{ name: string; count: number }[]>([]);
+
+  // Forecast data
+  const [forecastDays, setForecastDays] = useState<DayBucket[]>([]);
+
+  // Payments data
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+
+  // AI forecast
+  const [aiForecast, setAiForecast] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  /* ─── Loaders ─── */
+
+  const loadTaxes = useCallback(async () => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const rate = master.tax_rate_percent ?? 5;
+    setTaxRate(rate);
+    const now = new Date();
+    const stats: MonthStat[] = [];
+
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+
+      const [{ data: apts }, { data: exps }, { data: usage }] = await Promise.all([
+        supabase.from('appointments')
+          .select('id, tip_amount, payment:payments(amount)')
+          .eq('master_id', master.id).eq('status', 'completed')
+          .gte('starts_at', start.toISOString()).lte('starts_at', end.toISOString()),
+        supabase.from('expenses')
+          .select('amount').eq('master_id', master.id)
+          .gte('date', start.toISOString().slice(0, 10)).lte('date', end.toISOString().slice(0, 10)),
+        supabase.from('inventory_usage')
+          .select('quantity_used, item:inventory_items!inner(cost_per_unit, master_id)')
+          .eq('item.master_id', master.id)
+          .gte('recorded_at', start.toISOString()).lte('recorded_at', end.toISOString()),
+      ]);
+
+      let revenue = 0, tips = 0;
+      for (const a of (apts ?? []) as unknown as { tip_amount: number | null; payment: { amount: number } | { amount: number }[] | null }[]) {
+        const p = a.payment;
+        const amt = Array.isArray(p) ? (p[0]?.amount ?? 0) : (p?.amount ?? 0);
+        revenue += Number(amt);
+        tips += Number(a.tip_amount ?? 0);
+      }
+      const expenses = (exps ?? []).reduce((a: number, e: any) => a + Number(e.amount ?? 0), 0);
+      let inventoryCost = 0;
+      for (const u of (usage ?? []) as unknown as { quantity_used: number; item: { cost_per_unit: number | null } | { cost_per_unit: number | null }[] | null }[]) {
+        const item = Array.isArray(u.item) ? u.item[0] : u.item;
+        inventoryCost += Number(u.quantity_used ?? 0) * Number(item?.cost_per_unit ?? 0);
+      }
+      const net = revenue - expenses - inventoryCost;
+      const tax = net > 0 ? net * (rate / 100) : 0;
+      stats.push({
+        key: `${d.getFullYear()}-${d.getMonth() + 1}`,
+        year: d.getFullYear(), month: d.getMonth() + 1,
+        revenue, tips, expenses, inventoryCost, net, tax, afterTax: net - tax,
+      });
     }
-    return true;
-  });
+    setMonths(stats);
+  }, [master?.id, master?.tax_rate_percent]);
 
-  function toggleFavorite(id: string) {
-    setFavorites(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
+  const loadLostRevenue = useCallback(async () => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+
+    const [{ data: cancelled }, { data: noShows }, { data: waitlistRows }] = await Promise.all([
+      supabase.from('appointments')
+        .select('id, price, client:clients(full_name)')
+        .eq('master_id', master.id)
+        .in('status', ['cancelled', 'cancelled_by_client', 'cancelled_by_master'])
+        .gte('starts_at', since),
+      supabase.from('appointments')
+        .select('id, price').eq('master_id', master.id).eq('status', 'no_show').gte('starts_at', since),
+      supabase.from('waitlist')
+        .select('id, service:services(price)').eq('master_id', master.id).gte('created_at', since),
+    ]);
+
+    const cancelledRows = ((cancelled ?? []) as unknown as { id: string; price: number; client: { full_name: string } | { full_name: string }[] | null }[])
+      .map(r => ({ id: r.id, price: r.price, client: Array.isArray(r.client) ? r.client[0] ?? null : r.client }));
+    const cancelledAmt = cancelledRows.reduce((a, r) => a + Number(r.price ?? 0), 0);
+    const noShowAmt = (noShows ?? []).reduce((a: number, r: any) => a + Number(r.price ?? 0), 0);
+    const waitlistAmt = ((waitlistRows ?? []) as unknown as { service: { price: number } | { price: number }[] | null }[])
+      .reduce((a, r) => { const svc = Array.isArray(r.service) ? r.service[0] : r.service; return a + Number(svc?.price ?? 0); }, 0);
+
+    setLostBuckets([
+      { label: 'Отмены', count: cancelledRows.length, amount: cancelledAmt, hint: 'клиент отменил' },
+      { label: 'No-show', count: (noShows ?? []).length, amount: noShowAmt, hint: 'не пришёл' },
+      { label: 'Лист ожидания', count: (waitlistRows ?? []).length, amount: waitlistAmt, hint: 'не вписали' },
+    ]);
+
+    const counts = new Map<string, number>();
+    for (const r of cancelledRows) {
+      const name = r.client?.full_name ?? '—';
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    setTopCancellers(
+      Array.from(counts.entries()).map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count).slice(0, 5)
+    );
+  }, [master?.id]);
+
+  const loadForecast = useCallback(async () => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const horizon = new Date(today); horizon.setDate(horizon.getDate() + 14);
+
+    const empty: DayBucket[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today); d.setDate(d.getDate() + i);
+      empty.push({ date: d.toISOString().slice(0, 10), appointments: 0, aptRevenue: 0, subscriptions: 0, total: 0 });
+    }
+    const byKey = new Map(empty.map(b => [b.date, b]));
+
+    const { data: apts } = await supabase.from('appointments')
+      .select('starts_at, price, status').eq('master_id', master.id)
+      .in('status', ['confirmed', 'booked'])
+      .gte('starts_at', today.toISOString()).lt('starts_at', horizon.toISOString());
+
+    for (const a of (apts ?? []) as { starts_at: string; price: number | null }[]) {
+      const b = byKey.get(a.starts_at.slice(0, 10));
+      if (!b) continue;
+      b.appointments += 1;
+      b.aptRevenue += Number(a.price ?? 0);
+    }
+
+    for (const b of byKey.values()) b.total = b.aptRevenue + b.subscriptions;
+    setForecastDays(Array.from(byKey.values()));
+  }, [master?.id]);
+
+  const loadPayments = useCallback(async () => {
+    if (!master?.id) return;
+    const supabase = createClient();
+    const monthAgo = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+
+    const { data } = await supabase.from('payments')
+      .select('id, amount, currency, type, status, payment_method, created_at, services(name)')
+      .gte('created_at', monthAgo).order('created_at', { ascending: false });
+
+    setPayments((data as unknown as PaymentRow[]) || []);
+  }, [master?.id]);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([loadTaxes(), loadLostRevenue(), loadForecast(), loadPayments()])
+      .finally(() => setLoading(false));
+  }, [loadTaxes, loadLostRevenue, loadForecast, loadPayments]);
+
+  // AI forecast
+  const fetchAiForecast = useCallback(async () => {
+    if (!master?.id || activeTab !== 'forecast') return;
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/finance/ai-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'forecast', master_id: master.id }),
+      });
+      if (res.ok) { const { insight } = await res.json(); setAiForecast(insight); }
+    } catch { /* optional */ }
+    setAiLoading(false);
+  }, [master?.id, activeTab]);
+
+  useEffect(() => { fetchAiForecast(); }, [fetchAiForecast]);
+
+  /* ─── Computed ─── */
+  const taxTotals = useMemo(() => months.reduce(
+    (acc, m) => ({ revenue: acc.revenue + m.revenue, tips: acc.tips + m.tips, expenses: acc.expenses + m.expenses, inventoryCost: acc.inventoryCost + m.inventoryCost, net: acc.net + m.net, tax: acc.tax + m.tax }),
+    { revenue: 0, tips: 0, expenses: 0, inventoryCost: 0, net: 0, tax: 0 }
+  ), [months]);
+
+  const lostTotal = lostBuckets.reduce((a, b) => a + b.amount, 0);
+  const forecastTotals = useMemo(() => ({
+    sum: forecastDays.reduce((a, b) => a + b.total, 0),
+    visits: forecastDays.reduce((a, b) => a + b.appointments, 0),
+    maxDay: Math.max(0, ...forecastDays.map(b => b.total)),
+  }), [forecastDays]);
+
+  const tabs: { key: Tab; label: string; icon: typeof Receipt }[] = [
+    { key: 'taxes', label: 'Налоги', icon: Receipt },
+    { key: 'lost', label: 'Упущенная выручка', icon: TrendingDown },
+    { key: 'forecast', label: 'Прогноз', icon: TrendingUp },
+    { key: 'payments', label: 'Платежи', icon: CreditCard },
+  ];
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0, fontFamily: FONT, backgroundColor: C.pageBg, padding: '32px 40px' }}>
-      {/* Left sidebar — matches flyout panel style */}
-      <div style={{
-        width: 240,
-        minWidth: 240,
-        borderRight: `0.8px solid ${C.sidebarBorder}`,
-        padding: '16px 0',
-        backgroundColor: C.sidebarBg,
-        flexShrink: 0,
-        overflowY: 'auto',
-      }}>
-        <div style={{ padding: '4px 20px 12px', fontSize: 11, fontWeight: 600, color: C.sidebarTextMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {t('title')}
-        </div>
-        {SIDEBAR_ITEMS.map(item => (
-          <button
-            key={item.key}
-            onClick={() => { setSidebarItem(item.key); if (item.key === 'favorites') setCategory('all'); }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              padding: '10px 20px',
-              fontSize: 15,
-              fontWeight: sidebarItem === item.key ? 600 : 400,
-              color: C.sidebarText,
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              textAlign: 'left',
-              fontFamily: FONT,
-              borderRadius: 0,
-              transition: 'background-color 100ms',
-              lineHeight: '22px',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.sidebarHover; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-          >
-            <span>{t(item.labelKey)}</span>
-            <span style={{ fontSize: 13, color: C.sidebarTextSecondary }}>{item.key === 'favorites' ? favorites.size : item.count}</span>
-          </button>
-        ))}
-
-        <div style={{ borderTop: `0.8px solid ${C.divider}`, margin: '8px 20px' }} />
-
-        <div style={{ padding: '4px 20px 12px', fontSize: 11, fontWeight: 600, color: C.sidebarTextMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          {t('categories')}
-        </div>
-        <button
-          onClick={() => { setSidebarItem('standard'); setCategory('all'); }}
-          style={{
-            display: 'block', width: '100%', padding: '10px 20px', fontSize: 15, fontWeight: 400,
-            color: C.sidebarText, backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
-            textAlign: 'left', fontFamily: FONT, lineHeight: '22px', transition: 'background-color 100ms',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.sidebarHover; }}
-          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        >
-          {t('standard')} <span style={{ color: C.sidebarTextSecondary }}>({REPORTS.filter(r => !r.isPremium).length})</span>
-        </button>
-        <button
-          onClick={() => { setSidebarItem('premium'); setCategory('all'); }}
-          style={{
-            display: 'block', width: '100%', padding: '10px 20px', fontSize: 15, fontWeight: 400,
-            color: C.sidebarText, backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
-            textAlign: 'left', fontFamily: FONT, lineHeight: '22px', transition: 'background-color 100ms',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.backgroundColor = C.sidebarHover; }}
-          onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-        >
-          {t('premium')} <span style={{ color: C.sidebarTextSecondary }}>({REPORTS.filter(r => r.isPremium).length})</span>
-        </button>
+    <div style={{ fontFamily: FONT, color: C.text, height: '100%', overflowY: 'auto', padding: '24px 32px' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Отчёты</h1>
+        <p style={{ fontSize: 14, color: C.textMuted, marginTop: 4 }}>Налоги, потери, прогнозы и платежи.</p>
       </div>
 
-      {/* Main content */}
-      <div style={{ flex: 1, padding: '24px 32px', overflowY: 'auto', minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-          <div>
-            <h1 style={{ fontSize: 24, fontWeight: 600, color: C.text, lineHeight: '32px', margin: 0 }}>
-              {t('reportingAndAnalytics')}
-            </h1>
-            <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4 }}>
-              {filteredReports.length} {t('reportsAvailable')}
-            </p>
-          </div>
-        </div>
-
-        {/* Search + Category filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: '0 0 280px' }}>
-            <Search size={16} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: C.textMuted }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder={t('searchPlaceholder')}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${C.tabBorder}`, marginBottom: 24 }}>
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               style={{
-                width: '100%',
-                padding: '8px 12px 8px 32px',
-                fontSize: 14,
-                fontFamily: FONT,
-                border: C.cardBorder,
-                borderRadius: 6,
-                backgroundColor: C.searchBg,
-                color: C.text,
-                outline: 'none',
+                padding: '12px 20px', border: 'none', background: 'transparent', cursor: 'pointer',
+                fontSize: 14, fontWeight: 600, fontFamily: FONT,
+                color: activeTab === tab.key ? C.tabActive : C.tabInactive,
+                borderBottom: activeTab === tab.key ? `2px solid ${C.tabActive}` : '2px solid transparent',
+                marginBottom: -2, transition: 'all 0.15s ease',
+                display: 'flex', alignItems: 'center', gap: 6,
               }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-            {CATEGORY_FILTERS.map(cat => (
-              <button
-                key={cat.key}
-                onClick={() => setCategory(cat.key)}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: 13,
-                  fontWeight: category === cat.key ? 600 : 400,
-                  color: category === cat.key ? '#fff' : C.textSecondary,
-                  backgroundColor: category === cat.key ? C.accent : 'transparent',
-                  border: category === cat.key ? 'none' : C.cardBorder,
-                  borderRadius: 16,
-                  cursor: 'pointer',
-                  fontFamily: FONT,
-                  transition: 'all 0.15s',
-                }}
-              >
-                {t(cat.labelKey)}
-              </button>
-            ))}
-          </div>
-        </div>
+            >
+              <Icon size={15} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-        {/* Reports grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-          {filteredReports.map((report, i) => {
-            const Icon = report.icon;
-            return (
-              <motion.div
-                key={report.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.02 }}
-                style={{
-                  backgroundColor: C.cardBg,
-                  border: C.cardBorder,
-                  borderRadius: 8,
-                  padding: 20,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.15s',
-                  position: 'relative',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = mounted && resolvedTheme === 'dark' ? '#222' : '#f9f9f9')}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.cardBg)}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 8,
-                      backgroundColor: mounted && resolvedTheme === 'dark' ? '#222' : '#f0f0f0',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                    }}>
-                      <Icon size={20} style={{ color: C.accent }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: '20px' }}>
-                        {t(report.titleKey)}
-                      </div>
-                      <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 4, lineHeight: '18px' }}>
-                        {t(report.descKey)}
-                      </div>
-                    </div>
+      {loading && (
+        <div style={{ padding: 40, textAlign: 'center', color: C.textMuted }}>
+          <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+          Загрузка...
+        </div>
+      )}
+
+      {!loading && (
+        <AnimatePresence mode="wait">
+          {/* ═══ TAXES TAB ═══ */}
+          {activeTab === 'taxes' && (
+            <motion.div key="taxes" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
+                Ставка: {taxRate}%. Последние 6 месяцев.
+              </p>
+
+              {/* Summary cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: 'Выручка', value: taxTotals.revenue },
+                  { label: 'Чаевые', value: taxTotals.tips, color: C.success },
+                  { label: 'Расходы', value: taxTotals.expenses },
+                  { label: 'Себестоимость', value: taxTotals.inventoryCost },
+                  { label: 'Чистая прибыль', value: taxTotals.net, color: taxTotals.net > 0 ? C.success : C.danger },
+                  { label: `Налог ${taxRate}%`, value: taxTotals.tax },
+                ].map((s, i) => (
+                  <div key={i} style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
+                    <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 4 }}>{s.label}</div>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: s.color || C.text }}>{s.value.toFixed(0)} UAH</div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    {report.isPremium && (
-                      <span style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: '#fff',
-                        backgroundColor: C.premiumBadge,
-                        padding: '2px 8px',
-                        borderRadius: 10,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                      }}>
-                        {t('premiumLabel')}
-                      </span>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(report.id); }}
-                      style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 4,
-                        color: favorites.has(report.id) ? '#f59e0b' : C.textMuted,
-                      }}
-                      title={t('addToFavorites')}
-                    >
-                      <Star size={16} fill={favorites.has(report.id) ? '#f59e0b' : 'none'} />
-                    </button>
+                ))}
+              </div>
+
+              {/* Table */}
+              <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                      {['Месяц', 'Выручка', 'Чай', 'Расходы', 'Себест.', 'Прибыль', 'Налог', 'После нал.', ''].map((h, i) => (
+                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {months.map(m => (
+                      <tr key={m.key} style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                        <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 500, color: C.tableText }}>{MONTHS_RU[m.month - 1]} {m.year}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>{m.revenue.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.success }}>{m.tips.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{m.expenses.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{m.inventoryCost.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: m.net < 0 ? C.danger : C.tableText }}>{m.net.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>{m.tax.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>{m.afterTax.toFixed(0)}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                          <button
+                            onClick={() => window.open(`/api/reports/monthly?year=${m.year}&month=${m.month}`, '_blank')}
+                            style={{
+                              padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.tableBorder}`,
+                              background: 'transparent', color: C.tableTextMuted, fontSize: 11, cursor: 'pointer',
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                            }}
+                          >
+                            <Download size={12} /> CSV
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ LOST REVENUE TAB ═══ */}
+          {activeTab === 'lost' && (
+            <motion.div key="lost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>За последние 30 дней.</p>
+
+              {/* Total lost */}
+              <div style={{
+                background: C.dangerSoft, border: `1px solid ${isDark ? '#7f1d1d' : '#fecaca'}`,
+                borderRadius: 12, padding: '20px 24px', marginBottom: 24,
+              }}>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', color: C.danger, fontWeight: 600 }}>Итого упущено</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: C.danger, marginTop: 4 }}>{lostTotal.toFixed(0)} UAH</div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+                {lostBuckets.map(b => (
+                  <div key={b.label} style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '16px 20px' }}>
+                    <div style={{ fontSize: 11, color: C.textMuted }}>{b.label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{b.amount.toFixed(0)} UAH</div>
+                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>{b.count} &middot; {b.hint}</div>
+                  </div>
+                ))}
+              </div>
+
+              {topCancellers.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <AlertOctagon size={14} style={{ color: '#f59e0b' }} />
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>Кто отменяет чаще</span>
+                  </div>
+                  <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        {topCancellers.map((c, i) => (
+                          <tr key={i} style={{ borderBottom: i < topCancellers.length - 1 ? `1px solid ${C.tableBorder}` : 'none' }}>
+                            <td style={{ padding: '10px 16px', fontSize: 13, fontWeight: 500, color: C.tableText }}>{c.name}</td>
+                            <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{c.count} отмен</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
+              )}
+            </motion.div>
+          )}
 
-        {filteredReports.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: C.textMuted }}>
-            <BarChart3 size={48} style={{ margin: '0 auto 16px', opacity: 0.3 }} />
-            <p style={{ fontSize: 15, fontWeight: 500 }}>{t('noResults')}</p>
-          </div>
-        )}
-      </div>
+          {/* ═══ FORECAST TAB ═══ */}
+          {activeTab === 'forecast' && (
+            <motion.div key="forecast" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>
+                14-дневный прогноз по подтверждённым визитам.
+              </p>
+
+              {/* KPIs */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>К поступлению</div>
+                  <div style={{ fontSize: 22, fontWeight: 600, color: C.success }}>{forecastTotals.sum.toFixed(0)} UAH</div>
+                </div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>Ожидаемые визиты</div>
+                  <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.visits}</div>
+                </div>
+                <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: C.textMuted }}>Пиковый день</div>
+                  <div style={{ fontSize: 22, fontWeight: 600 }}>{forecastTotals.maxDay.toFixed(0)} UAH</div>
+                </div>
+              </div>
+
+              {/* Bar chart */}
+              <div style={{ background: C.cardBg, border: `1px solid ${C.cardBorder}`, borderRadius: 12, padding: '20px 24px', marginBottom: 24 }}>
+                <div style={{ display: 'flex', height: 120, alignItems: 'flex-end', gap: 4 }}>
+                  {forecastDays.map(b => {
+                    const h = forecastTotals.maxDay > 0 ? (b.total / forecastTotals.maxDay) * 100 : 0;
+                    return (
+                      <div key={b.date} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                        <div
+                          style={{
+                            width: '100%', borderRadius: '4px 4px 0 0',
+                            background: C.accent, height: `${h}%`,
+                            minHeight: b.total > 0 ? 3 : 0, transition: 'height 0.3s ease',
+                          }}
+                          title={`${b.date}: ${b.total.toFixed(0)} UAH`}
+                        />
+                        <span style={{ fontSize: 9, color: C.textMuted }}>{new Date(b.date).getDate()}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Table */}
+              <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden', marginBottom: 24 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                      {['Дата', 'Визиты', 'От визитов', 'Итого'].map((h, i) => (
+                        <th key={i} style={{ padding: '10px 16px', textAlign: i === 0 ? 'left' : 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forecastDays.map(b => (
+                      <tr key={b.date} style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                        <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableText }}>
+                          {new Date(b.date).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.tableTextMuted }}>{b.appointments || '—'}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, color: C.tableText }}>{b.aptRevenue ? b.aptRevenue.toFixed(0) : '—'}</td>
+                        <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>{b.total ? b.total.toFixed(0) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* AI Forecast */}
+              <div style={{
+                background: C.aiCardBg, border: `1px solid ${C.aiCardBorder}`, borderRadius: 12,
+                padding: '20px 24px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <Sparkles size={14} style={{ color: C.accent }} />
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>AI-прогноз</span>
+                  {aiLoading && <Loader2 size={14} className="animate-spin" style={{ color: C.accent }} />}
+                </div>
+                <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.6, margin: 0 }}>
+                  {aiForecast || (aiLoading ? 'Генерируем прогноз...' : 'Прогноз станет доступен после накопления данных.')}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ═══ PAYMENTS TAB ═══ */}
+          {activeTab === 'payments' && (
+            <motion.div key="payments" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16 }}>Все транзакции за последние 30 дней.</p>
+
+              {payments.length === 0 ? (
+                <div style={{
+                  background: C.tableBg, borderRadius: 12, padding: '60px 20px',
+                  textAlign: 'center',
+                }}>
+                  <CreditCard size={32} style={{ color: C.accent, margin: '0 auto 12px' }} />
+                  <p style={{ fontSize: 15, fontWeight: 600, color: C.tableText }}>Нет транзакций</p>
+                </div>
+              ) : (
+                <div style={{ background: C.tableBg, borderRadius: 12, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>ID</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Услуга</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Тип</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Метод</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Дата</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Сумма</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 11, fontWeight: 500, color: C.tableTextMuted }}>Статус</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map(p => (
+                        <tr
+                          key={p.id}
+                          style={{ borderBottom: `1px solid ${C.tableBorder}`, cursor: 'pointer', transition: 'background 0.1s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.accent, fontWeight: 500 }}>
+                            #{p.id.slice(0, 7).toUpperCase()}
+                          </td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableText }}>{p.services?.name || '—'}</td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableTextMuted }}>{p.type}</td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableTextMuted }}>{p.payment_method || '—'}</td>
+                          <td style={{ padding: '10px 16px', fontSize: 13, color: C.tableTextMuted }}>
+                            {format(new Date(p.created_at), 'd MMM HH:mm', { locale: dfLocale })}
+                          </td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
+                            {Number(p.amount).toLocaleString()} {p.currency}
+                          </td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                            <span style={{
+                              display: 'inline-block', padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500,
+                              background: p.status === 'completed' ? C.successSoft : C.dangerSoft,
+                              color: p.status === 'completed' ? C.success : C.danger,
+                            }}>
+                              {p.status === 'completed' ? 'Завершён' : p.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      )}
     </div>
   );
 }

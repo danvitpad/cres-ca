@@ -9,7 +9,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, Download, ChevronDown } from 'lucide-react';
+import { Search, SlidersHorizontal, Download, ChevronDown, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { format, subMonths, type Locale } from 'date-fns';
@@ -57,6 +58,7 @@ interface AppointmentRow {
   ends_at: string;
   status: string;
   price: number;
+  tip_amount: number;
   created_at: string;
   service?: { name: string } | null;
   client?: { full_name: string } | null;
@@ -88,7 +90,7 @@ export default function AppointmentsListPage() {
 
     let query = supabase
       .from('appointments')
-      .select('id, starts_at, ends_at, status, price, created_at, service:services(name), client:clients(full_name)')
+      .select('id, starts_at, ends_at, status, price, tip_amount, created_at, service:services(name), client:clients(full_name)')
       .eq('master_id', master.id)
       .gte('starts_at', monthAgo);
 
@@ -137,6 +139,20 @@ export default function AppointmentsListPage() {
       case 'no_show': return { bg: C.dangerBg, text: C.dangerText, label: t('noShow') };
       default: return { bg: C.badgeBg, text: C.badgeText, label: status };
     }
+  }
+
+  // Inline tip editing
+  const [editingTip, setEditingTip] = useState<string | null>(null);
+  const [tipValue, setTipValue] = useState('');
+
+  async function saveTip(aptId: string) {
+    const supabase = createClient();
+    const amount = Number(tipValue) || 0;
+    const { error } = await supabase.from('appointments').update({ tip_amount: amount }).eq('id', aptId);
+    if (error) { toast.error(error.message); return; }
+    setAppointments(prev => prev.map(a => a.id === aptId ? { ...a, tip_amount: amount } : a));
+    setEditingTip(null);
+    toast.success('Чаевые сохранены');
   }
 
   const sortLabels: Record<SortOrder, string> = {
@@ -276,6 +292,7 @@ export default function AppointmentsListPage() {
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('scheduledDate')}</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('teamMember')}</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('price')}</th>
+              <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>Tips</th>
               <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.tableTextMuted }}>{t('status')}</th>
             </tr>
           </thead>
@@ -283,7 +300,7 @@ export default function AppointmentsListPage() {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} style={{ borderBottom: `1px solid ${C.tableBorder}` }}>
-                  {Array.from({ length: 7 }).map((_, j) => (
+                  {Array.from({ length: 8 }).map((_, j) => (
                     <td key={j} style={{ padding: '14px 16px' }}>
                       <div style={{ height: 14, borderRadius: 4, background: C.rowHover, animation: 'pulse 1.5s infinite' }} />
                     </td>
@@ -292,7 +309,7 @@ export default function AppointmentsListPage() {
               ))
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                <td colSpan={8} style={{ padding: '60px 20px', textAlign: 'center' }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
                   <p style={{ fontSize: 15, fontWeight: 600, color: C.tableText, marginBottom: 4 }}>{t('nothingFound')}</p>
                   <p style={{ fontSize: 13, color: C.tableTextMuted }}>{t('nothingFoundDesc')}</p>
@@ -330,6 +347,45 @@ export default function AppointmentsListPage() {
                       <td style={{ padding: '12px 16px', fontSize: 13, color: C.tableText }}>—</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.tableText }}>
                         {(appt.price || 0).toLocaleString()} UAH
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {editingTip === appt.id ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              autoFocus
+                              type="number"
+                              value={tipValue}
+                              onChange={e => setTipValue(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') saveTip(appt.id); if (e.key === 'Escape') setEditingTip(null); }}
+                              style={{
+                                width: 60, padding: '4px 6px', borderRadius: 4, textAlign: 'right',
+                                border: `1px solid ${C.accent}`, background: C.rowHover, color: C.tableText,
+                                fontSize: 12, fontFamily: FONT, outline: 'none',
+                              }}
+                            />
+                            <button
+                              onClick={() => saveTip(appt.id)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, padding: 2 }}
+                            >
+                              <Check size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            onClick={() => { setEditingTip(appt.id); setTipValue(String(appt.tip_amount || 0)); }}
+                            style={{
+                              fontSize: 13, color: appt.tip_amount ? '#34d399' : C.tableTextMuted,
+                              fontWeight: appt.tip_amount ? 600 : 400, cursor: 'pointer',
+                              padding: '2px 6px', borderRadius: 4,
+                              transition: 'background 0.1s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                            title="Нажмите для редактирования"
+                          >
+                            {appt.tip_amount ? `${appt.tip_amount}` : '—'}
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '12px 20px', textAlign: 'right' }}>
                         <span style={{

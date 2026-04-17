@@ -82,15 +82,11 @@ function buildSidebarNav(t: (key: string) => string): SidebarNavItem[] {
     {
       key: 'sales', icon: FreshaTag, title: t('nav.sales'),
       submenu: [
-        { label: t('nav.salesSub.daily'), href: '/finance/daily' },
+        { label: t('nav.salesSub.summary'), href: '/finance' },
         { label: t('nav.salesSub.appointments'), href: '/finance/appointments' },
-        { label: t('nav.salesSub.list'), href: '/finance' },
         { label: t('nav.salesSub.profitability'), href: '/finance/profitability' },
-        { label: t('nav.salesSub.taxReport'), href: '/finance/tax-report' },
-        { label: t('nav.salesSub.lostRevenue'), href: '/finance/lost-revenue' },
-        { label: t('nav.salesSub.payments'), href: '/finance/payments' },
-        { label: t('nav.salesSub.giftCards'), href: '/finance/gift-cards' },
-        { label: t('nav.salesSub.memberships'), href: '/finance/memberships' },
+        { label: t('nav.salesSub.calculator'), href: '/finance/cost-calculator' },
+        { label: t('nav.salesSub.reports'), href: '/finance/reports' },
       ],
     },
     {

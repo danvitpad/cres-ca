@@ -356,15 +356,11 @@
       "messaging": "Повідомлення",
       "team": "Команда",
       "salesSub": {
-        "daily": "Щоденні продажі",
-        "appointments": "Список записів",
-        "list": "Список продажів",
-        "profitability": "Реальний прибуток",
-        "taxReport": "Податковий звіт",
-        "lostRevenue": "Втрачена вигода",
-        "payments": "Платежі",
-        "giftCards": "Подарункові картки",
-        "memberships": "Куплені абонементи"
+        "summary": "Зведення",
+        "appointments": "Записи",
+        "profitability": "Рентабельність",
+        "calculator": "Калькулятор",
+        "reports": "Звіти"
       },
       "clientsSub": {
         "list": "Список клієнтів",

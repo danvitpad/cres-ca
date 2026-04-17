@@ -376,15 +376,11 @@
       "messaging": "Messaging",
       "team": "Team",
       "salesSub": {
-        "daily": "Daily sales",
+        "summary": "Summary",
         "appointments": "Appointments",
-        "list": "Sales list",
         "profitability": "Profitability",
-        "taxReport": "Tax report",
-        "lostRevenue": "Lost revenue",
-        "payments": "Payments",
-        "giftCards": "Gift cards",
-        "memberships": "Purchased memberships"
+        "calculator": "Calculator",
+        "reports": "Reports"
       },
       "clientsSub": {
         "list": "Client list",
