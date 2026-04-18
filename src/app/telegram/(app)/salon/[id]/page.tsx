@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppSalonDetail
- * description: Mini App salon profile — logo, description, address, phone, team members list.
+ * description: Mini App salon profile — logo, description, address, phone, team members list. Flat cards (Phase 7.16).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -105,13 +105,13 @@ export default function MiniAppSalonDetailPage() {
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5"
+        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>
 
       <div className="flex items-start gap-4">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 text-2xl font-bold">
+        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90">
           {salon.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={salon.logo_url} alt={salon.name} className="size-full object-cover" />
@@ -132,13 +132,13 @@ export default function MiniAppSalonDetailPage() {
       </div>
 
       {salon.description && (
-        <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-[13px] leading-relaxed text-white/75">
+        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[13px] leading-relaxed text-white/75">
           {salon.description}
         </p>
       )}
 
       {salon.address && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <p className="text-[10px] uppercase tracking-wide text-white/40">Адрес</p>
           <p className="mt-1 text-sm">{salon.address}</p>
         </div>
@@ -148,7 +148,7 @@ export default function MiniAppSalonDetailPage() {
         <a
           href={`tel:${salon.phone}`}
           onClick={() => haptic('selection')}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 py-4 text-sm font-semibold active:scale-[0.98] transition-transform"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] py-4 text-sm font-semibold active:bg-white/[0.06] transition-colors"
         >
           <Phone className="size-4" /> {salon.phone}
         </a>
@@ -167,9 +167,9 @@ export default function MiniAppSalonDetailPage() {
                 <button
                   key={m.id}
                   onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left active:scale-[0.97] transition-transform"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left active:bg-white/[0.06] transition-colors"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-sm font-bold">
+                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
                     {m.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={m.avatar_url} alt={mname} className="size-full object-cover" />
