@@ -111,30 +111,36 @@ function MasterMiniAppQuickBookingInner() {
     const [h, m] = time.split(':').map(Number);
     const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0);
     const end = new Date(start.getTime() + selectedService.duration_minutes * 60000);
-    const res = await fetch('/api/telegram/m/slot', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData,
-        mode: 'create',
-        client_id: selectedClient.id,
-        service_id: selectedService.id,
-        starts_at: start.toISOString(),
-        ends_at: end.toISOString(),
-        price: selectedService.price,
-        currency: selectedService.currency,
-      }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
+    try {
+      const res = await fetch('/api/telegram/m/slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData,
+          mode: 'create',
+          client_id: selectedClient.id,
+          service_id: selectedService.id,
+          starts_at: start.toISOString(),
+          ends_at: end.toISOString(),
+          price: selectedService.price,
+          currency: selectedService.currency,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        haptic('error');
+        setError(j.error ?? 'Не удалось сохранить');
+        setStep('time');
+        return;
+      }
+      const json = await res.json();
+      haptic('success');
+      router.replace(`/telegram/m/calendar?id=${json.id}`);
+    } catch {
       haptic('error');
-      setError(j.error ?? 'Не удалось сохранить');
+      setError('Сбой сети. Попробуйте ещё раз');
       setStep('time');
-      return;
     }
-    const json = await res.json();
-    haptic('success');
-    router.replace(`/telegram/m/calendar?id=${json.id}`);
   }, [masterId, selectedClient, selectedService, day, time, haptic, router]);
 
   if (loading) {
