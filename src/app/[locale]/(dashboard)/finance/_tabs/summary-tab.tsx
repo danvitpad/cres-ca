@@ -121,6 +121,12 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
   const [expAmount, setExpAmount] = useState('');
   const [expCategory, setExpCategory] = useState('Расходники');
   const [expVendor, setExpVendor] = useState('');
+
+  // Manual income entry (payments not tied to an appointment)
+  const [incAmount, setIncAmount] = useState('');
+  const [incMethod, setIncMethod] = useState('cash');
+  const [incNote, setIncNote] = useState('');
+
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
@@ -218,22 +224,16 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
       if (res.ok) {
         const { insight } = await res.json();
         const cleaned = insight?.trim() || null;
-        const GENERIC_PATTERNS = [
-          /нет данных для анализа/i,
-          /хорош(ее|ий) начал/i,
-          /стабильн(ый|ое) доход/i,
-          /продолжайте в том же духе/i,
-          /молодец/i,
-          /есть куда расти/i,
-          /всё хорошо/i,
-        ];
-        if (cleaned && GENERIC_PATTERNS.some(rx => rx.test(cleaned))) {
-          setAiInsight(null);
-        } else {
-          setAiInsight(cleaned);
-        }
+        // Previously we filtered out "generic" AI replies, which made the whole
+        // banner flash on and then disappear. Now we always show whatever the
+        // backend returns (or a fallback below in render).
+        setAiInsight(cleaned);
+      } else {
+        setAiInsight(null);
       }
-    } catch { /* AI is optional */ }
+    } catch {
+      setAiInsight(null);
+    }
     setAiLoading(false);
   }, [master?.id, period]);
 
@@ -269,6 +269,32 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
     setExpenses(prev => prev.filter(e => e.id !== id));
     setExpenseTotal(prev => prev - amount);
     toast.success('Удалено');
+  }
+
+  async function addManualIncome() {
+    if (!master?.id || !incAmount) return;
+    const amt = Number(incAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error('Введите сумму'); return; }
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('payments')
+      .insert({
+        master_id: master.id,
+        amount: amt,
+        currency: 'UAH',
+        type: 'manual',
+        payment_method: incMethod,
+        status: 'completed',
+        notes: incNote || null,
+      })
+      .select('id, amount, currency, type, payment_method, created_at, services(name), appointment:appointments(client:clients(full_name))')
+      .single();
+    if (error) { toast.error(error.message); return; }
+    setPayments(prev => [data as unknown as PaymentRow, ...prev]);
+    setRevenue(prev => prev + amt);
+    setIncAmount('');
+    setIncNote('');
+    toast.success('Доход добавлен');
   }
 
   const netProfit = revenue - expenseTotal;
@@ -610,6 +636,45 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
 
         {activeTab === 'income' && (
           <motion.div key="income" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            {/* Manual income entry row */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              padding: '14px 18px', background: C.surface, border: `1px solid ${C.border}`,
+              borderRadius: 14, marginBottom: 16,
+            }}>
+              <input type="number" value={incAmount} onChange={e => setIncAmount(e.target.value)} placeholder="Сумма"
+                style={{ ...inputStyle, width: 120 }}
+                onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                onBlur={e => e.currentTarget.style.borderColor = C.border as string}
+              />
+              <select value={incMethod} onChange={e => setIncMethod(e.target.value)}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                <option value="cash">Наличные</option>
+                <option value="card">Карта</option>
+                <option value="transfer">Перевод</option>
+                <option value="other">Другое</option>
+              </select>
+              <input value={incNote} onChange={e => setIncNote(e.target.value)} placeholder="Комментарий (необязательно)"
+                style={{ ...inputStyle, flex: 1, minWidth: 140 }}
+                onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                onBlur={e => e.currentTarget.style.borderColor = C.border as string}
+                onKeyDown={e => { if (e.key === 'Enter') addManualIncome(); }}
+              />
+              <button onClick={addManualIncome} disabled={!incAmount || !master?.id}
+                style={{
+                  padding: '8px 14px', borderRadius: 6, border: 'none',
+                  background: C.success, color: '#fff',
+                  fontSize: 13, fontWeight: 600, fontFamily: FONT,
+                  cursor: !incAmount || !master?.id ? 'not-allowed' : 'pointer',
+                  opacity: !incAmount || !master?.id ? 0.5 : 1,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <Plus size={14} /> Добавить доход
+              </button>
+            </div>
+
             {payments.length === 0 ? (
               <div style={{
                 padding: '56px 20px', textAlign: 'center', color: C.textTertiary, fontSize: 14,

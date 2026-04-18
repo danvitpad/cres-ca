@@ -11,8 +11,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
 import {
-  Receipt, Crown, Star, Calendar as CalendarIcon, UserPlus, RotateCcw,
-  Download, Loader2, BarChart3,
+  Receipt, Crown, Star, UserPlus,
+  Download, Loader2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -21,15 +21,12 @@ import {
 } from '@/lib/dashboard-theme';
 import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  startOfQuarter, endOfQuarter, subMonths,
-  format, getDay, getHours, type Locale,
+  startOfQuarter, endOfQuarter,
+  format, type Locale,
 } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RTooltip,
-} from 'recharts';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -40,7 +37,7 @@ const PERIOD_LABEL: Record<Period, string> = {
   quarter: 'Этот квартал',
   year: 'Этот год',
 };
-const DAY_LABELS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+/* DAY_LABELS removed with workload charts */
 
 interface AppointmentRow {
   id: string;
@@ -133,29 +130,7 @@ export function ReportsTab({ C }: { C: PageTheme }) {
     return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
   }, [completed]);
 
-  // Workload by day-of-week
-  const workloadByDay = useMemo(() => {
-    const counts = [0, 0, 0, 0, 0, 0, 0]; // Sun..Sat
-    for (const a of appointments) {
-      if (a.status === 'cancelled') continue;
-      const dow = getDay(new Date(a.starts_at));
-      counts[dow]++;
-    }
-    // Re-arrange: Mon..Sun for European locale
-    return [1, 2, 3, 4, 5, 6, 0].map(i => ({ day: DAY_LABELS[i], count: counts[i] }));
-  }, [appointments]);
-
-  // Workload by hour
-  const workloadByHour = useMemo(() => {
-    const counts: Record<number, number> = {};
-    for (const a of appointments) {
-      if (a.status === 'cancelled') continue;
-      const h = getHours(new Date(a.starts_at));
-      counts[h] = (counts[h] || 0) + 1;
-    }
-    return Array.from({ length: 24 }, (_, h) => ({ hour: `${h}:00`, count: counts[h] || 0 }))
-      .filter(r => r.count > 0);
-  }, [appointments]);
+  // (Workload by day / hour memos removed along with their charts.)
 
   // New vs returning clients
   const clientsBreakdown = useMemo(() => {
@@ -406,54 +381,8 @@ export function ReportsTab({ C }: { C: PageTheme }) {
         </div>
       </div>
 
-      {/* Workload by day-of-week + by hour */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        <div style={cardBase}>
-          <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <CalendarIcon size={15} style={{ color: C.accent }} />
-            Загрузка по дням недели
-          </h3>
-          <div style={{ height: 180 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={workloadByDay} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: C.textTertiary }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: C.textTertiary }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <RTooltip
-                  contentStyle={{ background: C.surface, border: `1px solid ${C.borderStrong}`, borderRadius: 8, fontSize: 12 }}
-                  cursor={{ fill: C.accentSoft }}
-                />
-                <Bar dataKey="count" fill={C.accent} radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div style={cardBase}>
-          <h3 style={{ fontSize: 14, fontWeight: 650, margin: 0, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <BarChart3 size={15} style={{ color: C.accent }} />
-            Загрузка по часам
-          </h3>
-          {workloadByHour.length === 0 ? (
-            <p style={{ fontSize: 13, color: C.textTertiary, padding: '40px 0', textAlign: 'center' }}>
-              Нет данных
-            </p>
-          ) : (
-            <div style={{ height: 180 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={workloadByHour} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
-                  <XAxis dataKey="hour" tick={{ fontSize: 10, fill: C.textTertiary }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: C.textTertiary }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <RTooltip
-                    contentStyle={{ background: C.surface, border: `1px solid ${C.borderStrong}`, borderRadius: 8, fontSize: 12 }}
-                    cursor={{ fill: C.accentSoft }}
-                  />
-                  <Bar dataKey="count" fill={C.success} radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Workload charts (by day-of-week / by hour) removed per product decision —
+          too noisy for solo masters with low record counts. Re-add when team mode lands. */}
 
       {/* Tax / CSV export */}
       <div style={cardBase}>
