@@ -73,7 +73,7 @@ export type SidebarThemeToggle = {
 };
 
 export interface SessionNavBarProps {
-  brand: SidebarBrand;
+  brand?: SidebarBrand;
   navItems: SidebarNavItem[];
   bottomItems?: SidebarNavItem[];
   account: SidebarAccount;
@@ -83,7 +83,7 @@ export interface SessionNavBarProps {
 
 const sidebarVariants = {
   open: { width: '15rem' },
-  closed: { width: '3.05rem' },
+  closed: { width: '3.5rem' },
 };
 
 const contentVariants = {
@@ -91,31 +91,13 @@ const contentVariants = {
   closed: { display: 'block', opacity: 1 },
 };
 
-const itemVariants = {
-  open: {
-    x: 0,
-    opacity: 1,
-    transition: { x: { stiffness: 1000, velocity: -100 } },
-  },
-  closed: {
-    x: -20,
-    opacity: 0,
-    transition: { x: { stiffness: 100 } },
-  },
-};
-
 const transitionProps = {
   type: 'tween' as const,
   ease: 'easeOut' as const,
   duration: 0.2,
-  staggerChildren: 0.1,
 };
 
-const staggerVariants = {
-  open: { transition: { staggerChildren: 0.03, delayChildren: 0.02 } },
-};
-
-const iconStyle: React.CSSProperties = { width: 16, height: 16, flexShrink: 0 };
+const iconStyle: React.CSSProperties = { width: 20, height: 20, flexShrink: 0 };
 
 function renderDropdownItems(items: SidebarDropdownItem[]) {
   return items.map((mi, i) => {
@@ -172,26 +154,22 @@ export function SessionNavBar({
     return (
       <div
         className={cn(
-          'flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-muted hover:text-primary',
+          'flex h-10 w-full flex-row items-center rounded-md px-2 py-2 hover:bg-muted hover:text-primary',
           active && 'bg-muted text-blue-600',
         )}
       >
-        <Icon className="h-4 w-4 shrink-0" style={iconStyle} />
-        <motion.li variants={itemVariants} className="list-none">
-          {!isCollapsed && (
-            <div className="ml-2 flex items-center gap-2">
-              <p className="text-sm font-medium">{item.label}</p>
-              {item.badge != null && item.badge !== false && (
-                <Badge
-                  variant="outline"
-                  className="flex h-fit w-fit items-center gap-1.5 rounded border-none bg-blue-50 px-1.5 text-blue-600 dark:bg-blue-700 dark:text-blue-300"
-                >
-                  {item.badge}
-                </Badge>
-              )}
-            </div>
+        <Icon className="shrink-0" style={iconStyle} />
+        <div className="ml-3 flex items-center gap-2 overflow-hidden">
+          <p className="text-[15px] font-medium whitespace-nowrap">{item.label}</p>
+          {item.badge != null && item.badge !== false && (
+            <Badge
+              variant="outline"
+              className="flex h-fit w-fit items-center gap-1.5 rounded border-none bg-blue-50 px-1.5 text-blue-600 dark:bg-blue-700 dark:text-blue-300"
+            >
+              {item.badge}
+            </Badge>
           )}
-        </motion.li>
+        </div>
       </div>
     );
   }
@@ -229,43 +207,39 @@ export function SessionNavBar({
         className="relative z-40 flex text-muted-foreground h-full shrink-0 flex-col bg-background transition-all overflow-hidden"
         variants={contentVariants}
       >
-        <motion.ul variants={staggerVariants} className="flex h-full flex-col list-none m-0 p-0">
+        <ul className="flex h-full flex-col list-none m-0 p-0">
           <div className="flex grow flex-col items-center min-h-0">
-            {/* Brand / organization dropdown */}
-            <div className="flex h-[54px] w-full shrink-0 border-b p-2">
-              <div className="mt-[1.5px] flex w-full">
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger
-                    className={cn(
-                      'flex w-full items-center gap-2 px-2 h-9 rounded-md text-sm font-medium transition-colors',
-                      'hover:bg-accent hover:text-accent-foreground cursor-pointer bg-transparent border-none',
-                      'text-muted-foreground',
-                    )}
-                  >
-                    <Avatar className="rounded size-4">
-                      {brand.avatarUrl && <AvatarImage src={brand.avatarUrl} alt={brand.label} />}
-                      <AvatarFallback>{brand.initial ?? brand.label.charAt(0).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <motion.li
-                      variants={itemVariants}
-                      className="flex w-fit items-center gap-2 list-none"
+            {brand && (
+              <div className="flex h-[54px] w-full shrink-0 border-b p-2">
+                <div className="mt-[1.5px] flex w-full">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger
+                      className={cn(
+                        'flex w-full items-center gap-2 px-2 h-9 rounded-md text-sm font-medium transition-colors',
+                        'hover:bg-accent hover:text-accent-foreground cursor-pointer bg-transparent border-none',
+                        'text-muted-foreground',
+                      )}
                     >
+                      <Avatar className="rounded size-4">
+                        {brand.avatarUrl && <AvatarImage src={brand.avatarUrl} alt={brand.label} />}
+                        <AvatarFallback>{brand.initial ?? brand.label.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
                       {!isCollapsed && (
                         <>
-                          <p className="text-sm font-medium">{brand.label}</p>
+                          <p className="text-sm font-medium whitespace-nowrap">{brand.label}</p>
                           <ChevronsUpDown className="h-4 w-4 text-muted-foreground/50" />
                         </>
                       )}
-                    </motion.li>
-                  </DropdownMenuTrigger>
-                  {brand.menuItems && brand.menuItems.length > 0 && (
-                    <DropdownMenuContent align="start">
-                      {renderDropdownItems(brand.menuItems)}
-                    </DropdownMenuContent>
-                  )}
-                </DropdownMenu>
+                    </DropdownMenuTrigger>
+                    {brand.menuItems && brand.menuItems.length > 0 && (
+                      <DropdownMenuContent align="start">
+                        {renderDropdownItems(brand.menuItems)}
+                      </DropdownMenuContent>
+                    )}
+                  </DropdownMenu>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Nav items */}
             <div className="flex h-full w-full flex-col min-h-0">
@@ -293,18 +267,14 @@ export function SessionNavBar({
                     type="button"
                     onClick={themeToggle.onToggle}
                     aria-label={themeToggle.label}
-                    className="flex h-8 w-full flex-row items-center rounded-md px-2 py-1.5 transition hover:bg-muted hover:text-primary bg-transparent border-none cursor-pointer text-left"
+                    className="flex h-10 w-full flex-row items-center rounded-md px-2 py-2 hover:bg-muted hover:text-primary bg-transparent border-none cursor-pointer text-left overflow-hidden"
                   >
                     {themeToggle.isDark ? (
-                      <themeToggle.lightIcon className="h-4 w-4 shrink-0" style={iconStyle} />
+                      <themeToggle.lightIcon className="shrink-0" style={iconStyle} />
                     ) : (
-                      <themeToggle.darkIcon className="h-4 w-4 shrink-0" style={iconStyle} />
+                      <themeToggle.darkIcon className="shrink-0" style={iconStyle} />
                     )}
-                    <motion.li variants={itemVariants} className="list-none">
-                      {!isCollapsed && (
-                        <p className="ml-2 text-sm font-medium">{themeToggle.label}</p>
-                      )}
-                    </motion.li>
+                    <p className="ml-3 text-[15px] font-medium whitespace-nowrap">{themeToggle.label}</p>
                   </button>
                 )}
 
@@ -312,25 +282,16 @@ export function SessionNavBar({
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger
                       className={cn(
-                        'w-full flex h-8 flex-row items-center gap-2 rounded-md px-2 py-1.5',
-                        'transition hover:bg-muted hover:text-primary bg-transparent border-none cursor-pointer text-left',
+                        'w-full flex h-10 flex-row items-center gap-3 rounded-md px-2 py-2',
+                        'hover:bg-muted hover:text-primary bg-transparent border-none cursor-pointer text-left overflow-hidden',
                       )}
                     >
-                      <Avatar className="size-4">
+                      <Avatar className="size-6 shrink-0">
                         {account.avatarUrl && <AvatarImage src={account.avatarUrl} alt={account.name} />}
-                        <AvatarFallback>{account.initials}</AvatarFallback>
+                        <AvatarFallback className="text-[11px]">{account.initials}</AvatarFallback>
                       </Avatar>
-                      <motion.li
-                        variants={itemVariants}
-                        className="flex w-full items-center gap-2 list-none"
-                      >
-                        {!isCollapsed && (
-                          <>
-                            <p className="text-sm font-medium truncate">{account.name}</p>
-                            <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground/50" />
-                          </>
-                        )}
-                      </motion.li>
+                      <p className="text-[15px] font-medium truncate whitespace-nowrap">{account.name || 'Профиль'}</p>
+                      <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground/50 shrink-0" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent sideOffset={5}>
                       <div className="flex flex-row items-center gap-2 p-2">
@@ -355,7 +316,7 @@ export function SessionNavBar({
               </div>
             </div>
           </div>
-        </motion.ul>
+        </ul>
       </motion.div>
     </motion.div>
   );

@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Dashboard Layout
- * description: Top header (logo + setup CTA + announcement strip + search) + hover-expand SessionNavBar sidebar (brand top / nav / theme + account bottom). Notifications live inside sidebar as nav-item.
+ * description: Top header (logo + setup CTA + announcement strip + search + notifications bell). Hover-expand SessionNavBar sidebar (nav / theme + account bottom). Notifications popover anchored to header bell.
  * updated: 2026-04-18
  * --- */
 
@@ -29,7 +29,7 @@ import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { ConfirmProvider } from '@/hooks/use-confirm';
-import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, UserCog, Blocks } from 'lucide-react';
+import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -78,19 +78,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'calendar', icon: FreshaCalendar, href: '/calendar', label: t('nav.calendar') },
       { key: 'sales', icon: FreshaTag, href: '/finance', label: t('nav.sales') },
       { key: 'clients', icon: FreshaSmile, href: '/clients', label: t('nav.clients') },
-      {
-        key: 'notifications',
-        icon: FreshaBell,
-        label: t('notificationsLabel'),
-        onClick: () => setNotificationsOpen((v) => !v),
-        badge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : String(unreadCount)) : undefined,
-        active: notificationsOpen,
-      },
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
       { key: 'addons', icon: FreshaAddons, href: '/addons', label: t('nav.addons') },
     ],
-    [t, unreadCount, notificationsOpen],
+    [t],
   );
 
   const bottomItems: SidebarNavItem[] = useMemo(
@@ -165,7 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          {/* Right: search only (bell, theme, avatar moved to sidebar) */}
+          {/* Right: search + notifications bell */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
             <button
               onClick={() => setCmdOpen(true)}
@@ -188,6 +180,73 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <FreshaSearch style={{ width: S.iconSize, height: S.iconSize }} />
             </button>
+
+            {/* Notifications bell with downward popover */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setNotificationsOpen((v) => !v)}
+                style={{
+                  width: S.iconBtnSize,
+                  height: S.iconBtnSize,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: S.iconBtnRadius,
+                  backgroundColor: notificationsOpen ? F.hoverBg : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: F.textPrimary,
+                  position: 'relative',
+                  transition: 'background-color 100ms',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = F.hoverBg; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = notificationsOpen ? F.hoverBg : 'transparent'; }}
+                aria-label={t('notificationsLabel')}
+              >
+                <FreshaBell style={{ width: S.iconSize, height: S.iconSize }} />
+                {unreadCount > 0 && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      minWidth: 16,
+                      height: 16,
+                      padding: '0 4px',
+                      borderRadius: 999,
+                      backgroundColor: '#ef4444',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {notificationsOpen && (
+                  <HeaderNotificationsDropdown
+                    open={notificationsOpen}
+                    onClose={() => setNotificationsOpen(false)}
+                    items={notifItems}
+                    unreadCount={unreadCount}
+                    loading={notifLoading}
+                    followStates={followStates}
+                    markRead={markRead}
+                    markAllRead={markAllRead}
+                    toggleFollow={toggleFollow}
+                    theme={F}
+                    isDark={isDark}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 
@@ -195,14 +254,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           {/* ═══ Hover-expand sidebar (3rem → 15rem) ═══ */}
           <SessionNavBar
-            brand={{
-              label: 'CRES-CA',
-              initial: 'C',
-              menuItems: [
-                { icon: UserCog, label: 'Управление командой', href: '/settings/team' },
-                { icon: Blocks, label: 'Интеграции', href: '/settings/integrations' },
-              ],
-            }}
             navItems={navItems}
             bottomItems={bottomItems}
             themeToggle={{
@@ -213,8 +264,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               label: 'Тема',
             }}
             account={{
-              name: masterName || 'Профиль',
-              email: master?.profile?.full_name || undefined,
+              name: masterName,
               initials: getInitials(masterName),
               avatarUrl: master?.profile?.avatar_url || null,
               menuItems: [
@@ -233,27 +283,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               ],
             }}
           />
-
-          {/* Notifications panel — anchored near sidebar bell */}
-          <AnimatePresence>
-            {notificationsOpen && (
-              <div style={{ position: 'fixed', top: S.headerH + 8, left: 56, width: 400, zIndex: 900 }}>
-                <HeaderNotificationsDropdown
-                  open={notificationsOpen}
-                  onClose={() => setNotificationsOpen(false)}
-                  items={notifItems}
-                  unreadCount={unreadCount}
-                  loading={notifLoading}
-                  followStates={followStates}
-                  markRead={markRead}
-                  markAllRead={markAllRead}
-                  toggleFollow={toggleFollow}
-                  theme={F}
-                  isDark={isDark}
-                />
-              </div>
-            )}
-          </AnimatePresence>
 
           {/* ═══ Content area ═══ */}
           <main
