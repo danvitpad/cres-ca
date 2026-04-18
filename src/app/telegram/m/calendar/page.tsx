@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppCalendar
- * description: Master Mini App calendar — day timeline with appointments, tap → drawer with full details + quick actions (start/complete/cancel/no-show/call).
+ * description: Master Mini App calendar — day timeline with appointments, tap → drawer with quick actions. Flat cards + 1px status strip (Phase 7.2).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -89,14 +89,14 @@ function formatDayHeader(d: Date) {
   return d.toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-const STATUS_META: Record<Status, { label: string; ring: string; bg: string; text: string }> = {
-  booked: { label: 'Забронировано', ring: 'ring-blue-500/40', bg: 'bg-blue-500/15', text: 'text-blue-200' },
-  confirmed: { label: 'Подтверждено', ring: 'ring-violet-500/40', bg: 'bg-violet-500/15', text: 'text-violet-200' },
-  in_progress: { label: 'Идёт', ring: 'ring-amber-500/40', bg: 'bg-amber-500/15', text: 'text-amber-200' },
-  completed: { label: 'Выполнено', ring: 'ring-emerald-500/40', bg: 'bg-emerald-500/15', text: 'text-emerald-200' },
-  cancelled: { label: 'Отменено', ring: 'ring-white/10', bg: 'bg-white/5', text: 'text-white/40' },
-  cancelled_by_client: { label: 'Отменил клиент', ring: 'ring-white/10', bg: 'bg-white/5', text: 'text-white/40' },
-  no_show: { label: 'Не пришёл', ring: 'ring-rose-500/40', bg: 'bg-rose-500/15', text: 'text-rose-200' },
+const STATUS_META: Record<Status, { label: string; strip: string; text: string }> = {
+  booked: { label: 'Забронировано', strip: 'bg-blue-500', text: 'text-blue-300' },
+  confirmed: { label: 'Подтверждено', strip: 'bg-violet-500', text: 'text-violet-300' },
+  in_progress: { label: 'Идёт', strip: 'bg-amber-500', text: 'text-amber-300' },
+  completed: { label: 'Выполнено', strip: 'bg-emerald-500', text: 'text-emerald-300' },
+  cancelled: { label: 'Отменено', strip: 'bg-white/20', text: 'text-white/40' },
+  cancelled_by_client: { label: 'Отменил клиент', strip: 'bg-white/20', text: 'text-white/40' },
+  no_show: { label: 'Не пришёл', strip: 'bg-rose-500', text: 'text-rose-300' },
 };
 
 export default function MasterMiniAppCalendar() {
@@ -259,7 +259,7 @@ export default function MasterMiniAppCalendar() {
         <Link
           href="/telegram/m/slot/new"
           onClick={() => haptic('selection')}
-          className="flex size-11 items-center justify-center rounded-2xl bg-white text-black active:scale-95 transition-transform"
+          className="flex size-11 items-center justify-center rounded-2xl bg-white text-black active:bg-white/90 transition-colors"
         >
           <Plus className="size-5" />
         </Link>
@@ -271,7 +271,7 @@ export default function MasterMiniAppCalendar() {
             haptic('light');
             setDay(addDays(day, -1));
           }}
-          className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 active:scale-95 transition-transform"
+          className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
         >
           <ChevronLeft className="size-4" />
         </button>
@@ -280,7 +280,7 @@ export default function MasterMiniAppCalendar() {
             haptic('selection');
             setDay(startOfDay(new Date()));
           }}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[12px] font-semibold active:scale-[0.98] transition-transform"
+          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] font-semibold active:bg-white/[0.06] transition-colors"
         >
           <CalendarDays className="size-3.5" />
           {day.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -290,7 +290,7 @@ export default function MasterMiniAppCalendar() {
             haptic('light');
             setDay(addDays(day, 1));
           }}
-          className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 active:scale-95 transition-transform"
+          className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
         >
           <ChevronRight className="size-4" />
         </button>
@@ -304,11 +304,11 @@ export default function MasterMiniAppCalendar() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-[28px] border border-dashed border-white/10 bg-white/5 p-8 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/10">
-            <CalendarDays className="size-6 text-white/60" />
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-white/[0.06]">
+            <CalendarDays className="size-5 text-white/60" />
           </div>
-          <p className="mt-4 text-base font-semibold">Записей нет</p>
+          <p className="mt-3 text-base font-semibold">Записей нет</p>
           <p className="mt-1 text-xs text-white/50">Добавь запись вручную или жди онлайн-бронирования</p>
         </div>
       ) : (
@@ -324,8 +324,9 @@ export default function MasterMiniAppCalendar() {
               >
                 <button
                   onClick={() => onSelect(r.id)}
-                  className={`flex w-full items-center gap-3 rounded-2xl border border-white/10 ${meta.bg} p-4 text-left ring-1 ${meta.ring} active:scale-[0.99] transition-transform`}
+                  className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
                 >
+                  <span className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${meta.strip}`} />
                   <div className="flex w-14 shrink-0 flex-col items-center text-center">
                     <span className="text-[15px] font-bold tabular-nums">
                       {new Date(r.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
@@ -374,7 +375,8 @@ export default function MasterMiniAppCalendar() {
 
               <div className="space-y-4">
                 <div>
-                  <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${STATUS_META[active.status].text} ${STATUS_META[active.status].bg}`}>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/10 ${STATUS_META[active.status].text}`}>
+                    <span className={`inline-block size-1.5 rounded-full ${STATUS_META[active.status].strip}`} />
                     {STATUS_META[active.status].label}
                   </span>
                   <h2 className="mt-2 text-xl font-bold">{active.service_name}</h2>
@@ -391,7 +393,7 @@ export default function MasterMiniAppCalendar() {
                 </div>
 
                 {/* Client */}
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <p className="text-[10px] uppercase tracking-wide text-white/40">Клиент</p>
                   <p className="mt-1 text-sm font-semibold">{active.client_name}</p>
                   <div className="mt-3 flex items-center gap-2">
@@ -399,7 +401,7 @@ export default function MasterMiniAppCalendar() {
                       <a
                         href={`tel:${active.client_phone}`}
                         onClick={() => haptic('selection')}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-[12px] font-semibold active:scale-[0.98] transition-transform"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2 text-[12px] font-semibold active:bg-white/[0.08] transition-colors"
                       >
                         <Phone className="size-3.5" /> {active.client_phone}
                       </a>
@@ -408,7 +410,7 @@ export default function MasterMiniAppCalendar() {
                       <Link
                         href={`/telegram/m/clients/${active.client_id}`}
                         onClick={() => haptic('light')}
-                        className="flex size-10 items-center justify-center rounded-xl bg-white/10 active:scale-95 transition-transform"
+                        className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] active:bg-white/[0.08] transition-colors"
                       >
                         <UserIcon className="size-4" />
                       </Link>
@@ -417,7 +419,7 @@ export default function MasterMiniAppCalendar() {
                 </div>
 
                 {active.notes && (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                     <p className="text-[10px] uppercase tracking-wide text-white/40">Заметки</p>
                     <p className="mt-1 text-[13px] leading-relaxed text-white/80">{active.notes}</p>
                   </div>
@@ -433,7 +435,7 @@ export default function MasterMiniAppCalendar() {
                     <button
                       disabled={acting}
                       onClick={() => updateStatus(active.id, 'in_progress')}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 py-4 text-[15px] font-semibold text-black active:bg-amber-400 transition-colors disabled:opacity-50"
                     >
                       <PlayCircle className="size-4" /> Начать визит
                     </button>
@@ -442,7 +444,7 @@ export default function MasterMiniAppCalendar() {
                     <button
                       disabled={acting}
                       onClick={() => updateStatus(active.id, 'completed')}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-50"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-[15px] font-semibold text-black active:bg-emerald-400 transition-colors disabled:opacity-50"
                     >
                       <CheckCircle2 className="size-4" /> Завершить
                     </button>
@@ -458,14 +460,14 @@ export default function MasterMiniAppCalendar() {
                             cancellation_reason: 'master_miniapp',
                           })
                         }
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 py-3 text-[12px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-50"
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] py-3 text-[12px] font-semibold active:bg-white/[0.06] transition-colors disabled:opacity-50"
                       >
                         <XCircle className="size-3.5" /> Отменить
                       </button>
                       <button
                         disabled={acting}
                         onClick={() => updateStatus(active.id, 'no_show')}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 py-3 text-[12px] font-semibold text-rose-200 active:scale-[0.98] transition-transform disabled:opacity-50"
+                        className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-white/[0.03] py-3 text-[12px] font-semibold text-rose-300 active:bg-rose-500/10 transition-colors disabled:opacity-50"
                       >
                         <UserX className="size-3.5" /> Не пришёл
                       </button>
