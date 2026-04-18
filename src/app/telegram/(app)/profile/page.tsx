@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppProfilePage
- * description: Mini App profile — Instagram-style. Name + CRES-ID link at top, avatar + stats, Edit/Share, balance, referral, minimal menu. Pairing moved out, posts grid removed, logout in settings.
+ * description: Mini App profile — Instagram-style. Name + CRES-ID link at top, avatar + stats, Edit/Share, balance, referral, minimal menu. Flat cards (Phase 7.14).
  * created: 2026-04-13
- * updated: 2026-04-14
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -269,11 +269,11 @@ export default function MiniAppProfilePage() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={avatarBusy}
-            className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-2xl font-bold active:scale-95 transition-transform"
+            className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90 transition-colors active:bg-white/[0.1]"
             aria-label="Изменить аватар"
           >
             {!profileLoaded ? (
-              <div className="size-full animate-pulse bg-white/10" />
+              <div className="size-full animate-pulse bg-white/[0.06]" />
             ) : avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt="" className="size-full object-cover" />
@@ -305,7 +305,7 @@ export default function MiniAppProfilePage() {
             {profileLoaded ? (
               <h1 className="truncate text-[20px] font-bold leading-tight">{displayName}</h1>
             ) : (
-              <div className="h-6 w-36 animate-pulse rounded-lg bg-white/10" />
+              <div className="h-6 w-36 animate-pulse rounded-lg bg-white/[0.06]" />
             )}
             {profileLoaded && publicId && (
               <button
@@ -336,14 +336,14 @@ export default function MiniAppProfilePage() {
         <div className="flex gap-2">
           <button
             onClick={openEdit}
-            className="flex-1 rounded-lg border border-white/10 bg-white/5 py-2 text-[13px] font-semibold active:scale-[0.98] transition-transform"
+            className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] py-2 text-[13px] font-semibold active:bg-white/[0.06] transition-colors"
           >
             Редактировать
           </button>
           <button
             onClick={shareProfile}
             disabled={!publicId}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 py-2 text-[13px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] py-2 text-[13px] font-semibold active:bg-white/[0.06] transition-colors disabled:opacity-50"
           >
             <Share2 className="size-3.5" /> Поделиться
           </button>
@@ -351,36 +351,26 @@ export default function MiniAppProfilePage() {
 
         {/* Balance — compact when zero */}
         {balance > 0 || bonusPoints > 0 ? (
-          <div className="relative overflow-hidden rounded-[28px] bg-[#2f3437] p-6">
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 40, ease: 'linear', repeat: Infinity }}
-              className="pointer-events-none absolute -inset-[40%] opacity-70"
-              style={{
-                background:
-                  'conic-gradient(from 90deg at 50% 50%, #6d28d9 0%, #db2777 25%, #f59e0b 50%, #6d28d9 75%, #6d28d9 100%)',
-                filter: 'blur(60px)',
-              }}
-            />
-            <div className="absolute inset-0 bg-[#2f3437]/55" />
-            <div className="relative flex items-start justify-between">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 pl-6">
+            <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-400" />
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">Баланс</p>
-                <p className="mt-1 text-3xl font-bold">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Баланс</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums">
                   {balance.toFixed(0)} <span className="text-lg text-white/60">₴</span>
                 </p>
                 {bonusPoints > 0 && (
-                  <p className="mt-2 text-[11px] text-white/60">+{bonusPoints} бонусных очков</p>
+                  <p className="mt-2 text-[11px] text-white/60 tabular-nums">+{bonusPoints} бонусных очков</p>
                 )}
               </div>
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
-                <Sparkles className="size-5" />
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+                <Sparkles className="size-5 text-amber-300" />
               </div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-white/5">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
               <Sparkles className="size-4 text-white/60" />
             </div>
             <div className="min-w-0 flex-1">
@@ -393,22 +383,23 @@ export default function MiniAppProfilePage() {
         {/* Referral card */}
         <button
           onClick={copyReferral}
-          className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-4 text-left active:scale-[0.98] transition-transform"
+          className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
         >
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
+          <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-emerald-500" />
+          <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-emerald-300">
             <UserPlus className="size-5" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Пригласить друга</p>
             <p className="text-[11px] text-white/50">Вы получите бонус за каждую первую запись</p>
           </div>
-          <div className="flex size-8 items-center justify-center rounded-lg bg-white/10">
+          <div className="flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
             {copiedRef ? <Check className="size-4 text-emerald-300" /> : <Copy className="size-4" />}
           </div>
         </button>
 
         {/* Quick links */}
-        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
+        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
           <MenuItemLink icon={Settings} label="Настройки" href="/telegram/settings" onClick={() => haptic('light')} />
         </ul>
 
@@ -416,8 +407,9 @@ export default function MiniAppProfilePage() {
         <button
           onClick={signOut}
           disabled={signingOut}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/25 bg-rose-500/5 py-3.5 text-[13px] font-semibold text-rose-200/90 active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] py-3.5 text-[13px] font-semibold text-rose-300 active:bg-white/[0.06] transition-colors disabled:opacity-60"
         >
+          <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
           {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
           Выйти из аккаунта
         </button>
@@ -432,7 +424,7 @@ export default function MiniAppProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
             onClick={() => setListOpen(false)}
           >
             <motion.div
@@ -441,7 +433,7 @@ export default function MiniAppProfilePage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[80dvh] w-full max-w-md overflow-hidden rounded-t-[32px] border-t border-white/10 bg-[#2f3437]"
+              className="relative max-h-[80dvh] w-full max-w-md overflow-hidden rounded-t-2xl border-t border-white/10 bg-[#1f2023]"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-white/20" />
@@ -451,7 +443,7 @@ export default function MiniAppProfilePage() {
                 </h3>
                 <button
                   onClick={() => setListOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
+                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
                 >
                   <X className="size-4" />
                 </button>
@@ -478,9 +470,9 @@ export default function MiniAppProfilePage() {
                               window.location.href = `/telegram/u/${e.public_id}`;
                             }
                           }}
-                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left active:bg-white/5"
+                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left active:bg-white/[0.03] transition-colors"
                         >
-                          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500/60 to-rose-500/60 text-sm font-bold">
+                          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
                             {e.avatar_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={e.avatar_url} alt="" className="size-full object-cover" />
@@ -517,7 +509,7 @@ export default function MiniAppProfilePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
             onClick={() => setEditOpen(false)}
           >
             <motion.div
@@ -526,21 +518,21 @@ export default function MiniAppProfilePage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-[32px] border-t border-white/10 bg-[#2f3437] p-5"
+              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#1f2023] p-5"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold">Редактировать профиль</h3>
                 <button
                   onClick={() => setEditOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
+                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
                 >
                   <X className="size-4" />
                 </button>
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     Имя
                   </label>
@@ -552,7 +544,7 @@ export default function MiniAppProfilePage() {
                   />
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     Имя ссылки (slug)
                   </label>
@@ -572,7 +564,7 @@ export default function MiniAppProfilePage() {
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     О себе
                   </label>
@@ -587,7 +579,8 @@ export default function MiniAppProfilePage() {
                 </div>
 
                 {editError && (
-                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+                  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-4 text-xs text-rose-300">
+                    <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
                     {editError}
                   </div>
                 )}
@@ -595,7 +588,7 @@ export default function MiniAppProfilePage() {
                 <button
                   onClick={saveEdit}
                   disabled={editBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-60"
                 >
                   {editBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                   Сохранить
@@ -622,7 +615,7 @@ function Stat({
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center rounded-xl px-1 py-1 active:scale-95 transition-transform"
+      className="flex flex-col items-center rounded-xl px-1 py-1 transition-opacity active:opacity-60"
     >
       <span className="text-lg font-bold">{formatCount(value)}</span>
       <span className="text-[10px] text-white/50">{label}</span>
@@ -649,8 +642,8 @@ function MenuItemLink({
 }) {
   return (
     <li>
-      <Link href={href} onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-        <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+      <Link href={href} onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors">
+        <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
           <Icon className="size-4" />
         </div>
         <span className="flex-1 text-sm">{label}</span>
