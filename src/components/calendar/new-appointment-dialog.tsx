@@ -1,11 +1,13 @@
 /** --- YAML
  * name: NewAppointmentDialog
- * description: Dialog for creating appointments — select client, service, date, time
+ * description: Dialog for creating appointments — select service, client, date, time. Uses themed native selects (base-UI Select was showing raw UUIDs for selected value).
+ * created: 2026-04-17
+ * updated: 2026-04-18
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -14,13 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 interface Props {
   open: boolean;
@@ -36,10 +32,14 @@ interface Props {
 interface ClientOption { id: string; full_name: string }
 interface ServiceOption { id: string; name: string; duration_minutes: number; price: number; currency: string }
 
-export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate, defaultTime, defaultClientId, defaultServiceId, onCreated }: Props) {
+export function NewAppointmentDialog({
+  open, onOpenChange, masterId, defaultDate, defaultTime, defaultClientId, defaultServiceId, onCreated,
+}: Props) {
   const t = useTranslations('calendar');
   const tb = useTranslations('booking');
   const tc = useTranslations('common');
+  const { C } = usePageTheme();
+
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [clientId, setClientId] = useState(defaultClientId ?? '');
@@ -52,10 +52,11 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
   useEffect(() => {
     if (!open) return;
     loadOptions();
-    if (defaultClientId) setClientId(defaultClientId);
-    if (defaultServiceId) setServiceId(defaultServiceId);
+    setClientId(defaultClientId ?? '');
+    setServiceId(defaultServiceId ?? '');
     if (defaultDate) setDate(defaultDate);
     if (defaultTime) setTime(defaultTime);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultClientId, defaultServiceId, defaultDate, defaultTime]);
 
   async function loadOptions() {
@@ -68,12 +69,27 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
     if (servicesRes.data) setServices(servicesRes.data);
   }
 
+  const selectStyle = useMemo<React.CSSProperties>(() => ({
+    width: '100%',
+    padding: '10px 12px',
+    borderRadius: 10,
+    border: `1px solid ${C.border}`,
+    background: C.surface,
+    color: C.text,
+    fontSize: 14,
+    fontFamily: FONT,
+    fontFeatureSettings: FONT_FEATURES,
+    outline: 'none',
+    appearance: 'auto',
+  }), [C]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clientId || !serviceId) { toast.error(tc('required')); return; }
+    if (!serviceId) { toast.error('Выберите услугу'); return; }
+    if (!clientId) { toast.error('Выберите клиента'); return; }
 
     const service = services.find((s) => s.id === serviceId);
-    if (!service) return;
+    if (!service) { toast.error('Услуга не найдена'); return; }
 
     const startsAt = new Date(`${date}T${time}:00`);
     const endsAt = new Date(startsAt.getTime() + service.duration_minutes * 60 * 1000);
@@ -96,13 +112,10 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
 
     if (error) { toast.error(error.message); return; }
 
-    // Create notification for client about the new appointment
+    // Fire-and-forget notification to client
     if (clientId) {
       const { data: clientRow } = await supabase
-        .from('clients')
-        .select('profile_id')
-        .eq('id', clientId)
-        .single();
+        .from('clients').select('profile_id').eq('id', clientId).single();
       if (clientRow?.profile_id) {
         await supabase.from('notifications').insert({
           profile_id: clientRow.profile_id,
@@ -121,43 +134,52 @@ export function NewAppointmentDialog({ open, onOpenChange, masterId, defaultDate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES }}>
         <DialogHeader>
           <DialogTitle>{t('newAppointment')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>{tb('selectService')}</Label>
-            <Select value={serviceId} onValueChange={(v) => v && setServiceId(v)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder={tb('selectService')} /></SelectTrigger>
-              <SelectContent>
-                {services.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name} ({s.duration_minutes}min — {s.price} {s.currency})</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              required
+              value={serviceId}
+              onChange={(e) => setServiceId(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="" disabled>{tb('selectService')}</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} · {s.duration_minutes} мин · {s.price} {s.currency}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="space-y-2">
-            <Label>{tb('selectDate')}</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{tb('selectTime')}</Label>
-            <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={900} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>{tb('selectDate')}</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>{tb('selectTime')}</Label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={900} />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label>{tb('selectClient')}</Label>
-            <Select value={clientId} onValueChange={(v) => v && setClientId(v)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder={tb('selectClient')} /></SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.full_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              required
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="" disabled>{tb('selectClient')}</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>{c.full_name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-2">
