@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useLocale } from 'next-intl';
+import { Moon, Sun } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
 
 /* ═══ Theme-aware CSS vars ═══ */
@@ -285,7 +286,7 @@ function DashboardMock() {
 /* ═══ Main page ═══ */
 export default function LandingPage() {
   const locale = useLocale();
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   // May be undefined on first render before next-themes hydrates — shadow falls back to light.
   const isDark = resolvedTheme === 'dark';
 
@@ -343,13 +344,23 @@ export default function LandingPage() {
                 Тарифы
               </a>
               <LanguageSwitcher />
+              <button
+                type="button"
+                aria-label="Переключить тему"
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                style={{
+                  width: 34, height: 34, borderRadius: '50%',
+                  border: '1px solid var(--lcb)', background: 'transparent',
+                  color: 'var(--lfg2)', cursor: 'pointer',
+                  display: 'grid', placeItems: 'center',
+                  transition: 'background .2s, color .2s, border-color .2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--lfg)'; e.currentTarget.style.borderColor = 'var(--lviolet)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--lfg2)'; e.currentTarget.style.borderColor = 'var(--lcb)'; }}
+              >
+                {isDark ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
               <Link href="/login" style={{
-                padding: '7px 14px', fontSize: 13, fontWeight: 500,
-                color: 'var(--lfg2)', borderRadius: 99,
-              }}>
-                Войти
-              </Link>
-              <Link href="/login?mode=signup" style={{
                 padding: '8px 18px', borderRadius: 99,
                 background: 'var(--lviolet)', color: '#fff',
                 fontSize: 13, fontWeight: 600,

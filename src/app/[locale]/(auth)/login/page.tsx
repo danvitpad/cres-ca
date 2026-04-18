@@ -28,13 +28,16 @@ type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'si
 
 const REMEMBER_KEY = 'cres-ca-remember';
 
-/* ───── Themed CSS (mirrors landing v6 palette) ───── */
+/* ───── Themed CSS — palette matches landing v6 ───── */
 const AUTH_CSS = `
 .auth-v6 {
   --af: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --abg: #ffffff; --abg2: #f8f8f8;
+  /* Light: page=#fff, card=#fff, input=#f5f5f7 (subtle lift off card) */
+  --abg: #ffffff;
+  --acard: #ffffff;
+  --ainput: #f5f5f7;
   --afg: #0a0a0a; --afg2: #555555; --afg3: #888888;
-  --acard: #ffffff; --acb: rgba(0,0,0,.07);
+  --acb: rgba(0,0,0,.08);
   --aviolet: #7c3aed; --aviolet-l: #ede9fe;
   --adanger: #dc2626;
   font-family: var(--af);
@@ -44,29 +47,34 @@ const AUTH_CSS = `
   min-height: 100vh;
 }
 html.dark .auth-v6 {
-  --abg: #09090b; --abg2: #18181b;
+  /* Dark: page=#09090b, card=#141417 (softer), input=#1f1f23 (visible lift) */
+  --abg: #09090b;
+  --acard: #141417;
+  --ainput: #1f1f23;
   --afg: #fafafa; --afg2: #a1a1aa; --afg3: #71717a;
-  --acard: #18181b; --acb: rgba(255,255,255,.08);
-  --aviolet: #a78bfa; --aviolet-l: rgba(167,139,250,.1);
+  --acb: rgba(255,255,255,.08);
+  --aviolet: #a78bfa; --aviolet-l: rgba(167,139,250,.12);
   --adanger: #f87171;
 }
-.auth-v6 input, .auth-v6 button { font-family: var(--af); }
+.auth-v6 input, .auth-v6 button, .auth-v6 select { font-family: var(--af); }
 .auth-v6 a { color: inherit; text-decoration: none; }
 .auth-input {
   width: 100%;
-  height: 44px;
+  height: 46px;
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid var(--acb);
-  background: var(--abg);
+  background: var(--ainput);
   color: var(--afg);
   font-size: 14px;
   outline: none;
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color .15s, box-shadow .15s, background .15s;
 }
-.auth-input:focus { border-color: var(--aviolet); box-shadow: 0 0 0 3px color-mix(in oklab, var(--aviolet) 25%, transparent); }
-.auth-label { font-size: 13px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; }
-@keyframes auth-bg-pulse { 0%,100%{opacity:.6;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)} }
+.auth-input::placeholder { color: var(--afg3); }
+.auth-input:hover { border-color: color-mix(in oklab, var(--aviolet) 40%, var(--acb)); }
+.auth-input:focus { border-color: var(--aviolet); box-shadow: 0 0 0 3px color-mix(in oklab, var(--aviolet) 22%, transparent); }
+.auth-label { font-size: 12px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; letter-spacing: .01em; }
+@keyframes auth-bg-pulse { 0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.9;transform:translate(-50%,-50%) scale(1.08)} }
 `;
 
 const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
@@ -113,6 +121,7 @@ export default function AuthPage() {
   const [lastName, setLastName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
   const [terms, setTerms] = useState(false);
 
   // OTP / reset
@@ -168,6 +177,7 @@ export default function AuthPage() {
           full_name: fullName || firstName,
           role,
           phone: phone ? `+380${phone}` : undefined,
+          date_of_birth: dob || undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
       },
@@ -297,12 +307,12 @@ export default function AuthPage() {
 
           <div style={{
             position: 'relative', zIndex: 1,
-            width: '100%', maxWidth: 440,
+            width: '100%', maxWidth: 460,
             background: 'var(--acard)',
             border: '1px solid var(--acb)',
-            borderRadius: 20,
-            padding: 'clamp(24px,4vw,36px)',
-            boxShadow: '0 24px 60px rgba(0,0,0,.08)',
+            borderRadius: 24,
+            padding: 'clamp(28px,4vw,40px)',
+            boxShadow: '0 30px 80px rgba(124,58,237,.12), 0 8px 24px rgba(0,0,0,.06)',
           }}>
             {/* Role tabs */}
             <div style={{
@@ -360,20 +370,65 @@ export default function AuthPage() {
                   )}
 
                   <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {mode === 'signup' && role === 'salon_admin' && (
-                      <Field label="Название команды / салона">
-                        <input className="auth-input" value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Beauty Studio" required autoFocus />
-                      </Field>
-                    )}
-                    {mode === 'signup' && role !== 'salon_admin' && (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                        <Field label="Имя">
-                          <input className="auth-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
+                    {/* ─── SIGN UP: name → phone → dob → email → password ─── */}
+                    {mode === 'signup' && (
+                      <>
+                        {role === 'salon_admin' ? (
+                          <Field label="Название команды / салона">
+                            <input className="auth-input" value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Beauty Studio" required autoFocus />
+                          </Field>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <Field label="Имя">
+                              <input className="auth-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
+                            </Field>
+                            <Field label="Фамилия">
+                              <input className="auth-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
+                            </Field>
+                          </div>
+                        )}
+
+                        <Field label="Телефон">
+                          <div style={{
+                            display: 'flex', alignItems: 'center', height: 46,
+                            border: '1px solid var(--acb)', borderRadius: 12, overflow: 'hidden',
+                            background: 'var(--ainput)',
+                          }}>
+                            <span style={{
+                              padding: '0 12px', fontSize: 14, color: 'var(--afg2)',
+                              borderRight: '1px solid var(--acb)', height: '100%',
+                              display: 'flex', alignItems: 'center',
+                              background: 'color-mix(in oklab, var(--acard) 50%, var(--ainput))',
+                            }}>
+                              +380
+                            </span>
+                            <input
+                              type="tel" inputMode="numeric"
+                              value={phone}
+                              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                              placeholder="501234567"
+                              style={{
+                                flex: 1, height: '100%', padding: '0 12px',
+                                border: 'none', outline: 'none',
+                                background: 'transparent', color: 'var(--afg)', fontSize: 14,
+                              }}
+                            />
+                          </div>
                         </Field>
-                        <Field label="Фамилия">
-                          <input className="auth-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
-                        </Field>
-                      </div>
+
+                        {/* Date of birth — for client & master (not team, where org doesn't have a DOB) */}
+                        {role !== 'salon_admin' && (
+                          <Field label="Дата рождения">
+                            <input
+                              className="auth-input"
+                              type="date"
+                              value={dob}
+                              onChange={e => setDob(e.target.value)}
+                              max={new Date().toISOString().slice(0, 10)}
+                            />
+                          </Field>
+                        )}
+                      </>
                     )}
 
                     <Field label="Email">
@@ -398,6 +453,7 @@ export default function AuthPage() {
                           required
                           minLength={mode === 'signup' ? 6 : undefined}
                           style={{ paddingRight: 40 }}
+                          placeholder={mode === 'signup' ? 'Минимум 6 символов' : undefined}
                         />
                         <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1}
                           style={{
@@ -410,43 +466,14 @@ export default function AuthPage() {
                     </Field>
 
                     {mode === 'signup' && (
-                      <>
-                        <Field label="Телефон">
-                          <div style={{
-                            display: 'flex', alignItems: 'center', height: 44,
-                            border: '1px solid var(--acb)', borderRadius: 12, overflow: 'hidden',
-                            background: 'var(--abg)',
-                          }}>
-                            <span style={{
-                              padding: '0 12px', fontSize: 14, color: 'var(--afg2)',
-                              borderRight: '1px solid var(--acb)', height: '100%',
-                              display: 'flex', alignItems: 'center', background: 'var(--abg2)',
-                            }}>
-                              +380
-                            </span>
-                            <input
-                              type="tel" inputMode="numeric"
-                              value={phone}
-                              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                              placeholder="501234567"
-                              style={{
-                                flex: 1, height: '100%', padding: '0 12px',
-                                border: 'none', outline: 'none',
-                                background: 'transparent', color: 'var(--afg)', fontSize: 14,
-                              }}
-                            />
-                          </div>
-                        </Field>
-
-                        <label style={{
-                          display: 'flex', alignItems: 'flex-start', gap: 8,
-                          fontSize: 12, color: 'var(--afg2)', cursor: 'pointer', lineHeight: 1.45,
-                        }}>
-                          <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
-                            style={{ marginTop: 2, accentColor: 'var(--aviolet)' }} />
-                          Я принимаю условия использования и политику конфиденциальности
-                        </label>
-                      </>
+                      <label style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 8,
+                        fontSize: 12, color: 'var(--afg2)', cursor: 'pointer', lineHeight: 1.45,
+                      }}>
+                        <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
+                          style={{ marginTop: 2, accentColor: 'var(--aviolet)' }} />
+                        Я принимаю условия использования и политику конфиденциальности
+                      </label>
                     )}
 
                     <PrimaryButton disabled={loading || (mode === 'signup' && !terms)} type="submit">

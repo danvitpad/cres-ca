@@ -31,7 +31,7 @@ import { CommandPalette, useCommandPalette } from '@/components/shared/primitive
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { UserProfileDropdown } from '@/components/ui/user-profile-dropdown';
-import { UserCircle, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [openFlyout, setOpenFlyout] = useState<string | null>(null);
   const [flyoutTop, setFlyoutTop] = useState(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { resolvedTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -493,6 +493,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
             </AnimatePresence>
           </div>
+
+          {/* Theme toggle — 44x44, sun/moon */}
+          <button
+            type="button"
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            aria-label="Переключить тему"
+            style={{
+              width: S.iconBtnSize, height: S.iconBtnSize,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: S.iconBtnRadius,
+              backgroundColor: 'transparent', border: 'none', cursor: 'pointer',
+              color: F.textPrimary, transition: 'background-color 100ms',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = F.hoverBg; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+          >
+            {isDark ? <Sun style={{ width: S.iconSize, height: S.iconSize }} /> : <Moon style={{ width: S.iconSize, height: S.iconSize }} />}
+          </button>
 
           {/* Avatar — 21st.dev UserProfileDropdown */}
           <div style={{ paddingLeft: 8 }}>
