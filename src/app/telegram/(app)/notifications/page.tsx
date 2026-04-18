@@ -1,8 +1,8 @@
 /** --- YAML
  * name: ClientMiniAppNotifications
- * description: Client Mini App inbox — notifications with actionable cards (follow-back, navigate to profile). Group by day, mark read on tap.
+ * description: Client Mini App inbox — notifications with actionable cards (follow-back, navigate to profile). Group by day, mark read on tap. Flat cards (Phase 7.13).
  * created: 2026-04-14
- * updated: 2026-04-16
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -76,9 +76,9 @@ const NOTIF_ICONS: Record<string, typeof Bell> = {
   mutual_follow: Users,
 };
 
-const NOTIF_COLORS: Record<string, string> = {
-  new_follower: 'bg-blue-500/30',
-  mutual_follow: 'bg-emerald-500/30',
+const NOTIF_ICON_COLORS: Record<string, string> = {
+  new_follower: 'text-blue-300',
+  mutual_follow: 'text-emerald-300',
 };
 
 export default function ClientMiniAppNotifications() {
@@ -193,7 +193,7 @@ export default function ClientMiniAppNotifications() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold active:scale-95 transition-transform"
+            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
           >
             Прочитать всё
           </button>
@@ -203,12 +203,12 @@ export default function ClientMiniAppNotifications() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-[28px] border border-dashed border-white/10 bg-white/5 p-10 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/10">
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
             <Inbox className="size-6 text-white/60" />
           </div>
           <p className="mt-4 text-base font-semibold">Пусто</p>
@@ -225,7 +225,7 @@ export default function ClientMiniAppNotifications() {
                 {g.items.map((n) => {
                   const notifType = n.data?.type ?? '';
                   const Icon = NOTIF_ICONS[notifType] ?? Bell;
-                  const iconColor = NOTIF_COLORS[notifType] ?? (n.read_at ? 'bg-white/10' : 'bg-violet-500/30');
+                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-white/40' : 'text-violet-300');
                   const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
                   const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
                   const followState = followerProfileId ? followStates[followerProfileId] : undefined;
@@ -239,12 +239,11 @@ export default function ClientMiniAppNotifications() {
                             navigateToProfile(followerProfileId);
                           }
                         }}
-                        className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left active:scale-[0.99] transition-transform ${
-                          n.read_at ? 'border-white/10 bg-white/5' : 'border-violet-500/30 bg-violet-500/10'
-                        }`}
+                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
                       >
-                        <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${iconColor}`}>
-                          <Icon className="size-4" />
+                        {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                          <Icon className={`size-4 ${iconColor}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13px] font-semibold">{n.title}</p>
@@ -264,10 +263,10 @@ export default function ClientMiniAppNotifications() {
                               toggleFollow(followerProfileId);
                             }}
                             disabled={followState === 'loading'}
-                            className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all active:scale-95 disabled:opacity-60 ${
+                            className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
                               followState === true
-                                ? 'border border-white/15 bg-white/5 text-white/70'
-                                : 'bg-white text-black'
+                                ? 'border border-white/10 bg-white/[0.03] text-white/70 active:bg-white/[0.06]'
+                                : 'bg-white text-black active:bg-white/80'
                             }`}
                           >
                             {followState === 'loading' ? (
@@ -282,12 +281,10 @@ export default function ClientMiniAppNotifications() {
 
                         {/* Mutual badge */}
                         {notifType === 'mutual_follow' && (
-                          <span className="shrink-0 rounded-full bg-emerald-500/20 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
+                          <span className="shrink-0 rounded-full border border-emerald-500/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
                             Взаимно
                           </span>
                         )}
-
-                        {!n.read_at && !isFollowNotif && <span className="mt-1 size-2 shrink-0 rounded-full bg-violet-400" />}
                       </button>
                     </li>
                   );
