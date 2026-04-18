@@ -16,6 +16,7 @@ import { MasterLikeButton } from '@/components/master/like-button';
 import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
+import { MasterAvatar } from '@/components/master/master-avatar';
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -276,17 +277,11 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
       <div className="mx-auto -mt-16 max-w-3xl px-5 sm:-mt-20 sm:px-8">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:gap-6">
-          <div className="relative size-28 overflow-hidden rounded-full border-4 border-white bg-neutral-100 shadow-xl sm:size-36">
-            {master.avatar_url ? (
-              <Image src={master.avatar_url} alt={displayName} fill className="object-cover" />
-            ) : (
-              <div className="flex size-full items-center justify-center text-3xl font-bold text-neutral-400">
-                {displayName.slice(0, 1).toUpperCase()}
-              </div>
-            )}
+          <div className="relative size-28 shrink-0 overflow-hidden rounded-full border-4 border-white bg-neutral-100 shadow-xl sm:size-36">
+            <MasterAvatar url={master.avatar_url} name={displayName} />
           </div>
-          <div className="flex-1 text-center sm:pb-2 sm:text-left">
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{displayName}</h1>
+          <div className="min-w-0 flex-1 text-center sm:pb-2 sm:text-left">
+            <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{displayName}</h1>
             {master.specialization && (
               <p className="mt-1 text-sm text-neutral-600 sm:text-base">{master.specialization}</p>
             )}
