@@ -10,13 +10,20 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Search, SlidersHorizontal, ChevronDown, Check, AlertTriangle } from 'lucide-react';
+import { Search, ChevronDown, Check, AlertTriangle, CircleDashed, CircleCheck, CircleX, CircleDotDashed, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { FONT, CURRENCY, type PageTheme } from '@/lib/dashboard-theme';
 import { Table } from '@/components/ui/table';
 import { TablePagination } from '@/components/ui/table-pagination';
+import {
+  Filters,
+  FilterAddButton,
+  matchFilter,
+  type Filter,
+  type FilterConfig,
+} from '@/components/ui/filters';
 
 const PAGE_SIZE = 20;
 import { format, subMonths, type Locale } from 'date-fns';
@@ -26,7 +33,6 @@ import { enUS } from 'date-fns/locale/en-US';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
-type StatusFilter = 'all' | 'booked' | 'completed' | 'cancelled' | 'no_show';
 type SortOrder = 'newest' | 'oldest' | 'created';
 
 interface AppointmentRow {
@@ -51,7 +57,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [filters, setFilters] = useState<Filter[]>([]);
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [page, setPage] = useState(1);
@@ -85,14 +91,21 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
 
   const filtered = useMemo(() => {
     let list = appointments;
-    if (statusFilter !== 'all') {
-      list = list.filter(a => {
-        if (statusFilter === 'cancelled') {
-          return a.status === 'cancelled' || a.status === 'cancelled_by_client' || a.status === 'cancelled_by_master';
-        }
-        return a.status === statusFilter;
-      });
+
+    for (const f of filters) {
+      if (f.value.length === 0) continue;
+      if (f.type === 'status') {
+        const matcher = matchFilter<AppointmentRow>(f, a => {
+          if (a.status.startsWith('cancelled')) return 'cancelled';
+          return a.status;
+        });
+        list = list.filter(matcher);
+      } else if (f.type === 'service') {
+        const matcher = matchFilter<AppointmentRow>(f, a => a.service?.name ?? '');
+        list = list.filter(matcher);
+      }
     }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(a =>
@@ -102,9 +115,9 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
       );
     }
     return list;
-  }, [appointments, statusFilter, search]);
+  }, [appointments, filters, search]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter, sortOrder]);
+  useEffect(() => { setPage(1); }, [search, filters, sortOrder]);
 
   const pageRows = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -165,13 +178,35 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
     return map;
   }, [appointments]);
 
-  const statusPills: { key: StatusFilter; label: string }[] = [
-    { key: 'all', label: t('all') },
-    { key: 'booked', label: t('booked') },
-    { key: 'completed', label: t('completed') },
-    { key: 'cancelled', label: t('cancelled') },
-    { key: 'no_show', label: t('noShow') },
-  ];
+  const uniqueServices = useMemo(() => {
+    const names = new Set<string>();
+    for (const a of appointments) {
+      if (a.service?.name) names.add(a.service.name);
+    }
+    return Array.from(names).sort();
+  }, [appointments]);
+
+  const filterConfigs: FilterConfig[] = useMemo(() => [
+    {
+      type: 'status',
+      label: t('status'),
+      kind: 'enum',
+      icon: <CircleDashed className="size-3.5" />,
+      options: [
+        { value: 'booked', label: t('booked'), icon: <CircleDashed className="size-3.5 text-blue-400" /> },
+        { value: 'completed', label: t('completed'), icon: <CircleCheck className="size-3.5 text-emerald-400" /> },
+        { value: 'cancelled', label: t('cancelled'), icon: <CircleX className="size-3.5 text-rose-400" /> },
+        { value: 'no_show', label: t('noShow'), icon: <CircleDotDashed className="size-3.5 text-amber-400" /> },
+      ],
+    },
+    {
+      type: 'service',
+      label: t('service'),
+      kind: 'multi-enum',
+      icon: <Tag className="size-3.5" />,
+      options: uniqueServices.map(name => ({ value: name, label: name })),
+    },
+  ], [t, uniqueServices]);
 
   return (
     <>
@@ -221,8 +256,8 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
         </motion.div>
       )}
 
-      {/* Search + filters row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+      {/* Search + filter-bar + sort row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: 320 }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: C.textSecondary }} />
           <input
@@ -236,25 +271,22 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
             }}
           />
         </div>
-        <button
-          style={{
-            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
-            background: C.surface, color: C.textSecondary, fontSize: 13, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT,
-          }}
-        >
-          {t('monthToDate')}
-        </button>
-        <button
-          style={{
-            padding: '9px 14px', borderRadius: 8, border: `1px solid ${C.border}`,
-            background: C.surface, color: C.textSecondary, fontSize: 13, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6, fontFamily: FONT,
-          }}
-        >
-          <SlidersHorizontal size={14} />
-          {t('filters')}
-        </button>
+
+        <Filters configs={filterConfigs} filters={filters} setFilters={setFilters} />
+        <FilterAddButton configs={filterConfigs} filters={filters} setFilters={setFilters} label={t('filters')} />
+        {filters.length > 0 && (
+          <button
+            onClick={() => setFilters([])}
+            style={{
+              padding: '4px 10px', borderRadius: 6, border: `1px solid ${C.border}`,
+              background: 'transparent', color: C.textSecondary, fontSize: 12, cursor: 'pointer',
+              fontFamily: FONT,
+            }}
+          >
+            Clear
+          </button>
+        )}
+
         {/* Sort */}
         <div style={{ position: 'relative', marginLeft: 'auto' }}>
           <button
@@ -290,25 +322,6 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
             </div>
           )}
         </div>
-      </div>
-
-      {/* Status filter pills */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {statusPills.map(pill => (
-          <button
-            key={pill.key}
-            onClick={() => setStatusFilter(pill.key)}
-            style={{
-              padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 500, fontFamily: FONT,
-              background: statusFilter === pill.key ? C.accent : C.surfaceElevated,
-              color: statusFilter === pill.key ? '#ffffff' : C.textSecondary,
-              transition: 'all 0.15s ease',
-            }}
-          >
-            {pill.label}
-          </button>
-        ))}
       </div>
 
       {/* Table */}
