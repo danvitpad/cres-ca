@@ -1,13 +1,17 @@
 /** --- YAML
  * name: InviteLanding
- * description: Resolves a master invite_code to a master profile, auto-links the authed client, and redirects. For anon visitors, stores code in a cookie for post-login claim.
+ * description: Handles two invite types by code. (1) salon_invites (team mode) — renders accept UI for master/receptionist
+ *              to join a salon. (2) masters.invite_code (legacy solo-master) — auto-links authed client to the master.
+ *              Checks salon_invites first; falls back to legacy flow.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-19
  * --- */
 
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import TeamInviteCard from './team-invite-card';
 
 interface Props {
   params: Promise<{ locale: string; code: string }>;
@@ -17,6 +21,53 @@ interface Props {
 export default async function InvitePage({ params, searchParams }: Props) {
   const { locale, code } = await params;
   const { ref } = await searchParams;
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
+  const { data: teamInvite } = await admin
+    .from('salon_invites')
+    .select('id, salon_id, role, expires_at, used_at')
+    .eq('code', code)
+    .maybeSingle();
+
+  if (teamInvite) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      const jar = await cookies();
+      jar.set('pending_team_invite', code, {
+        maxAge: 60 * 60 * 24 * 7,
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+      redirect(`/${locale}/login?team_invite=${code}`);
+    }
+
+    const { data: salon } = await admin
+      .from('salons')
+      .select('id, name, logo_url, team_mode')
+      .eq('id', teamInvite.salon_id)
+      .maybeSingle();
+
+    const expired = new Date(teamInvite.expires_at).getTime() < Date.now();
+
+    return (
+      <TeamInviteCard
+        code={code}
+        locale={locale}
+        salon={salon ? { id: salon.id, name: salon.name, logoUrl: salon.logo_url, teamMode: salon.team_mode } : null}
+        role={teamInvite.role as 'master' | 'receptionist'}
+        usedAt={teamInvite.used_at}
+        expired={expired}
+      />
+    );
+  }
 
   const supabase = await createClient();
   const { data: master } = await supabase
@@ -51,7 +102,6 @@ export default async function InvitePage({ params, searchParams }: Props) {
     redirect(`/${locale}/masters/${master.id}`);
   }
 
-  // Anon: stash the code + ref in a short-lived cookie so we can claim after signup.
   const jar = await cookies();
   jar.set('pending_invite', JSON.stringify({ master_id: master.id, ref: ref ?? null }), {
     maxAge: 60 * 60 * 24 * 7,

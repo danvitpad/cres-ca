@@ -1,6 +1,8 @@
 /** --- YAML
  * name: TeamManagementPage
- * description: Salon admin team management — invite masters, manage team members
+ * description: Salon admin team management — list members (from salon_members + masters), pending invites (from salon_invites),
+ *              create new invites via API with role picker, revoke invites, copy invite links.
+ * updated: 2026-04-19
  * --- */
 
 'use client';
@@ -9,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, Trash2, UserPlus, Search } from 'lucide-react';
+import { Users, Copy, Check, Trash2, UserPlus, Search, Clock, Mail } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -27,21 +29,36 @@ import {
 
 interface TeamMember {
   id: string;
-  specialization: string | null;
-  is_active: boolean;
-  invite_code: string | null;
-  profile: { full_name: string; phone: string | null; avatar_url: string | null };
+  role: 'admin' | 'master' | 'receptionist';
+  status: string;
+  profile: { full_name: string; phone: string | null; avatar_url: string | null } | null;
+  master: { specialization: string | null; is_active: boolean } | null;
+}
+
+interface PendingInvite {
+  id: string;
+  code: string;
+  role: 'master' | 'receptionist';
+  email: string | null;
+  phone: string | null;
+  telegram_username: string | null;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
 }
 
 export default function TeamPage() {
   const t = useTranslations('profile');
   const tc = useTranslations('common');
-  const { userId, role } = useAuthStore();
+  const { userId, role: authRole } = useAuthStore();
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState<'master' | 'receptionist'>('master');
   const [inviteEmail, setInviteEmail] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [salonId, setSalonId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
@@ -49,44 +66,130 @@ export default function TeamPage() {
     if (!userId) return;
     const supabase = createClient();
 
-    // Get salon
     const { data: salon } = await supabase
       .from('salons')
       .select('id')
       .eq('owner_id', userId)
-      .single();
+      .maybeSingle();
 
-    if (!salon) { setLoading(false); return; }
+    if (!salon) {
+      setLoading(false);
+      return;
+    }
     setSalonId(salon.id);
 
-    const { data } = await supabase
-      .from('masters')
-      .select('id, specialization, is_active, invite_code, profile:profiles!masters_profile_id_fkey(full_name, phone, avatar_url)')
-      .eq('salon_id', salon.id)
-      .order('created_at');
+    const [{ data: memberRows }, { data: masterRows }, invitesRes] = await Promise.all([
+      supabase
+        .from('salon_members')
+        .select('id, role, status, profile_id, master_id, profile:profiles!salon_members_profile_id_fkey(full_name, phone, avatar_url), master:masters!salon_members_master_id_fkey(specialization, is_active)')
+        .eq('salon_id', salon.id)
+        .in('status', ['active', 'pending', 'suspended']),
+      supabase
+        .from('masters')
+        .select('id, specialization, is_active, profile_id, profile:profiles!masters_profile_id_fkey(full_name, phone, avatar_url)')
+        .eq('salon_id', salon.id),
+      fetch(`/api/salon/${salon.id}/invites`).then((r) => (r.ok ? r.json() : { invites: [] })),
+    ]);
 
-    setMembers((data as unknown as TeamMember[]) || []);
+    const memberByProfile = new Map<string, TeamMember>();
+    type MemberRow = {
+      id: string;
+      role: 'admin' | 'master' | 'receptionist';
+      status: string;
+      profile_id: string;
+      profile: TeamMember['profile'];
+      master: TeamMember['master'];
+    };
+    type MasterRow = {
+      id: string;
+      specialization: string | null;
+      is_active: boolean;
+      profile_id: string;
+      profile: TeamMember['profile'];
+    };
+    (memberRows as MemberRow[] | null)?.forEach((row) => {
+      memberByProfile.set(row.profile_id, {
+        id: row.id,
+        role: row.role,
+        status: row.status,
+        profile: row.profile,
+        master: row.master,
+      });
+    });
+    (masterRows as MasterRow[] | null)?.forEach((m) => {
+      if (memberByProfile.has(m.profile_id)) return;
+      memberByProfile.set(m.profile_id, {
+        id: `master:${m.id}`,
+        role: 'master',
+        status: m.is_active ? 'active' : 'suspended',
+        profile: m.profile,
+        master: { specialization: m.specialization, is_active: m.is_active },
+      });
+    });
+    setMembers(Array.from(memberByProfile.values()));
+    setInvites((invitesRes?.invites as PendingInvite[] | undefined) ?? []);
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => { loadTeam(); }, [loadTeam]);
+  useEffect(() => {
+    loadTeam();
+  }, [loadTeam]);
 
-  async function removeMember(masterId: string) {
+  async function createInvite() {
+    if (!salonId) return;
+    setInviteBusy(true);
+    const res = await fetch(`/api/salon/${salonId}/invites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: inviteRole, email: inviteEmail || null }),
+    });
+    const j = (await res.json().catch(() => ({}))) as { invite?: { code: string }; error?: string };
+    setInviteBusy(false);
+    if (!res.ok || !j.invite) {
+      toast.error(j.error ?? 'Не удалось создать приглашение');
+      return;
+    }
+    const url = `${window.location.origin}/invite/${j.invite.code}`;
+    await navigator.clipboard.writeText(url).catch(() => {});
+    toast.success('Ссылка скопирована — отправьте её мастеру');
+    setInviteEmail('');
+    setInviteDialogOpen(false);
+    loadTeam();
+  }
+
+  async function revokeInvite(inviteId: string) {
+    if (!salonId) return;
+    const res = await fetch(`/api/salon/${salonId}/invites/${inviteId}`, { method: 'DELETE' });
+    if (!res.ok) {
+      toast.error('Не удалось отозвать');
+      return;
+    }
+    toast.success('Приглашение отозвано');
+    loadTeam();
+  }
+
+  function copyInviteUrl(code: string) {
+    const url = `${window.location.origin}/invite/${code}`;
+    navigator.clipboard.writeText(url);
+    setCopiedCode(code);
+    toast.success(t('copied'));
+    setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 2000);
+  }
+
+  async function removeMember(member: TeamMember) {
+    if (!salonId) return;
     const supabase = createClient();
-    await supabase.from('masters').update({ salon_id: null }).eq('id', masterId);
+    if (member.id.startsWith('master:')) {
+      const masterId = member.id.slice('master:'.length);
+      await supabase.from('masters').update({ salon_id: null }).eq('id', masterId);
+    } else {
+      await supabase.from('salon_members').update({ status: 'removed' }).eq('id', member.id);
+    }
     toast.success(tc('success'));
     loadTeam();
   }
 
-  function copyInviteLink() {
-    if (!salonId) return;
-    navigator.clipboard.writeText(`${window.location.origin}/register?salon=${salonId}`);
-    setCopied(true);
-    toast.success(t('copied'));
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  if (role !== 'salon_admin') {
+  if (authRole !== 'salon_admin') {
     return (
       <div className="p-4 text-center text-muted-foreground py-20">
         {t('onlyAdmins')}
@@ -98,10 +201,19 @@ export default function TeamPage() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-20" /><Skeleton className="h-20" />
+        <Skeleton className="h-20" />
+        <Skeleton className="h-20" />
       </div>
     );
   }
+
+  const pendingInvites = invites.filter((i) => !i.used_at && new Date(i.expires_at).getTime() > Date.now());
+  const filteredMembers = members.filter(
+    (m) =>
+      !search ||
+      m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      m.master?.specialization?.toLowerCase().includes(search.toLowerCase()),
+  );
 
   return (
     <div className="space-y-6">
@@ -110,19 +222,12 @@ export default function TeamPage() {
           <Users className="size-6 text-primary" />
           {t('team')}
         </h2>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={copyInviteLink} className="gap-1.5">
-            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-            {t('inviteLink')}
-          </Button>
-          <Button onClick={() => setInviteDialogOpen(true)} className="gap-1.5">
-            <UserPlus className="size-4" />
-            {t('addMaster')}
-          </Button>
-        </div>
+        <Button onClick={() => setInviteDialogOpen(true)} className="gap-1.5">
+          <UserPlus className="size-4" />
+          {t('addMaster')}
+        </Button>
       </div>
 
-      {/* Stacked avatars overview */}
       {members.length > 0 && (
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
@@ -137,7 +242,7 @@ export default function TeamPage() {
                 ) : (
                   (m.profile?.full_name || 'M')[0].toUpperCase()
                 )}
-                <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background ${m.is_active ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                <span className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background ${m.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
               </div>
             ))}
             {members.length > 5 && (
@@ -150,7 +255,45 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* Search */}
+      {pendingInvites.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+            <Clock className="size-4" /> Ожидают принятия ({pendingInvites.length})
+          </h3>
+          {pendingInvites.map((inv) => (
+            <Card key={inv.id} className="bg-amber-50/40 dark:bg-amber-950/20 border-amber-200/60 dark:border-amber-800/40">
+              <CardContent className="py-3 px-4 flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                  <Mail className="size-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    {inv.email || inv.phone || inv.telegram_username || 'Без контакта'}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {inv.role === 'master' ? 'мастер' : 'администратор'} · истекает {new Date(inv.expires_at).toLocaleDateString('ru-RU')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => copyInviteUrl(inv.code)}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title={t('copyLink')}
+                >
+                  {copiedCode === inv.code ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
+                </button>
+                <button
+                  onClick={() => revokeInvite(inv.id)}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                  title="Отозвать"
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {members.length > 3 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -163,7 +306,7 @@ export default function TeamPage() {
         </div>
       )}
 
-      {members.length === 0 ? (
+      {members.length === 0 && pendingInvites.length === 0 ? (
         <Card className="bg-card/80 backdrop-blur border-border/50">
           <CardContent className="py-12 text-center text-muted-foreground">
             <Users className="size-10 mx-auto mb-3 opacity-40" />
@@ -173,9 +316,7 @@ export default function TeamPage() {
       ) : (
         <div className="space-y-2">
           <AnimatePresence>
-            {members
-              .filter((m) => !search || m.profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || m.specialization?.toLowerCase().includes(search.toLowerCase()))
-              .map((member, i) => (
+            {filteredMembers.map((member, i) => (
               <motion.div
                 key={member.id}
                 initial={{ opacity: 0, y: 10 }}
@@ -186,24 +327,26 @@ export default function TeamPage() {
                 <Card className="bg-card/80 backdrop-blur border-border/50 transition-all hover:shadow-sm hover:border-border">
                   <CardContent className="py-3 px-4 flex items-center gap-3">
                     <div className="relative">
-                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+                      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold overflow-hidden">
                         {member.profile?.avatar_url ? (
                           <img src={member.profile.avatar_url} alt="" className="size-full rounded-full object-cover" />
                         ) : (
                           (member.profile?.full_name || 'M')[0].toUpperCase()
                         )}
                       </div>
-                      <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-card ${member.is_active ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                      <span className={`absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-card ${member.status === 'active' ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate text-sm">{member.profile?.full_name}</h3>
-                      <p className="text-xs text-muted-foreground">{member.specialization || t('noSpecialization')}</p>
+                      <h3 className="font-medium truncate text-sm">{member.profile?.full_name ?? '—'}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {member.role === 'admin' ? 'Администратор' : member.role === 'receptionist' ? 'Ресепшен' : member.master?.specialization || t('noSpecialization')}
+                      </p>
                     </div>
-                    <Badge variant={member.is_active ? 'default' : 'secondary'} className="text-[10px]">
-                      {member.is_active ? t('active') : t('inactive')}
+                    <Badge variant={member.status === 'active' ? 'default' : 'secondary'} className="text-[10px]">
+                      {member.status === 'active' ? t('active') : member.status === 'pending' ? 'Ожидание' : t('inactive')}
                     </Badge>
                     <button
-                      onClick={() => removeMember(member.id)}
+                      onClick={() => removeMember(member)}
                       className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
                     >
                       <Trash2 className="size-4" />
@@ -216,22 +359,62 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* Invite dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('addMaster')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground">
-              {t('inviteDescription')}
-            </p>
+            <p className="text-sm text-muted-foreground">{t('inviteDescription')}</p>
+
             <div className="space-y-2">
-              <Label>{t('inviteLink')}</Label>
-              <div className="flex gap-2">
-                <Input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?salon=${salonId}`} className="text-xs" />
-                <Button variant="outline" onClick={copyInviteLink}>{t('copyLink')}</Button>
+              <Label>Роль</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setInviteRole('master')}
+                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
+                    inviteRole === 'master'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card border-border hover:bg-muted'
+                  }`}
+                >
+                  Мастер
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInviteRole('receptionist')}
+                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
+                    inviteRole === 'receptionist'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card border-border hover:bg-muted'
+                  }`}
+                >
+                  Ресепшен
+                </button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Email (необязательно)</Label>
+              <Input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="master@example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                Сохраняем для справки — ссылку-приглашение отправьте сами.
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setInviteDialogOpen(false)}>
+                {tc('cancel')}
+              </Button>
+              <Button className="flex-1" onClick={createInvite} disabled={inviteBusy}>
+                {inviteBusy ? '...' : 'Создать и скопировать ссылку'}
+              </Button>
             </div>
           </div>
         </DialogContent>
