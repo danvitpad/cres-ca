@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppMapPage
- * description: Mini App map — masters nearby, Telegram LocationManager first then browser/IP fallback. Uses shared Leaflet MapView.
+ * description: Mini App map — masters nearby, Telegram LocationManager first then browser/IP fallback. Uses shared Leaflet MapView. Flat cards (Phase 7.12).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -225,7 +225,7 @@ export default function MiniAppMapPage() {
     <div className="flex h-full min-h-0 flex-col">
       {/* Search bar + locate */}
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 backdrop-blur-sm">
+        <div className="flex flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5">
           <Search className="size-4 text-white/50 shrink-0" />
           <input
             value={query}
@@ -242,16 +242,16 @@ export default function MiniAppMapPage() {
         <button
           onClick={() => locate(true)}
           disabled={geoBusy}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 active:scale-[0.95] transition-transform disabled:opacity-60"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors disabled:opacity-60"
         >
           {geoBusy ? <Loader2 className="size-4 animate-spin" /> : <Navigation className="size-4" />}
         </button>
       </div>
 
       {/* Map */}
-      <div className="relative mx-4 mb-4 min-h-0 flex-1 overflow-hidden rounded-[28px] border border-white/10">
+      <div className="relative mx-4 mb-4 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
         {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
             <Loader2 className="size-7 animate-spin text-white/80" />
           </div>
         )}
@@ -267,13 +267,13 @@ export default function MiniAppMapPage() {
         />
 
         {!loading && (
-          <div className="absolute left-3 top-3 z-[500] rounded-full bg-[#1f2023]/80 px-3 py-1.5 text-[11px] font-semibold backdrop-blur-md">
+          <div className="absolute left-3 top-3 z-[500] rounded-full border border-white/10 bg-[#1f2023]/90 px-3 py-1.5 text-[11px] font-semibold tabular-nums">
             {filteredMarkers.length} мастеров · {salonMarkers.length} салонов
           </div>
         )}
 
         {geoDenied && !geoBusy && (
-          <div className="absolute right-3 top-3 z-[500] flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1.5 text-[11px] font-semibold text-amber-200 backdrop-blur-md">
+          <div className="absolute right-3 top-3 z-[500] flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-[#1f2023]/90 px-3 py-1.5 text-[11px] font-semibold text-amber-300">
             <Navigation className="size-3" /> Разрешите доступ к геолокации
           </div>
         )}
@@ -288,9 +288,9 @@ export default function MiniAppMapPage() {
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             onClick={() => router.push(`/telegram/search/${selected.id}`)}
-            className="mx-4 mb-3 mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 p-3 text-left backdrop-blur-xl active:scale-[0.98] transition-transform"
+            className="mx-4 mb-3 mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left active:bg-white/[0.06] transition-colors"
           >
-            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-rose-500 text-base font-bold">
+            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-base font-bold text-white/90">
               {selected.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={selected.avatar_url} alt="" className="size-full object-cover" />
