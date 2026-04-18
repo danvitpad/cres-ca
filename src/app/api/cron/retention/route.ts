@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -23,11 +24,17 @@ export async function GET(request: Request) {
 
   if (!masters?.length) return NextResponse.json({ created: 0 });
 
+  // Load per-master automation settings (so each master's win_back toggle is respected)
+  const automationSettings = await loadAutomationSettings(supabase, masters.map(m => m.id));
+
   for (const master of masters) {
     // Check subscription tier (simplified — check if Pro or Business)
     const subs = master.subscriptions as unknown as { subscriptions: { tier: string }[] };
     const tier = subs?.subscriptions?.[0]?.tier;
     if (!tier || tier === 'starter') continue;
+
+    // Respect per-master automation toggle
+    if (!isEnabled(automationSettings, master.id, 'win_back')) continue;
 
     // Get clients with their last visit
     const { data: clients } = await supabase
