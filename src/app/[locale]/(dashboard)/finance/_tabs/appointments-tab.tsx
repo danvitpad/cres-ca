@@ -9,12 +9,16 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { FONT, FONT_FEATURES, CURRENCY, type PageTheme } from '@/lib/dashboard-theme';
+import { FONT, CURRENCY, type PageTheme } from '@/lib/dashboard-theme';
+import { Table } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAGE_SIZE = 20;
 import { format, subMonths, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
@@ -50,6 +54,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [page, setPage] = useState(1);
 
   const loadAppointments = useCallback(async () => {
     if (!master?.id) return;
@@ -98,6 +103,13 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
     }
     return list;
   }, [appointments, statusFilter, search]);
+
+  useEffect(() => { setPage(1); }, [search, statusFilter, sortOrder]);
+
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
 
   function getStatusStyle(status: string) {
     switch (status) {
@@ -300,134 +312,122 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
       </div>
 
       {/* Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
-      >
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-              <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('noAppointmentId')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('service')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('created')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('scheduledDate')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('price')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>Чаевые</th>
-              <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <td key={j} style={{ padding: '14px 16px' }}>
-                      <div style={{ height: 14, borderRadius: 4, background: C.rowHover, animation: 'pulse 1.5s infinite' }} />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 4 }}>{t('nothingFound')}</p>
-                  <p style={{ fontSize: 13, color: C.textTertiary }}>{t('nothingFoundDesc')}</p>
-                </td>
-              </tr>
-            ) : (
-              <AnimatePresence>
-                {filtered.map((appt, i) => {
-                  const st = getStatusStyle(appt.status);
-                  const dur = Math.round((new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime()) / 60000);
-                  return (
-                    <motion.tr
-                      key={appt.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.02 }}
-                      style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: 13, color: C.accent, fontWeight: 500 }}>#{seqMap.get(appt.id) ?? '—'}</span>
-                        <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>{appt.client?.full_name || '—'}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>{appt.service?.name || '—'}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>
-                        {format(new Date(appt.created_at), 'd MMM yyyy, HH:mm', { locale: dfLocale })}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontSize: 13, color: C.text }}>
-                          {format(new Date(appt.starts_at), 'd MMM yyyy, HH:mm', { locale: dfLocale })}
-                        </div>
-                        <div style={{ fontSize: 11, color: C.textTertiary }}>{dur} {t('duration').toLowerCase()}</div>
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
-                        {(appt.price || 0).toLocaleString()} {CURRENCY}
-                      </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        {editingTip === appt.id ? (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <input
-                              autoFocus
-                              type="number"
-                              value={tipValue}
-                              onChange={e => setTipValue(e.target.value)}
-                              onKeyDown={e => { if (e.key === 'Enter') saveTip(appt.id); if (e.key === 'Escape') setEditingTip(null); }}
-                              style={{
-                                width: 60, padding: '4px 6px', borderRadius: 4, textAlign: 'right',
-                                border: `1px solid ${C.accent}`, background: C.rowHover, color: C.text,
-                                fontSize: 12, fontFamily: FONT, outline: 'none',
-                              }}
-                            />
-                            <button
-                              onClick={() => saveTip(appt.id)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, padding: 2 }}
-                            >
-                              <Check size={14} />
-                            </button>
-                          </div>
-                        ) : (
-                          <span
-                            onClick={() => { setEditingTip(appt.id); setTipValue(String(appt.tip_amount || 0)); }}
+      {loading ? (
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, padding: 24 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} style={{ height: 40, borderRadius: 4, background: C.rowHover, marginBottom: 8 }} />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{
+          background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
+          padding: '60px 20px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+          <p style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 4 }}>{t('nothingFound')}</p>
+          <p style={{ fontSize: 13, color: C.textTertiary }}>{t('nothingFoundDesc')}</p>
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Table C={C}>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>{t('noAppointmentId')}</Table.Head>
+                <Table.Head>{t('service')}</Table.Head>
+                <Table.Head>{t('created')}</Table.Head>
+                <Table.Head>{t('scheduledDate')}</Table.Head>
+                <Table.Head align="right">{t('price')}</Table.Head>
+                <Table.Head align="right">Чаевые</Table.Head>
+                <Table.Head align="right">{t('status')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body interactive>
+              {pageRows.map((appt) => {
+                const st = getStatusStyle(appt.status);
+                const dur = Math.round((new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime()) / 60000);
+                return (
+                  <Table.Row key={appt.id}>
+                    <Table.Cell>
+                      <span style={{ color: C.accent, fontWeight: 500 }}>#{seqMap.get(appt.id) ?? '—'}</span>
+                      <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>{appt.client?.full_name || '—'}</div>
+                    </Table.Cell>
+                    <Table.Cell style={{ color: C.text }}>{appt.service?.name || '—'}</Table.Cell>
+                    <Table.Cell style={{ color: C.textTertiary }}>
+                      {format(new Date(appt.created_at), 'd MMM yyyy, HH:mm', { locale: dfLocale })}
+                    </Table.Cell>
+                    <Table.Cell>
+                      <div style={{ color: C.text }}>
+                        {format(new Date(appt.starts_at), 'd MMM yyyy, HH:mm', { locale: dfLocale })}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.textTertiary }}>{dur} {t('duration').toLowerCase()}</div>
+                    </Table.Cell>
+                    <Table.Cell align="right" style={{ fontWeight: 600, color: C.text }}>
+                      {(appt.price || 0).toLocaleString()} {CURRENCY}
+                    </Table.Cell>
+                    <Table.Cell align="right">
+                      {editingTip === appt.id ? (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <input
+                            autoFocus
+                            type="number"
+                            value={tipValue}
+                            onChange={e => setTipValue(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') saveTip(appt.id); if (e.key === 'Escape') setEditingTip(null); }}
                             style={{
-                              fontSize: 13, color: appt.tip_amount ? '#34d399' : C.textTertiary,
-                              fontWeight: appt.tip_amount ? 600 : 400, cursor: 'pointer',
-                              padding: '2px 6px', borderRadius: 4,
-                              transition: 'background 0.1s',
+                              width: 60, padding: '4px 6px', borderRadius: 4, textAlign: 'right',
+                              border: `1px solid ${C.accent}`, background: C.rowHover, color: C.text,
+                              fontSize: 12, fontFamily: FONT, outline: 'none',
                             }}
-                            onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                            title="Нажмите для редактирования"
+                          />
+                          <button
+                            onClick={() => saveTip(appt.id)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, padding: 2 }}
                           >
-                            {appt.tip_amount ? `${appt.tip_amount}` : '—'}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 20px', textAlign: 'right' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '4px 10px', borderRadius: 6,
-                          fontSize: 12, fontWeight: 500, background: st.bg, color: st.text,
-                        }}>
-                          {st.label}
+                            <Check size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span
+                          onClick={() => { setEditingTip(appt.id); setTipValue(String(appt.tip_amount || 0)); }}
+                          style={{
+                            color: appt.tip_amount ? '#34d399' : C.textTertiary,
+                            fontWeight: appt.tip_amount ? 600 : 400, cursor: 'pointer',
+                            padding: '2px 6px', borderRadius: 4,
+                          }}
+                          title="Нажмите для редактирования"
+                        >
+                          {appt.tip_amount ? `${appt.tip_amount}` : '—'}
                         </span>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </AnimatePresence>
-            )}
-          </tbody>
-        </table>
-        {!loading && filtered.length > 0 && (
-          <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.border}`, textAlign: 'center', fontSize: 12, color: C.textTertiary }}>
+                      )}
+                    </Table.Cell>
+                    <Table.Cell align="right">
+                      <span style={{
+                        display: 'inline-block', padding: '4px 10px', borderRadius: 6,
+                        fontSize: 12, fontWeight: 500, background: st.bg, color: st.text,
+                      }}>
+                        {st.label}
+                      </span>
+                    </Table.Cell>
+                  </Table.Row>
+                );
+              })}
+            </Table.Body>
+          </Table>
+          <TablePagination
+            C={C}
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={filtered.length}
+            onPageChange={setPage}
+          />
+          <div style={{ textAlign: 'center', fontSize: 12, color: C.textTertiary, marginTop: 12 }}>
             {t('showing', { count: filtered.length, total: appointments.length })}
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
     </>
   );
 }

@@ -16,6 +16,7 @@ import {
   FONT, FONT_FEATURES, usePageTheme, pageContainer, cardStyle, headingStyle, labelStyle,
   type PageTheme,
 } from '@/lib/dashboard-theme';
+import { Table } from '@/components/ui/table';
 
 type FieldKey = 'full_name' | 'phone' | 'email' | 'date_of_birth' | 'notes' | 'ignore';
 
@@ -237,43 +238,30 @@ export default function ClientsImportPage() {
           </div>
 
           {/* Preview card */}
-          <div style={{ ...cardStyle(C), marginBottom: 20 }}>
+          <div style={{ marginBottom: 20 }}>
             <div style={{ fontSize: 14, fontWeight: 510, color: C.text, marginBottom: 10 }}>
               Превью ({rows.length} строк)
             </div>
-            <div style={{ maxHeight: 260, overflowY: 'auto', overflowX: 'auto', borderRadius: 6 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    {headers.map((h, i) => (
-                      <th key={i} style={{
-                        textAlign: 'left', padding: '8px 10px', fontWeight: 510,
-                        borderBottom: `1px solid ${C.border}`,
-                        background: C.surfaceElevated, color: C.text,
-                        position: 'sticky', top: 0,
-                      }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.slice(0, 5).map((r, i) => (
-                    <tr key={i}>
-                      {r.map((c, j) => (
-                        <td key={j} style={{
-                          padding: '6px 10px',
-                          borderBottom: `1px solid ${C.border}`,
-                          color: C.textSecondary,
-                        }}>
-                          {c}
-                        </td>
-                      ))}
-                    </tr>
+            <Table C={C}>
+              <Table.Header>
+                <Table.Row>
+                  {headers.map((h, i) => (
+                    <Table.Head key={i}>{h}</Table.Head>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </Table.Row>
+              </Table.Header>
+              <Table.Body interactive>
+                {rows.slice(0, 5).map((r, i) => (
+                  <Table.Row key={i}>
+                    {r.map((c, j) => (
+                      <Table.Cell key={j} style={{ color: C.textSecondary }}>
+                        {c}
+                      </Table.Cell>
+                    ))}
+                  </Table.Row>
+                ))}
+              </Table.Body>
+            </Table>
           </div>
 
           {/* Import button */}

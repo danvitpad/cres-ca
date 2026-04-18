@@ -7,13 +7,17 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Plus, CreditCard, Trash2, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { Table } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAGE_SIZE = 20;
 
 interface ServicePackage {
   id: string;
@@ -43,6 +47,12 @@ export default function MembershipsPage() {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const pagePackages = useMemo(
+    () => packages.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [packages, page]
+  );
 
   // Form state
   const [name, setName] = useState('');
@@ -245,39 +255,32 @@ export default function MembershipsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('name') ?? 'Name'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('service') ?? 'Service'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('totalVisits') ?? 'Visits'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('price') ?? 'Price'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('validityDays') ?? 'Days'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
-                <th style={{ padding: '12px 16px', width: 80 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {packages.map((pkg, i) => (
-                <motion.tr
-                  key={pkg.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: i * 0.02 }}
-                  style={{ borderBottom: `1px solid ${C.border}` }}
-                >
-                  <td style={{ padding: '12px 20px', fontSize: 13, color: C.text, fontWeight: 500 }}>{pkg.name}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>{pkg.service?.name ?? (t('all') ?? 'All')}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.text }}>
+          <Table C={C}>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>{t('name') ?? 'Name'}</Table.Head>
+                <Table.Head>{t('service') ?? 'Service'}</Table.Head>
+                <Table.Head align="right">{t('totalVisits') ?? 'Visits'}</Table.Head>
+                <Table.Head align="right">{t('price') ?? 'Price'}</Table.Head>
+                <Table.Head align="right">{t('validityDays') ?? 'Days'}</Table.Head>
+                <Table.Head align="center">{t('status')}</Table.Head>
+                <Table.Head width={80} />
+              </Table.Row>
+            </Table.Header>
+            <Table.Body>
+              {pagePackages.map((pkg) => (
+                <Table.Row key={pkg.id}>
+                  <Table.Cell style={{ color: C.text, fontWeight: 500 }}>{pkg.name}</Table.Cell>
+                  <Table.Cell style={{ color: C.textTertiary }}>{pkg.service?.name ?? (t('all') ?? 'All')}</Table.Cell>
+                  <Table.Cell align="right" style={{ color: C.text }}>
                     {pkg.total_visits}{pkg.bonus_visits > 0 ? ` +${pkg.bonus_visits}` : ''}
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
+                  </Table.Cell>
+                  <Table.Cell align="right" style={{ fontWeight: 600, color: C.text }}>
                     {pkg.price.toLocaleString()} {pkg.currency}
-                  </td>
-                  <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: C.textTertiary }}>{pkg.validity_days}d</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                  </Table.Cell>
+                  <Table.Cell align="right" style={{ color: C.textTertiary }}>{pkg.validity_days}d</Table.Cell>
+                  <Table.Cell align="center">
                     <button
                       onClick={() => toggleActive(pkg.id, pkg.is_active)}
                       style={{
@@ -291,19 +294,26 @@ export default function MembershipsPage() {
                       {pkg.is_active ? <Check size={12} /> : <X size={12} />}
                       {pkg.is_active ? (t('active') ?? 'Active') : (t('inactive') ?? 'Inactive')}
                     </button>
-                  </td>
-                  <td style={{ padding: '12px 8px', textAlign: 'right' }}>
+                  </Table.Cell>
+                  <Table.Cell align="right">
                     <button
                       onClick={() => deletePackage(pkg.id)}
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textTertiary, padding: 4 }}
                     >
                       <Trash2 size={14} />
                     </button>
-                  </td>
-                </motion.tr>
+                  </Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
+            </Table.Body>
+          </Table>
+          <TablePagination
+            C={C}
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={packages.length}
+            onPageChange={setPage}
+          />
         </motion.div>
       ) : null}
     </div>

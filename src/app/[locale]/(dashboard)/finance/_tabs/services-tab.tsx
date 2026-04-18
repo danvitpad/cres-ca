@@ -18,6 +18,10 @@ import {
   FONT, FONT_FEATURES, CURRENCY,
   cardStyle, labelStyle,
 } from '@/lib/dashboard-theme';
+import { Table } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAGE_SIZE = 20;
 
 /* ─── Types ─── */
 
@@ -36,6 +40,7 @@ export function ServicesTab({ C }: { C: PageTheme }) {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [displayCurrency, setDisplayCurrency] = useState<SupportedCurrency>('UAH');
+  const [page, setPage] = useState(1);
   const { convert, date: ratesDate, ready: fxReady } = useFxRates();
 
   const fmt = useCallback(
@@ -133,17 +138,10 @@ export function ServicesTab({ C }: { C: PageTheme }) {
     return Math.ceil(target / 10) * 10;
   }
 
-  /* ─── Styles ─── */
-
-  const thStyle = (align: 'left' | 'right'): React.CSSProperties => ({
-    padding: '10px 16px', textAlign: align,
-    fontSize: 11, fontWeight: 510, color: C.textTertiary,
-    textTransform: 'uppercase', letterSpacing: '0.04em', background: C.surfaceElevated,
-  });
-
-  const tdStyle = (align: 'left' | 'right' = 'right'): React.CSSProperties => ({
-    padding: '12px 16px', textAlign: align, fontSize: 13,
-  });
+  const pageRows = useMemo(
+    () => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [rows, page]
+  );
 
   /* ─── Render ─── */
 
@@ -245,29 +243,25 @@ export function ServicesTab({ C }: { C: PageTheme }) {
           Добавьте услуги в каталоге, чтобы увидеть рентабельность
         </p>
       ) : (
-        <div style={{ ...cardStyle(C), padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ ...thStyle('left'), width: 28 }} />
-                {['Услуга', 'Цена', 'Себестоимость', 'Прибыль', 'Маржа'].map((h, i) => (
-                  <th key={h} style={thStyle(i === 0 ? 'left' : 'right')}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
+        <>
+          <Table C={C}>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head width={28} />
+                <Table.Head>Услуга</Table.Head>
+                <Table.Head align="right">Цена</Table.Head>
+                <Table.Head align="right">Себестоимость</Table.Head>
+                <Table.Head align="right">Прибыль</Table.Head>
+                <Table.Head align="right">Маржа</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body interactive>
+              {pageRows.map((r) => {
                 const isOpen = expanded.has(r.id);
                 return (
                   <Fragment key={r.id}>
-                    <tr
-                      style={{ borderTop: `1px solid ${C.border}`, cursor: r.lines.length > 0 ? 'pointer' : 'default', transition: 'background 0.1s' }}
-                      onClick={() => r.lines.length > 0 && toggle(r.id)}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = C.rowHover)}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      {/* Chevron */}
-                      <td style={{ padding: '12px 8px 12px 16px', width: 28 }}>
+                    <Table.Row onClick={r.lines.length > 0 ? () => toggle(r.id) : undefined}>
+                      <Table.Cell style={{ width: 28 }}>
                         {r.lines.length > 0 && (
                           <motion.span
                             animate={{ rotate: isOpen ? 180 : 0 }}
@@ -277,25 +271,24 @@ export function ServicesTab({ C }: { C: PageTheme }) {
                             <ChevronDown size={14} />
                           </motion.span>
                         )}
-                      </td>
-
-                      <td style={{ ...tdStyle('left'), fontWeight: 510, color: C.text }}>{r.name}</td>
-                      <td style={{ ...tdStyle(), fontWeight: 510, color: C.text }}>{fmt(r.price)}</td>
-                      <td style={{ ...tdStyle(), color: C.textSecondary }}>{fmt(r.cost)}</td>
-                      <td style={{ ...tdStyle(), fontWeight: 600, color: r.profit < 0 ? C.danger : C.text }}>{fmt(r.profit)}</td>
-                      <td style={{ ...tdStyle(), fontWeight: 600, color: marginColor(r.margin) }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      </Table.Cell>
+                      <Table.Cell style={{ fontWeight: 510, color: C.text }}>{r.name}</Table.Cell>
+                      <Table.Cell align="right" style={{ fontWeight: 510, color: C.text }}>{fmt(r.price)}</Table.Cell>
+                      <Table.Cell align="right" style={{ color: C.textSecondary }}>{fmt(r.cost)}</Table.Cell>
+                      <Table.Cell align="right" style={{ fontWeight: 600, color: r.profit < 0 ? C.danger : C.text }}>{fmt(r.profit)}</Table.Cell>
+                      <Table.Cell align="right" style={{ fontWeight: 600, color: marginColor(r.margin) }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
                           {r.margin < 30 && <AlertTriangle size={12} />}
                           {r.margin.toFixed(0)}%
                         </span>
-                      </td>
-                    </tr>
+                      </Table.Cell>
+                    </Table.Row>
 
                     {/* Expandable cost breakdown */}
                     <AnimatePresence>
                       {isOpen && (
-                        <tr>
-                          <td colSpan={6} style={{ padding: 0 }}>
+                        <Table.Row>
+                          <Table.Cell colSpan={6} style={{ padding: 0 }}>
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
@@ -303,7 +296,7 @@ export function ServicesTab({ C }: { C: PageTheme }) {
                               transition={{ duration: 0.2 }}
                               style={{ overflow: 'hidden', background: C.surfaceElevated }}
                             >
-                              <div style={{ padding: '12px 16px 12px 58px' }}>
+                              <div style={{ padding: '12px 16px 12px 50px' }}>
                                 <div style={{ fontSize: 11, fontWeight: 510, color: C.textTertiary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                   Техкарта
                                 </div>
@@ -324,16 +317,23 @@ export function ServicesTab({ C }: { C: PageTheme }) {
                                 ))}
                               </div>
                             </motion.div>
-                          </td>
-                        </tr>
+                          </Table.Cell>
+                        </Table.Row>
                       )}
                     </AnimatePresence>
                   </Fragment>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </Table.Body>
+          </Table>
+          <TablePagination
+            C={C}
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={rows.length}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </div>
   );

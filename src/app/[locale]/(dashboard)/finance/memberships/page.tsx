@@ -13,6 +13,10 @@ import { Search, SlidersHorizontal, Ticket } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { Table } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAGE_SIZE = 20;
 import { format, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
@@ -40,6 +44,7 @@ export default function MembershipsPage() {
   const [memberships, setMemberships] = useState<MembershipRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
 
   const loadMemberships = useCallback(async () => {
     if (!master?.id) return;
@@ -63,6 +68,13 @@ export default function MembershipsPage() {
       (m.package?.name || '').toLowerCase().includes(q)
     );
   }, [memberships, search]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
 
   return (
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
@@ -151,44 +163,35 @@ export default function MembershipsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>ID</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('service')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('teamMember')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('created')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('price')}</th>
-                <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m, i) => {
+          <Table C={C}>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>ID</Table.Head>
+                <Table.Head>{t('service')}</Table.Head>
+                <Table.Head>{t('teamMember')}</Table.Head>
+                <Table.Head>{t('created')}</Table.Head>
+                <Table.Head align="right">{t('price')}</Table.Head>
+                <Table.Head align="right">{t('status')}</Table.Head>
+              </Table.Row>
+            </Table.Header>
+            <Table.Body interactive>
+              {pageRows.map((m) => {
                 const isExpired = new Date(m.expires_at) < new Date();
                 return (
-                  <motion.tr
-                    key={m.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.02 }}
-                    style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <td style={{ padding: '12px 20px', fontSize: 13, color: C.accent, fontWeight: 500 }}>
+                  <Table.Row key={m.id}>
+                    <Table.Cell style={{ color: C.accent, fontWeight: 500 }}>
                       #{m.id.slice(0, 7).toUpperCase()}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>{m.package?.name || '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>{m.client?.full_name || '—'}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>
+                    </Table.Cell>
+                    <Table.Cell style={{ color: C.text }}>{m.package?.name || '—'}</Table.Cell>
+                    <Table.Cell style={{ color: C.text }}>{m.client?.full_name || '—'}</Table.Cell>
+                    <Table.Cell style={{ color: C.textTertiary }}>
                       {format(new Date(m.purchased_at), 'd MMM yyyy', { locale: dfLocale })}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
+                    </Table.Cell>
+                    <Table.Cell align="right" style={{ fontWeight: 600, color: C.text }}>
                       {(m.package?.price || 0).toLocaleString()} {CURRENCY}
-                    </td>
-                    <td style={{ padding: '12px 20px', textAlign: 'right' }}>
+                    </Table.Cell>
+                    <Table.Cell align="right">
                       <span style={{
                         display: 'inline-block', padding: '4px 10px', borderRadius: 6,
                         fontSize: 12, fontWeight: 500,
@@ -197,12 +200,19 @@ export default function MembershipsPage() {
                       }}>
                         {isExpired ? t('cancelled') : `${m.visits_remaining}/${m.package?.total_visits || 0}`}
                       </span>
-                    </td>
-                  </motion.tr>
+                    </Table.Cell>
+                  </Table.Row>
                 );
               })}
-            </tbody>
-          </table>
+            </Table.Body>
+          </Table>
+          <TablePagination
+            C={C}
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={filtered.length}
+            onPageChange={setPage}
+          />
         </motion.div>
       )}
     </div>

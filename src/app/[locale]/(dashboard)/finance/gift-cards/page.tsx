@@ -12,6 +12,10 @@ import { motion } from 'framer-motion';
 import { Search, SlidersHorizontal, Gift, Plus, Trash2, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
+import { Table } from '@/components/ui/table';
+import { TablePagination } from '@/components/ui/table-pagination';
+
+const PAGE_SIZE = 20;
 import { format, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
@@ -42,6 +46,7 @@ export default function GiftCardsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newAmount, setNewAmount] = useState('');
   const [newExpiry, setNewExpiry] = useState('');
+  const [page, setPage] = useState(1);
 
   const loadCards = useCallback(async () => {
     if (!master?.id) return;
@@ -92,6 +97,13 @@ export default function GiftCardsPage() {
     const q = search.toLowerCase();
     return cards.filter(c => c.code.toLowerCase().includes(q));
   }, [cards, search]);
+
+  useEffect(() => { setPage(1); }, [search]);
+
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
 
   return (
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, background: C.bg, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
@@ -228,49 +240,40 @@ export default function GiftCardsPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{ background: C.surface, borderRadius: 12, overflow: 'hidden' }}
         >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>Code</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('created')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('totalAmount')}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('balance') ?? 'Balance'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('expiryDate') ?? 'Expires'}</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
-                <th style={{ padding: '12px 16px', width: 40 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((card, i) => {
+          <Table C={C}>
+            <Table.Header>
+              <Table.Row>
+                <Table.Head>Code</Table.Head>
+                <Table.Head>{t('created')}</Table.Head>
+                <Table.Head align="right">{t('totalAmount')}</Table.Head>
+                <Table.Head align="right">{t('balance') ?? 'Balance'}</Table.Head>
+                <Table.Head align="right">{t('expiryDate') ?? 'Expires'}</Table.Head>
+                <Table.Head align="right">{t('status')}</Table.Head>
+                <Table.Head width={40} />
+              </Table.Row>
+            </Table.Header>
+            <Table.Body interactive>
+              {pageRows.map((card) => {
                 const isExpired = card.expires_at ? new Date(card.expires_at) < new Date() : false;
                 const balance = card.balance_remaining ?? card.amount;
                 const isPartial = balance > 0 && balance < card.amount;
                 return (
-                  <motion.tr
-                    key={card.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.02 }}
-                    style={{ borderBottom: `1px solid ${C.border}`, cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = C.rowHover)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                  >
-                    <td style={{ padding: '12px 20px', fontSize: 13, color: C.accent, fontWeight: 500 }}>{card.code}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: C.textTertiary }}>
+                  <Table.Row key={card.id}>
+                    <Table.Cell style={{ color: C.accent, fontWeight: 500 }}>{card.code}</Table.Cell>
+                    <Table.Cell style={{ color: C.textTertiary }}>
                       {format(new Date(card.created_at), 'd MMM yyyy', { locale: dfLocale })}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
+                    </Table.Cell>
+                    <Table.Cell align="right" style={{ fontWeight: 600, color: C.text }}>
                       {card.amount.toLocaleString()} {CURRENCY}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: isPartial ? (isDark ? '#fbbf24' : '#d97706') : C.text }}>
+                    </Table.Cell>
+                    <Table.Cell align="right" style={{ color: isPartial ? (isDark ? '#fbbf24' : '#d97706') : C.text }}>
                       {balance.toLocaleString()} {CURRENCY}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: isExpired ? '#ef4444' : C.textTertiary }}>
+                    </Table.Cell>
+                    <Table.Cell align="right" style={{ color: isExpired ? '#ef4444' : C.textTertiary }}>
                       {card.expires_at ? format(new Date(card.expires_at), 'd MMM yyyy', { locale: dfLocale }) : '—'}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                    </Table.Cell>
+                    <Table.Cell align="right">
                       <span style={{
                         display: 'inline-block', padding: '4px 10px', borderRadius: 6,
                         fontSize: 12, fontWeight: 500,
@@ -281,20 +284,27 @@ export default function GiftCardsPage() {
                       }}>
                         {isExpired ? (t('expired') ?? 'Expired') : card.is_redeemed ? t('completed') : (t('active') ?? 'Active')}
                       </span>
-                    </td>
-                    <td style={{ padding: '12px 8px' }}>
+                    </Table.Cell>
+                    <Table.Cell align="right">
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteCard(card.id); }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.textTertiary, padding: 4 }}
                       >
                         <Trash2 size={14} />
                       </button>
-                    </td>
-                  </motion.tr>
+                    </Table.Cell>
+                  </Table.Row>
                 );
               })}
-            </tbody>
-          </table>
+            </Table.Body>
+          </Table>
+          <TablePagination
+            C={C}
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={filtered.length}
+            onPageChange={setPage}
+          />
         </motion.div>
       )}
     </div>
