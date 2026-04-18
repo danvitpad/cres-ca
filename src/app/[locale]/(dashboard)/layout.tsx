@@ -29,7 +29,7 @@ import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { ConfirmProvider } from '@/hooks/use-confirm';
-import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun } from 'lucide-react';
+import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, Mic } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -79,6 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'sales', icon: FreshaTag, href: '/finance', label: t('nav.sales') },
       { key: 'clients', icon: FreshaSmile, href: '/clients', label: t('nav.clients') },
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
+      { key: 'voice-assistant', icon: Mic, href: '/voice-assistant', label: t('nav.voiceAssistant') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
       { key: 'addons', icon: FreshaAddons, href: '/addons', label: t('nav.addons') },
     ],
