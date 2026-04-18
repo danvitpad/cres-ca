@@ -185,10 +185,3 @@ export const bigNumberStyle = (C: PageTheme) => ({
   color: C.text,
 });
 
-/* ─── KPI card gradients (FINCHECK-inspired) ─── */
-export const KPI_GRADIENTS = {
-  revenue: 'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)',
-  expenses: 'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
-  profit: 'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
-  neutral: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
-} as const;

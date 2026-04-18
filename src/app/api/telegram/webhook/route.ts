@@ -220,6 +220,7 @@ async function routeVoiceAction(
       });
 
       if (error) {
+        await logAiAction(supabase, masterId, { actionType: 'reminder_created', inputText: intent.raw_transcript || intent.text, status: 'failed', errorMessage: error.message });
         await sendMessage(chatId, '❌ Не удалось сохранить напоминание.');
         return;
       }
@@ -228,6 +229,12 @@ async function routeVoiceAction(
         ? `⏰ ${new Date(intent.due_at).toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
         : '📌 Без срока';
 
+      await logAiAction(supabase, masterId, {
+        actionType: 'reminder_created',
+        inputText: intent.raw_transcript || intent.text,
+        status: 'success',
+        result: { text: intent.text, due_at: intent.due_at ?? null },
+      });
       await sendMessage(chatId, `✅ <b>Напоминание создано</b>\n\n${intent.text}\n${timeStr}`, {
         parse_mode: 'HTML',
       });
@@ -259,14 +266,22 @@ async function routeVoiceAction(
         });
 
         if (error) {
+          await logAiAction(supabase, masterId, { actionType: 'expense_created', inputText: intent.raw_transcript || intent.text, status: 'failed', errorMessage: error.message });
           await sendMessage(chatId, '❌ Не удалось записать расход.');
           return;
         }
 
+        await logAiAction(supabase, masterId, {
+          actionType: 'expense_created',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'success',
+          result: { amount: intent.amount, category, description: intent.text },
+        });
         await sendMessage(chatId, `✅ <b>Расход записан</b>\n\n📦 ${intent.text}\n🏷️ ${category}\n💰 ${intent.amount} ₴`, {
           parse_mode: 'HTML',
         });
       } else {
+        await logAiAction(supabase, masterId, { actionType: 'expense_created', inputText: intent.raw_transcript || intent.text, status: 'needs_confirmation', errorMessage: 'amount_not_detected' });
         await sendMessage(chatId, `❓ Не удалось определить сумму. Скажи ещё раз с суммой.`);
       }
       break;
@@ -307,6 +322,13 @@ async function routeVoiceAction(
 
           await supabase.from('clients').update({ notes: newNotes }).eq('id', client.id);
 
+          await logAiAction(supabase, masterId, {
+            actionType: 'client_note',
+            inputText: intent.raw_transcript || intent.text,
+            status: 'success',
+            result: { client_name: client.full_name, note: intent.text },
+            relatedClientId: client.id,
+          });
           await sendMessage(chatId, `✅ <b>Заметка добавлена</b>\n\n👤 ${client.full_name}\n📝 ${intent.text}\n\n<i>Появится в карточке клиента.</i>`, {
             parse_mode: 'HTML',
             reply_markup: {
@@ -320,11 +342,24 @@ async function routeVoiceAction(
             text: `📝 ${intent.client_name}: ${intent.text}`,
             source: 'voice',
           });
+          await logAiAction(supabase, masterId, {
+            actionType: 'client_note',
+            inputText: intent.raw_transcript || intent.text,
+            status: 'needs_confirmation',
+            errorMessage: 'client_not_found',
+            result: { client_name: intent.client_name, fallback: 'reminder' },
+          });
           await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден. Сохранил как напоминание — добавь клиента в базу и перенесёшь.\n\n📝 ${intent.text}`, {
             parse_mode: 'HTML',
           });
         }
       } else {
+        await logAiAction(supabase, masterId, {
+          actionType: 'client_note',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'needs_confirmation',
+          errorMessage: 'client_name_not_detected',
+        });
         await sendMessage(chatId, `❓ Не понял имя клиента. Скажи: «У [имя] аллергия на...»`);
       }
       break;
@@ -340,6 +375,12 @@ async function routeVoiceAction(
           due_at: intent.due_at,
           source: 'voice',
         });
+        await logAiAction(supabase, masterId, {
+          actionType: 'appointment_created',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'needs_confirmation',
+          errorMessage: !intent.client_name ? 'client_name_missing' : 'due_at_missing',
+        });
         await sendMessage(chatId, `⚠️ Нужно больше деталей. Скажи: «Запиши [имя] на [услугу] в [время/дату]».\n\nПока сохранил как напоминание.`);
         break;
       }
@@ -353,6 +394,13 @@ async function routeVoiceAction(
         .limit(5);
 
       if (!clientsMatch || clientsMatch.length === 0) {
+        await logAiAction(supabase, masterId, {
+          actionType: 'appointment_created',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'failed',
+          errorMessage: 'client_not_found',
+          result: { client_name: intent.client_name },
+        });
         await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден в базе.\n\nДобавь клиента и повтори, или запиши через календарь.`, {
           reply_markup: {
             inline_keyboard: [[{ text: '📅 Открыть календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
@@ -416,9 +464,30 @@ async function routeVoiceAction(
         .single();
 
       if (bookErr) {
+        await logAiAction(supabase, masterId, {
+          actionType: 'appointment_created',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'failed',
+          errorMessage: bookErr.message,
+          relatedClientId: client.id,
+        });
         await sendMessage(chatId, `❌ Не удалось создать запись: ${bookErr.message}`);
         break;
       }
+
+      await logAiAction(supabase, masterId, {
+        actionType: 'appointment_created',
+        inputText: intent.raw_transcript || intent.text,
+        status: 'success',
+        result: {
+          client_name: client.full_name,
+          service_name: service?.name || intent.service_name || null,
+          starts_at: startsAt.toISOString(),
+          price: service?.price || 0,
+        },
+        relatedClientId: client.id,
+        relatedAppointmentId: created?.id ?? null,
+      });
 
       // Confirm to master
       const dateStr = startsAt.toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -497,14 +566,27 @@ async function routeVoiceAction(
           .limit(1);
         if (items && items.length > 0) {
           const item = items[0];
+          const remaining = Math.max(0, Number(item.current_quantity) - qty);
           await supabase.from('inventory_items')
-            .update({ current_quantity: Math.max(0, Number(item.current_quantity) - qty) })
+            .update({ current_quantity: remaining })
             .eq('id', item.id);
-          await sendMessage(chatId, `✅ <b>Списано ${qty} ${item.unit || p.unit} • ${item.name}</b>\nОсталось: ${Math.max(0, Number(item.current_quantity) - qty)}`, { parse_mode: 'HTML' });
+          await logAiAction(supabase, masterId, {
+            actionType: 'inventory_deducted',
+            inputText: intent.raw_transcript || intent.text,
+            status: 'success',
+            result: { item_name: item.name, qty, unit: item.unit || p.unit, remaining },
+          });
+          await sendMessage(chatId, `✅ <b>Списано ${qty} ${item.unit || p.unit} • ${item.name}</b>\nОсталось: ${remaining}`, { parse_mode: 'HTML' });
           return;
         }
       }
       // Fall through — no match
+      await logAiAction(supabase, masterId, {
+        actionType: 'inventory_deducted',
+        inputText: intent.raw_transcript || intent.text,
+        status: 'failed',
+        errorMessage: 'item_not_found',
+      });
       await sendMessage(chatId, `❓ Не нашёл такой материал в складе. Добавь его в /inventory и повтори.`);
       break;
     }
@@ -532,6 +614,12 @@ async function routeVoiceAction(
         }
         msg += `\n💰 Итого: <b>${totalRevenue} ₴</b>`;
 
+        await logAiAction(supabase, masterId, {
+          actionType: 'revenue_voice',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'success',
+          result: { items, total: totalRevenue },
+        });
         await sendMessage(chatId, msg, { parse_mode: 'HTML' });
       } else if (totalRevenue > 0) {
         await supabase.from('expenses').insert({
@@ -541,10 +629,22 @@ async function routeVoiceAction(
           description: intent.text,
           category: 'revenue_voice',
         });
+        await logAiAction(supabase, masterId, {
+          actionType: 'revenue_voice',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'success',
+          result: { total: totalRevenue, description: intent.text },
+        });
         await sendMessage(chatId, `✅ <b>Выручка записана</b>\n\n${intent.text}\n💰 ${totalRevenue} ₴`, {
           parse_mode: 'HTML',
         });
       } else {
+        await logAiAction(supabase, masterId, {
+          actionType: 'revenue_voice',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'needs_confirmation',
+          errorMessage: 'amount_not_detected',
+        });
         await sendMessage(chatId, `❓ Не удалось определить суммы. Скажи ещё раз с суммами.`);
       }
       break;

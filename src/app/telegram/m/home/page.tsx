@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, TrendingUp, Users, Clock, ChevronRight, Sparkles, AlertCircle, Mic } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Clock, ChevronRight, Sparkles, AlertCircle, Mic, Bot } from 'lucide-react';
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -56,6 +56,8 @@ export default function MasterMiniAppHome() {
   const [loading, setLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
   const [voiceUsed, setVoiceUsed] = useState<boolean | null>(null);
+  const [brief, setBrief] = useState<string | null>(null);
+  const [briefLoading, setBriefLoading] = useState(true);
 
   useEffect(() => {
     if (!ready) return;
@@ -126,6 +128,17 @@ export default function MasterMiniAppHome() {
         }
       }
       setLoading(false);
+
+      // Step 3 — fetch AI brief (non-blocking, has its own loading state)
+      fetch('/api/telegram/m/brief', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      })
+        .then((r) => r.json())
+        .then((j) => setBrief(j.brief ?? null))
+        .catch(() => setBrief(null))
+        .finally(() => setBriefLoading(false));
     })();
   }, [userId]);
 
@@ -162,6 +175,23 @@ export default function MasterMiniAppHome() {
           {new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
+
+      {/* AI brief — skeleton while loading, card if generated, hidden otherwise */}
+      {briefLoading ? (
+        <div className="h-20 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
+      ) : brief ? (
+        <div className="relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.07] to-fuchsia-500/[0.03] p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10">
+              <Bot className="size-4 text-violet-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Бриф от AI</p>
+              <p className="mt-1.5 text-[13px] leading-snug text-white/85">{brief}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Busy toggle — flat card */}
       <button

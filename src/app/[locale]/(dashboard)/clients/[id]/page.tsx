@@ -27,6 +27,7 @@ import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
 import { ClientDebtBanner } from '@/components/finance/client-debt-banner';
+import { StatCard } from '@/components/shared/primitives/stat-card';
 import { useMaster } from '@/hooks/use-master';
 import { useLocale } from 'next-intl';
 import { ImageComparisonSlider } from '@/components/ui/image-comparison-slider';
@@ -40,7 +41,7 @@ import {
   Heart, Camera,
 } from 'lucide-react';
 import {
-  FONT, FONT_FEATURES, CURRENCY, KPI_GRADIENTS,
+  FONT, FONT_FEATURES, CURRENCY,
   usePageTheme, pageContainer, cardStyle, labelStyle,
   type PageTheme,
 } from '@/lib/dashboard-theme';
@@ -284,7 +285,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               {client.tier === 'vip' && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: KPI_GRADIENTS.revenue, color: '#fff',
+                  background: C.accent, color: '#fff',
                   padding: '3px 10px', borderRadius: 8, fontSize: 11, fontWeight: 650, letterSpacing: '0.04em',
                 }}>
                   ⭐ VIP
@@ -349,32 +350,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </motion.div>
 
-      {/* ═══ KPI gradient row ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 16 }}>
-        {[
-          { label: 'Визитов', value: String(client.total_visits), grad: KPI_GRADIENTS.revenue },
-          { label: 'Потрачено', value: `${totalSpent.toLocaleString()} ${CURRENCY}`, grad: KPI_GRADIENTS.profit },
-          { label: 'Средний чек', value: `${Math.round(client.avg_check).toLocaleString()} ${CURRENCY}`, grad: KPI_GRADIENTS.neutral },
-        ].map((k, i) => (
-          <motion.div
-            key={k.label}
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.3 }}
-            style={{
-              background: k.grad, borderRadius: 16, padding: '20px 22px',
-              color: '#fff', position: 'relative', overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(124,58,237,0.1)',
-            }}
-          >
-            <div style={{ position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)' }} />
-            <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.85, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>
-              {k.label}
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px', fontVariantNumeric: 'tabular-nums' }}>
-              {k.value}
-            </div>
-          </motion.div>
-        ))}
+      {/* ═══ Flat stat row ═══ */}
+      <div className="mb-4 grid grid-cols-3 gap-4">
+        <StatCard label="Визитов" value={String(client.total_visits)} />
+        <StatCard label="Потрачено" value={`${totalSpent.toLocaleString()} ${CURRENCY}`} />
+        <StatCard label="Средний чек" value={`${Math.round(client.avg_check).toLocaleString()} ${CURRENCY}`} />
       </div>
 
       {/* ═══ Debt banner ═══ */}
