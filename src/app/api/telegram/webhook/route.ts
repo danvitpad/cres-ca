@@ -174,6 +174,36 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
 
 /* ─── Action Router ─── */
 
+async function logAiAction(
+  supabase: ReturnType<typeof createServiceClient>,
+  masterId: string,
+  params: {
+    actionType: string;
+    inputText: string;
+    result?: Record<string, unknown>;
+    status?: 'success' | 'needs_confirmation' | 'failed';
+    errorMessage?: string;
+    relatedClientId?: string | null;
+    relatedAppointmentId?: string | null;
+  },
+) {
+  try {
+    await supabase.from('ai_actions_log').insert({
+      master_id: masterId,
+      source: 'voice',
+      action_type: params.actionType,
+      input_text: params.inputText,
+      result: params.result ?? null,
+      status: params.status ?? 'success',
+      error_message: params.errorMessage ?? null,
+      related_client_id: params.relatedClientId ?? null,
+      related_appointment_id: params.relatedAppointmentId ?? null,
+    });
+  } catch (e) {
+    console.error('[voice] failed to log ai_action:', (e as Error).message);
+  }
+}
+
 async function routeVoiceAction(
   chatId: number,
   masterId: string,
@@ -520,6 +550,177 @@ async function routeVoiceAction(
       break;
     }
 
+    case 'cancel': {
+      if (!intent.client_name) {
+        await sendMessage(chatId, '⚠️ Скажи имя клиента: «Отмени Анну на завтра».');
+        await logAiAction(supabase, masterId, { actionType: 'appointment_cancel', inputText: intent.raw_transcript, status: 'needs_confirmation' });
+        break;
+      }
+
+      const { data: clientsMatch } = await supabase
+        .from('clients').select('id, full_name').eq('master_id', masterId)
+        .ilike('full_name', `%${intent.client_name}%`).limit(3);
+
+      if (!clientsMatch || clientsMatch.length === 0) {
+        await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден.`);
+        await logAiAction(supabase, masterId, { actionType: 'appointment_cancel', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'client_not_found' });
+        break;
+      }
+
+      const client = clientsMatch[0];
+      let query = supabase
+        .from('appointments').select('id, starts_at, service_id, status').eq('master_id', masterId).eq('client_id', client.id)
+        .in('status', ['booked', 'confirmed']);
+
+      if (intent.due_at) {
+        const day = new Date(intent.due_at);
+        const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(day); dayEnd.setHours(23, 59, 59, 999);
+        query = query.gte('starts_at', dayStart.toISOString()).lte('starts_at', dayEnd.toISOString());
+      } else {
+        query = query.gte('starts_at', new Date().toISOString());
+      }
+
+      const { data: appts } = await query.order('starts_at', { ascending: true }).limit(3);
+
+      if (!appts || appts.length === 0) {
+        await sendMessage(chatId, `⚠️ У ${client.full_name} нет активных записей${intent.due_at ? ' на эту дату' : ''}.`);
+        await logAiAction(supabase, masterId, { actionType: 'appointment_cancel', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'no_active_appointment', relatedClientId: client.id });
+        break;
+      }
+
+      const appt = appts[0];
+      const { error: cancelErr } = await supabase
+        .from('appointments').update({ status: 'cancelled' }).eq('id', appt.id);
+
+      if (cancelErr) {
+        await sendMessage(chatId, `❌ Не удалось отменить запись: ${cancelErr.message}`);
+        await logAiAction(supabase, masterId, { actionType: 'appointment_cancel', inputText: intent.raw_transcript, status: 'failed', errorMessage: cancelErr.message, relatedClientId: client.id, relatedAppointmentId: appt.id });
+        break;
+      }
+
+      const dateStr = new Date(appt.starts_at).toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      await sendMessage(chatId, `✅ <b>Запись отменена</b>\n\n👤 ${client.full_name}\n⏰ ${dateStr}`, { parse_mode: 'HTML' });
+      await logAiAction(supabase, masterId, {
+        actionType: 'appointment_cancel',
+        inputText: intent.raw_transcript,
+        result: { appointment_id: appt.id, client_id: client.id, previous_status: appt.status, new_status: 'cancelled' },
+        relatedClientId: client.id,
+        relatedAppointmentId: appt.id,
+      });
+      break;
+    }
+
+    case 'reschedule': {
+      if (!intent.client_name || !intent.new_due_at) {
+        await sendMessage(chatId, '⚠️ Скажи кого и на когда: «Перенеси Анну на пятницу на 15».');
+        await logAiAction(supabase, masterId, { actionType: 'appointment_reschedule', inputText: intent.raw_transcript, status: 'needs_confirmation' });
+        break;
+      }
+
+      const { data: clientsMatch } = await supabase
+        .from('clients').select('id, full_name').eq('master_id', masterId)
+        .ilike('full_name', `%${intent.client_name}%`).limit(3);
+
+      if (!clientsMatch || clientsMatch.length === 0) {
+        await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден.`);
+        await logAiAction(supabase, masterId, { actionType: 'appointment_reschedule', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'client_not_found' });
+        break;
+      }
+
+      const client = clientsMatch[0];
+      let query = supabase
+        .from('appointments').select('id, starts_at, ends_at, service_id, status').eq('master_id', masterId).eq('client_id', client.id)
+        .in('status', ['booked', 'confirmed']);
+
+      if (intent.due_at) {
+        const day = new Date(intent.due_at);
+        const dayStart = new Date(day); dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(day); dayEnd.setHours(23, 59, 59, 999);
+        query = query.gte('starts_at', dayStart.toISOString()).lte('starts_at', dayEnd.toISOString());
+      } else {
+        query = query.gte('starts_at', new Date().toISOString());
+      }
+
+      const { data: appts } = await query.order('starts_at', { ascending: true }).limit(3);
+
+      if (!appts || appts.length === 0) {
+        await sendMessage(chatId, `⚠️ У ${client.full_name} нет активных записей${intent.due_at ? ' на указанную дату' : ''}.`);
+        await logAiAction(supabase, masterId, { actionType: 'appointment_reschedule', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'no_active_appointment', relatedClientId: client.id });
+        break;
+      }
+
+      const appt = appts[0];
+      const oldStart = new Date(appt.starts_at);
+      const oldEnd = new Date(appt.ends_at);
+      const durationMs = oldEnd.getTime() - oldStart.getTime();
+      const newStart = new Date(intent.new_due_at);
+      const newEnd = new Date(newStart.getTime() + durationMs);
+
+      const { error: rescheduleErr } = await supabase
+        .from('appointments').update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() }).eq('id', appt.id);
+
+      if (rescheduleErr) {
+        await sendMessage(chatId, `❌ Не удалось перенести: ${rescheduleErr.message}`);
+        await logAiAction(supabase, masterId, { actionType: 'appointment_reschedule', inputText: intent.raw_transcript, status: 'failed', errorMessage: rescheduleErr.message, relatedClientId: client.id, relatedAppointmentId: appt.id });
+        break;
+      }
+
+      const fmt = (d: Date) => d.toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      await sendMessage(chatId, `✅ <b>Запись перенесена</b>\n\n👤 ${client.full_name}\n⏰ ${fmt(oldStart)} → ${fmt(newStart)}`, { parse_mode: 'HTML' });
+      await logAiAction(supabase, masterId, {
+        actionType: 'appointment_reschedule',
+        inputText: intent.raw_transcript,
+        result: { appointment_id: appt.id, client_id: client.id, from: appt.starts_at, to: newStart.toISOString() },
+        relatedClientId: client.id,
+        relatedAppointmentId: appt.id,
+      });
+      break;
+    }
+
+    case 'create_client': {
+      if (!intent.client_name) {
+        await sendMessage(chatId, '⚠️ Скажи имя клиента: «Новая клиентка Марина, телефон 0671234567».');
+        await logAiAction(supabase, masterId, { actionType: 'client_created', inputText: intent.raw_transcript, status: 'needs_confirmation' });
+        break;
+      }
+
+      const { data: existing } = await supabase
+        .from('clients').select('id, full_name').eq('master_id', masterId)
+        .ilike('full_name', intent.client_name).limit(1);
+
+      if (existing && existing.length > 0) {
+        await sendMessage(chatId, `ℹ️ Клиент «${existing[0].full_name}» уже есть в базе.`);
+        await logAiAction(supabase, masterId, { actionType: 'client_created', inputText: intent.raw_transcript, status: 'needs_confirmation', errorMessage: 'duplicate_name', relatedClientId: existing[0].id });
+        break;
+      }
+
+      const { data: created, error: createErr } = await supabase
+        .from('clients').insert({
+          master_id: masterId,
+          full_name: intent.client_name,
+          phone: intent.phone || null,
+          notes: intent.notes || null,
+        }).select('id, full_name').single();
+
+      if (createErr) {
+        await sendMessage(chatId, `❌ Не удалось создать клиента: ${createErr.message}`);
+        await logAiAction(supabase, masterId, { actionType: 'client_created', inputText: intent.raw_transcript, status: 'failed', errorMessage: createErr.message });
+        break;
+      }
+
+      const phoneLine = intent.phone ? `\n📱 ${intent.phone}` : '';
+      const notesLine = intent.notes ? `\n📝 ${intent.notes}` : '';
+      await sendMessage(chatId, `✅ <b>Клиент добавлен</b>\n\n👤 ${created!.full_name}${phoneLine}${notesLine}`, { parse_mode: 'HTML' });
+      await logAiAction(supabase, masterId, {
+        actionType: 'client_created',
+        inputText: intent.raw_transcript,
+        result: { client_id: created!.id, full_name: created!.full_name, phone: intent.phone, notes: intent.notes },
+        relatedClientId: created!.id,
+      });
+      break;
+    }
+
     case 'query': {
       // For queries — acknowledge and redirect to app
       await sendMessage(chatId, `📊 Открой дашборд для полной аналитики:\n\n💬 «${intent.raw_transcript}»`, {
@@ -527,6 +728,7 @@ async function routeVoiceAction(
           inline_keyboard: [[{ text: '📊 Открыть дашборд', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
         },
       });
+      await logAiAction(supabase, masterId, { actionType: 'query', inputText: intent.raw_transcript, status: 'success' });
       break;
     }
 
