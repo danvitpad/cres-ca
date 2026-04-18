@@ -683,20 +683,10 @@ export default function CalendarPage() {
           </div>
           )}
 
-          {/* Filters visibility icon button */}
-          <button
-            onClick={() => setActiveDrawer(activeDrawer === 'filters' ? null : 'filters')}
-            style={pillBtn(F, {
-              width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
-              ...(activeDrawer === 'filters' ? { backgroundColor: F.popoverItemActiveBg, borderColor: F.accent } : {}),
-            })}
-            aria-label="Filters"
-          >
-            <SlidersHorizontal style={{ width: 20, height: 20 }} />
-          </button>
+          {/* Filters / analytics / reset-view buttons removed per product decision */}
         </div>
 
-        {/* Right: settings + waitlist + reset|view group + Add */}
+        {/* Right: settings + view selector + Add */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Settings icon */}
           <button
@@ -710,40 +700,12 @@ export default function CalendarPage() {
             <Settings style={{ width: 20, height: 20 }} />
           </button>
 
-          {/* Waitlist removed — not MVP feature */}
-
-          {/* Analytics icon */}
-          <button
-            onClick={() => setActiveDrawer(activeDrawer === 'analytics' ? null : 'analytics')}
-            style={pillBtn(F, {
-              width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
-              ...(activeDrawer === 'analytics' ? { backgroundColor: F.popoverItemActiveBg, borderColor: F.accent } : {}),
-            })}
-            aria-label="Performance analytics"
-          >
-            <BarChart3 style={{ width: 20, height: 20 }} />
-          </button>
-
-          {/* Connected group: Reset + View selector */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <button
-              onClick={() => { setCurrentDate(new Date()); setView('day'); setActiveDrawer(null); closeSidePanel(); setActionsOpen(false); }}
-              style={pillBtn(F, {
-                width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
-                borderRadius: '999px 0 0 999px',
-              })}
-              aria-label="Reset view"
-            >
-              <RotateCcw style={{ width: 20, height: 20 }} />
-            </button>
-
             {/* View selector dropdown */}
             <div ref={viewDropdownRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setTeamDropdownOpen(false); setAddDropdownOpen(false); }}
                 style={pillBtn(F, {
                   minWidth: 86, paddingLeft: 16, paddingRight: 12, gap: 8,
-                  borderRadius: '0 999px 999px 0', marginLeft: -1,
                 })}
               >
                 <span>{viewLabels[view]}</span>
@@ -773,7 +735,6 @@ export default function CalendarPage() {
                 </div>
               )}
             </div>
-          </div>
 
           {/* "Добавить" split button — Fresha: dark/inverted */}
           <div ref={addDropdownRef} style={{ position: 'relative' }}>
@@ -805,15 +766,7 @@ export default function CalendarPage() {
                     <CalendarPlus style={{ width: 20, height: 20, color: F.textMuted }} />
                     <span>{t('addAppointment')}</span>
                   </button>
-                  <button
-                    onClick={() => { setAddDropdownOpen(false); setNewDialogDefaults({}); setNewDialogOpen(true); }}
-                    style={popoverItemStyle(F,false, hoveredItem === 'add-group')}
-                    onMouseEnter={() => setHoveredItem('add-group')}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <Users style={{ width: 20, height: 20, color: F.textMuted }} />
-                    <span>{t('addGroupAppointment')}</span>
-                  </button>
+                  {/* Group appointment removed — not yet implemented (TODO: separate flow) */}
                   <button
                     onClick={() => { setAddDropdownOpen(false); setBlockTimeDefault(undefined); setEditingBlock(undefined); setActiveDrawer('blockTime'); }}
                     style={popoverItemStyle(F,false, hoveredItem === 'add-block')}

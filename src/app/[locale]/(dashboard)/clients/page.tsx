@@ -401,14 +401,8 @@ export default function ClientsPage() {
     });
   }, [clients, filter]);
 
-  const FILTERS: { key: FilterKey; label: string; icon?: typeof Star; count: number; color?: string }[] = [
-    { key: 'all', label: 'Все', count: counts.all },
-    { key: 'vip', label: 'VIP', icon: Star, count: counts.vip, color: C.accent },
-    { key: 'overdue', label: 'Просрочки', icon: Clock, count: counts.overdue, color: C.danger },
-    { key: 'risk', label: 'Риск', icon: AlertTriangle, count: counts.risk, color: C.warning },
-    { key: 'new', label: 'Новые', icon: Sparkles, count: counts.new, color: C.success },
-    { key: 'birthday', label: 'ДР скоро', icon: Cake, count: counts.birthday, color: C.warning },
-  ];
+  /* Filter chip array removed — chips deleted from UI per product decision.
+     Filter state still exists with default 'all'; filter logic kept for potential future segments. */
 
   if (masterLoading || !mounted) {
     return (
@@ -453,7 +447,7 @@ export default function ClientsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ═══ Top tabs (Clients / Users / Subscribers) ═══ */}
+      {/* ═══ Top tabs (Clients / Partners) — Аудитория removed per product decision ═══ */}
       <div style={{
         display: 'inline-flex', gap: 2,
         background: C.surfaceElevated,
@@ -461,7 +455,6 @@ export default function ClientsPage() {
       }}>
         {([
           { key: 'clients' as TabType, label: 'Клиенты', icon: Users },
-          { key: 'audience' as TabType, label: 'Аудитория', icon: UserCheck },
           { key: 'users' as TabType, label: 'Партнёры', icon: Heart },
         ]).map(({ key, label, icon: Icon }) => (
           <button
@@ -516,35 +509,7 @@ export default function ClientsPage() {
             />
           </div>
 
-          {/* Filter chips */}
-          <div style={{
-            display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22,
-          }}>
-            {FILTERS.map(f => {
-              const active = filter === f.key;
-              const Icon = f.icon;
-              return (
-                <button
-                  key={f.key}
-                  onClick={() => setFilter(f.key)}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '7px 14px', borderRadius: 999,
-                    background: active ? C.accent : C.surface,
-                    color: active ? '#fff' : C.text,
-                    border: `1px solid ${active ? C.accent : C.border}`,
-                    cursor: 'pointer',
-                    fontSize: 13, fontWeight: 550,
-                    fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {Icon && <Icon size={12} style={{ color: active ? '#fff' : f.color || C.textSecondary }} />}
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* Filter chips removed per product decision */}
 
           {/* Card grid */}
           {loading ? (
@@ -580,87 +545,8 @@ export default function ClientsPage() {
         </>
       )}
 
-      {/* ═══ AUDIENCE TAB — followers (regular users who follow this master) ═══ */}
-      {tab === 'audience' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {followListLoading ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} style={{ height: 72, background: C.surfaceElevated, borderRadius: 12 }} />
-            ))
-          ) : followList.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{
-                background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-                padding: '60px 24px', textAlign: 'center',
-              }}
-            >
-              <UserCheck size={40} style={{ color: C.textTertiary, opacity: 0.4, margin: '0 auto 12px' }} />
-              <p style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>
-                Пока никто не подписан
-              </p>
-              <p style={{ fontSize: 13, color: C.textSecondary, margin: '6px 0 0', maxWidth: 380, marginInline: 'auto' }}>
-                Поделитесь ссылкой на свой профиль <code style={{ color: C.accent }}>cres-ca.com/m/{master?.invite_code}</code> — пользователи смогут подписаться и видеть ваши работы в ленте.
-              </p>
-            </motion.div>
-          ) : (
-            <>
-              <p style={{ fontSize: 12, color: C.textTertiary, marginBottom: 8 }}>
-                Эти люди подписаны на вас. Они видят ваши работы в ленте — превратите их в клиентов кнопкой ниже.
-              </p>
-              {followList.map((f, i) => (
-                <motion.div
-                  key={f.profileId}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                >
-                  <FollowerCard
-                    profileId={f.profileId}
-                    fullName={f.fullName ?? '—'}
-                    avatarUrl={f.avatarUrl}
-                    phone={f.phone}
-                    entityType={f.entityType}
-                    entityMeta={f.entityMeta}
-                    followedAt={f.followedAt}
-                    mutual={f.mutual}
-                    isClient={clientProfileIds.has(f.profileId)}
-                    onFollow={async () => {
-                      await fetch('/api/follow', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ targetId: f.profileId }),
-                      });
-                      loadFollowList('followers');
-                    }}
-                    onUnfollow={async () => {
-                      await fetch('/api/follow', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ targetId: f.profileId }),
-                      });
-                      loadFollowList('followers');
-                    }}
-                    onAddToClients={async () => {
-                      if (!master) return;
-                      const supabase = createClient();
-                      const { error } = await supabase.from('clients').insert({
-                        master_id: master.id,
-                        profile_id: f.profileId,
-                        full_name: f.fullName ?? '—',
-                        phone: f.phone || null,
-                      });
-                      if (error) { toast.error(error.message); return; }
-                      toast.success(tc('success'));
-                      setClientProfileIds(prev => new Set([...prev, f.profileId]));
-                      loadClients();
-                    }}
-                  />
-                </motion.div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      {/* Audience/followers tab removed per product decision.
+          The FollowerCard + followList logic is preserved in-file for potential reuse. */}
 
       {/* ═══ PARTNERS TAB — master↔master recommendation agreements ═══ */}
       {tab === 'users' && <PartnersSection C={C} />}

@@ -10,7 +10,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, SlidersHorizontal, Download, ChevronDown, Check, AlertTriangle } from 'lucide-react';
+import { Search, SlidersHorizontal, ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -142,6 +142,17 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
     created: t('createdNewest'),
   };
 
+  // Stable per-master sequence number derived from creation order.
+  // Same appointment keeps the same # regardless of current sort/filter.
+  const seqMap = useMemo(() => {
+    const map = new Map<string, number>();
+    const sorted = [...appointments].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    sorted.forEach((a, i) => map.set(a.id, i + 1));
+    return map;
+  }, [appointments]);
+
   const statusPills: { key: StatusFilter; label: string }[] = [
     { key: 'all', label: t('all') },
     { key: 'booked', label: t('booked') },
@@ -155,16 +166,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: C.text }}>{t('appointments')}</h1>
-        <button
-          style={{
-            padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.border}`,
-            background: C.surface, color: C.text, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}
-        >
-          <Download size={14} />
-          {t('export')}
-        </button>
+        {/* Export button removed until CSV export is finalised */}
       </div>
       <p style={{ fontSize: 14, color: C.textSecondary, marginBottom: 20 }}>{t('appointmentsDesc')}</p>
 
@@ -310,9 +312,8 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('service')}</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('created')}</th>
               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('scheduledDate')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('teamMember')}</th>
               <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('price')}</th>
-              <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>Tips</th>
+              <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>Чаевые</th>
               <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: 12, fontWeight: 500, color: C.textTertiary }}>{t('status')}</th>
             </tr>
           </thead>
@@ -320,7 +321,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j} style={{ padding: '14px 16px' }}>
                       <div style={{ height: 14, borderRadius: 4, background: C.rowHover, animation: 'pulse 1.5s infinite' }} />
                     </td>
@@ -329,7 +330,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
               ))
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center' }}>
                   <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
                   <p style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 4 }}>{t('nothingFound')}</p>
                   <p style={{ fontSize: 13, color: C.textTertiary }}>{t('nothingFoundDesc')}</p>
@@ -351,7 +352,7 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
                       <td style={{ padding: '12px 20px' }}>
-                        <span style={{ fontSize: 13, color: C.accent, fontWeight: 500 }}>#{appt.id.slice(0, 7).toUpperCase()}</span>
+                        <span style={{ fontSize: 13, color: C.accent, fontWeight: 500 }}>#{seqMap.get(appt.id) ?? '—'}</span>
                         <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 2 }}>{appt.client?.full_name || '—'}</div>
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>{appt.service?.name || '—'}</td>
@@ -364,7 +365,6 @@ export function AppointmentsTab({ C }: { C: PageTheme }) {
                         </div>
                         <div style={{ fontSize: 11, color: C.textTertiary }}>{dur} {t('duration').toLowerCase()}</div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, color: C.text }}>—</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600, color: C.text }}>
                         {(appt.price || 0).toLocaleString()} {CURRENCY}
                       </td>
