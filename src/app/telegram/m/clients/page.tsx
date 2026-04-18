@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppClientsList
- * description: Master Mini App clients — searchable list with avatars, behavior badges, total visits, last visit. Tap → client card page.
+ * description: Master Mini App clients — searchable list with avatars, behavior badges. Flat cards, flat avatars (Phase 7.3).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -140,20 +140,20 @@ export default function MasterMiniAppClientsPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск по имени или телефону"
-          className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-[13px] outline-none focus:border-white/20"
+          className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-3 pl-11 pr-4 text-[13px] outline-none focus:border-white/20"
         />
       </div>
 
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
           ))}
         </div>
       ) : !masterId ? (
         <p className="py-10 text-center text-sm text-white/60">Профиль мастера не найден</p>
       ) : filtered.length === 0 ? (
-        <div className="rounded-[28px] border border-dashed border-white/10 bg-white/5 p-8 text-center">
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
           <p className="text-sm font-semibold">
             {rows.length === 0 ? 'Клиентов пока нет' : 'Ничего не найдено'}
           </p>
@@ -177,9 +177,9 @@ export default function MasterMiniAppClientsPage() {
                 <Link
                   href={`/telegram/m/clients/${c.id}`}
                   onClick={() => haptic('light')}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 active:scale-[0.99] transition-transform"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 active:bg-white/[0.06] transition-colors"
                 >
-                  <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-[13px] font-bold">
+                  <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[13px] font-bold text-white/90">
                     {initials(c.full_name) || '—'}
                     {c.has_health_alert && (
                       <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-rose-500 ring-2 ring-black">
@@ -193,7 +193,7 @@ export default function MasterMiniAppClientsPage() {
                       {isVIP && <Crown className="size-3 text-amber-300" />}
                       {isExcellent && <Star className="size-3 fill-amber-300 text-amber-300" />}
                     </div>
-                    <p className="mt-0.5 truncate text-[11px] text-white/50">
+                    <p className="mt-0.5 truncate text-[11px] text-white/50 tabular-nums">
                       {c.total_visits} {plural(c.total_visits, ['визит', 'визита', 'визитов'])} · {Number(c.total_spent).toFixed(0)} ₴
                     </p>
                     <p className="mt-0.5 truncate text-[10px] text-white/40">
@@ -201,7 +201,7 @@ export default function MasterMiniAppClientsPage() {
                     </p>
                   </div>
                   {isRisky && (
-                    <span className="shrink-0 rounded-full bg-rose-500/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-rose-300">
+                    <span className="shrink-0 rounded-full border border-rose-500/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-rose-300">
                       риск
                     </span>
                   )}
