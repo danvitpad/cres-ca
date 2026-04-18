@@ -993,19 +993,21 @@ function CategoryDialog({
   );
 }
 
-/* ─── Catalogue tab router: Услуги / Склад / Постоянные расходы ─── */
+/* ─── Catalogue tab router: Услуги / Склад / Постоянные расходы / Заказы ─── */
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { Scissors as ScissorsIcon, Package as PackageIcon, Repeat as RepeatIcon } from 'lucide-react';
 import InventoryPage from '../inventory/page';
 import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
+import { SupplierOrdersTab } from '@/components/catalogue/supplier-orders-tab';
+import { PillTabs } from '@/components/shared/pill-tabs';
 
-type CatalogueTab = 'services' | 'inventory' | 'recurring';
+type CatalogueTab = 'services' | 'inventory' | 'recurring' | 'orders';
 
-const CAT_TABS: { key: CatalogueTab; label: string; icon: typeof ScissorsIcon }[] = [
-  { key: 'services',  label: 'Услуги',              icon: ScissorsIcon },
-  { key: 'inventory', label: 'Склад',               icon: PackageIcon },
-  { key: 'recurring', label: 'Постоянные расходы',  icon: RepeatIcon },
-];
+const CAT_TABS = [
+  { value: 'services',  label: 'Услуги' },
+  { value: 'inventory', label: 'Склад' },
+  { value: 'recurring', label: 'Постоянные расходы' },
+  { value: 'orders',    label: 'Заказы поставщикам' },
+] as const;
 
 export default function ServicesPage() {
   const searchParams = useSearchParams();
@@ -1014,9 +1016,9 @@ export default function ServicesPage() {
   const { C } = usePageTheme();
 
   const raw = searchParams.get('tab') || 'services';
-  const active = (CAT_TABS.some(t => t.key === raw) ? raw : 'services') as CatalogueTab;
+  const active = (CAT_TABS.some(t => t.value === raw) ? raw : 'services') as CatalogueTab;
 
-  function setTab(key: CatalogueTab) {
+  function setTab(key: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (key === 'services') params.delete('tab');
     else params.set('tab', key);
@@ -1026,42 +1028,23 @@ export default function ServicesPage() {
 
   return (
     <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%' }}>
-      {/* Tab bar — pill style like /finance and /marketing */}
-      <div style={{
-        display: 'flex', gap: 2, flexWrap: 'wrap',
-        background: C.surface, border: `1px solid ${C.border}`,
-        borderRadius: 12, padding: 4, marginBottom: 24,
-      }}>
-        {CAT_TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = active === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setTab(tab.key)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '10px 20px', border: 'none',
-                background: isActive ? C.accent : 'transparent',
-                cursor: 'pointer',
-                fontSize: 13, fontWeight: 550,
-                fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
-                color: isActive ? '#ffffff' : C.textTertiary,
-                borderRadius: 8, transition: 'all 0.2s ease',
-                flex: 1, justifyContent: 'center',
-              }}
-            >
-              <Icon size={16} style={{ opacity: isActive ? 1 : 0.6 }} />
-              {tab.label}
-            </button>
-          );
-        })}
+      <div style={{ marginBottom: 8 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600, color: C.text, margin: 0, letterSpacing: '-0.3px' }}>
+          Каталог
+        </h1>
+        <p style={{ fontSize: 13, color: C.textTertiary, margin: '4px 0 0 0' }}>
+          Услуги, склад, постоянные расходы и заказы поставщикам
+        </p>
       </div>
 
-      {/* Tab content */}
+      <div style={{ marginBottom: 24, marginTop: 16, overflowX: 'auto' }}>
+        <PillTabs items={CAT_TABS} value={active} onChange={setTab} />
+      </div>
+
       {active === 'services' && <ServicesCatalogueView />}
       {active === 'inventory' && <InventoryPage />}
       {active === 'recurring' && <RecurringExpensesTab />}
+      {active === 'orders' && <SupplierOrdersTab />}
     </div>
   );
 }
