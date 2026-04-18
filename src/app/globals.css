@@ -131,8 +131,9 @@
   --accent: #1a1d30;
   --accent-foreground: #eae8f4;
   --destructive: #f87171;
-  --border: rgba(139,92,246,0.08);
-  --input: #1a1d30;
+  --border: rgba(139,92,246,0.12);
+  /* Input must stand off the popover/card bg so fields are actually visible inside dialogs */
+  --input: #272a44;
   --ring: #8b5cf6;
   --chart-1: #8b5cf6;
   --chart-2: #a78bfa;

@@ -406,7 +406,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 
       {/* ═══ Section: Notes (voice + manual) ═══ */}
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><Mic size={15} style={{ color: C.accent }} />Заметки мастера</h3>
+        <h3 style={sectionTitle}><Mic size={15} style={{ color: C.accent }} />Заметки</h3>
         <NotesTab client={client} clientId={id} onSaved={loadClient} C={C} />
       </motion.section>
 

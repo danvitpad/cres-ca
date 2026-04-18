@@ -686,19 +686,9 @@ export default function CalendarPage() {
           {/* Filters / analytics / reset-view buttons removed per product decision */}
         </div>
 
-        {/* Right: settings + view selector + Add */}
+        {/* Right: view selector + Add */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Settings icon */}
-          <button
-            onClick={() => setActiveDrawer(activeDrawer === 'settings' ? null : 'settings')}
-            style={pillBtn(F, {
-              width: 40, minWidth: 36, paddingLeft: 0, paddingRight: 0,
-              ...(activeDrawer === 'settings' ? { backgroundColor: F.popoverItemActiveBg, borderColor: F.accent } : {}),
-            })}
-            aria-label="Calendar settings"
-          >
-            <Settings style={{ width: 20, height: 20 }} />
-          </button>
+          {/* Settings cog removed per product decision */}
 
             {/* View selector dropdown */}
             <div ref={viewDropdownRef} style={{ position: 'relative' }}>

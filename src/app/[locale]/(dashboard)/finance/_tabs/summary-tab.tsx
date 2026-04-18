@@ -392,35 +392,37 @@ export function SummaryTab({ C, isDark, period, setPeriod }: {
       <AnimatePresence mode="wait">
         {activeTab === 'overview' && (
           <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            {/* AI Insight */}
-            {(aiLoading || aiInsight) && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-                style={{
-                  background: C.aiGradient,
-                  border: `1px solid ${C.aiBorder}`,
-                  borderRadius: 14, padding: '18px 22px', marginBottom: 24,
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Sparkles size={14} style={{ color: C.accent }} />
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    AI-помощник
-                  </span>
-                  {aiLoading && <Loader2 size={13} className="animate-spin" style={{ color: C.accent }} />}
+            {/* AI Insight — always visible (was hiding when insight came back null, causing flicker) */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              style={{
+                background: C.aiGradient,
+                border: `1px solid ${C.aiBorder}`,
+                borderRadius: 14, padding: '18px 22px', marginBottom: 24,
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  background: C.accentSoft, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Sparkles size={14} style={{ color: C.accent }} />
                 </div>
-                <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
-                  {aiInsight ?? 'Анализирую ваши данные...'}
-                </p>
-              </motion.div>
-            )}
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.accent, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  AI-помощник
+                </span>
+                {aiLoading && <Loader2 size={13} className="animate-spin" style={{ color: C.accent }} />}
+              </div>
+              <p style={{ fontSize: 14, color: C.textSecondary, lineHeight: 1.65, margin: 0 }}>
+                {aiLoading
+                  ? 'Анализирую ваши данные...'
+                  : aiInsight
+                    ? aiInsight
+                    : 'Пока нечего прокомментировать — добавьте больше записей или расходов, и помощник даст рекомендации.'}
+              </p>
+            </motion.div>
 
             {/* KPI cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
