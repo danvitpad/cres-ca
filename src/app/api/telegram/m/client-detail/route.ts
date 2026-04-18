@@ -1,7 +1,8 @@
 /** --- YAML
  * name: Telegram Master Client Detail API
- * description: Full client card data (info/visits/files) + save note. Validates initData.
+ * description: Full client card data (info/visits/files) + save note + voice-created appointment markers from ai_actions_log (Phase 8.2).
  * created: 2026-04-17
+ * updated: 2026-04-18
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -77,5 +78,21 @@ export async function POST(request: Request) {
       .limit(12),
   ]);
 
-  return NextResponse.json({ client, visits: visits ?? [], files: files ?? [] });
+  const visitIds = (visits ?? []).map((v) => v.id);
+  let voiceActions: Record<string, { transcript: string | null; action: string }> = {};
+  if (visitIds.length > 0) {
+    const { data: logs } = await admin
+      .from('ai_actions_log')
+      .select('related_appointment_id, input_text, action_type')
+      .eq('master_id', master.id)
+      .eq('source', 'voice')
+      .in('related_appointment_id', visitIds);
+    voiceActions = Object.fromEntries(
+      (logs ?? [])
+        .filter((l) => l.related_appointment_id)
+        .map((l) => [l.related_appointment_id as string, { transcript: l.input_text, action: l.action_type }]),
+    );
+  }
+
+  return NextResponse.json({ client, visits: visits ?? [], files: files ?? [], voiceActions });
 }

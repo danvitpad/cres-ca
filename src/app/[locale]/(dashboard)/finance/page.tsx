@@ -1,6 +1,6 @@
 /** --- YAML
  * name: FinancePage
- * description: Finance single-screen — 4 StatCards + AI insight + PillTabs (Обзор/Доходы/Расходы). Period via PeriodSelector dropdown. RPC `master_period_metrics` for KPIs. Replaces legacy 4-tab layout.
+ * description: Finance single-screen — 4 StatCards + AI insight + PillTabs (Обзор/Доходы/Расходы). Period via PeriodSelector dropdown. RPC `master_period_metrics` for KPIs. Voice-created rows marked with 🎙 (Phase 8.2).
  * created: 2026-04-17
  * updated: 2026-04-18
  * --- */
@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Loader2, Plus, Trash2,
   Calendar as CalendarIcon, Trophy,
-  CreditCard, Receipt, TrendingUp, Wallet,
+  CreditCard, Receipt, TrendingUp, Wallet, Mic,
 } from 'lucide-react';
 import { format, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
@@ -671,6 +671,8 @@ export default function FinancePage() {
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflowX: 'auto',
               }}>
                 {expenses.map((e, i) => {
+                  const rawCategory = e.category || '';
+                  const isVoice = rawCategory === 'revenue_voice';
                   let category = e.category || 'Прочее';
                   if (category === 'other' || category === 'Other' || category === 'revenue_voice') category = 'Прочее';
                   const description = e.description || e.vendor || '';
@@ -690,8 +692,11 @@ export default function FinancePage() {
                       }}
                     >
                       <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>{dateStr}</span>
-                      <span style={{ fontSize: 14, fontWeight: 550, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 14, fontWeight: 550, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                         {category}
+                        {isVoice && (
+                          <Mic size={12} aria-label="Создано голосом" style={{ color: '#a78bfa', flexShrink: 0 }} />
+                        )}
                       </span>
                       <span style={{ fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {description || '—'}
