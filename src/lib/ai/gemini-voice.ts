@@ -20,6 +20,7 @@ export type VoiceAction =
   | 'inventory'
   | 'cancel'
   | 'reschedule'
+  | 'create_client'
   | 'query'
   | 'unknown';
 
@@ -33,6 +34,10 @@ export interface VoiceIntent {
   raw_transcript: string;
   confidence: number;
   items?: { client_name: string; service_name: string; amount: number }[];
+  // Phase 3A extensions — populated for cancel/reschedule/create_client
+  phone?: string | null;
+  notes?: string | null;
+  new_due_at?: string | null;
 }
 
 const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/service индустрии. Мастер отправляет голосовое сообщение.
@@ -57,8 +62,9 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
 - "revenue" — записать приход/выручку (мастер рассказывает кто был и за что заплатил)
 - "client_note" — заметка о клиенте (аллергия, предпочтения, дети, питомцы, предпочтения, "у Марии чихуа-хуа Буся")
 - "inventory" — ФИЗИЧЕСКОЕ списание со склада (потратил 200 мл краски, использовал 3 шт перчаток) — БЕЗ суммы денег
-- "cancel" — отменить запись
-- "reschedule" — перенести запись
+- "cancel" — отменить запись клиента (вернуть fields: client_name + опционально due_at)
+- "reschedule" — перенести запись (fields: client_name, due_at = СТАРАЯ дата если упомянута, new_due_at = новая дата/время)
+- "create_client" — добавить нового клиента (fields: client_name обязательно, phone опционально, notes опционально)
 - "query" — вопрос (сколько заработал, сколько записей)
 - "unknown" — не удалось понять
 
@@ -81,6 +87,17 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
 
 Для остальных — обычный формат:
 {"action":"reminder","text":"Отправить сообщение Антону","due_at":"2026-04-17T10:00:00+03:00","client_name":"Антон","amount":null,"service_name":null,"raw_transcript":"полная транскрипция","confidence":0.9}
+
+Примеры новых действий:
+
+"Отмени Анну на завтра":
+{"action":"cancel","text":"Отменить запись Анны","client_name":"Анна","due_at":"2026-04-18T09:00:00+03:00","amount":null,"service_name":null,"raw_transcript":"отмени анну на завтра","confidence":0.9}
+
+"Перенеси Машу с пятницы на субботу на 14":
+{"action":"reschedule","text":"Перенести запись Маши","client_name":"Маша","due_at":"2026-04-18T00:00:00+03:00","new_due_at":"2026-04-19T14:00:00+03:00","amount":null,"service_name":null,"raw_transcript":"перенеси машу с пятницы на субботу на 14","confidence":0.9}
+
+"Новая клиентка Марина телефон 0671234567":
+{"action":"create_client","text":"Новый клиент Марина","client_name":"Марина","phone":"0671234567","notes":null,"due_at":null,"amount":null,"service_name":null,"raw_transcript":"новая клиентка марина телефон 0671234567","confidence":0.95}
 
 ВАЖНО: ответь ТОЛЬКО одним JSON-объектом, без комментариев и без markdown.`;
 
@@ -191,6 +208,9 @@ function normalizeIntent(obj: any): VoiceIntent {
     raw_transcript: obj.raw_transcript || obj.text || '',
     confidence: obj.confidence || 0.5,
     items: Array.isArray(obj.items) ? obj.items : undefined,
+    phone: obj.phone || null,
+    notes: obj.notes || null,
+    new_due_at: obj.new_due_at || null,
   };
 }
 
