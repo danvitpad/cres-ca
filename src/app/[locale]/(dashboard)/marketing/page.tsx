@@ -9,22 +9,24 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Send, Bot, Percent, Star } from 'lucide-react';
-import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
+import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
+import { PillTabs } from '@/components/shared/pill-tabs';
 
 import CampaignsPage from './campaigns/page';
 import AutomationPage from './automation/page';
 import DealsPage from './deals/page';
 import ReviewsPage from './reviews/page';
+import { ReferralProgramPanel } from '@/components/marketing/referral-program-panel';
 
-type TopTab = 'campaigns' | 'automation' | 'deals' | 'reviews';
+type TopTab = 'campaigns' | 'automation' | 'deals' | 'reviews' | 'referrals';
 
-const TABS: { key: TopTab; label: string; icon: typeof Send }[] = [
-  { key: 'campaigns',  label: 'Рассылки',    icon: Send },
-  { key: 'automation', label: 'Автоматика',  icon: Bot },
-  { key: 'deals',      label: 'Акции',       icon: Percent },
-  { key: 'reviews',    label: 'Отзывы',      icon: Star },
-];
+const TABS = [
+  { value: 'campaigns',  label: 'Рассылки' },
+  { value: 'automation', label: 'Автоматика' },
+  { value: 'deals',      label: 'Акции' },
+  { value: 'reviews',    label: 'Отзывы' },
+  { value: 'referrals',  label: 'Рекомендации' },
+] as const;
 
 export default function MarketingPage() {
   const searchParams = useSearchParams();
@@ -33,9 +35,9 @@ export default function MarketingPage() {
   const { C } = usePageTheme();
 
   const rawTab = searchParams.get('tab') || 'campaigns';
-  const activeTab = TABS.some(t => t.key === rawTab) ? (rawTab as TopTab) : 'campaigns';
+  const activeTab = TABS.some(t => t.value === rawTab) ? (rawTab as TopTab) : 'campaigns';
 
-  function setTab(key: TopTab) {
+  function setTab(key: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (key === 'campaigns') params.delete('tab');
     else params.set('tab', key);
@@ -63,58 +65,22 @@ export default function MarketingPage() {
         </p>
       </div>
 
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex', flexWrap: 'wrap',
-        gap: 2,
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: 4,
-        marginBottom: 24,
-      }}>
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setTab(tab.key)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                padding: '10px 20px',
-                border: 'none',
-                background: isActive ? C.accent : 'transparent',
-                cursor: 'pointer',
-                fontSize: 13, fontWeight: 550,
-                fontFamily: FONT,
-                fontFeatureSettings: FONT_FEATURES,
-                color: isActive ? '#ffffff' : C.textTertiary,
-                borderRadius: 8,
-                transition: 'all 0.2s ease',
-                flex: 1,
-                justifyContent: 'center',
-              }}
-            >
-              <Icon size={16} style={{ opacity: isActive ? 1 : 0.6 }} />
-              {tab.label}
-            </button>
-          );
-        })}
+      <div style={{ marginBottom: 24, overflowX: 'auto' }}>
+        <PillTabs items={TABS} value={activeTab} onChange={setTab} />
       </div>
 
-      {/* Tab content — inner pages manage their own padding */}
       <motion.div
         key={activeTab}
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
-        style={{ margin: '0 -36px' /* cancel outer pageContainer horizontal padding */ }}
+        style={activeTab === 'referrals' ? undefined : { margin: '0 -36px' /* cancel outer pageContainer horizontal padding */ }}
       >
         {activeTab === 'campaigns' && <CampaignsPage />}
         {activeTab === 'automation' && <AutomationPage />}
         {activeTab === 'deals' && <DealsPage />}
         {activeTab === 'reviews' && <ReviewsPage />}
+        {activeTab === 'referrals' && <ReferralProgramPanel />}
       </motion.div>
     </div>
   );
