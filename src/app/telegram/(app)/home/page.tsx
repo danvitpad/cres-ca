@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Calendar, Search, Heart, Send, Loader2, Compass } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -76,39 +75,50 @@ export default function MiniAppHomePage() {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
 
     (async () => {
-      // Next appointment
-      const { data: clientRows } = await supabase.from('clients').select('id').eq('profile_id', userId);
-      const clientIds = (clientRows ?? []).map((c: { id: string }) => c.id);
-      if (clientIds.length > 0) {
-        const { data: apt } = await supabase
-          .from('appointments')
-          .select('id, starts_at, price, master:masters(profile:profiles!masters_profile_id_fkey(full_name)), service:services(name)')
-          .in('client_id', clientIds)
-          .gte('starts_at', new Date().toISOString())
-          .in('status', ['booked', 'confirmed'])
-          .order('starts_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (apt) {
-          const a = apt as unknown as {
-            id: string;
-            starts_at: string;
-            price: number | null;
-            master: { profile: { full_name: string } | { full_name: string }[] } | null;
-            service: { name: string } | { name: string }[] | null;
-          };
-          const masterProfile = Array.isArray(a.master?.profile) ? a.master?.profile[0] : a.master?.profile;
-          const svc = Array.isArray(a.service) ? a.service[0] : a.service;
-          setNext({
-            id: a.id,
-            starts_at: a.starts_at,
-            master_name: masterProfile?.full_name ?? '—',
-            service_name: svc?.name ?? '—',
-            price: Number(a.price ?? 0),
-          });
+      const initData = (() => {
+        if (typeof window === 'undefined') return null;
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        const live = w.Telegram?.WebApp?.initData;
+        if (live) return live;
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) {
+            const parsed = JSON.parse(stash) as { initData?: string };
+            if (parsed.initData) return parsed.initData;
+          }
+        } catch { /* ignore */ }
+        return null;
+      })();
+
+      // Next appointment via server endpoint (Supabase JWT not persisted in TG WebView)
+      if (initData) {
+        const naRes = await fetch('/api/telegram/c/next-appointment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+        if (naRes.ok) {
+          const { next: apt } = await naRes.json();
+          if (apt) {
+            const a = apt as {
+              id: string;
+              starts_at: string;
+              price: number | null;
+              master: { profile: { full_name: string } | { full_name: string }[] } | null;
+              service: { name: string } | { name: string }[] | null;
+            };
+            const masterProfile = Array.isArray(a.master?.profile) ? a.master?.profile[0] : a.master?.profile;
+            const svc = Array.isArray(a.service) ? a.service[0] : a.service;
+            setNext({
+              id: a.id,
+              starts_at: a.starts_at,
+              master_name: masterProfile?.full_name ?? '—',
+              service_name: svc?.name ?? '—',
+              price: Number(a.price ?? 0),
+            });
+          }
         }
       }
 

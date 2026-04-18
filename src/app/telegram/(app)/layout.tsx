@@ -13,8 +13,22 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, Search, Clock, User, Bell } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
-import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 const tabs = [
   { key: 'home', href: '/telegram/home', icon: Home, label: 'Главная' },
@@ -38,36 +52,31 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = createClient();
     let mounted = true;
 
     const fetchCount = async () => {
-      const { count } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('profile_id', userId)
-        .is('read_at', null);
-      if (mounted) setUnreadCount(count ?? 0);
+      const initData = getInitData();
+      if (!initData) return;
+      const res = await fetch('/api/telegram/c/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (mounted) setUnreadCount(json.unread ?? 0);
     };
 
     fetchCount();
 
-    const channel = supabase
-      .channel(`notifications:${userId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'notifications', filter: `profile_id=eq.${userId}` },
-        () => fetchCount(),
-      )
-      .subscribe();
-
     const onFocus = () => fetchCount();
     window.addEventListener('focus', onFocus);
+    const interval = setInterval(fetchCount, 60_000);
 
     return () => {
       mounted = false;
-      supabase.removeChannel(channel);
       window.removeEventListener('focus', onFocus);
+      clearInterval(interval);
     };
   }, [userId]);
 

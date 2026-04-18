@@ -1,120 +1,155 @@
 /** --- YAML
  * name: AddonsPage
- * description: Fresha-exact add-ons marketplace — grid of feature cards with descriptions and action buttons
+ * description: Roadmap placeholder page — shows planned marketplace addons honestly (was stub cards with non-functional "View Details" buttons). Actual feature toggles live under Settings → Modules.
+ * created: 2026-04-17
+ * updated: 2026-04-18
  * --- */
 
 'use client';
 
-import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
-import { CreditCard, Headphones, BarChart3, Star, Heart, MessageSquare, Zap, Globe, Shield, Smartphone } from 'lucide-react';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { Package, ArrowRight, Sparkles } from 'lucide-react';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 
-interface Addon {
-  id: string;
-  titleKey: string;
-  descKey: string;
-  icon: typeof CreditCard;
-  color: string;
+interface Planned {
+  title: string;
+  description: string;
+  status: 'building' | 'research' | 'backlog';
 }
 
-const ADDONS: Addon[] = [
-  { id: 'payments', titleKey: 'payments', descKey: 'paymentsDesc', icon: CreditCard, color: '#10b981' },
-  { id: 'premium-support', titleKey: 'premiumSupport', descKey: 'premiumSupportDesc', icon: Headphones, color: '#6950f3' },
-  { id: 'insights', titleKey: 'insights', descKey: 'insightsDesc', icon: BarChart3, color: '#f59e0b' },
-  { id: 'google-boost', titleKey: 'googleBoost', descKey: 'googleBoostDesc', icon: Star, color: '#ef4444' },
-  { id: 'loyalty', titleKey: 'loyalty', descKey: 'loyaltyDesc', icon: Heart, color: '#ec4899' },
-  { id: 'sms-campaigns', titleKey: 'smsCampaigns', descKey: 'smsCampaignsDesc', icon: MessageSquare, color: '#3b82f6' },
-  { id: 'automation', titleKey: 'automationAddon', descKey: 'automationAddonDesc', icon: Zap, color: '#8b5cf6' },
-  { id: 'online-booking', titleKey: 'onlineBooking', descKey: 'onlineBookingDesc', icon: Globe, color: '#06b6d4' },
-  { id: 'security', titleKey: 'security', descKey: 'securityDesc', icon: Shield, color: '#64748b' },
-  { id: 'mobile-app', titleKey: 'mobileApp', descKey: 'mobileAppDesc', icon: Smartphone, color: '#0ea5e9' },
+const PLANNED: Planned[] = [
+  { title: 'Онлайн-оплата предоплат', description: 'Привязка кассы и приём предоплат при записи', status: 'building' },
+  { title: 'SMS-рассылки', description: 'Массовые SMS по сегменту клиентов', status: 'research' },
+  { title: 'Программа лояльности', description: 'Бонусные баллы за визиты и рефералов', status: 'research' },
+  { title: 'Google/Bing буст', description: 'Продвижение профиля мастера в поиске', status: 'backlog' },
 ];
 
+const STATUS_LABEL: Record<Planned['status'], { text: string; color: 'green' | 'amber' | 'gray' }> = {
+  building: { text: 'В разработке', color: 'green' },
+  research: { text: 'В исследовании', color: 'amber' },
+  backlog: { text: 'В бэклоге', color: 'gray' },
+};
+
 export default function AddonsPage() {
-  const t = useTranslations('addons');
-  const { C, isDark, mounted } = usePageTheme();
+  const { C, mounted } = usePageTheme();
+  const locale = useLocale();
+
+  if (!mounted) return null;
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '32px 40px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg }}>
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: 40 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 600, color: C.text, lineHeight: '32px', margin: '0 0 8px' }}>
-          {t('title')}
+    <div style={{
+      ...pageContainer,
+      color: C.text, background: C.bg, minHeight: '100%',
+      paddingBottom: 96,
+      fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+    }}>
+      {/* Hero */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        style={{
+          background: C.accentSoft,
+          border: `1px solid ${C.aiBorder}`,
+          borderRadius: 16,
+          padding: '28px 32px',
+          marginBottom: 24,
+        }}
+      >
+        <h1 style={{
+          fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px',
+          margin: 0, display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <Package size={22} style={{ color: C.accent }} />
+          Marketplace дополнений
         </h1>
-        <p style={{ fontSize: 15, color: C.textSecondary, lineHeight: '22px', maxWidth: 500, margin: '0 auto' }}>
-          {t('subtitle')}
+        <p style={{ fontSize: 14, color: C.textSecondary, margin: '8px 0 0', lineHeight: 1.5 }}>
+          Скоро здесь появится маркетплейс расширений. Пока что включение и выключение встроенных модулей живёт в&nbsp;
+          <Link href={`/${locale}/settings?section=modules`} style={{ color: C.accent, fontWeight: 600, textDecoration: 'none' }}>
+            Настройках → Модули
+          </Link>.
         </p>
-      </div>
+      </motion.div>
 
-      {/* Category label */}
-      <div style={{ fontSize: 13, fontWeight: 600, color: C.textTertiary, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>
-        {t('addonsLabel')}
-      </div>
+      <h2 style={{
+        fontSize: 13, fontWeight: 600, color: C.textTertiary,
+        textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12,
+      }}>
+        Что планируем
+      </h2>
 
-      {/* Add-ons grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-        {ADDONS.map((addon, i) => {
-          const Icon = addon.icon;
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: 14,
+      }}>
+        {PLANNED.map((p, i) => {
+          const st = STATUS_LABEL[p.status];
+          const statusColor =
+            st.color === 'green' ? { bg: C.successSoft, fg: C.success } :
+            st.color === 'amber' ? { bg: C.warningSoft, fg: C.warning } :
+                                   { bg: C.surfaceElevated, fg: C.textTertiary };
           return (
             <motion.div
-              key={addon.id}
+              key={p.title}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.04 }}
               style={{
-                backgroundColor: C.surface,
+                background: C.surface,
                 border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: 24,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 16,
-                transition: 'background-color 0.15s',
+                borderRadius: 14,
+                padding: 18,
+                display: 'flex', flexDirection: 'column', gap: 8,
               }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = isDark ? '#1e1e1e' : '#fafafa')}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.surface)}
             >
-              <div style={{
-                width: 44, height: 44, borderRadius: 10,
-                backgroundColor: addon.color + '18',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Icon size={22} style={{ color: addon.color }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                <Sparkles size={16} style={{ color: C.accent, flexShrink: 0, marginTop: 2 }} />
+                <span style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                  padding: '3px 7px', borderRadius: 5,
+                  background: statusColor.bg, color: statusColor.fg,
+                }}>
+                  {st.text}
+                </span>
               </div>
-
-              <div>
-                <div style={{ fontSize: 17, fontWeight: 600, color: C.text, lineHeight: '24px', marginBottom: 6 }}>
-                  {t(addon.titleKey)}
-                </div>
-                <div style={{ fontSize: 14, color: C.textSecondary, lineHeight: '20px' }}>
-                  {t(addon.descKey)}
-                </div>
+              <div style={{ fontSize: 14, fontWeight: 650, color: C.text, lineHeight: 1.25 }}>
+                {p.title}
               </div>
-
-              <button
-                style={{
-                  marginTop: 'auto',
-                  padding: '8px 20px',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  color: C.text,
-                  backgroundColor: C.surfaceElevated,
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                  fontFamily: FONT,
-                  transition: 'background-color 0.15s',
-                  alignSelf: 'flex-start',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.rowHover)}
-                onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.surfaceElevated)}
-              >
-                {t('viewDetails')}
-              </button>
+              <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.5 }}>
+                {p.description}
+              </div>
             </motion.div>
           );
         })}
+      </div>
+
+      <div style={{
+        marginTop: 28,
+        padding: '18px 22px',
+        background: C.surface,
+        border: `1px dashed ${C.border}`,
+        borderRadius: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        flexWrap: 'wrap',
+      }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>Хотите конкретное дополнение?</div>
+          <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 2 }}>
+            Напишите нам через форму обратной связи в настройках — добавим в план.
+          </div>
+        </div>
+        <Link
+          href={`/${locale}/settings`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '9px 16px', borderRadius: 10,
+            background: C.accent, color: '#fff',
+            fontSize: 13, fontWeight: 600, textDecoration: 'none',
+          }}
+        >
+          В настройки <ArrowRight size={14} />
+        </Link>
       </div>
     </div>
   );

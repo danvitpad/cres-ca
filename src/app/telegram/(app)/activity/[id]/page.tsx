@@ -25,7 +25,6 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -85,51 +84,51 @@ export default function MiniAppAppointmentDetail() {
   useEffect(() => {
     if (!userId || !params?.id) return;
     (async () => {
-      const supabase = createClient();
-      const { data: clientRows } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('profile_id', userId);
-      const clientIds = (clientRows ?? []).map((c: { id: string }) => c.id);
-      if (clientIds.length === 0) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-      const { data } = await supabase
-        .from('appointments')
-        .select(
-          'id, starts_at, ends_at, status, price, currency, master_id, service_id, notes, service:services(name, color, description), master:masters(id, display_name, specialization, avatar_url, address, city, latitude, longitude, cancellation_policy, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, phone))',
-        )
-        .eq('id', params.id)
-        .in('client_id', clientIds)
-        .maybeSingle();
+      const initData = (() => {
+        if (typeof window === 'undefined') return null;
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        const live = w.Telegram?.WebApp?.initData;
+        if (live) return live;
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) {
+            const parsed = JSON.parse(stash) as { initData?: string };
+            if (parsed.initData) return parsed.initData;
+          }
+        } catch { /* ignore */ }
+        return null;
+      })();
+      if (!initData) { setNotFound(true); setLoading(false); return; }
 
-      if (!data) {
-        setNotFound(true);
-        setLoading(false);
-        return;
-      }
-      setRow(data as unknown as DetailRow);
-
-      const [{ data: rev }, { data: baPhotos }] = await Promise.all([
-        supabase
-          .from('reviews')
-          .select('id')
-          .eq('appointment_id', params.id)
-          .eq('reviewer_id', userId)
-          .eq('target_type', 'master')
-          .maybeSingle(),
-        supabase
-          .from('before_after_photos')
-          .select('id, before_url, after_url, caption')
-          .eq('appointment_id', params.id),
-      ]);
-      setReviewExists(!!rev);
-      setBeforeAfterPhotos((baPhotos ?? []) as typeof beforeAfterPhotos);
+      const res = await fetch('/api/telegram/c/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, id: params.id }),
+      });
+      if (!res.ok) { setNotFound(true); setLoading(false); return; }
+      const json = await res.json();
+      if (!json.appointment) { setNotFound(true); setLoading(false); return; }
+      setRow(json.appointment as DetailRow);
+      setReviewExists(!!json.reviewExists);
+      setBeforeAfterPhotos((json.beforeAfterPhotos ?? []) as typeof beforeAfterPhotos);
       setLoading(false);
     })();
   }, [userId, params?.id]);
+
+  function getInitData(): string | null {
+    if (typeof window === 'undefined') return null;
+    const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+    const live = w.Telegram?.WebApp?.initData;
+    if (live) return live;
+    try {
+      const stash = sessionStorage.getItem('cres:tg');
+      if (stash) {
+        const parsed = JSON.parse(stash) as { initData?: string };
+        if (parsed.initData) return parsed.initData;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
 
   const hoursUntilStart = useMemo(() => {
     if (!row) return Infinity;
@@ -158,35 +157,18 @@ export default function MiniAppAppointmentDetail() {
     if (!row || busy) return;
     setBusy(true);
     haptic('warning');
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('appointments')
-      .update({
-        status: 'cancelled_by_client',
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: userId,
-        cancellation_reason: 'client_miniapp',
-      })
-      .eq('id', row.id);
-    if (error) {
-      toast('Ошибка: ' + error.message);
+    const initData = getInitData();
+    if (!initData) { setBusy(false); return; }
+    const res = await fetch('/api/telegram/c/activity-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, action: 'cancel', appointment_id: row.id }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast('Ошибка: ' + (j.error ?? res.status));
       setBusy(false);
       return;
-    }
-    // Notify master
-    const { data: masterRow } = await supabase
-      .from('masters')
-      .select('profile_id')
-      .eq('id', row.master_id)
-      .single();
-    if (masterRow?.profile_id) {
-      await supabase.from('notifications').insert({
-        profile_id: masterRow.profile_id,
-        channel: 'push',
-        title: 'Запись отменена',
-        body: `${row.service?.name ?? 'Услуга'} — ${new Date(row.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}`,
-        data: { type: 'appointment_cancelled', appointment_id: row.id, action_url: '/calendar' },
-      });
     }
     haptic('success');
     toast('Запись отменена');
@@ -198,19 +180,23 @@ export default function MiniAppAppointmentDetail() {
   async function submitRating() {
     if (!row || busy) return;
     setBusy(true);
-    const supabase = createClient();
-    const { error } = await supabase.from('reviews').insert({
-      appointment_id: row.id,
-      reviewer_id: userId,
-      target_type: 'master',
-      target_id: row.master_id,
-      score: ratingScore,
-      comment: ratingComment.trim() || null,
-      is_published: true,
+    const initData = getInitData();
+    if (!initData) { setBusy(false); return; }
+    const res = await fetch('/api/telegram/c/activity-action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        action: 'review',
+        appointment_id: row.id,
+        score: ratingScore,
+        comment: ratingComment,
+      }),
     });
     setBusy(false);
-    if (error) {
-      toast('Ошибка: ' + error.message);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      toast('Ошибка: ' + (j.error ?? res.status));
       return;
     }
     haptic('success');

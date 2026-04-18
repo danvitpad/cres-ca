@@ -426,102 +426,67 @@ export default function MiniAppBookPage() {
     setSubmitting(true);
     haptic('medium');
 
-    const supabase = createClient();
+    const initData = (() => {
+      if (typeof window === 'undefined') return null;
+      const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+      const live = w.Telegram?.WebApp?.initData;
+      if (live) return live;
+      try {
+        const stash = sessionStorage.getItem('cres:tg');
+        if (stash) {
+          const parsed = JSON.parse(stash) as { initData?: string };
+          if (parsed.initData) return parsed.initData;
+        }
+      } catch { /* ignore */ }
+      return null;
+    })();
+    if (!initData) { haptic('error'); setSubmitting(false); return; }
+
     const dateStr = selectedDate.toISOString().split('T')[0];
 
-    // 1. Find or create client
-    let clientId: string | null = null;
-    const { data: existingClient } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('profile_id', userId)
-      .eq('master_id', masterId)
-      .is('family_link_id', null)
-      .maybeSingle();
-
-    if (existingClient) {
-      clientId = existingClient.id;
-    } else {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('full_name, phone')
-        .eq('id', userId)
-        .single();
-      const { data: newClient } = await supabase
-        .from('clients')
-        .insert({
-          profile_id: userId,
-          master_id: masterId,
-          full_name: profile?.full_name ?? '',
-          phone: profile?.phone ?? null,
-        })
-        .select('id')
-        .single();
-      clientId = newClient?.id ?? null;
-    }
-
-    if (!clientId) {
-      haptic('error');
-      setSubmitting(false);
-      return;
-    }
-
-    // 2. Create appointments for each service (stacked sequentially)
+    // Build appointments list (stacked sequentially)
     let currentStart = selectedTime;
-    const appointments = [];
-
+    const appointments: Array<{
+      service_id: string;
+      starts_at: string;
+      ends_at: string;
+      price: number;
+      currency: string;
+    }> = [];
     for (const service of selectedServices) {
       const startsAt = `${dateStr}T${currentStart}:00`;
       const endTime = addMinutesToTime(currentStart, service.duration_minutes);
       const endsAt = `${dateStr}T${endTime}:00`;
-
       appointments.push({
-        client_id: clientId,
-        master_id: masterId,
         service_id: service.id,
-        booked_via: 'telegram_miniapp' as const,
         starts_at: startsAt,
         ends_at: endsAt,
-        status: 'booked' as const,
         price: service.price,
         currency: service.currency,
       });
-
       currentStart = endTime;
     }
 
-    const { error } = await supabase.from('appointments').insert(appointments);
+    const serviceNames = selectedServices.map((s) => s.name).join(', ');
+    const dateFormatted = selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
 
-    if (error) {
+    const res = await fetch('/api/telegram/c/book', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        master_id: masterId,
+        appointments,
+        reschedule_id: rescheduleId ?? undefined,
+        service_names: serviceNames,
+        date_formatted: dateFormatted,
+        selected_time: selectedTime,
+      }),
+    });
+    if (!res.ok) {
       haptic('error');
       setSubmitting(false);
       return;
-    }
-
-    // 3. If reschedule, cancel original
-    if (rescheduleId) {
-      await supabase
-        .from('appointments')
-        .update({
-          status: 'cancelled_by_client',
-          cancelled_at: new Date().toISOString(),
-          cancelled_by: userId,
-          cancellation_reason: 'rescheduled',
-        })
-        .eq('id', rescheduleId);
-    }
-
-    // 4. Notify master
-    if (master?.profile_id) {
-      const serviceNames = selectedServices.map((s) => s.name).join(', ');
-      const dateFormatted = selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
-      await supabase.from('notifications').insert({
-        profile_id: master.profile_id,
-        channel: 'push',
-        title: 'Новая запись',
-        body: `${serviceNames} — ${dateFormatted} в ${selectedTime}`,
-        data: { type: 'new_booking', client_id: clientId, action_url: '/calendar' },
-      });
     }
 
     haptic('success');

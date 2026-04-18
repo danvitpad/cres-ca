@@ -11,9 +11,23 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
 
 interface NotifData {
   type?: string;
@@ -77,34 +91,17 @@ export default function ClientMiniAppNotifications() {
 
   const load = useCallback(async () => {
     if (!userId) return;
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('notifications')
-      .select('id, title, body, channel, status, sent_at, created_at, read_at, data')
-      .eq('profile_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(100);
-    setItems((data ?? []) as Notif[]);
-
-    // Check follow states for new_follower notifications
-    const followerIds = (data ?? [])
-      .filter((n: { data: NotifData | null }) => n.data?.type === 'new_follower' && n.data?.follower_profile_id)
-      .map((n: { data: NotifData }) => n.data.follower_profile_id as string);
-
-    if (followerIds.length > 0 && userId) {
-      const { data: myFollows } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', userId)
-        .in('following_id', followerIds);
-      const followingSet = new Set((myFollows ?? []).map(f => f.following_id));
-      const states: Record<string, boolean> = {};
-      for (const fId of followerIds) {
-        states[fId] = followingSet.has(fId);
-      }
-      setFollowStates(states);
-    }
-
+    const initData = getInitData();
+    if (!initData) { setLoading(false); return; }
+    const res = await fetch('/api/telegram/c/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    });
+    if (!res.ok) { setLoading(false); return; }
+    const json = await res.json();
+    setItems((json.notifications ?? []) as Notif[]);
+    // Follow-states are left default; /api/follow handles its own auth if user acts.
     setLoading(false);
   }, [userId]);
 
@@ -113,20 +110,27 @@ export default function ClientMiniAppNotifications() {
   }, [load]);
 
   async function markRead(id: string) {
-    const supabase = createClient();
-    await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id);
+    // Optimistic UI; bulk-sync happens on "mark all".
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)));
     haptic('selection');
+    const initData = getInitData();
+    if (!initData) return;
+    await fetch('/api/telegram/c/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, mode: 'mark_read', ids: [id] }),
+    });
   }
 
   async function markAllRead() {
-    if (!userId || items.filter((n) => !n.read_at).length === 0) return;
-    const supabase = createClient();
-    await supabase
-      .from('notifications')
-      .update({ read_at: new Date().toISOString() })
-      .eq('profile_id', userId)
-      .is('read_at', null);
+    if (items.filter((n) => !n.read_at).length === 0) return;
+    const initData = getInitData();
+    if (!initData) return;
+    await fetch('/api/telegram/c/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, mode: 'mark_read' }),
+    });
     haptic('success');
     load();
   }
@@ -151,19 +155,13 @@ export default function ClientMiniAppNotifications() {
   }
 
   function navigateToProfile(targetId: string) {
-    // Look up public_id for this profile
     haptic('light');
-    const supabase = createClient();
-    supabase
-      .from('profiles')
-      .select('public_id')
-      .eq('id', targetId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.public_id) {
-          router.push(`/telegram/u/${data.public_id}`);
-        }
-      });
+    fetch(`/api/u/profile-public-id?id=${encodeURIComponent(targetId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.publicId) router.push(`/telegram/u/${data.publicId}`);
+      })
+      .catch(() => { /* silent */ });
   }
 
   if (!ready) {

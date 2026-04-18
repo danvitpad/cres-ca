@@ -399,7 +399,7 @@ export default function DashboardPage() {
       color: C.text,
       background: C.bg,
       minHeight: '100%',
-      paddingBottom: 48, // breathing room at bottom, no cut-off feel
+      paddingBottom: 96, // breathing room at bottom, no cut-off feel
     }}>
       {/* ═══ Row 1: Greeting + date ═══ */}
       <motion.div
@@ -467,79 +467,8 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* ═══ Row 3: Income combo | Expense combo (2 equal columns, each has dynamics + structure stacked) ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 20 }}>
-        {/* Income combo */}
-        <motion.div {...stagger(5)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '18px 22px 8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TrendingUp size={15} style={{ color: C.success }} />
-                <h3 style={{ fontSize: 15, fontWeight: 650, color: C.text, margin: 0 }}>Доходы</h3>
-              </div>
-              <div style={{
-                padding: '4px 10px', borderRadius: 7,
-                background: C.successSoft, color: C.success,
-                fontSize: 12, fontWeight: 600,
-              }}>
-                {fmtMoney(kpi.month.value)}
-              </div>
-            </div>
-            <p style={{ fontSize: 12, color: C.textTertiary, margin: '2px 0 0' }}>
-              Последние 30 дней · структура по услугам
-            </p>
-          </div>
-          <div style={{ padding: '0 22px 8px' }}>
-            <AreaChart data={revenueSeries} color={C.success} height={100} />
-          </div>
-          <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-            <BreakdownDonut
-              title=""
-              slices={revenueByService}
-              emptyText="Пока нет завершённых записей"
-              C={C}
-              isDark={isDark}
-            />
-          </div>
-        </motion.div>
-
-        {/* Expense combo */}
-        <motion.div {...stagger(6)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '18px 22px 8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <TrendingDown size={15} style={{ color: C.danger }} />
-                <h3 style={{ fontSize: 15, fontWeight: 650, color: C.text, margin: 0 }}>Расходы</h3>
-              </div>
-              <div style={{
-                padding: '4px 10px', borderRadius: 7,
-                background: C.dangerSoft, color: C.danger,
-                fontSize: 12, fontWeight: 600,
-              }}>
-                {fmtMoney(totalMonthExp)}
-              </div>
-            </div>
-            <p style={{ fontSize: 12, color: C.textTertiary, margin: '2px 0 0' }}>
-              Последние 30 дней · структура по категориям
-            </p>
-          </div>
-          <div style={{ padding: '0 22px 8px' }}>
-            <AreaChart data={expenseSeries} color={C.danger} height={100} />
-          </div>
-          <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-            <BreakdownDonut
-              title=""
-              slices={expenseByCategory}
-              emptyText="Пока нет расходов"
-              C={C}
-              isDark={isDark}
-            />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ═══ Row 4: Appointments table (wide) + Birthdays/Reminders (narrow) ═══ */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+      {/* ═══ Row 3: Appointments table (wide) + Birthdays/Reminders (narrow) — promoted above money blocks per product feedback ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 20 }}>
         {/* Today's appointments */}
         <motion.div {...stagger(7)} style={cardBase}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -725,6 +654,77 @@ export default function DashboardPage() {
               </div>
             </>
           )}
+        </motion.div>
+      </div>
+
+      {/* ═══ Row 4: Income combo | Expense combo (2 equal columns, each has dynamics + structure stacked) — moved below schedule ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 20 }}>
+        {/* Income combo */}
+        <motion.div {...stagger(5)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '18px 22px 8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TrendingUp size={15} style={{ color: C.success }} />
+                <h3 style={{ fontSize: 15, fontWeight: 650, color: C.text, margin: 0 }}>Доходы</h3>
+              </div>
+              <div style={{
+                padding: '4px 10px', borderRadius: 7,
+                background: C.successSoft, color: C.success,
+                fontSize: 12, fontWeight: 600,
+              }}>
+                {fmtMoney(kpi.month.value)}
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: C.textTertiary, margin: '2px 0 0' }}>
+              Последние 30 дней · структура по услугам
+            </p>
+          </div>
+          <div style={{ padding: '0 22px 8px' }}>
+            <AreaChart data={revenueSeries} color={C.success} height={100} />
+          </div>
+          <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+            <BreakdownDonut
+              title=""
+              slices={revenueByService}
+              emptyText="Пока нет завершённых записей"
+              C={C}
+              isDark={isDark}
+            />
+          </div>
+        </motion.div>
+
+        {/* Expense combo */}
+        <motion.div {...stagger(6)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '18px 22px 8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TrendingDown size={15} style={{ color: C.danger }} />
+                <h3 style={{ fontSize: 15, fontWeight: 650, color: C.text, margin: 0 }}>Расходы</h3>
+              </div>
+              <div style={{
+                padding: '4px 10px', borderRadius: 7,
+                background: C.dangerSoft, color: C.danger,
+                fontSize: 12, fontWeight: 600,
+              }}>
+                {fmtMoney(totalMonthExp)}
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: C.textTertiary, margin: '2px 0 0' }}>
+              Последние 30 дней · структура по категориям
+            </p>
+          </div>
+          <div style={{ padding: '0 22px 8px' }}>
+            <AreaChart data={expenseSeries} color={C.danger} height={100} />
+          </div>
+          <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
+            <BreakdownDonut
+              title=""
+              slices={expenseByCategory}
+              emptyText="Пока нет расходов"
+              C={C}
+              isDark={isDark}
+            />
+          </div>
         </motion.div>
       </div>
     </div>

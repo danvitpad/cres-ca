@@ -11,7 +11,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Calendar, CheckCircle2, XCircle, Clock3, ChevronRight } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -38,21 +37,32 @@ export default function MiniAppActivityPage() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
     (async () => {
-      const { data: clientRows } = await supabase.from('clients').select('id').eq('profile_id', userId);
-      const clientIds = (clientRows ?? []).map((c: { id: string }) => c.id);
-      if (clientIds.length === 0) {
-        setLoading(false);
-        return;
-      }
-      const { data } = await supabase
-        .from('appointments')
-        .select('id, starts_at, status, price, master:masters(profile:profiles!masters_profile_id_fkey(full_name)), service:services(name)')
-        .in('client_id', clientIds)
-        .order('starts_at', { ascending: false })
-        .limit(50);
-      const rows: AppointmentRow[] = (data ?? []).map((row: unknown) => {
+      const initData = (() => {
+        if (typeof window === 'undefined') return null;
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        const live = w.Telegram?.WebApp?.initData;
+        if (live) return live;
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) {
+            const parsed = JSON.parse(stash) as { initData?: string };
+            if (parsed.initData) return parsed.initData;
+          }
+        } catch { /* ignore */ }
+        return null;
+      })();
+      if (!initData) { setLoading(false); return; }
+
+      const res = await fetch('/api/telegram/c/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json();
+      const data = json.appointments ?? [];
+      const rows: AppointmentRow[] = data.map((row: unknown) => {
         const a = row as {
           id: string;
           starts_at: string;
