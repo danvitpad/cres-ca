@@ -22,7 +22,13 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   const [checking, setChecking] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const isSalonContext = pathname.startsWith('/telegram/m/salon/');
+
   useEffect(() => {
+    if (isSalonContext) {
+      setChecking(false);
+      return;
+    }
     if (!userId) {
       router.replace('/telegram');
       return;
@@ -36,11 +42,12 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       }
       setChecking(false);
     })();
-  }, [userId, router]);
+  }, [userId, router, isSalonContext]);
 
   // Unread notifications badge — polled (Telegram WebView doesn't keep
   // Supabase JWT, so realtime channels won't authenticate either)
   useEffect(() => {
+    if (isSalonContext) return;
     if (!userId) return;
     let mounted = true;
 
@@ -96,6 +103,10 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         <Loader2 className="size-6 animate-spin text-white/40" />
       </div>
     );
+  }
+
+  if (isSalonContext) {
+    return <>{children}</>;
   }
 
   const tabs: BottomTab[] = [
