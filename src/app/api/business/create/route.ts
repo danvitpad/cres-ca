@@ -1,8 +1,9 @@
 /** --- YAML
  * name: CreateBusinessApi
  * description: Создаёт бизнес (masters row для solo / salons+masters для team) с вертикалью и bulk-insert выбранных услуг. Используется мастером в конце /onboarding/create-business wizard.
+ *              Для team: принимает teamMode (unified/marketplace) + дефолтную комиссию/аренду, пишет в новые колонки salons.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-19
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -13,6 +14,12 @@ interface Payload {
   name: string;
   vertical: string | null;
   teamType: 'solo' | 'team';
+  teamMode?: 'unified' | 'marketplace';
+  defaultMasterCommission?: number;
+  ownerCommissionPercent?: number;
+  ownerRentPerMaster?: number;
+  allowMasterOwnClients?: boolean;
+  allowMasterOwnPricing?: boolean;
   categories: string[];
   address: string | null;
   latitude: number | null;
@@ -38,6 +45,7 @@ export async function POST(req: Request) {
   let salonId: string | null = null;
 
   if (body.teamType === 'team') {
+    const teamMode = body.teamMode === 'marketplace' ? 'marketplace' : 'unified';
     const { data: salon, error: salonErr } = await supabase
       .from('salons')
       .insert({
@@ -48,6 +56,12 @@ export async function POST(req: Request) {
         longitude: body.longitude,
         city: body.city,
         vertical: body.vertical,
+        team_mode: teamMode,
+        default_master_commission: body.defaultMasterCommission ?? 50,
+        owner_commission_percent: body.ownerCommissionPercent ?? 0,
+        owner_rent_per_master: body.ownerRentPerMaster ?? 0,
+        allow_master_own_clients: body.allowMasterOwnClients ?? teamMode === 'marketplace',
+        allow_master_own_pricing: body.allowMasterOwnPricing ?? teamMode === 'marketplace',
       })
       .select('id')
       .single();
