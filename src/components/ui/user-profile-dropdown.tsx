@@ -20,7 +20,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -105,8 +104,8 @@ export function UserProfileDropdown({ user, actions, menuItems, children }: Prop
               exit="exit"
               variants={contentVariants}
             >
-              {/* User info */}
-              <DropdownMenuLabel className="flex items-center gap-3 p-2">
+              {/* User info — plain div (MenuGroupLabel requires a MenuGroup ancestor) */}
+              <div className="flex items-center gap-3 p-2">
                 <Avatar className="h-10 w-10">
                   {user.avatarUrl && <AvatarImage src={user.avatarUrl} alt={user.name} />}
                   <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
@@ -115,7 +114,7 @@ export function UserProfileDropdown({ user, actions, menuItems, children }: Prop
                   <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.handle}</p>
                 </div>
-              </DropdownMenuLabel>
+              </div>
               <DropdownMenuSeparator className="mx-2" />
 
               {/* Quick actions */}
