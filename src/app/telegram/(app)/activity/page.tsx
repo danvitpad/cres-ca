@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppActivityPage
- * description: Mini App activity — segmented upcoming / past appointments with status chips.
+ * description: Mini App activity — segmented upcoming / past appointments with status chips. Flat cards (Phase 7.10).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -112,7 +112,7 @@ export default function MiniAppActivityPage() {
       <h1 className="text-2xl font-bold">Записи</h1>
 
       {/* Segmented control */}
-      <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+      <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
         {(['upcoming', 'past'] as Tab[]).map((t) => (
           <button
             key={t}
@@ -132,12 +132,12 @@ export default function MiniAppActivityPage() {
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-20 w-full animate-pulse rounded-2xl bg-white/[0.03]" />
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-10 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-white/10">
+        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
             <Calendar className="size-5 text-white/50" />
           </div>
           <p className="mt-4 text-sm font-semibold">
@@ -156,7 +156,7 @@ export default function MiniAppActivityPage() {
               <Link
                 href={`/telegram/activity/${a.id}`}
                 onClick={() => haptic('light')}
-                className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 active:scale-[0.99] transition-transform"
+                className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{a.service_name}</p>
@@ -191,19 +191,19 @@ export default function MiniAppActivityPage() {
 }
 
 function StatusChip({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string; icon: React.ElementType }> = {
-    booked: { label: 'Записан', cls: 'bg-sky-500/15 text-sky-300', icon: Clock3 },
-    confirmed: { label: 'Подтверждено', cls: 'bg-emerald-500/15 text-emerald-300', icon: CheckCircle2 },
-    in_progress: { label: 'Идёт', cls: 'bg-violet-500/15 text-violet-300', icon: Clock3 },
-    completed: { label: 'Завершено', cls: 'bg-emerald-500/15 text-emerald-300', icon: CheckCircle2 },
-    cancelled: { label: 'Отменено', cls: 'bg-rose-500/15 text-rose-300', icon: XCircle },
-    cancelled_by_client: { label: 'Отменено', cls: 'bg-rose-500/15 text-rose-300', icon: XCircle },
-    no_show: { label: 'Не пришёл', cls: 'bg-amber-500/15 text-amber-300', icon: XCircle },
+  const map: Record<string, { label: string; text: string; border: string; icon: React.ElementType }> = {
+    booked: { label: 'Записан', text: 'text-sky-300', border: 'border-sky-500/30', icon: Clock3 },
+    confirmed: { label: 'Подтверждено', text: 'text-emerald-300', border: 'border-emerald-500/30', icon: CheckCircle2 },
+    in_progress: { label: 'Идёт', text: 'text-violet-300', border: 'border-violet-500/30', icon: Clock3 },
+    completed: { label: 'Завершено', text: 'text-emerald-300', border: 'border-emerald-500/30', icon: CheckCircle2 },
+    cancelled: { label: 'Отменено', text: 'text-rose-300', border: 'border-rose-500/30', icon: XCircle },
+    cancelled_by_client: { label: 'Отменено', text: 'text-rose-300', border: 'border-rose-500/30', icon: XCircle },
+    no_show: { label: 'Не пришёл', text: 'text-amber-300', border: 'border-amber-500/30', icon: XCircle },
   };
   const info = map[status] ?? map.booked;
   const Icon = info.icon;
   return (
-    <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${info.cls}`}>
+    <span className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${info.text} ${info.border}`}>
       <Icon className="size-2.5" /> {info.label}
     </span>
   );
