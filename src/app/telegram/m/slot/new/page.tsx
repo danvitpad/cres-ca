@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppQuickBooking
- * description: Master Mini App quick booking — 3 steps (client → service → time). Pre-fills from ?client_id. Inserts appointment + bumps client stats. Haptic feedback.
+ * description: Master Mini App quick booking — 3 steps (client → service → time). Pre-fills from ?client_id. Inserts appointment + bumps client stats. Haptic feedback. Flat cards (Phase 7.9).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -169,7 +169,7 @@ function MasterMiniAppQuickBookingInner() {
           else if (step === 'time') setStep('service');
           else router.back();
         }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5"
+        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -207,7 +207,7 @@ function MasterMiniAppQuickBookingInner() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск клиента…"
-              className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-11 pr-4 text-[13px] outline-none focus:border-white/20"
+              className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-3 pl-11 pr-4 text-[13px] outline-none focus:border-white/20"
             />
           </div>
           <ul className="space-y-2">
@@ -219,9 +219,9 @@ function MasterMiniAppQuickBookingInner() {
                     setSelectedClient(c);
                     setStep('service');
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left active:scale-[0.99] transition-transform"
+                  className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left active:bg-white/[0.06] transition-colors"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-[12px] font-bold">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-[12px] font-bold text-white/90">
                     {c.full_name.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—'}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -242,7 +242,7 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'service' && (
         <>
           {selectedClient && (
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <UserIcon className="size-3.5 text-white/50" />
               <p className="truncate text-[12px] text-white/70">{selectedClient.full_name}</p>
             </div>
@@ -256,7 +256,7 @@ function MasterMiniAppQuickBookingInner() {
                     setSelectedService(s);
                     setStep('time');
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left active:scale-[0.99] transition-transform"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left active:bg-white/[0.06] transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{s.name}</p>
@@ -279,7 +279,7 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'time' && selectedService && selectedClient && (
         <>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <UserIcon className="size-3.5 text-white/50" />
               <p className="truncate text-[12px] text-white/70">{selectedClient.full_name}</p>
               <span className="text-white/30">·</span>
@@ -287,7 +287,7 @@ function MasterMiniAppQuickBookingInner() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <p className="text-[10px] uppercase tracking-wide text-white/40">Дата</p>
             <input
               type="date"
@@ -300,7 +300,7 @@ function MasterMiniAppQuickBookingInner() {
             />
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <p className="text-[10px] uppercase tracking-wide text-white/40">Время начала</p>
             <input
               type="time"
@@ -318,14 +318,15 @@ function MasterMiniAppQuickBookingInner() {
           </div>
 
           {error && (
-            <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-[12px] text-rose-200">
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 pl-5 text-[12px] text-rose-300">
+              <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
               {error}
             </div>
           )}
 
           <button
             onClick={save}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors"
           >
             <Check className="size-4" /> Создать запись · {Number(selectedService.price).toFixed(0)} ₴
           </button>
