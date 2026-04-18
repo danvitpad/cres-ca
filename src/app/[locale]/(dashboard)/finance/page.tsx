@@ -27,6 +27,7 @@ import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer } from '@/li
 import { StatCard } from '@/components/shared/primitives/stat-card';
 import { PillTabs, type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
+import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -308,6 +309,10 @@ export default function FinancePage() {
           </p>
         </div>
         <PeriodSelector value={periodKey} onChange={(p) => setPeriodKey(p.key)} />
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <MyPayoutsBanner />
       </div>
 
       {/* 4 flat StatCards */}
