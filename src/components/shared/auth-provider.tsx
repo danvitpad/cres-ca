@@ -28,8 +28,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearAuth();
           return;
         }
+        // `.maybeSingle()` errors on multi-row results; `.limit(1)` guards against duplicates.
         const { data: sub } = await supabase
-          .from('subscriptions').select('tier').eq('profile_id', session.user.id).maybeSingle();
+          .from('subscriptions').select('tier')
+          .eq('profile_id', session.user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
         setAuth(session.user.id, profile.role, sub?.tier ?? null);
       } catch {
         clearAuth();

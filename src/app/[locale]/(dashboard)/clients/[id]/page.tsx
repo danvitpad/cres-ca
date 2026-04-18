@@ -231,7 +231,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   };
 
   return (
-    <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%', paddingBottom: 48 }}>
+    <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%', paddingBottom: 96 }}>
       {/* ═══ Back button ═══ */}
       <button
         onClick={() => router.back()}
@@ -482,33 +482,50 @@ function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => 
     else { toast.success(tc('success')); onSaved(); }
   }
 
+  const dirty =
+    fullName !== (client.full_name ?? '') ||
+    phone !== (client.phone ?? '') ||
+    email !== (client.email ?? '') ||
+    dob !== (client.date_of_birth ?? '');
+
   return (
-    <div style={{ ...cardStyle(C), display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, fontSize: 13 }}>
+    <div style={{ ...cardStyle(C), display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Editable personal fields up top — master's main point of control */}
+      <div>
+        <p style={{ fontSize: 12, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.04em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+          Личные данные
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label>{t('name')}</Label>
+            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label>{t('phone')}</Label>
+            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label>{t('email')}</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <Label>{t('dateOfBirth')}</Label>
+            <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={saving || !dirty} style={{ alignSelf: 'flex-start' }}>
+        {saving ? tc('loading') : tc('save')}
+      </Button>
+
+      {/* Visit stats — read-only, below the editable form */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, fontSize: 13, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
         <div><span style={{ color: C.textSecondary }}>{t('totalVisits')}:</span> {client.total_visits}</div>
         <div><span style={{ color: C.textSecondary }}>{t('totalSpent')}:</span> {client.total_spent}</div>
         <div><span style={{ color: C.textSecondary }}>{t('avgCheck')}:</span> {client.avg_check}</div>
         <div><span style={{ color: C.textSecondary }}>{t('rating')}:</span> {client.rating}</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Label>{t('name')}</Label>
-          <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Label>{t('phone')}</Label>
-          <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Label>{t('email')}</Label>
-          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <Label>{t('dateOfBirth')}</Label>
-          <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-        </div>
-      </div>
-      <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
     </div>
   );
 }

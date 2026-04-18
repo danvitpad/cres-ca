@@ -18,9 +18,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
+// (Select removed — category is now a free-text Input with datalist; frequency uses a native <select>.)
+
+type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 interface RecurringExpense {
   id: string;
@@ -29,11 +29,19 @@ interface RecurringExpense {
   currency: string;
   category: string;
   day_of_month: number;
+  frequency: Frequency;
   active: boolean;
   last_posted_date: string | null;
 }
 
-const CATEGORIES = ['Аренда', 'Коммунальные', 'Подписки', 'Интернет', 'Связь', 'Реклама', 'Прочее'];
+const CATEGORY_SUGGESTIONS = ['Аренда', 'Коммунальные', 'Подписки', 'Интернет', 'Связь', 'Реклама', 'Прочее'];
+
+const FREQUENCY_OPTIONS: { key: Frequency; label: string }[] = [
+  { key: 'weekly',    label: 'Еженедельно' },
+  { key: 'monthly',   label: 'Ежемесячно' },
+  { key: 'quarterly', label: 'Ежеквартально' },
+  { key: 'yearly',    label: 'Ежегодно' },
+];
 
 export function RecurringExpensesTab() {
   const { master } = useMaster();
@@ -46,7 +54,8 @@ export function RecurringExpensesTab() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Аренда');
+  const [category, setCategory] = useState('');
+  const [frequency, setFrequency] = useState<Frequency>('monthly');
   const [day, setDay] = useState('1');
   const [saving, setSaving] = useState(false);
 
@@ -55,7 +64,7 @@ export function RecurringExpensesTab() {
     const supabase = createClient();
     const { data } = await supabase
       .from('recurring_expenses')
-      .select('id, name, amount, currency, category, day_of_month, active, last_posted_date')
+      .select('id, name, amount, currency, category, day_of_month, frequency, active, last_posted_date')
       .eq('master_id', master.id)
       .order('day_of_month');
     setItems((data || []) as RecurringExpense[]);
@@ -70,19 +79,21 @@ export function RecurringExpensesTab() {
     if (!master || !name.trim() || !amount) return;
     setSaving(true);
     const supabase = createClient();
+    const cleanCat = category.trim() || 'Прочее';
     const { error } = await supabase.from('recurring_expenses').insert({
       master_id: master.id,
       name: name.trim(),
       amount: Number(amount),
       currency: 'UAH',
-      category,
+      category: cleanCat,
+      frequency,
       day_of_month: Math.max(1, Math.min(28, parseInt(day) || 1)),
       active: true,
     });
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success('Постоянный расход добавлен');
-    setName(''); setAmount(''); setCategory('Аренда'); setDay('1');
+    setName(''); setAmount(''); setCategory(''); setFrequency('monthly'); setDay('1');
     setShowForm(false);
     load();
   }
@@ -134,7 +145,7 @@ export function RecurringExpensesTab() {
           background: C.surface, border: `1px solid ${C.border}`,
           borderRadius: 14, padding: 20, marginBottom: 20,
         }}>
-          <div className="grid gap-4" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr' }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr' }}>
             <div className="space-y-1.5">
               <Label className={labelCls}>Название</Label>
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Аренда кабинета" className={inputCls} />
@@ -145,12 +156,27 @@ export function RecurringExpensesTab() {
             </div>
             <div className="space-y-1.5">
               <Label className={labelCls}>Категория</Label>
-              <Select value={category} onValueChange={(v) => v && setCategory(v)}>
-                <SelectTrigger className={inputCls}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                placeholder="Аренда / Подписки / своё..."
+                list="recurring-expense-categories"
+                className={inputCls}
+              />
+              <datalist id="recurring-expense-categories">
+                {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            <div className="space-y-1.5">
+              <Label className={labelCls}>Частота</Label>
+              <select
+                value={frequency}
+                onChange={(e) => setFrequency(e.target.value as Frequency)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                style={{ color: C.text }}
+              >
+                {FREQUENCY_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
             </div>
             <div className="space-y-1.5">
               <Label className={labelCls}>День списания</Label>
