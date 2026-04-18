@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
@@ -510,7 +511,14 @@ function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => 
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Label>{t('dateOfBirth')}</Label>
-            <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: '4px 0' }}>
+              <DateWheelPicker
+                size="sm"
+                locale="ru-RU"
+                value={fromISODay(dob)}
+                onChange={(d) => setDob(toISODay(d))}
+              />
+            </div>
           </div>
         </div>
       </div>

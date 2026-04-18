@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import {
   InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator,
 } from '@/components/ui/input-otp';
+import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Shield,
   CalendarCheck, User as UserIcon, Building2,
@@ -300,9 +301,11 @@ export default function AuthPage() {
           minHeight: 'calc(100dvh - 70px)',
         }}>
           {/* Form column */}
-          <section
+          <motion.section
+            layout
+            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             style={{
-              flex: 1, order: 1,
+              flex: 1, order: isSignUp ? 2 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: 'clamp(16px, 3vw, 40px) clamp(16px, 4vw, 48px)',
             }}
@@ -391,41 +394,38 @@ export default function AuthPage() {
                               </div>
                             )}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: role !== 'salon_admin' ? '1fr 1fr' : '1fr', gap: 10 }}>
-                              <Field label="Телефон">
-                                <GlassWrap>
-                                  <div style={{ display: 'flex', alignItems: 'center', height: 46 }}>
-                                    <span style={{
-                                      padding: '0 12px', fontSize: 13, color: 'var(--afg2)',
-                                      borderRight: '1px solid var(--acb)', height: 30,
-                                      display: 'flex', alignItems: 'center',
-                                    }}>+380</span>
-                                    <input
-                                      type="tel" inputMode="numeric"
-                                      value={phone}
-                                      onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                                      placeholder="501234567"
-                                      className="glass-input"
-                                      style={{ height: '100%', borderRadius: 0, paddingLeft: 10 }}
-                                    />
-                                  </div>
-                                </GlassWrap>
-                              </Field>
+                            <Field label="Телефон">
+                              <GlassWrap>
+                                <div style={{ display: 'flex', alignItems: 'center', height: 46 }}>
+                                  <span style={{
+                                    padding: '0 12px', fontSize: 13, color: 'var(--afg2)',
+                                    borderRight: '1px solid var(--acb)', height: 30,
+                                    display: 'flex', alignItems: 'center',
+                                  }}>+380</span>
+                                  <input
+                                    type="tel" inputMode="numeric"
+                                    value={phone}
+                                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                                    placeholder="501234567"
+                                    className="glass-input"
+                                    style={{ height: '100%', borderRadius: 0, paddingLeft: 10 }}
+                                  />
+                                </div>
+                              </GlassWrap>
+                            </Field>
 
-                              {role !== 'salon_admin' && (
-                                <Field label="Дата рождения">
-                                  <GlassWrap>
-                                    <input
-                                      className="glass-input"
-                                      type="date"
-                                      value={dob}
-                                      onChange={e => setDob(e.target.value)}
-                                      max={new Date().toISOString().slice(0, 10)}
-                                    />
-                                  </GlassWrap>
-                                </Field>
-                              )}
-                            </div>
+                            {role !== 'salon_admin' && (
+                              <Field label="Дата рождения">
+                                <div className="glass-wrap" style={{ padding: '6px 4px' }}>
+                                  <DateWheelPicker
+                                    size="sm"
+                                    locale="ru-RU"
+                                    value={fromISODay(dob)}
+                                    onChange={(d) => setDob(toISODay(d))}
+                                  />
+                                </div>
+                              </Field>
+                            )}
                           </>
                         )}
 
@@ -651,13 +651,15 @@ export default function AuthPage() {
                   )}
                 </AnimatePresence>
               </div>
-          </section>
+          </motion.section>
 
           {/* Hero image column — hidden on mobile */}
-          <section
+          <motion.section
+            layout
+            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             className="auth-hero"
             style={{
-              flex: 1, order: 2,
+              flex: 1, order: isSignUp ? 1 : 2,
               position: 'relative',
               borderRadius: 28,
               overflow: 'hidden',
@@ -680,7 +682,7 @@ export default function AuthPage() {
                 .auth-hero { display: none !important; }
               }
             `}</style>
-          </section>
+          </motion.section>
         </div>
       </div>
     </>

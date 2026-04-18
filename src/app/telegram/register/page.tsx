@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Building2, Lock } from 'lucide-react';
 import { mapError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/auth-store';
+import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 
 interface TgData {
   id: number;
@@ -369,13 +370,12 @@ export default function MiniAppRegisterPage() {
             <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
               <Calendar className="size-3" /> Дата рождения <span className="normal-case text-white/30">· необязательно</span>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <input
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                max={new Date().toISOString().slice(0, 10)}
-                className="w-full bg-transparent text-base outline-none [color-scheme:dark]"
+            <div className="rounded-2xl border border-white/10 bg-white/5 py-2">
+              <DateWheelPicker
+                size="sm"
+                locale="ru-RU"
+                value={fromISODay(dob)}
+                onChange={(d) => setDob(toISODay(d))}
               />
             </div>
           </div>

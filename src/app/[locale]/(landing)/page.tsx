@@ -204,11 +204,15 @@ function DashboardMock() {
     { l: 'Рейтинг',       v: '4.9',  t: '★★★★★',   c: 'var(--lorange)' },
   ];
   const services = [
-    { n: 'Стрижка', p: 65 },
-    { n: 'Маникюр', p: 48 },
-    { n: 'Массаж', p: 38 },
-    { n: 'Окрашивание', p: 28 },
+    { n: 'Стрижка',    p: 65, c: '#7c3aed' },
+    { n: 'Маникюр',    p: 48, c: '#ec4899' },
+    { n: 'Массаж',     p: 38, c: '#06b6d4' },
+    { n: 'Окрашивание', p: 28, c: '#10b981' },
   ];
+  const svcTotal = services.reduce((s, x) => s + x.p, 0);
+  const svcR = 30;
+  const svcCirc = 2 * Math.PI * svcR;
+  let svcOffset = 0;
 
   return (
     <div ref={barRef}>
@@ -258,25 +262,55 @@ function DashboardMock() {
           background: 'var(--lcard)', borderRadius: 10, padding: 14,
           border: '1px solid var(--lcb)', transition: 'background .4s, border-color .4s',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--lfg3)', marginBottom: 12 }}>Услуги</div>
-          {services.map((sv, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 500, marginBottom: 2 }}>{sv.n}</div>
-                <div style={{
-                  height: 3, borderRadius: 2, background: 'var(--lcb)',
-                  overflow: 'hidden', transition: 'background .4s',
-                }}>
-                  <div style={{
-                    width: anim ? `${sv.p}%` : '0%', height: '100%',
-                    borderRadius: 2, background: 'var(--lviolet)',
-                    transition: `width 1s cubic-bezier(.22,1,.36,1) ${0.2 + i * 0.1}s`,
-                  }} />
-                </div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--lfg3)', marginBottom: 10 }}>Услуги</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+              <svg width="72" height="72" viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
+                <circle cx="36" cy="36" r={svcR} fill="none" stroke="var(--lcb)" strokeWidth="8" />
+                {services.map((sv, i) => {
+                  const frac = sv.p / svcTotal;
+                  const dash = anim ? frac * svcCirc : 0;
+                  const el = (
+                    <circle
+                      key={i}
+                      cx="36" cy="36" r={svcR}
+                      fill="none" stroke={sv.c} strokeWidth="8"
+                      strokeDasharray={`${dash} ${svcCirc - dash}`}
+                      strokeDashoffset={-svcOffset}
+                      style={{ transition: `stroke-dasharray 1s cubic-bezier(.22,1,.36,1) ${0.2 + i * 0.1}s` }}
+                    />
+                  );
+                  svcOffset += frac * svcCirc;
+                  return el;
+                })}
+              </svg>
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+              }}>
+                <span style={{ fontSize: 9, color: 'var(--lfg3)', fontWeight: 600, letterSpacing: '0.03em' }}>ВСЕГО</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--lfg)', fontVariantNumeric: 'tabular-nums', marginTop: -1 }}>
+                  {svcTotal}%
+                </span>
               </div>
-              <span style={{ fontSize: 10, color: 'var(--lfg3)', fontWeight: 600 }}>{sv.p}%</span>
             </div>
-          ))}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+              {services.map((sv, i) => {
+                const pct = Math.round((sv.p / svcTotal) * 100);
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: 2, background: sv.c, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, color: 'var(--lfg2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {sv.n}
+                    </span>
+                    <span style={{ color: 'var(--lfg)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                      {pct}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     </div>

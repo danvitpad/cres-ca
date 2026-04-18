@@ -29,6 +29,7 @@ import {
   Cake, Clock, Sparkles, Plus, Upload,
 } from 'lucide-react';
 import { FollowerCard } from '@/components/shared/follower-card';
+import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import type { BehaviorIndicator } from '@/types';
 import {
   usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer,
@@ -586,7 +587,14 @@ function AddClientForm({ onSubmit }: { onSubmit: (data: { full_name: string; pho
       </div>
       <div className="space-y-2">
         <Label>{t('dateOfBirth')}</Label>
-        <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+        <div className="rounded-lg border">
+          <DateWheelPicker
+            size="sm"
+            locale="ru-RU"
+            value={fromISODay(dob)}
+            onChange={(d) => setDob(toISODay(d))}
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <Label>{t('notes')}</Label>

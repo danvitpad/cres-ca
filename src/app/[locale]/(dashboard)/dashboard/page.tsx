@@ -71,6 +71,9 @@ function pctChange(current: number, previous: number): { value: number; label: s
   return { value: pct, label: (pct > 0 ? '+' : '') + pct + '%' };
 }
 
+const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
+const DAY_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] as const;
+
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;
 const stagger = (i: number) => ({
   initial: { opacity: 0, y: 8 } as const,
@@ -254,7 +257,19 @@ export default function DashboardPage() {
     return s;
   }, [expenses]);
 
+  const countAppointments = useCallback((from: Date, to: Date) => {
+    let n = 0;
+    for (const a of appointments) {
+      if (a.status === 'cancelled') continue;
+      const d = new Date(a.starts_at);
+      if (d >= from && d <= to) n += 1;
+    }
+    return n;
+  }, [appointments]);
+
   const kpi = useMemo(() => {
+    const todayCount = countAppointments(todayStart, todayEnd);
+    const yestCount = countAppointments(yesterdayStart, yesterdayEnd);
     const todayRev = sumRevenue(todayStart, todayEnd);
     const yestRev = sumRevenue(yesterdayStart, yesterdayEnd);
     const weekRev = sumRevenue(weekStart, todayEnd);
@@ -266,12 +281,45 @@ export default function DashboardPage() {
     const net = monthRev - monthExp;
     const prevNet = prevMonthRev - prevMonthExp;
     return {
+      count:  { value: todayCount, change: pctChange(todayCount, yestCount) },
       today:  { value: todayRev, change: pctChange(todayRev, yestRev) },
       week:   { value: weekRev, change: pctChange(weekRev, prevWeekRev) },
       month:  { value: monthRev, change: pctChange(monthRev, prevMonthRev) },
       net:    { value: net, change: pctChange(net, prevNet) },
     };
-  }, [sumRevenue, sumExpenses, todayStart, todayEnd, yesterdayStart, yesterdayEnd, weekStart, prevWeekStart, prevWeekEnd, monthStart, prevMonthStart, prevMonthEnd]);
+  }, [countAppointments, sumRevenue, sumExpenses, todayStart, todayEnd, yesterdayStart, yesterdayEnd, weekStart, prevWeekStart, prevWeekEnd, monthStart, prevMonthStart, prevMonthEnd]);
+
+  /* Weekly load — Пн-Вс occupancy this week */
+  const weeklyLoad = useMemo(() => {
+    const wh = master?.working_hours ?? {};
+    function parseHM(s: string): number {
+      const [h, m] = s.split(':').map(Number);
+      return (h || 0) * 60 + (m || 0);
+    }
+    return DAY_KEYS.map((key, i) => {
+      const schedule = wh[key];
+      let workingMin = 0;
+      if (schedule) {
+        workingMin = Math.max(0, parseHM(schedule.end) - parseHM(schedule.start));
+        if (schedule.break_start && schedule.break_end) {
+          workingMin -= Math.max(0, parseHM(schedule.break_end) - parseHM(schedule.break_start));
+        }
+      }
+      const dayStart = startOfDay(addDays(weekStart, i));
+      const dayEnd = endOfDay(dayStart);
+      let occupiedMin = 0;
+      for (const a of appointments) {
+        if (a.status === 'cancelled') continue;
+        const s = new Date(a.starts_at);
+        const e = new Date(a.ends_at);
+        if (s >= dayStart && s <= dayEnd) {
+          occupiedMin += Math.max(0, (e.getTime() - s.getTime()) / 60000);
+        }
+      }
+      const pct = workingMin > 0 ? Math.min(100, Math.round((occupiedMin / workingMin) * 100)) : 0;
+      return { label: DAY_LABELS[i], pct, workingMin, occupiedMin };
+    });
+  }, [appointments, master?.working_hours, weekStart]);
 
   /* Revenue chart — last 30 days */
   const revenueSeries = useMemo(() => {
@@ -375,11 +423,18 @@ export default function DashboardPage() {
   const firstName = master?.profile?.full_name?.split(' ')[0] || '';
   const totalMonthExp = expenseByCategory.reduce((s, sl) => s + sl.value, 0);
 
-  const kpiCards = [
-    { label: 'Сегодня',        value: kpi.today.value, change: kpi.today.change, gradient: KPI_GRADIENTS.revenue,  subtitle: t('netProfit') },
-    { label: 'Эта неделя',      value: kpi.week.value,  change: kpi.week.change,  gradient: KPI_GRADIENTS.profit,   subtitle: t('netProfit') },
-    { label: 'Этот месяц',      value: kpi.month.value, change: kpi.month.change, gradient: KPI_GRADIENTS.neutral,  subtitle: 'доход' },
-    { label: 'Чистая прибыль',  value: kpi.net.value,   change: kpi.net.change,   gradient: KPI_GRADIENTS.expenses, subtitle: 'за месяц' },
+  const kpiCards: Array<{
+    label: string;
+    value: number;
+    change: { value: number; label: string } | null;
+    gradient: string;
+    subtitle: string;
+    kind: 'count' | 'money';
+  }> = [
+    { label: 'Записи сегодня',  value: kpi.count.value, change: kpi.count.change, gradient: KPI_GRADIENTS.revenue,  subtitle: 'записей',  kind: 'count' },
+    { label: 'Выручка сегодня', value: kpi.today.value, change: kpi.today.change, gradient: KPI_GRADIENTS.profit,   subtitle: 'доход',    kind: 'money' },
+    { label: 'Эта неделя',      value: kpi.week.value,  change: kpi.week.change,  gradient: KPI_GRADIENTS.neutral,  subtitle: 'выручка',  kind: 'money' },
+    { label: 'Чистая прибыль',  value: kpi.net.value,   change: kpi.net.change,   gradient: KPI_GRADIENTS.expenses, subtitle: 'за месяц', kind: 'money' },
   ];
 
   const cardBase: React.CSSProperties = {
@@ -443,7 +498,7 @@ export default function DashboardPage() {
               </div>
               <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px', lineHeight: 1.1, marginBottom: 8, fontVariantNumeric: 'tabular-nums' }}>
                 {new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(card.value)}
-                <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.7, marginLeft: 4 }}>{CURRENCY}</span>
+                {card.kind === 'money' && <span style={{ fontSize: 16, fontWeight: 400, opacity: 0.7, marginLeft: 4 }}>{CURRENCY}</span>}
               </div>
               {ch && (
                 <div style={{
@@ -467,10 +522,50 @@ export default function DashboardPage() {
         })}
       </div>
 
+      {/* ═══ Weekly load: Пн-Вс occupancy bars ═══ */}
+      <motion.div {...stagger(5)} style={{ ...cardBase, marginBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <CalendarIcon size={15} style={{ color: C.accent }} />
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: C.text, margin: 0 }}>Загрузка по дням</h3>
+          </div>
+          <span style={{ fontSize: 11, color: C.textTertiary }}>
+            {format(weekStart, 'd MMM', { locale: dfLocale })} – {format(endOfWeek(now, { weekStartsOn: 1 }), 'd MMM', { locale: dfLocale })}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 120 }}>
+          {weeklyLoad.map((d, i) => {
+            const hasSchedule = d.workingMin > 0;
+            const barH = hasSchedule ? Math.max(4, (d.pct / 100) * 100) : 0;
+            const opacity = hasSchedule ? 0.35 + (d.pct / 100) * 0.65 : 0;
+            return (
+              <div key={d.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: C.textSecondary,
+                  fontVariantNumeric: 'tabular-nums',
+                  opacity: hasSchedule ? 1 : 0.3,
+                }}>
+                  {hasSchedule ? `${d.pct}%` : '—'}
+                </div>
+                <div style={{
+                  width: '100%', maxWidth: 64, borderRadius: 6,
+                  background: C.accent, opacity,
+                  height: `${barH}%`,
+                  transition: `height .8s cubic-bezier(.22,1,.36,1) ${i * 0.06}s, opacity .4s`,
+                  alignSelf: 'stretch',
+                  marginInline: 'auto',
+                }} />
+                <span style={{ fontSize: 11, color: C.textTertiary, fontWeight: 500 }}>{d.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </motion.div>
+
       {/* ═══ Row 3: Appointments table (wide) + Birthdays/Reminders (narrow) — promoted above money blocks per product feedback ═══ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 20 }}>
         {/* Today's appointments */}
-        <motion.div {...stagger(7)} style={cardBase}>
+        <motion.div {...stagger(6)} style={cardBase}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={15} style={{ color: C.accent }} />
@@ -553,7 +648,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Birthdays + Reminders */}
-        <motion.div {...stagger(8)} style={cardBase}>
+        <motion.div {...stagger(7)} style={cardBase}>
           {/* Birthdays header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Cake size={15} style={{ color: C.warning }} />
@@ -660,7 +755,7 @@ export default function DashboardPage() {
       {/* ═══ Row 4: Income combo | Expense combo (2 equal columns, each has dynamics + structure stacked) — moved below schedule ═══ */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16, marginBottom: 20 }}>
         {/* Income combo */}
-        <motion.div {...stagger(5)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
+        <motion.div {...stagger(8)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '18px 22px 8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -694,7 +789,7 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Expense combo */}
-        <motion.div {...stagger(6)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
+        <motion.div {...stagger(9)} style={{ ...cardBase, padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '18px 22px 8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

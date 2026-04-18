@@ -15,6 +15,7 @@ import { Sparkles, User, Calendar as CalendarIcon, Gift, ChevronRight, ChevronLe
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
+import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 
 interface Props {
   open: boolean;
@@ -161,12 +162,11 @@ function WizardBody({ onClose, initial }: Omit<Props, 'open'>) {
                 )}
 
                 {current.key === 'birthday' && (
-                  <div className="mt-5">
-                    <input
-                      type="date"
-                      value={dob}
-                      onChange={(e) => setDob(e.target.value)}
-                      className="w-full rounded-xl border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  <div className="mt-5 rounded-xl border bg-background px-3 py-2">
+                    <DateWheelPicker
+                      size="md"
+                      value={fromISODay(dob)}
+                      onChange={(d) => setDob(toISODay(d))}
                     />
                   </div>
                 )}

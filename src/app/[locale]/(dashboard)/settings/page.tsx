@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import {
   Copy,
   Check,
@@ -221,14 +222,19 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
               <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Андреевна" className={inputCls} />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Дата рождения</Label>
-              <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className={inputCls} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Телефон</Label>
-              <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380..." className={inputCls} />
+          <div className="space-y-1.5">
+            <Label className={labelCls}>Телефон</Label>
+            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380..." className={inputCls} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className={labelCls}>Дата рождения</Label>
+            <div className="rounded-lg border bg-background/50 py-1">
+              <DateWheelPicker
+                size="sm"
+                locale="ru-RU"
+                value={fromISODay(dob)}
+                onChange={(d) => setDob(toISODay(d))}
+              />
             </div>
           </div>
         </AccordionContent>
