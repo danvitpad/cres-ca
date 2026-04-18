@@ -47,6 +47,8 @@ import {
   MapPin,
 } from 'lucide-react';
 
+import TeamModePicker, { type TeamMode } from '@/components/onboarding/TeamModePicker';
+
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });
 
 const CATEGORIES = [
@@ -139,6 +141,9 @@ function CreateBusinessWizard() {
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [teamType, setTeamType] = useState<'solo' | 'team' | null>(null);
+  const [teamMode, setTeamMode] = useState<TeamMode | null>(null);
+  const [defaultCommission, setDefaultCommission] = useState<number>(50);
+  const [ownerRent, setOwnerRent] = useState<number>(0);
   const [locationType, setLocationType] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [addressResults, setAddressResults] = useState<GeoResult[]>([]);
@@ -184,11 +189,13 @@ function CreateBusinessWizard() {
   const buildStepSequence = useCallback(() => {
     const steps: number[] = [1, 2, 3]; // name, categories, specialization
     if (!skipTeamStep) steps.push(4); // solo/team
+    const effectiveTeamType = skipTeamStep ? inferredTeamType : teamType;
+    if (effectiveTeamType === 'team') steps.push(45); // team mode (unified/marketplace) + commission
     steps.push(5); // location type
     if (locationType === 'locationPhysical') steps.push(6); // address
     steps.push(7); // services
     return steps;
-  }, [skipTeamStep, locationType]);
+  }, [skipTeamStep, inferredTeamType, teamType, locationType]);
 
   const stepSequence = buildStepSequence();
   const totalVisibleSteps = stepSequence.length;
@@ -202,6 +209,7 @@ function CreateBusinessWizard() {
       case 2: return selectedCategories.length > 0;
       case 3: return specialization !== null;
       case 4: return teamType !== null;
+      case 45: return teamMode !== null;
       case 5: return locationType !== null;
       case 6: return selectedAddress !== null;
       case 7: return true;
@@ -308,6 +316,7 @@ function CreateBusinessWizard() {
       const { avatarUrl, coverUrl } = await uploadMedia();
       const services: DefaultService[] = categoryServices.filter((s) => selectedServiceKeys.has(s.name));
       const effectiveTeamType = skipTeamStep ? inferredTeamType : (teamType ?? 'solo');
+      const effectiveTeamMode = effectiveTeamType === 'team' ? (teamMode ?? 'unified') : undefined;
       const res = await fetch('/api/business/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -315,6 +324,9 @@ function CreateBusinessWizard() {
           name: businessName,
           vertical,
           teamType: effectiveTeamType,
+          teamMode: effectiveTeamMode,
+          defaultMasterCommission: effectiveTeamMode === 'unified' ? defaultCommission : undefined,
+          ownerRentPerMaster: effectiveTeamMode === 'marketplace' ? ownerRent : undefined,
           categories: selectedCategories,
           address: selectedAddress?.display_name ?? null,
           latitude: selectedAddress ? parseFloat(selectedAddress.lat) : null,
@@ -670,6 +682,68 @@ function CreateBusinessWizard() {
                     <span className="font-medium">{t('hasTeam')}</span>
                   </button>
                 </div>
+              </StepWrapper>
+            )}
+
+            {/* Step 4.5: Team mode (unified / marketplace) */}
+            {step === 45 && (
+              <StepWrapper key="step45">
+                <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                  Режим команды
+                </h1>
+                <p className="mt-2 text-muted-foreground">
+                  Выберите, как вы работаете с мастерами. Это нельзя изменить после создания салона.
+                </p>
+
+                <div className="mt-8">
+                  <TeamModePicker value={teamMode} onChange={setTeamMode} />
+                </div>
+
+                {teamMode === 'unified' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 space-y-3"
+                  >
+                    <label className="block text-sm font-medium">
+                      Комиссия мастера по умолчанию: <span className="text-primary">{defaultCommission}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={defaultCommission}
+                      onChange={(e) => setDefaultCommission(parseInt(e.target.value, 10))}
+                      className="w-full accent-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Процент от выручки, который получает мастер. Можно настроить индивидуально для каждого.
+                    </p>
+                  </motion.div>
+                )}
+
+                {teamMode === 'marketplace' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 space-y-3"
+                  >
+                    <label className="block text-sm font-medium">Аренда с мастера в месяц (₴)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={100}
+                      value={ownerRent}
+                      onChange={(e) => setOwnerRent(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Фиксированная сумма аренды. Можно оставить 0 и настроить индивидуально для каждого мастера.
+                    </p>
+                  </motion.div>
+                )}
               </StepWrapper>
             )}
 
