@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'voice-assistant', icon: Mic, href: '/voice-assistant', label: t('nav.voiceAssistant') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
-      { key: 'addons', icon: FreshaAddons, href: '/addons', label: t('nav.addons') },
+      { key: 'integrations', icon: FreshaAddons, href: '/integrations', label: t('nav.integrations') },
     ],
     [t],
   );
