@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppSettingsPage
- * description: Mini App settings — email, phone, password, language, privacy, help, sign out.
+ * description: Mini App settings — email, phone, password, language, privacy, help, sign out. Flat cards (Phase 7.17).
  * created: 2026-04-14
- * updated: 2026-04-16
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -182,7 +182,7 @@ export default function MiniAppSettingsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex size-9 items-center justify-center rounded-full bg-white/5"
+            className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
             aria-label="Назад"
           >
             <ChevronLeft className="size-5" />
@@ -191,14 +191,14 @@ export default function MiniAppSettingsPage() {
         </div>
 
         {/* Account */}
-        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
+        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
           <li>
             <Link
               href="/telegram/profile?edit=true"
               onClick={() => haptic('light')}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+              <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
                 <User className="size-4" />
               </div>
               <div className="flex-1">
@@ -211,13 +211,13 @@ export default function MiniAppSettingsPage() {
         </ul>
 
         {/* Contact info */}
-        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
+        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
           <li>
             <button
               onClick={openContactEdit}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+              <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
                 <Mail className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -232,7 +232,7 @@ export default function MiniAppSettingsPage() {
               onClick={openContactEdit}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+              <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
                 <PhoneIcon className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -254,7 +254,7 @@ export default function MiniAppSettingsPage() {
               }}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
             >
-              <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+              <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
                 <KeyRound className="size-4" />
               </div>
               <div className="flex-1">
@@ -266,7 +266,7 @@ export default function MiniAppSettingsPage() {
         </ul>
 
         {/* General */}
-        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/5">
+        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
           <Row icon={Globe} label="Язык" hint="Русский" onClick={() => haptic('light')} />
           <Row icon={Shield} label="Приватность" hint="Видимость профиля" onClick={() => haptic('light')} />
           <Row icon={HelpCircle} label="Помощь" hint="FAQ и поддержка" onClick={() => haptic('light')} />
@@ -275,8 +275,9 @@ export default function MiniAppSettingsPage() {
         <button
           onClick={signOut}
           disabled={signingOut}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-4 text-[14px] font-semibold text-rose-200 active:scale-[0.98] transition-transform disabled:opacity-60"
+          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] py-4 text-[14px] font-semibold text-rose-300 active:bg-white/[0.06] transition-colors disabled:opacity-60"
         >
+          <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
           {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
           Выйти из аккаунта
         </button>
@@ -289,7 +290,7 @@ export default function MiniAppSettingsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
             onClick={() => !contactBusy && setContactOpen(false)}
           >
             <motion.div
@@ -298,21 +299,21 @@ export default function MiniAppSettingsPage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-[32px] border-t border-white/10 bg-[#2f3437] p-5"
+              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#1f2023] p-5"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold">Контактные данные</h3>
                 <button
                   onClick={() => !contactBusy && setContactOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
+                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
                 >
                   <X className="size-4" />
                 </button>
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     Email
                   </label>
@@ -330,7 +331,7 @@ export default function MiniAppSettingsPage() {
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     Телефон
                   </label>
@@ -348,7 +349,8 @@ export default function MiniAppSettingsPage() {
                 </div>
 
                 {contactError && (
-                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+                  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-4 text-xs text-rose-300">
+                    <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
                     {contactError}
                   </div>
                 )}
@@ -356,7 +358,7 @@ export default function MiniAppSettingsPage() {
                 <button
                   onClick={saveContact}
                   disabled={contactBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-60"
                 >
                   {contactBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
                   Сохранить
@@ -374,7 +376,7 @@ export default function MiniAppSettingsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
             onClick={() => !pwBusy && setPwOpen(false)}
           >
             <motion.div
@@ -383,21 +385,21 @@ export default function MiniAppSettingsPage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-[32px] border-t border-white/10 bg-[#2f3437] p-5"
+              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#1f2023] p-5"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-lg font-bold">Сменить пароль</h3>
                 <button
                   onClick={() => !pwBusy && setPwOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
+                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
                 >
                   <X className="size-4" />
                 </button>
               </div>
 
               <div className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     Новый пароль
                   </label>
@@ -411,7 +413,7 @@ export default function MiniAppSettingsPage() {
                   />
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
                     Повторите пароль
                   </label>
@@ -426,12 +428,14 @@ export default function MiniAppSettingsPage() {
                 </div>
 
                 {pwError && (
-                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+                  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-4 text-xs text-rose-300">
+                    <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
                     {pwError}
                   </div>
                 )}
                 {pwSuccess && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+                  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-4 text-xs text-emerald-300">
+                    <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-emerald-500" />
                     Пароль обновлён
                   </div>
                 )}
@@ -439,7 +443,7 @@ export default function MiniAppSettingsPage() {
                 <button
                   onClick={savePassword}
                   disabled={pwBusy || pwSuccess}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-60"
                 >
                   {pwBusy ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
                   Сохранить пароль
@@ -466,8 +470,8 @@ function Row({
 }) {
   return (
     <li>
-      <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
-        <div className="flex size-9 items-center justify-center rounded-xl bg-white/5">
+      <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors">
+        <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
           <Icon className="size-4" />
         </div>
         <div className="flex-1">
