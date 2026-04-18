@@ -25,8 +25,18 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin.from('profiles').select('id').eq('telegram_id', result.user.id).maybeSingle();
   if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 403 });
-  const { data: master } = await admin.from('masters').select('id').eq('profile_id', profile.id).maybeSingle();
+  const { data: master } = await admin.from('masters').select('id, salon_id').eq('profile_id', profile.id).maybeSingle();
   if (!master) return NextResponse.json({ error: 'not_master' }, { status: 403 });
+
+  let salonIdForAppt: string | null = null;
+  if (master.salon_id) {
+    const { data: salon } = await admin
+      .from('salons')
+      .select('id, team_mode')
+      .eq('id', master.salon_id)
+      .maybeSingle();
+    if (salon && salon.team_mode === 'unified') salonIdForAppt = salon.id;
+  }
 
   // Find or create client
   const { data: existing } = await admin
@@ -56,12 +66,14 @@ export async function POST(request: Request) {
 
   const { error: aptErr } = await admin.from('appointments').insert({
     master_id: master.id,
+    salon_id: salonIdForAppt,
     client_id: clientId,
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
     status: 'booked',
     price: 0,
     currency: 'UAH',
+    created_by_role: 'voice_ai',
   });
 
   if (aptErr) return NextResponse.json({ error: aptErr.message }, { status: 500 });
