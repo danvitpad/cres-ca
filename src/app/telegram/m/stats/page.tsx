@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppStats
- * description: Master Mini App stats — week/month tabs with revenue, appointment count, avg check, top services bar chart, completion rate.
+ * description: Master Mini App stats — week/month tabs with revenue, appointment count, avg check, top services bar chart, completion rate. Flat cards (Phase 7.5).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -127,7 +127,7 @@ export default function MasterMiniAppStats() {
       </div>
 
       {/* Period tabs */}
-      <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+      <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
         {(['week', 'month'] as const).map((p) => (
           <button
             key={p}
@@ -146,8 +146,8 @@ export default function MasterMiniAppStats() {
 
       {loading ? (
         <div className="space-y-3">
-          <div className="h-24 animate-pulse rounded-2xl bg-white/5" />
-          <div className="h-24 animate-pulse rounded-2xl bg-white/5" />
+          <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
+          <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
         </div>
       ) : (
         <>
@@ -166,11 +166,12 @@ export default function MasterMiniAppStats() {
           </div>
 
           {kpi.noShow > 0 && (
-            <div className="flex items-center gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
+            <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5">
+              <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-rose-500" />
               <XCircle className="size-5 text-rose-300" />
               <div>
-                <p className="text-[13px] font-semibold text-rose-200">{kpi.noShow} не пришло</p>
-                <p className="text-[11px] text-rose-200/60">Попробуй требовать предоплату для новых клиентов</p>
+                <p className="text-[13px] font-semibold">{kpi.noShow} не пришло</p>
+                <p className="text-[11px] text-white/50">Попробуй требовать предоплату для новых клиентов</p>
               </div>
             </div>
           )}
@@ -188,12 +189,12 @@ export default function MasterMiniAppStats() {
                         {s.count}× · {s.revenue.toFixed(0)}₴
                       </span>
                     </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/5">
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.03]">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${(s.revenue / maxRevenue) * 100}%` }}
                         transition={{ duration: 0.6, ease: 'easeOut' }}
-                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-rose-500"
+                        className="h-full rounded-full bg-violet-500"
                       />
                     </div>
                   </li>
@@ -203,7 +204,7 @@ export default function MasterMiniAppStats() {
           )}
 
           {rows.length === 0 && (
-            <div className="rounded-[28px] border border-dashed border-white/10 bg-white/5 p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
               <p className="text-sm font-semibold">Ещё нет данных</p>
               <p className="mt-1 text-xs text-white/50">Начни принимать клиентов — статистика появится автоматически</p>
             </div>
@@ -228,15 +229,15 @@ function StatCard({
   sub?: string;
 }) {
   const accents: Record<string, string> = {
-    violet: 'from-violet-500/25 to-violet-500/5 text-violet-200',
-    emerald: 'from-emerald-500/25 to-emerald-500/5 text-emerald-200',
-    amber: 'from-amber-500/25 to-amber-500/5 text-amber-200',
-    sky: 'from-sky-500/25 to-sky-500/5 text-sky-200',
+    violet: 'text-violet-300',
+    emerald: 'text-emerald-300',
+    amber: 'text-amber-300',
+    sky: 'text-sky-300',
   };
   return (
-    <div className={`rounded-2xl border border-white/10 bg-gradient-to-br ${accents[accent]} p-4`}>
-      <Icon className="size-4 opacity-80" />
-      <p className="mt-3 text-xl font-bold text-white">{value}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <Icon className={`size-4 ${accents[accent]}`} />
+      <p className="mt-3 text-xl font-bold text-white tabular-nums">{value}</p>
       <p className="text-[10px] uppercase tracking-wide text-white/50">{label}</p>
       {sub && <p className="mt-0.5 text-[10px] text-white/40">{sub}</p>}
     </div>
