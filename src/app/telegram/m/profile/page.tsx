@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppProfile
- * description: Master Mini App self profile — avatar, rating, bio, specialization, city, QR card for business card, billing tier, invite link, logout.
+ * description: Master Mini App self profile — avatar, rating, bio, specialization, city, QR card, billing tier, invite link, logout. Flat cards (Phase 7.4).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -188,12 +188,12 @@ export default function MasterMiniAppProfile() {
     }
   }
 
-  function tierBadge(tier: string): string {
-    const map: Record<string, string> = {
-      trial: 'bg-amber-500/20 text-amber-200 border-amber-500/30',
-      starter: 'bg-slate-500/20 text-slate-200 border-slate-500/30',
-      pro: 'bg-violet-500/20 text-violet-200 border-violet-500/30',
-      business: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/30',
+  function tierAccent(tier: string): { strip: string; text: string } {
+    const map: Record<string, { strip: string; text: string }> = {
+      trial: { strip: 'bg-amber-500', text: 'text-amber-300' },
+      starter: { strip: 'bg-slate-500', text: 'text-slate-300' },
+      pro: { strip: 'bg-violet-500', text: 'text-violet-300' },
+      business: { strip: 'bg-emerald-500', text: 'text-emerald-300' },
     };
     return map[tier] ?? map.trial;
   }
@@ -225,7 +225,7 @@ export default function MasterMiniAppProfile() {
 
       {/* Header */}
       <div className="flex items-center gap-4">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-rose-500 text-2xl font-bold">
+        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90">
           {master.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={master.avatar_url} alt={displayName} className="size-full object-cover" />
@@ -262,9 +262,10 @@ export default function MasterMiniAppProfile() {
           haptic('light');
           fileInputRef.current?.click();
         }}
-        className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-br from-violet-500/15 to-rose-500/10 p-4 text-left active:scale-[0.98] transition-transform"
+        className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
       >
-        <div className="flex size-11 items-center justify-center rounded-2xl bg-violet-500/20 text-violet-200">
+        <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
+        <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-violet-300">
           <Plus className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
@@ -286,31 +287,35 @@ export default function MasterMiniAppProfile() {
       />
 
       {/* Subscription */}
-      {sub && (
-        <div className={`rounded-2xl border p-4 ${tierBadge(sub.tier)}`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide opacity-70">Тариф</p>
-              <p className="mt-1 text-sm font-bold uppercase">{sub.tier}</p>
+      {sub && (() => {
+        const accent = tierAccent(sub.tier);
+        return (
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5">
+            <span className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${accent.strip}`} />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-white/40">Тариф</p>
+                <p className={`mt-1 text-sm font-bold uppercase ${accent.text}`}>{sub.tier}</p>
+              </div>
+              <CreditCard className="size-5 text-white/40" />
             </div>
-            <CreditCard className="size-5 opacity-70" />
+            {sub.tier === 'trial' && sub.trial_ends_at && (
+              <p className="mt-2 text-[11px] text-white/60">
+                До {new Date(sub.trial_ends_at).toLocaleDateString('ru')} · осталось{' '}
+                {Math.max(0, Math.ceil((new Date(sub.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} дн.
+              </p>
+            )}
+            {sub.tier !== 'trial' && sub.current_period_end && (
+              <p className="mt-2 text-[11px] text-white/60">Следующий платёж {new Date(sub.current_period_end).toLocaleDateString('ru')}</p>
+            )}
           </div>
-          {sub.tier === 'trial' && sub.trial_ends_at && (
-            <p className="mt-2 text-[11px] opacity-80">
-              До {new Date(sub.trial_ends_at).toLocaleDateString('ru')} · осталось{' '}
-              {Math.max(0, Math.ceil((new Date(sub.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} дн.
-            </p>
-          )}
-          {sub.tier !== 'trial' && sub.current_period_end && (
-            <p className="mt-2 text-[11px] opacity-80">Следующий платёж {new Date(sub.current_period_end).toLocaleDateString('ru')}</p>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* QR / Share */}
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Моя ссылка</p>
             <p className="mt-0.5 truncate text-[11px] text-white/50">{profileUrl}</p>
           </div>
@@ -319,7 +324,7 @@ export default function MasterMiniAppProfile() {
               haptic('light');
               setQrOpen((v) => !v);
             }}
-            className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 active:scale-95 transition-transform"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
           >
             <QrCode className="size-4" />
           </button>
@@ -334,14 +339,14 @@ export default function MasterMiniAppProfile() {
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button
             onClick={copyLink}
-            className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-[12px] font-semibold active:scale-[0.98] transition-transform"
+            className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] py-2.5 text-[12px] font-semibold active:bg-white/[0.06] transition-colors"
           >
             {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
             {copied ? 'Скопировано' : 'Копировать'}
           </button>
           <button
             onClick={shareLink}
-            className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[12px] font-semibold text-black active:scale-[0.98] transition-transform"
+            className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[12px] font-semibold text-black active:bg-white/80 transition-colors"
           >
             <Share2 className="size-3.5" /> Поделиться
           </button>
@@ -349,12 +354,12 @@ export default function MasterMiniAppProfile() {
       </div>
 
       {/* Menu */}
-      <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 divide-y divide-white/10">
+      <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
         <li>
           <Link
             href="/ru/settings"
             onClick={() => haptic('light')}
-            className="flex items-center justify-between px-4 py-4 active:bg-white/5"
+            className="flex items-center justify-between px-4 py-4 active:bg-white/[0.06] transition-colors"
           >
             <span className="text-[13px] font-semibold">Настройки и услуги</span>
             <ChevronRight className="size-4 text-white/30" />
@@ -364,7 +369,7 @@ export default function MasterMiniAppProfile() {
           <Link
             href="/ru/settings/billing"
             onClick={() => haptic('light')}
-            className="flex items-center justify-between px-4 py-4 active:bg-white/5"
+            className="flex items-center justify-between px-4 py-4 active:bg-white/[0.06] transition-colors"
           >
             <span className="text-[13px] font-semibold">Тариф и платежи</span>
             <ChevronRight className="size-4 text-white/30" />
@@ -374,7 +379,7 @@ export default function MasterMiniAppProfile() {
           <Link
             href="/telegram/m/stats"
             onClick={() => haptic('light')}
-            className="flex items-center justify-between px-4 py-4 active:bg-white/5"
+            className="flex items-center justify-between px-4 py-4 active:bg-white/[0.06] transition-colors"
           >
             <span className="text-[13px] font-semibold">Статистика</span>
             <ChevronRight className="size-4 text-white/30" />
@@ -390,7 +395,7 @@ export default function MasterMiniAppProfile() {
           clearAuth();
           window.location.href = '/telegram';
         }}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 py-3 text-[12px] font-semibold text-white/60 active:scale-[0.98] transition-transform"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] py-3 text-[12px] font-semibold text-white/60 active:bg-white/[0.06] transition-colors"
       >
         <LogOut className="size-3.5" /> Выйти
       </button>
@@ -417,7 +422,7 @@ export default function MasterMiniAppProfile() {
                 <h3 className="text-lg font-bold">Новая публикация</h3>
                 <button
                   onClick={() => !uploadBusy && setUploadOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full bg-white/5"
+                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
                 >
                   <X className="size-4" />
                 </button>
@@ -435,7 +440,7 @@ export default function MasterMiniAppProfile() {
                 onChange={(e) => setUploadCaption(e.target.value.slice(0, 2000))}
                 placeholder="Подпись (необязательно)"
                 rows={3}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 p-3 text-sm outline-none placeholder:text-white/30"
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm outline-none placeholder:text-white/30 focus:border-white/20"
               />
 
               {uploadError && (
@@ -447,7 +452,7 @@ export default function MasterMiniAppProfile() {
               <button
                 onClick={publishPost}
                 disabled={uploadBusy || !uploadFile}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-60"
               >
                 {uploadBusy ? (
                   <Loader2 className="size-4 animate-spin" />
