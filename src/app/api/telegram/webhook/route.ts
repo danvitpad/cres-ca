@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { sendMessage } from '@/lib/telegram/bot';
-import { parseVoiceIntent, downloadTelegramFile, type VoiceIntent, type VoiceAction } from '@/lib/ai/gemini-voice';
+import { parseVoiceIntent, downloadTelegramFile, type VoiceIntent } from '@/lib/ai/gemini-voice';
 
 function createServiceClient() {
   return createSupabaseClient(
@@ -512,7 +512,7 @@ async function routeVoiceAction(
     case 'revenue': {
       // Master dictates today's clients/services/amounts
       const items = intent.items || [];
-      let totalRevenue = intent.amount || 0;
+      const totalRevenue = intent.amount || 0;
 
       if (items.length > 0) {
         // Create completed appointments for each item

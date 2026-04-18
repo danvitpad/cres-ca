@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
 import type { AppointmentData } from '@/hooks/use-appointments';
-import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { FONT } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   pageBg: '#ffffff',

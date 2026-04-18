@@ -344,7 +344,7 @@
     "booked_status": "Заброньовано",
     "noActivityToday": "Сьогодні поки немає активності",
     "nav": {
-      "dashboard": "Головна",
+      "dashboard": "Сьогодні",
       "calendar": "Календар",
       "analytics": "Аналітика",
       "addons": "Доповнення",

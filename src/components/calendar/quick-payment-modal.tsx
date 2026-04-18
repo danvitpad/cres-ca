@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { FONT } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   bg: '#ffffff',

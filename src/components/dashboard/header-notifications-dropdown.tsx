@@ -8,7 +8,7 @@
 
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { Bell, UserPlus, UserCheck, Users, Loader2, Inbox } from 'lucide-react';
+import { Bell, UserPlus, UserCheck, Users, Loader2 } from 'lucide-react';
 import type { FTheme } from '@/lib/dashboard-theme';
 import type { Notification } from '@/hooks/use-notifications';
 import { FreshaBell } from '@/components/shared/fresha-icons';

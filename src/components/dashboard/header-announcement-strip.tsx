@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, AlertTriangle, ArrowUpCircle, Info } from 'lucide-react';
 import type { FTheme } from '@/lib/dashboard-theme';

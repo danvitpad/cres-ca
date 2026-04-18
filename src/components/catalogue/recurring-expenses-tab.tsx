@@ -17,7 +17,6 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 // (Select removed — category is now a free-text Input with datalist; frequency uses a native <select>.)
 
 type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly';

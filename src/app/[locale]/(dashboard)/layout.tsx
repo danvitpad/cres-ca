@@ -74,7 +74,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const navItems: SidebarNavItem[] = useMemo(
     () => [
-      { key: 'dashboard', icon: FreshaHome, href: '/dashboard', label: t('nav.dashboard') },
+      { key: 'today', icon: FreshaHome, href: '/today', label: t('nav.dashboard') },
       { key: 'calendar', icon: FreshaCalendar, href: '/calendar', label: t('nav.calendar') },
       { key: 'sales', icon: FreshaTag, href: '/finance', label: t('nav.sales') },
       { key: 'clients', icon: FreshaSmile, href: '/clients', label: t('nav.clients') },

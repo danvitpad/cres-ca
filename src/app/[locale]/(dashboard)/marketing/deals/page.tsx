@@ -30,8 +30,8 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { EmptyState } from '@/components/shared/primitives/empty-state';
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -589,19 +589,11 @@ export default function DealsPage() {
       {loading ? (
         <div style={{ fontSize: 14, color: C.textSecondary }}>Загрузка...</div>
       ) : codes.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{
-            background: C.surface, border: `1px solid ${C.border}`,
-            borderRadius: 12, padding: '48px 24px', textAlign: 'center',
-          }}
-        >
-          <Tag size={40} style={{ color: C.textTertiary, marginBottom: 12, display: 'inline-block' }} />
-          <p style={{ fontSize: 14, color: C.textSecondary }}>
-            Пока нет промокодов. Нажми «Новый промокод» вверху, чтобы создать.
-          </p>
-        </motion.div>
+        <EmptyState
+          icon={<Tag className="w-6 h-6" />}
+          title="Пока нет промокодов"
+          description="Нажми «Новый промокод» вверху, чтобы создать."
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {codes.map((p, idx) => {

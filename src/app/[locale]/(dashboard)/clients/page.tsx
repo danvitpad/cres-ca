@@ -25,10 +25,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  AlertTriangle, Users, Star, Heart, UserCheck, Search,
-  Cake, Clock, Sparkles, Plus, Upload,
+  AlertTriangle, Users, Star, Heart, Search,
+  Cake, Clock, Sparkles,
 } from 'lucide-react';
-import { FollowerCard } from '@/components/shared/follower-card';
+import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import type { BehaviorIndicator } from '@/types';
 import {
@@ -520,18 +520,11 @@ export default function ClientsPage() {
               ))}
             </div>
           ) : filteredClients.length === 0 ? (
-            <div style={{
-              background: C.surface, border: `1px solid ${C.border}`, borderRadius: 16,
-              padding: '72px 24px', textAlign: 'center',
-            }}>
-              <Users size={40} style={{ color: C.textTertiary, opacity: 0.4, margin: '0 auto 14px' }} />
-              <p style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: 0 }}>
-                {filter === 'all' ? 'Пока нет клиентов' : 'Ничего не нашлось'}
-              </p>
-              <p style={{ fontSize: 13, color: C.textSecondary, margin: '6px 0 0' }}>
-                {filter === 'all' ? 'Добавьте первого клиента или импортируйте из другой системы' : 'Попробуйте другой фильтр'}
-              </p>
-            </div>
+            <EmptyState
+              icon={<Users className="w-6 h-6" />}
+              title={filter === 'all' ? 'Пока нет клиентов' : 'Ничего не нашлось'}
+              description={filter === 'all' ? 'Добавьте первого клиента или импортируйте из другой системы' : 'Попробуйте другой фильтр'}
+            />
           ) : (
             <div style={{
               display: 'grid',
@@ -827,13 +820,11 @@ function PartnersSection({ C }: { C: PageTheme }) {
           Мои партнёры ({active.length})
         </h3>
         {active.length === 0 ? (
-          <div style={{ ...cardBase, padding: '40px 20px', textAlign: 'center' }}>
-            <Heart size={32} style={{ color: C.textTertiary, opacity: 0.4, margin: '0 auto 10px' }} />
-            <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Пока нет партнёров</div>
-            <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4 }}>
-              Найдите коллег-мастеров выше и отправьте приглашение.
-            </div>
-          </div>
+          <EmptyState
+            icon={<Heart className="w-6 h-6" />}
+            title="Пока нет партнёров"
+            description="Найдите коллег-мастеров выше и отправьте приглашение."
+          />
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {active.map(p => (

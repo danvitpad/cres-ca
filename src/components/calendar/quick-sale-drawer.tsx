@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { FONT } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   bg: '#ffffff',

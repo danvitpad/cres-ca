@@ -13,7 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AlertTriangle, X, CalendarPlus, Users, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppointmentData } from '@/hooks/use-appointments';
-import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { FONT } from '@/lib/dashboard-theme';
 
 /* ─── Layout constants ─── */
 const HOUR_HEIGHT = 96;

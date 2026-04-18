@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Calendar, Users, CreditCard, BarChart3 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { FONT } from '@/lib/dashboard-theme';
 
 const LIGHT = {
   bg: '#ffffff',

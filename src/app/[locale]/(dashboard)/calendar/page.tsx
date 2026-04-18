@@ -33,10 +33,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Settings,
-  ListTodo,
-  RotateCcw,
-  SlidersHorizontal,
   CalendarDays,
   CalendarRange,
   Calendar as CalendarIcon,
@@ -49,7 +45,6 @@ import {
   Check,
   X,
   UserPlus,
-  BarChart3,
 } from 'lucide-react';
 import { FONT } from '@/lib/dashboard-theme';
 import type { AppointmentData } from '@/hooks/use-appointments';

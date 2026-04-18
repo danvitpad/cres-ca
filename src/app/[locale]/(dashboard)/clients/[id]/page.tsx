@@ -37,11 +37,11 @@ import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
   Mic, Square, Users, BarChart3, Bell,
   Phone, Mail, Cake, Calendar as CalendarIcon, FileText,
-  Heart, Sparkles, Camera,
+  Heart, Camera,
 } from 'lucide-react';
 import {
   FONT, FONT_FEATURES, CURRENCY, KPI_GRADIENTS,
-  usePageTheme, pageContainer, cardStyle, headingStyle, labelStyle,
+  usePageTheme, pageContainer, cardStyle, labelStyle,
   type PageTheme,
 } from '@/lib/dashboard-theme';
 import type { BehaviorIndicator, AppointmentStatus } from '@/types';

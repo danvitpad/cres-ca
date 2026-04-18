@@ -10,7 +10,7 @@ import { useTranslations } from 'next-intl';
 import { useTheme } from 'next-themes';
 import { AlertTriangle } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
-import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { FONT } from '@/lib/dashboard-theme';
 
 const HOUR_HEIGHT = 72;
 const TOTAL_HOURS = 24;

@@ -8,7 +8,7 @@
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Banknote } from 'lucide-react';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 export default function PayrunPage() {
   const t = useTranslations('team');

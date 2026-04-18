@@ -33,7 +33,7 @@ import {
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
 import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 
 const serviceSchema = z.object({
   name: z.string().min(1),

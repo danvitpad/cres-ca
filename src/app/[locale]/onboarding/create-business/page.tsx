@@ -859,7 +859,7 @@ function CreateBusinessWizard() {
                 inviteCode={inviteCode}
                 copied={copied}
                 setCopied={setCopied}
-                onGoDashboard={() => router.push('/dashboard')}
+                onGoDashboard={() => router.push('/today')}
                 t={t}
               />
             )}

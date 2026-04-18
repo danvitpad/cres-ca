@@ -9,10 +9,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Star, Eye, EyeOff } from 'lucide-react';
+import { Star, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/shared/primitives/empty-state';
 
 interface ReviewRow {
   id: string;
@@ -126,9 +127,11 @@ export default function ReviewsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground">Загрузка…</p>
         ) : reviews.length === 0 ? (
-          <div className="rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-            Пока нет отзывов. Они появятся после завершённых визитов.
-          </div>
+          <EmptyState
+            icon={<MessageSquare className="w-6 h-6" />}
+            title="Пока нет отзывов"
+            description="Они появятся после завершённых визитов."
+          />
         ) : (
           reviews.map((r) => (
             <div

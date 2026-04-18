@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { buttonVariants } from '@/components/ui/button';
 
 interface InventoryItem {
@@ -343,12 +344,16 @@ export default function InventoryPage() {
               <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
             </div>
           ) : items.length === 0 ? (
-            <Card className="bg-card/80 backdrop-blur border-border/50">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Package className="size-10 mx-auto mb-3 opacity-40" />
-                <p>{t('noItems')}</p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={<Package className="w-6 h-6" />}
+              title={t('noItems')}
+              action={
+                <Button onClick={openAddDialog} className="gap-1.5">
+                  <Plus className="size-4" />
+                  {t('addItem')}
+                </Button>
+              }
+            />
           ) : (
             <div className="space-y-2">
               <AnimatePresence>
@@ -437,12 +442,16 @@ export default function InventoryPage() {
               <Skeleton className="h-20" /><Skeleton className="h-20" />
             </div>
           ) : suppliers.length === 0 ? (
-            <Card className="bg-card/80 backdrop-blur border-border/50">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <Truck className="size-10 mx-auto mb-3 opacity-40" />
-                <p>{t('noSuppliers')}</p>
-              </CardContent>
-            </Card>
+            <EmptyState
+              icon={<Truck className="w-6 h-6" />}
+              title={t('noSuppliers')}
+              action={
+                <Button onClick={openAddSupplier} className="gap-1.5">
+                  <Plus className="size-4" />
+                  {t('addSupplier')}
+                </Button>
+              }
+            />
           ) : (
             <div className="space-y-2">
               <AnimatePresence>

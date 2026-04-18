@@ -12,6 +12,7 @@ const intlMiddleware = createIntlMiddleware({
 // Routes that require authentication (any role)
 const protectedPatterns = [
   // Dashboard (master/salon)
+  '/today', '/dashboard',
   '/calendar', '/clients', '/services', '/finance',
   '/inventory', '/marketing', '/settings',
   // Client-only
