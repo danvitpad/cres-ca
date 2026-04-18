@@ -17,6 +17,7 @@ import { DayView } from '@/components/calendar/day-view';
 import { WeekView } from '@/components/calendar/week-view';
 import { ThreeDayView } from '@/components/calendar/three-day-view';
 import { MonthView } from '@/components/calendar/month-view';
+import { ListView } from '@/components/calendar/list-view';
 import { NewAppointmentDialog } from '@/components/calendar/new-appointment-dialog';
 import { AppointmentDetailDrawer } from '@/components/calendar/appointment-detail-drawer';
 import { CalendarDrawer } from '@/components/calendar/calendar-drawer';
@@ -41,6 +42,7 @@ import {
   Calendar as CalendarIcon,
   Grid3X3,
   CalendarPlus,
+  List,
   Users,
   Lock,
   Search,
@@ -52,7 +54,7 @@ import {
 import { FONT } from '@/lib/dashboard-theme';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
-type ViewMode = 'day' | '3day' | 'week' | 'month';
+type ViewMode = 'day' | '3day' | 'week' | 'month' | 'list';
 
 /* ─── Toolbar constants (shared) ─── */
 const TS = {
@@ -266,6 +268,15 @@ export default function CalendarPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /* Init view from ?view= URL param on mount (supports /calendar?view=list etc.) */
+  useEffect(() => {
+    const v = searchParams.get('view');
+    if (v && ['day', '3day', 'week', 'month', 'list'].includes(v)) {
+      setView(v as ViewMode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { startDate, endDate } = useMemo(() => {
     if (view === 'day') {
       const start = new Date(currentDate);
@@ -293,6 +304,13 @@ export default function CalendarPage() {
       // Go forward to next Sunday for grid
       const endDow = end.getDay();
       if (endDow > 0) end.setDate(end.getDate() + (7 - endDow));
+      end.setHours(23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+    if (view === 'list') {
+      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
       end.setHours(23, 59, 59, 999);
       return { startDate: start, endDate: end };
     }
@@ -332,7 +350,7 @@ export default function CalendarPage() {
     const d = new Date(currentDate);
     if (view === 'day') d.setDate(d.getDate() + delta);
     else if (view === '3day') d.setDate(d.getDate() + delta * 3);
-    else if (view === 'month') d.setMonth(d.getMonth() + delta);
+    else if (view === 'month' || view === 'list') d.setMonth(d.getMonth() + delta);
     else d.setDate(d.getDate() + delta * 7);
     setCurrentDate(d);
   }
@@ -480,6 +498,7 @@ export default function CalendarPage() {
     '3day': t('threeDayView'),
     week: t('weekView'),
     month: t('monthView'),
+    list: t('listView'),
   };
 
   const viewIcons: Record<ViewMode, React.ReactNode> = {
@@ -487,6 +506,7 @@ export default function CalendarPage() {
     '3day': <CalendarRange style={{ width: 20, height: 20 }} />,
     week: <Grid3X3 style={{ width: 20, height: 20 }} />,
     month: <CalendarIcon style={{ width: 20, height: 20 }} />,
+    list: <List style={{ width: 20, height: 20 }} />,
   };
 
   const masterName = master.profile?.full_name || '';
@@ -709,7 +729,7 @@ export default function CalendarPage() {
               {viewDropdownOpen && (
                 <div style={{ ...popoverStyleFn(F), top: TS.btnHeight + 4, right: 0, width: 242 }}>
                   <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {(['day', '3day', 'week', 'month'] as ViewMode[]).map((v) => (
+                    {(['day', '3day', 'week', 'month', 'list'] as ViewMode[]).map((v) => (
                       <button
                         key={v}
                         onClick={() => { setView(v); setViewDropdownOpen(false); }}
@@ -827,6 +847,12 @@ export default function CalendarPage() {
               appointments={appointments}
               onDayClick={(d) => { setCurrentDate(d); setView('day'); }}
               onAppointmentClick={handleAppointmentClick}
+            />
+          ) : view === 'list' ? (
+            <ListView
+              appointments={appointments}
+              onAppointmentClick={handleAppointmentClick}
+              onDayClick={(d) => { setCurrentDate(d); setView('day'); }}
             />
           ) : (
             <WeekView
