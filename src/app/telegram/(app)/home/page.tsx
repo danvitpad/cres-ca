@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppHomePage
- * description: Instagram-style main feed — Stories row (top masters by score) + next appointment strip + vertical feed of posts from followed profiles.
+ * description: Instagram-style main feed — Stories row (top masters by score) + next appointment strip + vertical feed of posts from followed profiles. Flat cards (Phase 7.11).
  * created: 2026-04-13
- * updated: 2026-04-14
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -186,9 +186,9 @@ export default function MiniAppHomePage() {
   if (!ready || loading) {
     return (
       <div className="space-y-4 px-5 pt-6">
-        <div className="h-8 w-40 animate-pulse rounded-lg bg-white/5" />
-        <div className="h-20 w-full animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-80 w-full animate-pulse rounded-3xl bg-white/5" />
+        <div className="h-8 w-40 animate-pulse rounded-lg bg-white/[0.03]" />
+        <div className="h-20 w-full animate-pulse rounded-2xl bg-white/[0.03]" />
+        <div className="h-80 w-full animate-pulse rounded-3xl bg-white/[0.03]" />
       </div>
     );
   }
@@ -215,9 +215,9 @@ export default function MiniAppHomePage() {
               onClick={() => haptic('light')}
               className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
             >
-              <div className="rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-600 p-[2px]">
+              <div className="rounded-full border border-violet-500 p-[2px]">
                 <div className="rounded-full bg-[#1f2023] p-[2px]">
-                  <div className="flex size-14 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-sm font-bold">
+                  <div className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
                     {s.avatar ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={s.avatar} alt="" className="size-full object-cover" />
@@ -239,9 +239,10 @@ export default function MiniAppHomePage() {
           <Link
             href={`/telegram/activity?id=${next.id}`}
             onClick={() => haptic('light')}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-br from-violet-600/25 via-fuchsia-600/10 to-rose-600/25 p-3 active:scale-[0.99] transition-transform"
+            className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 pl-5 active:bg-white/[0.06] transition-colors"
           >
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
+            <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500" />
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-violet-300">
               <Calendar className="size-5" />
             </div>
             <div className="min-w-0 flex-1">
@@ -256,15 +257,15 @@ export default function MiniAppHomePage() {
                 })}
               </p>
             </div>
-            <span className="text-[12px] font-bold">{next.price.toFixed(0)} ₴</span>
+            <span className="text-[12px] font-bold tabular-nums">{next.price.toFixed(0)} ₴</span>
           </Link>
         </div>
       )}
 
       {/* Feed */}
       {posts.length === 0 ? (
-        <div className="mx-5 mt-2 rounded-[28px] border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/10">
+        <div className="mx-5 mt-2 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
             <Compass className="size-6 text-white/60" />
           </div>
           <p className="mt-4 text-base font-semibold">Лента пуста</p>
@@ -274,7 +275,7 @@ export default function MiniAppHomePage() {
           <Link
             href="/telegram/search"
             onClick={() => haptic('selection')}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-xs font-semibold text-black"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2 text-xs font-semibold text-black active:bg-white/80 transition-colors"
           >
             <Search className="size-3.5" /> Найти мастера
           </Link>
@@ -289,7 +290,7 @@ export default function MiniAppHomePage() {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[12px] font-semibold disabled:opacity-60"
+                className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold active:bg-white/[0.06] transition-colors disabled:opacity-60"
               >
                 {loadingMore && <Loader2 className="size-3 animate-spin" />}
                 Показать ещё
@@ -322,7 +323,7 @@ function PostCard({
         <Link
           href={post.author?.public_id ? `/telegram/u/${post.author.public_id}` : '#'}
           onClick={() => onHaptic('light')}
-          className="flex size-10 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-sm font-bold"
+          className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90"
         >
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -338,14 +339,14 @@ function PostCard({
       </div>
 
       {/* Image */}
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white/5">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-white/[0.03]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={post.image_url} alt={post.caption ?? ''} className="size-full object-cover" />
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-4 px-5 pt-2.5">
-        <button onClick={onLike} className="active:scale-90 transition-transform">
+        <button onClick={onLike} className="transition-opacity active:opacity-60">
           <Heart
             className={`size-6 ${post.liked_by_viewer ? 'fill-rose-500 text-rose-500' : 'text-white'}`}
             strokeWidth={post.liked_by_viewer ? 0 : 2}
@@ -365,7 +366,7 @@ function PostCard({
               );
             }
           }}
-          className="ml-auto active:scale-90 transition-transform"
+          className="ml-auto transition-opacity active:opacity-60"
           aria-label="Поделиться"
         >
           <Send className="size-6" />
