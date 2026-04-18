@@ -1,6 +1,6 @@
 /** --- YAML
- * name: Auth Page (unified login + register)
- * description: Single page with 3 role tabs (Клиент/Мастер/Команда). Each tab shows sign-in form by default; bottom link swaps to sign-up on the same page. No navigation between routes. Styled to match landing v6 (Plus Jakarta Sans, violet accent, CSS vars).
+ * name: Auth Page (unified login + register, glass split-layout)
+ * description: 2-column auth page (form + hero image). Sign-in = form left / image right; sign-up = form right / image left, swapped with framer-motion layout animation. 3 role toggles (Клиент / Мастер / Команда), glass inputs, Supabase auth + OTP signup + reset-password flow + Google OAuth + remember-me.
  * created: 2026-04-15
  * updated: 2026-04-18
  * --- */
@@ -11,7 +11,7 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -27,54 +27,58 @@ type Mode = 'signin' | 'signup';
 type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'signup-otp';
 
 const REMEMBER_KEY = 'cres-ca-remember';
+const HERO_IMG = 'https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=2160&q=80';
 
-/* ───── Themed CSS — palette matches landing v6 ───── */
+/* ───── Themed CSS — glass inputs + violet accent ───── */
 const AUTH_CSS = `
-.auth-v6 {
+.auth-glass {
   --af: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  /* Light: page=#fff, card=#fff, input=#f5f5f7 (subtle lift off card) */
-  --abg: #ffffff;
-  --acard: #ffffff;
-  --ainput: #f5f5f7;
-  --afg: #0a0a0a; --afg2: #555555; --afg3: #888888;
-  --acb: rgba(0,0,0,.08);
+  --abg: var(--background, #f4f2fa);
+  --acard: color-mix(in oklab, var(--abg) 92%, white);
+  --afg: var(--foreground, #1a1530);
+  --afg2: color-mix(in oklab, var(--afg) 65%, transparent);
+  --afg3: color-mix(in oklab, var(--afg) 45%, transparent);
+  --acb: color-mix(in oklab, var(--afg) 12%, transparent);
   --aviolet: #7c3aed; --aviolet-l: #ede9fe;
   --adanger: #dc2626;
   font-family: var(--af);
   background: var(--abg);
   color: var(--afg);
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
 }
-html.dark .auth-v6 {
-  /* Dark: page=#09090b, card=#141417 (softer), input=#1f1f23 (visible lift) */
-  --abg: #09090b;
-  --acard: #141417;
-  --ainput: #1f1f23;
-  --afg: #fafafa; --afg2: #a1a1aa; --afg3: #71717a;
-  --acb: rgba(255,255,255,.08);
+html.dark .auth-glass {
+  --acard: color-mix(in oklab, var(--abg) 88%, white);
   --aviolet: #a78bfa; --aviolet-l: rgba(167,139,250,.12);
   --adanger: #f87171;
 }
-.auth-v6 input, .auth-v6 button, .auth-v6 select { font-family: var(--af); }
-.auth-v6 a { color: inherit; text-decoration: none; }
-.auth-input {
-  width: 100%;
-  height: 46px;
-  padding: 0 14px;
-  border-radius: 12px;
+.auth-glass input, .auth-glass button, .auth-glass select { font-family: var(--af); }
+.auth-glass a { color: inherit; text-decoration: none; }
+.glass-wrap {
+  border-radius: 16px;
   border: 1px solid var(--acb);
-  background: var(--ainput);
-  color: var(--afg);
-  font-size: 14px;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s, background .15s;
+  background: color-mix(in oklab, var(--afg) 5%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
 }
-.auth-input::placeholder { color: var(--afg3); }
-.auth-input:hover { border-color: color-mix(in oklab, var(--aviolet) 40%, var(--acb)); }
-.auth-input:focus { border-color: var(--aviolet); box-shadow: 0 0 0 3px color-mix(in oklab, var(--aviolet) 22%, transparent); }
+.glass-wrap:hover { border-color: color-mix(in oklab, var(--aviolet) 35%, var(--acb)); }
+.glass-wrap:focus-within {
+  border-color: color-mix(in oklab, var(--aviolet) 70%, transparent);
+  background: color-mix(in oklab, var(--aviolet) 10%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--aviolet) 18%, transparent);
+}
+.glass-input {
+  width: 100%; height: 46px; padding: 0 16px;
+  border: none; outline: none; background: transparent;
+  color: var(--afg); font-size: 14px;
+  border-radius: 16px;
+}
+.glass-input::placeholder { color: var(--afg3); }
 .auth-label { font-size: 12px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; letter-spacing: .01em; }
-@keyframes auth-bg-pulse { 0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.9;transform:translate(-50%,-50%) scale(1.08)} }
+input[type="checkbox"].auth-cb { accent-color: var(--aviolet); width: 14px; height: 14px; cursor: pointer; }
+@keyframes auth-glow { 0%,100%{opacity:.45} 50%{opacity:.85} }
 `;
 
 const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
@@ -83,7 +87,6 @@ const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
   { value: 'salon_admin', label: 'Команда',  icon: Building2 },
 ];
 
-/** Read remembered {email, role} from localStorage once on mount (safe for SSR). */
 function readRemembered(): { email?: string; role?: Role } {
   if (typeof window === 'undefined') return {};
   try {
@@ -110,13 +113,12 @@ export default function AuthPage() {
   const [sub, setSub] = useState<Sub>('form');
   const [loading, setLoading] = useState(false);
 
-  // Shared fields — lazy-init email from URL or remembered store
   const [email, setEmail] = useState(() => urlEmail || readRemembered().email || '');
+  const [rememberMe, setRememberMe] = useState(true);
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
 
-  // Signup-only fields
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [teamName, setTeamName] = useState('');
@@ -124,7 +126,6 @@ export default function AuthPage() {
   const [dob, setDob] = useState('');
   const [terms, setTerms] = useState(false);
 
-  // OTP / reset
   const [otp, setOtp] = useState('');
   const [newPwd, setNewPwd] = useState('');
 
@@ -134,12 +135,12 @@ export default function AuthPage() {
     if (!email || !password) return;
     setLoading(true);
     try {
-      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, role }));
+      if (rememberMe) localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, role }));
+      else localStorage.removeItem(REMEMBER_KEY);
     } catch {}
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setLoading(false); toast.error(error.message); return; }
-
     const user = data.user;
     if (!user) { setLoading(false); toast.error('Ошибка входа'); return; }
 
@@ -242,7 +243,7 @@ export default function AuthPage() {
     setPassword(''); setOtp(''); setNewPwd('');
   }
 
-  /* ───── OAuth (clients) ───── */
+  /* ───── OAuth ───── */
   async function handleOAuth(provider: 'google' | 'facebook') {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
@@ -252,6 +253,11 @@ export default function AuthPage() {
     if (error) toast.error(error.message);
   }
 
+  /* layout swap: sign-in → form left / image right; sign-up → form right / image left */
+  const isSignUp = mode === 'signup';
+  const formOrder = isSignUp ? 2 : 1;
+  const imageOrder = isSignUp ? 1 : 2;
+
   const slide = {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
@@ -259,14 +265,16 @@ export default function AuthPage() {
     transition: { duration: 0.2 },
   };
 
+  const swapTransition = { type: 'spring' as const, stiffness: 280, damping: 32 };
+
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
 
-      <div className="auth-v6" style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* Top bar: logo + back to landing */}
+      <div className="auth-glass" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Top bar */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '18px clamp(20px,4vw,48px)',
@@ -290,355 +298,404 @@ export default function AuthPage() {
           </Link>
         </div>
 
-        {/* Centered card */}
-        <div style={{
-          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '20px clamp(16px,4vw,48px) 64px', position: 'relative',
-        }}>
-          {/* decorative violet glow */}
+        {/* Split layout */}
+        <LayoutGroup>
           <div style={{
-            position: 'absolute', top: '50%', left: '50%',
-            transform: 'translate(-50%,-50%)',
-            width: 'min(700px, 90vw)', height: 600,
-            background: 'radial-gradient(ellipse, var(--aviolet-l), transparent 60%)',
-            pointerEvents: 'none', zIndex: 0,
-            animation: 'auth-bg-pulse 8s ease-in-out infinite',
-          }} />
-
-          <div style={{
-            position: 'relative', zIndex: 1,
-            width: '100%', maxWidth: 460,
-            background: 'var(--acard)',
-            border: '1px solid var(--acb)',
-            borderRadius: 24,
-            padding: 'clamp(28px,4vw,40px)',
-            boxShadow: '0 30px 80px rgba(124,58,237,.12), 0 8px 24px rgba(0,0,0,.06)',
+            flex: 1, display: 'flex', flexDirection: 'row', gap: 0,
+            padding: 'clamp(8px, 2vw, 16px)',
+            minHeight: 'calc(100dvh - 70px)',
           }}>
-            {/* Role tabs */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
-              padding: 4, borderRadius: 12,
-              background: 'var(--abg2)',
-              marginBottom: 24,
-            }}>
-              {ROLES.map(r => {
-                const active = role === r.value;
-                const Icon = r.icon;
-                return (
-                  <button
-                    key={r.value}
-                    type="button"
-                    onClick={() => { setRole(r.value); setSub('form'); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      padding: '9px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                      background: active ? 'var(--acard)' : 'transparent',
-                      color: active ? 'var(--afg)' : 'var(--afg3)',
-                      fontSize: 13, fontWeight: 600,
-                      boxShadow: active ? '0 2px 8px rgba(0,0,0,.04)' : 'none',
-                      transition: 'all .15s',
-                    }}
-                  >
-                    <Icon size={14} />
-                    {r.label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Form column */}
+            <motion.section
+              layout
+              transition={swapTransition}
+              style={{
+                flex: 1, order: formOrder,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 'clamp(16px, 4vw, 48px)',
+              }}
+            >
+              <div style={{ width: '100%', maxWidth: 440 }}>
+                {/* Role toggle */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
+                  padding: 4, borderRadius: 14,
+                  border: '1px solid var(--acb)',
+                  background: 'color-mix(in oklab, var(--afg) 4%, transparent)',
+                  marginBottom: 22,
+                }}>
+                  {ROLES.map(r => {
+                    const active = role === r.value;
+                    const Icon = r.icon;
+                    return (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => { setRole(r.value); setSub('form'); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          padding: '9px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                          background: active ? 'var(--aviolet)' : 'transparent',
+                          color: active ? '#fff' : 'var(--afg2)',
+                          fontSize: 13, fontWeight: 600,
+                          boxShadow: active ? '0 4px 14px color-mix(in oklab, var(--aviolet) 35%, transparent)' : 'none',
+                          transition: 'all .18s ease',
+                        }}
+                      >
+                        <Icon size={14} />
+                        {r.label}
+                      </button>
+                    );
+                  })}
+                </div>
 
-            <AnimatePresence mode="wait">
-              {/* Sign-in / sign-up form */}
-              {sub === 'form' && (
-                <motion.div key={`form-${mode}-${role}`} {...slide}>
-                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', margin: 0 }}>
-                    {mode === 'signin' ? 'Вход' : 'Регистрация'}
-                  </h1>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '6px 0 20px' }}>
-                    {mode === 'signin'
-                      ? 'Войдите в свой аккаунт'
-                      : role === 'salon_admin'
-                        ? 'Создайте аккаунт для вашей команды'
-                        : 'Создайте бесплатный аккаунт'}
-                  </p>
+                <AnimatePresence mode="wait">
+                  {/* Sign-in / sign-up form */}
+                  {sub === 'form' && (
+                    <motion.div key={`form-${mode}-${role}`} {...slide}>
+                      <h1 style={{
+                        fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 300, letterSpacing: '-.025em',
+                        margin: 0, lineHeight: 1.1,
+                      }}>
+                        {mode === 'signin' ? 'С возвращением' : 'Добро пожаловать'}
+                      </h1>
+                      <p style={{ fontSize: 14, color: 'var(--afg2)', margin: '10px 0 22px', lineHeight: 1.5 }}>
+                        {mode === 'signin'
+                          ? 'Войдите в свой аккаунт'
+                          : role === 'salon_admin'
+                            ? 'Создайте аккаунт для вашей команды'
+                            : 'Создайте бесплатный аккаунт'}
+                      </p>
 
-                  {/* OAuth — clients only, sign-in only */}
-                  {role === 'client' && mode === 'signin' && (
-                    <>
-                      <OAuthRow onClick={handleOAuth} />
-                      <Divider />
-                    </>
-                  )}
+                      {role === 'client' && mode === 'signin' && (
+                        <>
+                          <OAuthRow onClick={handleOAuth} />
+                          <Divider />
+                        </>
+                      )}
 
-                  <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {/* ─── SIGN UP: name → phone → dob → email → password ─── */}
-                    {mode === 'signup' && (
-                      <>
-                        {role === 'salon_admin' ? (
-                          <Field label="Название команды / салона">
-                            <input className="auth-input" value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Beauty Studio" required autoFocus />
-                          </Field>
-                        ) : (
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                            <Field label="Имя">
-                              <input className="auth-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
+                      <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {mode === 'signup' && (
+                          <>
+                            {role === 'salon_admin' ? (
+                              <Field label="Название команды / салона">
+                                <GlassWrap>
+                                  <input className="glass-input" value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Beauty Studio" required autoFocus />
+                                </GlassWrap>
+                              </Field>
+                            ) : (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                <Field label="Имя">
+                                  <GlassWrap>
+                                    <input className="glass-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
+                                  </GlassWrap>
+                                </Field>
+                                <Field label="Фамилия">
+                                  <GlassWrap>
+                                    <input className="glass-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
+                                  </GlassWrap>
+                                </Field>
+                              </div>
+                            )}
+
+                            <Field label="Телефон">
+                              <GlassWrap>
+                                <div style={{ display: 'flex', alignItems: 'center', height: 46 }}>
+                                  <span style={{
+                                    padding: '0 14px', fontSize: 14, color: 'var(--afg2)',
+                                    borderRight: '1px solid var(--acb)', height: 30,
+                                    display: 'flex', alignItems: 'center',
+                                  }}>+380</span>
+                                  <input
+                                    type="tel" inputMode="numeric"
+                                    value={phone}
+                                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                                    placeholder="501234567"
+                                    className="glass-input"
+                                    style={{ height: '100%', borderRadius: 0 }}
+                                  />
+                                </div>
+                              </GlassWrap>
                             </Field>
-                            <Field label="Фамилия">
-                              <input className="auth-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
-                            </Field>
-                          </div>
+
+                            {role !== 'salon_admin' && (
+                              <Field label="Дата рождения">
+                                <GlassWrap>
+                                  <input
+                                    className="glass-input"
+                                    type="date"
+                                    value={dob}
+                                    onChange={e => setDob(e.target.value)}
+                                    max={new Date().toISOString().slice(0, 10)}
+                                  />
+                                </GlassWrap>
+                              </Field>
+                            )}
+                          </>
                         )}
 
-                        <Field label="Телефон">
-                          <div style={{
-                            display: 'flex', alignItems: 'center', height: 46,
-                            border: '1px solid var(--acb)', borderRadius: 12, overflow: 'hidden',
-                            background: 'var(--ainput)',
-                          }}>
-                            <span style={{
-                              padding: '0 12px', fontSize: 14, color: 'var(--afg2)',
-                              borderRight: '1px solid var(--acb)', height: '100%',
-                              display: 'flex', alignItems: 'center',
-                              background: 'color-mix(in oklab, var(--acard) 50%, var(--ainput))',
-                            }}>
-                              +380
-                            </span>
-                            <input
-                              type="tel" inputMode="numeric"
-                              value={phone}
-                              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                              placeholder="501234567"
-                              style={{
-                                flex: 1, height: '100%', padding: '0 12px',
-                                border: 'none', outline: 'none',
-                                background: 'transparent', color: 'var(--afg)', fontSize: 14,
-                              }}
-                            />
-                          </div>
+                        <Field label="Email">
+                          <GlassWrap>
+                            <input className="glass-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                              autoFocus={mode === 'signin'} placeholder="you@example.com" />
+                          </GlassWrap>
                         </Field>
 
-                        {/* Date of birth — for client & master (not team, where org doesn't have a DOB) */}
-                        {role !== 'salon_admin' && (
-                          <Field label="Дата рождения">
-                            <input
-                              className="auth-input"
-                              type="date"
-                              value={dob}
-                              onChange={e => setDob(e.target.value)}
-                              max={new Date().toISOString().slice(0, 10)}
-                            />
-                          </Field>
+                        <Field label="Пароль"
+                          right={mode === 'signin' ? (
+                            <button type="button" onClick={() => setSub('forgot')}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--aviolet)', fontWeight: 500 }}>
+                              Забыли пароль?
+                            </button>
+                          ) : null}
+                        >
+                          <GlassWrap>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                className="glass-input"
+                                type={showPwd ? 'text' : 'password'}
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                required
+                                minLength={mode === 'signup' ? 6 : undefined}
+                                style={{ paddingRight: 44 }}
+                                placeholder={mode === 'signup' ? 'Минимум 6 символов' : undefined}
+                              />
+                              <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1}
+                                style={{
+                                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)',
+                                  display: 'flex', alignItems: 'center',
+                                }}>
+                                {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                            </div>
+                          </GlassWrap>
+                        </Field>
+
+                        {mode === 'signin' && (
+                          <label style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            fontSize: 13, color: 'var(--afg2)', cursor: 'pointer',
+                          }}>
+                            <input type="checkbox" className="auth-cb" checked={rememberMe}
+                              onChange={e => setRememberMe(e.target.checked)} />
+                            Запомнить меня
+                          </label>
                         )}
-                      </>
-                    )}
 
-                    <Field label="Email">
-                      <input className="auth-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                        autoFocus={mode === 'signin'} />
-                    </Field>
-
-                    <Field label="Пароль"
-                      right={mode === 'signin' ? (
-                        <button type="button" onClick={() => setSub('forgot')}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--afg3)' }}>
-                          Забыли?
-                        </button>
-                      ) : null}
-                    >
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="auth-input"
-                          type={showPwd ? 'text' : 'password'}
-                          value={password}
-                          onChange={e => setPassword(e.target.value)}
-                          required
-                          minLength={mode === 'signup' ? 6 : undefined}
-                          style={{ paddingRight: 40 }}
-                          placeholder={mode === 'signup' ? 'Минимум 6 символов' : undefined}
-                        />
-                        <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1}
-                          style={{
-                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)',
+                        {mode === 'signup' && (
+                          <label style={{
+                            display: 'flex', alignItems: 'flex-start', gap: 8,
+                            fontSize: 12, color: 'var(--afg2)', cursor: 'pointer', lineHeight: 1.45,
                           }}>
-                          {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                            <input type="checkbox" className="auth-cb" checked={terms}
+                              onChange={e => setTerms(e.target.checked)} style={{ marginTop: 2 }} />
+                            Я принимаю условия использования и политику конфиденциальности
+                          </label>
+                        )}
+
+                        <PrimaryButton disabled={loading || (mode === 'signup' && !terms)} type="submit">
+                          {loading ? '...' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
+                        </PrimaryButton>
+                      </form>
+
+                      {/* Toggle mode */}
+                      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--afg2)', marginTop: 22 }}>
+                        {mode === 'signin' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
+                        <button
+                          type="button"
+                          onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setPassword(''); }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--aviolet)', fontWeight: 600, fontSize: 13,
+                            padding: 0, fontFamily: 'var(--af)' }}
+                        >
+                          {mode === 'signin' ? 'Зарегистрироваться' : 'Войти'}
                         </button>
+                      </p>
+                    </motion.div>
+                  )}
+
+                  {/* Forgot password */}
+                  {sub === 'forgot' && (
+                    <motion.div key="forgot" {...slide}>
+                      <BackLink onClick={() => setSub('form')} />
+                      <h1 style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-.02em', margin: '8px 0 6px' }}>
+                        Забыли пароль?
+                      </h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px' }}>
+                        Отправим код восстановления на email.
+                      </p>
+                      <form onSubmit={handleForgotSend} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <Field label="Email">
+                          <GlassWrap>
+                            <input className="glass-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
+                          </GlassWrap>
+                        </Field>
+                        <PrimaryButton disabled={loading} type="submit">
+                          {loading ? '...' : 'Отправить код'}
+                        </PrimaryButton>
+                      </form>
+                    </motion.div>
+                  )}
+
+                  {/* Reset-sent */}
+                  {sub === 'reset-sent' && (
+                    <motion.div key="reset-sent" {...slide} style={{ textAlign: 'center' }}>
+                      <IconBubble><Mail size={24} /></IconBubble>
+                      <h1 style={{ fontSize: 24, fontWeight: 300, margin: '14px 0 4px', letterSpacing: '-.02em' }}>
+                        Проверьте почту
+                      </h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 4px' }}>{email}</p>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '8px 0 22px' }}>
+                        Мы отправили 6-значный код. Введите его на следующем шаге.
+                      </p>
+                      <PrimaryButton onClick={() => setSub('reset-otp')} type="button">
+                        Ввести код
+                      </PrimaryButton>
+                    </motion.div>
+                  )}
+
+                  {/* Reset OTP */}
+                  {sub === 'reset-otp' && (
+                    <motion.div key="reset-otp" {...slide} style={{ textAlign: 'center' }}>
+                      <IconBubble><Mail size={24} /></IconBubble>
+                      <h1 style={{ fontSize: 24, fontWeight: 300, margin: '14px 0 4px', letterSpacing: '-.02em' }}>Код из письма</h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px' }}>
+                        Отправлен на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+                        <InputOTP maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
+                          onComplete={() => otp.length === 6 && setSub('new-password')}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
                       </div>
-                    </Field>
+                      <PrimaryButton disabled={otp.length !== 6} onClick={() => setSub('new-password')} type="button">
+                        Далее
+                      </PrimaryButton>
+                      <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>
+                        Назад
+                      </button>
+                    </motion.div>
+                  )}
 
-                    {mode === 'signup' && (
-                      <label style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 8,
-                        fontSize: 12, color: 'var(--afg2)', cursor: 'pointer', lineHeight: 1.45,
-                      }}>
-                        <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
-                          style={{ marginTop: 2, accentColor: 'var(--aviolet)' }} />
-                        Я принимаю условия использования и политику конфиденциальности
-                      </label>
-                    )}
+                  {/* New password */}
+                  {sub === 'new-password' && (
+                    <motion.div key="new-password" {...slide}>
+                      <BackLink onClick={() => { setSub('reset-otp'); setNewPwd(''); }} />
+                      <h1 style={{ fontSize: 28, fontWeight: 300, letterSpacing: '-.02em', margin: '8px 0 6px' }}>
+                        Новый пароль
+                      </h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px' }}>
+                        Минимум 6 символов
+                      </p>
+                      <form onSubmit={handleSetNewPwd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <Field label="Пароль">
+                          <GlassWrap>
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                className="glass-input"
+                                type={showNewPwd ? 'text' : 'password'}
+                                value={newPwd} onChange={e => setNewPwd(e.target.value)}
+                                required minLength={6} autoFocus
+                                style={{ paddingRight: 44 }}
+                              />
+                              <button type="button" onClick={() => setShowNewPwd(v => !v)} tabIndex={-1}
+                                style={{
+                                  position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                  background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)',
+                                  display: 'flex', alignItems: 'center',
+                                }}>
+                                {showNewPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                            </div>
+                          </GlassWrap>
+                        </Field>
+                        <PrimaryButton disabled={loading || newPwd.length < 6} type="submit">
+                          {loading ? '...' : 'Сохранить'}
+                        </PrimaryButton>
+                      </form>
+                    </motion.div>
+                  )}
 
-                    <PrimaryButton disabled={loading || (mode === 'signup' && !terms)} type="submit">
-                      {loading ? '...' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
-                    </PrimaryButton>
-                  </form>
-
-                  {/* Toggle mode */}
-                  <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--afg2)', marginTop: 20 }}>
-                    {mode === 'signin' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
-                    <button
-                      type="button"
-                      onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setPassword(''); }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer',
-                        color: 'var(--aviolet)', fontWeight: 600, fontSize: 13,
-                        padding: 0, fontFamily: 'var(--af)' }}
-                    >
-                      {mode === 'signin' ? 'Зарегистрироваться' : 'Войти'}
-                    </button>
-                  </p>
-                </motion.div>
-              )}
-
-              {/* Forgot password */}
-              {sub === 'forgot' && (
-                <motion.div key="forgot" {...slide}>
-                  <BackLink onClick={() => setSub('form')} />
-                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', margin: '8px 0 6px' }}>
-                    Забыли пароль?
-                  </h1>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
-                    Отправим код восстановления на email.
-                  </p>
-                  <form onSubmit={handleForgotSend} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <Field label="Email">
-                      <input className="auth-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
-                    </Field>
-                    <PrimaryButton disabled={loading} type="submit">
-                      {loading ? '...' : 'Отправить код'}
-                    </PrimaryButton>
-                  </form>
-                </motion.div>
-              )}
-
-              {/* Reset-sent */}
-              {sub === 'reset-sent' && (
-                <motion.div key="reset-sent" {...slide} style={{ textAlign: 'center' }}>
-                  <IconBubble><Mail size={24} /></IconBubble>
-                  <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 4px' }}>
-                    Проверьте почту
-                  </h1>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 4px' }}>{email}</p>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '8px 0 20px' }}>
-                    Мы отправили 6-значный код. Введите его на следующем шаге.
-                  </p>
-                  <PrimaryButton onClick={() => setSub('reset-otp')} type="button">
-                    Ввести код
-                  </PrimaryButton>
-                </motion.div>
-              )}
-
-              {/* Reset OTP */}
-              {sub === 'reset-otp' && (
-                <motion.div key="reset-otp" {...slide} style={{ textAlign: 'center' }}>
-                  <IconBubble><Mail size={24} /></IconBubble>
-                  <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 4px' }}>Код из письма</h1>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
-                    Отправлен на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
-                  </p>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-                    <InputOTP maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
-                      onComplete={() => otp.length === 6 && setSub('new-password')}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
-                      </InputOTPGroup>
-                      <InputOTPSeparator />
-                      <InputOTPGroup>
-                        <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <PrimaryButton disabled={otp.length !== 6} onClick={() => setSub('new-password')} type="button">
-                    Далее
-                  </PrimaryButton>
-                  <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>
-                    Назад
-                  </button>
-                </motion.div>
-              )}
-
-              {/* New password */}
-              {sub === 'new-password' && (
-                <motion.div key="new-password" {...slide}>
-                  <BackLink onClick={() => { setSub('reset-otp'); setNewPwd(''); }} />
-                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', margin: '8px 0 6px' }}>
-                    Новый пароль
-                  </h1>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
-                    Минимум 6 символов
-                  </p>
-                  <form onSubmit={handleSetNewPwd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <Field label="Пароль">
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="auth-input"
-                          type={showNewPwd ? 'text' : 'password'}
-                          value={newPwd} onChange={e => setNewPwd(e.target.value)}
-                          required minLength={6} autoFocus
-                          style={{ paddingRight: 40 }}
-                        />
-                        <button type="button" onClick={() => setShowNewPwd(v => !v)} tabIndex={-1}
-                          style={{
-                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)',
-                          }}>
-                          {showNewPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
+                  {/* Signup OTP */}
+                  {sub === 'signup-otp' && (
+                    <motion.div key="signup-otp" {...slide} style={{ textAlign: 'center' }}>
+                      <IconBubble><Shield size={24} /></IconBubble>
+                      <h1 style={{ fontSize: 24, fontWeight: 300, margin: '14px 0 4px', letterSpacing: '-.02em' }}>Подтверждение email</h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px' }}>
+                        Отправлен код на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+                        <InputOTP maxLength={8} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
+                          onComplete={handleVerifySignupOTP}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={4} /><InputOTPSlot index={5} /><InputOTPSlot index={6} /><InputOTPSlot index={7} />
+                          </InputOTPGroup>
+                        </InputOTP>
                       </div>
-                    </Field>
-                    <PrimaryButton disabled={loading || newPwd.length < 6} type="submit">
-                      {loading ? '...' : 'Сохранить'}
-                    </PrimaryButton>
-                  </form>
-                </motion.div>
-              )}
+                      <PrimaryButton disabled={loading || otp.length !== 8} onClick={handleVerifySignupOTP} type="button">
+                        {loading ? '...' : 'Подтвердить'}
+                      </PrimaryButton>
+                      <button type="button" onClick={handleResendSignupOTP} disabled={loading}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--aviolet)', fontSize: 13, marginTop: 12, fontWeight: 600 }}>
+                        Отправить повторно
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.section>
 
-              {/* Signup OTP */}
-              {sub === 'signup-otp' && (
-                <motion.div key="signup-otp" {...slide} style={{ textAlign: 'center' }}>
-                  <IconBubble><Shield size={24} /></IconBubble>
-                  <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 4px' }}>Подтверждение email</h1>
-                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
-                    Отправлен код на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
-                  </p>
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-                    <InputOTP maxLength={8} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
-                      onComplete={handleVerifySignupOTP}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} />
-                      </InputOTPGroup>
-                      <InputOTPSeparator />
-                      <InputOTPGroup>
-                        <InputOTPSlot index={4} /><InputOTPSlot index={5} /><InputOTPSlot index={6} /><InputOTPSlot index={7} />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                  <PrimaryButton disabled={loading || otp.length !== 8} onClick={handleVerifySignupOTP} type="button">
-                    {loading ? '...' : 'Подтвердить'}
-                  </PrimaryButton>
-                  <button type="button" onClick={handleResendSignupOTP} disabled={loading}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--aviolet)', fontSize: 13, marginTop: 12, fontWeight: 600 }}>
-                    Отправить повторно
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Hero image column — hidden on mobile */}
+            <motion.section
+              layout
+              transition={swapTransition}
+              className="auth-hero"
+              style={{
+                flex: 1, order: imageOrder,
+                position: 'relative',
+                borderRadius: 28,
+                overflow: 'hidden',
+                minHeight: 400,
+              }}
+            >
+              <div style={{
+                position: 'absolute', inset: 0,
+                backgroundImage: `url(${HERO_IMG})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }} />
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(135deg, color-mix(in oklab, var(--aviolet) 40%, transparent) 0%, transparent 60%)',
+                mixBlendMode: 'multiply',
+              }} />
+              <style>{`
+                @media (max-width: 767px) {
+                  .auth-hero { display: none !important; }
+                }
+              `}</style>
+            </motion.section>
           </div>
-        </div>
+        </LayoutGroup>
       </div>
     </>
   );
 }
 
-/* ───── Small UI helpers ───── */
+/* ───── UI helpers ───── */
 
 function Field({ label, right, children }: { label: string; right?: ReactNode; children: ReactNode }) {
   return (
@@ -652,6 +709,10 @@ function Field({ label, right, children }: { label: string; right?: ReactNode; c
   );
 }
 
+function GlassWrap({ children }: { children: ReactNode }) {
+  return <div className="glass-wrap">{children}</div>;
+}
+
 function PrimaryButton({
   children, onClick, disabled, type = 'button',
 }: { children: ReactNode; onClick?: () => void; disabled?: boolean; type?: 'button' | 'submit' }) {
@@ -661,13 +722,13 @@ function PrimaryButton({
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: '100%', height: 44, borderRadius: 12,
+        width: '100%', height: 48, borderRadius: 16,
         background: 'var(--aviolet)', color: '#fff',
         border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
-        fontSize: 14, fontWeight: 600,
+        fontSize: 14, fontWeight: 600, letterSpacing: '.005em',
         opacity: disabled ? 0.55 : 1,
-        transition: 'all .2s',
-        boxShadow: disabled ? 'none' : '0 4px 16px rgba(124,58,237,.25)',
+        transition: 'all .2s ease',
+        boxShadow: disabled ? 'none' : '0 6px 20px color-mix(in oklab, var(--aviolet) 32%, transparent)',
       }}
     >
       {children}
@@ -703,7 +764,7 @@ function IconBubble({ children }: { children: ReactNode }) {
 
 function Divider() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
       <div style={{ flex: 1, height: 1, background: 'var(--acb)' }} />
       <span style={{ fontSize: 11, color: 'var(--afg3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>или</span>
       <div style={{ flex: 1, height: 1, background: 'var(--acb)' }} />
@@ -713,11 +774,12 @@ function Divider() {
 
 function OAuthRow({ onClick }: { onClick: (p: 'google' | 'facebook') => void }) {
   const btnStyle: React.CSSProperties = {
-    flex: 1, height: 44, borderRadius: 12,
-    border: '1px solid var(--acb)', background: 'var(--abg)', color: 'var(--afg)',
+    flex: 1, height: 46, borderRadius: 14,
+    border: '1px solid var(--acb)', background: 'transparent', color: 'var(--afg)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     fontSize: 13, fontWeight: 600, cursor: 'pointer',
     fontFamily: 'var(--af)',
+    transition: 'background .15s, border-color .15s',
   };
   return (
     <div style={{ display: 'flex', gap: 10 }}>
