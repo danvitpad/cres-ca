@@ -21,9 +21,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ProfileDropdown, type ProfileDropdownItem } from '@/components/ui/profile-dropdown';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
@@ -141,6 +141,27 @@ export function SessionNavBar({
 }: SessionNavBarProps) {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const pathname = usePathname();
+
+  const destructiveIndex = account.menuItems.findIndex((mi) => mi.destructive);
+  const toProfileItem = (mi: SidebarDropdownItem): ProfileDropdownItem => ({
+    icon: mi.icon,
+    label: mi.label,
+    href: mi.href,
+    onClick: mi.onClick,
+  });
+  const regularAccountItems: ProfileDropdownItem[] =
+    destructiveIndex >= 0
+      ? account.menuItems.slice(0, destructiveIndex).map(toProfileItem)
+      : account.menuItems.map(toProfileItem);
+  const destructiveItem = destructiveIndex >= 0 ? account.menuItems[destructiveIndex] : null;
+  const destructiveAccountAction = destructiveItem
+    ? {
+        icon: destructiveItem.icon,
+        label: destructiveItem.label,
+        href: destructiveItem.href,
+        onClick: destructiveItem.onClick,
+      }
+    : undefined;
 
   function isActive(item: SidebarNavItem): boolean {
     if (item.active !== undefined) return item.active;
@@ -278,9 +299,19 @@ export function SessionNavBar({
                   </button>
                 )}
 
-                <div>
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger
+                <ProfileDropdown
+                  align="end"
+                  side="top"
+                  sideOffset={8}
+                  name={account.name || 'Профиль'}
+                  handle={account.email}
+                  initials={account.initials}
+                  avatarUrl={account.avatarUrl}
+                  items={regularAccountItems}
+                  bottomAction={destructiveAccountAction}
+                  trigger={
+                    <button
+                      type="button"
                       className={cn(
                         'w-full flex h-10 flex-row items-center gap-3 rounded-md px-2 py-2',
                         'hover:bg-muted hover:text-primary bg-transparent border-none cursor-pointer text-left overflow-hidden',
@@ -292,27 +323,9 @@ export function SessionNavBar({
                       </Avatar>
                       <p className="text-[15px] font-medium truncate whitespace-nowrap">{account.name || 'Профиль'}</p>
                       <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground/50 shrink-0" />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent sideOffset={5}>
-                      <div className="flex flex-row items-center gap-2 p-2">
-                        <Avatar className="size-6">
-                          {account.avatarUrl && <AvatarImage src={account.avatarUrl} alt={account.name} />}
-                          <AvatarFallback>{account.initials}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col text-left min-w-0">
-                          <span className="text-sm font-medium truncate">{account.name}</span>
-                          {account.email && (
-                            <span className="line-clamp-1 text-xs text-muted-foreground">
-                              {account.email}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <DropdownMenuSeparator />
-                      {renderDropdownItems(account.menuItems)}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                    </button>
+                  }
+                />
               </div>
             </div>
           </div>

@@ -11,7 +11,7 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -253,19 +253,14 @@ export default function AuthPage() {
     if (error) toast.error(error.message);
   }
 
-  /* layout swap: sign-in → form left / image right; sign-up → form right / image left */
   const isSignUp = mode === 'signup';
-  const formOrder = isSignUp ? 2 : 1;
-  const imageOrder = isSignUp ? 1 : 2;
 
   const slide = {
-    initial: { opacity: 0, y: 8 },
+    initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -8 },
-    transition: { duration: 0.2 },
+    exit: { opacity: 0, y: -6 },
+    transition: { duration: 0.18, ease: 'easeOut' as const },
   };
-
-  const swapTransition = { type: 'spring' as const, stiffness: 280, damping: 32 };
 
   return (
     <>
@@ -299,22 +294,19 @@ export default function AuthPage() {
         </div>
 
         {/* Split layout */}
-        <LayoutGroup>
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'row', gap: 0,
-            padding: 'clamp(8px, 2vw, 16px)',
-            minHeight: 'calc(100dvh - 70px)',
-          }}>
-            {/* Form column */}
-            <motion.section
-              layout
-              transition={swapTransition}
-              style={{
-                flex: 1, order: formOrder,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 'clamp(16px, 4vw, 48px)',
-              }}
-            >
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'row', gap: 0,
+          padding: 'clamp(8px, 2vw, 16px)',
+          minHeight: 'calc(100dvh - 70px)',
+        }}>
+          {/* Form column */}
+          <section
+            style={{
+              flex: 1, order: 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 'clamp(16px, 3vw, 40px) clamp(16px, 4vw, 48px)',
+            }}
+          >
               <div style={{ width: '100%', maxWidth: 440 }}>
                 {/* Role toggle */}
                 <div style={{
@@ -322,7 +314,7 @@ export default function AuthPage() {
                   padding: 4, borderRadius: 14,
                   border: '1px solid var(--acb)',
                   background: 'color-mix(in oklab, var(--afg) 4%, transparent)',
-                  marginBottom: 22,
+                  marginBottom: isSignUp ? 14 : 22,
                 }}>
                   {ROLES.map(r => {
                     const active = role === r.value;
@@ -352,14 +344,15 @@ export default function AuthPage() {
                 <AnimatePresence mode="wait">
                   {/* Sign-in / sign-up form */}
                   {sub === 'form' && (
-                    <motion.div key={`form-${mode}-${role}`} {...slide}>
+                    <motion.div key={`form-${mode}`} {...slide}>
                       <h1 style={{
-                        fontSize: 'clamp(28px, 4vw, 36px)', fontWeight: 300, letterSpacing: '-.025em',
+                        fontSize: isSignUp ? 'clamp(22px, 2.8vw, 28px)' : 'clamp(28px, 4vw, 36px)',
+                        fontWeight: 300, letterSpacing: '-.025em',
                         margin: 0, lineHeight: 1.1,
                       }}>
                         {mode === 'signin' ? 'С возвращением' : 'Добро пожаловать'}
                       </h1>
-                      <p style={{ fontSize: 14, color: 'var(--afg2)', margin: '10px 0 22px', lineHeight: 1.5 }}>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: isSignUp ? '6px 0 14px' : '10px 0 22px', lineHeight: 1.45 }}>
                         {mode === 'signin'
                           ? 'Войдите в свой аккаунт'
                           : role === 'salon_admin'
@@ -374,7 +367,7 @@ export default function AuthPage() {
                         </>
                       )}
 
-                      <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: isSignUp ? 10 : 14 }}>
                         {mode === 'signup' && (
                           <>
                             {role === 'salon_admin' ? (
@@ -398,39 +391,41 @@ export default function AuthPage() {
                               </div>
                             )}
 
-                            <Field label="Телефон">
-                              <GlassWrap>
-                                <div style={{ display: 'flex', alignItems: 'center', height: 46 }}>
-                                  <span style={{
-                                    padding: '0 14px', fontSize: 14, color: 'var(--afg2)',
-                                    borderRight: '1px solid var(--acb)', height: 30,
-                                    display: 'flex', alignItems: 'center',
-                                  }}>+380</span>
-                                  <input
-                                    type="tel" inputMode="numeric"
-                                    value={phone}
-                                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                                    placeholder="501234567"
-                                    className="glass-input"
-                                    style={{ height: '100%', borderRadius: 0 }}
-                                  />
-                                </div>
-                              </GlassWrap>
-                            </Field>
-
-                            {role !== 'salon_admin' && (
-                              <Field label="Дата рождения">
+                            <div style={{ display: 'grid', gridTemplateColumns: role !== 'salon_admin' ? '1fr 1fr' : '1fr', gap: 10 }}>
+                              <Field label="Телефон">
                                 <GlassWrap>
-                                  <input
-                                    className="glass-input"
-                                    type="date"
-                                    value={dob}
-                                    onChange={e => setDob(e.target.value)}
-                                    max={new Date().toISOString().slice(0, 10)}
-                                  />
+                                  <div style={{ display: 'flex', alignItems: 'center', height: 46 }}>
+                                    <span style={{
+                                      padding: '0 12px', fontSize: 13, color: 'var(--afg2)',
+                                      borderRight: '1px solid var(--acb)', height: 30,
+                                      display: 'flex', alignItems: 'center',
+                                    }}>+380</span>
+                                    <input
+                                      type="tel" inputMode="numeric"
+                                      value={phone}
+                                      onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                                      placeholder="501234567"
+                                      className="glass-input"
+                                      style={{ height: '100%', borderRadius: 0, paddingLeft: 10 }}
+                                    />
+                                  </div>
                                 </GlassWrap>
                               </Field>
-                            )}
+
+                              {role !== 'salon_admin' && (
+                                <Field label="Дата рождения">
+                                  <GlassWrap>
+                                    <input
+                                      className="glass-input"
+                                      type="date"
+                                      value={dob}
+                                      onChange={e => setDob(e.target.value)}
+                                      max={new Date().toISOString().slice(0, 10)}
+                                    />
+                                  </GlassWrap>
+                                </Field>
+                              )}
+                            </div>
                           </>
                         )}
 
@@ -501,7 +496,7 @@ export default function AuthPage() {
                       </form>
 
                       {/* Toggle mode */}
-                      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--afg2)', marginTop: 22 }}>
+                      <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--afg2)', marginTop: isSignUp ? 12 : 22 }}>
                         {mode === 'signin' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
                         <button
                           type="button"
@@ -656,21 +651,19 @@ export default function AuthPage() {
                   )}
                 </AnimatePresence>
               </div>
-            </motion.section>
+          </section>
 
-            {/* Hero image column — hidden on mobile */}
-            <motion.section
-              layout
-              transition={swapTransition}
-              className="auth-hero"
-              style={{
-                flex: 1, order: imageOrder,
-                position: 'relative',
-                borderRadius: 28,
-                overflow: 'hidden',
-                minHeight: 400,
-              }}
-            >
+          {/* Hero image column — hidden on mobile */}
+          <section
+            className="auth-hero"
+            style={{
+              flex: 1, order: 2,
+              position: 'relative',
+              borderRadius: 28,
+              overflow: 'hidden',
+              minHeight: 400,
+            }}
+          >
               <div style={{
                 position: 'absolute', inset: 0,
                 backgroundImage: `url(${HERO_IMG})`,
@@ -682,14 +675,13 @@ export default function AuthPage() {
                 background: 'linear-gradient(135deg, color-mix(in oklab, var(--aviolet) 40%, transparent) 0%, transparent 60%)',
                 mixBlendMode: 'multiply',
               }} />
-              <style>{`
-                @media (max-width: 767px) {
-                  .auth-hero { display: none !important; }
-                }
-              `}</style>
-            </motion.section>
-          </div>
-        </LayoutGroup>
+            <style>{`
+              @media (max-width: 767px) {
+                .auth-hero { display: none !important; }
+              }
+            `}</style>
+          </section>
+        </div>
       </div>
     </>
   );

@@ -10,15 +10,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ProfileDropdown } from '@/components/ui/profile-dropdown';
 import {
   User,
   CalendarDays,
@@ -126,45 +118,31 @@ export function AuthHeaderButtons() {
   const menuItems = isClient ? clientItems : masterItems;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-full bg-foreground p-1 pl-3 text-sm font-medium text-background transition-opacity hover:opacity-90 focus:outline-none">
-        <span className="hidden sm:inline">{user.name.split(' ')[0]}</span>
-        <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-          {user.name.charAt(0).toUpperCase()}
-        </div>
-      </DropdownMenuTrigger>
-
-      <DropdownMenuContent align="end" className="w-56">
-        {/* User info */}
-        <DropdownMenuGroup>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col gap-0.5">
-              <p className="text-sm font-medium">{user.name}</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
-            </div>
-          </DropdownMenuLabel>
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        {/* Nav items */}
-        <DropdownMenuGroup>
-          {menuItems.map((item) => (
-            <DropdownMenuItem key={item.href} className="cursor-pointer" onClick={() => router.push(item.href)}>
-              <item.icon className="mr-2 size-4 text-muted-foreground" />
-              {item.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuGroup>
-
-        <DropdownMenuSeparator />
-
-        {/* Sign out */}
-        <DropdownMenuItem className="cursor-pointer text-destructive focus:text-destructive" onClick={handleSignOut}>
-          <LogOut className="mr-2 size-4" />
-          {ta('signOut')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ProfileDropdown
+      name={user.name}
+      handle={user.email}
+      initials={user.name.charAt(0).toUpperCase()}
+      items={menuItems.map((item) => ({
+        icon: item.icon,
+        label: item.label,
+        onClick: () => router.push(item.href),
+      }))}
+      bottomAction={{
+        icon: LogOut,
+        label: ta('signOut'),
+        onClick: handleSignOut,
+      }}
+      trigger={
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-full bg-foreground p-1 pl-3 text-sm font-medium text-background transition-opacity hover:opacity-90 focus:outline-none"
+        >
+          <span className="hidden sm:inline">{user.name.split(' ')[0]}</span>
+          <div className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+        </button>
+      }
+    />
   );
 }
