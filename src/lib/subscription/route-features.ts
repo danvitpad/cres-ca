@@ -24,7 +24,7 @@ export const ROUTE_FEATURES: Record<string, RouteFeatureRule> = {
   '/queue': { feature: 'waitlist', requiredTier: 'pro', label: 'Waitlist' },
   // '/voice-notes' merged into client detail page notes section
   '/network': { feature: 'guild_marketing', requiredTier: 'business', label: 'Network marketing' },
-  '/addons': { feature: 'ai_features', requiredTier: 'business', label: 'AI add-ons' },
+  '/integrations': { feature: 'ai_features', requiredTier: 'business', label: 'Integrations' },
 
   // blacklist/loyalty/cadence became filter chips on /clients and sections in /clients/[id]
   '/clients/segments': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Client segments' },
