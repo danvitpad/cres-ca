@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppHome
- * description: Master Mini App home — today KPIs (revenue, count, next slot), next appointment hero, quick actions. Dark theme, framer-motion.
+ * description: Master Mini App home — today KPIs, next appointment hero, quick actions. Flat cards, accent-strip hero (Phase 7.1 redesign).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -151,7 +151,7 @@ export default function MasterMiniAppHome() {
         </p>
       </div>
 
-      {/* Busy toggle */}
+      {/* Busy toggle — flat card */}
       <button
         onClick={async () => {
           haptic('medium');
@@ -166,15 +166,11 @@ export default function MasterMiniAppHome() {
             });
           }
         }}
-        className={`w-full rounded-2xl border p-4 text-left transition-colors ${
-          isBusy
-            ? 'border-rose-500/40 bg-rose-500/15'
-            : 'border-emerald-500/30 bg-emerald-500/10'
-        }`}
+        className="w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left"
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/50">
+            <p className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isBusy ? 'text-rose-300' : 'text-emerald-300'}`}>
               {isBusy ? 'Сейчас занят' : 'Свободен'}
             </p>
             <p className="mt-1 text-base font-bold">
@@ -202,48 +198,47 @@ export default function MasterMiniAppHome() {
         <KpiCard icon={Clock} label="Впереди" value={stats.upcoming.toString()} accent="amber" />
       </div>
 
-      {/* Next appointment hero */}
+      {/* Next appointment hero — flat card with accent strip */}
       {next ? (
         <Link
           href={`/telegram/m/calendar?id=${next.id}`}
           onClick={() => haptic('light')}
-          className="block overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-violet-600/30 via-fuchsia-600/20 to-rose-600/30 p-6 active:scale-[0.98] transition-transform"
+          className="relative block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 active:bg-white/[0.06] transition-colors"
         >
-          <div className="flex items-start justify-between gap-3">
+          <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
+          <div className="flex items-start justify-between gap-3 pl-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/60">Следующая запись</p>
-              <p className="mt-2 text-xl font-bold truncate">{next.service_name}</p>
-              <p className="mt-1 truncate text-sm text-white/70">{next.client_name}</p>
-              <div className="mt-4 flex items-center gap-3 text-[12px] text-white/80">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Следующая запись</p>
+              <p className="mt-2 text-lg font-bold truncate">{next.service_name}</p>
+              <p className="mt-1 truncate text-sm text-white/60">{next.client_name}</p>
+              <div className="mt-3 flex items-center gap-3 text-[12px] text-white/70 tabular-nums">
                 <div className="flex items-center gap-1.5">
                   <Clock className="size-3.5" />
                   {new Date(next.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                   {' – '}
                   {new Date(next.ends_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                 </div>
-                <span className="text-white/40">·</span>
-                <span className="font-semibold">{next.price.toFixed(0)} ₴</span>
+                <span className="text-white/30">·</span>
+                <span className="font-semibold text-white/90">{next.price.toFixed(0)} ₴</span>
               </div>
             </div>
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur">
-              <Calendar className="size-6" />
-            </div>
+            <ChevronRight className="size-5 shrink-0 text-white/30" />
           </div>
         </Link>
       ) : stats.count === 0 ? (
-        <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-white/10">
-            <Sparkles className="size-6 text-white/60" />
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-white/[0.06]">
+            <Sparkles className="size-5 text-white/60" />
           </div>
-          <p className="mt-4 text-base font-semibold">Сегодня записей нет</p>
+          <p className="mt-3 text-base font-semibold">Сегодня записей нет</p>
           <p className="mt-1 text-xs text-white/50">Отдохни или открой слот для новых клиентов</p>
         </div>
       ) : (
-        <div className="rounded-[28px] border border-emerald-500/20 bg-emerald-500/10 p-6 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-emerald-500/20">
-            <AlertCircle className="size-6 text-emerald-300" />
+        <div className="rounded-2xl border border-emerald-500/20 bg-white/[0.03] p-6 text-center">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-emerald-500/15">
+            <AlertCircle className="size-5 text-emerald-300" />
           </div>
-          <p className="mt-4 text-base font-semibold">День закрыт 🎉</p>
+          <p className="mt-3 text-base font-semibold">День закрыт 🎉</p>
           <p className="mt-1 text-xs text-white/60">Все {stats.done} записей выполнены</p>
         </div>
       )}
@@ -258,7 +253,7 @@ export default function MasterMiniAppHome() {
       <Link
         href="/telegram/m/calendar"
         onClick={() => haptic('selection')}
-        className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4 active:scale-[0.99] transition-transform"
+        className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
       >
         <div>
           <p className="text-sm font-semibold">Расписание на день</p>
@@ -283,15 +278,15 @@ function KpiCard({
   value: string;
   accent: 'violet' | 'emerald' | 'amber';
 }) {
-  const accents: Record<string, string> = {
-    violet: 'from-violet-500/25 to-violet-500/5 text-violet-200',
-    emerald: 'from-emerald-500/25 to-emerald-500/5 text-emerald-200',
-    amber: 'from-amber-500/25 to-amber-500/5 text-amber-200',
+  const iconColor: Record<string, string> = {
+    violet: 'text-violet-300',
+    emerald: 'text-emerald-300',
+    amber: 'text-amber-300',
   };
   return (
-    <div className={`rounded-2xl border border-white/10 bg-gradient-to-br ${accents[accent]} p-3`}>
-      <Icon className="size-4 opacity-80" />
-      <p className="mt-2 text-base font-bold text-white">{value}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <Icon className={`size-4 ${iconColor[accent]}`} />
+      <p className="mt-2 text-base font-bold text-white tabular-nums">{value}</p>
       <p className="text-[10px] uppercase tracking-wide text-white/50">{label}</p>
     </div>
   );
@@ -312,10 +307,10 @@ function QuickAction({
     <Link
       href={href}
       onClick={() => haptic('light')}
-      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 active:scale-[0.97] transition-transform"
+      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
     >
-      <div className="flex size-9 items-center justify-center rounded-xl bg-white/10">
-        <Icon className="size-[18px]" />
+      <div className="flex size-9 items-center justify-center rounded-xl bg-white/[0.06]">
+        <Icon className="size-[18px] text-white/80" />
       </div>
       <span className="text-[13px] font-semibold">{label}</span>
     </Link>
