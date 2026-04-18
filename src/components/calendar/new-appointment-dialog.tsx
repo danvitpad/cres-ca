@@ -27,13 +27,15 @@ interface Props {
   defaultClientId?: string;
   defaultServiceId?: string;
   onCreated: () => void;
+  /** Role of the actor creating this appointment. Defaults to 'master' (solo flow). */
+  createdByRole?: 'master' | 'admin' | 'receptionist';
 }
 
 interface ClientOption { id: string; full_name: string }
 interface ServiceOption { id: string; name: string; duration_minutes: number; price: number; currency: string }
 
 export function NewAppointmentDialog({
-  open, onOpenChange, masterId, defaultDate, defaultTime, defaultClientId, defaultServiceId, onCreated,
+  open, onOpenChange, masterId, defaultDate, defaultTime, defaultClientId, defaultServiceId, onCreated, createdByRole = 'master',
 }: Props) {
   const t = useTranslations('calendar');
   const tb = useTranslations('booking');
@@ -96,10 +98,16 @@ export function NewAppointmentDialog({
 
     setSaving(true);
     const supabase = createClient();
+
+    const { data: masterRow } = await supabase
+      .from('masters').select('salon_id').eq('id', masterId).maybeSingle();
+    const masterSalonId = (masterRow as { salon_id: string | null } | null)?.salon_id ?? null;
+
     const { data: inserted, error } = await supabase.from('appointments').insert({
       client_id: clientId,
       master_id: masterId,
       service_id: serviceId,
+      salon_id: masterSalonId,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
       price: service.price,
@@ -107,6 +115,7 @@ export function NewAppointmentDialog({
       notes: notes || null,
       status: 'booked',
       booked_via: 'manual',
+      created_by_role: createdByRole,
     }).select('id').single();
     setSaving(false);
 
