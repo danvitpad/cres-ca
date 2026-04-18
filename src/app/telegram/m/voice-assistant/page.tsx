@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Voice Assistant (Mini App)
- * description: Master Mini App screen showcasing voice commands and recent AI action timeline. Instructs user to open the Telegram bot chat to speak. Flat cards (Phase 7.7).
+ * description: Master Mini App screen showcasing voice commands and recent AI action timeline. Instructs user to open the Telegram bot chat to speak. Flat cards (Phase 7.7, Phase 8.3 polish — animated command highlight + richer action labels).
  * created: 2026-04-18
  * updated: 2026-04-18
  * --- */
@@ -22,6 +22,7 @@ import {
   UserPlus,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -46,6 +47,19 @@ const COMMANDS = [
   { icon: Clock, title: 'Перенос', example: '«Перенеси Машу на субботу на 14»' },
   { icon: UserPlus, title: 'Новый клиент', example: '«Новая клиентка Марина»' },
 ];
+
+const ACTION_LABELS: Record<string, string> = {
+  reminder_created: 'Напоминание',
+  appointment_created: 'Запись создана',
+  appointment_cancelled: 'Запись отменена',
+  appointment_rescheduled: 'Перенос записи',
+  expense_recorded: 'Расход',
+  revenue_recorded: 'Выручка',
+  client_note_added: 'Заметка о клиенте',
+  client_created: 'Новый клиент',
+  inventory_deducted: 'Списание со склада',
+  query: 'Запрос',
+};
 
 const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
 
@@ -106,15 +120,19 @@ export default function VoiceAssistantMiniApp() {
       </button>
 
       <section className="mb-6">
-        <h2 className="text-sm font-medium text-white/40 uppercase tracking-wide mb-2">
-          Что я понимаю
-        </h2>
+        <div className="mb-2 flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+          <h2 className="text-sm font-medium text-white/40 uppercase tracking-wide">Что я умею</h2>
+        </div>
         <div className="grid grid-cols-1 gap-2">
-          {COMMANDS.map((cmd) => {
+          {COMMANDS.map((cmd, i) => {
             const Icon = cmd.icon;
             return (
-              <div
+              <motion.div
                 key={cmd.title}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.04 * i, duration: 0.25 }}
                 className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3"
               >
                 <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center shrink-0">
@@ -124,7 +142,7 @@ export default function VoiceAssistantMiniApp() {
                   <div className="text-sm font-medium">{cmd.title}</div>
                   <div className="text-xs text-white/50 italic truncate">{cmd.example}</div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -132,7 +150,7 @@ export default function VoiceAssistantMiniApp() {
 
       <section>
         <h2 className="text-sm font-medium text-white/40 uppercase tracking-wide mb-2">
-          Последние действия
+          Недавние действия
         </h2>
         {loading ? (
           <div className="space-y-2">
@@ -159,7 +177,7 @@ export default function VoiceAssistantMiniApp() {
                   <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium">{log.action_type}</div>
+                  <div className="text-sm font-medium">{ACTION_LABELS[log.action_type] ?? log.action_type}</div>
                   {log.input_text && (
                     <div className="text-xs text-white/50 italic truncate">
                       «{log.input_text}»
