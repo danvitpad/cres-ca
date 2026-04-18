@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Voice Assistant (Mini App)
- * description: Master Mini App screen showcasing voice commands and recent AI action timeline. Instructs user to open the Telegram bot chat to speak.
+ * description: Master Mini App screen showcasing voice commands and recent AI action timeline. Instructs user to open the Telegram bot chat to speak. Flat cards (Phase 7.7).
  * created: 2026-04-18
  * updated: 2026-04-18
  * --- */
@@ -88,8 +88,8 @@ export default function VoiceAssistantMiniApp() {
     <div className="px-4 py-5 pb-10">
       <header className="mb-5">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-            <Mic className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
+            <Mic className="w-5 h-5 text-violet-300" />
           </div>
           <h1 className="text-xl font-semibold">Голосовой ассистент</h1>
         </div>
@@ -98,13 +98,12 @@ export default function VoiceAssistantMiniApp() {
         </p>
       </header>
 
-      <motion.button
-        whileTap={{ scale: 0.97 }}
+      <button
         onClick={openBot}
-        className="w-full rounded-2xl bg-white text-black font-medium py-3 mb-5 shadow-lg"
+        className="w-full rounded-2xl bg-white text-black font-medium py-3 mb-5 active:bg-white/80 transition-colors"
       >
         Открыть @{BOT_USERNAME}
-      </motion.button>
+      </button>
 
       <section className="mb-6">
         <h2 className="text-sm font-medium text-white/40 uppercase tracking-wide mb-2">
@@ -116,10 +115,10 @@ export default function VoiceAssistantMiniApp() {
             return (
               <div
                 key={cmd.title}
-                className="rounded-xl bg-white/5 border border-white/10 p-3 flex items-start gap-3"
+                className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3"
               >
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-white/80" />
+                <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-white/70" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium">{cmd.title}</div>
@@ -138,11 +137,11 @@ export default function VoiceAssistantMiniApp() {
         {loading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+              <div key={i} className="h-14 rounded-xl bg-white/[0.03] animate-pulse" />
             ))}
           </div>
         ) : logs.length === 0 ? (
-          <div className="rounded-xl bg-white/5 border border-white/10 p-4 text-sm text-white/40 text-center">
+          <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-white/40 text-center">
             Пока нет голосовых команд.
           </div>
         ) : (
@@ -152,7 +151,7 @@ export default function VoiceAssistantMiniApp() {
                 key={log.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-white/5 border border-white/10 p-3 flex items-start gap-3"
+                className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3"
               >
                 {log.status === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
