@@ -1,146 +1,148 @@
 /** --- YAML
- * name: Login Page
- * description: Unified login — 3 role buttons (client/master/company), then email→password flow with full reset sub-flow
+ * name: Auth Page (unified login + register)
+ * description: Single page with 3 role tabs (Клиент/Мастер/Команда). Each tab shows sign-in form by default; bottom link swaps to sign-up on the same page. No navigation between routes. Styled to match landing v6 (Plus Jakarta Sans, violet accent, CSS vars).
  * created: 2026-04-15
- * updated: 2026-04-15
+ * updated: 2026-04-18
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  InputOTPSeparator,
+  InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator,
 } from '@/components/ui/input-otp';
 import {
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Mail,
-  CalendarCheck,
-  User as UserIcon,
-  Building2,
-  ChevronRight,
+  ArrowLeft, Eye, EyeOff, Mail, Shield,
+  CalendarCheck, User as UserIcon, Building2,
 } from 'lucide-react';
 
 type Role = 'client' | 'master' | 'salon_admin';
-type Step =
-  | 'role'
-  | 'email'
-  | 'password'
-  | 'forgot'
-  | 'reset-sent'
-  | 'reset-otp'
-  | 'new-password';
+type Mode = 'signin' | 'signup';
+type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'signup-otp';
 
 const REMEMBER_KEY = 'cres-ca-remember';
 
-export default function LoginPage() {
-  const t = useTranslations('auth');
-  const tc = useTranslations('common');
+/* ───── Themed CSS (mirrors landing v6 palette) ───── */
+const AUTH_CSS = `
+.auth-v6 {
+  --af: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --abg: #ffffff; --abg2: #f8f8f8;
+  --afg: #0a0a0a; --afg2: #555555; --afg3: #888888;
+  --acard: #ffffff; --acb: rgba(0,0,0,.07);
+  --aviolet: #7c3aed; --aviolet-l: #ede9fe;
+  --adanger: #dc2626;
+  font-family: var(--af);
+  background: var(--abg);
+  color: var(--afg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+html.dark .auth-v6 {
+  --abg: #09090b; --abg2: #18181b;
+  --afg: #fafafa; --afg2: #a1a1aa; --afg3: #71717a;
+  --acard: #18181b; --acb: rgba(255,255,255,.08);
+  --aviolet: #a78bfa; --aviolet-l: rgba(167,139,250,.1);
+  --adanger: #f87171;
+}
+.auth-v6 input, .auth-v6 button { font-family: var(--af); }
+.auth-v6 a { color: inherit; text-decoration: none; }
+.auth-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--acb);
+  background: var(--abg);
+  color: var(--afg);
+  font-size: 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.auth-input:focus { border-color: var(--aviolet); box-shadow: 0 0 0 3px color-mix(in oklab, var(--aviolet) 25%, transparent); }
+.auth-label { font-size: 13px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; }
+@keyframes auth-bg-pulse { 0%,100%{opacity:.6;transform:translate(-50%,-50%) scale(1)} 50%{opacity:1;transform:translate(-50%,-50%) scale(1.1)} }
+`;
+
+const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
+  { value: 'client',      label: 'Клиент',   icon: CalendarCheck },
+  { value: 'master',      label: 'Мастер',   icon: UserIcon },
+  { value: 'salon_admin', label: 'Команда',  icon: Building2 },
+];
+
+/** Read remembered {email, role} from localStorage once on mount (safe for SSR). */
+function readRemembered(): { email?: string; role?: Role } {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved = window.localStorage.getItem(REMEMBER_KEY);
+    if (!saved) return {};
+    const p = JSON.parse(saved) as { email?: string; role?: string };
+    const role = p.role && ['client','master','salon_admin'].includes(p.role) ? (p.role as Role) : undefined;
+    return { email: p.email, role };
+  } catch { return {}; }
+}
+
+export default function AuthPage() {
   const router = useRouter();
+  const sp = useSearchParams();
+  const urlMode = sp.get('mode');
+  const urlRole = sp.get('role') as Role | null;
+  const urlEmail = sp.get('email') || '';
 
-  const [role, setRole] = useState<Role | null>(null);
-  const [step, setStep] = useState<Step>('role');
+  const [role, setRole] = useState<Role>(() => {
+    if (urlRole && ['client','master','salon_admin'].includes(urlRole)) return urlRole;
+    return readRemembered().role ?? 'client';
+  });
+  const [mode, setMode] = useState<Mode>(urlMode === 'signup' ? 'signup' : 'signin');
+  const [sub, setSub] = useState<Sub>('form');
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState('');
+
+  // Shared fields — lazy-init email from URL or remembered store
+  const [email, setEmail] = useState(() => urlEmail || readRemembered().email || '');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [otpValue, setOtpValue] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
 
-  useEffect(() => {
+  // Signup-only fields
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [teamName, setTeamName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [terms, setTerms] = useState(false);
+
+  // OTP / reset
+  const [otp, setOtp] = useState('');
+  const [newPwd, setNewPwd] = useState('');
+
+  /* ───── sign-in ───── */
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) return;
+    setLoading(true);
     try {
-      const saved = localStorage.getItem(REMEMBER_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.email) setEmail(parsed.email);
-        if (parsed.role) {
-          setRole(parsed.role);
-          setStep('email');
-        }
-      }
+      localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, role }));
     } catch {}
-  }, []);
-
-  function pickRole(r: Role) {
-    setRole(r);
-    setStep('email');
-  }
-
-  async function handleEmailContinue(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email) return;
-    setLoading(true);
-    try {
-      const res = await fetch('/api/auth/check-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const json = (await res.json()) as { exists: boolean };
-      if (json.exists) {
-        setStep('password');
-      } else {
-        router.push(`/register?role=${role}&email=${encodeURIComponent(email)}`);
-      }
-    } catch {
-      setStep('password');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, role }));
     const supabase = createClient();
-
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      setLoading(false);
-      toast.error(error.message);
-      return;
-    }
+    if (error) { setLoading(false); toast.error(error.message); return; }
 
     const user = data.user;
-    if (!user) {
-      setLoading(false);
-      toast.error(tc('error'));
-      return;
-    }
+    if (!user) { setLoading(false); toast.error('Ошибка входа'); return; }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
     const actualRole = profile?.role ?? 'client';
+    setLoading(false);
 
     if (actualRole === 'client') {
       try {
         const res = await fetch('/api/invite/claim', { method: 'POST' });
         const body = (await res.json()) as { master_id?: string };
-        if (body.master_id) {
-          router.push(`/masters/${body.master_id}`);
-          return;
-        }
+        if (body.master_id) { router.push(`/masters/${body.master_id}`); return; }
       } catch {}
       router.push('/feed');
     } else {
@@ -148,7 +150,90 @@ export default function LoginPage() {
     }
   }
 
-  async function handleOAuthLogin(provider: 'google' | 'facebook') {
+  /* ───── sign-up ───── */
+  async function handleSignUp(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
+    if (!terms) { toast.error('Примите условия использования'); return; }
+
+    setLoading(true);
+    const supabase = createClient();
+    const isTeam = role === 'salon_admin';
+    const fullName = isTeam ? teamName.trim() : `${firstName} ${lastName}`.trim();
+
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: {
+        data: {
+          full_name: fullName || firstName,
+          role,
+          phone: phone ? `+380${phone}` : undefined,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+      },
+    });
+    setLoading(false);
+
+    if (error) { toast.error(error.message); return; }
+    if (data.user && data.user.identities?.length === 0) {
+      toast.error('Этот email уже зарегистрирован');
+      setMode('signin');
+      return;
+    }
+    setSub('signup-otp');
+  }
+
+  async function handleVerifySignupOTP() {
+    if (otp.length !== 8) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
+    setLoading(false);
+    if (error) { toast.error('Неверный код'); setOtp(''); return; }
+    toast.success('Аккаунт подтверждён');
+    if (role === 'client') router.push('/feed');
+    else router.push('/onboarding/account-type');
+  }
+
+  async function handleResendSignupOTP() {
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resend({ type: 'signup', email });
+    setLoading(false);
+    if (error) toast.error(error.message);
+    else toast.success('Код отправлен повторно');
+  }
+
+  /* ───── forgot password ───── */
+  async function handleForgotSend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) { toast.error('Введите email'); return; }
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    setLoading(false);
+    if (error) { toast.error(error.message); return; }
+    setSub('reset-sent');
+  }
+
+  async function handleSetNewPwd(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPwd.length < 6) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { error: verifyErr } = await supabase.auth.verifyOtp({ email, token: otp, type: 'recovery' });
+    if (verifyErr) { toast.error('Неверный код'); setLoading(false); setSub('reset-otp'); setOtp(''); return; }
+    const { error } = await supabase.auth.updateUser({ password: newPwd });
+    setLoading(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Пароль обновлён');
+    setSub('form');
+    setMode('signin');
+    setPassword(''); setOtp(''); setNewPwd('');
+  }
+
+  /* ───── OAuth (clients) ───── */
+  async function handleOAuth(provider: 'google' | 'facebook') {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -157,463 +242,466 @@ export default function LoginPage() {
     if (error) toast.error(error.message);
   }
 
-  async function handleForgotPassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email) {
-      toast.error(t('enterEmail'));
-      return;
-    }
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    setStep('reset-sent');
-  }
-
-  async function handleVerifyResetOTP() {
-    if (otpValue.length !== 6) return;
-    setStep('new-password');
-  }
-
-  async function handleSetNewPassword(e: React.FormEvent) {
-    e.preventDefault();
-    if (newPassword.length < 6) return;
-    setLoading(true);
-    const supabase = createClient();
-
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: otpValue,
-      type: 'recovery',
-    });
-    if (verifyError) {
-      toast.error(t('invalidOTP'));
-      setLoading(false);
-      setStep('reset-otp');
-      setOtpValue('');
-      return;
-    }
-
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(t('passwordUpdated'));
-    setStep('email');
-    setPassword('');
-    setOtpValue('');
-    setNewPassword('');
-  }
-
-  const slideIn = {
-    initial: { opacity: 0, y: 10 },
+  const slide = {
+    initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 },
+    exit: { opacity: 0, y: -8 },
     transition: { duration: 0.2 },
   };
 
-  const roleCards: Array<{
-    value: Role;
-    icon: typeof UserIcon;
-    labelKey: string;
-    descKey: string;
-    tone: string;
-  }> = [
-    { value: 'client', icon: CalendarCheck, labelKey: 'roleClient', descKey: 'userFlowClientDesc', tone: 'primary' },
-    { value: 'master', icon: UserIcon, labelKey: 'roleMaster', descKey: 'userFlowBusinessDesc', tone: 'amber' },
-    { value: 'salon_admin', icon: Building2, labelKey: 'roleSalon', descKey: 'userFlowBusinessDesc', tone: 'emerald' },
-  ];
-
-  const toneClasses: Record<string, string> = {
-    primary: 'bg-primary/10 text-primary',
-    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  };
-
-  const isClient = role === 'client';
-
   return (
-    <div className="fixed inset-0 z-50 flex bg-background">
-      {/* Left side — form */}
-      <div className="relative flex w-full flex-col justify-between p-6 md:w-1/2 md:p-10 lg:p-16">
-        {/* Back */}
-        <div>
-          {step === 'role' ? (
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="size-4" />
-              {t('backToHome')}
-            </Link>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setStep('role');
-                setPassword('');
-              }}
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="size-4" />
-              {tc('back')}
-            </button>
-          )}
+    <>
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+      <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+      <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
+
+      <div className="auth-v6" style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Top bar: logo + back to landing */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '18px clamp(20px,4vw,48px)',
+        }}>
+          <Link href="/" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            fontWeight: 800, fontSize: 17, letterSpacing: '-.03em',
+          }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: 7,
+              background: 'var(--aviolet)', display: 'grid', placeItems: 'center',
+              color: '#fff', fontSize: 12, fontWeight: 900,
+            }}>C</span>
+            CRES-CA
+          </Link>
+          <Link href="/" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 13, color: 'var(--afg3)',
+          }}>
+            <ArrowLeft size={14} /> На главную
+          </Link>
         </div>
 
-        {/* Form */}
-        <div className="flex flex-col gap-6 max-w-sm mx-auto w-full">
-          <AnimatePresence mode="wait">
-            {/* STEP: Role picker */}
-            {step === 'role' && (
-              <motion.div key="role" {...slideIn} className="flex flex-col gap-6">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('userFlowTitle')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">{t('selectRole')}</p>
-                </div>
+        {/* Centered card */}
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px clamp(16px,4vw,48px) 64px', position: 'relative',
+        }}>
+          {/* decorative violet glow */}
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%,-50%)',
+            width: 'min(700px, 90vw)', height: 600,
+            background: 'radial-gradient(ellipse, var(--aviolet-l), transparent 60%)',
+            pointerEvents: 'none', zIndex: 0,
+            animation: 'auth-bg-pulse 8s ease-in-out infinite',
+          }} />
 
-                <div className="flex flex-col gap-3">
-                  {roleCards.map(({ value, icon: Icon, labelKey, descKey, tone }) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => pickRole(value)}
-                      className="group flex items-center gap-4 rounded-xl border border-border bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-md"
-                    >
-                      <div className={`flex size-11 shrink-0 items-center justify-center rounded-full ${toneClasses[tone]}`}>
-                        <Icon className="size-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-foreground">{t(labelKey)}</p>
-                        <p className="text-sm text-muted-foreground mt-0.5 truncate">{t(descKey)}</p>
-                      </div>
-                      <ChevronRight className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                    </button>
-                  ))}
-                </div>
-
-                <p className="text-sm text-muted-foreground text-center">
-                  {t('noAccount')}{' '}
-                  <Link href="/register" className="text-primary hover:underline">
-                    {t('signUp')}
-                  </Link>
-                </p>
-              </motion.div>
-            )}
-
-            {/* STEP: Email */}
-            {step === 'email' && (
-              <motion.div key="email" {...slideIn} className="flex flex-col gap-6">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {role && t(role === 'client' ? 'roleClient' : role === 'master' ? 'roleMaster' : 'roleSalon')}
-                  </p>
-                </div>
-
-                {/* OAuth — clients only */}
-                {isClient && (
-                  <>
-                    <div className="flex flex-col gap-3">
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => handleOAuthLogin('facebook')}
-                      >
-                        <svg className="size-5" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                        {t('continueWithFacebook')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start gap-3 h-11"
-                        onClick={() => handleOAuthLogin('google')}
-                      >
-                        <svg className="size-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                        {t('continueWithGoogle')}
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="text-xs text-muted-foreground uppercase">{tc('or')}</span>
-                      <div className="h-px flex-1 bg-border" />
-                    </div>
-                  </>
-                )}
-
-                <form onSubmit={handleEmailContinue} className="flex flex-col gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">{t('email')}</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder={t('email')}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      autoFocus
-                      className="h-11"
-                    />
-                  </div>
-                  <Button type="submit" className="w-full h-11" disabled={loading}>
-                    {loading ? tc('loading') : t('continue')}
-                  </Button>
-                </form>
-
-                <p className="text-sm text-muted-foreground text-center">
-                  {t('noAccount')}{' '}
-                  <Link
-                    href={`/register?role=${role}&email=${encodeURIComponent(email)}`}
-                    className="text-primary hover:underline"
+          <div style={{
+            position: 'relative', zIndex: 1,
+            width: '100%', maxWidth: 440,
+            background: 'var(--acard)',
+            border: '1px solid var(--acb)',
+            borderRadius: 20,
+            padding: 'clamp(24px,4vw,36px)',
+            boxShadow: '0 24px 60px rgba(0,0,0,.08)',
+          }}>
+            {/* Role tabs */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
+              padding: 4, borderRadius: 12,
+              background: 'var(--abg2)',
+              marginBottom: 24,
+            }}>
+              {ROLES.map(r => {
+                const active = role === r.value;
+                const Icon = r.icon;
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => { setRole(r.value); setSub('form'); }}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      padding: '9px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                      background: active ? 'var(--acard)' : 'transparent',
+                      color: active ? 'var(--afg)' : 'var(--afg3)',
+                      fontSize: 13, fontWeight: 600,
+                      boxShadow: active ? '0 2px 8px rgba(0,0,0,.04)' : 'none',
+                      transition: 'all .15s',
+                    }}
                   >
-                    {t('signUp')}
-                  </Link>
-                </p>
-              </motion.div>
-            )}
-
-            {/* STEP: Password */}
-            {step === 'password' && (
-              <motion.div key="password" {...slideIn} className="flex flex-col gap-6">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('signIn')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">{email}</p>
-                </div>
-
-                <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password">{t('password')}</Label>
-                      <button
-                        type="button"
-                        onClick={() => setStep('forgot')}
-                        className="text-xs text-muted-foreground hover:text-primary transition-colors"
-                      >
-                        {t('forgotPassword')}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        autoFocus
-                        className="h-11 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        tabIndex={-1}
-                      >
-                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full h-11" disabled={loading}>
-                    {loading ? tc('loading') : t('signIn')}
-                  </Button>
-                </form>
-
-                <button
-                  type="button"
-                  onClick={() => setStep('email')}
-                  className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mx-auto"
-                >
-                  <ArrowLeft className="size-3" />
-                  {t('differentEmail')}
-                </button>
-              </motion.div>
-            )}
-
-            {/* STEP: Forgot */}
-            {step === 'forgot' && (
-              <motion.div key="forgot" {...slideIn} className="flex flex-col gap-6 text-center">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('forgotPasswordTitle')}</h1>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {t('forgotPasswordHint')}{' '}
-                    <span className="font-medium text-foreground">{email || t('email')}</span>
-                  </p>
-                </div>
-                <form onSubmit={handleForgotPassword} className="flex flex-col gap-4 text-left">
-                  {!email && (
-                    <div className="space-y-2">
-                      <Label htmlFor="reset-email">{t('email')}</Label>
-                      <Input
-                        id="reset-email"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        autoFocus
-                        className="h-11"
-                      />
-                    </div>
-                  )}
-                  <Button type="submit" className="w-full h-11" disabled={loading}>
-                    {loading ? tc('loading') : t('sendResetCode')}
-                  </Button>
-                </form>
-                <button
-                  type="button"
-                  onClick={() => setStep('password')}
-                  className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mx-auto"
-                >
-                  <ArrowLeft className="size-3" />
-                  {t('backToLogin')}
-                </button>
-              </motion.div>
-            )}
-
-            {/* STEP: Reset sent */}
-            {step === 'reset-sent' && (
-              <motion.div key="reset-sent" {...slideIn} className="flex flex-col gap-6 text-center">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-                  className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10"
-                >
-                  <Mail className="size-7 text-primary" />
-                </motion.div>
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight leading-snug">
-                    {t('resetSentTitle')}
-                  </h1>
-                  <p className="text-sm font-medium text-foreground mt-2">{email}</p>
-                  <p className="text-sm text-muted-foreground mt-3">{t('resetSentDesc')}</p>
-                </div>
-                <Button onClick={() => setStep('email')} className="w-full h-11">
-                  {t('continueLogin')}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => setStep('reset-otp')}
-                  className="text-sm text-primary hover:underline"
-                >
-                  {t('enterOTP')}
-                </button>
-              </motion.div>
-            )}
-
-            {/* STEP: Reset OTP */}
-            {step === 'reset-otp' && (
-              <motion.div key="reset-otp" {...slideIn} className="flex flex-col gap-6 items-center">
-                <div className="text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-                    className="mx-auto mb-3 flex size-14 items-center justify-center rounded-full bg-primary/10"
-                  >
-                    <Mail className="size-7 text-primary" />
-                  </motion.div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('enterOTP')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {t('otpSentTo')} <span className="font-medium text-foreground">{email}</span>
-                  </p>
-                </div>
-                <InputOTP
-                  maxLength={6}
-                  pattern={REGEXP_ONLY_DIGITS}
-                  value={otpValue}
-                  onChange={setOtpValue}
-                  onComplete={handleVerifyResetOTP}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-                <Button className="w-full h-11" onClick={handleVerifyResetOTP} disabled={otpValue.length !== 6}>
-                  {tc('next')}
-                </Button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep('forgot');
-                    setOtpValue('');
-                  }}
-                  className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-                >
-                  <ArrowLeft className="size-3" />
-                  {tc('back')}
-                </button>
-              </motion.div>
-            )}
-
-            {/* STEP: New password */}
-            {step === 'new-password' && (
-              <motion.div key="new-password" {...slideIn} className="flex flex-col gap-6">
-                <div>
-                  <h1 className="text-2xl font-semibold tracking-tight">{t('newPassword')}</h1>
-                  <p className="text-sm text-muted-foreground mt-1">{t('newPasswordDesc')}</p>
-                </div>
-                <form onSubmit={handleSetNewPassword} className="flex flex-col gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">{t('password')}</Label>
-                    <div className="relative">
-                      <Input
-                        id="new-password"
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        required
-                        minLength={6}
-                        autoFocus
-                        className="h-11 pr-10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        tabIndex={-1}
-                      >
-                        {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
-                    </div>
-                  </div>
-                  <Button type="submit" className="w-full h-11" disabled={loading || newPassword.length < 6}>
-                    {loading ? tc('loading') : t('updatePassword')}
-                  </Button>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div />
-      </div>
-
-      {/* Right side — hero */}
-      <div className="hidden md:block md:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/10 to-amber-500/20" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center space-y-4 px-8">
-            <div className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-white/90 shadow-lg backdrop-blur-sm">
-              <span className="text-3xl font-bold text-primary">C</span>
+                    <Icon size={14} />
+                    {r.label}
+                  </button>
+                );
+              })}
             </div>
-            <h2 className="text-xl font-semibold text-foreground/80">CRES-CA</h2>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto">{t('platformDesc')}</p>
+
+            <AnimatePresence mode="wait">
+              {/* Sign-in / sign-up form */}
+              {sub === 'form' && (
+                <motion.div key={`form-${mode}-${role}`} {...slide}>
+                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', margin: 0 }}>
+                    {mode === 'signin' ? 'Вход' : 'Регистрация'}
+                  </h1>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '6px 0 20px' }}>
+                    {mode === 'signin'
+                      ? 'Войдите в свой аккаунт'
+                      : role === 'salon_admin'
+                        ? 'Создайте аккаунт для вашей команды'
+                        : 'Создайте бесплатный аккаунт'}
+                  </p>
+
+                  {/* OAuth — clients only, sign-in only */}
+                  {role === 'client' && mode === 'signin' && (
+                    <>
+                      <OAuthRow onClick={handleOAuth} />
+                      <Divider />
+                    </>
+                  )}
+
+                  <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {mode === 'signup' && role === 'salon_admin' && (
+                      <Field label="Название команды / салона">
+                        <input className="auth-input" value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Beauty Studio" required autoFocus />
+                      </Field>
+                    )}
+                    {mode === 'signup' && role !== 'salon_admin' && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <Field label="Имя">
+                          <input className="auth-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
+                        </Field>
+                        <Field label="Фамилия">
+                          <input className="auth-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
+                        </Field>
+                      </div>
+                    )}
+
+                    <Field label="Email">
+                      <input className="auth-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                        autoFocus={mode === 'signin'} />
+                    </Field>
+
+                    <Field label="Пароль"
+                      right={mode === 'signin' ? (
+                        <button type="button" onClick={() => setSub('forgot')}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--afg3)' }}>
+                          Забыли?
+                        </button>
+                      ) : null}
+                    >
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          className="auth-input"
+                          type={showPwd ? 'text' : 'password'}
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          required
+                          minLength={mode === 'signup' ? 6 : undefined}
+                          style={{ paddingRight: 40 }}
+                        />
+                        <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1}
+                          style={{
+                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)',
+                          }}>
+                          {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </Field>
+
+                    {mode === 'signup' && (
+                      <>
+                        <Field label="Телефон">
+                          <div style={{
+                            display: 'flex', alignItems: 'center', height: 44,
+                            border: '1px solid var(--acb)', borderRadius: 12, overflow: 'hidden',
+                            background: 'var(--abg)',
+                          }}>
+                            <span style={{
+                              padding: '0 12px', fontSize: 14, color: 'var(--afg2)',
+                              borderRight: '1px solid var(--acb)', height: '100%',
+                              display: 'flex', alignItems: 'center', background: 'var(--abg2)',
+                            }}>
+                              +380
+                            </span>
+                            <input
+                              type="tel" inputMode="numeric"
+                              value={phone}
+                              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                              placeholder="501234567"
+                              style={{
+                                flex: 1, height: '100%', padding: '0 12px',
+                                border: 'none', outline: 'none',
+                                background: 'transparent', color: 'var(--afg)', fontSize: 14,
+                              }}
+                            />
+                          </div>
+                        </Field>
+
+                        <label style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 8,
+                          fontSize: 12, color: 'var(--afg2)', cursor: 'pointer', lineHeight: 1.45,
+                        }}>
+                          <input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)}
+                            style={{ marginTop: 2, accentColor: 'var(--aviolet)' }} />
+                          Я принимаю условия использования и политику конфиденциальности
+                        </label>
+                      </>
+                    )}
+
+                    <PrimaryButton disabled={loading || (mode === 'signup' && !terms)} type="submit">
+                      {loading ? '...' : mode === 'signin' ? 'Войти' : 'Создать аккаунт'}
+                    </PrimaryButton>
+                  </form>
+
+                  {/* Toggle mode */}
+                  <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--afg2)', marginTop: 20 }}>
+                    {mode === 'signin' ? 'Нет аккаунта? ' : 'Уже есть аккаунт? '}
+                    <button
+                      type="button"
+                      onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setPassword(''); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'var(--aviolet)', fontWeight: 600, fontSize: 13,
+                        padding: 0, fontFamily: 'var(--af)' }}
+                    >
+                      {mode === 'signin' ? 'Зарегистрироваться' : 'Войти'}
+                    </button>
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Forgot password */}
+              {sub === 'forgot' && (
+                <motion.div key="forgot" {...slide}>
+                  <BackLink onClick={() => setSub('form')} />
+                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', margin: '8px 0 6px' }}>
+                    Забыли пароль?
+                  </h1>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
+                    Отправим код восстановления на email.
+                  </p>
+                  <form onSubmit={handleForgotSend} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <Field label="Email">
+                      <input className="auth-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus />
+                    </Field>
+                    <PrimaryButton disabled={loading} type="submit">
+                      {loading ? '...' : 'Отправить код'}
+                    </PrimaryButton>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* Reset-sent */}
+              {sub === 'reset-sent' && (
+                <motion.div key="reset-sent" {...slide} style={{ textAlign: 'center' }}>
+                  <IconBubble><Mail size={24} /></IconBubble>
+                  <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 4px' }}>
+                    Проверьте почту
+                  </h1>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 4px' }}>{email}</p>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '8px 0 20px' }}>
+                    Мы отправили 6-значный код. Введите его на следующем шаге.
+                  </p>
+                  <PrimaryButton onClick={() => setSub('reset-otp')} type="button">
+                    Ввести код
+                  </PrimaryButton>
+                </motion.div>
+              )}
+
+              {/* Reset OTP */}
+              {sub === 'reset-otp' && (
+                <motion.div key="reset-otp" {...slide} style={{ textAlign: 'center' }}>
+                  <IconBubble><Mail size={24} /></IconBubble>
+                  <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 4px' }}>Код из письма</h1>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
+                    Отправлен на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+                    <InputOTP maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
+                      onComplete={() => otp.length === 6 && setSub('new-password')}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <PrimaryButton disabled={otp.length !== 6} onClick={() => setSub('new-password')} type="button">
+                    Далее
+                  </PrimaryButton>
+                  <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>
+                    Назад
+                  </button>
+                </motion.div>
+              )}
+
+              {/* New password */}
+              {sub === 'new-password' && (
+                <motion.div key="new-password" {...slide}>
+                  <BackLink onClick={() => { setSub('reset-otp'); setNewPwd(''); }} />
+                  <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-.02em', margin: '8px 0 6px' }}>
+                    Новый пароль
+                  </h1>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
+                    Минимум 6 символов
+                  </p>
+                  <form onSubmit={handleSetNewPwd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <Field label="Пароль">
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          className="auth-input"
+                          type={showNewPwd ? 'text' : 'password'}
+                          value={newPwd} onChange={e => setNewPwd(e.target.value)}
+                          required minLength={6} autoFocus
+                          style={{ paddingRight: 40 }}
+                        />
+                        <button type="button" onClick={() => setShowNewPwd(v => !v)} tabIndex={-1}
+                          style={{
+                            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)',
+                          }}>
+                          {showNewPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </Field>
+                    <PrimaryButton disabled={loading || newPwd.length < 6} type="submit">
+                      {loading ? '...' : 'Сохранить'}
+                    </PrimaryButton>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* Signup OTP */}
+              {sub === 'signup-otp' && (
+                <motion.div key="signup-otp" {...slide} style={{ textAlign: 'center' }}>
+                  <IconBubble><Shield size={24} /></IconBubble>
+                  <h1 style={{ fontSize: 22, fontWeight: 800, margin: '12px 0 4px' }}>Подтверждение email</h1>
+                  <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 20px' }}>
+                    Отправлен код на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+                    <InputOTP maxLength={8} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
+                      onComplete={handleVerifySignupOTP}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={4} /><InputOTPSlot index={5} /><InputOTPSlot index={6} /><InputOTPSlot index={7} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <PrimaryButton disabled={loading || otp.length !== 8} onClick={handleVerifySignupOTP} type="button">
+                    {loading ? '...' : 'Подтвердить'}
+                  </PrimaryButton>
+                  <button type="button" onClick={handleResendSignupOTP} disabled={loading}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--aviolet)', fontSize: 13, marginTop: 12, fontWeight: 600 }}>
+                    Отправить повторно
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+/* ───── Small UI helpers ───── */
+
+function Field({ label, right, children }: { label: string; right?: ReactNode; children: ReactNode }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span className="auth-label" style={{ margin: 0 }}>{label}</span>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function PrimaryButton({
+  children, onClick, disabled, type = 'button',
+}: { children: ReactNode; onClick?: () => void; disabled?: boolean; type?: 'button' | 'submit' }) {
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: '100%', height: 44, borderRadius: 12,
+        background: 'var(--aviolet)', color: '#fff',
+        border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 14, fontWeight: 600,
+        opacity: disabled ? 0.55 : 1,
+        transition: 'all .2s',
+        boxShadow: disabled ? 'none' : '0 4px 16px rgba(124,58,237,.25)',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function BackLink({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 13, color: 'var(--afg3)', padding: 0, marginBottom: 8,
+        fontFamily: 'var(--af)',
+      }}>
+      <ArrowLeft size={14} /> Назад
+    </button>
+  );
+}
+
+function IconBubble({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      width: 56, height: 56, borderRadius: '50%',
+      background: 'var(--aviolet-l)', color: 'var(--aviolet)',
+      display: 'grid', placeItems: 'center', margin: '0 auto',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0' }}>
+      <div style={{ flex: 1, height: 1, background: 'var(--acb)' }} />
+      <span style={{ fontSize: 11, color: 'var(--afg3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>или</span>
+      <div style={{ flex: 1, height: 1, background: 'var(--acb)' }} />
+    </div>
+  );
+}
+
+function OAuthRow({ onClick }: { onClick: (p: 'google' | 'facebook') => void }) {
+  const btnStyle: React.CSSProperties = {
+    flex: 1, height: 44, borderRadius: 12,
+    border: '1px solid var(--acb)', background: 'var(--abg)', color: 'var(--afg)',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+    fontFamily: 'var(--af)',
+  };
+  return (
+    <div style={{ display: 'flex', gap: 10 }}>
+      <button type="button" onClick={() => onClick('google')} style={btnStyle}>
+        <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Google
+      </button>
+      <button type="button" onClick={() => onClick('facebook')} style={btnStyle}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        Facebook
+      </button>
     </div>
   );
 }

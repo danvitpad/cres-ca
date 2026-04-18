@@ -11,7 +11,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useLocale } from 'next-intl';
-import { AuthHeaderButtons } from '@/components/landing/auth-header-buttons';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
 
 /* ═══ Theme-aware CSS vars ═══ */
@@ -344,7 +343,21 @@ export default function LandingPage() {
                 Тарифы
               </a>
               <LanguageSwitcher />
-              <AuthHeaderButtons />
+              <Link href="/login" style={{
+                padding: '7px 14px', fontSize: 13, fontWeight: 500,
+                color: 'var(--lfg2)', borderRadius: 99,
+              }}>
+                Войти
+              </Link>
+              <Link href="/login?mode=signup" style={{
+                padding: '8px 18px', borderRadius: 99,
+                background: 'var(--lviolet)', color: '#fff',
+                fontSize: 13, fontWeight: 600,
+                marginLeft: 4,
+                boxShadow: '0 2px 12px rgba(124,58,237,.25)',
+              }}>
+                Начать бесплатно
+              </Link>
             </div>
           </div>
         </nav>
