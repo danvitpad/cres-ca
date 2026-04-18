@@ -35,9 +35,12 @@ DELETE FROM public.master_partnerships p
 WHERE NOT EXISTS (SELECT 1 FROM public.masters m WHERE m.id = p.master_id)
    OR NOT EXISTS (SELECT 1 FROM public.masters m WHERE m.id = p.partner_id);
 
--- (4) Clear any masters whose avatar_url is an obviously broken stub
+-- (4) Clear any masters whose avatar_url is a 3rd-party placeholder service
+-- (these can't render through next/image because the domain is not whitelisted)
 UPDATE public.masters
 SET avatar_url = NULL
 WHERE avatar_url ILIKE '%example.com%'
    OR avatar_url ILIKE '%placeholder%'
+   OR avatar_url ILIKE '%pravatar.cc%'
+   OR avatar_url ILIKE '%i.pravatar%'
    OR avatar_url = '';
