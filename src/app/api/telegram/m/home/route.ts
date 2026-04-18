@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   today.setUTCHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
-  const [{ data: todayApts }, { data: upcoming }] = await Promise.all([
+  const [{ data: todayApts }, { data: upcoming }, { count: voiceActions }] = await Promise.all([
     admin
       .from('appointments')
       .select('id, status, price, starts_at')
@@ -63,6 +63,11 @@ export async function POST(request: Request) {
       .eq('master_id', master.id)
       .gte('starts_at', tomorrow.toISOString())
       .not('status', 'in', '("cancelled","cancelled_by_client","cancelled_by_master","no_show")'),
+    admin
+      .from('ai_actions_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('master_id', master.id)
+      .eq('source', 'voice'),
   ]);
 
   const todayCount = todayApts?.length ?? 0;
@@ -75,6 +80,7 @@ export async function POST(request: Request) {
     profile,
     master,
     stats: { todayCount, todayRevenue, upcomingCount },
+    voiceUsed: (voiceActions ?? 0) > 0,
   });
 }
 

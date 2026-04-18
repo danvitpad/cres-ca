@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppClientCard
- * description: Master Mini App client card — summary, health/allergies, visit history, notes, files. Quick actions: call, book, add note.
+ * description: Master Mini App client card — summary, health/allergies, visit history with 🎙 voice markers and transcript reveal, notes, files. Quick actions: call, book, add note.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-18
  * --- */
 
 'use client';
@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
   Phone,
@@ -21,6 +21,7 @@ import {
   Save,
   Crown,
   TrendingUp,
+  Mic,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -63,6 +64,7 @@ interface VisitRow {
   status: string;
   price: number;
   service_name: string;
+  voice_transcript: string | null;
 }
 
 interface FileRow {
@@ -85,6 +87,7 @@ export default function MasterMiniAppClientCard() {
   const [loading, setLoading] = useState(true);
   const [noteDraft, setNoteDraft] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [openTranscriptId, setOpenTranscriptId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!params?.id || !userId) return;
@@ -111,6 +114,7 @@ export default function MasterMiniAppClientCard() {
         price: number | null;
         service: { name: string } | { name: string }[] | null;
       };
+      const voiceMap = (json.voiceActions ?? {}) as Record<string, { transcript: string | null; action: string }>;
       const mapped: VisitRow[] = ((json.visits ?? []) as A[]).map((r) => {
         const svc = Array.isArray(r.service) ? r.service[0] : r.service;
         return {
@@ -119,6 +123,7 @@ export default function MasterMiniAppClientCard() {
           status: r.status,
           price: Number(r.price ?? 0),
           service_name: svc?.name ?? '—',
+          voice_transcript: voiceMap[r.id]?.transcript ?? null,
         };
       });
       setVisits(mapped);
@@ -288,19 +293,55 @@ export default function MasterMiniAppClientCard() {
           </p>
         ) : (
           <ul className="space-y-2">
-            {visits.map((v) => (
-              <li key={v.id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold">{v.service_name}</p>
-                  <p className="mt-0.5 text-[10px] text-white/50">
-                    {new Date(v.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    {' · '}
-                    {v.status}
-                  </p>
-                </div>
-                <p className="shrink-0 text-[12px] font-bold text-white/80">{v.price.toFixed(0)} ₴</p>
-              </li>
-            ))}
+            {visits.map((v) => {
+              const hasVoice = Boolean(v.voice_transcript);
+              const expanded = openTranscriptId === v.id;
+              return (
+                <li key={v.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                  <div className="flex items-center justify-between p-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-[13px] font-semibold">{v.service_name}</p>
+                        {hasVoice && (
+                          <button
+                            onClick={() => {
+                              haptic('selection');
+                              setOpenTranscriptId(expanded ? null : v.id);
+                            }}
+                            aria-label="Создано голосом"
+                            className="flex size-5 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-violet-300 active:bg-white/[0.06] transition-colors"
+                          >
+                            <Mic className="size-3" />
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-[10px] text-white/50">
+                        {new Date(v.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {' · '}
+                        {v.status}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-[12px] font-bold text-white/80">{v.price.toFixed(0)} ₴</p>
+                  </div>
+                  <AnimatePresence initial={false}>
+                    {expanded && v.voice_transcript && (
+                      <motion.div
+                        key="transcript"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="border-t border-white/10 bg-white/[0.03] px-3 py-2"
+                      >
+                        <p className="text-[11px] italic text-white/70">
+                          <span className="not-italic text-violet-300">🎙</span> «{v.voice_transcript}»
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

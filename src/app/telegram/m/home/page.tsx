@@ -1,6 +1,6 @@
 /** --- YAML
  * name: MasterMiniAppHome
- * description: Master Mini App home — today KPIs, next appointment hero, quick actions. Flat cards, accent-strip hero (Phase 7.1 redesign).
+ * description: Master Mini App home — today KPIs, next appointment hero, quick actions, Voice AI CTA (Phase 8.2c). First-visit redirect to /voice-intro.
  * created: 2026-04-13
  * updated: 2026-04-18
  * --- */
@@ -9,8 +9,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, TrendingUp, Users, Clock, ChevronRight, Sparkles, AlertCircle } from 'lucide-react';
+import { Calendar, TrendingUp, Users, Clock, ChevronRight, Sparkles, AlertCircle, Mic } from 'lucide-react';
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -47,12 +48,22 @@ interface TodayStats {
 export default function MasterMiniAppHome() {
   const { user, ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const router = useRouter();
   const [masterId, setMasterId] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [next, setNext] = useState<NextApt | null>(null);
   const [stats, setStats] = useState<TodayStats>({ count: 0, revenue: 0, done: 0, upcoming: 0 });
   const [loading, setLoading] = useState(true);
   const [isBusy, setIsBusy] = useState(false);
+  const [voiceUsed, setVoiceUsed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const seen = localStorage.getItem('cres:voice-intro-seen');
+      if (!seen) router.replace('/telegram/m/voice-intro');
+    } catch { /* ignore */ }
+  }, [ready, router]);
 
   useEffect(() => {
     if (!userId) return;
@@ -72,6 +83,7 @@ export default function MasterMiniAppHome() {
       setMasterId(ctx.master.id);
       setProfileName(ctx.profile?.full_name?.split(' ')[0] || null);
       setIsBusy(Boolean(ctx.master.is_busy));
+      setVoiceUsed(Boolean(ctx.voiceUsed));
 
       // Step 2 — full today appointments (for "next" card)
       const today = new Date();
@@ -263,6 +275,27 @@ export default function MasterMiniAppHome() {
         </div>
         <ChevronRight className="size-4 text-white/40" />
       </Link>
+
+      {/* Voice assistant CTA — shown until master sends first voice command */}
+      {voiceUsed === false && (
+        <Link
+          href="/telegram/m/voice-intro"
+          onClick={() => haptic('light')}
+          className="relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
+        >
+          <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
+          <div className="flex items-center gap-3 pl-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+              <Mic className="size-4 text-violet-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Голосовой помощник</p>
+              <p className="mt-0.5 text-[11px] text-white/50">Запиши клиента одной фразой в Telegram</p>
+            </div>
+          </div>
+          <ChevronRight className="size-4 text-white/40" />
+        </Link>
+      )}
     </motion.div>
   );
 }
