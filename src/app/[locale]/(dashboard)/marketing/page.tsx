@@ -65,7 +65,7 @@ export default function MarketingPage() {
         </p>
       </div>
 
-      <div style={{ marginBottom: 24, overflowX: 'auto' }}>
+      <div style={{ marginBottom: 24, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
         <PillTabs items={TABS} value={activeTab} onChange={setTab} />
       </div>
 
