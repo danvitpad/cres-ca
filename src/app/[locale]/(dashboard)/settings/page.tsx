@@ -7,7 +7,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -33,6 +34,7 @@ import {
   Layers,
   KeyRound,
   Briefcase,
+  MessageSquareHeart,
 } from 'lucide-react';
 import { DEFAULT_FEATURES, type VerticalFeatures } from '@/lib/verticals/feature-flags';
 import {
@@ -54,6 +56,7 @@ type WorkingHours = Record<string, WorkingDay>;
 export default function SettingsPage() {
   const t = useTranslations('profile');
   const tc = useTranslations('common');
+  const locale = useLocale();
   const { master, loading, refetch } = useMaster();
   const { userId } = useAuthStore();
   const searchParams = useSearchParams();
@@ -83,7 +86,13 @@ export default function SettingsPage() {
     );
   }
 
-  const settingSections = [
+  const settingSections: Array<{
+    key: string;
+    icon: typeof UserCircle;
+    title: string;
+    desc: string;
+    href?: string;
+  }> = [
     { key: 'profile', icon: UserCircle, title: t('editProfile'), desc: t('profileDesc') || t('editProfile') },
     { key: 'vertical', icon: Briefcase, title: 'Моя сфера', desc: 'Индустрия и шаблоны услуг' },
     { key: 'features', icon: Layers, title: 'Модули', desc: 'Что включено в дашборде' },
@@ -93,6 +102,7 @@ export default function SettingsPage() {
     { key: 'invite', icon: LinkIcon, title: t('inviteLink'), desc: t('inviteDesc') || t('inviteLink') },
     { key: 'policies', icon: Shield, title: t('policies'), desc: t('policiesDesc') || t('policies') },
     { key: 'notifications', icon: BellRing, title: 'Уведомления', desc: 'Напоминания на сайте и в Telegram' },
+    { key: 'feedback', icon: MessageSquareHeart, title: 'Обратная связь', desc: 'Напишите команде CRES-CA', href: `/${locale}/settings/feedback` },
   ];
 
   if (activeSection) {
@@ -129,15 +139,8 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {settingSections.map((section, i) => {
           const Icon = section.icon;
-          return (
-            <motion.button
-              key={section.key}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => setActiveSection(section.key)}
-              className="flex flex-col items-start gap-3 rounded-2xl border bg-card p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5 group"
-            >
+          const cardInner = (
+            <>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                 <Icon className="h-5 w-5" />
               </div>
@@ -145,6 +148,34 @@ export default function SettingsPage() {
                 <h3 className="font-semibold text-sm">{section.title}</h3>
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{section.desc}</p>
               </div>
+            </>
+          );
+          const cardCls =
+            'flex flex-col items-start gap-3 rounded-2xl border bg-card p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5 group';
+          if (section.href) {
+            return (
+              <motion.div
+                key={section.key}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <Link href={section.href} className={cardCls}>
+                  {cardInner}
+                </Link>
+              </motion.div>
+            );
+          }
+          return (
+            <motion.button
+              key={section.key}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => setActiveSection(section.key)}
+              className={cardCls}
+            >
+              {cardInner}
             </motion.button>
           );
         })}
