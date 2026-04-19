@@ -1564,6 +1564,7 @@
     "contact": "Контакты",
     "terms": "Условия",
     "privacy": "Конфиденциальность",
+    "cookies": "Cookie",
     "rights": "Все права защищены"
   },
   "nav": {
@@ -1747,6 +1748,24 @@
     "rightsText": "Вы имеете право на доступ, исправление или удаление персональных данных. Обращайтесь: support@cres-ca.com.",
     "contactTitle": "7. Связаться с нами",
     "contactText": "По вопросам конфиденциальности обращайтесь: support@cres-ca.com или Telegram @CresCASupport."
+  },
+  "cookies": {
+    "title": "Политика cookie",
+    "lastUpdated": "Последнее обновление: 19 апреля 2026",
+    "whatTitle": "1. Что такое cookie",
+    "whatText": "Cookie — это небольшие текстовые файлы, которые сайт сохраняет в вашем браузере, чтобы запоминать сессию, настройки и данные аутентификации.",
+    "typesTitle": "2. Какие cookie мы используем",
+    "typesText": "CRES-CA использует только функциональные (обязательные) cookie. Рекламных и трекинговых cookie нет.",
+    "essentialTitle": "3. Обязательные cookie",
+    "essentialText": "Используются для работы сессии и входа (Supabase Auth), сохранения выбранной локали (ru/en/uk) и CSRF-защиты. Без них вход в систему невозможен.",
+    "analyticsTitle": "4. Аналитические cookie",
+    "analyticsText": "Мы не используем сторонние аналитические сервисы (Google Analytics, Yandex Metrica и т.п.) в dashboard. Анонимная статистика собирается только на публичных лендинг-страницах.",
+    "thirdPartyTitle": "5. Cookie третьих сторон",
+    "thirdPartyText": "Telegram WebApp устанавливает свои cookie при работе Mini App. Платёжный провайдер Hutko может устанавливать cookie на своей странице оплаты. Мы не контролируем их политики.",
+    "controlTitle": "6. Управление cookie",
+    "controlText": "Вы можете удалить или заблокировать cookie в настройках браузера. Без обязательных cookie вход и работа в системе станут невозможны.",
+    "contactTitle": "7. Контакты",
+    "contactText": "Вопросы по cookie: support@cres-ca.com или Telegram @CresCASupport."
   },
   "onboarding": {
     "accountTypeTitle": "Как вы хотите настроить профессиональный аккаунт?",

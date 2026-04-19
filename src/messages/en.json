@@ -1555,6 +1555,7 @@
     "contact": "Contact",
     "terms": "Terms",
     "privacy": "Privacy",
+    "cookies": "Cookies",
     "rights": "All rights reserved"
   },
   "nav": {
@@ -1738,6 +1739,24 @@
     "rightsText": "You have the right to access, correct, or delete your personal data. Contact us at support@cres-ca.com.",
     "contactTitle": "7. Contact Us",
     "contactText": "For privacy-related questions, contact us at support@cres-ca.com or via Telegram @CresCASupport."
+  },
+  "cookies": {
+    "title": "Cookies Policy",
+    "lastUpdated": "Last updated: April 19, 2026",
+    "whatTitle": "1. What are cookies",
+    "whatText": "Cookies are small text files stored in your browser by a website to remember session, preferences, and authentication data.",
+    "typesTitle": "2. Cookies we use",
+    "typesText": "CRES-CA uses only functional (essential) cookies. There are no advertising or tracking cookies.",
+    "essentialTitle": "3. Essential cookies",
+    "essentialText": "Used for session and sign-in (Supabase Auth), locale preference (ru/en/uk), and CSRF protection. Without them, sign-in is not possible.",
+    "analyticsTitle": "4. Analytics cookies",
+    "analyticsText": "We do not use third-party analytics services (Google Analytics, Yandex Metrica, etc.) inside the dashboard. Anonymous stats are collected only on public landing pages.",
+    "thirdPartyTitle": "5. Third-party cookies",
+    "thirdPartyText": "Telegram WebApp sets its own cookies while the Mini App runs. The payment provider Hutko may set cookies on its checkout page. We do not control their policies.",
+    "controlTitle": "6. Managing cookies",
+    "controlText": "You can delete or block cookies via your browser settings. Without essential cookies, sign-in and dashboard usage will not work.",
+    "contactTitle": "7. Contact",
+    "contactText": "Questions about cookies: support@cres-ca.com or Telegram @CresCASupport."
   },
   "onboarding": {
     "accountTypeTitle": "How would you like to set up your professional account?",
