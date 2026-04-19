@@ -431,6 +431,8 @@
       "continueSetup": "Continue setup",
       "notifications": "Notifications",
       "markAllRead": "Mark all as read",
+      "clearAll": "Clear all",
+      "dismiss": "Dismiss notification",
       "noNewNotifications": "No new notifications",
       "noNewNotificationsDesc": "You'll see updates about bookings, messages and changes here",
       "myProfile": "My profile",

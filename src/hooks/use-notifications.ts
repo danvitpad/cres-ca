@@ -1,7 +1,8 @@
 /** --- YAML
  * name: useNotifications
- * description: Hook for fetching, marking read, and realtime-subscribing to user notifications. Tracks follow states for social notifications.
+ * description: Hook for fetching, marking read, dismissing, and realtime-subscribing to user notifications. Tracks follow states for social notifications.
  * created: 2026-04-16
+ * updated: 2026-04-19
  * --- */
 
 import { useCallback, useEffect, useState, useRef } from 'react';
@@ -23,6 +24,7 @@ export interface Notification {
   sent_at: string | null;
   created_at: string;
   read_at: string | null;
+  dismissed_at: string | null;
   data: NotifData | null;
 }
 
@@ -37,8 +39,9 @@ export function useNotifications(userId: string | null) {
     const supabase = createClient();
     const { data } = await supabase
       .from('notifications')
-      .select('id, title, body, channel, status, sent_at, created_at, read_at, data')
+      .select('id, title, body, channel, status, sent_at, created_at, read_at, dismissed_at, data')
       .eq('profile_id', userId)
+      .is('dismissed_at', null)
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -106,6 +109,25 @@ export function useNotifications(userId: string | null) {
       .is('read_at', null);
   }, [userId]);
 
+  const dismiss = useCallback(async (id: string) => {
+    const now = new Date().toISOString();
+    setItems(prev => prev.filter(n => n.id !== id));
+    const supabase = createClient();
+    await supabase.from('notifications').update({ dismissed_at: now }).eq('id', id);
+  }, []);
+
+  const dismissAll = useCallback(async () => {
+    if (!userId) return;
+    const now = new Date().toISOString();
+    setItems([]);
+    const supabase = createClient();
+    await supabase
+      .from('notifications')
+      .update({ dismissed_at: now })
+      .eq('profile_id', userId)
+      .is('dismissed_at', null);
+  }, [userId]);
+
   const toggleFollow = useCallback(async (targetId: string) => {
     setFollowStates(prev => ({ ...prev, [targetId]: 'loading' }));
     try {
@@ -125,5 +147,5 @@ export function useNotifications(userId: string | null) {
 
   const unreadCount = items.filter(n => !n.read_at).length;
 
-  return { items, unreadCount, loading, followStates, markRead, markAllRead, toggleFollow, refetch: fetchItems };
+  return { items, unreadCount, loading, followStates, markRead, markAllRead, dismiss, dismissAll, toggleFollow, refetch: fetchItems };
 }

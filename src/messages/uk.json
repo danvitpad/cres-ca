@@ -413,6 +413,8 @@
       "continueSetup": "Продовжити налаштування",
       "notifications": "Сповіщення",
       "markAllRead": "Позначити все",
+      "clearAll": "Очистити все",
+      "dismiss": "Приховати сповіщення",
       "noNewNotifications": "Немає нових сповіщень",
       "noNewNotificationsDesc": "Тут з'являться сповіщення про записи, повідомлення та оновлення",
       "myProfile": "Мій профіль",
