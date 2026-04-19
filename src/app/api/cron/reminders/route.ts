@@ -1,8 +1,8 @@
 /** --- YAML
  * name: Appointment Reminder Cron
- * description: Creates reminder notifications for appointments at 24h and 2h marks. Uses per-master message_templates (reminder_24h, reminder_2h) if defined, else falls back to built-in defaults. Variables: {client_name}, {service_name}, {time}, {date}, {master_name}.
+ * description: Creates reminder notifications for appointments at 24h / 2h / 30min marks. 24h and 2h use per-master message_templates (reminder_24h, reminder_2h) when set, else defaults. 30-min pre-visit sends master a context-rich push with client notes / allergies / visit count (toggle pre_visit_master). Variables: {client_name}, {service_name}, {time}, {date}, {master_name}.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-19
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -177,6 +177,61 @@ export async function GET(request: Request) {
       });
       created++;
     }
+  }
+
+  // Master pre-visit brief — 30 min before appointment (with client context)
+  const in20m = new Date(now.getTime() + 20 * 60 * 1000);
+  const in40m = new Date(now.getTime() + 40 * 60 * 1000);
+  const { data: upcomingPreVisit } = await supabase
+    .from('appointments')
+    .select(
+      'id, starts_at, status, client_id, master_id, clients(full_name, notes, allergies, has_health_alert, last_visit_at, total_visits), services(name), masters(profile_id, display_name)',
+    )
+    .in('status', ['booked', 'confirmed'])
+    .gte('starts_at', in20m.toISOString())
+    .lte('starts_at', in40m.toISOString());
+
+  const masterIdsPv = Array.from(new Set((upcomingPreVisit ?? []).map((a) => a.master_id)));
+  const settingsPv = await loadAutomationSettings(supabase, masterIdsPv);
+
+  for (const apt of upcomingPreVisit || []) {
+    if (!isEnabled(settingsPv, apt.master_id, 'pre_visit_master')) continue;
+    const client = apt.clients as unknown as {
+      full_name: string;
+      notes: string | null;
+      allergies: string[] | null;
+      has_health_alert: boolean | null;
+      last_visit_at: string | null;
+      total_visits: number | null;
+    } | null;
+    const service = apt.services as unknown as { name: string } | null;
+    const master = apt.masters as unknown as { profile_id: string | null } | null;
+    if (!master?.profile_id) continue;
+
+    const time = new Date(apt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const parts: string[] = [];
+    parts.push(`${client?.full_name ?? 'Клиент'} — ${service?.name ?? 'услуга'} в ${time}`);
+    if (client?.has_health_alert) parts.push('⚠️ Health alert — проверь карту клиента');
+    if (client?.allergies?.length) parts.push(`Аллергии: ${client.allergies.join(', ')}`);
+    if (client?.notes) {
+      const last = client.notes.split('\n').slice(-1)[0].trim();
+      if (last) parts.push(`Заметка: ${last.slice(0, 160)}`);
+    }
+    if (client?.total_visits) {
+      const visit = client.total_visits === 1 ? 'первый визит' : `${client.total_visits}-й визит`;
+      parts.push(visit);
+    } else {
+      parts.push('новый клиент');
+    }
+
+    await supabase.from('notifications').insert({
+      profile_id: master.profile_id,
+      channel: 'telegram',
+      title: '⏳ Через 30 минут',
+      body: parts.join('\n'),
+      scheduled_for: now.toISOString(),
+    });
+    created++;
   }
 
   return NextResponse.json({ created });

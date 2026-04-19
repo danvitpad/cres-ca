@@ -38,7 +38,7 @@ import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
   Mic, Square, Users, BarChart3, Bell,
   Phone, Mail, Cake, Calendar as CalendarIcon, FileText,
-  Heart, Camera,
+  Heart, Camera, Star,
 } from 'lucide-react';
 import {
   FONT, FONT_FEATURES, CURRENCY,
@@ -96,6 +96,15 @@ interface FamilyMember {
   linked_profile_id: string | null;
 }
 
+interface ReviewRow {
+  id: string;
+  score: number;
+  comment: string | null;
+  photos: string[] | null;
+  is_published: boolean;
+  created_at: string;
+}
+
 /* ────────────────────── Main Page ────────────────────── */
 
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -112,6 +121,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [blacklist, setBlacklist] = useState<{ warning: boolean; total: number } | null>(null);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadClient = useCallback(async () => {
@@ -166,10 +176,30 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     if (data) setAppointments(data as unknown as AppointmentRow[]);
   }, [id]);
 
+  const loadReviews = useCallback(async () => {
+    if (!client?.profile_id || !master?.id) {
+      setReviews([]);
+      return;
+    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('reviews')
+      .select('id, score, comment, photos, is_published, created_at')
+      .eq('reviewer_id', client.profile_id)
+      .eq('target_type', 'master')
+      .eq('target_id', master.id)
+      .order('created_at', { ascending: false });
+    setReviews((data ?? []) as ReviewRow[]);
+  }, [client?.profile_id, master?.id]);
+
   useEffect(() => {
     loadClient(); // eslint-disable-line react-hooks/set-state-in-effect
     loadAppointments();
   }, [loadClient, loadAppointments]);
+
+  useEffect(() => {
+    loadReviews(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [loadReviews]);
 
   if (loading) {
     return (
@@ -404,6 +434,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         <h3 style={sectionTitle}><CalendarIcon size={15} style={{ color: C.accent }} />История посещений</h3>
         <HistoryTab appointments={appointments} clientId={id} C={C} />
       </motion.section>
+
+      {/* ═══ Section: Reviews left by this client ═══ */}
+      {reviews.length > 0 && (
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }} style={sectionStyle}>
+          <h3 style={sectionTitle}><Star size={15} style={{ color: C.warning }} />Отзывы клиента</h3>
+          <ReviewsTab reviews={reviews} C={C} />
+        </motion.section>
+      )}
 
       {/* ═══ Section: Analytics / CLV ═══ */}
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={sectionStyle}>
@@ -803,6 +841,76 @@ function HealthTab({ client, intake, vertical, onSaved, C }: {
           </div>
           <Button onClick={handleSave} disabled={saving}>{saving ? tc('loading') : tc('save')}</Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ────────────────────── Reviews Tab ────────────────────── */
+
+function ReviewsTab({ reviews, C }: { reviews: ReviewRow[]; C: PageTheme }) {
+  const avg = reviews.reduce((s, r) => s + r.score, 0) / reviews.length;
+
+  return (
+    <div style={cardStyle(C)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Star key={i} size={16} style={{
+              fill: i <= Math.round(avg) ? C.warning : 'transparent',
+              color: i <= Math.round(avg) ? C.warning : C.border,
+            }} />
+          ))}
+        </div>
+        <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>
+          {avg.toFixed(1)}
+        </span>
+        <span style={{ fontSize: 12, color: C.textSecondary }}>
+          · {reviews.length} {reviews.length === 1 ? 'отзыв' : reviews.length < 5 ? 'отзыва' : 'отзывов'}
+        </span>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {reviews.map((r) => (
+          <div key={r.id} style={{
+            borderRadius: 10, border: `1px solid ${C.border}`, padding: 14,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star key={i} size={13} style={{
+                    fill: i <= r.score ? C.warning : 'transparent',
+                    color: i <= r.score ? C.warning : C.border,
+                  }} />
+                ))}
+              </div>
+              <span style={{ fontSize: 11, color: C.textTertiary }}>
+                {new Date(r.created_at).toLocaleDateString('ru-RU')}
+              </span>
+            </div>
+            {r.comment && (
+              <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5 }}>{r.comment}</p>
+            )}
+            {r.photos && r.photos.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                {r.photos.map((url, i) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={i}
+                    src={url}
+                    alt=""
+                    style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: `1px solid ${C.border}` }}
+                  />
+                ))}
+              </div>
+            )}
+            {!r.is_published && (
+              <div style={{ marginTop: 8, fontSize: 11, color: C.textTertiary, fontStyle: 'italic' }}>
+                · не опубликовано
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

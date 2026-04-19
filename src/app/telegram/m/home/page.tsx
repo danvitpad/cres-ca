@@ -1,17 +1,18 @@
 /** --- YAML
  * name: MasterMiniAppHome
- * description: Minimal master Mini App home — greeting + date, AI brief, compact weekly finance link. KPI grid and next-appointment hero removed per miniapp redesign (2026-04-19).
+ * description: Master Mini App home — greeting + date, AI brief card, AI chat input (phase 4, 2026-04-19),
+ *              compact weekly finance link. KPI grid and next-appointment hero removed per miniapp redesign.
  * created: 2026-04-13
  * updated: 2026-04-19
  * --- */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendUp, CaretRight, Robot } from '@phosphor-icons/react';
+import { TrendUp, CaretRight, Robot, PaperPlaneTilt } from '@phosphor-icons/react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -30,8 +31,13 @@ function getInitData(): string | null {
   return null;
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export default function MasterMiniAppHome() {
-  const { user, ready } = useTelegram();
+  const { user, ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
   const router = useRouter();
   const [masterId, setMasterId] = useState<string | null>(null);
@@ -41,6 +47,11 @@ export default function MasterMiniAppHome() {
   const [loading, setLoading] = useState(true);
   const [brief, setBrief] = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(true);
+
+  const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -95,6 +106,46 @@ export default function MasterMiniAppHome() {
     })();
   }, [userId]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [chat, sending]);
+
+  async function sendMessage() {
+    const text = input.trim();
+    if (!text || sending) return;
+    const initData = getInitData();
+    if (!initData) return;
+
+    haptic('light');
+    setInput('');
+    const nextChat: ChatMessage[] = [...chat, { role: 'user', content: text }];
+    setChat(nextChat);
+    setSending(true);
+
+    try {
+      const res = await fetch('/api/telegram/m/assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initData,
+          message: text,
+          history: chat.slice(-6),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.answer) {
+        setChat([...nextChat, { role: 'assistant', content: 'Не получилось ответить сейчас, попробуй ещё раз через минуту.' }]);
+      } else {
+        setChat([...nextChat, { role: 'assistant', content: json.answer }]);
+        haptic('success');
+      }
+    } catch {
+      setChat([...nextChat, { role: 'assistant', content: 'Ошибка сети. Проверь интернет и повтори.' }]);
+    } finally {
+      setSending(false);
+    }
+  }
+
   if (!ready || loading) {
     return (
       <div className="space-y-4 px-5 pt-6">
@@ -142,6 +193,63 @@ export default function MasterMiniAppHome() {
           </div>
         </div>
       ) : null}
+
+      <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="flex items-center gap-2 px-1 pt-1">
+          <Robot size={14} weight="fill" className="text-violet-300" />
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">AI-чат</p>
+        </div>
+
+        {chat.length === 0 && !sending ? (
+          <div className="px-1 pb-1 text-[12px] leading-snug text-white/50">
+            Спроси что угодно по своему бизнесу: сколько заработал, кто давно не приходил, что с неделей.
+          </div>
+        ) : (
+          <div className="max-h-60 space-y-2 overflow-y-auto px-1 pb-1">
+            {chat.map((m, i) => (
+              <div
+                key={i}
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-snug ${
+                  m.role === 'user'
+                    ? 'ml-auto bg-violet-500/20 text-white'
+                    : 'bg-white/[0.06] text-white/90'
+                }`}
+              >
+                {m.content}
+              </div>
+            ))}
+            {sending && (
+              <div className="bg-white/[0.06] text-white/60 max-w-[60%] rounded-2xl px-3 py-2 text-[13px]">
+                думаю…
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            disabled={sending}
+            placeholder="Спросить ассистента…"
+            className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[13px] placeholder:text-white/30 focus:border-violet-500/40 focus:outline-none disabled:opacity-50"
+          />
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim() || sending}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-500/20 text-violet-200 active:bg-violet-500/30 transition disabled:opacity-40"
+          >
+            <PaperPlaneTilt size={16} weight="fill" />
+          </button>
+        </div>
+      </div>
 
       <Link
         href="/telegram/m/stats"

@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Download, Package, AlertTriangle, CheckCircle2, Clock, Truck, XCircle, FileDown } from 'lucide-react';
+import { Download, Package, AlertTriangle, CheckCircle2, Clock, Truck, XCircle, FileDown, Send } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface RecItem {
@@ -60,6 +60,31 @@ export default function SupplierOrdersPage() {
   const [recommendations, setRecommendations] = useState<RecGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState<string | null>(null);
+  const [sendingTg, setSendingTg] = useState<string | null>(null);
+
+  async function sendViaTelegram(orderId: string) {
+    setSendingTg(orderId);
+    try {
+      const res = await fetch(`/api/supplier-orders/${orderId}/send-telegram`, { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (j.error === 'supplier_telegram_missing') {
+          toast.error('У поставщика не указан Telegram ID — добавьте его в разделе «Склад → Поставщики».');
+        } else if (j.error === 'no_supplier') {
+          toast.error('К заказу не привязан поставщик.');
+        } else {
+          toast.error(j.error || 'Ошибка отправки');
+        }
+        return;
+      }
+      toast.success('Заказ отправлен в Telegram');
+      await load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSendingTg(null);
+    }
+  }
 
   async function load() {
     const res = await fetch('/api/supplier-orders');
@@ -186,7 +211,7 @@ export default function SupplierOrdersPage() {
                   <th className="px-4 py-3 text-left font-medium">Поставщик</th>
                   <th className="px-4 py-3 text-left font-medium">Статус</th>
                   <th className="px-4 py-3 text-right font-medium">Сумма</th>
-                  <th className="px-4 py-3 text-right font-medium">PDF</th>
+                  <th className="px-4 py-3 text-right font-medium">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,15 +238,28 @@ export default function SupplierOrdersPage() {
                         {o.total_cost.toLocaleString()} {o.currency}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <a
-                          href={`/api/supplier-orders/${o.id}/pdf`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                        >
-                          <Download className="size-3.5" />
-                          PDF
-                        </a>
+                        <div className="inline-flex items-center gap-1">
+                          {o.status === 'draft' && (
+                            <button
+                              type="button"
+                              onClick={() => sendViaTelegram(o.id)}
+                              disabled={sendingTg === o.id}
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-sky-600 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-500/10 disabled:opacity-50"
+                            >
+                              <Send className="size-3.5" />
+                              {sendingTg === o.id ? '…' : 'TG'}
+                            </button>
+                          )}
+                          <a
+                            href={`/api/supplier-orders/${o.id}/pdf`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Download className="size-3.5" />
+                            PDF
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   );

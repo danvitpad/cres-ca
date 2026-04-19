@@ -20,6 +20,7 @@ import {
   Truck,
   Phone,
   Mail,
+  Send,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -55,9 +56,10 @@ interface InventoryItem {
 interface Supplier {
   id: string;
   name: string;
-  contact_phone: string | null;
-  contact_email: string | null;
-  notes: string | null;
+  phone: string | null;
+  email: string | null;
+  telegram_id: string | null;
+  note: string | null;
 }
 
 type Tab = 'materials' | 'suppliers';
@@ -89,6 +91,7 @@ export default function InventoryPage() {
   const [supplierName, setSupplierName] = useState('');
   const [supplierPhone, setSupplierPhone] = useState('');
   const [supplierEmail, setSupplierEmail] = useState('');
+  const [supplierTelegramId, setSupplierTelegramId] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
 
   const loadItems = useCallback(async () => {
@@ -196,6 +199,7 @@ export default function InventoryPage() {
     setSupplierName('');
     setSupplierPhone('');
     setSupplierEmail('');
+    setSupplierTelegramId('');
     setSupplierNotes('');
     setSupplierDialogOpen(true);
   }
@@ -203,9 +207,10 @@ export default function InventoryPage() {
   function openEditSupplier(s: Supplier) {
     setEditSupplier(s);
     setSupplierName(s.name);
-    setSupplierPhone(s.contact_phone || '');
-    setSupplierEmail(s.contact_email || '');
-    setSupplierNotes(s.notes || '');
+    setSupplierPhone(s.phone || '');
+    setSupplierEmail(s.email || '');
+    setSupplierTelegramId(s.telegram_id || '');
+    setSupplierNotes(s.note || '');
     setSupplierDialogOpen(true);
   }
 
@@ -215,9 +220,10 @@ export default function InventoryPage() {
     const payload = {
       master_id: master.id,
       name: supplierName.trim(),
-      contact_phone: supplierPhone || null,
-      contact_email: supplierEmail || null,
-      notes: supplierNotes || null,
+      phone: supplierPhone || null,
+      email: supplierEmail || null,
+      telegram_id: supplierTelegramId.trim() || null,
+      note: supplierNotes || null,
     };
 
     if (editSupplier) {
@@ -472,20 +478,25 @@ export default function InventoryPage() {
 
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium truncate">{s.name}</h3>
-                            <div className="flex items-center gap-3 mt-0.5">
-                              {s.contact_phone && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                              {s.phone && (
                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Phone className="size-3" />{s.contact_phone}
+                                  <Phone className="size-3" />{s.phone}
                                 </span>
                               )}
-                              {s.contact_email && (
+                              {s.email && (
                                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Mail className="size-3" />{s.contact_email}
+                                  <Mail className="size-3" />{s.email}
+                                </span>
+                              )}
+                              {s.telegram_id && (
+                                <span className="text-xs text-sky-600 dark:text-sky-400 flex items-center gap-1">
+                                  <Send className="size-3" />TG
                                 </span>
                               )}
                             </div>
-                            {s.notes && (
-                              <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{s.notes}</p>
+                            {s.note && (
+                              <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{s.note}</p>
                             )}
                           </div>
 
@@ -570,6 +581,16 @@ export default function InventoryPage() {
                 <Label>{t('contactEmail')}</Label>
                 <Input type="email" value={supplierEmail} onChange={(e) => setSupplierEmail(e.target.value)} placeholder="email@company.com" />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Telegram ID</Label>
+              <Input
+                value={supplierTelegramId}
+                onChange={(e) => setSupplierTelegramId(e.target.value)}
+                placeholder="123456789"
+                inputMode="numeric"
+              />
+              <p className="text-xs text-muted-foreground">Чтобы отправлять заказы в Telegram: попроси поставщика написать боту @userinfobot — он пришлёт свой числовой ID.</p>
             </div>
             <div className="space-y-2">
               <Label>{t('notes')}</Label>

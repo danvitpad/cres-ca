@@ -15,6 +15,7 @@ export interface AutomationSettings {
   win_back: boolean;
   nps: boolean;
   auto_release: boolean;
+  pre_visit_master: boolean;
 }
 
 export const AUTOMATION_DEFAULTS: AutomationSettings = {
@@ -25,6 +26,7 @@ export const AUTOMATION_DEFAULTS: AutomationSettings = {
   win_back: false,
   nps: false,
   auto_release: false,
+  pre_visit_master: true,
 };
 
 export async function loadAutomationSettings(
@@ -35,7 +37,7 @@ export async function loadAutomationSettings(
   if (masterIds.length === 0) return map;
   const { data } = await supabase
     .from('master_automation_settings')
-    .select('master_id, reminder_24h, reminder_2h, review_request, cadence, win_back, nps, auto_release')
+    .select('master_id, reminder_24h, reminder_2h, review_request, cadence, win_back, nps, auto_release, pre_visit_master')
     .in('master_id', masterIds);
   for (const row of (data ?? []) as (AutomationSettings & { master_id: string })[]) {
     map.set(row.master_id, {
@@ -46,6 +48,7 @@ export async function loadAutomationSettings(
       win_back: row.win_back,
       nps: row.nps,
       auto_release: row.auto_release ?? false,
+      pre_visit_master: row.pre_visit_master ?? true,
     });
   }
   return map;

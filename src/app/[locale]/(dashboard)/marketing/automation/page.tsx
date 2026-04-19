@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Sparkles } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +18,7 @@ import { BirthdaySettingsDialog } from '@/components/marketing/birthday-settings
 type AutomationKey =
   | 'reminder_24h'
   | 'reminder_2h'
+  | 'pre_visit_master'
   | 'review_request'
   | 'cadence'
   | 'win_back'
@@ -26,6 +27,7 @@ type AutomationKey =
 interface Settings {
   reminder_24h: boolean;
   reminder_2h: boolean;
+  pre_visit_master: boolean;
   review_request: boolean;
   cadence: boolean;
   win_back: boolean;
@@ -35,6 +37,7 @@ interface Settings {
 const DEFAULTS: Settings = {
   reminder_24h: true,
   reminder_2h: true,
+  pre_visit_master: true,
   review_request: true,
   cadence: false,
   win_back: false,
@@ -64,6 +67,14 @@ const RULES: {
     trigger: 'За 2 часа до визита',
     icon: Bell,
     accent: '#8b5cf6',
+  },
+  {
+    key: 'pre_visit_master',
+    title: 'Бриф мастеру за 30 мин',
+    description: 'TG-пуш с заметкой, аллергиями, числом визитов клиента',
+    trigger: 'За 30 минут до визита',
+    icon: Sparkles,
+    accent: '#22d3ee',
   },
   {
     key: 'review_request',
