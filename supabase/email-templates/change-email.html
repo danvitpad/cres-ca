@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CRES-CA</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f2fa;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1a1530;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f2fa;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(105,80,243,0.08);">
+          <tr>
+            <td style="padding:32px 32px 8px;text-align:left;">
+              <div style="display:inline-flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-0.025em;">
+                <span style="display:inline-block;width:32px;height:32px;background:#6950f3;color:#fff;border-radius:8px;text-align:center;line-height:32px;font-weight:900;">C</span>
+                CRES-CA
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 32px 32px;">
+
+              {{ if eq .Data.locale "en" }}
+                <h1 style="margin:16px 0 8px;font-size:24px;font-weight:300;letter-spacing:-0.02em;color:#1a1530;">Confirm your new email</h1>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#4d4466;">You requested to change the email on your CRES-CA account to <strong>{{ .NewEmail }}</strong>. Click the link below to confirm.</p>
+                <p style="margin:0 0 24px;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#6950f3;color:#fff;padding:12px 24px;border-radius:12px;font-weight:600;text-decoration:none;">Confirm email change</a></p>
+                <p style="margin:0;font-size:12px;color:#9d96b3;line-height:1.6;">If you didn't request this change, ignore this email or contact us. Your current email stays active until you confirm.</p>
+              {{ else if eq .Data.locale "uk" }}
+                <h1 style="margin:16px 0 8px;font-size:24px;font-weight:300;letter-spacing:-0.02em;color:#1a1530;">Підтвердіть новий email</h1>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#4d4466;">Ви запросили зміну email у CRES-CA на <strong>{{ .NewEmail }}</strong>. Натисніть на посилання нижче, щоб підтвердити.</p>
+                <p style="margin:0 0 24px;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#6950f3;color:#fff;padding:12px 24px;border-radius:12px;font-weight:600;text-decoration:none;">Підтвердити зміну</a></p>
+                <p style="margin:0;font-size:12px;color:#9d96b3;line-height:1.6;">Якщо ви не робили цього запиту — проігноруйте лист. Поточний email залишається активним, поки ви не підтвердите.</p>
+              {{ else }}
+                <h1 style="margin:16px 0 8px;font-size:24px;font-weight:300;letter-spacing:-0.02em;color:#1a1530;">Подтвердите новый email</h1>
+                <p style="margin:0 0 24px;font-size:14px;line-height:1.6;color:#4d4466;">Вы запросили смену email в CRES-CA на <strong>{{ .NewEmail }}</strong>. Перейдите по ссылке ниже, чтобы подтвердить.</p>
+                <p style="margin:0 0 24px;"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#6950f3;color:#fff;padding:12px 24px;border-radius:12px;font-weight:600;text-decoration:none;">Подтвердить смену</a></p>
+                <p style="margin:0;font-size:12px;color:#9d96b3;line-height:1.6;">Если вы не запрашивали смену — проигнорируйте письмо. Текущий email остаётся активным, пока вы не подтвердите.</p>
+              {{ end }}
+
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;background:#faf9fd;border-top:1px solid #ece8f6;font-size:11px;color:#9d96b3;text-align:center;">
+              CRES-CA · <a href="{{ .SiteURL }}" style="color:#9d96b3;text-decoration:none;">{{ .SiteURL }}</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

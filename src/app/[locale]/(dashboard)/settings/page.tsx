@@ -807,42 +807,44 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   );
 }
 
-/* ─── Security: email / password / delete account ─── */
+/* ─── Security: email / password / phone / 2FA / delete account ─── */
 function SecurityTab() {
-  const confirm = useConfirm();
+  const { master, refetch } = useMaster();
   const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailSaving, setEmailSaving] = useState(false);
+  const [phoneSaving, setPhoneSaving] = useState(false);
   const [passSaving, setPassSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+
+  // 2FA state
+  const tg2faEnabled = (master?.profile as { tg_2fa_enabled?: boolean } | undefined)?.tg_2fa_enabled ?? false;
+  const hasTelegramLinked = !!(master?.profile as { telegram_id?: string | null } | undefined)?.telegram_id;
+  const [twoFaStep, setTwoFaStep] = useState<'idle' | 'await_code' | 'busy'>('idle');
+  const [twoFaCode, setTwoFaCode] = useState('');
 
   async function deleteAccount() {
-    const ok1 = await confirm({
-      title: 'Удалить аккаунт?',
-      description: 'Будут удалены все ваши данные: клиенты, записи, услуги, расходы. Это необратимо.',
-      confirmLabel: 'Понимаю, продолжить',
-      destructive: true,
-    });
-    if (!ok1) return;
-    const ok2 = await confirm({
-      title: 'Точно удалить?',
-      description: 'Последнее подтверждение. Отменить после удаления нельзя.',
-      confirmLabel: 'Удалить навсегда',
-      destructive: true,
-    });
-    if (!ok2) return;
+    if (deleteConfirmation !== 'УДАЛИТЬ') { toast.error('Введите "УДАЛИТЬ"'); return; }
+    if (!deletePassword) { toast.error('Введите текущий пароль'); return; }
 
     setDeleting(true);
-    const res = await fetch('/api/account/delete', { method: 'POST' });
+    const res = await fetch('/api/account/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmation: deleteConfirmation, password: deletePassword }),
+    });
     setDeleting(false);
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({ error: 'Не удалось удалить' }));
       toast.error(error || 'Ошибка удаления');
       return;
     }
-    toast.success('Аккаунт удалён');
+    toast.success('Аккаунт помечен на удаление. У вас есть 30 дней на восстановление — просто войдите снова.');
     window.location.href = '/login';
   }
 
@@ -850,19 +852,50 @@ function SecurityTab() {
     if (!newEmail || !newEmail.includes('@')) { toast.error('Некорректный email'); return; }
     setEmailSaving(true);
     const supabase = createClient();
-    // Supabase sends confirmation to the NEW email by default when email confirmations are enabled
-    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    const locale = (typeof window !== 'undefined' && window.location.pathname.match(/^\/(ru|en|uk)\b/)?.[1]) || 'ru';
+    const { error } = await supabase.auth.updateUser({ email: newEmail, data: { locale } });
     setEmailSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success('На новый email отправлено письмо с подтверждением. Email обновится после перехода по ссылке.');
     setNewEmail('');
   }
 
+  async function changePhone() {
+    if (!/^\+\d{7,15}$/.test(newPhone)) { toast.error('Формат: +380... (7–15 цифр после +)'); return; }
+    setPhoneSaving(true);
+    const res = await fetch('/api/account/change-phone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: newPhone }),
+    });
+    setPhoneSaving(false);
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'Не удалось' }));
+      toast.error(error || 'Ошибка');
+      return;
+    }
+    toast.success('Номер обновлён');
+    setNewPhone('');
+    refetch();
+  }
+
   async function changePassword() {
-    if (newPassword.length < 6) { toast.error('Пароль минимум 6 символов'); return; }
+    if (newPassword.length < 8) { toast.error('Пароль минимум 8 символов'); return; }
     if (newPassword !== confirmPassword) { toast.error('Пароли не совпадают'); return; }
+    if (newPassword === currentPassword) { toast.error('Новый пароль совпадает с текущим'); return; }
+    if (!currentPassword) { toast.error('Введите текущий пароль'); return; }
     setPassSaving(true);
     const supabase = createClient();
+    // Verify current password by attempting sign-in
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      const verify = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+      if (verify.error) {
+        setPassSaving(false);
+        toast.error('Неверный текущий пароль');
+        return;
+      }
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPassSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -870,6 +903,43 @@ function SecurityTab() {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+  }
+
+  async function send2faCode() {
+    if (!master?.profile_id) return;
+    setTwoFaStep('busy');
+    const res = await fetch('/api/auth/2fa/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: master.profile_id }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'send_failed' }));
+      setTwoFaStep('idle');
+      toast.error(error === 'telegram_not_linked' ? 'Привяжите Telegram в профиле' : 'Не удалось отправить код');
+      return;
+    }
+    setTwoFaStep('await_code');
+    toast.success('Код отправлен в Telegram');
+  }
+
+  async function confirm2faToggle(enable: boolean) {
+    setTwoFaStep('busy');
+    const res = await fetch('/api/auth/2fa/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enable, code: enable ? twoFaCode : undefined }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: 'toggle_failed' }));
+      setTwoFaStep('await_code');
+      toast.error(error === 'invalid_or_expired' ? 'Неверный или истёкший код' : 'Ошибка');
+      return;
+    }
+    setTwoFaStep('idle');
+    setTwoFaCode('');
+    toast.success(enable ? '2FA включён' : '2FA выключен');
+    refetch();
   }
 
   return (
@@ -895,7 +965,7 @@ function SecurityTab() {
       <Card>
         <CardHeader>
           <CardTitle>Изменить пароль</CardTitle>
-          <p className="text-sm text-muted-foreground">Минимум 6 символов.</p>
+          <p className="text-sm text-muted-foreground">Минимум 8 символов.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
@@ -912,9 +982,79 @@ function SecurityTab() {
               <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
             </div>
           </div>
-          <Button onClick={changePassword} disabled={passSaving || !newPassword || newPassword !== confirmPassword}>
+          <Button onClick={changePassword} disabled={passSaving || !currentPassword || !newPassword || newPassword !== confirmPassword}>
             {passSaving ? 'Сохранение...' : 'Сменить пароль'}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Изменить телефон</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Текущий: {master?.profile?.phone || '—'}. Формат: международный (+380...).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Новый телефон</Label>
+            <Input type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+380..." />
+          </div>
+          <Button onClick={changePhone} disabled={phoneSaving || !newPhone}>
+            {phoneSaving ? 'Сохранение...' : 'Сохранить'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Двухфакторная аутентификация (Telegram)</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {hasTelegramLinked
+              ? 'При входе бот пришлёт 6-значный код в Telegram.'
+              : 'Привяжите Telegram в профиле через @crescacom_bot, чтобы включить 2FA.'}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!hasTelegramLinked ? (
+            <p className="text-sm text-muted-foreground">Telegram не привязан.</p>
+          ) : tg2faEnabled ? (
+            <Button
+              variant="outline"
+              onClick={() => confirm2faToggle(false)}
+              disabled={twoFaStep === 'busy'}
+            >
+              {twoFaStep === 'busy' ? 'Выключение...' : 'Выключить 2FA'}
+            </Button>
+          ) : twoFaStep === 'idle' || twoFaStep === 'busy' ? (
+            <Button onClick={send2faCode} disabled={twoFaStep === 'busy'}>
+              {twoFaStep === 'busy' ? 'Отправка...' : 'Включить 2FA'}
+            </Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Код из Telegram (6 цифр)</Label>
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={twoFaCode}
+                  onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="123456"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => confirm2faToggle(true)}
+                  disabled={twoFaCode.length !== 6}
+                >
+                  Подтвердить
+                </Button>
+                <Button variant="outline" onClick={() => { setTwoFaStep('idle'); setTwoFaCode(''); }}>
+                  Отмена
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -923,15 +1063,31 @@ function SecurityTab() {
         <CardHeader>
           <CardTitle className="text-destructive">Опасная зона</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Удаление аккаунта необратимо. Все данные (клиенты, записи, услуги, расходы) будут удалены безвозвратно.
+            Аккаунт будет помечен на удаление. У вас есть 30 дней на восстановление — просто войдите снова. После 30 дней все данные (клиенты, записи, услуги, расходы) удаляются безвозвратно.
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Введите <span className="font-mono font-semibold">УДАЛИТЬ</span> для подтверждения</Label>
+            <Input
+              value={deleteConfirmation}
+              onChange={e => setDeleteConfirmation(e.target.value)}
+              placeholder="УДАЛИТЬ"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Текущий пароль</Label>
+            <Input
+              type="password"
+              value={deletePassword}
+              onChange={e => setDeletePassword(e.target.value)}
+            />
+          </div>
           <Button
             variant="outline"
             className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
             onClick={deleteAccount}
-            disabled={deleting}
+            disabled={deleting || deleteConfirmation !== 'УДАЛИТЬ' || !deletePassword}
           >
             {deleting ? 'Удаление...' : 'Удалить аккаунт'}
           </Button>
