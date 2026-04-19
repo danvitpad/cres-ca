@@ -71,9 +71,10 @@ export default function BookPage() {
   const { userId } = useAuthStore();
   const { canUse } = useSubscription();
 
-  const preselectedMasterId = searchParams.get('master_id');
-  const preselectedServiceId = searchParams.get('service_id');
+  const preselectedMasterId = searchParams.get('master_id') ?? searchParams.get('master');
+  const preselectedServiceId = searchParams.get('service_id') ?? searchParams.get('service');
   const rescheduleId = searchParams.get('reschedule');
+  const salonId = searchParams.get('salon');
 
   const [step, setStep] = useState<Step>('service');
   const [master, setMaster] = useState<MasterInfo | null>(null);
@@ -93,6 +94,38 @@ export default function BookPage() {
   const [clientName, setClientName] = useState('');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [bookingFor, setBookingFor] = useState<FamilyMember | null>(null);
+
+  // Salon → pick first active master and redirect (keeps /book?salon=<id> CTA working).
+  useEffect(() => {
+    if (!salonId || preselectedMasterId) return;
+    (async () => {
+      const supabase = createClient();
+      // Try solo masters first (salon_id=salon), then salon_members (status=active).
+      const { data: solo } = await supabase
+        .from('masters')
+        .select('id')
+        .eq('salon_id', salonId)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+      let mId = solo?.id ?? null;
+      if (!mId) {
+        const { data: mem } = await supabase
+          .from('salon_members')
+          .select('master_id')
+          .eq('salon_id', salonId)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle();
+        mId = mem?.master_id ?? null;
+      }
+      if (mId) {
+        router.replace(`/book?master_id=${mId}`);
+      } else {
+        toast.error('В этом салоне нет активных мастеров');
+      }
+    })();
+  }, [salonId, preselectedMasterId, router]);
 
   // Load master + services
   useEffect(() => {
