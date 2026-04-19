@@ -1,15 +1,16 @@
 /** --- YAML
  * name: TelegramMasterMiniAppLayout
- * description: Master Mini App shell — dark theme, 4-tab bottom bar (Home, Calendar, Clients, Profile). Mirrors client shell but auth-gates by master row existence.
+ * description: Master Mini App shell — dark theme, 5-tab bottom bar (Today, Calendar, Clients, Finance, Profile). Notifications promoted to a bell icon in the top-right header with unread badge.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-19
  * --- */
 
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Calendar, Users, User, Bell, Loader2 } from 'lucide-react';
+import { Home, Calendar, Users, User, Bell, TrendingUp, Loader2 } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { BottomTabs, type BottomTab } from '@/components/miniapp/bottom-tabs';
 import { useAuthStore } from '@/stores/auth-store';
@@ -113,19 +114,34 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Сегодня' },
     { key: 'calendar', href: '/telegram/m/calendar', icon: Calendar, label: 'Календарь' },
     { key: 'clients', href: '/telegram/m/clients', icon: Users, label: 'Клиенты' },
-    {
-      key: 'notifications',
-      href: '/telegram/m/notifications',
-      icon: Bell,
-      label: 'Уведомления',
-      badge: unreadCount,
-    },
+    { key: 'finance', href: '/telegram/m/stats', icon: TrendingUp, label: 'Финансы' },
     { key: 'profile', href: '/telegram/m/profile', icon: User, label: 'Профиль' },
   ];
+
+  const hideHeader = pathname === '/telegram/m/voice-intro' || pathname.startsWith('/telegram/m/salon/');
 
   return (
     <TelegramProvider>
       <div className="flex h-dvh flex-col bg-[#1f2023] text-white">
+        {!hideHeader && (
+          <header
+            className="absolute right-3 z-20 flex items-center"
+            style={{ top: 'calc(var(--tg-content-top, 8px) + 8px)' }}
+          >
+            <Link
+              href="/telegram/m/notifications"
+              aria-label="Уведомления"
+              className="relative flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] active:bg-white/[0.08] transition-colors"
+            >
+              <Bell className="size-5 text-white/80" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-[10px] font-semibold flex items-center justify-center leading-none">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Link>
+          </header>
+        )}
         <main
           className="flex-1 overflow-y-auto"
           style={{
