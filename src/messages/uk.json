@@ -343,6 +343,12 @@
     "inProgress": "В роботі",
     "booked_status": "Заброньовано",
     "noActivityToday": "Сьогодні поки немає активності",
+    "remindersTitle": "Нагадування",
+    "noReminders": "Надішліть голосове повідомлення в Telegram — я створю нагадування",
+    "recentAiActions": "Нещодавні дії AI",
+    "aiActionVoice": "Голос",
+    "aiActionAutomation": "Автоматизація",
+    "aiActionRules": "Правило",
     "nav": {
       "dashboard": "Сьогодні",
       "calendar": "Календар",

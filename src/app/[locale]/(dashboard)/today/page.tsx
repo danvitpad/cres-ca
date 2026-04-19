@@ -15,7 +15,7 @@ import { format, startOfDay, endOfDay, startOfWeek, differenceInDays, getYear, s
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import { Calendar as CalendarIcon, Coins, Users, Cake, Mic, Sparkles, ArrowRight, PartyPopper, Bell } from 'lucide-react';
+import { Calendar as CalendarIcon, Coins, Users, Cake, Sparkles, ArrowRight, PartyPopper, Bell, Mic } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -48,6 +48,14 @@ interface Reminder {
   due_at: string | null;
 }
 
+interface AiAction {
+  id: string;
+  source: 'voice' | 'automation' | 'rules';
+  action_type: string;
+  input_text: string | null;
+  created_at: string;
+}
+
 function getGreeting(t: ReturnType<typeof useTranslations>) {
   const h = new Date().getHours();
   if (h < 12) return t('greetingMorning');
@@ -78,6 +86,7 @@ export default function TodayPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [aiActions, setAiActions] = useState<AiAction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchToday = useCallback(async () => {
@@ -87,7 +96,7 @@ export default function TodayPage() {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfDay(now);
 
-    const [apptRes, clientRes, remRes] = await Promise.all([
+    const [apptRes, clientRes, remRes, aiRes] = await Promise.all([
       supabase
         .from('appointments')
         .select('id, starts_at, ends_at, status, price, service:services(name), client:clients(full_name)')
@@ -107,11 +116,19 @@ export default function TodayPage() {
         .eq('completed', false)
         .order('due_at', { ascending: true, nullsFirst: false })
         .limit(5),
+      supabase
+        .from('ai_actions_log')
+        .select('id, source, action_type, input_text, created_at')
+        .eq('master_id', master.id)
+        .eq('status', 'success')
+        .order('created_at', { ascending: false })
+        .limit(5),
     ]);
 
     setAppointments((apptRes.data as unknown as Appointment[]) || []);
     setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
     setReminders((remRes.data as unknown as Reminder[]) || []);
+    setAiActions((aiRes.data as unknown as AiAction[]) || []);
     setLoading(false);
   }, [master?.id]);
 
@@ -315,10 +332,56 @@ export default function TodayPage() {
         </motion.section>
       )}
 
-      <motion.div {...stagger(4)} className="flex items-center gap-2 rounded-xl border border-dashed bg-card/50 p-3 text-xs text-muted-foreground">
-        <Mic className="w-4 h-4 text-[var(--ds-accent)]" />
-        <span>{t('noReminders')}</span>
-      </motion.div>
+      {aiActions.length > 0 && (
+        <motion.section {...stagger(4)} className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <Mic className="w-4 h-4" />
+              {t('recentAiActions')}
+            </h2>
+            <Link href="/voice-assistant" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              {t('viewAll')} <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {aiActions.map((a) => {
+              const sourceLabel =
+                a.source === 'voice' ? t('aiActionVoice')
+                : a.source === 'automation' ? t('aiActionAutomation')
+                : t('aiActionRules');
+              return (
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 rounded-xl border bg-card p-3 text-sm"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+                    <Mic className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{a.action_type}</span>
+                      <span>·</span>
+                      <span>{sourceLabel}</span>
+                      <span>·</span>
+                      <span>
+                        {new Date(a.created_at).toLocaleString(locale, {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    {a.input_text && (
+                      <p className="mt-0.5 truncate text-muted-foreground">&ldquo;{a.input_text}&rdquo;</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </motion.section>
+      )}
     </div>
   );
 }

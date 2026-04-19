@@ -363,6 +363,10 @@
     "greetingEvening": "Добрый вечер",
     "remindersTitle": "Напоминания",
     "noReminders": "Отправь голосовое в Telegram — я создам напоминание",
+    "recentAiActions": "Недавние действия AI",
+    "aiActionVoice": "Голос",
+    "aiActionAutomation": "Автоматизация",
+    "aiActionRules": "Правило",
     "nav": {
       "dashboard": "Сегодня",
       "calendar": "Календарь",

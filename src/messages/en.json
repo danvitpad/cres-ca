@@ -363,6 +363,10 @@
     "greetingEvening": "Good evening",
     "remindersTitle": "Reminders",
     "noReminders": "Send a voice message in Telegram to create a reminder",
+    "recentAiActions": "Recent AI actions",
+    "aiActionVoice": "Voice",
+    "aiActionAutomation": "Automation",
+    "aiActionRules": "Rule",
     "nav": {
       "dashboard": "Today",
       "calendar": "Calendar",
