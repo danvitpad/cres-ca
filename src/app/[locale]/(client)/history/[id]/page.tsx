@@ -25,7 +25,6 @@ import {
   AlertTriangle,
   Phone,
   MessageCircle,
-  Sparkles,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -244,7 +243,6 @@ export default function AppointmentDetailPage() {
   const starts = new Date(row.starts_at);
   const ends = new Date(row.ends_at);
   const canCancel = row.status !== 'cancelled' && row.status !== 'cancelled_by_client' && row.status !== 'completed' && row.status !== 'no_show' && hoursUntilStart > 0;
-  const canReschedule = canCancel;
   const isCompleted = row.status === 'completed';
 
   const mapSrc = row.master?.latitude && row.master?.longitude
@@ -427,16 +425,6 @@ export default function AppointmentDetailPage() {
           >
             <RefreshCw className="size-5" />
             {t('repeatBooking')}
-          </Button>
-        )}
-        {canReschedule && (
-          <Button
-            variant="outline"
-            className="h-12 w-full gap-2 rounded-2xl text-base"
-            onClick={() => router.push(`/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`)}
-          >
-            <Sparkles className="size-5" />
-            {td('reschedule')}
           </Button>
         )}
         {canCancel && (
