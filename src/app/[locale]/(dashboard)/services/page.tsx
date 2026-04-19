@@ -1037,7 +1037,7 @@ export default function ServicesPage() {
         </p>
       </div>
 
-      <div style={{ marginBottom: 24, marginTop: 16, overflowX: 'auto' }}>
+      <div style={{ marginBottom: 24, marginTop: 16, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
         <PillTabs items={CAT_TABS} value={active} onChange={setTab} />
       </div>
 

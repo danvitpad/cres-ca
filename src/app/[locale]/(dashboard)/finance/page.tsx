@@ -380,7 +380,7 @@ export default function FinancePage() {
       </motion.div>
 
       {/* PillTabs — Обзор / Доходы / Расходы */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
         <PillTabs
           items={SUB_TABS}
           value={activeTab}
