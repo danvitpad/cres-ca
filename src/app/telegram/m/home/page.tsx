@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppHome
- * description: Master Mini App home — today KPIs, next appointment hero, quick actions, Voice AI CTA (Phase 8.2c). First-visit redirect to /voice-intro.
+ * description: Master Mini App home — AI brief, today KPIs, next appointment hero, compact finance block. Duplicates (busy toggle, quick actions, today agenda link, voice CTA) removed Phase 1.4.
  * created: 2026-04-13
- * updated: 2026-04-18
+ * updated: 2026-04-19
  * --- */
 
 'use client';
@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, TrendingUp, Users, Clock, ChevronRight, Sparkles, AlertCircle, Mic, Bot } from 'lucide-react';
+import { Calendar, TrendingUp, Clock, ChevronRight, Sparkles, AlertCircle, Bot } from 'lucide-react';
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -53,9 +53,9 @@ export default function MasterMiniAppHome() {
   const [profileName, setProfileName] = useState<string | null>(null);
   const [next, setNext] = useState<NextApt | null>(null);
   const [stats, setStats] = useState<TodayStats>({ count: 0, revenue: 0, done: 0, upcoming: 0 });
+  const [weekRevenue, setWeekRevenue] = useState(0);
+  const [weekCompleted, setWeekCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isBusy, setIsBusy] = useState(false);
-  const [voiceUsed, setVoiceUsed] = useState<boolean | null>(null);
   const [brief, setBrief] = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(true);
 
@@ -84,8 +84,6 @@ export default function MasterMiniAppHome() {
       if (!ctx.master) { setLoading(false); return; }
       setMasterId(ctx.master.id);
       setProfileName(ctx.profile?.full_name?.split(' ')[0] || null);
-      setIsBusy(Boolean(ctx.master.is_busy));
-      setVoiceUsed(Boolean(ctx.voiceUsed));
 
       // Step 2 — full today appointments (for "next" card)
       const today = new Date();
@@ -128,6 +126,22 @@ export default function MasterMiniAppHome() {
         }
       }
       setLoading(false);
+
+      // Step 2.5 — week finance summary (completed appointments in last 7 days)
+      fetch('/api/telegram/m/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, period: 'week' }),
+      })
+        .then((r) => r.json())
+        .then((j) => {
+          type StatRow = { status: string; price: number | null };
+          const rows = (j.appointments ?? []) as StatRow[];
+          const done = rows.filter((r) => r.status === 'completed');
+          setWeekRevenue(done.reduce((acc, r) => acc + Number(r.price ?? 0), 0));
+          setWeekCompleted(done.length);
+        })
+        .catch(() => { /* ignore */ });
 
       // Step 3 — fetch AI brief (non-blocking, has its own loading state)
       fetch('/api/telegram/m/brief', {
@@ -193,46 +207,6 @@ export default function MasterMiniAppHome() {
         </div>
       ) : null}
 
-      {/* Busy toggle — flat card */}
-      <button
-        onClick={async () => {
-          haptic('medium');
-          const newVal = !isBusy;
-          setIsBusy(newVal);
-          const initData = getInitData();
-          if (initData) {
-            await fetch('/api/telegram/m/home', {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ initData, is_busy: newVal }),
-            });
-          }
-        }}
-        className="w-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left"
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${isBusy ? 'text-rose-300' : 'text-emerald-300'}`}>
-              {isBusy ? 'Сейчас занят' : 'Свободен'}
-            </p>
-            <p className="mt-1 text-base font-bold">
-              {isBusy ? 'Онлайн-запись выключена' : 'Онлайн-запись включена'}
-            </p>
-          </div>
-          <div
-            className={`relative h-7 w-12 rounded-full transition-colors ${
-              isBusy ? 'bg-rose-500' : 'bg-emerald-500'
-            }`}
-          >
-            <div
-              className={`absolute top-0.5 h-6 w-6 rounded-full bg-white transition-transform ${
-                isBusy ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </div>
-        </div>
-      </button>
-
       {/* KPI grid */}
       <div className="grid grid-cols-3 gap-2">
         <KpiCard icon={Calendar} label="Записей" value={stats.count.toString()} accent="violet" />
@@ -285,47 +259,26 @@ export default function MasterMiniAppHome() {
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-2">
-        <QuickAction href="/telegram/m/calendar" icon={Calendar} label="Календарь" haptic={haptic} />
-        <QuickAction href="/telegram/m/clients" icon={Users} label="Клиенты" haptic={haptic} />
-      </div>
-
-      {/* Today agenda link */}
+      {/* Finance — compact summary linking to /stats */}
       <Link
-        href="/telegram/m/calendar"
-        onClick={() => haptic('selection')}
+        href="/telegram/m/stats"
+        onClick={() => haptic('light')}
         className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
       >
-        <div>
-          <p className="text-sm font-semibold">Расписание на день</p>
-          <p className="mt-0.5 text-[11px] text-white/50">
-            {stats.done}/{stats.count} · готово
-          </p>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <TrendingUp className="size-4 text-emerald-300" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Финансы · неделя</p>
+            <p className="mt-1 text-base font-bold tabular-nums">
+              {weekRevenue.toFixed(0)} ₴
+              <span className="ml-2 text-[11px] font-normal text-white/50">{weekCompleted} записей</span>
+            </p>
+          </div>
         </div>
         <ChevronRight className="size-4 text-white/40" />
       </Link>
-
-      {/* Voice assistant CTA — shown until master sends first voice command */}
-      {voiceUsed === false && (
-        <Link
-          href="/telegram/m/voice-intro"
-          onClick={() => haptic('light')}
-          className="relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
-        >
-          <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
-          <div className="flex items-center gap-3 pl-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-              <Mic className="size-4 text-violet-300" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold">Голосовой помощник</p>
-              <p className="mt-0.5 text-[11px] text-white/50">Запиши клиента одной фразой в Telegram</p>
-            </div>
-          </div>
-          <ChevronRight className="size-4 text-white/40" />
-        </Link>
-      )}
     </motion.div>
   );
 }
@@ -355,27 +308,3 @@ function KpiCard({
   );
 }
 
-function QuickAction({
-  href,
-  icon: Icon,
-  label,
-  haptic,
-}: {
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  haptic: (t?: 'light') => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={() => haptic('light')}
-      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
-    >
-      <div className="flex size-9 items-center justify-center rounded-xl bg-white/[0.06]">
-        <Icon className="size-[18px] text-white/80" />
-      </div>
-      <span className="text-[13px] font-semibold">{label}</span>
-    </Link>
-  );
-}
