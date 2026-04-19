@@ -66,6 +66,17 @@ interface PortfolioItem {
   image_url: string;
   caption: string | null;
   tags: string[];
+  service_id: string | null;
+  service_name: string | null;
+}
+
+interface PortfolioRow {
+  id: string;
+  image_url: string;
+  caption: string | null;
+  tags: string[];
+  service_id: string | null;
+  service: { name: string | null } | { name: string | null }[] | null;
 }
 
 interface BeforeAfterItem {
@@ -126,12 +137,23 @@ async function loadReviews(masterId: string): Promise<ReviewRow[]> {
 async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
   const { data } = await admin()
     .from('master_portfolio')
-    .select('id, image_url, caption, tags')
+    .select('id, image_url, caption, tags, service_id, service:services(name)')
     .eq('master_id', masterId)
     .eq('is_published', true)
     .order('sort_order', { ascending: false })
     .order('created_at', { ascending: false });
-  return (data as PortfolioItem[]) ?? [];
+  const rows = ((data as unknown) as PortfolioRow[] | null) ?? [];
+  return rows.map((r) => {
+    const svc = Array.isArray(r.service) ? r.service[0] : r.service;
+    return {
+      id: r.id,
+      image_url: r.image_url,
+      caption: r.caption,
+      tags: r.tags ?? [],
+      service_id: r.service_id,
+      service_name: svc?.name ?? null,
+    };
+  });
 }
 
 async function loadBeforeAfter(masterId: string): Promise<BeforeAfterItem[]> {
