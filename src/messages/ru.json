@@ -431,6 +431,8 @@
       "continueSetup": "Продолжить настройку",
       "notifications": "Уведомления",
       "markAllRead": "Прочитать все",
+      "clearAll": "Очистить всё",
+      "dismiss": "Скрыть уведомление",
       "noNewNotifications": "Нет новых уведомлений",
       "noNewNotificationsDesc": "Здесь будут отображаться уведомления о записях, сообщениях и обновлениях",
       "myProfile": "Мой профиль",

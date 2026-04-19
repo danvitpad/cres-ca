@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const masterName = master?.profile?.first_name || master?.profile?.full_name || '';
 
   const userId = master?.profile_id ?? null;
-  const { items: notifItems, unreadCount, loading: notifLoading, followStates, markRead, markAllRead, toggleFollow } = useNotifications(userId);
+  const { items: notifItems, unreadCount, loading: notifLoading, followStates, markRead, markAllRead, dismiss: dismissNotif, dismissAll: dismissAllNotifs, toggleFollow } = useNotifications(userId);
   const { announcements, dismiss: dismissAnnouncement } = useAnnouncements();
 
   const navItems: SidebarNavItem[] = useMemo(
@@ -240,6 +240,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     followStates={followStates}
                     markRead={markRead}
                     markAllRead={markAllRead}
+                    dismiss={dismissNotif}
+                    dismissAll={dismissAllNotifs}
                     toggleFollow={toggleFollow}
                     theme={F}
                     isDark={isDark}

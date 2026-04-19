@@ -1,14 +1,15 @@
 /** --- YAML
  * name: HeaderNotificationsDropdown
- * description: Fresha-style notification dropdown — grouped by day, follow-back actions, mark read. Extracted from layout.tsx.
+ * description: Fresha-style notification dropdown — grouped by day, follow-back actions, mark read, per-item dismiss (X), "Clear all".
  * created: 2026-04-16
+ * updated: 2026-04-19
  * --- */
 
 'use client';
 
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { Bell, UserPlus, UserCheck, Users, Loader2 } from 'lucide-react';
+import { Bell, UserPlus, UserCheck, Users, Loader2, X } from 'lucide-react';
 import type { FTheme } from '@/lib/dashboard-theme';
 import type { Notification } from '@/hooks/use-notifications';
 import { FreshaBell } from '@/components/shared/fresha-icons';
@@ -22,6 +23,8 @@ interface Props {
   followStates: Record<string, boolean | 'loading'>;
   markRead: (id: string) => void;
   markAllRead: () => void;
+  dismiss: (id: string) => void;
+  dismissAll: () => void;
   toggleFollow: (targetId: string) => void;
   theme: FTheme;
   isDark: boolean;
@@ -68,7 +71,7 @@ const NOTIF_ICON: Record<string, typeof Bell> = {
 };
 
 export function HeaderNotificationsDropdown({
-  open, onClose, items, unreadCount, loading, followStates, markRead, markAllRead, toggleFollow, theme: F, isDark,
+  open, onClose, items, unreadCount, loading, followStates, markRead, markAllRead, dismiss, dismissAll, toggleFollow, theme: F, isDark,
 }: Props) {
   const t = useTranslations('dashboard');
 
@@ -116,17 +119,30 @@ export function HeaderNotificationsDropdown({
               </span>
             )}
           </span>
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              style={{
-                fontSize: 13, color: '#6950f3', backgroundColor: 'transparent',
-                border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500,
-              }}
-            >
-              {t('header.markAllRead')}
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                style={{
+                  fontSize: 13, color: '#6950f3', backgroundColor: 'transparent',
+                  border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500,
+                }}
+              >
+                {t('header.markAllRead')}
+              </button>
+            )}
+            {items.length > 0 && (
+              <button
+                onClick={dismissAll}
+                style={{
+                  fontSize: 13, color: F.textSecondary, backgroundColor: 'transparent',
+                  border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500,
+                }}
+              >
+                {t('header.clearAll')}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Body */}
@@ -244,6 +260,22 @@ export function HeaderNotificationsDropdown({
                             Взаимно
                           </span>
                         )}
+
+                        <button
+                          onClick={e => { e.stopPropagation(); dismiss(n.id); }}
+                          aria-label={t('header.dismiss')}
+                          style={{
+                            flexShrink: 0, alignSelf: 'flex-start', marginTop: 2,
+                            width: 22, height: 22, padding: 0, borderRadius: 6,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', border: 'none', cursor: 'pointer',
+                            color: F.textSecondary, opacity: 0.6, transition: 'opacity 100ms, background-color 100ms',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.backgroundColor = F.hoverBg; }}
+                          onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          <X style={{ width: 14, height: 14 }} />
+                        </button>
                       </div>
                     );
                   })}

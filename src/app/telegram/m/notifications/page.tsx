@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MasterMiniAppNotifications
- * description: Master Mini App inbox — notifications with actionable cards (follow-back, navigate to profile). Group by day, mark read on tap. Flat cards (Phase 7.6).
+ * description: Master Mini App inbox — notifications with actionable cards (follow-back, navigate to profile). Group by day, mark read on tap, per-item dismiss (X), "Clear all".
  * created: 2026-04-13
- * updated: 2026-04-18
+ * updated: 2026-04-19
  * --- */
 
 'use client';
@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users } from 'lucide-react';
+import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users, X } from 'lucide-react';
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -128,6 +128,31 @@ export default function MasterMiniAppNotifications() {
     load();
   }
 
+  async function dismissOne(id: string) {
+    setItems((prev) => prev.filter((n) => n.id !== id));
+    haptic('selection');
+    const initData = getInitData();
+    if (!initData) return;
+    await fetch('/api/telegram/m/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, dismiss_id: id }),
+    });
+  }
+
+  async function dismissAll() {
+    if (items.length === 0) return;
+    setItems([]);
+    haptic('success');
+    const initData = getInitData();
+    if (!initData) return;
+    await fetch('/api/telegram/m/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, dismiss_all: true }),
+    });
+  }
+
   async function toggleFollow(targetId: string) {
     setFollowStates(prev => ({ ...prev, [targetId]: 'loading' }));
     haptic('light');
@@ -186,14 +211,24 @@ export default function MasterMiniAppNotifications() {
             <p className="mt-0.5 text-[11px] text-white/50">{unreadCount} непрочитанных</p>
           )}
         </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllRead}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
-          >
-            Прочитать всё
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllRead}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
+            >
+              Прочитать всё
+            </button>
+          )}
+          {items.length > 0 && (
+            <button
+              onClick={dismissAll}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-white/60 active:bg-white/[0.06] transition-colors"
+            >
+              Очистить всё
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -281,6 +316,19 @@ export default function MasterMiniAppNotifications() {
                             Взаимно
                           </span>
                         )}
+
+                        {/* Dismiss (X) */}
+                        <span
+                          role="button"
+                          aria-label="Скрыть уведомление"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            dismissOne(n.id);
+                          }}
+                          className="shrink-0 flex size-7 items-center justify-center rounded-lg text-white/40 active:bg-white/[0.06] active:text-white/70 transition-colors"
+                        >
+                          <X className="size-3.5" />
+                        </span>
                       </button>
                     </li>
                   );
