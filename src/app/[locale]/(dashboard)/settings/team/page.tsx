@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, Trash2, UserPlus, Search, Clock, Mail } from 'lucide-react';
+import { Users, Copy, Check, Trash2, UserPlus, Search, Clock, Mail, Send, MessageCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,6 +61,17 @@ export default function TeamPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [salonId, setSalonId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [inviteMode, setInviteMode] = useState<'new' | 'existing'>('new');
+  const [masterSearchQ, setMasterSearchQ] = useState('');
+  const [masterSearchResults, setMasterSearchResults] = useState<Array<{
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+    specialization: string | null;
+  }>>([]);
+  const [masterSearchBusy, setMasterSearchBusy] = useState(false);
 
   const loadTeam = useCallback(async () => {
     if (!userId) return;
@@ -176,6 +187,46 @@ export default function TeamPage() {
     setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 2000);
   }
 
+  function shareInviteTelegram(code: string) {
+    const url = `${window.location.origin}/invite/${code}`;
+    const text = encodeURIComponent(`Приглашаю в команду CRES-CA: ${url}`);
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${text}`, '_blank');
+  }
+
+  function shareInviteWhatsApp(code: string) {
+    const url = `${window.location.origin}/invite/${code}`;
+    const text = encodeURIComponent(`Приглашаю в команду CRES-CA: ${url}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
+  function shareInviteEmail(code: string, email: string | null) {
+    const url = `${window.location.origin}/invite/${code}`;
+    const subject = encodeURIComponent('Приглашение в команду CRES-CA');
+    const body = encodeURIComponent(`Здравствуйте!\n\nПриглашаю вас в свою команду на платформе CRES-CA.\nПерейдите по ссылке, чтобы присоединиться: ${url}\n`);
+    window.location.href = `mailto:${email ?? ''}?subject=${subject}&body=${body}`;
+  }
+
+  async function searchExistingMasters(q: string) {
+    if (!salonId || q.length < 2) {
+      setMasterSearchResults([]);
+      return;
+    }
+    setMasterSearchBusy(true);
+    try {
+      const res = await fetch(`/api/salon/${salonId}/invites/search-masters?q=${encodeURIComponent(q)}`);
+      const j = await res.json().catch(() => ({ masters: [] }));
+      setMasterSearchResults(j.masters ?? []);
+    } finally {
+      setMasterSearchBusy(false);
+    }
+  }
+
+  async function inviteExistingMaster(candidateEmail: string | null) {
+    setInviteEmail(candidateEmail ?? '');
+    setInviteRole('master');
+    await createInvite();
+  }
+
   async function removeMember(member: TeamMember) {
     if (!salonId) return;
     const supabase = createClient();
@@ -282,6 +333,29 @@ export default function TeamPage() {
                   {copiedCode === inv.code ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
                 </button>
                 <button
+                  onClick={() => shareInviteTelegram(inv.code)}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  title="Telegram"
+                >
+                  <Send className="size-4" />
+                </button>
+                <button
+                  onClick={() => shareInviteWhatsApp(inv.code)}
+                  className="p-2 rounded-lg text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                  title="WhatsApp"
+                >
+                  <MessageCircle className="size-4" />
+                </button>
+                {inv.email && (
+                  <button
+                    onClick={() => shareInviteEmail(inv.code, inv.email)}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Email"
+                  >
+                    <Mail className="size-4" />
+                  </button>
+                )}
+                <button
                   onClick={() => revokeInvite(inv.id)}
                   className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
                   title="Отозвать"
@@ -365,10 +439,86 @@ export default function TeamPage() {
             <DialogTitle>{t('addMaster')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <p className="text-sm text-muted-foreground">{t('inviteDescription')}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setInviteMode('new')}
+                className={`h-9 rounded-lg border text-xs font-medium transition-colors ${
+                  inviteMode === 'new'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card border-border hover:bg-muted'
+                }`}
+              >
+                Пригласить по ссылке
+              </button>
+              <button
+                type="button"
+                onClick={() => setInviteMode('existing')}
+                className={`h-9 rounded-lg border text-xs font-medium transition-colors ${
+                  inviteMode === 'existing'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card border-border hover:bg-muted'
+                }`}
+              >
+                Найти в CRES-CA
+              </button>
+            </div>
 
-            <div className="space-y-2">
-              <Label>Роль</Label>
+            {inviteMode === 'existing' ? (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Поиск среди мастеров, уже зарегистрированных в CRES-CA без салона.</p>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    value={masterSearchQ}
+                    onChange={(e) => {
+                      setMasterSearchQ(e.target.value);
+                      searchExistingMasters(e.target.value);
+                    }}
+                    placeholder="Имя, email или телефон (мин. 2 символа)"
+                    className="pl-9"
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-1.5">
+                  {masterSearchBusy && (
+                    <p className="text-xs text-muted-foreground text-center py-2">Поиск…</p>
+                  )}
+                  {!masterSearchBusy && masterSearchQ.length >= 2 && masterSearchResults.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">Никого не нашли</p>
+                  )}
+                  {masterSearchResults.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => inviteExistingMaster(m.email)}
+                      disabled={inviteBusy}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-muted transition-colors text-left disabled:opacity-60"
+                    >
+                      <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold overflow-hidden">
+                        {m.avatar_url ? (
+                          <img src={m.avatar_url} alt="" className="size-full rounded-full object-cover" />
+                        ) : (
+                          (m.full_name || 'M')[0].toUpperCase()
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{m.full_name ?? '—'}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {m.specialization ?? m.email ?? m.phone ?? 'Мастер'}
+                        </div>
+                      </div>
+                      <UserPlus className="size-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">{t('inviteDescription')}</p>
+
+                <div className="space-y-2">
+                  <Label>Роль</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -416,6 +566,8 @@ export default function TeamPage() {
                 {inviteBusy ? '...' : 'Создать и скопировать ссылку'}
               </Button>
             </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
