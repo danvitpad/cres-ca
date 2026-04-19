@@ -27,9 +27,7 @@ import {
   ChevronDown,
   Sparkles,
   UserPlus,
-  History,
   Bell,
-  Map as MapIcon,
   X as XIcon,
   Sun,
   Moon,
@@ -45,11 +43,10 @@ import { cn } from '@/lib/utils';
 const sidebarNav = [
   { key: 'home', icon: Home, href: '/feed' },
   { key: 'profile', icon: User, href: '/profile' },
-  { key: 'calendar', icon: CalendarDays, href: '/my-calendar' },
+  { key: 'appointments', icon: CalendarDays, href: '/appointments' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
-  { key: 'family', icon: Users, href: '/profile/family' },
-  { key: 'activity', icon: History, href: '/history' },
-  { key: 'map', icon: MapIcon, href: '/map' },
+  { key: 'family', icon: Users, href: '/family' },
+  { key: 'search', icon: Search, href: '/search' },
   { key: 'wallet', icon: Wallet, href: '/wallet' },
   { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
@@ -63,7 +60,7 @@ const accountRoutes = [
 
 const mobileTabs = [
   { key: 'home', icon: Home, href: '/feed', center: false },
-  { key: 'calendar', icon: CalendarDays, href: '/my-calendar', center: false },
+  { key: 'appointments', icon: CalendarDays, href: '/appointments', center: false },
   { key: 'book', icon: Plus, href: '/book', center: true },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters', center: false },
   { key: 'profile', icon: User, href: '/profile', center: false },
@@ -188,7 +185,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const goSearch = useCallback((q: string) => {
     const trimmed = q.trim();
     if (!trimmed) return; // do not navigate on empty input
-    router.push(`/masters?q=${encodeURIComponent(trimmed)}`);
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`);
   }, [router]);
   const lastScrollY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -254,12 +251,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         .from('notifications')
         .select('id, title, body, created_at, read_at')
         .eq('profile_id', userId)
+        .is('dismissed_at', null)
         .order('created_at', { ascending: false })
         .limit(5);
       const { count } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
         .eq('profile_id', userId)
+        .is('dismissed_at', null)
         .is('read_at', null);
       if (cancelled) return;
       setNotifs((data ?? []) as typeof notifs);

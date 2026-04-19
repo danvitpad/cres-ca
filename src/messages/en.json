@@ -655,7 +655,10 @@
     "statusCancelled": "Cancelled",
     "repeatBooking": "Book again",
     "selectClient": "Select client",
-    "notes": "Notes"
+    "notes": "Notes",
+    "useBonuses": "Use {amount} bonus points (−{amount} {currency})",
+    "bonusDiscount": "Bonus discount",
+    "totalLabel": "Total"
   },
   "services": {
     "addService": "Add Service",
@@ -891,9 +894,28 @@
     "distance": "Distance",
     "locationDenied": "Location access denied"
   },
+  "search": {
+    "title": "Search",
+    "placeholder": "Master, service, salon…",
+    "nothingFound": "Nothing found",
+    "tryDifferent": "Try changing your query or filters",
+    "listView": "List",
+    "mapView": "Map",
+    "filters": "Filters",
+    "category": "Category",
+    "rating": "Rating",
+    "anyRating": "Any",
+    "distance": "Distance",
+    "anyDistance": "Any",
+    "enableGeoHint": "Enable location to see masters nearby",
+    "locateMe": "Locate me",
+    "reset": "Reset",
+    "show": "Show"
+  },
   "clientNav": {
     "feed": "Home",
     "calendar": "Calendar",
+    "appointments": "My appointments",
     "book": "Book",
     "masters": "Masters",
     "profile": "Profile",
@@ -913,6 +935,7 @@
     "photos": "Before/After photos",
     "home": "Home",
     "shop": "Shop",
+    "search": "Search",
     "map": "Map"
   },
   "clientHeader": {
@@ -957,8 +980,19 @@
   },
   "clientWallet": {
     "title": "Wallet & rewards",
+    "subtitle": "Bonus balance, activity log and referrals",
     "balance": "Balance",
     "bonusPoints": "Bonus points",
+    "howEarnTitle": "How to earn",
+    "earnReferral": "Invite a friend → +100 bonuses each",
+    "earnReview": "Leave a review → +20 bonuses",
+    "earnLoyalty": "Every 5th visit → +50 bonuses",
+    "howSpendTitle": "How to spend",
+    "howSpendDesc": "At booking: choose how many bonuses to redeem as a discount.",
+    "spendRatio": "1 bonus = 1 ₴",
+    "share": "Share",
+    "timelineRefBonus": "Referral bonus",
+    "timelineSpent": "Spent",
     "lifetimeEarned": "Total earned",
     "referrals": "Referrals",
     "giftCards": "Gift cards",
@@ -1062,7 +1096,11 @@
     "bonusLabel": "Referral bonus",
     "bonusPoints": "pts",
     "visitsWithYou": "Visits",
-    "quickBook": "Book"
+    "quickBook": "Book",
+    "confirmUnsubscribeTitle": "Unfollow this master?",
+    "confirmUnsubscribeDesc": "You won't receive updates from {name} anymore. You can follow again any time.",
+    "unsubscribeSuccess": "Unfollowed",
+    "unsubscribeError": "Failed to unfollow. Please try again."
   },
   "clientForms": {
     "title": "Forms & documents",
@@ -1155,7 +1193,10 @@
     "filter_bookings": "Bookings",
     "filter_reminders": "Reminders",
     "filter_promos": "Promos",
-    "filter_reviews": "Reviews"
+    "filter_reviews": "Reviews",
+    "markAllRead": "Mark all read",
+    "clearAll": "Clear all",
+    "dismiss": "Dismiss"
   },
   "clientSettings": {
     "title": "Account settings",
@@ -1173,9 +1214,23 @@
     "twoFactor": "Two-factor authentication",
     "hideProfile": "Hide my profile from masters (except those I'm booked with)",
     "shareLocation": "Share location for nearby search",
+    "data": "Data",
     "dataExport": "Export my data",
     "deleteAccount": "Delete account",
+    "deleteConfirmTitle": "Delete account?",
     "deleteConfirm": "This action is irreversible. All visits, history and bonuses will be deleted.",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "connect": "Connect",
+    "connected": "Connected",
+    "changeEmail": "Change email",
+    "changePhone": "Change phone",
+    "passwordResetSent": "Password reset link sent to your email.",
+    "twoFactorHint": "2FA via Telegram — coming soon.",
+    "changeEmailHint": "Email change — coming soon.",
+    "changePhoneHint": "Phone change — coming soon.",
+    "connectTelegramHint": "Open @CresCaBot in Telegram and press /start to link.",
     "save": "Save"
   },
   "clientActivity": {
@@ -1505,6 +1560,11 @@
     "recommendedTitle": "Recommended",
     "viewMaster": "View"
   },
+  "cardLabels": {
+    "masterPlaceholder": "Master",
+    "salonPlaceholder": "Salon",
+    "managerAssigned": "Master will be assigned by the manager"
+  },
   "intake": {
     "title": "Tell us about your health",
     "subtitle": "This info is visible only to your master and helps match safe procedures",
@@ -1564,7 +1624,8 @@
   },
   "family": {
     "title": "My Family",
-    "addMember": "Add Family Member",
+    "subtitle": "Book on behalf of your relatives — their visit history stays separate.",
+    "addMember": "Add",
     "name": "Name",
     "relationship": "Relationship",
     "child": "Child",
@@ -1575,9 +1636,12 @@
     "emptyDescription": "Add family members to book appointments on their behalf",
     "bookingFor": "Booking for",
     "bookingForMe": "Myself",
+    "book": "Book",
     "remove": "Remove",
     "added": "Family member added",
     "removed": "Family member removed",
+    "confirmRemoveTitle": "Remove family member?",
+    "confirmRemoveDesc": "{name} will be removed. Their visit history stays in your records.",
     "totalBudget": "Family budget (total)",
     "myBudget": "My own",
     "spent": "spent"
@@ -1614,6 +1678,23 @@
     "send": "Send Tip",
     "skip": "Not now",
     "thankYou": "Thank you for the tip!"
+  },
+  "clientAppointments": {
+    "title": "My appointments",
+    "subtitle": "Upcoming visits and history",
+    "tabUpcoming": "Upcoming",
+    "tabPast": "Past",
+    "emptyUpcoming": "No upcoming appointments",
+    "emptyPast": "Book a master — your visit history will appear here",
+    "ctaFindMaster": "Find a master",
+    "details": "Details",
+    "cancel": "Cancel",
+    "repeat": "Repeat",
+    "min": "min",
+    "feeFree": "{hours}h before visit — cancellation is free.",
+    "feePartial": "Late cancellation ({hours}h before): {amount} {currency} will be charged per master's policy.",
+    "feeLate": "Urgent cancellation ({hours}h before): full price {amount} {currency} will be charged.",
+    "forMember": "for {name}"
   },
   "clientCalendar": {
     "title": "My Calendar",

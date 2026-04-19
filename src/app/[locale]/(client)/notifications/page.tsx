@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Sparkles, Star, Sliders, UserPlus, UserCheck, Users, Loader2 } from 'lucide-react';
+import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Sparkles, Star, Sliders, UserPlus, UserCheck, Users, Loader2, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
@@ -113,6 +113,7 @@ export default function NotificationsPage() {
         .from('notifications')
         .select('id, title, body, channel, status, created_at, read_at, data')
         .eq('profile_id', userId)
+        .is('dismissed_at', null)
         .order('created_at', { ascending: false })
         .limit(50);
       setFeed((data ?? []) as NotifRow[]);
@@ -166,6 +167,35 @@ export default function NotificationsPage() {
     }
   }
 
+  async function dismissOne(id: string) {
+    setFeed((prev) => prev.filter((n) => n.id !== id));
+    const supabase = createClient();
+    await supabase.from('notifications').update({ dismissed_at: new Date().toISOString() }).eq('id', id);
+  }
+
+  async function dismissAll() {
+    if (!userId) return;
+    setFeed([]);
+    const supabase = createClient();
+    await supabase
+      .from('notifications')
+      .update({ dismissed_at: new Date().toISOString() })
+      .eq('profile_id', userId)
+      .is('dismissed_at', null);
+  }
+
+  async function markAllRead() {
+    if (!userId) return;
+    const now = new Date().toISOString();
+    setFeed((prev) => prev.map((n) => (n.read_at ? n : { ...n, read_at: now })));
+    const supabase = createClient();
+    await supabase
+      .from('notifications')
+      .update({ read_at: now })
+      .eq('profile_id', userId)
+      .is('read_at', null);
+  }
+
   async function toggleFollow(targetId: string) {
     setFollowStates(prev => ({ ...prev, [targetId]: 'loading' }));
     try {
@@ -203,6 +233,27 @@ export default function NotificationsPage() {
         </TabsList>
 
         <TabsContent value="inbox" className="mt-6 space-y-4">
+          {/* Toolbar */}
+          {feed.length > 0 && (
+            <div className="flex items-center justify-end gap-2">
+              {feed.some((n) => !n.read_at) && (
+                <button
+                  onClick={markAllRead}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/30"
+                >
+                  <Check className="size-3" />
+                  {t('markAllRead')}
+                </button>
+              )}
+              <button
+                onClick={dismissAll}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-rose-600 hover:border-rose-500/40"
+              >
+                <X className="size-3" />
+                {t('clearAll')}
+              </button>
+            </div>
+          )}
           {/* Category filter chips */}
           <div className="flex gap-2 overflow-x-auto scrollbar-thin pb-1">
             {(['all', 'important', 'bookings', 'reminders', 'promos', 'reviews'] as const).map((c) => {
@@ -321,6 +372,15 @@ export default function NotificationsPage() {
                               Взаимно
                             </span>
                           )}
+
+                          {/* Dismiss */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); dismissOne(n.id); }}
+                            aria-label={t('dismiss')}
+                            className="shrink-0 self-center rounded-full p-1 text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover/notif:opacity-100"
+                          >
+                            <X className="size-3.5" />
+                          </button>
                         </div>
                       );
                     })}

@@ -81,9 +81,9 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       webapp.ready();
       webapp.expand();
       try { webapp.disableVerticalSwipes(); } catch {}
-      try { webapp.setHeaderColor('#000000'); } catch {}
-      try { webapp.setBackgroundColor('#000000'); } catch {}
-      try { webapp.setBottomBarColor('#000000'); } catch {}
+      try { webapp.setHeaderColor('#111214'); } catch {}
+      try { webapp.setBackgroundColor('#111214'); } catch {}
+      try { webapp.setBottomBarColor('#111214'); } catch {}
 
       syncSafeArea(webapp);
       syncTheme(webapp);

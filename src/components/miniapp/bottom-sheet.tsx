@@ -50,7 +50,7 @@ export function MiniBottomSheet({
           />
           <motion.div
             className={cn(
-              'fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[#1f2023] text-white',
+              'fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[#1a1b1e] text-white',
               'max-h-[90dvh] overflow-hidden flex flex-col',
               className,
             )}

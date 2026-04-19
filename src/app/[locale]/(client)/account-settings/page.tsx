@@ -1,31 +1,91 @@
 /** --- YAML
  * name: ClientSettingsPage
- * description: Account settings — language, currency, timezone, linked accounts, privacy, delete account
+ * description: Настройки клиента — язык, валюта, часовой пояс, тема, связанные аккаунты, безопасность, приватность, данные.
  * created: 2026-04-12
- * updated: 2026-04-12
+ * updated: 2026-04-19
  * --- */
 
 'use client';
 
-import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Globe, DollarSign, Clock, Link2, Send, ShieldCheck, Lock, Download, Trash2, MapPin, EyeOff } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
+import {
+  Globe,
+  DollarSign,
+  Clock,
+  Link2,
+  Send,
+  ShieldCheck,
+  Lock,
+  Download,
+  Trash2,
+  MapPin,
+  EyeOff,
+  Sun,
+  Moon,
+  AtSign,
+  Phone,
+  Check,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
-import { useRouter } from 'next/navigation';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function ClientSettingsPage() {
   const t = useTranslations('clientSettings');
+  const tc = useTranslations('common');
   const { clearAuth } = useAuthStore();
   const router = useRouter();
-  const [lang, setLang] = useState('ru');
+  const pathname = usePathname();
+  const locale = useLocale();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const confirm = useConfirm();
+
   const [currency, setCurrency] = useState('UAH');
   const [hideProfile, setHideProfile] = useState(false);
   const [shareLocation, setShareLocation] = useState(true);
+  const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user?.id) {
+        setTelegramLinked(false);
+        return;
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('telegram_id')
+        .eq('id', user.id)
+        .maybeSingle();
+      setTelegramLinked(Boolean(data?.telegram_id));
+    })();
+  }, []);
+
+  function switchLocale(next: string) {
+    if (next === locale || !pathname) return;
+    const segs = pathname.split('/');
+    segs[1] = next;
+    router.replace(segs.join('/'));
+  }
+
+  const isDark = (resolvedTheme ?? theme) === 'dark';
 
   async function exportData() {
     try {
@@ -39,12 +99,36 @@ export default function ClientSettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      // noop — user will see missing download
+      toast.error(tc('error'));
     }
   }
 
+  async function changePassword() {
+    const { data: { user } } = await createClient().auth.getUser();
+    if (!user?.email) {
+      toast.error(tc('error'));
+      return;
+    }
+    const { error } = await createClient().auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/login`,
+    });
+    if (error) toast.error(error.message);
+    else toast.success(t('passwordResetSent'));
+  }
+
   async function deleteAccount() {
-    if (!confirm(t('deleteConfirm'))) return;
+    const ok = await confirm({
+      title: t('deleteConfirmTitle'),
+      description: t('deleteConfirm'),
+      confirmLabel: t('deleteAccount'),
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await fetch('/api/account/delete', { method: 'POST' });
+    if (!res.ok) {
+      toast.error(tc('error'));
+      return;
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     clearAuth();
@@ -62,7 +146,7 @@ export default function ClientSettingsPage() {
 
       <Section title={t('account')}>
         <Row icon={Globe} label={t('language')}>
-          <Select value={lang} onValueChange={(v) => v && setLang(v)}>
+          <Select value={locale} onValueChange={(v) => v && switchLocale(v)}>
             <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
@@ -90,17 +174,66 @@ export default function ClientSettingsPage() {
             {Intl.DateTimeFormat().resolvedOptions().timeZone}
           </span>
         </Row>
+        <Row icon={isDark ? Moon : Sun} label={t('theme')}>
+          <div className="inline-flex rounded-full border p-0.5 text-xs">
+            <button
+              onClick={() => setTheme('light')}
+              className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+                !isDark ? 'bg-foreground text-background' : 'text-muted-foreground'
+              }`}
+            >
+              {t('themeLight')}
+            </button>
+            <button
+              onClick={() => setTheme('dark')}
+              className={`rounded-full px-3 py-1.5 font-medium transition-colors ${
+                isDark ? 'bg-foreground text-background' : 'text-muted-foreground'
+              }`}
+            >
+              {t('themeDark')}
+            </button>
+          </div>
+        </Row>
       </Section>
 
       <Section title={t('linkedAccounts')}>
-        <LinkRow icon={Send} label={t('connectTelegram')} />
-        <LinkRow icon={Link2} label={t('connectGoogle')} />
-        <LinkRow icon={Link2} label={t('connectFacebook')} />
+        <LinkRow
+          icon={Send}
+          label={t('connectTelegram')}
+          rightLabel={
+            telegramLinked === null
+              ? ''
+              : telegramLinked
+                ? t('connected')
+                : t('connect')
+          }
+          connected={telegramLinked === true}
+          onClick={() => {
+            if (telegramLinked) return;
+            toast.info(t('connectTelegramHint'));
+          }}
+        />
+        <LinkRow icon={Link2} label={t('connectGoogle')} rightLabel={t('connect')} />
+        <LinkRow icon={Link2} label={t('connectFacebook')} rightLabel={t('connect')} />
       </Section>
 
       <Section title={t('security')}>
-        <LinkRow icon={Lock} label={t('changePassword')} />
-        <LinkRow icon={ShieldCheck} label={t('twoFactor')} />
+        <LinkRow icon={Lock} label={t('changePassword')} onClick={changePassword} />
+        <LinkRow
+          icon={ShieldCheck}
+          label={t('twoFactor')}
+          onClick={() => toast.info(t('twoFactorHint'))}
+        />
+        <LinkRow
+          icon={AtSign}
+          label={t('changeEmail')}
+          onClick={() => toast.info(t('changeEmailHint'))}
+        />
+        <LinkRow
+          icon={Phone}
+          label={t('changePhone')}
+          onClick={() => toast.info(t('changePhoneHint'))}
+        />
       </Section>
 
       <Section title={t('privacy')}>
@@ -118,7 +251,7 @@ export default function ClientSettingsPage() {
         />
       </Section>
 
-      <Section>
+      <Section title={t('data')}>
         <LinkRow icon={Download} label={t('dataExport')} onClick={exportData} />
         <div className="px-6 py-4">
           <Button variant="destructive" onClick={deleteAccount}>
@@ -136,7 +269,9 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
     <div className="rounded-3xl border bg-card overflow-hidden">
       {title && (
         <div className="border-b px-6 py-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {title}
+          </h2>
         </div>
       )}
       <div className="divide-y">{children}</div>
@@ -144,7 +279,15 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
   );
 }
 
-function Row({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string }>; label: string; children: React.ReactNode }) {
+function Row({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center gap-4 px-6 py-4">
       <Icon className="size-5 text-muted-foreground shrink-0" />
@@ -154,12 +297,38 @@ function Row({ icon: Icon, label, children }: { icon: React.ComponentType<{ clas
   );
 }
 
-function LinkRow({ icon: Icon, label, onClick }: { icon: React.ComponentType<{ className?: string }>; label: string; onClick?: () => void }) {
+function LinkRow({
+  icon: Icon,
+  label,
+  onClick,
+  rightLabel,
+  connected,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick?: () => void;
+  rightLabel?: string;
+  connected?: boolean;
+}) {
   return (
-    <button onClick={onClick} className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-muted/40 transition-colors">
+    <button
+      onClick={onClick}
+      className="flex w-full items-center gap-4 px-6 py-4 text-left hover:bg-muted/40 transition-colors"
+    >
       <Icon className="size-5 text-muted-foreground shrink-0" />
       <span className="flex-1 text-sm font-medium">{label}</span>
-      <span className="text-muted-foreground">›</span>
+      {rightLabel ? (
+        <span
+          className={`flex items-center gap-1 text-xs font-semibold ${
+            connected ? 'text-emerald-600 dark:text-emerald-300' : 'text-muted-foreground'
+          }`}
+        >
+          {connected && <Check className="size-3.5" />}
+          {rightLabel}
+        </span>
+      ) : (
+        <span className="text-muted-foreground">›</span>
+      )}
     </button>
   );
 }

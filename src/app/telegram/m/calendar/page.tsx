@@ -247,11 +247,10 @@ export default function MasterMiniAppCalendar() {
 
   return (
     <div className="space-y-4 px-5 pt-6 pb-10">
-      {/* Day nav */}
+      {/* Day header — no page title, just the day + count + FAB */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Календарь</p>
-          <h1 className="mt-1 text-2xl font-bold capitalize">{formatDayHeader(day)}</h1>
+          <h1 className="text-2xl font-bold capitalize">{formatDayHeader(day)}</h1>
           <p className="mt-0.5 text-[11px] text-white/40">
             {totals.count} {plural(totals.count, ['запись', 'записи', 'записей'])} · {totals.revenue.toFixed(0)} ₴
           </p>

@@ -97,7 +97,7 @@ export default function ClientIntakeFormPage() {
       return;
     }
     toast.success(t('saved'));
-    if (isPrompt) router.push('/history');
+    if (isPrompt) router.push('/appointments');
   }
 
   if (loading) {

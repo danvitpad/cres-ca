@@ -16,6 +16,17 @@ import { cn } from '@/lib/utils';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { ShimmerSkeleton } from '@/components/shared/primitives/shimmer-skeleton';
+import { MasterSalonCard } from '@/components/shared/primitives/master-salon-card';
+import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
+
+type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null } | null;
+
+function unwrapSalon(s: SalonEmbed | SalonEmbed[] | null | undefined): SalonRef | null {
+  if (!s) return null;
+  const obj = Array.isArray(s) ? s[0] ?? null : s;
+  if (!obj) return null;
+  return { id: obj.id, name: obj.name, logo_url: obj.logo_url, city: obj.city, rating: obj.rating };
+}
 
 interface FeedPost {
   id: string;
@@ -28,6 +39,7 @@ interface FeedPost {
   created_at: string;
   master: {
     id: string;
+    salon_id: string | null;
     specialization: string | null;
     display_name: string | null;
     avatar_url: string | null;
@@ -35,6 +47,7 @@ interface FeedPost {
       full_name: string;
       avatar_url: string | null;
     } | null;
+    salon: SalonEmbed;
   };
 }
 
@@ -42,6 +55,7 @@ interface FollowedMaster {
   master_id: string;
   master: {
     id: string;
+    salon_id: string | null;
     specialization: string | null;
     display_name: string | null;
     avatar_url: string | null;
@@ -49,6 +63,7 @@ interface FollowedMaster {
       full_name: string;
       avatar_url: string | null;
     } | null;
+    salon: SalonEmbed;
   };
   hasNewPosts: boolean;
 }
@@ -98,14 +113,47 @@ export default function FeedPage() {
   const t = useTranslations('feed');
   const tInd = useTranslations('industries');
   const tProf = useTranslations('professions');
+  const tCard = useTranslations('cardLabels');
+  const cardLabels = {
+    masterPlaceholder: tCard('masterPlaceholder'),
+    salonPlaceholder: tCard('salonPlaceholder'),
+    managerAssigned: tCard('managerAssigned'),
+  };
   const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [masters, setMasters] = useState<FollowedMaster[]>([]);
   const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
   const [discover, setDiscover] = useState<FollowedMaster[]>([]);
-  const [nextAppt, setNextAppt] = useState<{ id: string; starts_at: string; service: string | null; masterName: string; masterAvatar: string | null; masterId: string } | null>(null);
-  const [usual, setUsual] = useState<{ masterId: string; masterName: string; masterAvatar: string | null; serviceId: string; serviceName: string; visits: number } | null>(null);
-  const [recommendations, setRecommendations] = useState<Array<{ id: string; fromName: string; toMasterId: string; toName: string; toAvatar: string | null; toSpec: string | null; note: string | null }>>([]);
+  const [nextAppt, setNextAppt] = useState<{
+    id: string;
+    starts_at: string;
+    service: string | null;
+    masterId: string;
+    masterName: string;
+    masterAvatar: string | null;
+    masterSpecialization: string | null;
+    salon: SalonRef | null;
+  } | null>(null);
+  const [usual, setUsual] = useState<{
+    masterId: string;
+    masterName: string;
+    masterAvatar: string | null;
+    masterSpecialization: string | null;
+    salon: SalonRef | null;
+    serviceId: string;
+    serviceName: string;
+    visits: number;
+  } | null>(null);
+  const [recommendations, setRecommendations] = useState<Array<{
+    id: string;
+    fromName: string;
+    toMasterId: string;
+    toName: string;
+    toAvatar: string | null;
+    toSpec: string | null;
+    toSalon: SalonRef | null;
+    note: string | null;
+  }>>([]);
   const { userId } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -118,7 +166,7 @@ export default function FeedPage() {
       .from('feed_posts')
       .select(`
         id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))
+        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -134,7 +182,7 @@ export default function FeedPage() {
       .from('client_master_links')
       .select(`
         master_id,
-        master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))
+        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))
       `)
       .limit(20);
     return (data ?? []).map((d) => ({ ...d, hasNewPosts: false })) as unknown as FollowedMaster[];
@@ -146,7 +194,7 @@ export default function FeedPage() {
       .from('feed_posts')
       .select(`
         id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))
+        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))
       `)
       .in('type', ['burning_slot', 'promotion', 'before_after', 'new_service', 'update'])
       .order('created_at', { ascending: false })
@@ -163,7 +211,7 @@ export default function FeedPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from('masters')
-      .select('id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url)')
+      .select('id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating)')
       .limit(8);
     return (data ?? []).map((master) => ({
       master_id: master.id,
@@ -194,7 +242,7 @@ export default function FeedPage() {
           // Cross-master recommendations: "Your nail master suggests this massage therapist"
           const { data: recs } = await supabase
             .from('master_recommendations')
-            .select('id, note, from_master:masters!master_recommendations_from_master_id_fkey(display_name, profile:profiles!masters_profile_id_fkey(full_name)), to_master:masters!master_recommendations_to_master_id_fkey(id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))')
+            .select('id, note, from_master:masters!master_recommendations_from_master_id_fkey(display_name, profile:profiles!masters_profile_id_fkey(full_name)), to_master:masters!master_recommendations_to_master_id_fkey(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))')
             .in('client_id', clientIds)
             .eq('status', 'pending')
             .order('created_at', { ascending: false })
@@ -204,7 +252,7 @@ export default function FeedPage() {
               id: string;
               note: string | null;
               from_master: { display_name: string | null; profile: { full_name: string | null } | null } | null;
-              to_master: { id: string; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null } | null;
+              to_master: { id: string; salon_id: string | null; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null; salon: SalonEmbed | SalonEmbed[] | null } | null;
             };
             setRecommendations(
               (recs as unknown as RecRow[])
@@ -216,6 +264,7 @@ export default function FeedPage() {
                   toName: r.to_master!.display_name ?? r.to_master!.profile?.full_name ?? '?',
                   toAvatar: r.to_master!.avatar_url ?? r.to_master!.profile?.avatar_url ?? null,
                   toSpec: r.to_master!.specialization,
+                  toSalon: unwrapSalon(r.to_master!.salon),
                   note: r.note,
                 })),
             );
@@ -223,14 +272,14 @@ export default function FeedPage() {
 
           const { data: appt } = await supabase
             .from('appointments')
-            .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))')
+            .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))')
             .in('client_id', clientIds)
             .gte('starts_at', new Date().toISOString())
             .order('starts_at', { ascending: true })
             .limit(1)
             .maybeSingle();
           if (appt) {
-            const a = appt as unknown as { id: string; starts_at: string; service: { name: string } | { name: string }[] | null; master: { id: string; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null } };
+            const a = appt as unknown as { id: string; starts_at: string; service: { name: string } | { name: string }[] | null; master: { id: string; salon_id: string | null; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null; salon: SalonEmbed | SalonEmbed[] | null } };
             const svc = Array.isArray(a.service) ? a.service[0] : a.service;
             setNextAppt({
               id: a.id,
@@ -239,20 +288,22 @@ export default function FeedPage() {
               masterName: a.master.display_name ?? a.master.profile?.full_name ?? '?',
               masterAvatar: a.master.avatar_url ?? a.master.profile?.avatar_url ?? null,
               masterId: a.master.id,
+              masterSpecialization: a.master.specialization,
+              salon: unwrapSalon(a.master.salon),
             });
           } else {
             // "Your usual": aggregate last 30 completed visits → pick most-frequent (master, service).
             // Only surface if ≥3 visits with the same pair AND no upcoming appointment.
             const { data: completed } = await supabase
               .from('appointments')
-              .select('master_id, service_id, service:services(name), master:masters!inner(id, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url))')
+              .select('master_id, service_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))')
               .in('client_id', clientIds)
               .eq('status', 'completed')
               .order('starts_at', { ascending: false })
               .limit(30);
 
             if (completed && completed.length >= 3) {
-              type Row = { master_id: string; service_id: string; service: { name: string } | { name: string }[] | null; master: { id: string; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null } };
+              type Row = { master_id: string; service_id: string; service: { name: string } | { name: string }[] | null; master: { id: string; salon_id: string | null; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null; salon: SalonEmbed | SalonEmbed[] | null } };
               const counts = new Map<string, { n: number; row: Row }>();
               for (const r of completed as unknown as Row[]) {
                 const key = `${r.master_id}::${r.service_id}`;
@@ -267,6 +318,8 @@ export default function FeedPage() {
                   masterId: best.row.master.id,
                   masterName: best.row.master.display_name ?? best.row.master.profile?.full_name ?? '?',
                   masterAvatar: best.row.master.avatar_url ?? best.row.master.profile?.avatar_url ?? null,
+                  masterSpecialization: best.row.master.specialization,
+                  salon: unwrapSalon(best.row.master.salon),
                   serviceId: best.row.service_id,
                   serviceName: svc?.name ?? '—',
                   visits: best.n,
@@ -407,8 +460,13 @@ export default function FeedPage() {
           </div>
           <div className="flex gap-4 overflow-x-auto px-[var(--space-page)] pb-2 scrollbar-thin">
             {burningSlots.map((slot) => {
-              const name = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
-              const avatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
+              const slotName = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
+              const slotAvatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
+              const sd = resolveCardDisplay(
+                { id: slot.master.id, display_name: slotName, avatar_url: slotAvatar, specialization: slot.master.specialization, salon_id: slot.master.salon_id },
+                unwrapSalon(slot.master.salon),
+                cardLabels,
+              );
               const typeGradients: Record<string, string> = {
                 burning_slot: 'from-emerald-500 via-teal-500 to-cyan-600',
                 promotion: 'from-amber-400 via-rose-500 to-fuchsia-600',
@@ -448,24 +506,24 @@ export default function FeedPage() {
                       {typeIcons[slot.type]}
                       {t(slot.type as 'burning_slot' | 'promotion' | 'before_after' | 'new_service' | 'update')}
                     </span>
-                    {/* Master chip over the hero */}
+                    {/* Master/Salon chip over the hero */}
                     <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                      {avatar ? (
-                        <img src={avatar} alt={name} className="size-8 rounded-full object-cover ring-2 ring-white/90" />
+                      {sd.avatarSrc ? (
+                        <img src={sd.avatarSrc} alt={sd.avatarName} className="size-8 rounded-full object-cover ring-2 ring-white/90" />
                       ) : (
                         <div className="flex size-8 items-center justify-center rounded-full bg-white/95 text-xs font-bold text-foreground ring-2 ring-white/90">
-                          {name[0]}
+                          {sd.avatarName[0]}
                         </div>
                       )}
-                      <span className="max-w-[160px] truncate text-xs font-semibold text-white drop-shadow-md">{name}</span>
+                      <span className="max-w-[160px] truncate text-xs font-semibold text-white drop-shadow-md">{sd.primary}</span>
                     </div>
                   </div>
                   {/* Body — fixed height so all cards align */}
                   <div className="flex flex-1 flex-col justify-between gap-2 p-4">
                     <div className="space-y-1">
                       {slot.title && <p className="line-clamp-2 text-sm font-semibold leading-snug">{slot.title}</p>}
-                      {slot.master.specialization && (
-                        <p className="truncate text-[11px] text-muted-foreground">{slot.master.specialization}</p>
+                      {sd.secondary && (
+                        <p className="truncate text-[11px] text-muted-foreground">{sd.secondary}</p>
                       )}
                     </div>
                     <div className="flex items-center justify-between pt-1">
@@ -533,31 +591,41 @@ export default function FeedPage() {
               <CalendarCheck className="size-4 text-[var(--ds-accent)]" />
               <h3 className="text-sm font-semibold">{t('nextApptTitle')}</h3>
             </div>
-            {nextAppt ? (
-              <Link href={`/my-calendar`} className="block p-4 transition-colors hover:bg-muted/40">
-                <div className="flex items-center gap-3">
-                  {nextAppt.masterAvatar ? (
-                    <img src={nextAppt.masterAvatar} alt="" className="size-11 rounded-full object-cover" />
-                  ) : (
-                    <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
-                      {nextAppt.masterName[0]}
+            {nextAppt ? (() => {
+              const nd = resolveCardDisplay(
+                { id: nextAppt.masterId, display_name: nextAppt.masterName, avatar_url: nextAppt.masterAvatar, specialization: nextAppt.masterSpecialization, salon_id: nextAppt.salon?.id ?? null },
+                nextAppt.salon,
+                cardLabels,
+              );
+              return (
+                <Link href={`/my-calendar`} className="block p-4 transition-colors hover:bg-muted/40">
+                  <div className="flex items-center gap-3">
+                    {nd.avatarSrc ? (
+                      <img src={nd.avatarSrc} alt="" className="size-11 rounded-full object-cover" />
+                    ) : (
+                      <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
+                        {nd.avatarName[0]}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{nextAppt.service ?? '—'}</p>
+                      <p className="truncate text-xs font-medium text-foreground">{nd.primary}</p>
+                      {nd.secondary && (
+                        <p className="truncate text-[11px] text-muted-foreground">{nd.secondary}</p>
+                      )}
                     </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{nextAppt.service ?? '—'}</p>
-                    <p className="truncate text-xs text-muted-foreground">{nextAppt.masterName}</p>
                   </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {new Date(nextAppt.starts_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-                  </span>
-                  <span className="text-sm font-bold tabular-nums text-[var(--ds-accent)]">
-                    {new Date(nextAppt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-              </Link>
-            ) : (
+                  <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
+                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {new Date(nextAppt.starts_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                    <span className="text-sm font-bold tabular-nums text-[var(--ds-accent)]">
+                      {new Date(nextAppt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })() : (
               <div className="p-5 text-center">
                 <p className="text-xs text-muted-foreground">{t('nextApptEmpty')}</p>
                 <Link href="/masters" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ds-accent)] hover:underline">
@@ -569,7 +637,13 @@ export default function FeedPage() {
           </div>
 
           {/* Your usual — shown when no next appt but client has a repeat pattern */}
-          {!nextAppt && usual && (
+          {!nextAppt && usual && (() => {
+            const ud = resolveCardDisplay(
+              { id: usual.masterId, display_name: usual.masterName, avatar_url: usual.masterAvatar, specialization: usual.masterSpecialization, salon_id: usual.salon?.id ?? null },
+              usual.salon,
+              cardLabels,
+            );
+            return (
             <Link
               href={`/book?master_id=${usual.masterId}&service_id=${usual.serviceId}`}
               className="group/usual block overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-[var(--ds-accent)]/10 via-card to-card shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]"
@@ -580,16 +654,19 @@ export default function FeedPage() {
               </div>
               <div className="p-4">
                 <div className="flex items-center gap-3">
-                  {usual.masterAvatar ? (
-                    <img src={usual.masterAvatar} alt="" className="size-11 rounded-full object-cover ring-1 ring-border/60" />
+                  {ud.avatarSrc ? (
+                    <img src={ud.avatarSrc} alt="" className="size-11 rounded-full object-cover ring-1 ring-border/60" />
                   ) : (
                     <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
-                      {usual.masterName[0]}
+                      {ud.avatarName[0]}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{usual.serviceName}</p>
-                    <p className="truncate text-xs text-muted-foreground">{usual.masterName}</p>
+                    <p className="truncate text-xs font-medium text-foreground">{ud.primary}</p>
+                    {ud.secondary && (
+                      <p className="truncate text-[11px] text-muted-foreground">{ud.secondary}</p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
@@ -603,7 +680,8 @@ export default function FeedPage() {
                 </div>
               </div>
             </Link>
-          )}
+            );
+          })()}
 
           {/* Cross-master recommendations — "your nail master suggests this massage therapist" */}
           {recommendations.length > 0 && (
@@ -613,19 +691,25 @@ export default function FeedPage() {
                 <h3 className="text-sm font-semibold">{t('recsTitle')}</h3>
               </div>
               <ul className="divide-y divide-border/60">
-                {recommendations.map((r) => (
+                {recommendations.map((r) => {
+                  const rd = resolveCardDisplay(
+                    { id: r.toMasterId, display_name: r.toName, avatar_url: r.toAvatar, specialization: r.toSpec, salon_id: r.toSalon?.id ?? null },
+                    r.toSalon,
+                    cardLabels,
+                  );
+                  return (
                   <li key={r.id}>
                     <Link href={`/masters/${r.toMasterId}`} className="group/rec flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
-                      {r.toAvatar ? (
-                        <img src={r.toAvatar} alt="" className="size-10 shrink-0 rounded-full object-cover ring-1 ring-border/60" />
+                      {rd.avatarSrc ? (
+                        <img src={rd.avatarSrc} alt="" className="size-10 shrink-0 rounded-full object-cover ring-1 ring-border/60" />
                       ) : (
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
-                          {r.toName[0]}
+                          {rd.avatarName[0]}
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold group-hover/rec:text-[var(--ds-accent)]">{r.toName}</p>
-                        {r.toSpec && <p className="truncate text-xs text-muted-foreground">{r.toSpec}</p>}
+                        <p className="truncate text-sm font-semibold group-hover/rec:text-[var(--ds-accent)]">{rd.primary}</p>
+                        {rd.secondary && <p className="truncate text-xs text-muted-foreground">{rd.secondary}</p>}
                         <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
                           {t('recsFrom', { name: r.fromName })}
                           {r.note ? ` — ${r.note}` : ''}
@@ -634,7 +718,8 @@ export default function FeedPage() {
                       <ArrowRight className="size-4 shrink-0 self-center text-muted-foreground transition-colors group-hover/rec:text-[var(--ds-accent)]" />
                     </Link>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -655,19 +740,26 @@ export default function FeedPage() {
                 {discover.slice(0, 6).map((m) => {
                   const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
                   const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
+                  const dd = resolveCardDisplay(
+                    { id: m.master.id, display_name: name, avatar_url: avatar, specialization: m.master.specialization, salon_id: m.master.salon_id },
+                    unwrapSalon(m.master.salon),
+                    cardLabels,
+                  );
                   return (
                     <li key={m.master.id}>
                       <Link href={`/masters/${m.master.id}`} className="group/rec flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
-                        {avatar ? (
-                          <img src={avatar} alt="" className="size-10 rounded-full object-cover ring-1 ring-border/60" />
+                        {dd.avatarSrc ? (
+                          <img src={dd.avatarSrc} alt="" className="size-10 rounded-full object-cover ring-1 ring-border/60" />
                         ) : (
                           <div className="flex size-10 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
-                            {name[0]}
+                            {dd.avatarName[0]}
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold">{name}</p>
-                          <p className="truncate text-[10px] text-muted-foreground">{m.master.specialization ?? ''}</p>
+                          <p className="truncate text-xs font-semibold">{dd.primary}</p>
+                          {dd.secondary && (
+                            <p className="truncate text-[10px] text-muted-foreground">{dd.secondary}</p>
+                          )}
                         </div>
                         <span className="rounded-full bg-[var(--ds-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-accent)] opacity-0 transition-opacity group-hover/rec:opacity-100">
                           {t('viewMaster')}
@@ -694,10 +786,23 @@ function FeedCard({
   t: ReturnType<typeof useTranslations<'feed'>>;
   hoursUntil: (d: string) => number;
 }) {
+  const tCard = useTranslations('cardLabels');
   const typeKey = post.type as keyof typeof typeColors;
   const isPromo = post.type === 'promotion';
   // TODO Phase 8: real social-proof from bookings
   const bookedCount = (post.id.charCodeAt(0) % 9) + 2;
+
+  const name = post.master.display_name ?? post.master.profile?.full_name ?? '?';
+  const avatar = post.master.avatar_url ?? post.master.profile?.avatar_url ?? null;
+  const fd = resolveCardDisplay(
+    { id: post.master.id, display_name: name, avatar_url: avatar, specialization: post.master.specialization, salon_id: post.master.salon_id },
+    unwrapSalon(post.master.salon),
+    {
+      masterPlaceholder: tCard('masterPlaceholder'),
+      salonPlaceholder: tCard('salonPlaceholder'),
+      managerAssigned: tCard('managerAssigned'),
+    },
+  );
 
   return (
     <div className="overflow-hidden rounded-[var(--radius-card)] border border-border/60 bg-card shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-elevated)]">
@@ -705,18 +810,18 @@ function FeedCard({
       <div className="flex items-center gap-3 p-4">
         <Link href={`/masters/${post.master.id}`}>
           <AvatarRing
-            src={post.master.avatar_url ?? post.master.profile?.avatar_url ?? null}
-            name={post.master.display_name ?? post.master.profile?.full_name ?? '?'}
+            src={fd.avatarSrc}
+            name={fd.avatarName}
             size={44}
           />
         </Link>
         <div className="flex-1 min-w-0">
           <Link href={`/masters/${post.master.id}`} className="flex items-center gap-1 text-sm font-semibold hover:underline">
-            {post.master.display_name ?? post.master.profile?.full_name ?? '?'}
+            {fd.primary}
             <Star className="size-3 fill-amber-400 text-amber-400" />
           </Link>
-          {post.master.specialization && (
-            <p className="truncate text-xs text-muted-foreground">{post.master.specialization}</p>
+          {fd.secondary && (
+            <p className="truncate text-xs text-muted-foreground">{fd.secondary}</p>
           )}
         </div>
         {isPromo ? (

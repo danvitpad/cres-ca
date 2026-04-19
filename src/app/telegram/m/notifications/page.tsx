@@ -203,33 +203,30 @@ export default function MasterMiniAppNotifications() {
       transition={{ duration: 0.3 }}
       className="space-y-4 px-5 pt-6 pb-10"
     >
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Inbox</p>
-          <h1 className="mt-1 text-2xl font-bold">Уведомления</h1>
-          {unreadCount > 0 && (
-            <p className="mt-0.5 text-[11px] text-white/50">{unreadCount} непрочитанных</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <button
-              onClick={markAllRead}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
-            >
-              Прочитать всё
-            </button>
-          )}
-          {items.length > 0 && (
+      {/* No page title per miniapp redesign — just actions if there's content */}
+      {items.length > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] text-white/50">
+            {unreadCount > 0 ? `${unreadCount} непрочитанных` : 'Всё прочитано'}
+          </p>
+          <div className="flex items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
+              >
+                Прочитать всё
+              </button>
+            )}
             <button
               onClick={dismissAll}
               className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-white/60 active:bg-white/[0.06] transition-colors"
             >
               Очистить всё
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="space-y-2">

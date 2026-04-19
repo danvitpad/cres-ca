@@ -655,7 +655,10 @@
     "statusCancelled": "Отменено",
     "repeatBooking": "Записаться снова",
     "selectClient": "Выберите клиента",
-    "notes": "Заметки"
+    "notes": "Заметки",
+    "useBonuses": "Использовать {amount} бонусов (−{amount} {currency})",
+    "bonusDiscount": "Скидка бонусами",
+    "totalLabel": "Итого"
   },
   "services": {
     "addService": "Добавить услугу",
@@ -900,9 +903,28 @@
     "distance": "Расстояние",
     "locationDenied": "Доступ к геолокации запрещён"
   },
+  "search": {
+    "title": "Поиск",
+    "placeholder": "Мастер, услуга, салон…",
+    "nothingFound": "Ничего не найдено",
+    "tryDifferent": "Попробуйте изменить запрос или фильтры",
+    "listView": "Список",
+    "mapView": "Карта",
+    "filters": "Фильтры",
+    "category": "Категория",
+    "rating": "Рейтинг",
+    "anyRating": "Любой",
+    "distance": "Расстояние",
+    "anyDistance": "Любое",
+    "enableGeoHint": "Включите геолокацию, чтобы видеть мастеров рядом",
+    "locateMe": "Определить меня",
+    "reset": "Сбросить",
+    "show": "Показать"
+  },
   "clientNav": {
     "feed": "Главная",
     "calendar": "Календарь",
+    "appointments": "Мои записи",
     "book": "Запись",
     "masters": "Мастера",
     "profile": "Профиль",
@@ -922,6 +944,7 @@
     "photos": "Фото до/после",
     "home": "Главная",
     "shop": "Магазин",
+    "search": "Поиск",
     "map": "На карте"
   },
   "clientHeader": {
@@ -966,8 +989,19 @@
   },
   "clientWallet": {
     "title": "Кошелёк и бонусы",
+    "subtitle": "Баланс бонусов, история операций и приглашения друзей",
     "balance": "Баланс",
-    "bonusPoints": "Бонусные баллы",
+    "bonusPoints": "Бонусов",
+    "howEarnTitle": "Как заработать",
+    "earnReferral": "Пригласить друга → +100 обоим",
+    "earnReview": "Оставить отзыв → +20 бонусов",
+    "earnLoyalty": "Каждый 5-й визит → +50 бонусов",
+    "howSpendTitle": "Как потратить",
+    "howSpendDesc": "При бронировании укажите, сколько бонусов списать как скидку.",
+    "spendRatio": "1 бонус = 1 ₴",
+    "share": "Поделиться",
+    "timelineRefBonus": "Реферальный бонус",
+    "timelineSpent": "Списание",
     "lifetimeEarned": "Заработано всего",
     "referrals": "Рефералы",
     "giftCards": "Подарочные сертификаты",
@@ -1071,7 +1105,11 @@
     "bonusLabel": "Реферальный бонус",
     "bonusPoints": "баллов",
     "visitsWithYou": "Визитов",
-    "quickBook": "Записаться"
+    "quickBook": "Записаться",
+    "confirmUnsubscribeTitle": "Отписаться от мастера?",
+    "confirmUnsubscribeDesc": "Вы больше не будете получать уведомления от {name}. Подписку можно восстановить в любой момент.",
+    "unsubscribeSuccess": "Вы отписались",
+    "unsubscribeError": "Не удалось отписаться. Попробуйте ещё раз."
   },
   "clientForms": {
     "title": "Анкеты и документы",
@@ -1164,7 +1202,10 @@
     "filter_bookings": "Записи",
     "filter_reminders": "Напоминания",
     "filter_promos": "Акции",
-    "filter_reviews": "Отзывы"
+    "filter_reviews": "Отзывы",
+    "markAllRead": "Прочитать все",
+    "clearAll": "Очистить все",
+    "dismiss": "Скрыть"
   },
   "clientSettings": {
     "title": "Настройки аккаунта",
@@ -1182,9 +1223,23 @@
     "twoFactor": "Двухфакторная аутентификация",
     "hideProfile": "Скрыть профиль от мастеров (кроме тех, у кого я записан)",
     "shareLocation": "Делиться геолокацией для поиска рядом",
+    "data": "Данные",
     "dataExport": "Экспорт моих данных",
     "deleteAccount": "Удалить аккаунт",
+    "deleteConfirmTitle": "Точно удалить аккаунт?",
     "deleteConfirm": "Это действие необратимо. Все записи, истории и бонусы будут удалены.",
+    "theme": "Тема",
+    "themeLight": "Светлая",
+    "themeDark": "Тёмная",
+    "connect": "Подключить",
+    "connected": "Подключён",
+    "changeEmail": "Сменить email",
+    "changePhone": "Сменить телефон",
+    "passwordResetSent": "Письмо со ссылкой сброса отправлено на вашу почту.",
+    "twoFactorHint": "2FA через Telegram — скоро.",
+    "changeEmailHint": "Смена email — скоро.",
+    "changePhoneHint": "Смена телефона — скоро.",
+    "connectTelegramHint": "Откройте @CresCaBot в Telegram и нажмите /start для привязки.",
     "save": "Сохранить"
   },
   "clientActivity": {
@@ -1514,6 +1569,11 @@
     "recommendedTitle": "Рекомендуем",
     "viewMaster": "Смотреть"
   },
+  "cardLabels": {
+    "masterPlaceholder": "Мастер",
+    "salonPlaceholder": "Салон",
+    "managerAssigned": "Мастер будет назначен администратором"
+  },
   "intake": {
     "title": "Расскажите о здоровье",
     "subtitle": "Эта информация видна только вашему мастеру и помогает подобрать безопасные процедуры",
@@ -1573,7 +1633,8 @@
   },
   "family": {
     "title": "Моя семья",
-    "addMember": "Добавить члена семьи",
+    "subtitle": "Записывайте родных от своего имени — история визитов хранится отдельно для каждого.",
+    "addMember": "Добавить",
     "name": "Имя",
     "relationship": "Родство",
     "child": "Ребёнок",
@@ -1584,9 +1645,12 @@
     "emptyDescription": "Добавьте членов семьи, чтобы записывать их от своего имени",
     "bookingFor": "Запись для",
     "bookingForMe": "Для себя",
+    "book": "Записать",
     "remove": "Удалить",
     "added": "Член семьи добавлен",
     "removed": "Член семьи удалён",
+    "confirmRemoveTitle": "Удалить члена семьи?",
+    "confirmRemoveDesc": "{name} будет удалён(а). История визитов сохранится в ваших записях.",
     "totalBudget": "Семейный бюджет (всего)",
     "myBudget": "Я лично",
     "spent": "потрачено"
@@ -1623,6 +1687,23 @@
     "send": "Отправить",
     "skip": "Не сейчас",
     "thankYou": "Спасибо за чаевые!"
+  },
+  "clientAppointments": {
+    "title": "Мои записи",
+    "subtitle": "Предстоящие визиты и история",
+    "tabUpcoming": "Предстоящие",
+    "tabPast": "История",
+    "emptyUpcoming": "Нет предстоящих записей",
+    "emptyPast": "Запишитесь к мастеру — и здесь появится история",
+    "ctaFindMaster": "Найти мастера",
+    "details": "Подробнее",
+    "cancel": "Отменить",
+    "repeat": "Повторить",
+    "min": "мин",
+    "feeFree": "До визита {hours} ч — отмена бесплатная.",
+    "feePartial": "Поздняя отмена ({hours} ч до визита): удерживается {amount} {currency} по политике мастера.",
+    "feeLate": "Срочная отмена ({hours} ч до визита): удерживается полная стоимость {amount} {currency}.",
+    "forMember": "для {name}"
   },
   "clientCalendar": {
     "title": "Мой календарь",

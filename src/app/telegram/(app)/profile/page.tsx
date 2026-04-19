@@ -22,6 +22,7 @@ import {
   Settings,
   Share2,
   LogOut,
+  Bell,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -400,6 +401,7 @@ export default function MiniAppProfilePage() {
 
         {/* Quick links */}
         <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
+          <MenuItemLink icon={Bell} label="Уведомления" href="/telegram/notifications" onClick={() => haptic('light')} />
           <MenuItemLink icon={Settings} label="Настройки" href="/telegram/settings" onClick={() => haptic('light')} />
         </ul>
 

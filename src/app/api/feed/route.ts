@@ -45,12 +45,40 @@ export async function GET(req: Request) {
   const nextCursor = hasMore ? posts[posts.length - 1].created_at : null;
 
   const authorIds = Array.from(new Set(posts.map((p) => p.author_id)));
+  const safeAuthorIds = authorIds.length ? authorIds : ['00000000-0000-0000-0000-000000000000'];
   const { data: authors } = await supabase
     .from('profiles')
     .select('id, full_name, avatar_url, public_id, slug, role')
-    .in('id', authorIds.length ? authorIds : ['00000000-0000-0000-0000-000000000000']);
+    .in('id', safeAuthorIds);
 
-  const authorMap = new Map((authors ?? []).map((a) => [a.id, a]));
+  // Enrich with salon data: lookup masters.salon_id → salons for any author that's a master
+  type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null };
+  type MasterRow = { id: string; profile_id: string; salon_id: string | null; specialization: string | null; salon: SalonEmbed | SalonEmbed[] | null };
+  const { data: masterRows } = await supabase
+    .from('masters')
+    .select('id, profile_id, salon_id, specialization, salon:salons(id, name, logo_url, city, rating)')
+    .in('profile_id', safeAuthorIds);
+  const masterByProfile = new Map<string, { id: string; salon_id: string | null; specialization: string | null; salon: SalonEmbed | null }>();
+  for (const m of (masterRows ?? []) as MasterRow[]) {
+    const s = Array.isArray(m.salon) ? m.salon[0] ?? null : m.salon;
+    masterByProfile.set(m.profile_id, { id: m.id, salon_id: m.salon_id, specialization: m.specialization, salon: s });
+  }
+
+  const authorMap = new Map(
+    (authors ?? []).map((a) => {
+      const m = masterByProfile.get(a.id) ?? null;
+      return [
+        a.id,
+        {
+          ...a,
+          master_id: m?.id ?? null,
+          salon_id: m?.salon_id ?? null,
+          specialization: m?.specialization ?? null,
+          salon: m?.salon ?? null,
+        },
+      ];
+    }),
+  );
 
   const postIds = posts.map((p) => p.id);
   const { data: viewerLikes } = postIds.length

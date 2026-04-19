@@ -637,7 +637,10 @@
     "statusCancelled": "Скасовано",
     "repeatBooking": "Записатися знову",
     "selectClient": "Виберіть клієнта",
-    "notes": "Нотатки"
+    "notes": "Нотатки",
+    "useBonuses": "Використати {amount} бонусів (−{amount} {currency})",
+    "bonusDiscount": "Знижка бонусами",
+    "totalLabel": "Разом"
   },
   "services": {
     "addService": "Додати послугу",
@@ -873,9 +876,28 @@
     "distance": "Відстань",
     "locationDenied": "Доступ до геолокації заборонено"
   },
+  "search": {
+    "title": "Пошук",
+    "placeholder": "Майстер, послуга, салон…",
+    "nothingFound": "Нічого не знайдено",
+    "tryDifferent": "Спробуйте змінити запит або фільтри",
+    "listView": "Список",
+    "mapView": "Карта",
+    "filters": "Фільтри",
+    "category": "Категорія",
+    "rating": "Рейтинг",
+    "anyRating": "Будь-який",
+    "distance": "Відстань",
+    "anyDistance": "Будь-яка",
+    "enableGeoHint": "Увімкніть геолокацію, щоб бачити майстрів поруч",
+    "locateMe": "Визначити мене",
+    "reset": "Скинути",
+    "show": "Показати"
+  },
   "clientNav": {
     "feed": "Головна",
     "calendar": "Календар",
+    "appointments": "Мої записи",
     "book": "Запис",
     "masters": "Майстри",
     "profile": "Профіль",
@@ -895,6 +917,7 @@
     "photos": "Фото до/після",
     "home": "Головна",
     "shop": "Магазин",
+    "search": "Пошук",
     "map": "На карті"
   },
   "clientHeader": {
@@ -939,8 +962,19 @@
   },
   "clientWallet": {
     "title": "Гаманець і бонуси",
+    "subtitle": "Баланс бонусів, історія операцій та запрошення друзів",
     "balance": "Баланс",
-    "bonusPoints": "Бонусні бали",
+    "bonusPoints": "Бонусів",
+    "howEarnTitle": "Як заробити",
+    "earnReferral": "Запроси друга → +100 обом",
+    "earnReview": "Залишити відгук → +20 бонусів",
+    "earnLoyalty": "Кожен 5-й візит → +50 бонусів",
+    "howSpendTitle": "Як витратити",
+    "howSpendDesc": "Під час бронювання: вкажіть, скільки бонусів списати як знижку.",
+    "spendRatio": "1 бонус = 1 ₴",
+    "share": "Поділитися",
+    "timelineRefBonus": "Реферальний бонус",
+    "timelineSpent": "Списання",
     "lifetimeEarned": "Зароблено загалом",
     "referrals": "Реферали",
     "giftCards": "Подарункові сертифікати",
@@ -1044,7 +1078,11 @@
     "bonusLabel": "Реферальний бонус",
     "bonusPoints": "балів",
     "visitsWithYou": "Візитів",
-    "quickBook": "Записатись"
+    "quickBook": "Записатись",
+    "confirmUnsubscribeTitle": "Відписатися від майстра?",
+    "confirmUnsubscribeDesc": "Ти більше не отримуватимеш сповіщення від {name}. Підписку можна відновити будь-коли.",
+    "unsubscribeSuccess": "Ви відписалися",
+    "unsubscribeError": "Не вдалося відписатися. Спробуйте ще раз."
   },
   "clientForms": {
     "title": "Анкети та документи",
@@ -1137,7 +1175,10 @@
     "filter_bookings": "Записи",
     "filter_reminders": "Нагадування",
     "filter_promos": "Акції",
-    "filter_reviews": "Відгуки"
+    "filter_reviews": "Відгуки",
+    "markAllRead": "Прочитати все",
+    "clearAll": "Очистити все",
+    "dismiss": "Приховати"
   },
   "clientSettings": {
     "title": "Налаштування акаунту",
@@ -1155,9 +1196,23 @@
     "twoFactor": "Двофакторна автентифікація",
     "hideProfile": "Приховати профіль від майстрів (окрім тих, у кого я записаний)",
     "shareLocation": "Ділитися геолокацією для пошуку поруч",
+    "data": "Дані",
     "dataExport": "Експорт моїх даних",
     "deleteAccount": "Видалити акаунт",
+    "deleteConfirmTitle": "Видалити акаунт?",
     "deleteConfirm": "Ця дія незворотна. Усі записи, історії та бонуси будуть видалені.",
+    "theme": "Тема",
+    "themeLight": "Світла",
+    "themeDark": "Темна",
+    "connect": "Підключити",
+    "connected": "Підключено",
+    "changeEmail": "Змінити email",
+    "changePhone": "Змінити телефон",
+    "passwordResetSent": "Посилання для зміни паролю надіслано на вашу пошту.",
+    "twoFactorHint": "2FA через Telegram — скоро.",
+    "changeEmailHint": "Зміна email — скоро.",
+    "changePhoneHint": "Зміна телефону — скоро.",
+    "connectTelegramHint": "Відкрийте @CresCaBot у Telegram і натисніть /start для прив'язки.",
     "save": "Зберегти"
   },
   "clientActivity": {
@@ -1487,6 +1542,11 @@
     "recommendedTitle": "Рекомендуємо",
     "viewMaster": "Переглянути"
   },
+  "cardLabels": {
+    "masterPlaceholder": "Майстер",
+    "salonPlaceholder": "Салон",
+    "managerAssigned": "Майстра призначить адміністратор"
+  },
   "intake": {
     "title": "Розкажіть про здоров'я",
     "subtitle": "Ця інформація видима лише вашому майстру та допомагає підібрати безпечні процедури",
@@ -1546,7 +1606,8 @@
   },
   "family": {
     "title": "Моя родина",
-    "addMember": "Додати члена родини",
+    "subtitle": "Запишіть близьких на візит від свого імені",
+    "addMember": "Додати",
     "name": "Ім'я",
     "relationship": "Зв'язок",
     "child": "Дитина",
@@ -1557,7 +1618,10 @@
     "emptyDescription": "Додайте членів родини, щоб записувати їх від свого імені",
     "bookingFor": "Запис для",
     "bookingForMe": "Для себе",
+    "book": "Записати",
     "remove": "Видалити",
+    "confirmRemoveTitle": "Видалити члена родини?",
+    "confirmRemoveDesc": "{name} буде видалено зі списку. Цю дію не можна скасувати.",
     "added": "Члена родини додано",
     "removed": "Члена родини видалено",
     "totalBudget": "Сімейний бюджет (всього)",
@@ -1596,6 +1660,23 @@
     "send": "Надіслати",
     "skip": "Не зараз",
     "thankYou": "Дякуємо за чайові!"
+  },
+  "clientAppointments": {
+    "title": "Мої записи",
+    "subtitle": "Майбутні візити та історія",
+    "tabUpcoming": "Майбутні",
+    "tabPast": "Історія",
+    "emptyUpcoming": "Немає майбутніх записів",
+    "emptyPast": "Запишіться до майстра — і тут з'явиться історія",
+    "ctaFindMaster": "Знайти майстра",
+    "details": "Докладніше",
+    "cancel": "Скасувати",
+    "repeat": "Повторити",
+    "min": "хв",
+    "feeFree": "До візиту {hours} год — скасування безкоштовне.",
+    "feePartial": "Пізнє скасування ({hours} год до візиту): утримується {amount} {currency} за політикою майстра.",
+    "feeLate": "Термінове скасування ({hours} год до візиту): утримується повна вартість {amount} {currency}.",
+    "forMember": "для {name}"
   },
   "clientCalendar": {
     "title": "Мій календар",

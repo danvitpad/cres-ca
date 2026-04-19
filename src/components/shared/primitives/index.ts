@@ -10,3 +10,5 @@ export { BottomSheet } from './bottom-sheet';
 export { EmptyState } from './empty-state';
 export { ShimmerSkeleton, SkeletonCard, SkeletonList } from './shimmer-skeleton';
 export { CommandPalette, useCommandPalette } from './command-palette';
+export { MasterSalonCard } from './master-salon-card';
+export type { MasterSalonCardProps } from './master-salon-card';

@@ -25,23 +25,32 @@ export async function POST(request: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  // Name-based search — ignores geo, returns matching masters globally
+  const masterSelect =
+    'id, specialization, rating, salon_id, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city, rating)';
+
+  // Name-based search — ignores geo, returns matching masters + salons globally
   if (hasQuery) {
     const term = `%${q.trim()}%`;
-    const mastersRes = await admin
-      .from('masters')
-      .select('id, specialization, rating, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name)')
-      .eq('is_active', true)
-      .or(`display_name.ilike.${term},profile.full_name.ilike.${term},specialization.ilike.${term}`)
-      .limit(30);
+    const [mastersRes, salonsRes] = await Promise.all([
+      admin
+        .from('masters')
+        .select(masterSelect)
+        .eq('is_active', true)
+        .or(`display_name.ilike.${term},specialization.ilike.${term},city.ilike.${term}`)
+        .limit(30),
+      admin
+        .from('salons')
+        .select('id, name, logo_url, address, city, rating, latitude, longitude')
+        .or(`name.ilike.${term},city.ilike.${term}`)
+        .limit(30),
+    ]);
 
-    // or() on a joined column may not work in PostgREST — fallback: fetch all then filter
     let masters = mastersRes.data ?? [];
     if (masters.length === 0) {
-      // Broad fetch + client-side filter as fallback
+      // Fallback: broad fetch + client-side filter (catches profiles.full_name too)
       const fallback = await admin
         .from('masters')
-        .select('id, specialization, rating, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name)')
+        .select(masterSelect)
         .eq('is_active', true)
         .limit(200);
       const lowerQ = q.trim().toLowerCase();
@@ -54,14 +63,14 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ masters, salons: [] });
+    return NextResponse.json({ masters, salons: salonsRes.data ?? [] });
   }
 
   // Geo-based search — nearby masters & salons
   const [mastersRes, salonsRes] = await Promise.all([
     admin
       .from('masters')
-      .select('id, specialization, rating, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name)')
+      .select(masterSelect)
       .eq('is_active', true)
       .gte('latitude', lat - RADIUS_DEG)
       .lte('latitude', lat + RADIUS_DEG)
@@ -70,7 +79,7 @@ export async function POST(request: Request) {
       .limit(50),
     admin
       .from('salons')
-      .select('id, name, address, latitude, longitude')
+      .select('id, name, logo_url, address, city, rating, latitude, longitude')
       .gte('latitude', lat - RADIUS_DEG)
       .lte('latitude', lat + RADIUS_DEG)
       .gte('longitude', lng - RADIUS_DEG)

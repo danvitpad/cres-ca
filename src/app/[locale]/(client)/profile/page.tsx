@@ -1,7 +1,8 @@
 /** --- YAML
  * name: ClientProfilePage
- * description: Premium client profile — gradient hero, big avatar, stats row, tabbed content
- * updated: 2026-04-12
+ * description: Простой профиль клиента — hero с аватаром, личная информация, статистика, фото до/после.
+ * created: 2026-04-12
+ * updated: 2026-04-19
  * --- */
 
 'use client';
@@ -11,7 +12,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Camera, MapPin, Plus, Gift, Copy, Check, Sparkles, Calendar, UserPlus, ImageIcon, FileText } from 'lucide-react';
+import { Camera, Sparkles, Calendar, UserPlus, ImageIcon, ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -26,11 +27,9 @@ interface ProfileData {
   phone: string | null;
   avatar_url: string | null;
   email?: string;
-  referral_code?: string;
   created_at?: string;
+  date_of_birth?: string | null;
 }
-
-type Tab = 'info' | 'addresses' | 'rewards';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
@@ -41,10 +40,9 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>('info');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [stats, setStats] = useState({ visits: 0, masters: 0, bonuses: 0 });
@@ -56,26 +54,46 @@ export default function ProfilePage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('profiles')
-        .select('id, full_name, phone, avatar_url, created_at')
+        .select('id, full_name, phone, avatar_url, created_at, date_of_birth, bonus_points')
         .eq('id', userId)
         .single();
 
       const { data: { user } } = await supabase.auth.getUser();
 
       if (data) {
-        setProfile({ ...data, email: user?.email, referral_code: userId!.slice(0, 8) });
+        setProfile({ ...data, email: user?.email });
         setName(data.full_name || '');
         setPhone(data.phone || '');
+        setDob(data.date_of_birth || '');
         setAvatarUrl(data.avatar_url || null);
       }
 
-      // Stats — best-effort, ignore errors.
-      // TODO(wallet): client_wallets table not created yet — pending legal check on holding bonuses/funds.
-      const [{ count: visits }, { count: masters }] = await Promise.all([
-        supabase.from('appointments').select('id', { count: 'exact', head: true }).eq('client_id', userId),
-        supabase.from('client_master_links').select('master_id', { count: 'exact', head: true }).eq('profile_id', userId),
-      ]);
-      setStats({ visits: visits ?? 0, masters: masters ?? 0, bonuses: 0 });
+      const { data: clientRows } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('profile_id', userId);
+      const clientIds = (clientRows ?? []).map((c: { id: string }) => c.id);
+
+      let visits = 0;
+      if (clientIds.length) {
+        const { count } = await supabase
+          .from('appointments')
+          .select('id', { count: 'exact', head: true })
+          .in('client_id', clientIds)
+          .eq('status', 'completed');
+        visits = count ?? 0;
+      }
+
+      const { count: masters } = await supabase
+        .from('client_master_links')
+        .select('master_id', { count: 'exact', head: true })
+        .eq('profile_id', userId);
+
+      setStats({
+        visits,
+        masters: masters ?? 0,
+        bonuses: Number(data?.bonus_points ?? 0),
+      });
 
       setLoading(false);
     }
@@ -85,15 +103,29 @@ export default function ProfilePage() {
   async function saveProfile() {
     if (!userId) return;
     const supabase = createClient();
-    const { error } = await supabase.from('profiles').update({
-      full_name: name.trim(),
-      phone: phone.trim() || null,
-    }).eq('id', userId);
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: name.trim(),
+        phone: phone.trim() || null,
+        date_of_birth: dob ? dob : null,
+      })
+      .eq('id', userId);
 
-    if (error) toast.error(tc('error'));
-    else {
+    if (error) {
+      toast.error(tc('error'));
+    } else {
       toast.success(t('profileSaved'));
-      setProfile((p) => (p ? { ...p, full_name: name.trim(), phone: phone.trim() || null } : p));
+      setProfile((p) =>
+        p
+          ? {
+              ...p,
+              full_name: name.trim(),
+              phone: phone.trim() || null,
+              date_of_birth: dob || null,
+            }
+          : p,
+      );
       setEditing(false);
     }
   }
@@ -109,10 +141,9 @@ export default function ProfilePage() {
     const supabase = createClient();
     const ext = file.name.split('.').pop() || 'jpg';
     const path = `${userId}/${Date.now()}.${ext}`;
-    const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
+    const { error: uploadErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { cacheControl: '3600', upsert: false });
     if (uploadErr) {
       toast.error(uploadErr.message);
       setAvatarBusy(false);
@@ -134,14 +165,6 @@ export default function ProfilePage() {
     setAvatarBusy(false);
   }
 
-  function copyReferralLink() {
-    const link = `${window.location.origin}/register?ref=${profile?.referral_code}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    toast.success(t('copied'));
-    setTimeout(() => setCopied(false), 2000);
-  }
-
   const firstName = name.split(' ')[0] || '';
   const lastName = name.split(' ').slice(1).join(' ') || '';
 
@@ -155,30 +178,30 @@ export default function ProfilePage() {
   }
 
   const memberSince = profile?.created_at
-    ? new Date(profile.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    ? new Date(profile.created_at).toLocaleDateString(undefined, {
+        month: 'long',
+        year: 'numeric',
+      })
     : '—';
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Hero — gradient cover with avatar overlap */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-[var(--shadow-card)]"
       >
-        {/* Gradient cover */}
         <div className="relative h-40 bg-gradient-to-br from-[var(--ds-accent)] via-purple-500 to-pink-500">
           <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_30%_20%,white,transparent_50%)]" />
           <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_80%_60%,white,transparent_40%)]" />
         </div>
 
-        {/* Content row */}
         <div className="px-6 pb-6 pt-0 sm:px-8">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:gap-6">
-            {/* Avatar */}
             <div className="relative -mt-16">
               <div className="flex size-32 items-center justify-center overflow-hidden rounded-full bg-card text-4xl font-bold text-[var(--ds-accent)] ring-4 ring-card shadow-[var(--shadow-elevated)]">
                 {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatarUrl} alt={name} className="size-full object-cover" />
                 ) : (
                   (name || 'U')[0].toUpperCase()
@@ -200,14 +223,16 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* Name + meta */}
             <div className="flex-1 text-center sm:pb-2 sm:text-left">
               <h1 className="text-2xl font-bold tracking-tight">{name || 'User'}</h1>
-              <p className="text-sm text-muted-foreground">{profile?.email || phone || ''}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t('memberSince', { date: memberSince })}</p>
+              <p className="text-sm text-muted-foreground">
+                {profile?.email || phone || ''}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('memberSince', { date: memberSince })}
+              </p>
             </div>
 
-            {/* Edit button */}
             <div className="sm:pb-2">
               {editing ? (
                 <div className="flex gap-2">
@@ -226,122 +251,115 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Stats row */}
           <div className="mt-6 grid grid-cols-3 gap-3 rounded-2xl border border-border/60 bg-background/40 p-4 backdrop-blur-sm">
-            <StatCell icon={<Calendar className="size-4" />} label={t('statsVisits')} value={stats.visits} />
-            <StatCell icon={<UserPlus className="size-4" />} label={t('statsMasters')} value={stats.masters} />
-            <StatCell icon={<Sparkles className="size-4" />} label={t('statsBonuses')} value={stats.bonuses} accent />
+            <StatCell
+              icon={<Calendar className="size-4" />}
+              label={t('statsVisits')}
+              value={stats.visits}
+            />
+            <StatCell
+              icon={<UserPlus className="size-4" />}
+              label={t('statsMasters')}
+              value={stats.masters}
+            />
+            <StatCell
+              icon={<Sparkles className="size-4" />}
+              label={t('statsBonuses')}
+              value={stats.bonuses}
+              accent
+            />
           </div>
         </div>
       </motion.div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 rounded-full border border-border/60 bg-card p-1 w-fit mx-auto">
-        {(['info', 'addresses', 'rewards'] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={cn(
-              'rounded-full px-5 py-2 text-sm font-medium transition-all',
-              activeTab === tab
-                ? 'bg-foreground text-background shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {t(tab === 'info' ? 'personalInfo' : tab === 'addresses' ? 'addresses' : 'rewards')}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
       <motion.div
-        key={activeTab}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={{ delay: 0.05 }}
         className="mx-auto max-w-2xl"
       >
-        {activeTab === 'info' && (
-          <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-card)]">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <Field label={ta('firstName')} editing={editing} value={firstName} onChange={(v) => setName(`${v} ${lastName}`.trim())} />
-              <Field label={ta('lastName')} editing={editing} value={lastName} onChange={(v) => setName(`${firstName} ${v}`.trim())} />
-              <Field label={ta('phone')} editing={editing} value={phone} onChange={setPhone} placeholder="+380..." />
-              <Field label={ta('email')} editing={false} value={profile?.email ?? '—'} onChange={() => {}} />
-              <Field label={t('birthday')} editing={false} value="—" onChange={() => {}} />
-              <Field label={t('gender')} editing={false} value="—" onChange={() => {}} />
-            </div>
+        <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-card)]">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">{t('personalInfo')}</h2>
           </div>
-        )}
-
-        {activeTab === 'addresses' && (
-          <div className="space-y-3 rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-card)]">
-            <AddressRow icon={<MapPin className="size-4" />} title={t('homeAddress')} hint={t('addHomeAddress')} />
-            <AddressRow icon={<MapPin className="size-4" />} title={t('workAddress')} hint={t('addWorkAddress')} />
-            <button className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground transition-colors hover:border-[var(--ds-accent)] hover:text-foreground">
-              <Plus className="size-4" />
-              {tc('create')}
-            </button>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label={ta('firstName')}
+              editing={editing}
+              value={firstName}
+              onChange={(v) => setName(`${v} ${lastName}`.trim())}
+            />
+            <Field
+              label={ta('lastName')}
+              editing={editing}
+              value={lastName}
+              onChange={(v) => setName(`${firstName} ${v}`.trim())}
+            />
+            <Field
+              label={ta('phone')}
+              editing={editing}
+              value={phone}
+              onChange={setPhone}
+              placeholder="+380..."
+            />
+            <Field label={ta('email')} editing={false} value={profile?.email ?? '—'} onChange={() => {}} />
+            <Field
+              label={t('birthday')}
+              editing={editing}
+              type="date"
+              value={dob}
+              onChange={setDob}
+            />
+            <Field label={t('gender')} editing={false} value="—" onChange={() => {}} />
           </div>
-        )}
-
-        {activeTab === 'rewards' && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-amber-400/10 via-pink-500/10 to-purple-500/10 p-6 shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-3">
-                <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-pink-500 text-white shadow-md">
-                  <Gift className="size-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold">{t('referralProgram')}</h3>
-                  <p className="text-xs text-muted-foreground">{t('referralDesc')}</p>
-                </div>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <Input
-                  readOnly
-                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/register?ref=${profile?.referral_code}`}
-                  className="h-10 text-xs"
-                />
-                <Button variant="outline" size="sm" onClick={copyReferralLink} className="shrink-0 gap-1.5 h-10">
-                  {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </motion.div>
 
-      {/* Archive shortcut */}
-      <div className="mx-auto grid max-w-2xl gap-3 sm:grid-cols-2">
-        <Link href="/profile/photos" className="group flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
-            <ImageIcon className="size-5" />
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mx-auto max-w-2xl"
+      >
+        <Link
+          href="/profile/photos"
+          className="group flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-5 shadow-[var(--shadow-card)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)]"
+        >
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
+            <ImageIcon className="size-6" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold group-hover:text-[var(--ds-accent)]">{t('photosTab')}</p>
+            <p className="truncate text-base font-semibold group-hover:text-[var(--ds-accent)]">
+              {t('photosTab')}
+            </p>
             <p className="truncate text-xs text-muted-foreground">{t('photosDesc')}</p>
           </div>
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
         </Link>
-        <Link href="/profile/documents" className="group flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
-            <FileText className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold group-hover:text-[var(--ds-accent)]">{t('documentsTab')}</p>
-            <p className="truncate text-xs text-muted-foreground">{t('documentsDesc')}</p>
-          </div>
-        </Link>
-      </div>
-
+      </motion.div>
     </div>
   );
 }
 
-function StatCell({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: number; accent?: boolean }) {
+function StatCell({
+  icon,
+  label,
+  value,
+  accent,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className={cn('flex items-center gap-1.5 text-xs text-muted-foreground', accent && 'text-[var(--ds-accent)]')}>
+      <div
+        className={cn(
+          'flex items-center gap-1.5 text-xs text-muted-foreground',
+          accent && 'text-[var(--ds-accent)]',
+        )}
+      >
         {icon}
         {label}
       </div>
@@ -356,36 +374,29 @@ function Field({
   editing,
   onChange,
   placeholder,
+  type = 'text',
 }: {
   label: string;
   value: string;
   editing: boolean;
   onChange: (v: string) => void;
   placeholder?: string;
+  type?: 'text' | 'date';
 }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
       {editing ? (
-        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-10" />
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="h-10"
+        />
       ) : (
         <p className="rounded-lg bg-muted/40 px-3 py-2.5 text-sm font-medium">{value || '—'}</p>
       )}
     </div>
-  );
-}
-
-function AddressRow({ icon, title, hint }: { icon: React.ReactNode; title: string; hint: string }) {
-  return (
-    <button className="flex w-full items-center gap-3 rounded-xl border border-border/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--ds-accent)]/40 hover:shadow-sm">
-      <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]">
-        {icon}
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      </div>
-      <Plus className="size-4 text-muted-foreground" />
-    </button>
   );
 }

@@ -6,6 +6,7 @@
 
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { SUBSCRIPTION_CONFIG, type SubscriptionTier, type SubscriptionFeature } from '@/types';
+import { getWhitelistEntry } from '@/lib/superadmin/access';
 
 function admin() {
   return createAdminClient(
@@ -50,6 +51,13 @@ async function effectiveTier(profileId: string): Promise<{ tier: SubscriptionTie
 }
 
 export async function checkFeatureAccess(profileId: string, feature: SubscriptionFeature): Promise<AccessResult> {
+  const wl = await getWhitelistEntry(profileId);
+  if (wl) {
+    const hasFeature = SUBSCRIPTION_CONFIG[wl.granted_plan].features.includes(feature);
+    if (!hasFeature) return { allowed: false, tier: wl.granted_plan, reason: 'feature_gated' };
+    return { allowed: true, tier: wl.granted_plan };
+  }
+
   const eff = await effectiveTier(profileId);
   if (!eff) return { allowed: false, tier: 'starter', reason: 'not_subscribed' };
 
@@ -60,6 +68,15 @@ export async function checkFeatureAccess(profileId: string, feature: Subscriptio
 }
 
 export async function checkClientLimit(profileId: string, currentCount: number): Promise<AccessResult> {
+  const wl = await getWhitelistEntry(profileId);
+  if (wl) {
+    const limit = SUBSCRIPTION_CONFIG[wl.granted_plan].maxClients;
+    if (limit !== -1 && currentCount >= limit) {
+      return { allowed: false, tier: wl.granted_plan, reason: 'limit_reached' };
+    }
+    return { allowed: true, tier: wl.granted_plan };
+  }
+
   const eff = await effectiveTier(profileId);
   if (!eff) return { allowed: false, tier: 'starter', reason: 'not_subscribed' };
 
@@ -71,6 +88,15 @@ export async function checkClientLimit(profileId: string, currentCount: number):
 }
 
 export async function checkMasterLimit(profileId: string, currentCount: number): Promise<AccessResult> {
+  const wl = await getWhitelistEntry(profileId);
+  if (wl) {
+    const limit = SUBSCRIPTION_CONFIG[wl.granted_plan].maxMasters;
+    if (limit !== -1 && currentCount >= limit) {
+      return { allowed: false, tier: wl.granted_plan, reason: 'limit_reached' };
+    }
+    return { allowed: true, tier: wl.granted_plan };
+  }
+
   const eff = await effectiveTier(profileId);
   if (!eff) return { allowed: false, tier: 'starter', reason: 'not_subscribed' };
 
@@ -82,6 +108,8 @@ export async function checkMasterLimit(profileId: string, currentCount: number):
 }
 
 export async function getEffectiveTier(profileId: string): Promise<SubscriptionTier> {
+  const wl = await getWhitelistEntry(profileId);
+  if (wl) return wl.granted_plan;
   const eff = await effectiveTier(profileId);
   return eff?.tier ?? 'starter';
 }

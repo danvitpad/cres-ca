@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
   const { data: masters } = await supabase
     .from('masters')
-    .select('id, profile_id, city, rating, total_reviews, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, public_id, posts_count)')
+    .select('id, profile_id, salon_id, city, rating, total_reviews, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, public_id, posts_count), salon:salons(id, name, logo_url, city, rating)')
     .eq('is_active', true)
     .order('rating', { ascending: false })
     .limit(60);
@@ -34,14 +34,17 @@ export async function GET(req: Request) {
     return NextResponse.json({ stories: [] });
   }
 
+  type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null } | null;
   type Row = {
     id: string;
     profile_id: string;
+    salon_id: string | null;
     city: string | null;
     rating: number | null;
     total_reviews: number | null;
     avatar_url: string | null;
     profile: { full_name: string | null; avatar_url: string | null; public_id: string | null; posts_count: number | null } | { full_name: string | null; avatar_url: string | null; public_id: string | null; posts_count: number | null }[] | null;
+    salon: SalonEmbed | SalonEmbed[] | null;
   };
 
   const rows = masters as unknown as Row[];
@@ -68,6 +71,10 @@ export async function GET(req: Request) {
   const now = Date.now();
   const scored = rows.map((m) => {
     const prof = Array.isArray(m.profile) ? m.profile[0] : m.profile;
+    const salonRaw = Array.isArray(m.salon) ? m.salon[0] ?? null : m.salon;
+    const salon = salonRaw
+      ? { id: salonRaw.id, name: salonRaw.name, logo_url: salonRaw.logo_url, city: salonRaw.city, rating: salonRaw.rating }
+      : null;
     const likes7d = likesByAuthor.get(m.profile_id) ?? 0;
     const rating = Number(m.rating ?? 0);
     const lastPost = lastPostByAuthor.get(m.profile_id);
@@ -80,12 +87,13 @@ export async function GET(req: Request) {
       publicId: prof?.public_id ?? null,
       name: prof?.full_name ?? 'Мастер',
       avatar: prof?.avatar_url ?? m.avatar_url ?? null,
+      salon,
       score,
     };
   });
 
   scored.sort((a, b) => b.score - a.score);
-  const stories = scored.slice(0, LIMIT).map(({ id, publicId, name, avatar }) => ({ id, publicId, name, avatar }));
+  const stories = scored.slice(0, LIMIT).map(({ id, publicId, name, avatar, salon }) => ({ id, publicId, name, avatar, salon }));
 
   return NextResponse.json({ stories });
 }

@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const { data } = await admin
     .from('appointments')
     .select(
-      'id, starts_at, status, price, master:masters(profile:profiles!masters_profile_id_fkey(full_name)), service:services(name)',
+      'id, starts_at, ends_at, status, price, currency, client_id, service_id, master_id, master:masters(id, display_name, avatar_url, specialization, salon_id, cancellation_policy, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating)), service:services(name, color, duration_minutes)',
     )
     .in('client_id', clientIds)
     .order('starts_at', { ascending: false })

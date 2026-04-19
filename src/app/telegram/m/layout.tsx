@@ -1,6 +1,6 @@
 /** --- YAML
  * name: TelegramMasterMiniAppLayout
- * description: Master Mini App shell — dark theme, 5-tab bottom bar (Today, Calendar, Clients, Finance, Profile). Notifications promoted to a bell icon in the top-right header with unread badge.
+ * description: Master Mini App shell — unified dark theme matching web (#111214), 6-tab icon-only bottom bar (Home, Calendar, Clients, Notifications, Finance, Profile) via Phosphor. Notifications moved into navbar (previously a bell icon in header).
  * created: 2026-04-13
  * updated: 2026-04-19
  * --- */
@@ -8,9 +8,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Calendar, Users, User, Bell, TrendingUp, Loader2 } from 'lucide-react';
+import {
+  HouseSimple,
+  CalendarBlank,
+  Users as UsersIcon,
+  Bell,
+  ChartLineUp,
+  UserCircle,
+} from '@phosphor-icons/react';
+import { Loader2 } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { BottomTabs, type BottomTab } from '@/components/miniapp/bottom-tabs';
 import { useAuthStore } from '@/stores/auth-store';
@@ -45,8 +52,6 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     })();
   }, [userId, router, isSalonContext]);
 
-  // Unread notifications badge — polled (Telegram WebView doesn't keep
-  // Supabase JWT, so realtime channels won't authenticate either)
   useEffect(() => {
     if (isSalonContext) return;
     if (!userId) return;
@@ -100,7 +105,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
 
   if (checking) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#1f2023] text-white">
+      <div className="flex h-dvh items-center justify-center bg-[#111214] text-white">
         <Loader2 className="size-6 animate-spin text-white/40" />
       </div>
     );
@@ -111,37 +116,48 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   }
 
   const tabs: BottomTab[] = [
-    { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Сегодня' },
-    { key: 'calendar', href: '/telegram/m/calendar', icon: Calendar, label: 'Календарь' },
-    { key: 'clients', href: '/telegram/m/clients', icon: Users, label: 'Клиенты' },
-    { key: 'finance', href: '/telegram/m/stats', icon: TrendingUp, label: 'Финансы' },
-    { key: 'profile', href: '/telegram/m/profile', icon: User, label: 'Профиль' },
+    {
+      key: 'home',
+      href: '/telegram/m/home',
+      label: 'Home',
+      renderIcon: (active) => <HouseSimple size={24} weight={active ? 'fill' : 'regular'} />,
+    },
+    {
+      key: 'calendar',
+      href: '/telegram/m/calendar',
+      label: 'Calendar',
+      renderIcon: (active) => <CalendarBlank size={24} weight={active ? 'fill' : 'regular'} />,
+    },
+    {
+      key: 'clients',
+      href: '/telegram/m/clients',
+      label: 'Clients',
+      renderIcon: (active) => <UsersIcon size={24} weight={active ? 'fill' : 'regular'} />,
+    },
+    {
+      key: 'notifications',
+      href: '/telegram/m/notifications',
+      label: 'Notifications',
+      badge: unreadCount,
+      renderIcon: (active) => <Bell size={24} weight={active ? 'fill' : 'regular'} />,
+    },
+    {
+      key: 'finance',
+      href: '/telegram/m/stats',
+      label: 'Finance',
+      renderIcon: (active) => <ChartLineUp size={24} weight={active ? 'fill' : 'regular'} />,
+    },
+    {
+      key: 'profile',
+      href: '/telegram/m/profile',
+      label: 'Profile',
+      renderIcon: (active) => <UserCircle size={24} weight={active ? 'fill' : 'regular'} />,
+    },
   ];
-
-  const hideHeader = pathname === '/telegram/m/voice-intro' || pathname.startsWith('/telegram/m/salon/');
 
   return (
     <TelegramProvider>
-      <div className="flex h-dvh flex-col bg-[#1f2023] text-white">
-        {!hideHeader && (
-          <header
-            className="absolute right-3 z-20 flex items-center"
-            style={{ top: 'calc(var(--tg-content-top, 8px) + 8px)' }}
-          >
-            <Link
-              href="/telegram/m/notifications"
-              aria-label="Уведомления"
-              className="relative flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] active:bg-white/[0.08] transition-colors"
-            >
-              <Bell className="size-5 text-white/80" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-[10px] font-semibold flex items-center justify-center leading-none">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </Link>
-          </header>
-        )}
+      <div className="flex h-dvh flex-col bg-[#111214] text-white">
         <main
           className="flex-1 overflow-y-auto"
           style={{

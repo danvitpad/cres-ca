@@ -73,6 +73,7 @@ export default function BookPage() {
 
   const preselectedMasterId = searchParams.get('master_id') ?? searchParams.get('master');
   const preselectedServiceId = searchParams.get('service_id') ?? searchParams.get('service');
+  const preselectedFamilyLinkId = searchParams.get('for');
   const rescheduleId = searchParams.get('reschedule');
   const salonId = searchParams.get('salon');
 
@@ -94,6 +95,8 @@ export default function BookPage() {
   const [clientName, setClientName] = useState('');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [bookingFor, setBookingFor] = useState<FamilyMember | null>(null);
+  const [bonusPoints, setBonusPoints] = useState(0);
+  const [useBonuses, setUseBonuses] = useState(false);
 
   // Salon → pick first active master and redirect (keeps /book?salon=<id> CTA working).
   useEffect(() => {
@@ -186,10 +189,11 @@ export default function BookPage() {
       const supabase = createClient();
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name')
+        .select('full_name, bonus_points')
         .eq('id', userId!)
         .single();
       if (profile?.full_name) setClientName(profile.full_name);
+      if (profile?.bonus_points != null) setBonusPoints(Number(profile.bonus_points));
 
       const { data: client } = await supabase
         .from('clients')
@@ -213,10 +217,15 @@ export default function BookPage() {
         .select('id, member_name, relationship')
         .eq('parent_profile_id', userId!)
         .order('created_at');
-      setFamilyMembers((data ?? []) as FamilyMember[]);
+      const list = (data ?? []) as FamilyMember[];
+      setFamilyMembers(list);
+      if (preselectedFamilyLinkId) {
+        const preselected = list.find((m) => m.id === preselectedFamilyLinkId);
+        if (preselected) setBookingFor(preselected);
+      }
     }
     loadFamily();
-  }, [userId]);
+  }, [userId, preselectedFamilyLinkId]);
 
   // Load upsell options when service selected
   // Manual-configured upsells first; fallback to auto-suggest (top-3 cheapest other services)
@@ -358,7 +367,9 @@ export default function BookPage() {
     const endH = Math.floor(endMinutes / 60).toString().padStart(2, '0');
     const endM = (endMinutes % 60).toString().padStart(2, '0');
     const endsAt = `${dateStr}T${endH}:${endM}:00`;
-    const totalPrice = Number(selectedService.price) + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
+    const basePrice = Number(selectedService.price) + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
+    const bonusToSpend = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
+    const totalPrice = basePrice - bonusToSpend;
 
     // Find or create client record for self or selected family member
     let clientId: string | null = null;
@@ -457,6 +468,8 @@ export default function BookPage() {
     }
 
     // Notify master about new booking
+    const masterDisplay = master?.display_name ?? master?.profile?.full_name ?? '';
+    const dateShort = selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
     if (master) {
       const { data: masterProfile } = await supabase
         .from('masters')
@@ -464,16 +477,25 @@ export default function BookPage() {
         .eq('id', preselectedMasterId)
         .single();
       if (masterProfile?.profile_id) {
-        const forWhom = bookingFor ? ` (for ${bookingFor.member_name})` : '';
+        const forWhom = bookingFor ? ` (${bookingFor.member_name})` : '';
         await supabase.from('notifications').insert({
           profile_id: masterProfile.profile_id,
           channel: 'push',
           title: 'Новая запись',
-          body: `${selectedService.name} — ${selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' })} в ${selectedTime}${forWhom}`,
+          body: `${selectedService.name} — ${dateShort} в ${selectedTime}${forWhom}`,
           data: { type: 'new_booking', action_url: '/calendar' },
         });
       }
     }
+
+    // Notify client (self) — mirrors into Telegram bot if bot is linked
+    await supabase.from('notifications').insert({
+      profile_id: userId,
+      channel: 'push',
+      title: 'Запись подтверждена',
+      body: `Вы записаны к ${masterDisplay} — ${dateShort} в ${selectedTime}`,
+      data: { type: 'booking_confirmed', action_url: '/appointments' },
+    });
 
     // If prepayment required, get LiqPay form data
     if (selectedService.requires_prepayment && Number(selectedService.prepayment_amount) > 0) {
@@ -507,6 +529,13 @@ export default function BookPage() {
       }
     }
 
+    if (bonusToSpend > 0) {
+      await supabase
+        .from('profiles')
+        .update({ bonus_points: Math.max(0, bonusPoints - bonusToSpend) })
+        .eq('id', userId);
+    }
+
     toast.success(t('bookingSuccess'));
 
     // 7.12 — On first booking for self, prompt the client to fill the intake form
@@ -522,7 +551,7 @@ export default function BookPage() {
       }
     }
 
-    router.push('/history');
+    router.push('/appointments');
   }
 
   if (!preselectedMasterId) {
@@ -543,8 +572,10 @@ export default function BookPage() {
     );
   }
 
-  const totalPrice = (selectedService ? Number(selectedService.price) : 0)
+  const basePrice = (selectedService ? Number(selectedService.price) : 0)
     + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
+  const bonusPreview = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
+  const totalPrice = basePrice - bonusPreview;
   const totalDuration = (selectedService?.duration_minutes ?? 0)
     + selectedUpsells.reduce((s, u) => s + u.duration_minutes, 0);
 
@@ -777,8 +808,30 @@ export default function BookPage() {
                 <span className="text-sm text-muted-foreground">{t('duration')}</span>
                 <span className="text-sm font-medium">{totalDuration} {t('min')}</span>
               </div>
+              {bonusPoints > 0 && (
+                <label className="flex items-center gap-3 pt-1 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useBonuses}
+                    onChange={(e) => setUseBonuses(e.target.checked)}
+                    className="size-4 rounded border-input accent-primary"
+                  />
+                  <span className="flex-1 text-sm">
+                    {t('useBonuses', {
+                      amount: Math.min(bonusPoints, Math.floor(basePrice)),
+                      currency: selectedService.currency,
+                    })}
+                  </span>
+                </label>
+              )}
+              {bonusPreview > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">{t('bonusDiscount')}</span>
+                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{bonusPreview} {selectedService.currency}</span>
+                </div>
+              )}
               <div className="border-t pt-2 flex justify-between">
-                <span className="font-medium">{t('price')}</span>
+                <span className="font-medium">{t('totalLabel')}</span>
                 <span className="font-bold">{totalPrice.toFixed(0)} {selectedService.currency}</span>
               </div>
               {selectedService.requires_prepayment && (

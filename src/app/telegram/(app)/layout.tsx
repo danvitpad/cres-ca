@@ -1,40 +1,25 @@
 /** --- YAML
  * name: TelegramMiniAppLayout
- * description: Mini App shell — fixed top safe-area, scrollable content, bottom tab bar with 5 sections (Home / Search / Activity / Notifications / Profile). Provides Telegram WebApp context and realtime unread-notifications badge.
+ * description: Mini App shell — fixed top safe-area, scrollable content, bottom tab bar with 5 sections (Home / Search / Appointments / Bonuses / Profile). Provides Telegram WebApp context. Notifications accessible via Profile menu.
  * created: 2026-04-13
- * updated: 2026-04-14
+ * updated: 2026-04-19
  * --- */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Search, Clock, User, Bell } from 'lucide-react';
+import { Home, Search, CalendarDays, Sparkles, User } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 
-function getInitData(): string | null {
-  if (typeof window === 'undefined') return null;
-  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
-  const live = w.Telegram?.WebApp?.initData;
-  if (live) return live;
-  try {
-    const stash = sessionStorage.getItem('cres:tg');
-    if (stash) {
-      const parsed = JSON.parse(stash) as { initData?: string };
-      if (parsed.initData) return parsed.initData;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
 const tabs = [
   { key: 'home', href: '/telegram/home', icon: Home, label: 'Главная' },
-  { key: 'search', href: '/telegram/map', icon: Search, label: 'Поиск' },
-  { key: 'activity', href: '/telegram/activity', icon: Clock, label: 'Записи' },
-  { key: 'notifications', href: '/telegram/notifications', icon: Bell, label: 'Уведомления' },
+  { key: 'search', href: '/telegram/search', icon: Search, label: 'Поиск' },
+  { key: 'activity', href: '/telegram/activity', icon: CalendarDays, label: 'Записи' },
+  { key: 'bonuses', href: '/telegram/bonuses', icon: Sparkles, label: 'Бонусы' },
   { key: 'profile', href: '/telegram/profile', icon: User, label: 'Профиль' },
 ] as const;
 
@@ -42,50 +27,12 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!userId) {
       router.replace('/telegram');
     }
   }, [userId, router]);
-
-  useEffect(() => {
-    if (!userId) return;
-    let mounted = true;
-
-    const fetchCount = async () => {
-      const initData = getInitData();
-      if (!initData) return;
-      const res = await fetch('/api/telegram/c/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      if (mounted) setUnreadCount(json.unread ?? 0);
-    };
-
-    fetchCount();
-
-    const onFocus = () => fetchCount();
-    window.addEventListener('focus', onFocus);
-    const interval = setInterval(fetchCount, 60_000);
-
-    return () => {
-      mounted = false;
-      window.removeEventListener('focus', onFocus);
-      clearInterval(interval);
-    };
-  }, [userId]);
-
-  useEffect(() => {
-    if (pathname === '/telegram/notifications' && unreadCount > 0) {
-      const t = setTimeout(() => setUnreadCount(0), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [pathname, unreadCount]);
 
   return (
     <TelegramProvider>
@@ -109,7 +56,6 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
             {tabs.map((tab) => {
               const active = pathname.startsWith(tab.href);
               const Icon = tab.icon;
-              const showBadge = tab.key === 'notifications' && unreadCount > 0;
               return (
                 <li key={tab.key} className="flex-1">
                   <Link
@@ -120,17 +66,10 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
                       active ? 'text-violet-300' : 'text-white/40 hover:text-white/70',
                     )}
                   >
-                    <div className="relative">
-                      <Icon
-                        className={cn('size-[26px] transition-transform', active && 'scale-110')}
-                        strokeWidth={active ? 2.5 : 2}
-                      />
-                      {showBadge && (
-                        <span className="absolute -right-1.5 -top-1 flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                      )}
-                    </div>
+                    <Icon
+                      className={cn('size-[26px] transition-transform', active && 'scale-110')}
+                      strokeWidth={active ? 2.5 : 2}
+                    />
                     {active && (
                       <span className="absolute -top-[9px] left-1/2 h-[3px] w-8 -translate-x-1/2 rounded-full bg-violet-400" />
                     )}

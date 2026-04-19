@@ -41,26 +41,26 @@ function getInitData(): string | null {
 function tabsForRole(role: Role, salonId: string): BottomTab[] {
   if (role === 'admin') {
     return [
-      { key: 'dashboard', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Home, label: 'Салон' },
-      { key: 'calendar', href: `/telegram/m/salon/${salonId}/calendar`, icon: Calendar, label: 'Календарь' },
-      { key: 'team', href: `/telegram/m/salon/${salonId}/team`, icon: Users, label: 'Команда' },
-      { key: 'finance', href: `/telegram/m/salon/${salonId}/finance`, icon: Wallet, label: 'Финансы' },
-      { key: 'profile', href: '/telegram/m/profile', icon: User, label: 'Профиль' },
+      { key: 'dashboard', href: `/telegram/m/salon/${salonId}/dashboard`, label: 'Салон', renderIcon: (a) => <Home className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+      { key: 'calendar', href: `/telegram/m/salon/${salonId}/calendar`, label: 'Календарь', renderIcon: (a) => <Calendar className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+      { key: 'team', href: `/telegram/m/salon/${salonId}/team`, label: 'Команда', renderIcon: (a) => <Users className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+      { key: 'finance', href: `/telegram/m/salon/${salonId}/finance`, label: 'Финансы', renderIcon: (a) => <Wallet className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+      { key: 'profile', href: '/telegram/m/profile', label: 'Профиль', renderIcon: (a) => <User className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
     ];
   }
   if (role === 'receptionist') {
     return [
-      { key: 'calendar', href: `/telegram/m/salon/${salonId}/calendar`, icon: Calendar, label: 'Календарь' },
-      { key: 'clients', href: `/telegram/m/salon/${salonId}/clients`, icon: Users, label: 'Клиенты' },
-      { key: 'profile', href: '/telegram/m/profile', icon: User, label: 'Профиль' },
+      { key: 'calendar', href: `/telegram/m/salon/${salonId}/calendar`, label: 'Календарь', renderIcon: (a) => <Calendar className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+      { key: 'clients', href: `/telegram/m/salon/${salonId}/clients`, label: 'Клиенты', renderIcon: (a) => <Users className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+      { key: 'profile', href: '/telegram/m/profile', label: 'Профиль', renderIcon: (a) => <User className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
     ];
   }
   // master — same surface as solo
   return [
-    { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Сегодня' },
-    { key: 'calendar', href: '/telegram/m/calendar', icon: Calendar, label: 'Календарь' },
-    { key: 'clients', href: '/telegram/m/clients', icon: Users, label: 'Клиенты' },
-    { key: 'profile', href: '/telegram/m/profile', icon: User, label: 'Профиль' },
+    { key: 'home', href: '/telegram/m/home', label: 'Сегодня', renderIcon: (a) => <Home className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+    { key: 'calendar', href: '/telegram/m/calendar', label: 'Календарь', renderIcon: (a) => <Calendar className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+    { key: 'clients', href: '/telegram/m/clients', label: 'Клиенты', renderIcon: (a) => <Users className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
+    { key: 'profile', href: '/telegram/m/profile', label: 'Профиль', renderIcon: (a) => <User className="size-[22px]" strokeWidth={a ? 2.5 : 2} /> },
   ];
 }
 
@@ -165,7 +165,7 @@ function SalonShellInner({
 
   if (loading) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#1f2023] text-white">
+      <div className="flex h-dvh items-center justify-center bg-[#111214] text-white">
         <Loader2 className="size-6 animate-spin text-white/40" />
       </div>
     );
@@ -173,7 +173,7 @@ function SalonShellInner({
 
   if (error || !data) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-[#1f2023] text-white p-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-[#111214] text-white p-6 text-center">
         <div className="text-sm text-white/60">
           {error === '403' ? 'Нет доступа к этому салону' : 'Не удалось открыть салон'}
         </div>
@@ -193,9 +193,9 @@ function SalonShellInner({
     data.role === 'admin' ? 'Владелец' : data.role === 'receptionist' ? 'Ресепшн' : 'Мастер';
 
   return (
-    <div className="flex h-dvh flex-col bg-[#1f2023] text-white">
+    <div className="flex h-dvh flex-col bg-[#111214] text-white">
       <header
-        className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#1f2023]/95 backdrop-blur-xl"
+        className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#111214]/95 backdrop-blur-xl"
         style={{ paddingTop: 'calc(8px + var(--tg-safe-top, 0px))' }}
       >
         <ContextSwitcher salonName={data.salon.name} isSoloMaster={data.is_solo_master} />

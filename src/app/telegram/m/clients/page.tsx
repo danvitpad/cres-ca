@@ -126,13 +126,7 @@ export default function MasterMiniAppClientsPage() {
 
   return (
     <div className="space-y-4 px-5 pt-6 pb-10">
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">База</p>
-        <h1 className="mt-1 text-2xl font-bold">Клиенты</h1>
-        <p className="mt-0.5 text-[11px] text-white/40">{rows.length} {plural(rows.length, ['клиент', 'клиента', 'клиентов'])}</p>
-      </div>
-
-      {/* Search */}
+      {/* Search — no page title per miniapp redesign (2026-04-19) */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
         <input

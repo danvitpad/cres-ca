@@ -10,14 +10,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Calendar, Search, Heart, Send, Loader2, Compass } from 'lucide-react';
+import { Calendar, Search, Heart, Send, Loader2, Compass, Building2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
+
+// Mini App is Russian-only — inline labels; web /feed uses i18n
+const MINIAPP_CARD_LABELS = {
+  masterPlaceholder: 'Мастер',
+  salonPlaceholder: 'Салон',
+  managerAssigned: 'Мастера назначит администратор',
+};
 
 interface NextAppointment {
   id: string;
   starts_at: string;
+  master_id: string | null;
   master_name: string;
+  master_avatar: string | null;
+  master_specialization: string | null;
+  salon: SalonRef | null;
   service_name: string;
   price: number;
 }
@@ -27,6 +39,7 @@ interface StoryMaster {
   publicId: string | null;
   name: string;
   avatar: string | null;
+  salon: SalonRef | null;
 }
 
 interface FeedAuthor {
@@ -36,6 +49,10 @@ interface FeedAuthor {
   public_id: string | null;
   slug: string | null;
   role: string | null;
+  master_id: string | null;
+  salon_id: string | null;
+  specialization: string | null;
+  salon: SalonRef | null;
 }
 
 interface FeedPost {
@@ -102,19 +119,36 @@ export default function MiniAppHomePage() {
         if (naRes.ok) {
           const { next: apt } = await naRes.json();
           if (apt) {
+            type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null };
             const a = apt as {
               id: string;
               starts_at: string;
               price: number | null;
-              master: { profile: { full_name: string } | { full_name: string }[] } | null;
+              master: {
+                id: string;
+                salon_id: string | null;
+                specialization: string | null;
+                display_name: string | null;
+                avatar_url: string | null;
+                profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
+                salon: SalonEmbed | SalonEmbed[] | null;
+              } | null;
               service: { name: string } | { name: string }[] | null;
             };
             const masterProfile = Array.isArray(a.master?.profile) ? a.master?.profile[0] : a.master?.profile;
             const svc = Array.isArray(a.service) ? a.service[0] : a.service;
+            const rawSalon = Array.isArray(a.master?.salon) ? a.master?.salon[0] ?? null : a.master?.salon ?? null;
+            const salon: SalonRef | null = rawSalon
+              ? { id: rawSalon.id, name: rawSalon.name, logo_url: rawSalon.logo_url, city: rawSalon.city, rating: rawSalon.rating }
+              : null;
             setNext({
               id: a.id,
               starts_at: a.starts_at,
-              master_name: masterProfile?.full_name ?? '—',
+              master_id: a.master?.id ?? null,
+              master_name: a.master?.display_name ?? masterProfile?.full_name ?? '—',
+              master_avatar: a.master?.avatar_url ?? masterProfile?.avatar_url ?? null,
+              master_specialization: a.master?.specialization ?? null,
+              salon,
               service_name: svc?.name ?? '—',
               price: Number(a.price ?? 0),
             });
@@ -205,62 +239,82 @@ export default function MiniAppHomePage() {
         <h1 className="text-2xl font-bold text-white">Привет, {firstName}</h1>
       </div>
 
-      {/* Stories row */}
+      {/* Stories row — salon name primary if master is in a salon */}
       {stories.length > 0 && (
         <div className="-mx-0 flex gap-3 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {stories.map((s) => (
-            <Link
-              key={s.id}
-              href={s.publicId ? `/telegram/u/${s.publicId}` : `/telegram/search?master=${s.id}`}
-              onClick={() => haptic('light')}
-              className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
-            >
-              <div className="rounded-full border border-violet-500 p-[2px]">
-                <div className="rounded-full bg-[#1f2023] p-[2px]">
-                  <div className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
-                    {s.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.avatar} alt="" className="size-full object-cover" />
-                    ) : (
-                      (s.name[0] ?? 'M').toUpperCase()
-                    )}
+          {stories.map((s) => {
+            const sd = resolveCardDisplay(
+              { id: s.id, display_name: s.name, avatar_url: s.avatar, salon_id: s.salon?.id ?? null },
+              s.salon,
+              MINIAPP_CARD_LABELS,
+            );
+            return (
+              <Link
+                key={s.id}
+                href={s.publicId ? `/telegram/u/${s.publicId}` : `/telegram/search?master=${s.id}`}
+                onClick={() => haptic('light')}
+                className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
+              >
+                <div className="rounded-full border border-violet-500 p-[2px]">
+                  <div className="rounded-full bg-[#1f2023] p-[2px]">
+                    <div className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
+                      {sd.avatarSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={sd.avatarSrc} alt="" className="size-full object-cover" />
+                      ) : (
+                        (sd.avatarName[0] ?? 'M').toUpperCase()
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <p className="line-clamp-1 text-center text-[10px] text-white/70">{s.name}</p>
-            </Link>
-          ))}
+                <p className="line-clamp-1 text-center text-[10px] text-white/70">{sd.primary}</p>
+                {sd.mode === 'salon_with_master' && (
+                  <p className="line-clamp-1 text-center text-[9px] text-white/40">{sd.secondary}</p>
+                )}
+              </Link>
+            );
+          })}
         </div>
       )}
 
       {/* Next appointment strip */}
-      {next && (
-        <div className="px-5">
-          <Link
-            href={`/telegram/activity?id=${next.id}`}
-            onClick={() => haptic('light')}
-            className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 pl-5 active:bg-white/[0.06] transition-colors"
-          >
-            <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500" />
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-violet-300">
-              <Calendar className="size-5" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-semibold">{next.service_name}</p>
-              <p className="truncate text-[11px] text-white/60">
-                с {next.master_name} ·{' '}
-                {new Date(next.starts_at).toLocaleString('ru', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
-            </div>
-            <span className="text-[12px] font-bold tabular-nums">{next.price.toFixed(0)} ₴</span>
-          </Link>
-        </div>
-      )}
+      {next && (() => {
+        const nd = resolveCardDisplay(
+          { id: next.master_id ?? '', display_name: next.master_name, avatar_url: next.master_avatar, specialization: next.master_specialization, salon_id: next.salon?.id ?? null },
+          next.salon,
+          MINIAPP_CARD_LABELS,
+        );
+        const when = new Date(next.starts_at).toLocaleString('ru', {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        return (
+          <div className="px-5">
+            <Link
+              href={`/telegram/activity?id=${next.id}`}
+              onClick={() => haptic('light')}
+              className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 pl-5 active:bg-white/[0.06] transition-colors"
+            >
+              <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-violet-300">
+                <Calendar className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold">{next.service_name}</p>
+                <p className="truncate text-[11px] text-white/60">
+                  {nd.mode === 'solo' ? 'с ' : ''}
+                  {nd.primary}
+                  {nd.secondary ? ` · ${nd.secondary}` : ''}
+                  {' · '}{when}
+                </p>
+              </div>
+              <span className="text-[12px] font-bold tabular-nums">{next.price.toFixed(0)} ₴</span>
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* Feed */}
       {posts.length === 0 ? (
@@ -313,8 +367,27 @@ function PostCard({
   onHaptic: (t?: 'light' | 'selection') => void;
 }) {
   const authorName = post.author?.full_name ?? 'Мастер';
-  const avatar = post.author?.avatar_url;
   const time = useMemo(() => relativeTime(post.created_at), [post.created_at]);
+
+  // Apply salon-aware display when author is a master in a salon
+  const pd = resolveCardDisplay(
+    post.author?.master_id
+      ? {
+          id: post.author.master_id,
+          display_name: authorName,
+          avatar_url: post.author.avatar_url,
+          specialization: post.author.specialization,
+          salon_id: post.author.salon_id,
+        }
+      : null,
+    post.author?.salon ?? null,
+    MINIAPP_CARD_LABELS,
+  );
+  const headerPrimary = post.author?.master_id ? pd.primary : authorName;
+  const headerSecondary = post.author?.master_id ? pd.secondary : null;
+  const headerAvatar = post.author?.master_id ? pd.avatarSrc : (post.author?.avatar_url ?? null);
+  const headerAvatarName = post.author?.master_id ? pd.avatarName : authorName;
+  const isSalonHeader = pd.mode !== 'solo' && !!post.author?.master_id;
 
   return (
     <article className="border-b border-white/5 pb-4">
@@ -325,16 +398,21 @@ function PostCard({
           onClick={() => onHaptic('light')}
           className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90"
         >
-          {avatar ? (
+          {headerAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatar} alt="" className="size-full object-cover" />
+            <img src={headerAvatar} alt="" className="size-full object-cover" />
           ) : (
-            authorName[0] ?? 'M'
+            headerAvatarName[0] ?? 'M'
           )}
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold">{authorName}</p>
-          <p className="truncate text-[10px] text-white/45">{time}</p>
+          <p className="flex items-center gap-1 truncate text-[13px] font-semibold">
+            {isSalonHeader && <Building2 className="size-3 shrink-0 text-white/60" />}
+            <span className="truncate">{headerPrimary}</span>
+          </p>
+          <p className="truncate text-[10px] text-white/45">
+            {headerSecondary ? `${headerSecondary} · ${time}` : time}
+          </p>
         </div>
       </div>
 

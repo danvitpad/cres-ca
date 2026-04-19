@@ -1,20 +1,44 @@
 /** --- YAML
  * name: ClientMyMastersPage
- * description: List of masters the client follows (subscribed) — shows rating, next visit, quick rebook
+ * description: Клиентские подписки на мастеров. Salon-aware карточки (solo / salon_with_master) с User/Building2 иконкой, реальные метрики (rating, visit count, next visit, referral bonus), inline unsubscribe через /api/follow/crm/toggle.
  * created: 2026-04-12
- * updated: 2026-04-12
+ * updated: 2026-04-19
  * --- */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { UserPlus, Star, Calendar, Search, MapPin, Gift } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  UserPlus,
+  Star,
+  Calendar,
+  Search,
+  MapPin,
+  Gift,
+  User,
+  Building2,
+  UserMinus,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
+import { useConfirm } from '@/hooks/use-confirm';
 import { Skeleton } from '@/components/ui/skeleton';
+import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
+
+type SalonEmbed =
+  | { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null }
+  | null;
+
+function unwrapSalon(s: SalonEmbed | SalonEmbed[] | null | undefined): SalonRef | null {
+  if (!s) return null;
+  const obj = Array.isArray(s) ? s[0] ?? null : s;
+  if (!obj) return null;
+  return { id: obj.id, name: obj.name, logo_url: obj.logo_url, city: obj.city, rating: obj.rating };
+}
 
 interface MasterRow {
   id: string;
@@ -23,6 +47,8 @@ interface MasterRow {
   specialization: string | null;
   rating: number | null;
   city: string | null;
+  salon_id: string | null;
+  salon: SalonRef | null;
   nextVisit: string | null;
   lastPost: { title: string | null; image_url: string | null; created_at: string } | null;
   bonusPoints: number;
@@ -33,9 +59,21 @@ interface MasterRow {
 export default function MyMastersPage() {
   const t = useTranslations('clientMyMasters');
   const tf = useTranslations('followSystem');
+  const tCard = useTranslations('cardLabels');
   const { userId } = useAuthStore();
+  const confirm = useConfirm();
   const [masters, setMasters] = useState<MasterRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unsubscribing, setUnsubscribing] = useState<string | null>(null);
+
+  const cardLabels = useMemo(
+    () => ({
+      masterPlaceholder: tCard('masterPlaceholder'),
+      salonPlaceholder: tCard('salonPlaceholder'),
+      managerAssigned: tCard('managerAssigned'),
+    }),
+    [tCard],
+  );
 
   useEffect(() => {
     if (!userId) return;
@@ -43,7 +81,9 @@ export default function MyMastersPage() {
       const supabase = createClient();
       const { data: links } = await supabase
         .from('client_master_links')
-        .select('master_id, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url))')
+        .select(
+          'master_id, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, salon_id, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))',
+        )
         .eq('profile_id', userId);
 
       if (links && links.length > 0) {
@@ -61,6 +101,7 @@ export default function MyMastersPage() {
             lastPostByMaster.set(p.master_id, { title: p.title, image_url: p.image_url, created_at: p.created_at });
           }
         });
+
         const { data: clientRows } = await supabase
           .from('clients')
           .select('id, master_id')
@@ -121,7 +162,9 @@ export default function MyMastersPage() {
                   city?: string | null;
                   display_name?: string | null;
                   avatar_url?: string | null;
+                  salon_id?: string | null;
                   profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
+                  salon?: SalonEmbed | SalonEmbed[];
                 }
               | null;
             if (!m?.id) return null;
@@ -132,6 +175,8 @@ export default function MyMastersPage() {
               specialization: m.specialization ?? null,
               rating: m.rating ?? null,
               city: m.city ?? null,
+              salon_id: m.salon_id ?? null,
+              salon: unwrapSalon(m.salon ?? null),
               nextVisit: nextByMaster.get(row.master_id) ?? null,
               lastPost: lastPostByMaster.get(row.master_id) ?? null,
               bonusPoints: bonusByMaster.get(row.master_id) ?? 0,
@@ -146,6 +191,40 @@ export default function MyMastersPage() {
     }
     load();
   }, [userId]);
+
+  const handleUnsubscribe = useCallback(
+    async (master: MasterRow) => {
+      const displayName = master.full_name || tCard('masterPlaceholder');
+      const ok = await confirm({
+        title: t('confirmUnsubscribeTitle'),
+        description: t('confirmUnsubscribeDesc', { name: displayName }),
+        confirmLabel: t('unsubscribe'),
+        destructive: true,
+      });
+      if (!ok) return;
+
+      setUnsubscribing(master.id);
+      try {
+        const res = await fetch('/api/follow/crm/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ masterId: master.id }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { following?: boolean; error?: string };
+        if (!res.ok || json.following !== false) {
+          toast.error(t('unsubscribeError'));
+          return;
+        }
+        setMasters((prev) => prev.filter((m) => m.id !== master.id));
+        toast.success(t('unsubscribeSuccess'));
+      } catch {
+        toast.error(t('unsubscribeError'));
+      } finally {
+        setUnsubscribing(null);
+      }
+    },
+    [confirm, t, tCard],
+  );
 
   if (loading) {
     return (
@@ -179,7 +258,7 @@ export default function MyMastersPage() {
           <p className="mt-6 text-xl font-semibold">{t('emptyTitle')}</p>
           <p className="mt-2 max-w-sm text-sm text-muted-foreground">{t('emptyDesc')}</p>
           <Link
-            href="/masters"
+            href="/search"
             className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
           >
             <Search className="size-4" />
@@ -189,7 +268,18 @@ export default function MyMastersPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {masters.map((m, idx) => {
+            const masterRef = {
+              id: m.id,
+              display_name: m.full_name,
+              avatar_url: m.avatar_url,
+              specialization: m.specialization,
+              rating: m.rating,
+              salon_id: m.salon_id,
+            };
+            const d = resolveCardDisplay(masterRef, m.salon, cardLabels);
             const cover = m.lastPost?.image_url ?? null;
+            const Icon = d.mode === 'solo' ? User : Building2;
+            const isBusy = unsubscribing === m.id;
             return (
               <motion.div
                 key={m.id}
@@ -201,6 +291,7 @@ export default function MyMastersPage() {
                 {/* Cover */}
                 <Link href={`/masters/${m.id}`} className="relative block h-32 w-full overflow-hidden">
                   {cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={cover} alt="" className="size-full object-cover transition-transform duration-500 group-hover/master:scale-105" />
                   ) : (
                     <div className="size-full bg-gradient-to-br from-[var(--ds-accent)] via-purple-500 to-pink-500" />
@@ -220,10 +311,11 @@ export default function MyMastersPage() {
                   <div className="-mt-10 flex justify-start">
                     <Link href={`/masters/${m.id}`}>
                       <div className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-card text-2xl font-bold text-[var(--ds-accent)] ring-4 ring-card shadow-md">
-                        {m.avatar_url ? (
-                          <img src={m.avatar_url} alt={m.full_name ?? ''} className="size-full object-cover" />
+                        {d.avatarSrc ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={d.avatarSrc} alt={d.avatarName} className="size-full object-cover" />
                         ) : (
-                          (m.full_name || 'M')[0].toUpperCase()
+                          (d.avatarName || 'M')[0].toUpperCase()
                         )}
                       </div>
                     </Link>
@@ -232,21 +324,24 @@ export default function MyMastersPage() {
                   {/* Name + meta */}
                   <div className="mt-2">
                     <Link href={`/masters/${m.id}`} className="block">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-base font-semibold leading-snug">{m.full_name}</p>
+                      <div className="flex items-center gap-1.5">
+                        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                        <p className="truncate text-base font-semibold leading-snug">{d.primary}</p>
                         {m.mutual && (
                           <span className="shrink-0 rounded-full bg-[var(--ds-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-accent)]">
                             {tf('mutual')}
                           </span>
                         )}
                       </div>
-                      <p className="truncate text-xs text-muted-foreground">{m.specialization}</p>
+                      {d.secondary && (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{d.secondary}</p>
+                      )}
                     </Link>
                     <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                      {m.rating != null && (
+                      {d.rating != null && (
                         <span className="flex items-center gap-1">
                           <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                          <span className="font-medium">{m.rating.toFixed(1)}</span>
+                          <span className="font-medium">{d.rating.toFixed(1)}</span>
                         </span>
                       )}
                       {m.city && (
@@ -274,14 +369,25 @@ export default function MyMastersPage() {
                     </div>
                   </div>
 
-                  {/* Quick book */}
-                  <Link
-                    href={`/book?master_id=${m.id}`}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
-                  >
-                    <Calendar className="size-4" />
-                    {t('quickBook')}
-                  </Link>
+                  {/* Actions: Book + Unsubscribe */}
+                  <div className="mt-4 flex gap-2">
+                    <Link
+                      href={`/book?master_id=${m.id}`}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
+                    >
+                      <Calendar className="size-4" />
+                      {t('quickBook')}
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleUnsubscribe(m)}
+                      disabled={isBusy}
+                      aria-label={t('unsubscribe')}
+                      className="flex size-10 items-center justify-center rounded-[var(--radius-button)] border border-border/60 bg-background text-muted-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                    >
+                      <UserMinus className="size-4" />
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             );

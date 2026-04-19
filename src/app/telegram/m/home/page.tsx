@@ -1,6 +1,6 @@
 /** --- YAML
  * name: MasterMiniAppHome
- * description: Master Mini App home — AI brief, today KPIs, next appointment hero, compact finance block. Duplicates (busy toggle, quick actions, today agenda link, voice CTA) removed Phase 1.4.
+ * description: Minimal master Mini App home — greeting + date, AI brief, compact weekly finance link. KPI grid and next-appointment hero removed per miniapp redesign (2026-04-19).
  * created: 2026-04-13
  * updated: 2026-04-19
  * --- */
@@ -11,7 +11,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, TrendingUp, Clock, ChevronRight, Sparkles, AlertCircle, Bot } from 'lucide-react';
+import { TrendUp, CaretRight, Robot } from '@phosphor-icons/react';
+import { useAuthStore } from '@/stores/auth-store';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
+
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -26,33 +29,13 @@ function getInitData(): string | null {
   } catch { /* ignore */ }
   return null;
 }
-import { useAuthStore } from '@/stores/auth-store';
-import { useTelegram } from '@/components/miniapp/telegram-provider';
-
-interface NextApt {
-  id: string;
-  starts_at: string;
-  ends_at: string;
-  price: number;
-  client_name: string;
-  service_name: string;
-}
-
-interface TodayStats {
-  count: number;
-  revenue: number;
-  done: number;
-  upcoming: number;
-}
 
 export default function MasterMiniAppHome() {
-  const { user, ready, haptic } = useTelegram();
+  const { user, ready } = useTelegram();
   const { userId } = useAuthStore();
   const router = useRouter();
   const [masterId, setMasterId] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
-  const [next, setNext] = useState<NextApt | null>(null);
-  const [stats, setStats] = useState<TodayStats>({ count: 0, revenue: 0, done: 0, upcoming: 0 });
   const [weekRevenue, setWeekRevenue] = useState(0);
   const [weekCompleted, setWeekCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -73,7 +56,6 @@ export default function MasterMiniAppHome() {
       const initData = getInitData();
       if (!initData) { setLoading(false); return; }
 
-      // Step 1 — basic context (master/profile/today aggregates)
       const ctxRes = await fetch('/api/telegram/m/home', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,50 +66,8 @@ export default function MasterMiniAppHome() {
       if (!ctx.master) { setLoading(false); return; }
       setMasterId(ctx.master.id);
       setProfileName(ctx.profile?.full_name?.split(' ')[0] || null);
-
-      // Step 2 — full today appointments (for "next" card)
-      const today = new Date();
-      const calRes = await fetch('/api/telegram/m/calendar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, day_iso: today.toISOString() }),
-      });
-      if (calRes.ok) {
-        const calJson = await calRes.json();
-        type Row = {
-          id: string;
-          starts_at: string;
-          ends_at: string;
-          price: number | null;
-          status: string;
-          client: { profile: { full_name: string } | { full_name: string }[] | null } | null;
-          service: { name: string } | { name: string }[] | null;
-        };
-        const rows = (calJson.appointments ?? []) as Row[];
-        const now = new Date();
-        const active = rows.filter((r) => r.status !== 'cancelled_by_client' && r.status !== 'cancelled_by_master' && r.status !== 'no_show');
-        const done = active.filter((r) => r.status === 'completed');
-        const upcoming = active.filter((r) => r.status !== 'completed' && new Date(r.starts_at) >= now);
-        const revenue = done.reduce((acc, r) => acc + Number(r.price ?? 0), 0);
-        setStats({ count: active.length, revenue, done: done.length, upcoming: upcoming.length });
-
-        const firstUpcoming = upcoming[0];
-        if (firstUpcoming) {
-          const cp = Array.isArray(firstUpcoming.client?.profile) ? firstUpcoming.client?.profile[0] : firstUpcoming.client?.profile;
-          const svc = Array.isArray(firstUpcoming.service) ? firstUpcoming.service[0] : firstUpcoming.service;
-          setNext({
-            id: firstUpcoming.id,
-            starts_at: firstUpcoming.starts_at,
-            ends_at: firstUpcoming.ends_at,
-            price: Number(firstUpcoming.price ?? 0),
-            client_name: cp?.full_name ?? 'Клиент',
-            service_name: svc?.name ?? '—',
-          });
-        }
-      }
       setLoading(false);
 
-      // Step 2.5 — week finance summary (completed appointments in last 7 days)
       fetch('/api/telegram/m/stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -143,7 +83,6 @@ export default function MasterMiniAppHome() {
         })
         .catch(() => { /* ignore */ });
 
-      // Step 3 — fetch AI brief (non-blocking, has its own loading state)
       fetch('/api/telegram/m/brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,8 +99,8 @@ export default function MasterMiniAppHome() {
     return (
       <div className="space-y-4 px-5 pt-6">
         <div className="h-8 w-40 animate-pulse rounded-lg bg-white/5" />
-        <div className="h-36 w-full animate-pulse rounded-3xl bg-white/5" />
         <div className="h-24 w-full animate-pulse rounded-2xl bg-white/5" />
+        <div className="h-16 w-full animate-pulse rounded-2xl bg-white/5" />
       </div>
     );
   }
@@ -181,23 +120,20 @@ export default function MasterMiniAppHome() {
       transition={{ duration: 0.3 }}
       className="space-y-6 px-5 pt-6"
     >
-      {/* Greeting */}
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">CRES-CA · Мастер</p>
-        <h1 className="mt-1 text-2xl font-bold">Привет, {profileName ?? user?.first_name ?? 'мастер'} 💼</h1>
+        <h1 className="text-2xl font-bold">Привет, {profileName ?? user?.first_name ?? 'мастер'} 💼</h1>
         <p className="mt-0.5 text-[12px] text-white/50">
           {new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
 
-      {/* AI brief — skeleton while loading, card if generated, hidden otherwise */}
       {briefLoading ? (
         <div className="h-20 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
       ) : brief ? (
         <div className="relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.07] to-fuchsia-500/[0.03] p-4">
           <div className="flex items-start gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10">
-              <Bot className="size-4 text-violet-300" />
+              <Robot size={18} weight="fill" className="text-violet-300" />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Бриф от AI</p>
@@ -207,67 +143,13 @@ export default function MasterMiniAppHome() {
         </div>
       ) : null}
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-3 gap-2">
-        <KpiCard icon={Calendar} label="Записей" value={stats.count.toString()} accent="violet" />
-        <KpiCard icon={TrendingUp} label="Выручка" value={`${stats.revenue.toFixed(0)}₴`} accent="emerald" />
-        <KpiCard icon={Clock} label="Впереди" value={stats.upcoming.toString()} accent="amber" />
-      </div>
-
-      {/* Next appointment hero — flat card with accent strip */}
-      {next ? (
-        <Link
-          href={`/telegram/m/calendar?id=${next.id}`}
-          onClick={() => haptic('light')}
-          className="relative block overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 active:bg-white/[0.06] transition-colors"
-        >
-          <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
-          <div className="flex items-start justify-between gap-3 pl-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Следующая запись</p>
-              <p className="mt-2 text-lg font-bold truncate">{next.service_name}</p>
-              <p className="mt-1 truncate text-sm text-white/60">{next.client_name}</p>
-              <div className="mt-3 flex items-center gap-3 text-[12px] text-white/70 tabular-nums">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="size-3.5" />
-                  {new Date(next.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                  {' – '}
-                  {new Date(next.ends_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                </div>
-                <span className="text-white/30">·</span>
-                <span className="font-semibold text-white/90">{next.price.toFixed(0)} ₴</span>
-              </div>
-            </div>
-            <ChevronRight className="size-5 shrink-0 text-white/30" />
-          </div>
-        </Link>
-      ) : stats.count === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-white/[0.06]">
-            <Sparkles className="size-5 text-white/60" />
-          </div>
-          <p className="mt-3 text-base font-semibold">Сегодня записей нет</p>
-          <p className="mt-1 text-xs text-white/50">Отдохни или открой слот для новых клиентов</p>
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-emerald-500/20 bg-white/[0.03] p-6 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-emerald-500/15">
-            <AlertCircle className="size-5 text-emerald-300" />
-          </div>
-          <p className="mt-3 text-base font-semibold">День закрыт 🎉</p>
-          <p className="mt-1 text-xs text-white/60">Все {stats.done} записей выполнены</p>
-        </div>
-      )}
-
-      {/* Finance — compact summary linking to /stats */}
       <Link
         href="/telegram/m/stats"
-        onClick={() => haptic('light')}
         className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <TrendingUp className="size-4 text-emerald-300" />
+            <TrendUp size={18} weight="bold" className="text-emerald-300" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Финансы · неделя</p>
@@ -277,34 +159,8 @@ export default function MasterMiniAppHome() {
             </p>
           </div>
         </div>
-        <ChevronRight className="size-4 text-white/40" />
+        <CaretRight size={16} className="text-white/40" />
       </Link>
     </motion.div>
   );
 }
-
-function KpiCard({
-  icon: Icon,
-  label,
-  value,
-  accent,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: string;
-  accent: 'violet' | 'emerald' | 'amber';
-}) {
-  const iconColor: Record<string, string> = {
-    violet: 'text-violet-300',
-    emerald: 'text-emerald-300',
-    amber: 'text-amber-300',
-  };
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-      <Icon className={`size-4 ${iconColor[accent]}`} />
-      <p className="mt-2 text-base font-bold text-white tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-white/50">{label}</p>
-    </div>
-  );
-}
-

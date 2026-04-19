@@ -1,15 +1,19 @@
 /** --- YAML
  * name: MasterMiniAppStats
- * description: Master Mini App stats — week/month tabs with revenue, appointment count, avg check, top services bar chart, completion rate. Flat cards (Phase 7.5).
+ * description: Master Mini App finance — week/month tabs with revenue + counts + avg check + completion rate + top services. Title stripped (2026-04-19); + Доход / + Расход FABs open MiniBottomSheet forms posting to /api/telegram/m/finance-entry.
  * created: 2026-04-13
- * updated: 2026-04-18
+ * updated: 2026-04-19
  * --- */
 
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar, Target, Loader2, Award, XCircle } from 'lucide-react';
+import { TrendingUp, Calendar, Target, Loader2, Award, XCircle, Plus, Minus } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth-store';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
+
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -24,8 +28,6 @@ function getInitData(): string | null {
   } catch { /* ignore */ }
   return null;
 }
-import { useAuthStore } from '@/stores/auth-store';
-import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 type Period = 'week' | 'month';
 
@@ -37,12 +39,17 @@ interface AptRow {
   service_name: string;
 }
 
+const PAYMENT_METHODS = ['Наличные', 'Карта', 'Перевод', 'Криптовалюта'] as const;
+const EXPENSE_CATEGORIES = ['Расходники', 'Аренда', 'Налоги', 'Реклама', 'Оборудование', 'Еда', 'Транспорт', 'Коммунальные', 'Другое'] as const;
+
 export default function MasterMiniAppStats() {
   const { ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
   const [period, setPeriod] = useState<Period>('week');
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AptRow[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [sheetOpen, setSheetOpen] = useState<null | 'income' | 'expense'>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -77,7 +84,7 @@ export default function MasterMiniAppStats() {
       setRows(mapped);
       setLoading(false);
     })();
-  }, [userId, period]);
+  }, [userId, period, refreshKey]);
 
   const kpi = useMemo(() => {
     const active = rows.filter((r) => r.status !== 'cancelled' && r.status !== 'cancelled_by_client' && r.status !== 'no_show');
@@ -115,103 +122,136 @@ export default function MasterMiniAppStats() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-5 px-5 pt-6 pb-10"
-    >
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Аналитика</p>
-        <h1 className="mt-1 text-2xl font-bold">Статистика</h1>
-      </div>
-
-      {/* Period tabs */}
-      <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
-        {(['week', 'month'] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => {
-              haptic('light');
-              setPeriod(p);
-            }}
-            className={`flex-1 rounded-xl py-2 text-[12px] font-semibold transition-colors ${
-              period === p ? 'bg-white text-black' : 'text-white/60'
-            }`}
-          >
-            {p === 'week' ? '7 дней' : '30 дней'}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="space-y-3">
-          <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
-          <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-5 px-5 pt-6 pb-10"
+      >
+        {/* Period tabs — no page title per miniapp redesign (2026-04-19) */}
+        <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+          {(['week', 'month'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => {
+                haptic('light');
+                setPeriod(p);
+              }}
+              className={`flex-1 rounded-xl py-2 text-[12px] font-semibold transition-colors ${
+                period === p ? 'bg-white text-black' : 'text-white/60'
+              }`}
+            >
+              {p === 'week' ? '7 дней' : '30 дней'}
+            </button>
+          ))}
         </div>
-      ) : (
-        <>
-          {/* KPI grid */}
-          <div className="grid grid-cols-2 gap-2">
-            <StatCard icon={TrendingUp} label="Выручка" value={`${kpi.revenue.toFixed(0)}₴`} accent="emerald" />
-            <StatCard icon={Calendar} label="Записей" value={kpi.total.toString()} accent="violet" />
-            <StatCard icon={Target} label="Средний чек" value={`${kpi.avg.toFixed(0)}₴`} accent="amber" />
-            <StatCard
-              icon={Award}
-              label="Выполнено"
-              value={`${kpi.completionRate}%`}
-              accent="sky"
-              sub={`${kpi.completed} из ${kpi.total}`}
-            />
+
+        {/* Income / expense actions */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { haptic('selection'); setSheetOpen('income'); }}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-[13px] font-semibold text-emerald-200 active:bg-emerald-500/20 transition-colors"
+          >
+            <Plus className="size-4" /> Доход
+          </button>
+          <button
+            onClick={() => { haptic('selection'); setSheetOpen('expense'); }}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-3 text-[13px] font-semibold text-rose-200 active:bg-rose-500/20 transition-colors"
+          >
+            <Minus className="size-4" /> Расход
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
+            <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <StatCard icon={TrendingUp} label="Выручка" value={`${kpi.revenue.toFixed(0)}₴`} accent="emerald" />
+              <StatCard icon={Calendar} label="Записей" value={kpi.total.toString()} accent="violet" />
+              <StatCard icon={Target} label="Средний чек" value={`${kpi.avg.toFixed(0)}₴`} accent="amber" />
+              <StatCard
+                icon={Award}
+                label="Выполнено"
+                value={`${kpi.completionRate}%`}
+                accent="sky"
+                sub={`${kpi.completed} из ${kpi.total}`}
+              />
+            </div>
 
-          {kpi.noShow > 0 && (
-            <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5">
-              <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-rose-500" />
-              <XCircle className="size-5 text-rose-300" />
-              <div>
-                <p className="text-[13px] font-semibold">{kpi.noShow} не пришло</p>
-                <p className="text-[11px] text-white/50">Попробуй требовать предоплату для новых клиентов</p>
+            {kpi.noShow > 0 && (
+              <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5">
+                <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-rose-500" />
+                <XCircle className="size-5 text-rose-300" />
+                <div>
+                  <p className="text-[13px] font-semibold">{kpi.noShow} не пришло</p>
+                  <p className="text-[11px] text-white/50">Попробуй требовать предоплату для новых клиентов</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Top services */}
-          {topServices.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-sm font-semibold">Топ-услуги</h2>
-              <ul className="space-y-3">
-                {topServices.map((s) => (
-                  <li key={s.name}>
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span className="truncate font-semibold">{s.name}</span>
-                      <span className="shrink-0 text-white/60">
-                        {s.count}× · {s.revenue.toFixed(0)}₴
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.03]">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(s.revenue / maxRevenue) * 100}%` }}
-                        transition={{ duration: 0.6, ease: 'easeOut' }}
-                        className="h-full rounded-full bg-violet-500"
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            {topServices.length > 0 && (
+              <div>
+                <h2 className="mb-3 text-sm font-semibold">Топ-услуги</h2>
+                <ul className="space-y-3">
+                  {topServices.map((s) => (
+                    <li key={s.name}>
+                      <div className="flex items-center justify-between text-[12px]">
+                        <span className="truncate font-semibold">{s.name}</span>
+                        <span className="shrink-0 text-white/60">
+                          {s.count}× · {s.revenue.toFixed(0)}₴
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.03]">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(s.revenue / maxRevenue) * 100}%` }}
+                          transition={{ duration: 0.6, ease: 'easeOut' }}
+                          className="h-full rounded-full bg-violet-500"
+                        />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          {rows.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-              <p className="text-sm font-semibold">Ещё нет данных</p>
-              <p className="mt-1 text-xs text-white/50">Начни принимать клиентов — статистика появится автоматически</p>
-            </div>
-          )}
-        </>
-      )}
-    </motion.div>
+            {rows.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
+                <p className="text-sm font-semibold">Ещё нет данных</p>
+                <p className="mt-1 text-xs text-white/50">Начни принимать клиентов — статистика появится автоматически</p>
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
+
+      <MiniBottomSheet
+        open={sheetOpen === 'income'}
+        onClose={() => setSheetOpen(null)}
+        title="Новый доход"
+      >
+        <FinanceEntryForm
+          kind="income"
+          onSuccess={() => { setSheetOpen(null); setRefreshKey((k) => k + 1); }}
+        />
+      </MiniBottomSheet>
+
+      <MiniBottomSheet
+        open={sheetOpen === 'expense'}
+        onClose={() => setSheetOpen(null)}
+        title="Новый расход"
+      >
+        <FinanceEntryForm
+          kind="expense"
+          onSuccess={() => { setSheetOpen(null); setRefreshKey((k) => k + 1); }}
+        />
+      </MiniBottomSheet>
+    </>
   );
 }
 
@@ -240,6 +280,157 @@ function StatCard({
       <p className="mt-3 text-xl font-bold text-white tabular-nums">{value}</p>
       <p className="text-[10px] uppercase tracking-wide text-white/50">{label}</p>
       {sub && <p className="mt-0.5 text-[10px] text-white/40">{sub}</p>}
+    </div>
+  );
+}
+
+function FinanceEntryForm({
+  kind,
+  onSuccess,
+}: {
+  kind: 'income' | 'expense';
+  onSuccess: () => void;
+}) {
+  const { haptic } = useTelegram();
+  const [amount, setAmount] = useState('');
+  const [a, setA] = useState('');
+  const [b, setB] = useState('');
+  const [c, setC] = useState(''); // method or vendor
+  const [d, setD] = useState(''); // note or description
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const num = Number(amount.replace(',', '.'));
+    if (!Number.isFinite(num) || num <= 0) {
+      setError('Введи корректную сумму');
+      return;
+    }
+    const initData = getInitData();
+    if (!initData) {
+      setError('Нет initData');
+      return;
+    }
+    setSaving(true);
+    const entry = kind === 'income'
+      ? { kind: 'income' as const, amount: num, client_name: a, service_name: b, payment_method: c, note: d }
+      : { kind: 'expense' as const, amount: num, category: a || 'Другое', description: b, vendor: c };
+    try {
+      const res = await fetch('/api/telegram/m/finance-entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, entry }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || 'save_failed');
+      }
+      haptic('success');
+      onSuccess();
+    } catch (err) {
+      haptic('error');
+      setError(err instanceof Error ? err.message : 'Ошибка');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 pt-2">
+      <div>
+        <label className="text-[11px] uppercase tracking-wide text-white/40">Сумма, ₴</label>
+        <input
+          type="text"
+          inputMode="decimal"
+          autoFocus
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-lg font-bold outline-none focus:border-white/20 tabular-nums"
+        />
+      </div>
+
+      {kind === 'income' ? (
+        <>
+          <Field label="Клиент (опционально)" value={a} onChange={setA} placeholder="Имя или —" />
+          <Field label="Услуга (опционально)" value={b} onChange={setB} placeholder="Название услуги" />
+          <div>
+            <label className="text-[11px] uppercase tracking-wide text-white/40">Способ оплаты</label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {PAYMENT_METHODS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setC(m)}
+                  className={`rounded-xl border py-2 text-[12px] font-semibold transition-colors ${c === m ? 'border-white/30 bg-white/[0.1] text-white' : 'border-white/10 bg-white/[0.03] text-white/60 active:bg-white/[0.06]'}`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Field label="Заметка" value={d} onChange={setD} placeholder="Напр. «постоянный клиент»" />
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="text-[11px] uppercase tracking-wide text-white/40">Категория</label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {EXPENSE_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setA(cat)}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${a === cat ? 'border-white/30 bg-white/[0.1] text-white' : 'border-white/10 bg-white/[0.03] text-white/60 active:bg-white/[0.06]'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Field label="Описание" value={b} onChange={setB} placeholder="Что купил / за что платишь" />
+          <Field label="Поставщик (опционально)" value={c} onChange={setC} placeholder="Магазин / компания" />
+        </>
+      )}
+
+      {error && (
+        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-[12px] text-rose-200">{error}</p>
+      )}
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="w-full rounded-2xl bg-white py-4 text-[14px] font-bold text-black active:bg-white/90 transition-colors disabled:opacity-50"
+      >
+        {saving ? 'Сохраняю…' : 'Сохранить'}
+      </button>
+    </form>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="text-[11px] uppercase tracking-wide text-white/40">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm outline-none focus:border-white/20"
+      />
     </div>
   );
 }
