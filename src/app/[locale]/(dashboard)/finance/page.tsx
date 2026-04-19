@@ -51,6 +51,13 @@ interface PaymentRow {
   appointment: { client: { full_name: string } | null } | null;
 }
 
+interface ManualIncomeRow {
+  id: string; amount: number; currency: string; date: string;
+  client_name: string | null; service_name: string | null;
+  payment_method: string | null; note: string | null;
+  created_at: string;
+}
+
 interface ExpenseRow {
   id: string; date: string; amount: number; currency: string;
   category: string | null; description: string | null; vendor: string | null;
@@ -93,6 +100,7 @@ export default function FinancePage() {
   const [previous, setPrevious] = useState<PeriodMetrics | null>(null);
 
   const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [manualIncomes, setManualIncomes] = useState<ManualIncomeRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [lastAppointments, setLastAppointments] = useState<AppointmentRow[]>([]);
   const [topServices, setTopServices] = useState<TopServiceRow[]>([]);
@@ -115,7 +123,7 @@ export default function FinancePage() {
     const supabase = createClient();
     const prev = prevPeriod(period);
 
-    const [curMetrics, prevMetrics, allPayments, allExpenses, apts] = await Promise.all([
+    const [curMetrics, prevMetrics, allPayments, allManual, allExpenses, apts] = await Promise.all([
       supabase.rpc('master_period_metrics', {
         p_master_id: master.id,
         p_start: period.start.toISOString(),
@@ -129,6 +137,10 @@ export default function FinancePage() {
       supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, services(name), appointment:appointments(client:clients(full_name))')
         .eq('master_id', master.id).eq('status', 'completed')
         .gte('created_at', period.start.toISOString()).lte('created_at', period.end.toISOString())
+        .order('created_at', { ascending: false }).limit(50),
+      supabase.from('manual_incomes').select('id, amount, currency, date, client_name, service_name, payment_method, note, created_at')
+        .eq('master_id', master.id)
+        .gte('date', period.start.toISOString().slice(0, 10)).lte('date', period.end.toISOString().slice(0, 10))
         .order('created_at', { ascending: false }).limit(50),
       supabase.from('expenses').select('id, date, amount, currency, category, description, vendor')
         .eq('master_id', master.id)
@@ -147,6 +159,7 @@ export default function FinancePage() {
 
     const paymentsData = (allPayments.data as unknown as PaymentRow[]) || [];
     setPayments(paymentsData);
+    setManualIncomes((allManual.data ?? []) as ManualIncomeRow[]);
     setExpenses((allExpenses.data ?? []) as ExpenseRow[]);
     setLastAppointments((apts.data as unknown as AppointmentRow[]) || []);
 
@@ -183,7 +196,11 @@ export default function FinancePage() {
       .channel(`fin_e_${master.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `master_id=eq.${master.id}` }, () => loadData())
       .subscribe();
-    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
+    const ch3 = supabase
+      .channel(`fin_mi_${master.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'manual_incomes', filter: `master_id=eq.${master.id}` }, () => loadData())
+      .subscribe();
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
   }, [master?.id, loadData]);
 
   const fetchAiInsight = useCallback(async () => {
@@ -247,20 +264,19 @@ export default function FinancePage() {
     if (!Number.isFinite(amt) || amt <= 0) { toast.error('Введите сумму'); return; }
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('payments')
+      .from('manual_incomes')
       .insert({
         master_id: master.id,
         amount: amt,
         currency: 'UAH',
-        type: 'manual',
+        date: new Date().toISOString().slice(0, 10),
         payment_method: incMethod,
-        status: 'completed',
-        notes: incNote || null,
+        note: incNote || null,
       })
-      .select('id, amount, currency, type, payment_method, created_at, services(name), appointment:appointments(client:clients(full_name))')
+      .select('id, amount, currency, date, client_name, service_name, payment_method, note, created_at')
       .single();
     if (error) { toast.error(error.message); return; }
-    setPayments(prev => [data as unknown as PaymentRow, ...prev]);
+    setManualIncomes(prev => [data as ManualIncomeRow, ...prev]);
     setIncAmount('');
     setIncNote('');
     toast.success('Доход добавлен');
@@ -291,11 +307,38 @@ export default function FinancePage() {
 
   const SUB_TABS: readonly PillTabItem[] = [
     { value: 'overview', label: 'Обзор' },
-    { value: 'income', label: 'Доходы', count: payments.length },
+    { value: 'income', label: 'Доходы', count: payments.length + manualIncomes.length },
     { value: 'expenses', label: 'Расходы', count: expenses.length },
   ];
 
   const expensesTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
+
+  const incomeRows = useMemo(() => {
+    const paymentRows = payments.map((p) => ({
+      id: `p_${p.id}`,
+      date: p.created_at,
+      amount: Number(p.amount),
+      title: p.services?.name || 'Оплата',
+      subtitle: p.appointment?.client?.full_name || '—',
+      source: 'payment' as const,
+    }));
+    const manualRows = manualIncomes.map((m) => ({
+      id: `m_${m.id}`,
+      date: m.date + 'T00:00:00',
+      amount: Number(m.amount),
+      title: m.service_name || m.note || 'Ручной доход',
+      subtitle: m.client_name || '—',
+      source: 'manual' as const,
+    }));
+    return [...paymentRows, ...manualRows].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+  }, [payments, manualIncomes]);
+
+  const incomeRowsTotal = useMemo(
+    () => incomeRows.reduce((s, r) => s + r.amount, 0),
+    [incomeRows],
+  );
 
   return (
     <div style={{ ...pageContainer, color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 48 }}>
@@ -561,7 +604,7 @@ export default function FinancePage() {
               </button>
             </div>
 
-            {payments.length === 0 ? (
+            {incomeRows.length === 0 ? (
               <div style={{
                 padding: '56px 20px', textAlign: 'center', color: C.textTertiary, fontSize: 14,
                 background: C.surface, borderRadius: 12, border: `1px solid ${C.border}`,
@@ -573,13 +616,11 @@ export default function FinancePage() {
               <div style={{
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflowX: 'auto',
               }}>
-                {payments.map((p, i) => {
-                  const dateStr = format(new Date(p.created_at), 'd MMM', { locale: dfLocale });
-                  const serviceName = p.services?.name || 'Оплата';
-                  const clientName = p.appointment?.client?.full_name || '—';
+                {incomeRows.map((r, i) => {
+                  const dateStr = format(new Date(r.date), 'd MMM', { locale: dfLocale });
                   return (
                     <div
-                      key={p.id}
+                      key={r.id}
                       style={{
                         display: 'grid',
                         gridTemplateColumns: '80px 1.2fr 1fr 140px',
@@ -587,18 +628,23 @@ export default function FinancePage() {
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px 20px',
-                        borderBottom: i < payments.length - 1 ? `1px solid ${C.border}` : 'none',
+                        borderBottom: i < incomeRows.length - 1 ? `1px solid ${C.border}` : 'none',
                       }}
                     >
                       <span style={{ fontSize: 13, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>{dateStr}</span>
-                      <span style={{ fontSize: 14, fontWeight: 550, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {serviceName}
+                      <span style={{ fontSize: 14, fontWeight: 550, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {r.title}
+                        {r.source === 'manual' && (
+                          <span style={{ fontSize: 10, fontWeight: 600, color: C.accent, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                            · ручной
+                          </span>
+                        )}
                       </span>
                       <span style={{ fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {clientName}
+                        {r.subtitle}
                       </span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: C.success, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        +{Number(p.amount).toLocaleString()} {CURRENCY}
+                        +{r.amount.toLocaleString()} {CURRENCY}
                       </span>
                     </div>
                   );
@@ -616,7 +662,7 @@ export default function FinancePage() {
                   <span style={{ color: C.textSecondary }}>Итого</span>
                   <span />
                   <span style={{ color: C.success, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    +{revenue.toLocaleString()} {CURRENCY}
+                    +{incomeRowsTotal.toLocaleString()} {CURRENCY}
                   </span>
                 </div>
               </div>

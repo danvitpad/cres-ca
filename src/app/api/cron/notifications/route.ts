@@ -34,18 +34,29 @@ export async function GET(request: Request) {
 
   const appUrl = `${process.env.NEXT_PUBLIC_APP_URL}/telegram`;
 
+  let failed = 0;
+
   for (const n of notifications) {
     const profile = n.profiles as { telegram_id: string | null; full_name: string } | null;
 
     if (n.channel === 'telegram' && profile?.telegram_id) {
-      await sendMessage(profile.telegram_id, `<b>${n.title}</b>\n\n${n.body}`, {
-        parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
-        },
-      });
-      await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);
-      sent++;
+      try {
+        await sendMessage(profile.telegram_id, `<b>${n.title}</b>\n\n${n.body}`, {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
+          },
+        });
+        await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);
+        sent++;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'send_failed';
+        await supabase.from('notifications').update({
+          status: 'failed',
+          data: { ...(n.data as Record<string, unknown> | null ?? {}), error: errorMessage, failed_at: new Date().toISOString() },
+        }).eq('id', n.id);
+        failed++;
+      }
     } else if (n.channel === 'email') {
       const email = (n.profiles as { email?: string | null } | null)?.email;
       if (email) {
@@ -70,5 +81,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ sent });
+  return NextResponse.json({ sent, failed });
 }

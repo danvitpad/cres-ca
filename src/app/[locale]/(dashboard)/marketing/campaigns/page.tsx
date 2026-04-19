@@ -141,8 +141,41 @@ export default function CampaignsPage() {
     const { error } = await supabase.from('notifications').insert(rows);
     setSending(false);
     if (error) {
+      if (master?.id) {
+        await supabase.from('ai_actions_log').insert({
+          master_id: master.id,
+          source: 'dashboard',
+          action_type: 'broadcast_send',
+          input_text: content.trim().slice(0, 500),
+          result: {
+            campaign_id: campaignId,
+            target_count: targets.length,
+            recipient_count: rows.length,
+            mode,
+            segment: mode === 'segment' ? segment : null,
+          },
+          status: 'failed',
+          error_message: error.message,
+        });
+      }
       toast.error(error.message);
       return;
+    }
+    if (master?.id) {
+      await supabase.from('ai_actions_log').insert({
+        master_id: master.id,
+        source: 'dashboard',
+        action_type: 'broadcast_send',
+        input_text: content.trim().slice(0, 500),
+        result: {
+          campaign_id: campaignId,
+          target_count: targets.length,
+          recipient_count: rows.length,
+          mode,
+          segment: mode === 'segment' ? segment : null,
+        },
+        status: 'success',
+      });
     }
     toast.success(`Отправлено ${rows.length} сообщений`);
     setContent('');

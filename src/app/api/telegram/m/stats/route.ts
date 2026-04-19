@@ -30,12 +30,28 @@ export async function POST(request: Request) {
   const now = new Date();
   const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-  const { data } = await admin
-    .from('appointments')
-    .select('id, starts_at, status, price, service:services(name)')
-    .eq('master_id', master.id)
-    .gte('starts_at', from.toISOString())
-    .lte('starts_at', now.toISOString());
+  const [aptRes, manualRes] = await Promise.all([
+    admin
+      .from('appointments')
+      .select('id, starts_at, status, price, service:services(name)')
+      .eq('master_id', master.id)
+      .gte('starts_at', from.toISOString())
+      .lte('starts_at', now.toISOString()),
+    admin
+      .from('manual_incomes')
+      .select('amount')
+      .eq('master_id', master.id)
+      .gte('date', from.toISOString().slice(0, 10))
+      .lte('date', now.toISOString().slice(0, 10)),
+  ]);
 
-  return NextResponse.json({ appointments: data ?? [] });
+  const manualTotal = (manualRes.data ?? []).reduce(
+    (sum, row) => sum + Number(row.amount ?? 0),
+    0,
+  );
+
+  return NextResponse.json({
+    appointments: aptRes.data ?? [],
+    manual_income_total: manualTotal,
+  });
 }

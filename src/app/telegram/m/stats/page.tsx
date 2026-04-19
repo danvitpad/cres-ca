@@ -48,6 +48,7 @@ export default function MasterMiniAppStats() {
   const [period, setPeriod] = useState<Period>('week');
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AptRow[]>([]);
+  const [manualIncomeTotal, setManualIncomeTotal] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sheetOpen, setSheetOpen] = useState<null | 'income' | 'expense'>(null);
 
@@ -82,6 +83,7 @@ export default function MasterMiniAppStats() {
         };
       });
       setRows(mapped);
+      setManualIncomeTotal(Number(json.manual_income_total ?? 0));
       setLoading(false);
     })();
   }, [userId, period, refreshKey]);
@@ -90,11 +92,12 @@ export default function MasterMiniAppStats() {
     const active = rows.filter((r) => r.status !== 'cancelled' && r.status !== 'cancelled_by_client' && r.status !== 'no_show');
     const completed = rows.filter((r) => r.status === 'completed');
     const noShow = rows.filter((r) => r.status === 'no_show').length;
-    const revenue = completed.reduce((a, r) => a + r.price, 0);
-    const avg = completed.length > 0 ? revenue / completed.length : 0;
+    const aptRevenue = completed.reduce((a, r) => a + r.price, 0);
+    const revenue = aptRevenue + manualIncomeTotal;
+    const avg = completed.length > 0 ? aptRevenue / completed.length : 0;
     const completionRate = active.length > 0 ? Math.round((completed.length / active.length) * 100) : 0;
     return { total: active.length, completed: completed.length, revenue, avg, completionRate, noShow };
-  }, [rows]);
+  }, [rows, manualIncomeTotal]);
 
   const topServices = useMemo(() => {
     const byService = new Map<string, { count: number; revenue: number }>();
