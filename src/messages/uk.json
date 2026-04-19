@@ -1537,6 +1537,7 @@
     "contact": "Контакти",
     "terms": "Умови",
     "privacy": "Конфіденційність",
+    "cookies": "Cookie",
     "rights": "Усі права захищено"
   },
   "nav": {
@@ -1720,6 +1721,24 @@
     "rightsText": "Ви маєте право на доступ, виправлення або видалення ваших даних. Зверніться до support@cres-ca.com.",
     "contactTitle": "7. Звʼяжіться з нами",
     "contactText": "З питань конфіденційності зверніться до support@cres-ca.com або Telegram @CresCASupport."
+  },
+  "cookies": {
+    "title": "Політика cookie",
+    "lastUpdated": "Останнє оновлення: 19 квітня 2026",
+    "whatTitle": "1. Що таке cookie",
+    "whatText": "Cookie — це невеликі текстові файли, які сайт зберігає у вашому браузері, щоб запам'ятовувати сесію, налаштування та дані автентифікації.",
+    "typesTitle": "2. Які cookie ми використовуємо",
+    "typesText": "CRES-CA використовує лише функціональні (обов'язкові) cookie. Рекламних та трекінгових cookie немає.",
+    "essentialTitle": "3. Обов'язкові cookie",
+    "essentialText": "Використовуються для роботи сесії та входу (Supabase Auth), збереження обраної локалі (ru/en/uk) та CSRF-захисту. Без них вхід до системи неможливий.",
+    "analyticsTitle": "4. Аналітичні cookie",
+    "analyticsText": "Ми не використовуємо сторонні аналітичні сервіси (Google Analytics, Yandex Metrica тощо) у dashboard. Анонімна статистика збирається лише на публічних лендінг-сторінках.",
+    "thirdPartyTitle": "5. Cookie третіх сторін",
+    "thirdPartyText": "Telegram WebApp встановлює свої cookie під час роботи Mini App. Платіжний провайдер Hutko може встановлювати cookie на своїй сторінці оплати. Ми не контролюємо їхні політики.",
+    "controlTitle": "6. Управління cookie",
+    "controlText": "Ви можете видалити або заблокувати cookie у налаштуваннях браузера. Без обов'язкових cookie вхід та робота в системі стануть неможливими.",
+    "contactTitle": "7. Контакти",
+    "contactText": "Питання щодо cookie: support@cres-ca.com або Telegram @CresCASupport."
   },
   "onboarding": {
     "accountTypeTitle": "Як ви хочете налаштувати професійний акаунт?",

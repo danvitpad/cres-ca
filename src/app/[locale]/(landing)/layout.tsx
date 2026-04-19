@@ -21,6 +21,7 @@ export default function LandingLayout({ children }: { children: React.ReactNode 
             <Link href="/contact" className="transition-colors hover:text-foreground">{t('contact')}</Link>
             <Link href="/terms" className="transition-colors hover:text-foreground">{t('terms')}</Link>
             <Link href="/privacy" className="transition-colors hover:text-foreground">{t('privacy')}</Link>
+            <Link href="/cookies" className="transition-colors hover:text-foreground">{t('cookies')}</Link>
           </nav>
           <p className="text-xs text-muted-foreground/60">
             &copy; {year} CRES-CA. {t('rights')}.

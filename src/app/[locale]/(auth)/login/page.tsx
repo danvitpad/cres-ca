@@ -10,6 +10,7 @@
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
@@ -101,6 +102,7 @@ function readRemembered(): { email?: string; role?: Role } {
 
 export default function AuthPage() {
   const router = useRouter();
+  const locale = useLocale();
   const sp = useSearchParams();
   const urlMode = sp.get('mode');
   const urlRole = sp.get('role') as Role | null;
@@ -615,7 +617,20 @@ export default function AuthPage() {
                           }}>
                             <input type="checkbox" className="auth-cb" checked={terms}
                               onChange={e => setTerms(e.target.checked)} style={{ marginTop: 2 }} />
-                            Я принимаю условия использования и политику конфиденциальности
+                            <span>
+                              Я принимаю{' '}
+                              <a href={`/${locale}/terms`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                                условия использования
+                              </a>
+                              {', '}
+                              <a href={`/${locale}/privacy`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                                политику конфиденциальности
+                              </a>
+                              {' и '}
+                              <a href={`/${locale}/cookies`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                                политику cookie
+                              </a>
+                            </span>
                           </label>
                         )}
 
