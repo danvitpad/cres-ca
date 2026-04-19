@@ -28,6 +28,7 @@ import { StatCard } from '@/components/shared/primitives/stat-card';
 import { PillTabs, type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
+import { ExportMenu } from '@/components/finance/export-menu';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -308,7 +309,10 @@ export default function FinancePage() {
             {format(period.start, 'd MMM', { locale: dfLocale })} — {format(period.end, 'd MMM yyyy', { locale: dfLocale })}
           </p>
         </div>
-        <PeriodSelector value={periodKey} onChange={(p) => setPeriodKey(p.key)} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <PeriodSelector value={periodKey} onChange={(p) => setPeriodKey(p.key)} />
+          <ExportMenu from={format(period.start, 'yyyy-MM-dd')} to={format(period.end, 'yyyy-MM-dd')} C={C} />
+        </div>
       </div>
 
       <div style={{ marginBottom: 24 }}>
