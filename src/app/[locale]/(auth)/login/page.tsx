@@ -25,7 +25,7 @@ import {
 
 type Role = 'client' | 'master' | 'salon_admin';
 type Mode = 'signin' | 'signup';
-type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'signup-otp';
+type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'signup-otp' | '2fa' | 'restore';
 
 const REMEMBER_KEY = 'cres-ca-remember';
 const HERO_IMG = 'https://images.unsplash.com/photo-1642615835477-d303d7dc9ee9?w=2160&q=80';
@@ -129,6 +129,22 @@ export default function AuthPage() {
 
   const [otp, setOtp] = useState('');
   const [newPwd, setNewPwd] = useState('');
+  const [twoFaCode, setTwoFaCode] = useState('');
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingActualRole, setPendingActualRole] = useState<string | null>(null);
+
+  async function routeAfterAuth(actualRole: string) {
+    if (actualRole === 'client') {
+      try {
+        const res = await fetch('/api/invite/claim', { method: 'POST' });
+        const body = (await res.json()) as { master_id?: string };
+        if (body.master_id) { router.push(`/masters/${body.master_id}`); return; }
+      } catch {}
+      router.push('/feed');
+    } else {
+      router.push('/calendar');
+    }
+  }
 
   /* ───── sign-in ───── */
   async function handleSignIn(e: React.FormEvent) {
@@ -145,20 +161,130 @@ export default function AuthPage() {
     const user = data.user;
     if (!user) { setLoading(false); toast.error('Ошибка входа'); return; }
 
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles')
+      .select('role, tg_2fa_enabled, deleted_at')
+      .eq('id', user.id)
+      .single();
     const actualRole = profile?.role ?? 'client';
-    setLoading(false);
+    const twoFa = (profile as { tg_2fa_enabled?: boolean } | null)?.tg_2fa_enabled ?? false;
+    const deletedAt = (profile as { deleted_at?: string | null } | null)?.deleted_at ?? null;
 
-    if (actualRole === 'client') {
-      try {
-        const res = await fetch('/api/invite/claim', { method: 'POST' });
-        const body = (await res.json()) as { master_id?: string };
-        if (body.master_id) { router.push(`/masters/${body.master_id}`); return; }
-      } catch {}
-      router.push('/feed');
-    } else {
-      router.push('/calendar');
+    setPendingUserId(user.id);
+    setPendingActualRole(actualRole);
+
+    if (deletedAt) {
+      setLoading(false);
+      setSub('restore');
+      return;
     }
+
+    if (twoFa) {
+      const res = await fetch('/api/auth/2fa/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_id: user.id }),
+      });
+      setLoading(false);
+      if (!res.ok) {
+        toast.error('Не удалось отправить 2FA-код. Войдите снова.');
+        await supabase.auth.signOut();
+        return;
+      }
+      setSub('2fa');
+      toast.success('Код отправлен в Telegram');
+      return;
+    }
+
+    setLoading(false);
+    await routeAfterAuth(actualRole);
+  }
+
+  async function handle2faSubmit() {
+    if (twoFaCode.length !== 6 || !pendingUserId) return;
+    setLoading(true);
+    const res = await fetch('/api/auth/2fa/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: pendingUserId, code: twoFaCode }),
+    });
+    if (!res.ok) {
+      setLoading(false);
+      const { error } = await res.json().catch(() => ({ error: 'invalid' }));
+      toast.error(error === 'expired' ? 'Код истёк' : 'Неверный код');
+      setTwoFaCode('');
+      return;
+    }
+    setLoading(false);
+    const actualRole = pendingActualRole ?? 'client';
+    setTwoFaCode('');
+    setPendingUserId(null);
+    setPendingActualRole(null);
+    await routeAfterAuth(actualRole);
+  }
+
+  async function handle2faCancel() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setSub('form');
+    setTwoFaCode('');
+    setPendingUserId(null);
+    setPendingActualRole(null);
+    setPassword('');
+  }
+
+  async function handleRestoreConfirm() {
+    setLoading(true);
+    const res = await fetch('/api/account/restore', { method: 'POST' });
+    if (!res.ok) {
+      setLoading(false);
+      toast.error('Не удалось восстановить аккаунт');
+      return;
+    }
+    toast.success('Аккаунт восстановлен');
+    const actualRole = pendingActualRole ?? 'client';
+    setPendingUserId(null);
+    setPendingActualRole(null);
+
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      setSub('form');
+      return;
+    }
+    const profileRes = await supabase.from('profiles').select('tg_2fa_enabled').eq('id', user.id).single();
+    const twoFa = (profileRes.data as { tg_2fa_enabled?: boolean } | null)?.tg_2fa_enabled ?? false;
+
+    if (twoFa) {
+      const sendRes = await fetch('/api/auth/2fa/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_id: user.id }),
+      });
+      setLoading(false);
+      if (!sendRes.ok) {
+        toast.error('Не удалось отправить 2FA-код');
+        await supabase.auth.signOut();
+        setSub('form');
+        return;
+      }
+      setPendingUserId(user.id);
+      setPendingActualRole(actualRole);
+      setSub('2fa');
+      return;
+    }
+    setLoading(false);
+    await routeAfterAuth(actualRole);
+  }
+
+  async function handleRestoreCancel() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setSub('form');
+    setPendingUserId(null);
+    setPendingActualRole(null);
+    setPassword('');
+    toast.info('Вход отменён. Аккаунт по-прежнему помечен на удаление.');
   }
 
   /* ───── sign-up ───── */
@@ -172,6 +298,7 @@ export default function AuthPage() {
     const isTeam = role === 'salon_admin';
     const fullName = isTeam ? teamName.trim() : `${firstName} ${lastName}`.trim();
 
+    const locale = (typeof window !== 'undefined' && window.location.pathname.match(/^\/(ru|en|uk)\b/)?.[1]) || 'ru';
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: {
@@ -181,6 +308,7 @@ export default function AuthPage() {
           phone: phone ? `+380${phone}` : undefined,
           date_of_birth: dob || undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          locale,
         },
       },
     });
@@ -222,6 +350,7 @@ export default function AuthPage() {
     if (!email) { toast.error('Введите email'); return; }
     setLoading(true);
     const supabase = createClient();
+    // Locale comes from user_metadata set at signup — template reads {{ .Data.locale }}.
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
     if (error) { toast.error(error.message); return; }
@@ -617,6 +746,58 @@ export default function AuthPage() {
                           {loading ? '...' : 'Сохранить'}
                         </PrimaryButton>
                       </form>
+                    </motion.div>
+                  )}
+
+                  {/* 2FA Telegram code */}
+                  {sub === '2fa' && (
+                    <motion.div key="2fa" {...slide} style={{ textAlign: 'center' }}>
+                      <IconBubble><Shield size={24} /></IconBubble>
+                      <h1 style={{ fontSize: 24, fontWeight: 300, margin: '14px 0 4px', letterSpacing: '-.02em' }}>
+                        Код из Telegram
+                      </h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px' }}>
+                        Мы отправили 6-значный код в Telegram на привязанный аккаунт.
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+                        <InputOTP maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={twoFaCode} onChange={setTwoFaCode}
+                          onComplete={handle2faSubmit}>
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                      <PrimaryButton disabled={loading || twoFaCode.length !== 6} onClick={handle2faSubmit} type="button">
+                        {loading ? '...' : 'Подтвердить'}
+                      </PrimaryButton>
+                      <button type="button" onClick={handle2faCancel}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>
+                        Отмена
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {/* Account pending deletion — restore prompt */}
+                  {sub === 'restore' && (
+                    <motion.div key="restore" {...slide} style={{ textAlign: 'center' }}>
+                      <IconBubble><Shield size={24} /></IconBubble>
+                      <h1 style={{ fontSize: 24, fontWeight: 300, margin: '14px 0 4px', letterSpacing: '-.02em' }}>
+                        Аккаунт помечен на удаление
+                      </h1>
+                      <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px', lineHeight: 1.5 }}>
+                        Хотите восстановить? После 30 дней с момента запроса удаления все данные удаляются безвозвратно.
+                      </p>
+                      <PrimaryButton disabled={loading} onClick={handleRestoreConfirm} type="button">
+                        {loading ? '...' : 'Восстановить аккаунт'}
+                      </PrimaryButton>
+                      <button type="button" onClick={handleRestoreCancel} disabled={loading}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>
+                        Отмена
+                      </button>
                     </motion.div>
                   )}
 
