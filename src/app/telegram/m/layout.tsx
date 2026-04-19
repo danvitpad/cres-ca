@@ -1,6 +1,6 @@
 /** --- YAML
  * name: TelegramMasterMiniAppLayout
- * description: Master Mini App shell — unified dark theme matching web (#111214), 6-tab icon-only bottom bar (Home, Calendar, Clients, Notifications, Finance, Profile) via Phosphor. Notifications moved into navbar (previously a bell icon in header).
+ * description: Master Mini App shell — unified dark theme matching web (#111214), 5-tab icon-only bottom bar (Home, Calendar, Clients, Notifications, Profile) via Phosphor. Finance moved to Web-only (dashboard /finance); Mini App /stats page remains accessible from Profile.
  * created: 2026-04-13
  * updated: 2026-04-19
  * --- */
@@ -14,7 +14,6 @@ import {
   CalendarBlank,
   Users as UsersIcon,
   Bell,
-  ChartLineUp,
   UserCircle,
 } from '@phosphor-icons/react';
 import { Loader2 } from 'lucide-react';
@@ -140,12 +139,6 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       label: 'Notifications',
       badge: unreadCount,
       renderIcon: (active) => <Bell size={24} weight={active ? 'fill' : 'regular'} />,
-    },
-    {
-      key: 'finance',
-      href: '/telegram/m/stats',
-      label: 'Finance',
-      renderIcon: (active) => <ChartLineUp size={24} weight={active ? 'fill' : 'regular'} />,
     },
     {
       key: 'profile',

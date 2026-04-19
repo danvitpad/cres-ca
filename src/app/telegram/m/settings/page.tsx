@@ -19,6 +19,7 @@ import {
   Question,
   SignOut,
   CaretRight,
+  ChartLineUp,
 } from '@phosphor-icons/react';
 import type { IconWeight } from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
@@ -37,6 +38,7 @@ const ITEMS: SettingsItem[] = [
   { key: 'profile', href: '/ru/settings', label: 'Профиль и портфолио', icon: UserCircle },
   { key: 'services', href: '/ru/services', label: 'Услуги и цены', icon: Scissors },
   { key: 'schedule', href: '/ru/settings/working-hours', label: 'График работы', icon: CalendarCheck },
+  { key: 'finance', href: '/telegram/m/stats', label: 'Финансы', icon: ChartLineUp },
   { key: 'billing', href: '/ru/settings/billing', label: 'Тариф и платежи', icon: CreditCard },
   { key: 'notifications', href: '/ru/settings/notifications', label: 'Уведомления', icon: Bell },
   { key: 'language', href: '/ru/settings/language', label: 'Язык и регион', icon: Globe },
