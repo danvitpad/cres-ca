@@ -14,7 +14,6 @@ const OPENROUTER_KEY = () => (process.env.OPENROUTER_API_KEY || '').trim();
 
 const GOOGLE_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_AUDIO = 'https://openrouter.ai/api/v1/audio/transcriptions';
 
 // Voice audio → JSON intent (Gemini can eat audio directly)
 const VOICE_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
@@ -45,15 +44,19 @@ export interface AICallResult<T = string> {
 
 /* ═══════════════ VOICE (audio → JSON) ═══════════════ */
 
+/**
+ * Voice audio → intent JSON.
+ * Only Gemini accepts audio inline (OpenRouter doesn't expose Whisper).
+ * We run Gemini 2.5 then 2.0; each fails fast on 429/503.
+ * Total worst-case ~4-6s, well under Vercel Hobby 10s timeout.
+ */
 export async function voiceToIntent(params: {
   audioBase64: string;
-  mimeType: string; // 'audio/ogg' | 'audio/mpeg' | ...
+  mimeType: string;
   systemPrompt: string;
-  responseSchema?: Record<string, unknown>;
 }): Promise<AICallResult> {
   const log: AICallLog[] = [];
 
-  // Step 1: try Gemini audio in/out
   for (let i = 0; i < VOICE_GEMINI_MODELS.length; i++) {
     const model = VOICE_GEMINI_MODELS[i];
     const t0 = Date.now();
@@ -69,27 +72,7 @@ export async function voiceToIntent(params: {
     }
   }
 
-  // Step 2: Whisper transcribe → text LLM for intent
-  if (!OPENROUTER_KEY()) {
-    throw new AIUnavailableError('All Gemini failed and no OPENROUTER_API_KEY set', log);
-  }
-
-  const t1 = Date.now();
-  let transcript: string;
-  try {
-    transcript = await callWhisper(params.audioBase64, params.mimeType);
-    log.push({ provider: 'openrouter', model: 'whisper-large-v3', attempt: 1, ms: Date.now() - t1, ok: true });
-  } catch (e) {
-    log.push({ provider: 'openrouter', model: 'whisper-large-v3', attempt: 1, ms: Date.now() - t1, ok: false, error: (e as Error).message });
-    throw new AIUnavailableError('Whisper failed', log);
-  }
-
-  // Now parse transcript with any text LLM
-  const textResult = await textToJSON({
-    systemPrompt: params.systemPrompt,
-    userMessage: transcript,
-  });
-  return { data: textResult.data, model: `whisper→${textResult.model}`, log: [...log, ...textResult.log] };
+  throw new AIUnavailableError('All Gemini audio models failed', log);
 }
 
 /* ═══════════════ TEXT (text → JSON) ═══════════════ */
@@ -283,32 +266,6 @@ async function callOpenRouter(
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
-}
-
-async function callWhisper(audioBase64: string, mimeType: string): Promise<string> {
-  const key = OPENROUTER_KEY();
-  if (!key) throw new Error('OPENROUTER_API_KEY not set');
-
-  // OpenRouter Whisper expects multipart form with file
-  const buf = Buffer.from(audioBase64, 'base64');
-  const blob = new Blob([buf], { type: mimeType });
-  const form = new FormData();
-  form.append('file', blob, mimeType === 'audio/ogg' ? 'audio.ogg' : 'audio.mp3');
-  form.append('model', 'openai/whisper-large-v3');
-
-  const res = await fetch(OPENROUTER_AUDIO, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${key}`,
-      'HTTP-Referer': 'https://cres-ca.com',
-      'X-Title': 'CRES-CA',
-    },
-    body: form,
-  });
-
-  if (!res.ok) throw new Error(`whisper ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const data = await res.json();
-  return data.text?.trim() || '';
 }
 
 export class AIUnavailableError extends Error {
