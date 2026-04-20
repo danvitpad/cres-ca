@@ -15,13 +15,13 @@ import { format, startOfDay, endOfDay, startOfWeek, differenceInDays, getYear, s
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles } from 'lucide-react';
+import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles, Trash2 } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { StatCard } from '@/components/shared/primitives/stat-card';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
-import { CURRENCY } from '@/lib/dashboard-theme';
+import { CURRENCY, pageContainer } from '@/lib/dashboard-theme';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -193,7 +193,7 @@ export default function TodayPage() {
 
   if (masterLoading || loading) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-8 pb-16 space-y-5">
+      <div style={pageContainer} className="space-y-5">
         <div className="h-8 w-64 rounded-lg bg-muted animate-pulse" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[0, 1, 2].map((i) => <div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}
@@ -204,7 +204,7 @@ export default function TodayPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 pb-16 space-y-8">
+    <div style={pageContainer} className="space-y-8">
       {/* Greeting */}
       <motion.div {...stagger(0)}>
         <h1 className="text-2xl font-semibold tracking-tight">
@@ -234,9 +234,8 @@ export default function TodayPage() {
         />
       </motion.div>
 
-      {/* Two-column: Reminders | Upcoming Birthdays */}
-      <motion.div {...stagger(2)} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Reminders */}
+      {/* Reminders (full width) */}
+      <motion.div {...stagger(2)}>
         <div className="rounded-xl border bg-card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -273,8 +272,86 @@ export default function TodayPage() {
             </ul>
           )}
         </div>
+      </motion.div>
 
-        {/* Upcoming birthdays */}
+      {/* AI chat — between Reminders and Birthdays, full width, expanded */}
+      <motion.section {...stagger(3)} className="rounded-xl border bg-card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              AI-помощник
+            </h2>
+            <span className="text-xs text-muted-foreground">отвечает по твоей БД</span>
+          </div>
+          {chat.length > 0 && (
+            <button
+              onClick={() => setChat([])}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+              aria-label="Очистить"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Очистить
+            </button>
+          )}
+        </div>
+
+        {chat.length > 0 && (
+          <div className="max-h-[440px] min-h-[200px] overflow-y-auto space-y-2 pr-1">
+            {chat.map((m, i) => (
+              <div
+                key={i}
+                className={
+                  m.role === 'user'
+                    ? 'ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--ds-accent)] text-white px-3.5 py-2 text-sm'
+                    : 'mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm'
+                }
+              >
+                {m.content}
+              </div>
+            ))}
+            {sending && (
+              <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm text-muted-foreground">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                думаю...
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+            }}
+            rows={1}
+            placeholder="Спроси что-нибудь — «сколько заработаю на этой неделе?», «кто спящий клиент?»"
+            className="flex-1 resize-none rounded-lg border bg-background px-3.5 py-3 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[48px] max-h-[140px]"
+            disabled={sending}
+          />
+          <button
+            onClick={sendChat}
+            disabled={sending || !input.trim()}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent)] text-white disabled:opacity-40 transition-opacity"
+            aria-label="Отправить"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          </button>
+        </div>
+        {chat.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Ответы основаны только на ваших данных: записи, клиенты, услуги, расходы. Без доступа к чужим аккаунтам.
+          </p>
+        )}
+      </motion.section>
+
+      {/* Upcoming birthdays (full width below chat) */}
+      <motion.div {...stagger(4)}>
         <div className="rounded-xl border bg-card p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -314,70 +391,6 @@ export default function TodayPage() {
           )}
         </div>
       </motion.div>
-
-      {/* AI chat */}
-      <motion.section {...stagger(3)} className="rounded-xl border bg-card p-5 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            AI-помощник
-          </h2>
-          <span className="text-xs text-muted-foreground">отвечает по твоей БД</span>
-        </div>
-
-        {chat.length > 0 && (
-          <div className="max-h-[300px] overflow-y-auto space-y-2">
-            {chat.map((m, i) => (
-              <div
-                key={i}
-                className={
-                  m.role === 'user'
-                    ? 'ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--ds-accent)] text-white px-3.5 py-2 text-sm'
-                    : 'mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm'
-                }
-              >
-                {m.content}
-              </div>
-            ))}
-            {sending && (
-              <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                думаю...
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
-        )}
-
-        <div className="flex items-end gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-            }}
-            rows={1}
-            placeholder="Спроси что-нибудь — «сколько заработаю на этой неделе?», «кто спящий клиент?»"
-            className="flex-1 resize-none rounded-lg border bg-background px-3.5 py-2.5 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[40px] max-h-[120px]"
-            disabled={sending}
-          />
-          <button
-            onClick={sendChat}
-            disabled={sending || !input.trim()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent)] text-white disabled:opacity-40 transition-opacity"
-            aria-label="Отправить"
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
-        </div>
-        {chat.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Ответы основаны только на ваших данных: записи, клиенты, услуги, расходы. Без доступа к чужим аккаунтам.
-          </p>
-        )}
-      </motion.section>
     </div>
   );
 }
