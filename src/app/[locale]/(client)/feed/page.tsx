@@ -646,7 +646,7 @@ export default function FeedPage() {
             return (
             <Link
               href={`/book?master_id=${usual.masterId}&service_id=${usual.serviceId}`}
-              className="group/usual block overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-[var(--ds-accent)]/10 via-card to-card shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-elevated)]"
+              className="group/usual block overflow-hidden rounded-3xl border border-border bg-card transition-all hover:border-[var(--ds-accent)]/30"
             >
               <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
                 <Sparkles className="size-4 text-[var(--ds-accent)]" />
@@ -825,7 +825,7 @@ function FeedCard({
           )}
         </div>
         {isPromo ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-pink-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
             <Sparkles className="h-3 w-3" />
             {t('promoBadge')}
           </span>
