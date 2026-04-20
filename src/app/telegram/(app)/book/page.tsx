@@ -535,7 +535,7 @@ export default function MiniAppBookPage() {
 
   return (
     <>
-      <div className="flex h-dvh flex-col">
+      <div className="flex min-h-full flex-col">
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
@@ -583,7 +583,7 @@ export default function MiniAppBookPage() {
         </motion.div>
 
         {/* ── Step Content ── */}
-        <div className="relative flex-1 overflow-y-auto">
+        <div className="relative flex-1">
           <AnimatePresence mode="wait" custom={direction}>
             {/* ═══ STEP 1: Services ═══ */}
             {step === 'services' && (

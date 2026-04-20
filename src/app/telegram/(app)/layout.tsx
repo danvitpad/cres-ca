@@ -34,6 +34,10 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
     }
   }, [userId, router]);
 
+  // Fullscreen routes — hide bottom tabs, give full viewport to the page.
+  // Booking / reschedule wizard has its own sticky footer and needs every pixel.
+  const isFullscreen = pathname.startsWith('/telegram/book');
+
   return (
     <TelegramProvider>
       <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
@@ -41,12 +45,14 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
           className="flex-1 overflow-y-auto"
           style={{
             paddingTop: 'var(--tg-content-top, 0px)',
-            paddingBottom: 'calc(72px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+            paddingBottom: isFullscreen
+              ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
+              : 'calc(72px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           {children}
         </main>
-        <nav
+        {!isFullscreen && <nav
           className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
           style={{
             paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
@@ -78,7 +84,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
               );
             })}
           </ul>
-        </nav>
+        </nav>}
       </div>
     </TelegramProvider>
   );
