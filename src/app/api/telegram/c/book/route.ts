@@ -112,19 +112,42 @@ export async function POST(request: Request) {
       .eq('client_id', clientId!);
   }
 
-  // 4. Notify master (best-effort)
+  // 4. Notify master — direct TG (bypass daily cron) + in_app record
   const { data: master } = await admin
     .from('masters')
-    .select('profile_id')
+    .select('profile_id, profile:profiles!masters_profile_id_fkey(telegram_id)')
     .eq('id', master_id)
     .maybeSingle();
-  if (master?.profile_id && service_names && date_formatted && selected_time) {
+  const masterProfileId = master?.profile_id;
+  const masterTg = (master as { profile?: { telegram_id?: number | null } | null } | null)?.profile?.telegram_id;
+  const isReschedule = !!reschedule_id;
+  const title = isReschedule ? '🔄 Запись перенесена' : '✨ Новая запись';
+  const bodyText = `${service_names ?? 'Услуга'} — ${date_formatted ?? ''} в ${selected_time ?? ''}`;
+
+  if (masterTg) {
+    const { sendMessage } = await import('@/lib/telegram/bot');
+    try {
+      const clientName = profile.full_name ?? 'Клиент';
+      const heading = isReschedule
+        ? `<b>🔄 Запись перенесена клиентом</b>`
+        : `<b>✨ Новая запись</b>`;
+      await sendMessage(
+        masterTg as unknown as number,
+        `${heading}\n\nКлиент: ${clientName}\nУслуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nВремя: ${selected_time ?? '—'}`,
+        { parse_mode: 'HTML' },
+      );
+    } catch { /* ignore */ }
+  }
+
+  if (masterProfileId && service_names && date_formatted && selected_time) {
     await admin.from('notifications').insert({
-      profile_id: master.profile_id,
-      channel: 'push',
-      title: 'Новая запись',
-      body: `${service_names} — ${date_formatted} в ${selected_time}`,
-      data: { type: 'new_booking', client_id: clientId, action_url: '/calendar' },
+      profile_id: masterProfileId,
+      channel: 'telegram',
+      title,
+      body: bodyText,
+      status: masterTg ? 'sent' : 'pending',
+      sent_at: masterTg ? new Date().toISOString() : null,
+      data: { type: isReschedule ? 'appointment_rescheduled' : 'new_booking', client_id: clientId, action_url: '/calendar' },
     });
   }
 

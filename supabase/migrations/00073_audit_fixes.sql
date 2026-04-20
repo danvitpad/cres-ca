@@ -289,5 +289,5 @@ WHERE m.profile_id = p.id
 -- ============================================================================
 -- Tell PostgREST to reload its schema cache so new policies + column
 -- additions propagate to the REST layer immediately.
--- ============================================================================
-NOTIFY pgrst, 'reload schema';
+  -- ============================================================================
+  NOTIFY pgrst, 'reload schema';

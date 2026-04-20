@@ -52,19 +52,33 @@ export async function POST(request: Request) {
       .eq('id', appointment_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Notify master
+    // Notify master via TG direct (bypass daily cron)
     const { data: masterRow } = await admin
       .from('masters')
-      .select('profile_id')
+      .select('profile_id, profile:profiles!masters_profile_id_fkey(telegram_id)')
       .eq('id', apt.master_id)
       .maybeSingle();
-    if (masterRow?.profile_id) {
-      const svc = Array.isArray(apt.service) ? apt.service[0] : apt.service;
+    const masterProfileId = masterRow?.profile_id;
+    const masterTg = (masterRow as { profile?: { telegram_id?: number | null } | null } | null)?.profile?.telegram_id;
+    const svc = Array.isArray(apt.service) ? apt.service[0] : apt.service;
+    const whenStr = new Date(apt.starts_at).toLocaleString('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    if (masterTg) {
+      const { sendMessage } = await import('@/lib/telegram/bot');
+      try {
+        await sendMessage(masterTg as unknown as number,
+          `<b>❌ Запись отменена клиентом</b>\n\n${svc?.name ?? 'Услуга'}\n${whenStr}`,
+          { parse_mode: 'HTML' },
+        );
+      } catch { /* ignore */ }
+    }
+    if (masterProfileId) {
       await admin.from('notifications').insert({
-        profile_id: masterRow.profile_id,
-        channel: 'push',
-        title: 'Запись отменена',
-        body: `${svc?.name ?? 'Услуга'} — ${new Date(apt.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}`,
+        profile_id: masterProfileId,
+        channel: 'telegram',
+        title: '❌ Запись отменена',
+        body: `${svc?.name ?? 'Услуга'} — ${whenStr}`,
+        status: masterTg ? 'sent' : 'pending',
+        sent_at: masterTg ? new Date().toISOString() : null,
         data: { type: 'appointment_cancelled', appointment_id, action_url: '/calendar' },
       });
     }
