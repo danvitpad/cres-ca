@@ -70,9 +70,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  if (profile.telegram_id && profile.telegram_id !== tg.id) {
-    return NextResponse.json({ error: 'already_linked_other' }, { status: 409 });
-  }
+  // If this profile is currently linked to a DIFFERENT TG, we re-link
+  // to the current TG. This is the "one human, many accounts" flow:
+  // user can log into any CRES-CA profile from any Telegram just via
+  // email OTP. The previously-linked TG gets detached automatically.
+  // (The guard below only prevents re-linking when it's already
+  // THIS same TG — nothing to do.)
+  const isRelink = !!(profile.telegram_id && profile.telegram_id !== tg.id);
 
   const { data: otp } = await admin
     .from('email_otps')
@@ -100,6 +104,18 @@ export async function POST(req: Request) {
 
   await admin.from('email_otps').update({ verified_at: now }).eq('id', otp.id);
 
+  // Detach THIS telegram from any other profile it was previously linked to.
+  // Without this, a single TG id could be on two profile rows at once, and
+  // every lookup via telegram_id would be non-deterministic.
+  await admin
+    .from('profiles')
+    .update({ telegram_id: null, telegram_linked_at: null })
+    .eq('telegram_id', tg.id)
+    .neq('id', profile.id);
+
+  // (Optional but explicit) detach THIS profile's old TG — covered by the
+  // update below overwriting telegram_id, but we also clear the companion
+  // fields on the target profile to keep things clean.
   await admin
     .from('profiles')
     .update({
