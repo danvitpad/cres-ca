@@ -27,7 +27,6 @@ import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
 import { ClientDebtBanner } from '@/components/finance/client-debt-banner';
-import { StatCard } from '@/components/shared/primitives/stat-card';
 import { useMaster } from '@/hooks/use-master';
 import { useLocale } from 'next-intl';
 import { ImageComparisonSlider } from '@/components/ui/image-comparison-slider';
@@ -107,6 +106,8 @@ interface ReviewRow {
 
 /* ────────────────────── Main Page ────────────────────── */
 
+type CardTab = 'info' | 'history' | 'notes' | 'health' | 'files' | 'family' | 'analytics';
+
 export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useTranslations('clients');
@@ -123,6 +124,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<CardTab>('info');
 
   const loadClient = useCallback(async () => {
     const supabase = createClient();
@@ -233,7 +235,6 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     return differenceInDays(startOfDay(next), startOfDay(now));
   })();
   const totalSpent = client.avg_check * client.total_visits;
-  const completedAppts = appointments.filter(a => a.status === 'completed');
   const avatarGrad = (() => {
     let hash = 0;
     for (let i = 0; i < client.full_name.length; i++) hash = client.full_name.charCodeAt(i) + ((hash << 5) - hash);
@@ -280,111 +281,146 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         {tc('back') || 'Клиенты'}
       </button>
 
-      {/* ═══ Hero card ═══ */}
+      {/* ═══ Compact hero (one row) ═══ */}
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
         style={{
-          ...sectionStyle,
-          padding: 28,
           background: C.surface,
-          position: 'relative',
-          overflow: 'hidden',
+          border: `1px solid ${C.border}`,
+          borderRadius: 16,
+          padding: 18,
+          marginBottom: 12,
+          display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
-          {/* Avatar */}
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            background: avatarGrad, color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 30, fontWeight: 600, flexShrink: 0,
-            boxShadow: '0 8px 24px rgba(124,58,237,0.25)',
-          }}>
-            {initials}
-          </div>
+        {/* Avatar — smaller */}
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          background: avatarGrad, color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontWeight: 600, flexShrink: 0,
+        }}>
+          {initials}
+        </div>
 
-          {/* Name + info */}
-          <div style={{ flex: 1, minWidth: 240 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-              <h1 style={{ fontSize: 24, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.4px' }}>
-                {client.full_name}
-              </h1>
-              {client.has_health_alert && (
-                <AlertTriangle size={18} style={{ color: C.danger }} />
-              )}
-              {client.tier === 'vip' && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: C.accent, color: '#fff',
-                  padding: '3px 10px', borderRadius: 8, fontSize: 11, fontWeight: 650, letterSpacing: '0.04em',
-                }}>
-                  ⭐ VIP
-                </span>
-              )}
-              {client.is_blacklisted && (
-                <Badge variant="destructive">{t('manuallyBlacklisted')}</Badge>
-              )}
-              <BehaviorIndicators indicators={client.behavior_indicators} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13, color: C.textSecondary }}>
-              {age !== null && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Cake size={13} style={{ color: C.textTertiary }} />
-                  {age} лет
-                </span>
-              )}
-              {client.phone && (
-                <a href={`tel:${client.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: C.textSecondary, textDecoration: 'none' }}>
-                  <Phone size={13} style={{ color: C.textTertiary }} />
-                  {formatPhone(client.phone)}
-                </a>
-              )}
-              {client.email && (
-                <a href={`mailto:${client.email}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: C.textSecondary, textDecoration: 'none' }}>
-                  <Mail size={13} style={{ color: C.textTertiary }} />
-                  {client.email}
-                </a>
-              )}
-            </div>
-
-            {/* Birthday banner */}
-            {daysToBday !== null && daysToBday <= 30 && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                marginTop: 10, padding: '6px 12px', borderRadius: 8,
+        {/* Name + contacts compact */}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: 19, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.3px' }}>
+              {client.full_name}
+            </h1>
+            {client.has_health_alert && <AlertTriangle size={15} style={{ color: C.danger }} />}
+            {client.tier === 'vip' && (
+              <span style={{
+                background: C.accent, color: '#fff',
+                padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 650, letterSpacing: '0.04em',
+              }}>VIP</span>
+            )}
+            {client.is_blacklisted && <Badge variant="destructive">{t('manuallyBlacklisted')}</Badge>}
+            {daysToBday !== null && daysToBday <= 14 && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 8px', borderRadius: 6,
                 background: C.warningSoft, color: C.warning,
-                fontSize: 12, fontWeight: 600,
+                fontSize: 11, fontWeight: 600,
               }}>
-                <Cake size={13} />
-                {daysToBday === 0 ? 'День рождения сегодня!' :
-                 daysToBday === 1 ? 'День рождения завтра!' :
-                 `День рождения через ${daysToBday} дн.`}
-              </div>
+                <Cake size={11} />
+                {daysToBday === 0 ? 'сегодня' : daysToBday === 1 ? 'завтра' : `через ${daysToBday} дн.`}
+              </span>
+            )}
+            <BehaviorIndicators indicators={client.behavior_indicators} />
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 12, color: C.textSecondary, marginTop: 4 }}>
+            {age !== null && (
+              <span><Cake size={11} style={{ display: 'inline', marginRight: 3, color: C.textTertiary }} />{age} лет</span>
+            )}
+            {client.phone && (
+              <a href={`tel:${client.phone}`} style={{ color: C.textSecondary, textDecoration: 'none' }}>
+                <Phone size={11} style={{ display: 'inline', marginRight: 3, color: C.textTertiary }} />{formatPhone(client.phone)}
+              </a>
+            )}
+            {client.email && (
+              <a href={`mailto:${client.email}`} style={{ color: C.textSecondary, textDecoration: 'none' }}>
+                <Mail size={11} style={{ display: 'inline', marginRight: 3, color: C.textTertiary }} />{client.email}
+              </a>
             )}
           </div>
-
-          {/* Action button */}
-          <Link
-            href={`/calendar?client_id=${id}`}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '10px 18px', borderRadius: 10,
-              background: C.accent, color: '#fff', textDecoration: 'none',
-              fontSize: 13, fontWeight: 600, flexShrink: 0,
-            }}
-          >
-            <CalendarIcon size={14} />
-            Записать
-          </Link>
         </div>
+
+        {/* Compact inline stats */}
+        <div style={{ display: 'flex', gap: 18, alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 650, color: C.text, lineHeight: 1 }}>{client.total_visits}</div>
+            <div style={{ fontSize: 10, color: C.textTertiary, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Визитов</div>
+          </div>
+          <div style={{ width: 1, height: 28, background: C.border }} />
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 650, color: C.text, lineHeight: 1 }}>
+              {totalSpent.toLocaleString()} <span style={{ fontSize: 12, color: C.textTertiary }}>{CURRENCY}</span>
+            </div>
+            <div style={{ fontSize: 10, color: C.textTertiary, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Потрачено</div>
+          </div>
+          <div style={{ width: 1, height: 28, background: C.border }} />
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 650, color: C.text, lineHeight: 1 }}>
+              {Math.round(client.avg_check).toLocaleString()} <span style={{ fontSize: 12, color: C.textTertiary }}>{CURRENCY}</span>
+            </div>
+            <div style={{ fontSize: 10, color: C.textTertiary, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ср. чек</div>
+          </div>
+        </div>
+
+        {/* CTA */}
+        <Link
+          href={`/calendar?client_id=${id}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '9px 16px', borderRadius: 10,
+            background: C.accent, color: '#fff', textDecoration: 'none',
+            fontSize: 13, fontWeight: 600, flexShrink: 0,
+          }}
+        >
+          <CalendarIcon size={14} />
+          Записать
+        </Link>
       </motion.div>
 
-      {/* ═══ Flat stat row ═══ */}
-      <div className="mb-4 grid grid-cols-3 gap-4">
-        <StatCard label="Визитов" value={String(client.total_visits)} />
-        <StatCard label="Потрачено" value={`${totalSpent.toLocaleString()} ${CURRENCY}`} />
-        <StatCard label="Средний чек" value={`${Math.round(client.avg_check).toLocaleString()} ${CURRENCY}`} />
+      {/* ═══ Tab bar ═══ */}
+      <div style={{
+        display: 'flex', gap: 4,
+        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+        padding: 4, marginBottom: 12, overflowX: 'auto',
+      }}>
+        {([
+          { key: 'info', label: t('infoTab') || 'Инфо', icon: FileText },
+          { key: 'history', label: 'История', icon: CalendarIcon },
+          { key: 'notes', label: 'Заметки', icon: Mic },
+          ...(features.healthProfile ? [{ key: 'health' as const, label: 'Здоровье', icon: Heart }] : []),
+          { key: 'analytics', label: 'Аналитика', icon: BarChart3 },
+          ...(features.familyLinks && familyMembers.length > 0 ? [{ key: 'family' as const, label: t('familyTab') || 'Семья', icon: Users }] : []),
+          ...(features.gallery ? [{ key: 'files' as const, label: 'Фото', icon: Camera }] : []),
+        ] as Array<{ key: CardTab; label: string; icon: React.ElementType }>).map((tabItem) => {
+          const Icon = tabItem.icon;
+          const active = tab === tabItem.key;
+          return (
+            <button
+              key={tabItem.key}
+              onClick={() => setTab(tabItem.key)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 8,
+                border: 'none', cursor: 'pointer',
+                background: active ? C.accent : 'transparent',
+                color: active ? '#fff' : C.textSecondary,
+                fontSize: 13, fontWeight: 550, whiteSpace: 'nowrap',
+                fontFamily: FONT,
+                transition: 'background 0.15s',
+              }}
+            >
+              <Icon size={13} />
+              {tabItem.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ═══ Debt banner ═══ */}
@@ -409,57 +445,56 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* ═══ Section: Info ═══ */}
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><FileText size={15} style={{ color: C.accent }} />{t('infoTab')}</h3>
-        <InfoTab client={client} onSaved={loadClient} C={C} />
-      </motion.section>
+      {/* ═══ Tab content — only active section renders ═══ */}
+      {tab === 'info' && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
+          <InfoTab client={client} onSaved={loadClient} C={C} />
+        </motion.section>
+      )}
 
-      {/* ═══ Section: Notes (voice + manual) ═══ */}
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><Mic size={15} style={{ color: C.accent }} />Заметки</h3>
-        <NotesTab client={client} clientId={id} onSaved={loadClient} C={C} />
-      </motion.section>
+      {tab === 'notes' && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
+          <h3 style={sectionTitle}><Mic size={15} style={{ color: C.accent }} />Заметки</h3>
+          <NotesTab client={client} clientId={id} onSaved={loadClient} C={C} />
+        </motion.section>
+      )}
 
-      {/* ═══ Section: Health / consents (hidden when healthProfile disabled) ═══ */}
-      {features.healthProfile && (
-        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }} style={sectionStyle}>
+      {tab === 'health' && features.healthProfile && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
           <h3 style={sectionTitle}><Heart size={15} style={{ color: C.danger }} />Медицинское и согласия</h3>
           <HealthTab client={client} intake={intake} vertical={vertical} onSaved={loadClient} C={C} />
         </motion.section>
       )}
 
-      {/* ═══ Section: Visit history ═══ */}
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><CalendarIcon size={15} style={{ color: C.accent }} />История посещений</h3>
-        <HistoryTab appointments={appointments} clientId={id} C={C} />
-      </motion.section>
-
-      {/* ═══ Section: Reviews left by this client ═══ */}
-      {reviews.length > 0 && (
-        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><Star size={15} style={{ color: C.warning }} />Отзывы клиента</h3>
-          <ReviewsTab reviews={reviews} C={C} />
+      {tab === 'history' && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
+          <h3 style={sectionTitle}><CalendarIcon size={15} style={{ color: C.accent }} />История посещений</h3>
+          <HistoryTab appointments={appointments} clientId={id} C={C} />
+          {reviews.length > 0 && (
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              <h3 style={sectionTitle}><Star size={15} style={{ color: C.warning }} />Отзывы клиента</h3>
+              <ReviewsTab reviews={reviews} C={C} />
+            </div>
+          )}
         </motion.section>
       )}
 
-      {/* ═══ Section: Analytics / CLV ═══ */}
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} style={sectionStyle}>
-        <h3 style={sectionTitle}><BarChart3 size={15} style={{ color: C.accent }} />Аналитика</h3>
-        <AnalyticsTab client={client} appointments={appointments} C={C} />
-      </motion.section>
+      {tab === 'analytics' && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
+          <h3 style={sectionTitle}><BarChart3 size={15} style={{ color: C.accent }} />Аналитика</h3>
+          <AnalyticsTab client={client} appointments={appointments} C={C} />
+        </motion.section>
+      )}
 
-      {/* ═══ Section: Family (only if familyLinks feature on) ═══ */}
-      {features.familyLinks && familyMembers.length > 0 && (
-        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.20 }} style={sectionStyle}>
+      {tab === 'family' && features.familyLinks && familyMembers.length > 0 && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
           <h3 style={sectionTitle}><Users size={15} style={{ color: C.accent }} />{t('familyTab')}</h3>
           <FamilyTab members={familyMembers} C={C} />
         </motion.section>
       )}
 
-      {/* ═══ Section: Files + Before/After (only if gallery feature on) ═══ */}
-      {features.gallery && (
-        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }} style={sectionStyle}>
+      {tab === 'files' && features.gallery && (
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
           <h3 style={sectionTitle}><Camera size={15} style={{ color: C.accent }} />Файлы и фото до/после</h3>
           <FileUpload clientId={id} />
           <BeforeAfterSection clientId={id} C={C} />
