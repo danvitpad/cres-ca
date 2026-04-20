@@ -878,6 +878,140 @@ async function routeVoiceAction(
       break;
     }
 
+    case 'expense_recurring': {
+      if (!intent.amount || !intent.day_of_month) {
+        await sendMessage(chatId, '❓ Скажи сумму и день месяца: «аренда 5000 каждое 1-е число».');
+        await logAiAction(supabase, masterId, { actionType: 'expense_recurring', inputText: intent.raw_transcript, status: 'needs_confirmation' });
+        break;
+      }
+      const dom = Math.min(28, Math.max(1, Math.round(intent.day_of_month)));
+      const name = (intent.text || intent.category || 'Регулярный расход').slice(0, 80);
+      const category = intent.category || 'Прочее';
+      const { error } = await supabase.from('recurring_expenses').insert({
+        master_id: masterId,
+        name,
+        amount: intent.amount,
+        currency: 'UAH',
+        category,
+        day_of_month: dom,
+        active: true,
+      });
+      if (error) {
+        await logAiAction(supabase, masterId, { actionType: 'expense_recurring', inputText: intent.raw_transcript, status: 'failed', errorMessage: error.message });
+        await sendMessage(chatId, `❌ Не удалось сохранить: ${error.message}`);
+        break;
+      }
+      await logAiAction(supabase, masterId, {
+        actionType: 'expense_recurring',
+        inputText: intent.raw_transcript,
+        status: 'success',
+        result: { amount: intent.amount, day_of_month: dom, category },
+      });
+      await sendMessage(chatId,
+        `✅ <b>Регулярный расход добавлен</b>\n\n💰 ${name} — ${intent.amount} ₴\n📅 Каждое ${dom}-е число\n🏷 ${category}\n\n<i>Запись появится автоматически в Финансах.</i>`,
+        { parse_mode: 'HTML' },
+      );
+      break;
+    }
+
+    case 'supplier_order': {
+      const supplierName = intent.supplier_name || intent.client_name;
+      const items = Array.isArray(intent.items) ? intent.items : [];
+      if (!supplierName || items.length === 0) {
+        await sendMessage(chatId, '❓ Скажи: «Заказать у [имя поставщика] 5 кг краски, 3 щётки, на телеграм».');
+        await logAiAction(supabase, masterId, { actionType: 'supplier_order', inputText: intent.raw_transcript, status: 'needs_confirmation' });
+        break;
+      }
+
+      // Fuzzy-find supplier
+      const tokens = supplierName.trim().split(/\s+/).filter((t: string) => t.length >= 3);
+      const orClause = tokens.length > 0
+        ? tokens.map((t: string) => `name.ilike.%${t}%`).join(',')
+        : `name.ilike.%${supplierName}%`;
+      const { data: suppliersMatch } = await supabase
+        .from('suppliers')
+        .select('id, name, email, telegram_id, phone')
+        .eq('master_id', masterId)
+        .or(orClause)
+        .limit(3);
+
+      if (!suppliersMatch || suppliersMatch.length === 0) {
+        await sendMessage(chatId,
+          `⚠️ Поставщик «${supplierName}» не найден.\n\nДобавь поставщика в каталог и повтори.`,
+          {
+            reply_markup: {
+              inline_keyboard: [[{ text: '📦 Открыть поставщиков', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/ru/suppliers` } }]],
+            },
+          },
+        );
+        await logAiAction(supabase, masterId, { actionType: 'supplier_order', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'supplier_not_found' });
+        break;
+      }
+
+      const supplier = suppliersMatch[0];
+      const orderItems = items.map((it) => ({
+        name: String(it.name ?? '').slice(0, 120) || 'Товар',
+        quantity: Number(it.quantity ?? 1),
+        unit: String(it.unit ?? 'шт').slice(0, 16),
+      }));
+
+      // items is a JSONB column on supplier_orders (no separate items table)
+      const itemsJson = orderItems.map((it) => ({
+        name: it.name,
+        quantity: it.quantity,
+        unit: it.unit,
+        unit_price: 0,
+        total: 0,
+      }));
+
+      const { data: order, error: ordErr } = await supabase
+        .from('supplier_orders')
+        .insert({
+          master_id: masterId,
+          supplier_id: supplier.id,
+          currency: 'UAH',
+          status: 'draft',
+          items: itemsJson,
+          total_cost: 0,
+          note: intent.notes ?? null,
+        })
+        .select('id')
+        .single();
+
+      if (ordErr || !order) {
+        await logAiAction(supabase, masterId, { actionType: 'supplier_order', inputText: intent.raw_transcript, status: 'failed', errorMessage: ordErr?.message ?? 'insert_failed' });
+        await sendMessage(chatId, `❌ Не удалось создать заказ: ${ordErr?.message ?? 'unknown'}`);
+        break;
+      }
+
+      // Summary for confirmation card
+      const itemsText = orderItems.map((it) => `— ${it.name} × ${it.quantity} ${it.unit}`).join('\n');
+      const channelHint = intent.channel === 'telegram'
+        ? 'Телеграм предложен, готов отправить.'
+        : intent.channel === 'email'
+          ? 'Email предложен, готов отправить.'
+          : 'Выбери канал доставки.';
+
+      const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
+      if (supplier.telegram_id) buttons.push([{ text: '📱 Telegram', callback_data: `so_tg:${order.id}` }]);
+      if (supplier.email) buttons.push([{ text: '📧 Email', callback_data: `so_em:${order.id}` }]);
+      buttons.push([{ text: '📄 Только PDF', callback_data: `so_pdf:${order.id}` }]);
+      buttons.push([{ text: '❌ Отменить', callback_data: `so_cancel:${order.id}` }]);
+
+      await sendMessage(chatId,
+        `📦 <b>Заказ #${order.id.slice(0, 8)}</b>\n\n👤 ${supplier.name}\n\n${itemsText}\n\n${channelHint}`,
+        { parse_mode: 'HTML', reply_markup: { inline_keyboard: buttons } },
+      );
+
+      await logAiAction(supabase, masterId, {
+        actionType: 'supplier_order',
+        inputText: intent.raw_transcript,
+        status: 'needs_confirmation',
+        result: { order_id: order.id, supplier_id: supplier.id, items_count: orderItems.length },
+      });
+      break;
+    }
+
     default: {
       // Unknown — save as reminder anyway
       if (intent.raw_transcript) {
@@ -1160,6 +1294,42 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
         .update({ status: 'no_show' })
         .eq('id', apptId);
       await sendMessage(chatId, `❌ <b>Запись помечена как "не состоялась"</b>\n\n👤 ${cli}\n💇 ${svc}\n\nДеньги в кассу не зачислены.`, { parse_mode: 'HTML' });
+    }
+    return;
+  }
+
+  // Supplier order channel pick: so_tg: / so_em: / so_pdf: / so_cancel:
+  if (data.startsWith('so_')) {
+    const [action, orderId] = data.split(':');
+    if (!orderId) return;
+    const channel =
+      action === 'so_tg' ? 'telegram'
+      : action === 'so_em' ? 'email'
+      : action === 'so_pdf' ? 'pdf'
+      : 'cancel';
+
+    if (channel === 'cancel') {
+      await supabase.from('supplier_orders').update({ status: 'cancelled' }).eq('id', orderId);
+      await sendMessage(chatId, '❌ Заказ отменён.');
+      return;
+    }
+
+    // Dispatch via the shared endpoint (keeps webhook lean, reuses PDF + send logic)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/supplier-orders/${orderId}/dispatch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, telegram_id: telegramId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        await sendMessage(chatId, `❌ ${json.error ?? 'Не удалось отправить'}`);
+        return;
+      }
+      const channelLabel = channel === 'telegram' ? 'Telegram' : channel === 'email' ? 'Email' : 'PDF';
+      await sendMessage(chatId, `✅ Заказ отправлен (${channelLabel}).`);
+    } catch (err) {
+      await sendMessage(chatId, `❌ Ошибка отправки: ${(err as Error).message}`);
     }
     return;
   }

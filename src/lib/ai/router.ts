@@ -1,0 +1,341 @@
+/** --- YAML
+ * name: AI Router
+ * description: >
+ *   Unified fallback chain for AI calls. Tries Gemini first (free, Google direct),
+ *   falls back to OpenRouter free models. For audio — if all Gemini fails, uses
+ *   Whisper via OpenRouter to transcribe, then any text LLM for intent.
+ *   This is the ONE place that decides which model runs — all AI surfaces
+ *   (voice webhook, /today chat, Mini App assistant) go through this.
+ * created: 2026-04-20
+ * --- */
+
+const GEMINI_KEY = () => (process.env.GOOGLE_AI_STUDIO_KEY || process.env.GEMINI_API_KEY || '').trim();
+const OPENROUTER_KEY = () => (process.env.OPENROUTER_API_KEY || '').trim();
+
+const GOOGLE_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_AUDIO = 'https://openrouter.ai/api/v1/audio/transcriptions';
+
+// Voice audio → JSON intent (Gemini can eat audio directly)
+const VOICE_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+// Text → JSON / text (ordered by preference)
+const TEXT_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+const TEXT_OPENROUTER_MODELS = [
+  'deepseek/deepseek-chat-v3.1:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'openai/gpt-oss-120b:free',
+];
+
+export interface AICallLog {
+  provider: 'gemini' | 'openrouter';
+  model: string;
+  attempt: number;
+  ms: number;
+  ok: boolean;
+  error?: string;
+}
+
+/** Result of a successful call — text + which model served it, plus per-attempt log */
+export interface AICallResult<T = string> {
+  data: T;
+  model: string;
+  log: AICallLog[];
+}
+
+/* ═══════════════ VOICE (audio → JSON) ═══════════════ */
+
+export async function voiceToIntent(params: {
+  audioBase64: string;
+  mimeType: string; // 'audio/ogg' | 'audio/mpeg' | ...
+  systemPrompt: string;
+  responseSchema?: Record<string, unknown>;
+}): Promise<AICallResult> {
+  const log: AICallLog[] = [];
+
+  // Step 1: try Gemini audio in/out
+  for (let i = 0; i < VOICE_GEMINI_MODELS.length; i++) {
+    const model = VOICE_GEMINI_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callGeminiAudio(model, params);
+      if (text) {
+        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `gemini/${model}`, log };
+      }
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
+  }
+
+  // Step 2: Whisper transcribe → text LLM for intent
+  if (!OPENROUTER_KEY()) {
+    throw new AIUnavailableError('All Gemini failed and no OPENROUTER_API_KEY set', log);
+  }
+
+  const t1 = Date.now();
+  let transcript: string;
+  try {
+    transcript = await callWhisper(params.audioBase64, params.mimeType);
+    log.push({ provider: 'openrouter', model: 'whisper-large-v3', attempt: 1, ms: Date.now() - t1, ok: true });
+  } catch (e) {
+    log.push({ provider: 'openrouter', model: 'whisper-large-v3', attempt: 1, ms: Date.now() - t1, ok: false, error: (e as Error).message });
+    throw new AIUnavailableError('Whisper failed', log);
+  }
+
+  // Now parse transcript with any text LLM
+  const textResult = await textToJSON({
+    systemPrompt: params.systemPrompt,
+    userMessage: transcript,
+  });
+  return { data: textResult.data, model: `whisper→${textResult.model}`, log: [...log, ...textResult.log] };
+}
+
+/* ═══════════════ TEXT (text → JSON) ═══════════════ */
+
+export async function textToJSON(params: {
+  systemPrompt: string;
+  userMessage: string;
+}): Promise<AICallResult> {
+  const log: AICallLog[] = [];
+
+  // Gemini first
+  for (let i = 0; i < TEXT_GEMINI_MODELS.length; i++) {
+    const model = TEXT_GEMINI_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callGeminiText(model, params.systemPrompt, [{ role: 'user', content: params.userMessage }]);
+      if (text) {
+        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `gemini/${model}`, log };
+      }
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
+  }
+
+  // OpenRouter fallback
+  if (!OPENROUTER_KEY()) {
+    throw new AIUnavailableError('All Gemini failed and no OPENROUTER_API_KEY set', log);
+  }
+
+  for (let i = 0; i < TEXT_OPENROUTER_MODELS.length; i++) {
+    const model = TEXT_OPENROUTER_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callOpenRouter(model, params.systemPrompt, [{ role: 'user', content: params.userMessage }]);
+      if (text) {
+        log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `openrouter/${model}`, log };
+      }
+      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
+  }
+
+  throw new AIUnavailableError('All 5 models failed', log);
+}
+
+/* ═══════════════ CHAT (text → human-readable reply) ═══════════════ */
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export async function chatCompletion(params: {
+  systemPrompt: string;
+  history: ChatMessage[];
+  maxTokens?: number;
+}): Promise<AICallResult> {
+  const log: AICallLog[] = [];
+
+  for (let i = 0; i < TEXT_GEMINI_MODELS.length; i++) {
+    const model = TEXT_GEMINI_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callGeminiText(model, params.systemPrompt, params.history, params.maxTokens);
+      if (text) {
+        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `gemini/${model}`, log };
+      }
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
+  }
+
+  if (!OPENROUTER_KEY()) throw new AIUnavailableError('All Gemini failed', log);
+
+  for (let i = 0; i < TEXT_OPENROUTER_MODELS.length; i++) {
+    const model = TEXT_OPENROUTER_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callOpenRouter(model, params.systemPrompt, params.history, params.maxTokens);
+      if (text) {
+        log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `openrouter/${model}`, log };
+      }
+      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
+  }
+
+  throw new AIUnavailableError('All 5 models failed', log);
+}
+
+/* ═══════════════ Internals ═══════════════ */
+
+async function callGeminiAudio(
+  model: string,
+  params: { audioBase64: string; mimeType: string; systemPrompt: string },
+): Promise<string> {
+  const key = GEMINI_KEY();
+  if (!key) throw new Error('GEMINI_API_KEY not set');
+
+  const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: params.systemPrompt },
+          { inline_data: { mime_type: params.mimeType, data: params.audioBase64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+    }),
+  });
+
+  if (res.status === 429 || res.status === 503) throw new Error(`${model} ${res.status}`);
+  if (!res.ok) throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+}
+
+async function callGeminiText(
+  model: string,
+  system: string,
+  history: ChatMessage[],
+  maxTokens = 1024,
+): Promise<string> {
+  const key = GEMINI_KEY();
+  if (!key) throw new Error('GEMINI_API_KEY not set');
+
+  const contents = history
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+  const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+    }),
+  });
+
+  if (res.status === 429 || res.status === 503) throw new Error(`${model} ${res.status}`);
+  if (!res.ok) throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+}
+
+async function callOpenRouter(
+  model: string,
+  system: string,
+  history: ChatMessage[],
+  maxTokens = 1024,
+): Promise<string> {
+  const key = OPENROUTER_KEY();
+  if (!key) throw new Error('OPENROUTER_API_KEY not set');
+
+  const messages: ChatMessage[] = [{ role: 'system', content: system }, ...history];
+
+  const res = await fetch(OPENROUTER_BASE, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://cres-ca.com',
+      'X-Title': 'CRES-CA',
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.3,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  if (res.status === 429 || res.status === 503) throw new Error(`${model} ${res.status}`);
+  if (!res.ok) throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+async function callWhisper(audioBase64: string, mimeType: string): Promise<string> {
+  const key = OPENROUTER_KEY();
+  if (!key) throw new Error('OPENROUTER_API_KEY not set');
+
+  // OpenRouter Whisper expects multipart form with file
+  const buf = Buffer.from(audioBase64, 'base64');
+  const blob = new Blob([buf], { type: mimeType });
+  const form = new FormData();
+  form.append('file', blob, mimeType === 'audio/ogg' ? 'audio.ogg' : 'audio.mp3');
+  form.append('model', 'openai/whisper-large-v3');
+
+  const res = await fetch(OPENROUTER_AUDIO, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${key}`,
+      'HTTP-Referer': 'https://cres-ca.com',
+      'X-Title': 'CRES-CA',
+    },
+    body: form,
+  });
+
+  if (!res.ok) throw new Error(`whisper ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  return data.text?.trim() || '';
+}
+
+export class AIUnavailableError extends Error {
+  log: AICallLog[];
+  constructor(message: string, log: AICallLog[]) {
+    super(message);
+    this.name = 'AIUnavailableError';
+    this.log = log;
+  }
+}
+
+/** Extract JSON from LLM response — handles markdown, thinking preamble, truncation */
+export function extractJSON<T = Record<string, unknown>>(raw: string): T | null {
+  let text = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  const jsonStart = text.indexOf('{');
+  const jsonEnd = text.lastIndexOf('}');
+  if (jsonStart === -1) return null;
+  if (jsonEnd > jsonStart) {
+    try {
+      return JSON.parse(text.slice(jsonStart, jsonEnd + 1)) as T;
+    } catch { /* fall through */ }
+  }
+  text = text.slice(jsonStart);
+  text = text.replace(/,\s*"[^"]*"?\s*:?\s*[^,}]*$/, '') + '}';
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}

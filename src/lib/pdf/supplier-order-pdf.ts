@@ -7,6 +7,8 @@
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export interface SupplierOrderItem {
   name: string;
@@ -29,9 +31,27 @@ export interface SupplierOrderPDFInput {
   note?: string | null;
 }
 
+/** Cache logo as base64 data URL (read once per cold start) */
+let _logoCache: string | null = null;
+function loadLogoBase64(): string | null {
+  if (_logoCache !== null) return _logoCache;
+  try {
+    const p = path.join(process.cwd(), 'public', 'icon-192.png');
+    const buf = fs.readFileSync(p);
+    _logoCache = `data:image/png;base64,${buf.toString('base64')}`;
+    return _logoCache;
+  } catch {
+    _logoCache = '';
+    return null;
+  }
+}
+
 export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
 
+  // Header
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.text('CRES-CA', 40, 50);
@@ -84,6 +104,22 @@ export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array 
     doc.setFont('helvetica', 'normal');
     doc.text(doc.splitTextToSize(input.note, 500), 40, finalY + 44);
   }
+
+  // Footer with CRES-CA logo
+  const logo = loadLogoBase64();
+  const footerY = pageH - 56;
+  doc.setDrawColor(220);
+  doc.line(40, footerY - 10, pageW - 40, footerY - 10);
+  if (logo) {
+    try { doc.addImage(logo, 'PNG', 40, footerY - 4, 24, 24); } catch { /* ignore */ }
+  }
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CRES-CA', 72, footerY + 4);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Management system for beauty & service masters', 72, footerY + 16);
+  doc.text('cres-ca.com', pageW - 40, footerY + 10, { align: 'right' });
 
   return doc.output('arraybuffer') as unknown as Uint8Array;
 }

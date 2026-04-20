@@ -1,26 +1,27 @@
 /** --- YAML
  * name: Voice Intent Parser
- * description: Sends Telegram voice to Gemini 2.5 Flash with retry, returns structured intent.
+ * description: >
+ *   Sends Telegram voice to the unified AI router (router.ts). Primary path:
+ *   Gemini 2.5/2.0 Flash audio→JSON. Fallback: OpenRouter Whisper (audio→text)
+ *   + free text LLM (text→intent). No more "AI перегружен" — chain of 5+ models.
  * created: 2026-04-16
- * updated: 2026-04-16
+ * updated: 2026-04-20
  * --- */
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-
-function geminiUrl(model: string) {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-}
+import { voiceToIntent, extractJSON, AIUnavailableError } from './router';
 
 export type VoiceAction =
   | 'reminder'
   | 'appointment'
   | 'expense'
+  | 'expense_recurring'
   | 'revenue'
   | 'client_note'
   | 'inventory'
   | 'cancel'
   | 'reschedule'
   | 'create_client'
+  | 'supplier_order'
   | 'query'
   | 'unknown';
 
@@ -33,198 +34,167 @@ export interface VoiceIntent {
   service_name: string | null;
   raw_transcript: string;
   confidence: number;
-  items?: { client_name: string; service_name: string; amount: number }[];
-  // Phase 3A extensions — populated for cancel/reschedule/create_client
+  items?: { client_name?: string; service_name?: string; amount?: number; name?: string; quantity?: number; unit?: string }[];
   phone?: string | null;
   notes?: string | null;
   new_due_at?: string | null;
+  // expense_recurring
+  day_of_month?: number | null;
+  category?: string | null;
+  // supplier_order
+  supplier_name?: string | null;
+  channel?: 'telegram' | 'email' | null;
 }
 
-const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/service индустрии. Мастер отправляет голосовое сообщение.
+const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/service индустрии. Мастер отправляет голосовое сообщение или текст.
 
 Твоя задача:
-1. Транскрибировать аудио
+1. Транскрибировать аудио (если есть)
 2. Понять намерение
 3. Извлечь структурированные данные
-4. Перефразировать текст ЕСТЕСТВЕННО и КРАСИВО (не дословная транскрипция, а человечная формулировка)
+4. Перефразировать ЕСТЕСТВЕННО (не дословно)
 
-Примеры перефразирования:
+Перефразирование — примеры:
 - "Антону отправить сообщение" → "Отправить сообщение Антону"
-- "краску купить завтра" → "Купить краску"
-- "Маше напомнить про окрашивание" → "Напомнить Маше про окрашивание"
 - "потратил пятьсот гривен на материалы" → "Материалы — 500 ₴"
-- "сегодня была Аня стрижка тысяча двести" → text: "Стрижка — Аня", amount: 1200
+- "сегодня была Аня стрижка тысяча двести" → "Стрижка — Аня"
 
-Возможные действия (action):
+ДЕЙСТВИЯ (action):
 - "reminder" — напоминание (позвонить, купить, сделать что-то)
-- "appointment" — создать/записать клиента на услугу
-- "expense" — записать расход ДЕНЕГ (купил краску за 500 грн, заплатил за аренду, материалы)
-- "revenue" — записать приход/выручку (мастер рассказывает кто был и за что заплатил)
-- "client_note" — заметка о клиенте (аллергия, предпочтения, дети, питомцы, предпочтения, "у Марии чихуа-хуа Буся")
-- "inventory" — ФИЗИЧЕСКОЕ списание со склада (потратил 200 мл краски, использовал 3 шт перчаток) — БЕЗ суммы денег
-- "cancel" — отменить запись клиента (вернуть fields: client_name + опционально due_at)
-- "reschedule" — перенести запись (fields: client_name, due_at = СТАРАЯ дата если упомянута, new_due_at = новая дата/время)
-- "create_client" — добавить нового клиента (fields: client_name обязательно, phone опционально, notes опционально)
-- "query" — вопрос (сколько заработал, сколько записей)
+- "appointment" — создать запись на услугу
+- "cancel" — отменить запись клиента
+- "reschedule" — перенести запись (due_at=старая дата, new_due_at=новая)
+- "expense" — разовая трата денег (купил краску за 500, заплатил курьеру)
+- "expense_recurring" — РЕГУЛЯРНЫЙ расход (аренда 5000 каждое 1-е число, интернет 300 каждое 15-е). Обязательно поле day_of_month (1-28). Поле category — тип (Аренда/Коммунальные/Связь/Прочее).
+- "revenue" — приход/выручка (перечисление "Аня стрижка 1200, Маша окрашивание 2500")
+- "client_note" — заметка о клиенте (аллергия, питомцы, предпочтения)
+- "inventory" — физическое списание со склада (200 мл краски, 3 шт перчаток). БЕЗ денег.
+- "supplier_order" — заказ у поставщика ("заказать у Ивана 5 кг краски и 3 щётки, отправить на телеграм"). Поля: supplier_name, items[{name, quantity, unit}], channel ('telegram' | 'email' | null).
+- "create_client" — добавить нового клиента (client_name обязательно, phone опционально, notes опционально)
+- "query" — вопрос (сколько заработал, сколько записей, кто спящий клиент)
 - "unknown" — не удалось понять
 
-Если мастер перечисляет клиентов/услуги/суммы за день — это "revenue".
-Если мастер говорит что потратил деньги — это "expense".
-
-Правила для дат (таймзона мастера — Europe/Kyiv, UTC+3):
-- "завтра" = следующий день от текущей даты
+Правила дат (Europe/Kyiv, UTC+3):
+- "завтра" = следующий день
 - "в пятницу" = ближайшая пятница
 - "через час" = текущее время + 1 час
-- "вечером" = 18:00 текущего дня
-- Если время не указано, но дата есть — ставь 09:00
-- Если ни дата ни время не указаны — due_at = null
-- ВСЕ даты возвращай в формате ISO с таймзоной +03:00
+- "вечером" = 18:00
+- Если время не указано, дата есть — ставь 09:00
+- Ни дата ни время не упомянуты — due_at = null
+- ISO формат с +03:00
 
-Текущая дата/время: {{NOW}} (UTC). В Киеве сейчас {{NOW_KYIV}}.
+Текущая дата/время: {{NOW}} (UTC). В Киеве: {{NOW_KYIV}}.
 
-Для "revenue" — если перечислено несколько клиентов/услуг, верни массив items:
-{"action":"revenue","text":"Выручка за день","items":[{"client_name":"Аня","service_name":"Стрижка","amount":1200},{"client_name":"Маша","service_name":"Окрашивание","amount":2500}],"amount":3700,"raw_transcript":"...","confidence":0.9}
+ПРИМЕРЫ ВЫВОДА (всегда строго один JSON-объект без markdown и комментариев):
 
-Для остальных — обычный формат:
-{"action":"reminder","text":"Отправить сообщение Антону","due_at":"2026-04-17T10:00:00+03:00","client_name":"Антон","amount":null,"service_name":null,"raw_transcript":"полная транскрипция","confidence":0.9}
+"напомни завтра в 10 позвонить Анне":
+{"action":"reminder","text":"Позвонить Анне","due_at":"2026-04-21T10:00:00+03:00","client_name":"Анна","amount":null,"service_name":null,"raw_transcript":"...","confidence":0.95}
 
-Примеры новых действий:
+"записать Машу на стрижку в пятницу 15:00":
+{"action":"appointment","text":"Стрижка — Маша","due_at":"2026-04-24T15:00:00+03:00","client_name":"Маша","amount":null,"service_name":"Стрижка","raw_transcript":"...","confidence":0.9}
 
-"Отмени Анну на завтра":
-{"action":"cancel","text":"Отменить запись Анны","client_name":"Анна","due_at":"2026-04-18T09:00:00+03:00","amount":null,"service_name":null,"raw_transcript":"отмени анну на завтра","confidence":0.9}
+"отмени Колю завтра":
+{"action":"cancel","text":"Отменить запись Коли","client_name":"Коля","due_at":"2026-04-21T09:00:00+03:00","amount":null,"service_name":null,"raw_transcript":"...","confidence":0.9}
 
-"Перенеси Машу с пятницы на субботу на 14":
-{"action":"reschedule","text":"Перенести запись Маши","client_name":"Маша","due_at":"2026-04-18T00:00:00+03:00","new_due_at":"2026-04-19T14:00:00+03:00","amount":null,"service_name":null,"raw_transcript":"перенеси машу с пятницы на субботу на 14","confidence":0.9}
+"перенеси Иру с пятницы на субботу 14:00":
+{"action":"reschedule","text":"Перенести запись Иры","client_name":"Ира","due_at":"2026-04-24T00:00:00+03:00","new_due_at":"2026-04-25T14:00:00+03:00","amount":null,"service_name":null,"raw_transcript":"...","confidence":0.9}
 
-"Новая клиентка Марина телефон 0671234567":
-{"action":"create_client","text":"Новый клиент Марина","client_name":"Марина","phone":"0671234567","notes":null,"due_at":null,"amount":null,"service_name":null,"raw_transcript":"новая клиентка марина телефон 0671234567","confidence":0.95}
+"потратил 500 на краску":
+{"action":"expense","text":"Краска — 500 ₴","amount":500,"category":"Расходники","due_at":null,"client_name":null,"service_name":null,"raw_transcript":"...","confidence":0.95}
+
+"аренда 5000 каждое 1-е число":
+{"action":"expense_recurring","text":"Аренда — 5000 ₴","amount":5000,"day_of_month":1,"category":"Аренда","client_name":null,"service_name":null,"due_at":null,"raw_transcript":"...","confidence":0.95}
+
+"выручка сегодня: Аня стрижка 1200, Маша окрашивание 2500":
+{"action":"revenue","text":"Выручка за день","items":[{"client_name":"Аня","service_name":"Стрижка","amount":1200},{"client_name":"Маша","service_name":"Окрашивание","amount":2500}],"amount":3700,"client_name":null,"service_name":null,"due_at":null,"raw_transcript":"...","confidence":0.9}
+
+"у Даши чихуахуа Буся":
+{"action":"client_note","text":"Чихуахуа Буся","client_name":"Даша","due_at":null,"amount":null,"service_name":null,"raw_transcript":"...","confidence":0.9}
+
+"списал 200 мл краски":
+{"action":"inventory","text":"Списание 200 мл краски","service_name":"краска","amount":200,"client_name":null,"due_at":null,"raw_transcript":"...","confidence":0.9}
+
+"заказать у Ивана 5 кг краски и 3 щётки, отправить на телеграм":
+{"action":"supplier_order","text":"Заказ у Ивана","supplier_name":"Иван","items":[{"name":"краска","quantity":5,"unit":"кг"},{"name":"щётки","quantity":3,"unit":"шт"}],"channel":"telegram","client_name":null,"amount":null,"service_name":null,"due_at":null,"raw_transcript":"...","confidence":0.9}
+
+"новая клиентка Марина телефон 0671234567":
+{"action":"create_client","text":"Новый клиент Марина","client_name":"Марина","phone":"0671234567","notes":null,"due_at":null,"amount":null,"service_name":null,"raw_transcript":"...","confidence":0.95}
+
+"сколько заработал сегодня":
+{"action":"query","text":"Сколько заработал сегодня","client_name":null,"amount":null,"service_name":null,"due_at":null,"raw_transcript":"...","confidence":0.95}
 
 ВАЖНО: ответь ТОЛЬКО одним JSON-объектом, без комментариев и без markdown.`;
 
-export async function parseVoiceIntent(audioBase64: string, mimeType: string = 'audio/ogg'): Promise<VoiceIntent> {
+function buildPrompt(): string {
   const now = new Date().toISOString();
-  const nowKyiv = new Date().toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv', dateStyle: 'full', timeStyle: 'short' });
-  const prompt = SYSTEM_PROMPT.replace('{{NOW}}', now).replace('{{NOW_KYIV}}', nowKyiv);
-
-  const body = JSON.stringify({
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inline_data: { mime_type: mimeType, data: audioBase64 } },
-      ],
-    }],
-    generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 2048,
-    },
+  const nowKyiv = new Date().toLocaleString('uk-UA', {
+    timeZone: 'Europe/Kyiv',
+    dateStyle: 'full',
+    timeStyle: 'short',
   });
-
-  // Retry up to 5 times with backoff — model is available but intermittently 503
-  const delays = [0, 2000, 3000, 5000, 8000];
-
-  for (let attempt = 0; attempt < delays.length; attempt++) {
-    if (delays[attempt] > 0) {
-      await new Promise((r) => setTimeout(r, delays[attempt]));
-    }
-
-    try {
-      const response = await fetch(geminiUrl('gemini-2.5-flash'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-
-      if (response.status === 503 || response.status === 429) {
-        console.log(`[voice] gemini-2.5-flash ${response.status}, attempt ${attempt + 1}/${delays.length}`);
-        continue;
-      }
-
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Gemini ${response.status}: ${err.slice(0, 200)}`);
-      }
-
-      const data = await response.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (!rawText) {
-        console.log('[voice] empty response, retrying');
-        continue;
-      }
-
-      console.log('[voice] raw response:', rawText.slice(0, 500));
-
-      const parsed = extractJSON(rawText);
-      if (parsed) return parsed;
-
-      console.log('[voice] failed to parse JSON, retrying');
-      continue;
-    } catch (e) {
-      if (attempt === delays.length - 1) throw e;
-      console.log(`[voice] error attempt ${attempt + 1}:`, (e as Error).message);
-    }
-  }
-
-  throw new Error('Gemini unavailable after 5 retries');
+  return SYSTEM_PROMPT.replace('{{NOW}}', now).replace('{{NOW_KYIV}}', nowKyiv);
 }
 
-/** Extract JSON from Gemini response — handles markdown, thinking preamble, truncation */
-function extractJSON(raw: string): VoiceIntent | null {
-  // Strip markdown
-  let text = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-
-  // Find the JSON object — Gemini 2.5 may output thinking text before JSON
-  const jsonStart = text.indexOf('{');
-  const jsonEnd = text.lastIndexOf('}');
-
-  if (jsonStart === -1) return null;
-
-  if (jsonEnd > jsonStart) {
-    try {
-      return normalizeIntent(JSON.parse(text.slice(jsonStart, jsonEnd + 1)));
-    } catch { /* fall through */ }
-  }
-
-  // Truncated — try to fix
-  text = text.slice(jsonStart);
-  // Remove trailing incomplete key-value
-  text = text.replace(/,\s*"[^"]*"?\s*:?\s*[^,}]*$/, '') + '}';
-  try {
-    return normalizeIntent(JSON.parse(text));
-  } catch {
-    return null;
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeIntent(obj: any): VoiceIntent {
+function normalizeIntent(obj: Record<string, unknown>): VoiceIntent {
   return {
-    action: obj.action || 'unknown',
-    text: obj.text || obj.raw_transcript || '',
-    due_at: obj.due_at || null,
-    client_name: obj.client_name || null,
+    action: (obj.action as VoiceAction) || 'unknown',
+    text: String(obj.text ?? obj.raw_transcript ?? ''),
+    due_at: (obj.due_at as string | null) ?? null,
+    client_name: (obj.client_name as string | null) ?? null,
     amount: obj.amount != null ? Number(obj.amount) : null,
-    service_name: obj.service_name || null,
-    raw_transcript: obj.raw_transcript || obj.text || '',
-    confidence: obj.confidence || 0.5,
+    service_name: (obj.service_name as string | null) ?? null,
+    raw_transcript: String(obj.raw_transcript ?? obj.text ?? ''),
+    confidence: Number(obj.confidence ?? 0.5),
     items: Array.isArray(obj.items) ? obj.items : undefined,
-    phone: obj.phone || null,
-    notes: obj.notes || null,
-    new_due_at: obj.new_due_at || null,
+    phone: (obj.phone as string | null) ?? null,
+    notes: (obj.notes as string | null) ?? null,
+    new_due_at: (obj.new_due_at as string | null) ?? null,
+    day_of_month: obj.day_of_month != null ? Number(obj.day_of_month) : null,
+    category: (obj.category as string | null) ?? null,
+    supplier_name: (obj.supplier_name as string | null) ?? null,
+    channel: (obj.channel as 'telegram' | 'email' | null) ?? null,
   };
+}
+
+export async function parseVoiceIntent(
+  audioBase64: string,
+  mimeType: string = 'audio/ogg',
+): Promise<VoiceIntent> {
+  const { data: raw, model, log } = await voiceToIntent({
+    audioBase64,
+    mimeType,
+    systemPrompt: buildPrompt(),
+  });
+  console.log('[voice] model=%s log=%s', model, JSON.stringify(log));
+  const parsed = extractJSON<Record<string, unknown>>(raw);
+  if (!parsed) {
+    throw new AIUnavailableError(`Model returned unparseable output: ${raw.slice(0, 200)}`, log);
+  }
+  return normalizeIntent(parsed);
+}
+
+/** Parse intent from plain text (used by /today chat). Same schema. */
+export async function parseTextIntent(userText: string): Promise<VoiceIntent> {
+  const { textToJSON } = await import('./router');
+  const { data: raw, model, log } = await textToJSON({
+    systemPrompt: buildPrompt(),
+    userMessage: userText,
+  });
+  console.log('[text-intent] model=%s log=%s', model, JSON.stringify(log));
+  const parsed = extractJSON<Record<string, unknown>>(raw);
+  if (!parsed) {
+    throw new AIUnavailableError(`Model returned unparseable output: ${raw.slice(0, 200)}`, log);
+  }
+  return normalizeIntent(parsed);
 }
 
 /** Download a Telegram voice file and return as base64 */
 export async function downloadTelegramFile(fileId: string): Promise<{ base64: string; mimeType: string }> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN!;
-
   const fileInfo = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`);
   const fileData = await fileInfo.json();
   const filePath = fileData.result?.file_path;
-
-  if (!filePath) {
-    throw new Error('Could not get Telegram file path');
-  }
+  if (!filePath) throw new Error('Could not get Telegram file path');
 
   const fileUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
   const fileResponse = await fetch(fileUrl);
