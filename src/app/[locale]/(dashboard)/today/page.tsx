@@ -234,9 +234,10 @@ export default function TodayPage() {
         />
       </motion.div>
 
-      {/* Reminders (full width) */}
-      <motion.div {...stagger(2)}>
-        <div className="rounded-xl border bg-card p-5 space-y-4">
+      {/* Row: Reminders | AI chat (wide) | Birthdays */}
+      <motion.div {...stagger(2)} className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Reminders — 1 col */}
+        <div className="rounded-xl border bg-card p-5 space-y-4 lg:col-span-1">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               <Bell className="w-4 h-4" />
@@ -272,10 +273,9 @@ export default function TodayPage() {
             </ul>
           )}
         </div>
-      </motion.div>
 
-      {/* AI chat — between Reminders and Birthdays, full width, expanded */}
-      <motion.section {...stagger(3)} className="rounded-xl border bg-card p-6 space-y-4">
+        {/* AI chat — 2 cols (widest) */}
+        <section className="rounded-xl border bg-card p-6 space-y-4 lg:col-span-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
@@ -348,11 +348,10 @@ export default function TodayPage() {
             Ответы основаны только на ваших данных: записи, клиенты, услуги, расходы. Без доступа к чужим аккаунтам.
           </p>
         )}
-      </motion.section>
+        </section>
 
-      {/* Upcoming birthdays (full width below chat) */}
-      <motion.div {...stagger(4)}>
-        <div className="rounded-xl border bg-card p-5 space-y-4">
+        {/* Birthdays — 1 col */}
+        <div className="rounded-xl border bg-card p-5 space-y-4 lg:col-span-1">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               <Cake className="w-4 h-4" />
