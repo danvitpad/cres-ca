@@ -57,17 +57,22 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 403 });
 
-  // 1. Find or create client for this master
+  // 1. Find or create client for this master. Use .limit(1) instead of
+  //    .maybeSingle() — duplicate rows for same profile+master (created by
+  //    separate flows like master-side calendar) would otherwise throw
+  //    "more than one row" and we'd create YET ANOTHER duplicate.
   let clientId: string | null = null;
-  const { data: existing } = await admin
+  const { data: existingRows } = await admin
     .from('clients')
     .select('id')
     .eq('profile_id', profile.id)
     .eq('master_id', master_id)
     .is('family_link_id', null)
-    .maybeSingle();
-  if (existing) {
-    clientId = existing.id;
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  if (existingRows && existingRows.length > 0) {
+    clientId = existingRows[0].id;
   } else {
     const { data: created, error } = await admin
       .from('clients')
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
     clientId = created.id;
   }
 
-  // 2. Bulk insert appointments
+  // 2. Bulk insert appointments (with explicit return so we know they landed)
   const rows = appointments.map((a) => ({
     client_id: clientId!,
     master_id,
@@ -95,12 +100,25 @@ export async function POST(request: Request) {
     price: a.price,
     currency: a.currency,
   }));
-  const { error: insErr } = await admin.from('appointments').insert(rows);
-  if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+  const { data: inserted, error: insErr } = await admin
+    .from('appointments')
+    .insert(rows)
+    .select('id, starts_at');
+  if (insErr) {
+    console.error('[book] insert failed:', insErr.message, { master_id, clientId, rows });
+    return NextResponse.json({ error: insErr.message }, { status: 500 });
+  }
+  if (!inserted || inserted.length === 0) {
+    console.error('[book] insert returned no rows', { master_id, clientId, rows });
+    return NextResponse.json({ error: 'insert_empty' }, { status: 500 });
+  }
 
-  // 3. If reschedule: cancel original (must belong to this client)
+  // 3. If reschedule: cancel original appointment. Match by id + master_id
+  //    (master scope, safer than client_id because old appt may live under a
+  //    different clients row if the master created it from dashboard without
+  //    linking profile_id).
   if (reschedule_id) {
-    await admin
+    const { error: cancelErr } = await admin
       .from('appointments')
       .update({
         status: 'cancelled_by_client',
@@ -109,7 +127,8 @@ export async function POST(request: Request) {
         cancellation_reason: 'rescheduled',
       })
       .eq('id', reschedule_id)
-      .eq('client_id', clientId!);
+      .eq('master_id', master_id);
+    if (cancelErr) console.error('[book] cancel old failed:', cancelErr.message);
   }
 
   // 4. Notify master — direct TG (bypass daily cron) + in_app record
