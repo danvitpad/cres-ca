@@ -109,27 +109,6 @@ export default function DealsPage() {
     if (!master?.id) return;
     const supabase = createClient();
 
-    // TODO: `promo_codes` table does not exist yet in migrations.
-    // A migration is needed to create:
-    //   CREATE TABLE promo_codes (
-    //     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    //     master_id uuid NOT NULL REFERENCES masters(id) ON DELETE CASCADE,
-    //     code text NOT NULL,
-    //     discount_type text NOT NULL DEFAULT 'percentage' CHECK (discount_type IN ('percentage', 'fixed')),
-    //     discount_percent numeric(5,2) NOT NULL DEFAULT 0, -- kept for backward compat
-    //     discount_value numeric(10,2) NOT NULL DEFAULT 0,
-    //     max_uses int,
-    //     uses_count int NOT NULL DEFAULT 0,
-    //     valid_from timestamptz,
-    //     valid_until timestamptz,
-    //     is_active boolean NOT NULL DEFAULT true,
-    //     applicable_service_ids uuid[] DEFAULT '{}',
-    //     created_at timestamptz NOT NULL DEFAULT now(),
-    //     updated_at timestamptz NOT NULL DEFAULT now(),
-    //     UNIQUE(master_id, code)
-    //   );
-    //   CREATE INDEX idx_promo_codes_master ON promo_codes(master_id);
-
     const { data, error } = await supabase
       .from('promo_codes')
       .select('*')

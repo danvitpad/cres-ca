@@ -116,6 +116,30 @@ export default function ClientSettingsPage() {
     else toast.success(t('passwordResetSent'));
   }
 
+  async function changePhone() {
+    const phone = window.prompt(t('changePhone') + ' (+380...)', '');
+    if (!phone) return;
+    const res = await fetch('/api/account/change-phone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phone.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(json.error || tc('error'));
+      return;
+    }
+    toast.success(tc('success'));
+  }
+
+  async function changeEmail() {
+    const email = window.prompt(t('changeEmail'), '');
+    if (!email || !email.includes('@')) return;
+    const { error } = await createClient().auth.updateUser({ email: email.trim() });
+    if (error) { toast.error(error.message); return; }
+    toast.success(t('changeEmailSent') || 'Проверьте почту для подтверждения');
+  }
+
   async function deleteAccount() {
     const ok = await confirm({
       title: t('deleteConfirmTitle'),
@@ -124,9 +148,18 @@ export default function ClientSettingsPage() {
       destructive: true,
     });
     if (!ok) return;
-    const res = await fetch('/api/account/delete', { method: 'POST' });
+    const confirmText = window.prompt('Введите "УДАЛИТЬ" для подтверждения', '');
+    if (confirmText !== 'УДАЛИТЬ') { toast.error('Отменено'); return; }
+    const password = window.prompt('Введите текущий пароль', '');
+    if (!password) return;
+    const res = await fetch('/api/account/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmation: confirmText, password }),
+    });
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      toast.error(tc('error'));
+      toast.error(json.error || tc('error'));
       return;
     }
     const supabase = createClient();
@@ -227,12 +260,12 @@ export default function ClientSettingsPage() {
         <LinkRow
           icon={AtSign}
           label={t('changeEmail')}
-          onClick={() => toast.info(t('changeEmailHint'))}
+          onClick={changeEmail}
         />
         <LinkRow
           icon={Phone}
           label={t('changePhone')}
-          onClick={() => toast.info(t('changePhoneHint'))}
+          onClick={changePhone}
         />
       </Section>
 
