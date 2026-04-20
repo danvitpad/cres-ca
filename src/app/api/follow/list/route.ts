@@ -6,10 +6,18 @@
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function GET(req: Request) {
-  const supabase = await createClient();
+  // Admin client — bypasses cookie-dependent RLS. Safe here because the
+  // endpoint only returns PUBLIC follow-graph data (follower/following
+  // profile + entity type). Called from Mini App where Supabase cookies
+  // don't survive the Telegram Webview.
+  const supabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
   const { searchParams } = new URL(req.url);
   const profileId = searchParams.get('profileId');
   const type = searchParams.get('type');

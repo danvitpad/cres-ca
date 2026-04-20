@@ -189,7 +189,8 @@ export default function MiniAppProfilePage() {
       try {
         sessionStorage.removeItem('cres:tg');
       } catch {}
-      router.replace('/telegram');
+      // Hard reload so TG Webview forgets any cached state / SB session.
+      window.location.href = '/telegram';
     } catch {
       setSigningOut(false);
     }
