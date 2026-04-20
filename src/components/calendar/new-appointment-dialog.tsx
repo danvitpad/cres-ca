@@ -188,6 +188,46 @@ export function NewAppointmentDialog({
             data: { type: 'new_appointment', appointment_id: inserted?.id },
           }),
         }).catch(() => { /* fire-and-forget */ });
+
+        // Schedule reminder notifications per client's preferences.
+        // Falls back to [1 day, 2 hours] if prefs column is empty/missing.
+        type ReminderPref = { value: number; unit: 'hours' | 'days' };
+        const { data: clientProfile } = await supabase
+          .from('profiles')
+          .select('appointment_reminders_prefs')
+          .eq('id', clientRow.profile_id)
+          .maybeSingle();
+        const prefs: ReminderPref[] = (clientProfile?.appointment_reminders_prefs as ReminderPref[] | null)
+          ?? [{ value: 1, unit: 'days' }, { value: 2, unit: 'hours' }];
+
+        const reminderRows = prefs
+          .map((p) => {
+            const offsetMs = p.unit === 'days' ? p.value * 24 * 60 * 60 * 1000 : p.value * 60 * 60 * 1000;
+            const when = new Date(startsAt.getTime() - offsetMs);
+            // Skip reminders already in the past
+            if (when.getTime() <= Date.now()) return null;
+            const leadLabel = p.unit === 'days'
+              ? (p.value === 1 ? 'завтра' : `через ${p.value} дн.`)
+              : (p.value === 1 ? 'через 1 час' : `через ${p.value} ч`);
+            return {
+              profile_id: clientRow.profile_id,
+              channel: 'telegram' as const,
+              title: `⏰ Напоминание — ${leadLabel}`,
+              body: bodyText,
+              status: 'pending' as const,
+              scheduled_for: when.toISOString(),
+              data: {
+                type: 'appointment_reminder',
+                appointment_id: inserted?.id,
+                lead_value: p.value,
+                lead_unit: p.unit,
+              },
+            };
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+        if (reminderRows.length) {
+          await supabase.from('notifications').insert(reminderRows);
+        }
       }
     }
 

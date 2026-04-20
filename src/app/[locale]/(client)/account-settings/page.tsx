@@ -61,6 +61,12 @@ export default function ClientSettingsPage() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
 
+  // Appointment reminders preferences
+  type ReminderPref = { value: number; unit: 'hours' | 'days' };
+  const DEFAULT_REMINDERS: ReminderPref[] = [{ value: 1, unit: 'days' }, { value: 2, unit: 'hours' }];
+  const [reminders, setReminders] = useState<ReminderPref[]>(DEFAULT_REMINDERS);
+  const [remindersSaving, setRemindersSaving] = useState(false);
+
   useEffect(() => {
     (async () => {
       const supabase = createClient();
@@ -75,13 +81,41 @@ export default function ClientSettingsPage() {
       setProfileId(user.id);
       const { data } = await supabase
         .from('profiles')
-        .select('telegram_id, tg_2fa_enabled')
+        .select('telegram_id, tg_2fa_enabled, appointment_reminders_prefs')
         .eq('id', user.id)
         .maybeSingle();
       setTelegramLinked(Boolean(data?.telegram_id));
       setTwoFactorEnabled(Boolean(data?.tg_2fa_enabled));
+      const raw = (data as { appointment_reminders_prefs?: ReminderPref[] | null } | null)?.appointment_reminders_prefs;
+      if (Array.isArray(raw) && raw.length > 0) setReminders(raw);
     })();
   }, []);
+
+  async function saveReminders(next: ReminderPref[]) {
+    if (!profileId) return;
+    setRemindersSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('profiles').update({ appointment_reminders_prefs: next }).eq('id', profileId);
+    setRemindersSaving(false);
+    if (error) { toast.error(error.message); return; }
+    setReminders(next);
+  }
+
+  function addReminder() {
+    if (reminders.length >= 5) { toast.info('Максимум 5 напоминаний'); return; }
+    const next: ReminderPref[] = [...reminders, { value: 1, unit: 'hours' }];
+    saveReminders(next);
+  }
+
+  function updateReminder(idx: number, patch: Partial<ReminderPref>) {
+    const next = reminders.map((r, i) => i === idx ? { ...r, ...patch } : r);
+    saveReminders(next);
+  }
+
+  function removeReminder(idx: number) {
+    const next = reminders.filter((_, i) => i !== idx);
+    saveReminders(next);
+  }
 
   function switchLocale(next: string) {
     if (next === locale || !pathname) return;
@@ -338,6 +372,71 @@ export default function ClientSettingsPage() {
           label={t('changePhone')}
           onClick={changePhone}
         />
+      </Section>
+
+      <Section title="Напоминания о записях">
+        <div className="px-6 py-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Уведомление в Telegram приходит за указанное время до визита. Можно добавить до 5 напоминаний.
+          </p>
+          <div className="space-y-2">
+            {reminders.map((r, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground w-12">за</span>
+                <Select
+                  value={String(r.value)}
+                  onValueChange={(v) => updateReminder(idx, { value: Number(v) })}
+                  disabled={remindersSaving}
+                >
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={r.unit}
+                  onValueChange={(v) => updateReminder(idx, { unit: v as 'hours' | 'days' })}
+                  disabled={remindersSaving}
+                >
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hours">часов</SelectItem>
+                    <SelectItem value="days">дней</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground flex-1">до визита</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeReminder(idx)}
+                  disabled={remindersSaving}
+                  aria-label="Удалить"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          {reminders.length < 5 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={addReminder}
+              disabled={remindersSaving}
+            >
+              + Добавить напоминание
+            </Button>
+          )}
+          {reminders.length === 0 && (
+            <p className="text-xs text-muted-foreground">Напоминаний нет — вы не получите уведомлений о визитах.</p>
+          )}
+        </div>
       </Section>
 
       <Section title={t('privacy')}>
