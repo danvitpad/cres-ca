@@ -362,7 +362,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         <div className="mt-8 flex justify-center sm:justify-start">
           <Link
             href={`/ru/book?master=${master.id}`}
-            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-8 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-500/20 transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
           >
             <Calendar className="size-4" />
             Записаться

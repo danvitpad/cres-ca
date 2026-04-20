@@ -199,7 +199,7 @@ export default function MiniAppWelcomePage() {
             >
               <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
               <div className="mb-5 flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-rose-500/30">
+                <div className="flex size-10 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/25">
                   <LogIn className="size-5" />
                 </div>
                 <div>
@@ -260,7 +260,7 @@ function Feature({
 }) {
   return (
     <li className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500/30 to-rose-500/30">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-500/25">
         <Icon className="size-5 text-white" />
       </div>
       <div className="min-w-0">

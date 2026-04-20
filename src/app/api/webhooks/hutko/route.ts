@@ -13,15 +13,19 @@ export async function POST(request: Request) {
   const signature = request.headers.get('x-hutko-signature') ?? '';
   const raw = await request.text();
 
-  if (secret) {
-    const expected = createHmac('sha256', secret).update(raw).digest('hex');
-    const sigBuf = Buffer.from(signature, 'hex');
-    const expBuf = Buffer.from(expected, 'hex');
-    if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
-      return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
-    }
-  } else {
-    console.warn('[hutko] HUTKO_WEBHOOK_SECRET not configured — accepting without verification (stub mode)');
+  // Security: require configured secret. Previously accepted unsigned events
+  // in stub mode — that meant anyone POSTing to /api/webhooks/hutko could
+  // create payment_history rows and flip subscription status. Fixed 2026-04-20.
+  if (!secret) {
+    console.error('[hutko] HUTKO_WEBHOOK_SECRET not set — rejecting webhook');
+    return NextResponse.json({ error: 'webhook_not_configured' }, { status: 503 });
+  }
+
+  const expected = createHmac('sha256', secret).update(raw).digest('hex');
+  const sigBuf = Buffer.from(signature, 'hex');
+  const expBuf = Buffer.from(expected, 'hex');
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
+    return NextResponse.json({ error: 'invalid_signature' }, { status: 401 });
   }
 
   let event: { type?: string; data?: Record<string, unknown> };

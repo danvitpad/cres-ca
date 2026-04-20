@@ -17,12 +17,20 @@ export async function POST(request: Request) {
 
   if (!plan_slug) return NextResponse.json({ error: 'plan_slug_required' }, { status: 400 });
 
-  console.log('[hutko] create-checkout requested', { user: user.id, plan_slug, billing_period });
+  const hutkoReady = !!process.env.HUTKO_API_KEY;
+  console.log('[hutko] create-checkout requested', { user: user.id, plan_slug, billing_period, hutkoReady });
 
+  // When Hutko is fully integrated, this is where we'd POST to their
+  // checkout API and return the redirect URL. For now we return a
+  // structured stub so UI can detect and fall back to LiqPay via
+  // /api/payments/create.
   return NextResponse.json({
     url: null,
-    message: 'Оплата через hutko.org скоро будет доступна. Сейчас доступна LiqPay.',
+    message: hutkoReady
+      ? 'Hutko checkout API not wired yet (key present, client SDK missing).'
+      : 'Hutko не подключён (HUTKO_API_KEY не задан). Используйте LiqPay (/api/payments/create).',
     provider: 'hutko',
     stub: true,
+    fallback: '/api/payments/create',
   });
 }
