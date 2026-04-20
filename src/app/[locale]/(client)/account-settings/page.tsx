@@ -58,6 +58,8 @@ export default function ClientSettingsPage() {
   const [hideProfile, setHideProfile] = useState(false);
   const [shareLocation, setShareLocation] = useState(true);
   const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -67,14 +69,17 @@ export default function ClientSettingsPage() {
       } = await supabase.auth.getUser();
       if (!user?.id) {
         setTelegramLinked(false);
+        setTwoFactorEnabled(false);
         return;
       }
+      setProfileId(user.id);
       const { data } = await supabase
         .from('profiles')
-        .select('telegram_id')
+        .select('telegram_id, tg_2fa_enabled')
         .eq('id', user.id)
         .maybeSingle();
       setTelegramLinked(Boolean(data?.telegram_id));
+      setTwoFactorEnabled(Boolean(data?.tg_2fa_enabled));
     })();
   }, []);
 
@@ -138,6 +143,70 @@ export default function ClientSettingsPage() {
     const { error } = await createClient().auth.updateUser({ email: email.trim() });
     if (error) { toast.error(error.message); return; }
     toast.success(t('changeEmailSent') || 'Проверьте почту для подтверждения');
+  }
+
+  async function toggle2FA() {
+    if (!profileId) { toast.error(tc('error')); return; }
+
+    // Disable flow
+    if (twoFactorEnabled) {
+      const ok = await confirm({
+        title: 'Отключить 2FA?',
+        description: 'Коды подтверждения в Telegram больше не будут запрашиваться при входе.',
+        confirmLabel: 'Отключить',
+        destructive: true,
+      });
+      if (!ok) return;
+      const res = await fetch('/api/auth/2fa/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enable: false }),
+      });
+      if (!res.ok) { toast.error(tc('error')); return; }
+      setTwoFactorEnabled(false);
+      toast.success('2FA отключена');
+      return;
+    }
+
+    // Enable flow: requires Telegram linked
+    if (!telegramLinked) {
+      toast.error('Сначала привяжите Telegram для получения кода');
+      return;
+    }
+
+    // Step 1: send code
+    const sendRes = await fetch('/api/auth/2fa/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile_id: profileId }),
+    });
+    if (!sendRes.ok) {
+      const j = await sendRes.json().catch(() => ({}));
+      toast.error(j.error || 'Не удалось отправить код');
+      return;
+    }
+    toast.info('Код отправлен в ваш Telegram');
+
+    // Step 2: enter code
+    const code = window.prompt('Введите 6-значный код из Telegram', '');
+    if (!code || !/^\d{6}$/.test(code.trim())) {
+      toast.error('Нужен 6-значный код');
+      return;
+    }
+
+    // Step 3: toggle with code verification
+    const toggleRes = await fetch('/api/auth/2fa/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enable: true, code: code.trim() }),
+    });
+    const j = await toggleRes.json().catch(() => ({}));
+    if (!toggleRes.ok) {
+      toast.error(j.error === 'invalid_or_expired' ? 'Код истёк или неверный' : (j.error || tc('error')));
+      return;
+    }
+    setTwoFactorEnabled(true);
+    toast.success('2FA включена');
   }
 
   async function deleteAccount() {
@@ -255,7 +324,9 @@ export default function ClientSettingsPage() {
         <LinkRow
           icon={ShieldCheck}
           label={t('twoFactor')}
-          onClick={() => toast.info(t('twoFactorHint'))}
+          rightLabel={twoFactorEnabled === null ? '' : twoFactorEnabled ? 'Включено' : 'Выключено'}
+          connected={twoFactorEnabled === true}
+          onClick={toggle2FA}
         />
         <LinkRow
           icon={AtSign}

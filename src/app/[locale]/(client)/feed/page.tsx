@@ -467,22 +467,22 @@ export default function FeedPage() {
                 unwrapSalon(slot.master.salon),
                 cardLabels,
               );
-              const typeGradients: Record<string, string> = {
-                burning_slot: 'from-emerald-500 via-teal-500 to-cyan-600',
-                promotion: 'from-amber-400 via-rose-500 to-fuchsia-600',
-                before_after: 'from-violet-500 via-purple-500 to-indigo-600',
-                new_service: 'from-sky-500 via-blue-500 to-indigo-600',
-                update: 'from-zinc-500 via-slate-600 to-zinc-700',
+              const typeBgs: Record<string, string> = {
+                burning_slot: 'bg-emerald-600',
+                promotion: 'bg-rose-500',
+                before_after: 'bg-violet-600',
+                new_service: 'bg-sky-600',
+                update: 'bg-zinc-700',
               };
-              const gradient = typeGradients[slot.type] ?? typeGradients.update;
+              const gradient = typeBgs[slot.type] ?? typeBgs.update;
               return (
                 <Link
                   key={slot.id}
                   href={`/book?master_id=${slot.master.id}${slot.linked_service_id ? `&service_id=${slot.linked_service_id}` : ''}`}
                   className="group/slot relative flex h-[340px] w-[260px] shrink-0 flex-col overflow-hidden rounded-[28px] border border-border/50 bg-card shadow-[var(--shadow-card)] transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)]"
                 >
-                  {/* Hero — image or gradient fallback */}
-                  <div className={cn('relative h-[180px] w-full overflow-hidden bg-gradient-to-br', gradient)}>
+                  {/* Hero — image or solid-tinted fallback */}
+                  <div className={cn('relative h-[180px] w-full overflow-hidden', gradient)}>
                     {slot.image_url ? (
                       <img
                         src={slot.image_url}
@@ -839,7 +839,7 @@ function FeedCard({
 
       {/* Image — only renders when we have a valid src and onError hides the whole block */}
       {post.image_url && post.image_url.trim().length > 0 && (
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-gradient-to-br from-muted to-muted/60">
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
           <img
             src={post.image_url}
             alt=""
