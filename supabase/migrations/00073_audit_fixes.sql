@@ -10,7 +10,7 @@
 --   (C) defensive re-apply of 00068 RLS (service_categories / inventory_items /
 --       suppliers / promo_codes etc.) that was reportedly applied partially
 --   (D) solo-master display_name cleanup
---
+--  
 -- Column names verified against actual prod schema via REST probe on
 -- 2026-04-20 (reviews has reviewer_id/target_id polymorphic shape,
 -- service_materials has no master_id, inventory_usage has item_id).
@@ -49,15 +49,22 @@ CREATE POLICY "Clients insert own appointments" ON appointments
 
 
 -- ============================================================================
--- 2. payments — master manages own
+-- 2. payments — joined via appointment_id → appointments.master_id
+-- (prod payments table has ONLY appointment_id, no direct master_id/client_id)
 -- ============================================================================
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Masters manage own payments" ON payments;
 CREATE POLICY "Masters manage own payments" ON payments
   FOR ALL USING (
-    master_id IN (SELECT id FROM masters WHERE profile_id = auth.uid())
+    appointment_id IN (
+      SELECT id FROM appointments
+      WHERE master_id IN (SELECT id FROM masters WHERE profile_id = auth.uid())
+    )
   ) WITH CHECK (
-    master_id IN (SELECT id FROM masters WHERE profile_id = auth.uid())
+    appointment_id IN (
+      SELECT id FROM appointments
+      WHERE master_id IN (SELECT id FROM masters WHERE profile_id = auth.uid())
+    )
   );
 
 
