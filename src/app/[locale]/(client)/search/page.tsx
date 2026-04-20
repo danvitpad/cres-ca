@@ -153,7 +153,7 @@ export default function SearchPage() {
       let mQ = supabase
         .from('masters')
         .select(
-          'id, specialization, rating, city, latitude, longitude, display_name, avatar_url, salon_id, is_active, profiles(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating)',
+          'id, specialization, rating, city, latitude, longitude, display_name, avatar_url, salon_id, is_active, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating)',
         )
         .eq('is_active', true)
         .limit(60);

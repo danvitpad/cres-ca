@@ -27,7 +27,7 @@ export async function GET(
 
   const { data: members } = await supabase
     .from('salon_members')
-    .select('id, profile_id, master_id, role, status, commission_percent, rent_amount, joined_at, profiles(id, full_name, avatar_url), masters(id, display_name, avatar_url, specialization)')
+    .select('id, profile_id, master_id, role, status, commission_percent, rent_amount, joined_at, profiles:profiles!salon_members_profile_id_fkey(id, full_name, avatar_url), masters(id, display_name, avatar_url, specialization)')
     .eq('salon_id', salonId)
     .neq('status', 'removed')
     .order('joined_at', { ascending: true });

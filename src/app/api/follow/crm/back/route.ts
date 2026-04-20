@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   // Verify caller is a master
   const { data: master } = await supabase
     .from('masters')
-    .select('id, display_name, profiles(full_name)')
+    .select('id, display_name, profiles:profiles!masters_profile_id_fkey(full_name)')
     .eq('profile_id', user.id)
     .maybeSingle();
 

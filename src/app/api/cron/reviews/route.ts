@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const { data: appointments } = await supabase
     .from('appointments')
     .select(
-      'id, master_id, ends_at, clients(profile_id, full_name), services(name), masters(display_name, profiles(full_name))',
+      'id, master_id, ends_at, clients(profile_id, full_name), services(name), masters(display_name, profiles:profiles!masters_profile_id_fkey(full_name))',
     )
     .eq('status', 'completed')
     .gte('ends_at', from.toISOString())

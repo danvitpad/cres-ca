@@ -308,20 +308,8 @@ export default function WalletPage() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="relative overflow-hidden rounded-[28px] bg-[#0b0b14] p-8 text-white shadow-[0_30px_80px_-30px_rgba(80,30,180,0.55)]"
+            className="relative overflow-hidden rounded-[28px] bg-[#0b0b14] p-8 text-white border border-white/10"
           >
-            <motion.div
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 40, ease: 'linear', repeat: Infinity }}
-              className="pointer-events-none absolute -inset-[40%] opacity-80"
-              style={{
-                background:
-                  'conic-gradient(from 90deg at 50% 50%, #6d28d9 0%, #db2777 25%, #f59e0b 50%, #6d28d9 75%, #6d28d9 100%)',
-                filter: 'blur(80px)',
-              }}
-            />
-            <div className="absolute inset-0 bg-[#0b0b14]/55" />
-            <div className="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
             <div className="relative flex items-start justify-between">
               <div className="space-y-1">

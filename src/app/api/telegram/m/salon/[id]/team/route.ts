@@ -55,7 +55,7 @@ export async function POST(
   const { data: members } = await admin
     .from('salon_members')
     .select(
-      'id, profile_id, master_id, role, status, commission_percent, rent_amount, profiles(full_name, avatar_url), masters(display_name, avatar_url, specialization)',
+      'id, profile_id, master_id, role, status, commission_percent, rent_amount, profiles:profiles!salon_members_profile_id_fkey(full_name, avatar_url), masters(display_name, avatar_url, specialization)',
     )
     .eq('salon_id', salonId)
     .neq('status', 'removed')

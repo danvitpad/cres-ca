@@ -21,10 +21,10 @@ export async function GET() {
     .select(`
       id, master_id, partner_id, status, initiated_at, accepted_at, note,
       initiator:masters!master_partnerships_master_id_fkey(
-        id, specialization, profile:profiles(full_name, avatar_url, slug)
+        id, specialization, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug)
       ),
       target:masters!master_partnerships_partner_id_fkey(
-        id, specialization, profile:profiles(full_name, avatar_url, slug)
+        id, specialization, profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug)
       )
     `)
     .or(`master_id.eq.${me.id},partner_id.eq.${me.id}`)

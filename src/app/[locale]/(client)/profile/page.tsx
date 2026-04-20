@@ -191,10 +191,7 @@ export default function ProfilePage() {
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-[28px] border border-border/60 bg-card shadow-[var(--shadow-card)]"
       >
-        <div className="relative h-40 bg-gradient-to-br from-[var(--ds-accent)] via-purple-500 to-pink-500">
-          <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_30%_20%,white,transparent_50%)]" />
-          <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_80%_60%,white,transparent_40%)]" />
-        </div>
+        <div className="relative h-32 bg-[var(--ds-accent)]/10 border-b border-border/50" />
 
         <div className="px-6 pb-6 pt-0 sm:px-8">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:gap-6">

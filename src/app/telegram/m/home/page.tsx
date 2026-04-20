@@ -181,7 +181,7 @@ export default function MasterMiniAppHome() {
       {briefLoading ? (
         <div className="h-20 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
       ) : brief ? (
-        <div className="relative overflow-hidden rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/[0.07] to-fuchsia-500/[0.03] p-4">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <div className="flex items-start gap-3">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10">
               <Robot size={18} weight="fill" className="text-violet-300" />

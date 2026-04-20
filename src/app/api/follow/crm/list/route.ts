@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabase
       .from('client_master_links')
-      .select('master_id, linked_at, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, display_name, specialization, avatar_url, profiles(full_name, avatar_url))')
+      .select('master_id, linked_at, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, display_name, specialization, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url))')
       .eq('profile_id', pid)
       .order('linked_at', { ascending: false })
       .limit(200);

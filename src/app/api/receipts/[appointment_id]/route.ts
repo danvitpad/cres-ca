@@ -20,7 +20,7 @@ export async function GET(
   const { data: apt } = await supabase
     .from('appointments')
     .select(
-      'id, starts_at, total_price, currency, master_id, clients(full_name, phone), services(name, duration_minutes), masters(display_name, business_name, tax_id, tax_group, tax_rate_percent, address, city, profiles(full_name, phone))',
+      'id, starts_at, total_price, currency, master_id, clients(full_name, phone), services(name, duration_minutes), masters(display_name, business_name, tax_id, tax_group, tax_rate_percent, address, city, profiles:profiles!masters_profile_id_fkey(full_name, phone))',
     )
     .eq('id', appointment_id)
     .single();
