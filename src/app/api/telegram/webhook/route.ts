@@ -224,10 +224,16 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
   } catch (err) {
     const msg = (err as Error)?.message ?? '';
     console.error('Voice processing error:', err);
-    let userMsg = '❌ Не удалось обработать голосовое. Попробуй ещё раз.';
-    if (msg.includes('Gemini unavailable')) userMsg = '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.';
-    else if (msg.includes('Gemini 4')) userMsg = '❌ AI отказал в запросе (формат аудио/квота). Запиши заново более чётко.';
-    else if (msg.includes('Could not get Telegram file')) userMsg = '❌ Не удалось скачать голосовое из Telegram. Запиши заново.';
+    let userMsg = '❌ Не удалось обработать голосовое. Попробуй ещё раз, говори чётче.';
+    if (msg.includes('All Gemini') || msg.includes('Gemini unavailable')) {
+      userMsg = '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.';
+    } else if (msg.includes('Gemini 4')) {
+      userMsg = '❌ AI не смог разобрать аудио (формат или квота). Запиши заново более чётко.';
+    } else if (msg.includes('Could not get Telegram file')) {
+      userMsg = '❌ Не удалось скачать голосовое из Telegram. Запиши заново.';
+    } else if (msg.includes('unparseable')) {
+      userMsg = '❌ AI не понял что нужно сделать. Опиши конкретнее: "напомни", "запиши", "потратил", "добавь день рождения" и т.д.';
+    }
     await sendMessage(chatId, userMsg);
   }
 }
@@ -875,6 +881,80 @@ async function routeVoiceAction(
         },
       });
       await logAiAction(supabase, masterId, { actionType: 'query', inputText: intent.raw_transcript, status: 'success' });
+      break;
+    }
+
+    case 'client_update': {
+      if (!intent.client_name) {
+        await sendMessage(chatId, '❓ Скажи имя клиента: «добавь Таисии день рождения 5 марта 1998».');
+        await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'needs_confirmation', errorMessage: 'no_client_name' });
+        break;
+      }
+      if (!intent.field || !intent.value) {
+        await sendMessage(chatId, '❓ Не понял что именно обновить. Попробуй: «у Ани телефон 0671234567», «добавь Маше день рождения 12 мая 1990».');
+        await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'needs_confirmation', errorMessage: 'no_field_or_value' });
+        break;
+      }
+
+      const clients = await findClientsFuzzy(supabase, masterId, intent.client_name, 1);
+      if (!clients || clients.length === 0) {
+        await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден в базе.`);
+        await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'client_not_found' });
+        break;
+      }
+      const client = clients[0];
+
+      // Map AI field → DB column + value shape
+      const allowed: Record<string, (v: string) => Record<string, unknown> | null> = {
+        date_of_birth: (v) => {
+          // Accept YYYY-MM-DD or DD.MM.YYYY
+          const iso = /^\d{4}-\d{2}-\d{2}$/.test(v) ? v
+            : /^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/.test(v)
+              ? v.replace(/^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/, (_, d, m, y) => `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`)
+              : null;
+          return iso ? { date_of_birth: iso } : null;
+        },
+        phone: (v) => ({ phone: v.replace(/\s+/g, '') }),
+        email: (v) => ({ email: v.trim().toLowerCase() }),
+        full_name: (v) => ({ full_name: v.trim() }),
+        allergies: (v) => ({ allergies: v.split(/[,;]+/).map((s) => s.trim()).filter(Boolean) }),
+        notes: (v) => ({ notes: v.trim() }),
+      };
+      const mapper = allowed[intent.field];
+      if (!mapper) {
+        await sendMessage(chatId, `❓ Поле «${intent.field}» нельзя обновить голосом.`);
+        await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'failed', errorMessage: `field_not_allowed:${intent.field}` });
+        break;
+      }
+      const patch = mapper(intent.value);
+      if (!patch) {
+        await sendMessage(chatId, `❓ Не понял значение «${intent.value}». Для даты используй формат 5 марта 1998 или 05.03.1998.`);
+        await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'failed', errorMessage: 'invalid_value' });
+        break;
+      }
+
+      const { error } = await supabase.from('clients').update(patch).eq('id', client.id);
+      if (error) {
+        await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'failed', errorMessage: error.message, relatedClientId: client.id });
+        await sendMessage(chatId, `❌ Не удалось обновить: ${error.message}`);
+        break;
+      }
+
+      const fieldLabel: Record<string, string> = {
+        date_of_birth: 'День рождения', phone: 'Телефон', email: 'Email',
+        full_name: 'Имя', allergies: 'Аллергии', notes: 'Заметка',
+      };
+      await logAiAction(supabase, masterId, {
+        actionType: 'client_update',
+        inputText: intent.raw_transcript,
+        status: 'success',
+        result: { client_id: client.id, field: intent.field, value: intent.value },
+        relatedClientId: client.id,
+      });
+      await sendMessage(chatId,
+        `✅ <b>Обновлено</b>\n\n👤 ${client.full_name}\n${fieldLabel[intent.field] ?? intent.field}: ${intent.value}`,
+        { parse_mode: 'HTML' },
+      );
       break;
     }
 

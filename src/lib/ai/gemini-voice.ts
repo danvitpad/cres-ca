@@ -17,6 +17,7 @@ export type VoiceAction =
   | 'expense_recurring'
   | 'revenue'
   | 'client_note'
+  | 'client_update'
   | 'inventory'
   | 'cancel'
   | 'reschedule'
@@ -24,6 +25,8 @@ export type VoiceAction =
   | 'supplier_order'
   | 'query'
   | 'unknown';
+
+export type ClientField = 'date_of_birth' | 'phone' | 'email' | 'full_name' | 'allergies' | 'notes';
 
 export interface VoiceIntent {
   action: VoiceAction;
@@ -44,6 +47,9 @@ export interface VoiceIntent {
   // supplier_order
   supplier_name?: string | null;
   channel?: 'telegram' | 'email' | null;
+  // client_update
+  field?: ClientField | null;
+  value?: string | null;
 }
 
 const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/service индустрии. Мастер отправляет голосовое сообщение или текст.
@@ -67,7 +73,14 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
 - "expense" — разовая трата денег (купил краску за 500, заплатил курьеру)
 - "expense_recurring" — РЕГУЛЯРНЫЙ расход (аренда 5000 каждое 1-е число, интернет 300 каждое 15-е). Обязательно поле day_of_month (1-28). Поле category — тип (Аренда/Коммунальные/Связь/Прочее).
 - "revenue" — приход/выручка (перечисление "Аня стрижка 1200, Маша окрашивание 2500")
-- "client_note" — заметка о клиенте (аллергия, питомцы, предпочтения)
+- "client_note" — свободная заметка о клиенте (питомцы, особенности, характер, наблюдения). Идёт в поле notes.
+- "client_update" — обновить КОНКРЕТНОЕ поле клиента. Используй когда мастер прямо говорит "добавь/укажи/поменяй [поле] у клиента". Поля (field):
+   * "date_of_birth" — день рождения (value в ISO YYYY-MM-DD)
+   * "phone" — телефон
+   * "email" — email
+   * "full_name" — переименовать клиента
+   * "allergies" — аллергия (несколько разделяй запятыми)
+   * "notes" — заменить (не добавить!) основную заметку
 - "inventory" — физическое списание со склада (200 мл краски, 3 шт перчаток). БЕЗ денег.
 - "supplier_order" — заказ у поставщика ("заказать у Ивана 5 кг краски и 3 щётки, отправить на телеграм"). Поля: supplier_name, items[{name, quantity, unit}], channel ('telegram' | 'email' | null).
 - "create_client" — добавить нового клиента (client_name обязательно, phone опционально, notes опционально)
@@ -110,6 +123,15 @@ const SYSTEM_PROMPT = `Ты — AI-ассистент мастера beauty/serv
 
 "у Даши чихуахуа Буся":
 {"action":"client_note","text":"Чихуахуа Буся","client_name":"Даша","due_at":null,"amount":null,"service_name":null,"raw_transcript":"...","confidence":0.9}
+
+"добавь Таисии день рождения 5 марта 1998":
+{"action":"client_update","text":"ДР Таисии: 05.03.1998","client_name":"Таисия","field":"date_of_birth","value":"1998-03-05","due_at":null,"amount":null,"service_name":null,"raw_transcript":"...","confidence":0.95}
+
+"у Анны теперь телефон 0671234567":
+{"action":"client_update","text":"Телефон Анны: 0671234567","client_name":"Анна","field":"phone","value":"0671234567","due_at":null,"amount":null,"service_name":null,"raw_transcript":"...","confidence":0.95}
+
+"у Марии аллергия на аммиак и перекись":
+{"action":"client_update","text":"Аллергия Марии: аммиак, перекись","client_name":"Мария","field":"allergies","value":"аммиак, перекись","due_at":null,"amount":null,"service_name":null,"raw_transcript":"...","confidence":0.9}
 
 "списал 200 мл краски":
 {"action":"inventory","text":"Списание 200 мл краски","service_name":"краска","amount":200,"client_name":null,"due_at":null,"raw_transcript":"...","confidence":0.9}
