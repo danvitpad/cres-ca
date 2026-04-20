@@ -162,6 +162,11 @@ export default function MiniAppSettingsPage() {
     if (signingOut) return;
     haptic('medium');
     setSigningOut(true);
+    // HARD sign-out: unlink TG from the current profile first, else
+    // /telegram auto-relinks back the moment we redirect there.
+    try {
+      await fetch('/api/telegram/unlink', { method: 'POST' });
+    } catch {}
     const supabase = createClient();
     await supabase.auth.signOut();
     clearAuth();
