@@ -91,9 +91,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  if (profile.telegram_id && profile.telegram_id !== tg.id) {
-    return NextResponse.json({ error: 'already_linked_other' }, { status: 409 });
-  }
+  // Allow relink: same TG can switch between CRES-CA profiles.
+  // Detach THIS tg.id from whatever other profile currently holds it
+  // so each TG id maps to exactly one profile at a time.
+  await admin
+    .from('profiles')
+    .update({ telegram_id: null, telegram_linked_at: null })
+    .eq('telegram_id', tg.id)
+    .neq('id', profile.id);
 
   await admin
     .from('profiles')
