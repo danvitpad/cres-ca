@@ -47,8 +47,10 @@ interface PeriodMetrics {
 interface PaymentRow {
   id: string; amount: number; currency: string; type: string;
   payment_method: string | null; created_at: string;
-  services: { name: string } | null;
-  appointment: { client: { full_name: string } | null } | null;
+  appointment: {
+    service: { name: string } | null;
+    client: { full_name: string } | null;
+  } | null;
 }
 
 interface ManualIncomeRow {
@@ -134,7 +136,7 @@ export default function FinancePage() {
         p_start: prev.start.toISOString(),
         p_end: prev.end.toISOString(),
       }),
-      supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, services(name), appointment:appointments(client:clients(full_name))')
+      supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, appointment:appointments(service:services(name), client:clients(full_name))')
         .eq('master_id', master.id).eq('status', 'completed')
         .gte('created_at', period.start.toISOString()).lte('created_at', period.end.toISOString())
         .order('created_at', { ascending: false }).limit(50),
@@ -166,7 +168,7 @@ export default function FinancePage() {
     const svcMap = new Map<string, { total: number; count: number }>();
     paymentsData.forEach(p => {
       if (p.type === 'refund') return;
-      const name = p.services?.name || 'Без услуги';
+      const name = p.appointment?.service?.name || 'Без услуги';
       const entry = svcMap.get(name) || { total: 0, count: 0 };
       entry.total += Number(p.amount);
       entry.count += 1;
@@ -318,7 +320,7 @@ export default function FinancePage() {
       id: `p_${p.id}`,
       date: p.created_at,
       amount: Number(p.amount),
-      title: p.services?.name || 'Оплата',
+      title: p.appointment?.service?.name || 'Оплата',
       subtitle: p.appointment?.client?.full_name || '—',
       source: 'payment' as const,
     }));
