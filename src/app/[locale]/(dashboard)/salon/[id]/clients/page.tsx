@@ -114,7 +114,7 @@ export default function SalonClientsPage() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3"
       >
-        <div className="size-11 rounded-xl bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white">
+        <div className="size-11 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-300">
           <Building2 className="size-5" />
         </div>
         <div>
