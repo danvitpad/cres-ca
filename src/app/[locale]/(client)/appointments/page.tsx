@@ -183,7 +183,7 @@ export default function AppointmentsPage() {
         master:masters(
           id, display_name, avatar_url, specialization, salon_id, cancellation_policy,
           profile:profiles!masters_profile_id_fkey(full_name, avatar_url),
-          salon:salons(id, name, logo_url, city, rating)
+          salon:salons(id, name, logo_url, city)
         ),
         client:clients(family_link_id, family_link:family_links(member_name))
       `)

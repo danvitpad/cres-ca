@@ -166,7 +166,7 @@ export default function FeedPage() {
       .from('feed_posts')
       .select(`
         id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))
+        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))
       `)
       .order('created_at', { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -182,7 +182,7 @@ export default function FeedPage() {
       .from('client_master_links')
       .select(`
         master_id,
-        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))
+        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))
       `)
       .limit(20);
     return (data ?? []).map((d) => ({ ...d, hasNewPosts: false })) as unknown as FollowedMaster[];
@@ -194,7 +194,7 @@ export default function FeedPage() {
       .from('feed_posts')
       .select(`
         id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))
+        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))
       `)
       .in('type', ['burning_slot', 'promotion', 'before_after', 'new_service', 'update'])
       .order('created_at', { ascending: false })
@@ -211,7 +211,7 @@ export default function FeedPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from('masters')
-      .select('id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating)')
+      .select('id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city)')
       .limit(8);
     return (data ?? []).map((master) => ({
       master_id: master.id,
@@ -242,7 +242,7 @@ export default function FeedPage() {
           // Cross-master recommendations: "Your nail master suggests this massage therapist"
           const { data: recs } = await supabase
             .from('master_recommendations')
-            .select('id, note, from_master:masters!master_recommendations_from_master_id_fkey(display_name, profile:profiles!masters_profile_id_fkey(full_name)), to_master:masters!master_recommendations_to_master_id_fkey(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))')
+            .select('id, note, from_master:masters!master_recommendations_from_master_id_fkey(display_name, profile:profiles!masters_profile_id_fkey(full_name)), to_master:masters!master_recommendations_to_master_id_fkey(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))')
             .in('client_id', clientIds)
             .eq('status', 'pending')
             .order('created_at', { ascending: false })
@@ -272,7 +272,7 @@ export default function FeedPage() {
 
           const { data: appt } = await supabase
             .from('appointments')
-            .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))')
+            .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))')
             .in('client_id', clientIds)
             .gte('starts_at', new Date().toISOString())
             .order('starts_at', { ascending: true })
@@ -296,7 +296,7 @@ export default function FeedPage() {
             // Only surface if ≥3 visits with the same pair AND no upcoming appointment.
             const { data: completed } = await supabase
               .from('appointments')
-              .select('master_id, service_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))')
+              .select('master_id, service_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))')
               .in('client_id', clientIds)
               .eq('status', 'completed')
               .order('starts_at', { ascending: false })

@@ -56,7 +56,7 @@ export async function GET(req: Request) {
   type MasterRow = { id: string; profile_id: string; salon_id: string | null; specialization: string | null; salon: SalonEmbed | SalonEmbed[] | null };
   const { data: masterRows } = await supabase
     .from('masters')
-    .select('id, profile_id, salon_id, specialization, salon:salons(id, name, logo_url, city, rating)')
+    .select('id, profile_id, salon_id, specialization, salon:salons(id, name, logo_url, city)')
     .in('profile_id', safeAuthorIds);
   const masterByProfile = new Map<string, { id: string; salon_id: string | null; specialization: string | null; salon: SalonEmbed | null }>();
   for (const m of (masterRows ?? []) as MasterRow[]) {

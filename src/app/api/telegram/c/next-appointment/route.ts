@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   const { data: apt } = await admin
     .from('appointments')
-    .select('id, starts_at, price, master:masters(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city, rating)), service:services(name)')
+    .select('id, starts_at, price, master:masters(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city)), service:services(name)')
     .in('client_id', clientIds)
     .gte('starts_at', new Date().toISOString())
     .in('status', ['booked', 'confirmed'])

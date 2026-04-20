@@ -82,7 +82,7 @@ export default function MyMastersPage() {
       const { data: links } = await supabase
         .from('client_master_links')
         .select(
-          'master_id, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, salon_id, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url), salon:salons(id, name, logo_url, city, rating))',
+          'master_id, master_follows_back, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, salon_id, profiles:profiles!masters_profile_id_fkey(id, full_name, avatar_url), salon:salons(id, name, logo_url, city))',
         )
         .eq('profile_id', userId);
 

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   );
 
   const masterSelect =
-    'id, specialization, rating, salon_id, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city, rating)';
+    'id, specialization, rating, salon_id, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city)';
 
   // Name-based search — ignores geo, returns matching masters + salons globally
   if (hasQuery) {
