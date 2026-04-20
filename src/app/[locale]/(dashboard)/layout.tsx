@@ -131,16 +131,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 padding: '0 14px',
                 borderRadius: 999,
                 border: 'none',
-                background: 'linear-gradient(135deg, #6950f3 0%, #8b6cf7 100%)',
+                background: '#7c3aed',
                 color: '#ffffff',
                 fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
-                transition: 'opacity 150ms',
+                transition: 'background-color 150ms',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#6d28d9'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
             >
               {t('header.continueSetup')}
             </button>
