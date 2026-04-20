@@ -165,7 +165,7 @@ function SalonShellInner({
 
   if (loading) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#111214] text-white">
+      <div className="flex h-dvh items-center justify-center bg-[#0b0d17] text-white">
         <Loader2 className="size-6 animate-spin text-white/40" />
       </div>
     );
@@ -173,7 +173,7 @@ function SalonShellInner({
 
   if (error || !data) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-[#111214] text-white p-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-[#0b0d17] text-white p-6 text-center">
         <div className="text-sm text-white/60">
           {error === '403' ? 'Нет доступа к этому салону' : 'Не удалось открыть салон'}
         </div>
@@ -193,9 +193,9 @@ function SalonShellInner({
     data.role === 'admin' ? 'Владелец' : data.role === 'receptionist' ? 'Ресепшн' : 'Мастер';
 
   return (
-    <div className="flex h-dvh flex-col bg-[#111214] text-white">
+    <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
       <header
-        className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#111214]/95 backdrop-blur-xl"
+        className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
         style={{ paddingTop: 'calc(8px + var(--tg-safe-top, 0px))' }}
       >
         <ContextSwitcher salonName={data.salon.name} isSoloMaster={data.is_solo_master} />

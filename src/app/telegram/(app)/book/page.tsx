@@ -1232,7 +1232,7 @@ export default function MiniAppBookPage() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-white/10 bg-[#1f2023] px-5 pb-10 pt-6"
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-white/10 bg-[#0b0d17] px-5 pb-10 pt-6"
             >
               {/* Handle */}
               <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />

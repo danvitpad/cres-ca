@@ -36,9 +36,9 @@ export default function TelegramEntryPage() {
       webapp.expand();
       try { webapp.disableVerticalSwipes(); } catch {}
       try {
-        webapp.setHeaderColor('#1f2023');
-        webapp.setBackgroundColor('#1f2023');
-        webapp.setBottomBarColor('#1f2023');
+        webapp.setHeaderColor('#0b0d17');
+        webapp.setBackgroundColor('#0b0d17');
+        webapp.setBottomBarColor('#0b0d17');
       } catch {}
 
       const initData = webapp.initData;
@@ -116,7 +116,7 @@ export default function TelegramEntryPage() {
   }, [router, setAuth]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#1f2023] text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0b0d17] text-white">
       {error ? (
         <div className="text-center space-y-2 px-6">
           <p className="text-rose-400">{error}</p>

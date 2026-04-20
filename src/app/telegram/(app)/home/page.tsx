@@ -256,7 +256,7 @@ export default function MiniAppHomePage() {
                 className="flex w-[68px] shrink-0 flex-col items-center gap-1.5"
               >
                 <div className="rounded-full border border-violet-500 p-[2px]">
-                  <div className="rounded-full bg-[#1f2023] p-[2px]">
+                  <div className="rounded-full bg-[#0b0d17] p-[2px]">
                     <div className="flex size-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
                       {sd.avatarSrc ? (
                         // eslint-disable-next-line @next/next/no-img-element

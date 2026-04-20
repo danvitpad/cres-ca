@@ -200,7 +200,7 @@ export default function MiniAppRegisterPage() {
   }
 
   if (!stash) {
-    return <div className="min-h-dvh bg-[#1f2023]" />;
+    return <div className="min-h-dvh bg-[#0b0d17]" />;
   }
 
   if (otpStage === 'otp') {
@@ -208,7 +208,7 @@ export default function MiniAppRegisterPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex min-h-dvh flex-col bg-[#1f2023] text-white"
+        className="flex min-h-dvh flex-col bg-[#0b0d17] text-white"
       >
         <div className="flex-1 space-y-6 px-6 pt-16">
           <div className="space-y-3 text-center">
@@ -262,7 +262,7 @@ export default function MiniAppRegisterPage() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex min-h-dvh flex-col bg-[#1f2023] text-white"
+      className="flex min-h-dvh flex-col bg-[#0b0d17] text-white"
     >
       <div className="flex-1 space-y-6 px-6 pt-10 pb-6">
         <div className="space-y-2 text-center">
@@ -411,7 +411,7 @@ export default function MiniAppRegisterPage() {
       </div>
 
       <div
-        className="sticky bottom-0 space-y-2 bg-gradient-to-t from-[#1f2023] via-[#1f2023] to-transparent px-6 pb-6 pt-8"
+        className="sticky bottom-0 space-y-2 bg-gradient-to-t from-[#0b0d17] via-[#0b0d17] to-transparent px-6 pb-6 pt-8"
         style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
       >
         {done ? (

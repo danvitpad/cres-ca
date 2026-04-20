@@ -299,7 +299,7 @@ export default function MiniAppSettingsPage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#1f2023] p-5"
+              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#0b0d17] p-5"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="mb-4 flex items-center justify-between">
@@ -385,7 +385,7 @@ export default function MiniAppSettingsPage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#1f2023] p-5"
+              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#0b0d17] p-5"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="mb-4 flex items-center justify-between">

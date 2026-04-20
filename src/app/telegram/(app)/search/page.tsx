@@ -368,7 +368,7 @@ export default function MiniAppSearchPage() {
                 key={mode}
                 onClick={() => { haptic('selection'); setView(mode); }}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                  view === mode ? 'bg-white text-[#1f2023]' : 'text-white/60'
+                  view === mode ? 'bg-white text-[#0b0d17]' : 'text-white/60'
                 }`}
               >
                 <Icon className="size-3" />
@@ -468,7 +468,7 @@ export default function MiniAppSearchPage() {
           />
 
           {!loading && (
-            <div className="absolute left-3 top-3 z-[500] rounded-full border border-white/10 bg-[#1f2023]/90 px-3 py-1.5 text-[11px] font-semibold tabular-nums">
+            <div className="absolute left-3 top-3 z-[500] rounded-full border border-white/10 bg-[#0b0d17]/90 px-3 py-1.5 text-[11px] font-semibold tabular-nums">
               {markers.length} · {salonMarkers.length}
             </div>
           )}
@@ -536,7 +536,7 @@ export default function MiniAppSearchPage() {
                   onClick={() => setCategory(c.key)}
                   className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                     category === c.key
-                      ? 'border-white bg-white text-[#1f2023]'
+                      ? 'border-white bg-white text-[#0b0d17]'
                       : 'border-white/15 text-white/70 active:bg-white/[0.06]'
                   }`}
                 >
@@ -575,7 +575,7 @@ export default function MiniAppSearchPage() {
             </button>
             <button
               onClick={() => { haptic('light'); setFiltersOpen(false); }}
-              className="flex-1 rounded-xl bg-white py-3 text-sm font-semibold text-[#1f2023] active:opacity-90"
+              className="flex-1 rounded-xl bg-white py-3 text-sm font-semibold text-[#0b0d17] active:opacity-90"
             >
               Показать ({total})
             </button>

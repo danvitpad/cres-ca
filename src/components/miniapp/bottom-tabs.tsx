@@ -28,7 +28,7 @@ export function BottomTabs({ tabs, showLabels = false }: { tabs: readonly Bottom
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#111214]/95 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
       style={{
         paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
       }}

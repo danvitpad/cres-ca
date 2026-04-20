@@ -14,8 +14,8 @@ export default function TermsPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-dvh bg-[#1f2023] text-white">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/10 bg-[#1f2023]/95 px-4 py-3 backdrop-blur-xl">
+    <div className="min-h-dvh bg-[#0b0d17] text-white">
+      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-white/10 bg-[#0b0d17]/95 px-4 py-3 backdrop-blur-xl">
         <button
           onClick={() => router.back()}
           className="flex size-9 items-center justify-center rounded-xl bg-white/5 active:scale-95 transition-transform"

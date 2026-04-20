@@ -36,7 +36,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
 
   return (
     <TelegramProvider>
-      <div className="flex h-dvh flex-col bg-[#1f2023] text-white">
+      <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
         <main
           className="flex-1 overflow-y-auto"
           style={{
@@ -47,7 +47,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
           {children}
         </main>
         <nav
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#1f2023]/95 backdrop-blur-xl"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
           style={{
             paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
           }}

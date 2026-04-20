@@ -1,6 +1,6 @@
 /** --- YAML
  * name: TelegramMasterMiniAppLayout
- * description: Master Mini App shell — unified dark theme matching web (#111214), 5-tab icon-only bottom bar (Home, Calendar, Clients, Notifications, Profile) via Phosphor. Finance moved to Web-only (dashboard /finance); Mini App /stats page remains accessible from Profile.
+ * description: Master Mini App shell — unified dark theme matching web (#0b0d17), 5-tab icon-only bottom bar (Home, Calendar, Clients, Notifications, Profile) via Phosphor. Finance moved to Web-only (dashboard /finance); Mini App /stats page remains accessible from Profile.
  * created: 2026-04-13
  * updated: 2026-04-19
  * --- */
@@ -104,7 +104,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
 
   if (checking) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#111214] text-white">
+      <div className="flex h-dvh items-center justify-center bg-[#0b0d17] text-white">
         <Loader2 className="size-6 animate-spin text-white/40" />
       </div>
     );
@@ -150,7 +150,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
 
   return (
     <TelegramProvider>
-      <div className="flex h-dvh flex-col bg-[#111214] text-white">
+      <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
         <main
           className="flex-1 overflow-y-auto"
           style={{
