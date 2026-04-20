@@ -121,18 +121,23 @@ export function NewAppointmentDialog({
 
     if (error) { toast.error(error.message); return; }
 
-    // Fire-and-forget notification to client
+    // Fire-and-forget notification to client — via /api/notifications/dispatch
+    // so it's delivered to Telegram immediately (not queued for daily cron).
     if (clientId) {
       const { data: clientRow } = await supabase
         .from('clients').select('profile_id').eq('id', clientId).single();
       if (clientRow?.profile_id) {
-        await supabase.from('notifications').insert({
-          profile_id: clientRow.profile_id,
-          channel: 'push',
-          title: 'Новая запись',
-          body: `${service.name} — ${new Date(startsAt).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`,
-          data: { type: 'new_appointment', appointment_id: inserted?.id },
-        });
+        const when = new Date(startsAt).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        fetch('/api/notifications/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profile_id: clientRow.profile_id,
+            title: '📅 Вам записали визит',
+            body: `${service.name}\n${when}`,
+            data: { type: 'new_appointment', appointment_id: inserted?.id },
+          }),
+        }).catch(() => { /* fire-and-forget */ });
       }
     }
 
