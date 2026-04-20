@@ -146,21 +146,52 @@ export function NewAppointmentDialog({
       const { data: clientRow } = await supabase
         .from('clients').select('profile_id').eq('id', clientId).single();
       if (clientRow?.profile_id) {
-        const when = new Date(startsAt).toLocaleString('ru', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        // Full master name: prefer profile.full_name, fall back to masters.display_name
+        const { data: masterRow2 } = await supabase
+          .from('masters')
+          .select('display_name, profile:profiles!masters_profile_id_fkey(full_name)')
+          .eq('id', masterId)
+          .maybeSingle();
+        const mProfile = (masterRow2 as { profile?: { full_name?: string } | null } | null)?.profile;
+        const mDisplay = (masterRow2 as { display_name?: string | null } | null)?.display_name;
+        const masterName = mProfile?.full_name || mDisplay || 'мастер';
+
+        const dateStr = startsAt.toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' });
+        const timeStr = startsAt.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+        const priceNum = Number(service.price || 0);
+        const priceStr = priceNum > 0
+          ? `${priceNum.toLocaleString('ru')} ${service.currency || 'UAH'}`
+          : 'не указана';
+        const durMin = service.duration_minutes;
+        const durHours = Math.floor(durMin / 60);
+        const durRest = durMin % 60;
+        const durStr = durHours > 0
+          ? `${durHours} ч${durRest ? ` ${durRest} мин` : ''}`
+          : `${durRest} мин`;
+
+        const bodyText = [
+          `Мастер: ${masterName}`,
+          `Услуга: ${service.name}`,
+          `Дата: ${dateStr}`,
+          `Время: ${timeStr}`,
+          `Стоимость: ${priceStr}`,
+          `Длительность: ${durStr}`,
+        ].join('\n');
+
         fetch('/api/notifications/dispatch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             profile_id: clientRow.profile_id,
-            title: '📅 Вам записали визит',
-            body: `${service.name}\n${when}`,
+            title: '📅 Вас записали на визит',
+            body: bodyText,
             data: { type: 'new_appointment', appointment_id: inserted?.id },
           }),
         }).catch(() => { /* fire-and-forget */ });
       }
     }
 
-    toast.success(tb('bookingSuccess'));
+    toast.success('Запись успешно создана');
     onOpenChange(false);
     onCreated();
   }
