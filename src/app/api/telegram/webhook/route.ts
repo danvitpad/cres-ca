@@ -16,6 +16,61 @@ function createServiceClient() {
   );
 }
 
+/**
+ * Fuzzy client lookup that tolerates AI transcription typos.
+ * Strategy:
+ *   1) exact substring match on full phrase
+ *   2) match on each token (split by spaces) — catches cases where AI mis-spells
+ *      the last name ("Падалко" → "Подалка") but gets the first name right
+ *   3) return up to `limit` results sorted by match quality (more tokens matched first)
+ */
+async function findClientsFuzzy(
+  supabase: ReturnType<typeof createServiceClient>,
+  masterId: string,
+  name: string,
+  limit = 5,
+): Promise<Array<{ id: string; full_name: string | null; phone: string | null; profile_id: string | null }>> {
+  const trimmed = name.trim();
+  if (!trimmed) return [];
+
+  // Pass 1: full phrase
+  const { data: exact } = await supabase
+    .from('clients')
+    .select('id, full_name, phone, profile_id')
+    .eq('master_id', masterId)
+    .ilike('full_name', `%${trimmed}%`)
+    .limit(limit);
+  if (exact && exact.length > 0) return exact;
+
+  // Pass 2: per-token OR (use tokens of length >= 3 to avoid "он"/"да" noise)
+  const tokens = trimmed.split(/\s+/).filter((t) => t.length >= 3);
+  if (tokens.length === 0) return [];
+
+  const orClause = tokens.map((t) => `full_name.ilike.%${t}%`).join(',');
+  const { data: tokenMatches } = await supabase
+    .from('clients')
+    .select('id, full_name, phone, profile_id')
+    .eq('master_id', masterId)
+    .or(orClause)
+    .limit(limit * 3);
+
+  if (!tokenMatches || tokenMatches.length === 0) return [];
+
+  // Rank: number of tokens matched (case-insensitive)
+  const lowerTokens = tokens.map((t) => t.toLowerCase());
+  const ranked = tokenMatches
+    .map((c) => {
+      const lower = (c.full_name || '').toLowerCase();
+      const hits = lowerTokens.filter((t) => lower.includes(t)).length;
+      return { c, hits };
+    })
+    .sort((a, b) => b.hits - a.hits)
+    .slice(0, limit)
+    .map((r) => r.c);
+
+  return ranked;
+}
+
 interface TelegramUpdate {
   message?: {
     chat: { id: number };
@@ -167,8 +222,13 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     // Route action
     await routeVoiceAction(chatId, master.id, intent, supabase);
   } catch (err) {
+    const msg = (err as Error)?.message ?? '';
     console.error('Voice processing error:', err);
-    await sendMessage(chatId, '❌ Не удалось обработать голосовое. Попробуй ещё раз.');
+    let userMsg = '❌ Не удалось обработать голосовое. Попробуй ещё раз.';
+    if (msg.includes('Gemini unavailable')) userMsg = '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.';
+    else if (msg.includes('Gemini 4')) userMsg = '❌ AI отказал в запросе (формат аудио/квота). Запиши заново более чётко.';
+    else if (msg.includes('Could not get Telegram file')) userMsg = '❌ Не удалось скачать голосовое из Telegram. Запиши заново.';
+    await sendMessage(chatId, userMsg);
   }
 }
 
@@ -289,13 +349,8 @@ async function routeVoiceAction(
 
     case 'client_note': {
       if (intent.client_name) {
-        // Find client by name (fuzzy)
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, full_name')
-          .eq('master_id', masterId)
-          .ilike('full_name', `%${intent.client_name}%`)
-          .limit(1);
+        // Find client by name (fuzzy — tolerates AI transcription typos)
+        const clients = await findClientsFuzzy(supabase, masterId, intent.client_name, 1);
 
         if (clients && clients.length > 0) {
           const client = clients[0];
@@ -385,13 +440,8 @@ async function routeVoiceAction(
         break;
       }
 
-      // Find client (fuzzy)
-      const { data: clientsMatch } = await supabase
-        .from('clients')
-        .select('id, full_name, phone, profile_id')
-        .eq('master_id', masterId)
-        .ilike('full_name', `%${intent.client_name}%`)
-        .limit(5);
+      // Find client (fuzzy — tolerates AI transcription typos like Падалко→Подалка)
+      const clientsMatch = await findClientsFuzzy(supabase, masterId, intent.client_name, 5);
 
       if (!clientsMatch || clientsMatch.length === 0) {
         await logAiAction(supabase, masterId, {
@@ -657,9 +707,7 @@ async function routeVoiceAction(
         break;
       }
 
-      const { data: clientsMatch } = await supabase
-        .from('clients').select('id, full_name').eq('master_id', masterId)
-        .ilike('full_name', `%${intent.client_name}%`).limit(3);
+      const clientsMatch = await findClientsFuzzy(supabase, masterId, intent.client_name, 3);
 
       if (!clientsMatch || clientsMatch.length === 0) {
         await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден.`);
@@ -718,9 +766,7 @@ async function routeVoiceAction(
         break;
       }
 
-      const { data: clientsMatch } = await supabase
-        .from('clients').select('id, full_name').eq('master_id', masterId)
-        .ilike('full_name', `%${intent.client_name}%`).limit(3);
+      const clientsMatch = await findClientsFuzzy(supabase, masterId, intent.client_name, 3);
 
       if (!clientsMatch || clientsMatch.length === 0) {
         await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден.`);
