@@ -15,7 +15,7 @@ import { format, startOfDay, endOfDay, startOfWeek, differenceInDays, getYear, s
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles, Trash2, HelpCircle } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -71,6 +71,7 @@ export default function TodayPage() {
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchToday = useCallback(async () => {
@@ -278,80 +279,107 @@ export default function TodayPage() {
           )}
         </div>
 
-        {/* AI chat — 2 cols (widest) */}
-        <section className="rounded-xl border bg-card p-6 space-y-4 lg:col-span-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-              <Sparkles className="w-4 h-4" />
+        {/* AI chat — 2 cols (widest), fills full block height */}
+        <section className="flex flex-col rounded-xl border bg-card p-6 lg:col-span-2" style={{ minHeight: 480 }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                AI-помощник
+              </h2>
+              <span className="text-xs text-muted-foreground">отвечает и делает действия по твоей БД</span>
             </div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              AI-помощник
-            </h2>
-            <span className="text-xs text-muted-foreground">отвечает по твоей БД</span>
-          </div>
-          {chat.length > 0 && (
-            <button
-              onClick={() => setChat([])}
-              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-              aria-label="Очистить"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Очистить
-            </button>
-          )}
-        </div>
-
-        {chat.length > 0 && (
-          <div className="max-h-[440px] min-h-[200px] overflow-y-auto space-y-2 pr-1">
-            {chat.map((m, i) => (
-              <div
-                key={i}
-                className={
-                  m.role === 'user'
-                    ? 'ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--ds-accent)] text-white px-3.5 py-2 text-sm'
-                    : 'mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm'
-                }
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowHelp(v => !v)}
+                className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                aria-label="Команды"
               >
-                {m.content}
-              </div>
-            ))}
-            {sending && (
-              <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm text-muted-foreground">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                думаю...
-              </div>
-            )}
-            <div ref={chatEndRef} />
+                <HelpCircle className="w-3.5 h-3.5" />
+                Команды
+              </button>
+              {chat.length > 0 && (
+                <button
+                  onClick={() => setChat([])}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                  aria-label="Очистить"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Очистить
+                </button>
+              )}
+            </div>
           </div>
-        )}
 
-        <div className="flex items-end gap-2">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
-            }}
-            rows={1}
-            placeholder="Спроси или продиктуй — «потратил 500 на краску», «напомни завтра позвонить Анне», «сколько заработаю?»"
-            className="flex-1 resize-none rounded-lg border bg-background px-3.5 py-3 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[48px] max-h-[140px]"
-            disabled={sending}
-          />
-          <button
-            onClick={sendChat}
-            disabled={sending || !input.trim()}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent)] text-white disabled:opacity-40 transition-opacity"
-            aria-label="Отправить"
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          </button>
-        </div>
-        {chat.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            Ответы основаны только на ваших данных: записи, клиенты, услуги, расходы. Без доступа к чужим аккаунтам.
-          </p>
-        )}
+          {/* Chat body OR help panel — fills remaining height */}
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3" style={{ minHeight: 0 }}>
+            {showHelp ? (
+              <VoiceCommandsHelp />
+            ) : chat.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <div className="text-center max-w-md">
+                  <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Продиктуй или спроси — я выполню действие или отвечу по твоим данным.
+                  </p>
+                  <button
+                    onClick={() => setShowHelp(true)}
+                    className="mt-3 text-xs text-[var(--ds-accent)] hover:underline"
+                  >
+                    Посмотреть список команд
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {chat.map((m, i) => (
+                  <div
+                    key={i}
+                    className={
+                      m.role === 'user'
+                        ? 'ml-auto max-w-[80%] rounded-2xl rounded-br-sm bg-[var(--ds-accent)] text-white px-3.5 py-2 text-sm whitespace-pre-wrap'
+                        : 'mr-auto max-w-[85%] rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm whitespace-pre-wrap'
+                    }
+                  >
+                    {m.content}
+                  </div>
+                ))}
+                {sending && (
+                  <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-sm bg-muted/50 px-3.5 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    думаю...
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </>
+            )}
+          </div>
+
+          <div className="flex items-end gap-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+              }}
+              rows={1}
+              placeholder="Напиши команду или вопрос…"
+              className="flex-1 resize-none rounded-lg border bg-background px-3.5 py-3 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[48px] max-h-[140px]"
+              disabled={sending}
+            />
+            <button
+              onClick={sendChat}
+              disabled={sending || !input.trim()}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent)] text-white disabled:opacity-40 transition-opacity"
+              aria-label="Отправить"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </div>
         </section>
 
         {/* Birthdays — 1 col */}
@@ -394,6 +422,89 @@ export default function TodayPage() {
           )}
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+/** Cheat-sheet of voice + text commands the master can use. */
+function VoiceCommandsHelp() {
+  const groups: Array<{ title: string; items: Array<{ ex: string; out: string }> }> = [
+    {
+      title: 'Напоминания',
+      items: [
+        { ex: '«Напомни завтра в 10 позвонить Анне»', out: 'создаст напоминание с датой' },
+        { ex: '«Напомни в пятницу купить краску»', out: 'напоминание без привязки к клиенту' },
+      ],
+    },
+    {
+      title: 'Записи клиентов',
+      items: [
+        { ex: '«Запиши Машу на стрижку в пятницу 15:00»', out: 'создаст запись в календаре' },
+        { ex: '«Отмени Колю завтра»', out: 'отменит ближайшую запись клиента' },
+        { ex: '«Перенеси Иру с пятницы на субботу 14:00»', out: 'перенесёт запись' },
+        { ex: '«Новая клиентка Марина, телефон 0671234567»', out: 'добавит клиента в базу' },
+      ],
+    },
+    {
+      title: 'Обновление карточки клиента',
+      items: [
+        { ex: '«Добавь Таисии день рождения 5 марта 1998»', out: 'запишет дату рождения' },
+        { ex: '«У Анны теперь телефон 0671234567»', out: 'обновит телефон' },
+        { ex: '«У Марии аллергия на аммиак и перекись»', out: 'запишет аллергены' },
+        { ex: '«У Даши чихуахуа Буся»', out: 'добавит свободную заметку' },
+      ],
+    },
+    {
+      title: 'Финансы',
+      items: [
+        { ex: '«Потратил 500 на краску»', out: 'разовая трата' },
+        { ex: '«Аренда 5000 каждое 1-е число»', out: 'постоянный расход, cron добавляет сам' },
+        { ex: '«Сегодня Аня стрижка 1200, Маша окрашивание 2500»', out: 'несколько приходов за день' },
+      ],
+    },
+    {
+      title: 'Склад',
+      items: [
+        { ex: '«Списал 200 мл краски»', out: 'уменьшит остаток на складе' },
+      ],
+    },
+    {
+      title: 'Заказ поставщику',
+      items: [
+        { ex: '«Заказать у Ивана 5 кг краски и 3 щётки, отправить на телеграм»', out: 'создаст заказ, кнопки Telegram/Email/PDF' },
+      ],
+    },
+    {
+      title: 'Вопросы',
+      items: [
+        { ex: '«Сколько заработал сегодня?»', out: 'AI ответит по твоим данным' },
+        { ex: '«Кто спящий клиент?»', out: 'список клиентов, которые давно не были' },
+        { ex: '«Топ услуга этого месяца»', out: 'ранжирование по выручке' },
+      ],
+    },
+  ];
+
+  return (
+    <div className="space-y-4 text-sm">
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        AI распознаёт свободную речь. Эти примеры показывают форматы, которые он точно поймёт —
+        перефразировка работает. Голосом можно отправить боту в Telegram, текстом — прямо в это поле.
+      </p>
+      {groups.map((g) => (
+        <div key={g.title}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+            {g.title}
+          </p>
+          <ul className="space-y-1.5">
+            {g.items.map((it, i) => (
+              <li key={i} className="rounded-lg bg-muted/30 px-3 py-2 leading-snug">
+                <span className="text-foreground">{it.ex}</span>
+                <span className="text-muted-foreground"> — {it.out}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

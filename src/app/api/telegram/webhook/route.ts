@@ -498,6 +498,37 @@ async function routeVoiceAction(
           }
         }
 
+        // Pass 3: STEM match — take first 4-5 chars of each spoken word and
+        // match against first 4-5 chars of any word in each service name.
+        // Handles "почухивание спины" ↔ "Почухать спинку" (different declensions).
+        if (!servicesMatch || servicesMatch.length === 0) {
+          const { data: allServices } = await supabase
+            .from('services')
+            .select('id, name, duration_minutes, price')
+            .eq('master_id', masterId)
+            .eq('is_active', true);
+          if (allServices && allServices.length > 0) {
+            const spokenStems = cleaned
+              .toLowerCase()
+              .split(/\s+/)
+              .filter(w => w.length >= 4)
+              .map(w => w.slice(0, Math.min(5, Math.max(4, w.length - 2)))); // "почухивание" → "почух"
+            const ranked = allServices
+              .map(svc => {
+                const svcStems = (svc.name || '')
+                  .toLowerCase()
+                  .split(/\s+/)
+                  .filter((w: string) => w.length >= 4)
+                  .map((w: string) => w.slice(0, Math.min(5, Math.max(4, w.length - 2))));
+                const hits = spokenStems.filter(s => svcStems.some((t: string) => t.startsWith(s) || s.startsWith(t))).length;
+                return { svc, hits };
+              })
+              .filter(r => r.hits > 0)
+              .sort((a, b) => b.hits - a.hits);
+            if (ranked.length > 0) servicesMatch = [ranked[0].svc];
+          }
+        }
+
         service = servicesMatch?.[0] || null;
       }
 
