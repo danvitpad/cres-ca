@@ -21,12 +21,22 @@ export async function POST(request: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const { data: profile } = await admin.from('profiles').select('id').eq('telegram_id', result.user.id).maybeSingle();
-  if (!profile) return NextResponse.json({ appointments: [] });
+  const { data: profile } = await admin.from('profiles').select('id, full_name').eq('telegram_id', result.user.id).maybeSingle();
+  if (!profile) return NextResponse.json({ appointments: [], _debug: { reason: 'no_profile_for_tg', tg_id: result.user.id } });
 
-  const { data: clientRows } = await admin.from('clients').select('id').eq('profile_id', profile.id);
+  const { data: clientRows } = await admin.from('clients').select('id, full_name, master_id').eq('profile_id', profile.id);
   const clientIds = (clientRows ?? []).map((c) => c.id);
-  if (clientIds.length === 0) return NextResponse.json({ appointments: [] });
+  if (clientIds.length === 0) {
+    return NextResponse.json({
+      appointments: [],
+      _debug: {
+        reason: 'no_clients_for_profile',
+        profile_id: profile.id,
+        profile_name: profile.full_name,
+        tg_id: result.user.id,
+      },
+    });
+  }
 
   if (id) {
     const { data: appointment } = await admin
@@ -68,5 +78,14 @@ export async function POST(request: Request) {
     .order('starts_at', { ascending: false })
     .limit(50);
 
-  return NextResponse.json({ appointments: data ?? [] });
+  return NextResponse.json({
+    appointments: data ?? [],
+    _debug: {
+      profile_id: profile.id,
+      profile_name: profile.full_name,
+      tg_id: result.user.id,
+      client_rows: clientRows,
+      appointment_count: (data ?? []).length,
+    },
+  });
 }
