@@ -138,7 +138,7 @@ export async function POST(request: Request) {
         {
           parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
+            inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: appUrl } }]],
           },
         },
       );
@@ -147,21 +147,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // /app
-  if (text.startsWith('/app')) {
-    await sendMessage(chatId, '📱 Открыть CRES-CA:', {
-      reply_markup: {
-        inline_keyboard: [[{ text: '✨ Открыть', web_app: { url: appUrl } }]],
-      },
-    });
-    return NextResponse.json({ ok: true });
-  }
-
   // /help
   if (text.startsWith('/help')) {
     await sendMessage(
       chatId,
-      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/app — открыть приложение\n/help — справка\n\n🎤 <b>Голосовой ассистент:</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход или заметку.\n\nПримеры:\n• «Напомни завтра в 10 позвонить Марии»\n• «Запиши Анну на стрижку в пятницу в 14»\n• «Потратил 500 грн на краску»',
+      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/help — справка\n\n🎤 <b>Голосовой ассистент:</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход или заметку.\n\nПримеры:\n• «Напомни завтра в 10 позвонить Марии»\n• «Запиши Анну на стрижку в пятницу в 14»\n• «Потратил 500 грн на краску»',
       { parse_mode: 'HTML' },
     );
     return NextResponse.json({ ok: true });
@@ -170,7 +160,7 @@ export async function POST(request: Request) {
   // Fallback — text messages can also be parsed as commands
   await sendMessage(chatId, '🎤 Отправь голосовое сообщение — я пойму и выполню.\n\nИли нажми /help для списка команд.', {
     reply_markup: {
-      inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
+      inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
     },
   });
 
@@ -192,7 +182,7 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
   if (!session) {
     await sendMessage(chatId, '❌ Сначала войди в CRES-CA через Mini App, чтобы использовать голосового ассистента.', {
       reply_markup: {
-        inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
+        inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
       },
     });
     return;
@@ -459,7 +449,7 @@ async function routeVoiceAction(
         });
         await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден в базе.\n\nДобавь клиента и повтори, или запиши через календарь.`, {
           reply_markup: {
-            inline_keyboard: [[{ text: '📅 Открыть календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
+            inline_keyboard: [[{ text: '📅 Календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
           },
         });
         break;
@@ -618,7 +608,6 @@ async function routeVoiceAction(
                 reply_markup: {
                   inline_keyboard: [
                     [{ text: '❌ Отменить запись', callback_data: `cancel_appt:${created?.id}` }],
-                    [{ text: '📱 Открыть приложение', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/activity/${created?.id}` } }],
                   ],
                 },
               }),
@@ -1189,7 +1178,7 @@ async function handleMasterAccountLink(chatId: number, telegramId: number, token
     {
       parse_mode: 'HTML',
       reply_markup: {
-        inline_keyboard: [[{ text: '📅 Открыть календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
+        inline_keyboard: [[{ text: '📅 Календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
       },
     },
   );

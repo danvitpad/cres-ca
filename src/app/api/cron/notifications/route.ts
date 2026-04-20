@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         await sendMessage(profile.telegram_id, `<b>${n.title}</b>\n\n${n.body}`, {
           parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: appUrl } }]],
+            inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: appUrl } }]],
           },
         });
         await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);

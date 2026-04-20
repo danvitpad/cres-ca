@@ -7,16 +7,18 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select-animated';
+import { FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 
 interface Props {
   open: boolean;
@@ -40,11 +42,11 @@ export function NewAppointmentDialog({
   const t = useTranslations('calendar');
   const tb = useTranslations('booking');
   const tc = useTranslations('common');
-  const { C } = usePageTheme();
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
-  const [clientId, setClientId] = useState(defaultClientId ?? '');
+  const [clientIds, setClientIds] = useState<string[]>(defaultClientId ? [defaultClientId] : []);
+  const [pendingClient, setPendingClient] = useState('');
   const [serviceId, setServiceId] = useState(defaultServiceId ?? '');
   const [date, setDate] = useState(defaultDate ?? new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState(defaultTime ?? '09:00');
@@ -54,7 +56,8 @@ export function NewAppointmentDialog({
   useEffect(() => {
     if (!open) return;
     loadOptions();
-    setClientId(defaultClientId ?? '');
+    setClientIds(defaultClientId ? [defaultClientId] : []);
+    setPendingClient('');
     setServiceId(defaultServiceId ?? '');
     if (defaultDate) setDate(defaultDate);
     if (defaultTime) setTime(defaultTime);
@@ -71,25 +74,24 @@ export function NewAppointmentDialog({
     if (servicesRes.data) setServices(servicesRes.data);
   }
 
-  const selectStyle = useMemo<React.CSSProperties>(() => ({
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: 10,
-    border: `1px solid ${C.border}`,
-    background: C.surface,
-    color: C.text,
-    fontSize: 14,
-    fontFamily: FONT,
-    fontFeatureSettings: FONT_FEATURES,
-    outline: 'none',
-    appearance: 'auto',
-  }), [C]);
+  function addClient(id: string) {
+    if (!id) return;
+    if (clientIds.includes(id)) return;
+    setClientIds((prev) => [...prev, id]);
+    setPendingClient('');
+  }
+
+  function removeClient(id: string) {
+    setClientIds((prev) => prev.filter((cid) => cid !== id));
+  }
+
+  const availableClients = clients.filter((c) => !clientIds.includes(c.id));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (!serviceId) { toast.error('Выберите услугу'); return; }
-    if (!clientId) { toast.error('Выберите клиента'); return; }
+    if (clientIds.length === 0) { toast.error('Добавьте хотя бы одного клиента'); return; }
 
     const service = services.find((s) => s.id === serviceId);
     if (!service) { toast.error('Услуга не найдена'); return; }
@@ -105,14 +107,15 @@ export function NewAppointmentDialog({
     setSaving(true);
     const supabase = createClient();
 
-    let inserted: { id: string } | null = null;
+    const inserted: Array<{ id: string; client_id: string }> = [];
     try {
       const { data: masterRow } = await supabase
         .from('masters').select('salon_id').eq('id', masterId).maybeSingle();
       const masterSalonId = (masterRow as { salon_id: string | null } | null)?.salon_id ?? null;
 
-      const { data, error } = await supabase.from('appointments').insert({
-        client_id: clientId,
+      // Insert one appointment per selected client (group booking = parallel slots)
+      const rows = clientIds.map((cid) => ({
+        client_id: cid,
         master_id: masterId,
         service_id: serviceId,
         salon_id: masterSalonId,
@@ -124,7 +127,9 @@ export function NewAppointmentDialog({
         status: 'booked',
         booked_via: 'manual',
         created_by_role: createdByRole,
-      }).select('id').single();
+      }));
+
+      const { data, error } = await supabase.from('appointments').insert(rows).select('id, client_id');
       setSaving(false);
 
       if (error) {
@@ -132,7 +137,7 @@ export function NewAppointmentDialog({
         toast.error(error.message || 'Не удалось создать запись');
         return;
       }
-      inserted = data as { id: string } | null;
+      if (data) inserted.push(...(data as Array<{ id: string; client_id: string }>));
     } catch (err) {
       setSaving(false);
       console.error('[new-appointment-dialog] insert threw:', err);
@@ -140,11 +145,10 @@ export function NewAppointmentDialog({
       return;
     }
 
-    // Fire-and-forget notification to client — via /api/notifications/dispatch
-    // so it's delivered to Telegram immediately (not queued for daily cron).
-    if (clientId) {
+    // Fire-and-forget notifications to each client (per-appointment)
+    for (const appt of inserted) {
       const { data: clientRow } = await supabase
-        .from('clients').select('profile_id').eq('id', clientId).single();
+        .from('clients').select('profile_id').eq('id', appt.client_id).single();
       if (clientRow?.profile_id) {
         // Full master name: prefer profile.full_name, fall back to masters.display_name
         const { data: masterRow2 } = await supabase
@@ -185,7 +189,7 @@ export function NewAppointmentDialog({
             profile_id: clientRow.profile_id,
             title: '📅 Вас записали на визит',
             body: bodyText,
-            data: { type: 'new_appointment', appointment_id: inserted?.id },
+            data: { type: 'new_appointment', appointment_id: appt.id },
           }),
         }).catch(() => { /* fire-and-forget */ });
 
@@ -218,7 +222,7 @@ export function NewAppointmentDialog({
               scheduled_for: when.toISOString(),
               data: {
                 type: 'appointment_reminder',
-                appointment_id: inserted?.id,
+                appointment_id: appt.id,
                 lead_value: p.value,
                 lead_unit: p.unit,
               },
@@ -245,19 +249,16 @@ export function NewAppointmentDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>{tb('selectService')}</Label>
-            <select
-              required
-              value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="" disabled>{tb('selectService')}</option>
-              {services.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} · {s.duration_minutes} мин · {s.price} {s.currency}
-                </option>
-              ))}
-            </select>
+            <Select value={serviceId} onValueChange={setServiceId}>
+              <SelectTrigger placeholder={tb('selectService')} />
+              <SelectContent>
+                {services.map((s, i) => (
+                  <SelectItem key={s.id} index={i} value={s.id}>
+                    {s.name} · {s.duration_minutes} мин · {s.price} {s.currency}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -271,19 +272,52 @@ export function NewAppointmentDialog({
             </div>
           </div>
 
+          {/* Multi-client — chips + add dropdown */}
           <div className="space-y-2">
-            <Label>{tb('selectClient')}</Label>
-            <select
-              required
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="" disabled>{tb('selectClient')}</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>{c.full_name}</option>
-              ))}
-            </select>
+            <Label>
+              {clientIds.length > 1 ? `Клиенты (${clientIds.length})` : tb('selectClient')}
+            </Label>
+            {clientIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {clientIds.map((cid) => {
+                  const c = clients.find((x) => x.id === cid);
+                  if (!c) return null;
+                  return (
+                    <span
+                      key={cid}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/15 px-3 py-1 text-[12px] font-semibold text-violet-100"
+                    >
+                      {c.full_name}
+                      <button
+                        type="button"
+                        onClick={() => removeClient(cid)}
+                        className="inline-flex items-center justify-center rounded-full p-0.5 hover:bg-white/10"
+                        aria-label="Удалить клиента"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            {availableClients.length > 0 && (
+              <Select
+                value={pendingClient}
+                onValueChange={(v) => addClient(v)}
+              >
+                <SelectTrigger
+                  placeholder={clientIds.length === 0 ? tb('selectClient') : 'Добавить ещё клиента'}
+                />
+                <SelectContent>
+                  {availableClients.map((c, i) => (
+                    <SelectItem key={c.id} index={i} value={c.id}>
+                      {c.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">

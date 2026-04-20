@@ -209,19 +209,22 @@ export default function TodayPage() {
   }
 
   return (
-    <div style={pageContainer} className="space-y-8">
+    <div
+      style={{ ...pageContainer, height: 'calc(100dvh - 64px)' }}
+      className="flex flex-col gap-4 overflow-hidden"
+    >
       {/* Greeting */}
-      <motion.div {...stagger(0)}>
-        <h1 className="text-2xl font-semibold tracking-tight">
+      <motion.div {...stagger(0)} className="shrink-0">
+        <h1 className="text-xl font-semibold tracking-tight">
           {getGreeting(t)}{firstName ? `, ${firstName}` : ''}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground capitalize">
+        <p className="mt-0.5 text-xs text-muted-foreground capitalize">
           {format(now, 'EEEE, d MMMM yyyy', { locale: dfLocale })}
         </p>
       </motion.div>
 
       {/* 3 StatCards */}
-      <motion.div {...stagger(1)} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <motion.div {...stagger(1)} className="shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard
           label={t('todayAppointments')}
           value={todayAppts.length}
@@ -239,48 +242,50 @@ export default function TodayPage() {
         />
       </motion.div>
 
-      {/* Row: Reminders | AI chat (wide) | Birthdays */}
-      <motion.div {...stagger(2)} className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Reminders — 1 col */}
-        <div className="rounded-xl border bg-card p-5 space-y-4 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <Bell className="w-4 h-4" />
+      {/* Row: Reminders | AI chat (wide) | Birthdays — fills remaining viewport */}
+      <motion.div {...stagger(2)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+        {/* Reminders — 1 col, scrolls internally */}
+        <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
+          <div className="flex items-center justify-between mb-3 shrink-0">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Bell className="w-3.5 h-3.5" />
               Напоминания
             </h2>
             <Link href="/settings" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Все
             </Link>
           </div>
-          {activeReminders.length === 0 ? (
-            <EmptyState
-              icon={<Bell className="w-5 h-5" />}
-              title="Нет напоминаний"
-              description="Добавь напоминания голосом в Telegram или вручную."
-            />
-          ) : (
-            <ul className="space-y-2">
-              {activeReminders.map((r) => (
-                <li key={r.id} className="flex items-start gap-3 rounded-lg bg-muted/30 p-3 text-sm">
-                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-                    <Bell className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate">{r.text}</p>
-                    {r.due_at && (
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {format(new Date(r.due_at), 'd MMM, HH:mm', { locale: dfLocale })}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="flex-1 overflow-y-auto min-h-0">
+            {activeReminders.length === 0 ? (
+              <EmptyState
+                icon={<Bell className="w-5 h-5" />}
+                title="Нет напоминаний"
+                description="Добавь голосом или вручную."
+              />
+            ) : (
+              <ul className="space-y-2">
+                {activeReminders.map((r) => (
+                  <li key={r.id} className="flex items-start gap-2 rounded-lg bg-muted/30 p-2 text-sm">
+                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+                      <Bell className="w-3 h-3" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-xs">{r.text}</p>
+                      {r.due_at && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {format(new Date(r.due_at), 'd MMM, HH:mm', { locale: dfLocale })}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* AI chat — 2 cols (widest), fills full block height */}
-        <section className="flex flex-col rounded-xl border bg-card p-6 lg:col-span-2" style={{ minHeight: 480 }}>
+        <section className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-2 min-h-0 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
@@ -382,22 +387,23 @@ export default function TodayPage() {
           </div>
         </section>
 
-        {/* Birthdays — 1 col */}
-        <div className="rounded-xl border bg-card p-5 space-y-4 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <Cake className="w-4 h-4" />
-              Ближайшие дни рождения
+        {/* Birthdays — 1 col, scrolls internally */}
+        <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
+          <div className="flex items-center justify-between mb-3 shrink-0">
+            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Cake className="w-3.5 h-3.5" />
+              Ближайшие ДР
             </h2>
             <Link href="/clients" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
               Клиенты
             </Link>
           </div>
+          <div className="flex-1 overflow-y-auto min-h-0">
           {upcomingBirthdays.length === 0 ? (
             <EmptyState
               icon={<Cake className="w-5 h-5" />}
               title="Нет ближайших ДР"
-              description="В ближайшие 30 дней — никого. Добавь даты в карточках клиентов."
+              description="В ближайшие 30 дней — никого."
             />
           ) : (
             <ul className="space-y-2">
@@ -407,19 +413,20 @@ export default function TodayPage() {
                   c.daysUntil === 1 ? 'завтра' :
                   `через ${c.daysUntil} дн.`;
                 return (
-                  <li key={c.id} className="flex items-center gap-3 rounded-lg bg-muted/30 p-3 text-sm">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-                      <Cake className="w-3.5 h-3.5" />
+                  <li key={c.id} className="flex items-center gap-2 rounded-lg bg-muted/30 p-2 text-sm">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+                      <Cake className="w-3 h-3" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium">{c.full_name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+                      <p className="truncate text-xs font-medium">{c.full_name}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
                     </div>
                   </li>
                 );
               })}
             </ul>
           )}
+          </div>
         </div>
       </motion.div>
     </div>

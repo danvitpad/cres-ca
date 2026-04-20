@@ -18,7 +18,6 @@ async function setMyCommands() {
     body: JSON.stringify({
       commands: [
         { command: 'start', description: 'Запустить CRES-CA' },
-        { command: 'app', description: 'Открыть приложение' },
         { command: 'help', description: 'Помощь' },
       ],
     }),
@@ -33,7 +32,7 @@ async function setChatMenuButton(webAppUrl: string) {
     body: JSON.stringify({
       menu_button: {
         type: 'web_app',
-        text: 'Открыть CRES-CA',
+        text: 'CRES-CA',
         web_app: { url: webAppUrl },
       },
     }),
