@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, UserPlus, Star, CalendarCheck, Copy, Check, Share2 } from 'lucide-react';
+import { Sparkles, Copy, Check, Share2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -86,28 +86,12 @@ export default function MiniAppBonusesPage() {
       transition={{ duration: 0.3 }}
       className="space-y-5 px-5 pt-6"
     >
-      {/* Hero balance */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-amber-400/15 via-white/[0.03] to-transparent p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Баланс бонусов</p>
-            <p className="mt-2 text-5xl font-bold tabular-nums">
-              {loading ? '—' : bonusPoints.toFixed(0)}
-            </p>
-            <p className="mt-1 text-[11px] text-white/60">1 бонус = 1 ₴ скидки</p>
-          </div>
-          <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-            <Sparkles className="size-6 text-amber-300" />
-          </div>
-        </div>
-      </div>
-
-      {/* Share buttons */}
+      {/* Share buttons — Invite first (per user order) */}
       <div className="flex gap-2">
         <button
           onClick={shareReferral}
           disabled={!referralCode}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white py-3 text-[14px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-50"
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white py-3.5 text-[14px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-50"
         >
           <Share2 className="size-4" />
           Пригласить друга
@@ -122,7 +106,23 @@ export default function MiniAppBonusesPage() {
         </button>
       </div>
 
-      {/* Referral stats */}
+      {/* Balance */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Баланс бонусов</p>
+            <p className="mt-2 text-5xl font-bold tabular-nums">
+              {loading ? '—' : bonusPoints.toFixed(0)}
+            </p>
+            <p className="mt-1 text-[11px] text-white/60">1 бонус = 1 ₴ скидки</p>
+          </div>
+          <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+            <Sparkles className="size-6 text-amber-300" />
+          </div>
+        </div>
+      </div>
+
+      {/* Referral stats (only when non-zero) */}
       {invitedCount > 0 && (
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -138,45 +138,7 @@ export default function MiniAppBonusesPage() {
         </div>
       )}
 
-      {/* How to earn */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03]">
-        <div className="border-b border-white/5 px-5 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Как заработать</p>
-        </div>
-        <ul className="divide-y divide-white/5">
-          <EarnRow icon={UserPlus} label="Пригласить друга" amount="+100" tint="emerald" />
-          <EarnRow icon={Star} label="Оставить отзыв" amount="+20" tint="amber" />
-          <EarnRow icon={CalendarCheck} label="Каждый 5-й визит" amount="+50" tint="violet" />
-        </ul>
-      </div>
-
       <div className="h-4" />
     </motion.div>
-  );
-}
-
-function EarnRow({
-  icon: Icon,
-  label,
-  amount,
-  tint,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  amount: string;
-  tint: 'emerald' | 'amber' | 'violet';
-}) {
-  const tintClass =
-    tint === 'emerald' ? 'text-emerald-300 bg-emerald-500/10'
-    : tint === 'amber' ? 'text-amber-300 bg-amber-500/10'
-    : 'text-violet-300 bg-violet-500/10';
-  return (
-    <li className="flex items-center gap-3 px-5 py-3">
-      <div className={`flex size-9 items-center justify-center rounded-xl border border-white/5 ${tintClass}`}>
-        <Icon className="size-4" />
-      </div>
-      <p className="flex-1 text-[13px]">{label}</p>
-      <span className="text-[13px] font-bold tabular-nums">{amount}</span>
-    </li>
   );
 }

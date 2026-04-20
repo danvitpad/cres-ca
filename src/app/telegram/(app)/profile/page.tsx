@@ -12,9 +12,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Sparkles,
-  UserPlus,
-  Copy,
   Check,
   ChevronRight,
   X,
@@ -371,54 +368,7 @@ export default function MiniAppProfilePage() {
           </button>
         </div>
 
-        {/* Balance — compact when zero */}
-        {balance > 0 || bonusPoints > 0 ? (
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 pl-6">
-            <span className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-amber-400" />
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Баланс</p>
-                <p className="mt-1 text-3xl font-bold tabular-nums">
-                  {balance.toFixed(0)} <span className="text-lg text-white/60">₴</span>
-                </p>
-                {bonusPoints > 0 && (
-                  <p className="mt-2 text-[11px] text-white/60 tabular-nums">+{bonusPoints} бонусных очков</p>
-                )}
-              </div>
-              <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-                <Sparkles className="size-5 text-amber-300" />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-              <Sparkles className="size-4 text-white/60" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold">Баланс пуст</p>
-              <p className="text-[11px] text-white/45">Сделайте первую запись, чтобы получить бонусы</p>
-            </div>
-          </div>
-        )}
-
-        {/* Referral card */}
-        <button
-          onClick={copyReferral}
-          className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
-        >
-          <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-emerald-500" />
-          <div className="flex size-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-emerald-300">
-            <UserPlus className="size-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Пригласить друга</p>
-            <p className="text-[11px] text-white/50">Вы получите бонус за каждую первую запись</p>
-          </div>
-          <div className="flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
-            {copiedRef ? <Check className="size-4 text-emerald-300" /> : <Copy className="size-4" />}
-          </div>
-        </button>
+        {/* Balance + Referral moved to Bonuses tab — profile stays minimal */}
 
         {/* Quick links */}
         <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">

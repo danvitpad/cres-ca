@@ -33,7 +33,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 /* ─────────────────── Types ─────────────────── */
 
-type Step = 'services' | 'date' | 'time' | 'confirm';
+type Step = 'services' | 'datetime' | 'confirm';
 
 interface ServiceCategory {
   id: string;
@@ -65,7 +65,7 @@ interface MasterInfo {
 
 /* ─────────────────── Constants ─────────────────── */
 
-const STEPS: Step[] = ['services', 'date', 'time', 'confirm'];
+const STEPS: Step[] = ['services', 'datetime', 'confirm'];
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
 const DAY_NAMES_SHORT: Record<string, string> = {
@@ -289,7 +289,7 @@ export default function MiniAppBookPage() {
           const pre = typed.find((s) => s.id === preselectedServiceId);
           if (pre) {
             setSelectedServices([pre]);
-            setStep('date');
+            setStep('datetime');
           }
         }
       }
@@ -363,9 +363,8 @@ export default function MiniAppBookPage() {
 
   function goBack() {
     haptic('light');
-    if (step === 'confirm') goToStep('time');
-    else if (step === 'time') goToStep('date');
-    else if (step === 'date') goToStep('services');
+    if (step === 'confirm') goToStep('datetime');
+    else if (step === 'datetime') goToStep('services');
     else router.back();
   }
 
@@ -398,7 +397,7 @@ export default function MiniAppBookPage() {
     haptic('medium');
     setSelectedDate(null);
     setSelectedTime(null);
-    goToStep('date');
+    goToStep('datetime');
   }
 
   /* ── Date selection ── */
@@ -410,13 +409,7 @@ export default function MiniAppBookPage() {
     loadSlotsForDate(date);
   }
 
-  function proceedFromDate() {
-    if (!selectedDate) return;
-    haptic('medium');
-    goToStep('time');
-  }
-
-  /* ── Time selection ── */
+  /* ── Time selection (auto-advances to confirm) ── */
   function handleSelectTime(time: string) {
     haptic('light');
     setSelectedTime(time);
@@ -556,9 +549,8 @@ export default function MiniAppBookPage() {
 
             <h1 className="text-[15px] font-semibold">
               {step === 'services' && 'Услуги'}
-              {step === 'date' && 'Выберите дату'}
-              {step === 'time' && 'Выберите время'}
-              {step === 'confirm' && 'Обзор и подтверждение'}
+              {step === 'datetime' && 'Дата и время'}
+              {step === 'confirm' && 'Подтверждение'}
             </h1>
 
             <button
@@ -705,9 +697,9 @@ export default function MiniAppBookPage() {
             )}
 
             {/* ═══ STEP 2: Date ═══ */}
-            {step === 'date' && (
+            {step === 'datetime' && (
               <motion.div
-                key="date"
+                key="datetime"
                 custom={direction}
                 variants={pageVariants}
                 initial="enter"
@@ -858,50 +850,62 @@ export default function MiniAppBookPage() {
                   )}
                 </AnimatePresence>
 
-                {/* Selected date context + available slots preview */}
+                {/* Time slots grid — shown immediately after date is picked */}
                 {selectedDate && (
                   <motion.div
+                    key={selectedDate.toDateString()}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                    className="space-y-3"
                   >
-                    <p className="text-[13px] font-medium capitalize text-white/70">
+                    <p className="text-[13px] font-medium capitalize text-white/60">
                       {formatDateFull(selectedDate)}
                     </p>
+
                     {slotsLoading ? (
-                      <div className="mt-3 flex items-center gap-2">
-                        <Loader2 className="size-4 animate-spin text-white/30" />
-                        <span className="text-[12px] text-white/40">Загружаем слоты...</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {Array.from({ length: 9 }).map((_, i) => (
+                          <div key={i} className="h-12 animate-pulse rounded-xl bg-white/[0.03]" />
+                        ))}
                       </div>
-                    ) : slots.length > 0 ? (
-                      <p className="mt-1.5 text-[12px] text-white/40">
-                        {slots.length} {slots.length === 1 ? 'свободный слот' : slots.length < 5 ? 'свободных слота' : 'свободных слотов'}
-                      </p>
-                    ) : (
-                      <div className="mt-3 text-center">
-                        <CalendarIcon className="mx-auto mb-2 size-8 text-white/15" />
+                    ) : slots.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
+                        <CalendarIcon className="mx-auto mb-2 size-7 text-white/20" />
                         <p className="text-[13px] font-medium text-white/50">
-                          Специалист полностью забронирован на эту дату
+                          Нет свободных слотов
                         </p>
                         {nextAvailableDate && (
-                          <p className="mt-1 text-[12px] text-white/30">
-                            Доступно с {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
-                          </p>
-                        )}
-                        <div className="mt-3 flex flex-col gap-2">
-                          {nextAvailableDate && (
-                            <button
-                              onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
-                              className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13px] font-semibold text-violet-300 active:bg-white/[0.06] transition-colors"
-                            >
-                              Перейти к следующей доступной дате
-                            </button>
-                          )}
-                          <button className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13px] font-medium text-white/50 active:bg-white/[0.06] transition-colors">
-                            Записаться в список ожидания
+                          <button
+                            onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
+                            className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-violet-300 active:bg-white/[0.06] transition-colors"
+                          >
+                            Ближайшая: {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
                           </button>
-                        </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {slots.map((time, i) => {
+                          const isSelected = selectedTime === time;
+                          return (
+                            <motion.button
+                              key={time}
+                              custom={i}
+                              variants={cardVariants}
+                              initial="hidden"
+                              animate="visible"
+                              onClick={() => handleSelectTime(time)}
+                              className={`flex items-center justify-center rounded-xl border py-3 text-[15px] font-semibold transition-colors ${
+                                isSelected
+                                  ? 'border-white/20 bg-white text-black'
+                                  : 'border-white/10 bg-white/[0.03] text-white active:bg-white/[0.06]'
+                              }`}
+                            >
+                              {time}
+                            </motion.button>
+                          );
+                        })}
                       </div>
                     )}
                   </motion.div>
@@ -909,106 +913,7 @@ export default function MiniAppBookPage() {
               </motion.div>
             )}
 
-            {/* ═══ STEP 3: Time ═══ */}
-            {step === 'time' && (
-              <motion.div
-                key="time"
-                custom={direction}
-                variants={pageVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="px-4 pt-4 pb-32"
-              >
-                {/* Date context */}
-                {selectedDate && (
-                  <motion.p
-                    variants={fadeUp}
-                    initial="hidden"
-                    animate="visible"
-                    className="mb-5 text-[14px] font-medium capitalize text-white/60"
-                  >
-                    {formatDateFull(selectedDate)}
-                  </motion.p>
-                )}
-
-                {slotsLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-14 animate-pulse rounded-2xl bg-white/[0.03]" />
-                    ))}
-                  </div>
-                ) : slots.length === 0 ? (
-                  <motion.div
-                    variants={fadeUp}
-                    initial="hidden"
-                    animate="visible"
-                    className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-12 text-center"
-                  >
-                    <CalendarIcon className="mb-3 size-10 text-white/15" />
-                    <p className="text-[14px] font-medium text-white/50">
-                      Нет свободных слотов
-                    </p>
-                    <button
-                      onClick={() => goToStep('date')}
-                      className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-2.5 text-[13px] font-semibold text-white/70 active:bg-white/[0.06] transition-colors"
-                    >
-                      Выбрать другую дату
-                    </button>
-                    <button className="mt-3 text-[12px] font-medium text-violet-300 transition-opacity active:opacity-60">
-                      Записаться в список ожидания
-                    </button>
-                  </motion.div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {slots.map((time, i) => {
-                      const isSelected = selectedTime === time;
-                      const slotEnd = addMinutesToTime(time, totalDuration);
-                      return (
-                        <motion.button
-                          key={time}
-                          custom={i}
-                          variants={cardVariants}
-                          initial="hidden"
-                          animate="visible"
-                          onClick={() => handleSelectTime(time)}
-                          className={`flex w-full items-center justify-between rounded-2xl border px-5 py-4 transition-colors ${
-                            isSelected
-                              ? 'border-white/20 bg-white text-black'
-                              : 'border-white/10 bg-white/[0.03] text-white active:bg-white/[0.06]'
-                          }`}
-                        >
-                          <span className={`text-[17px] font-bold ${isSelected ? 'text-black' : ''}`}>
-                            {time}
-                          </span>
-                          <span className={`text-[13px] ${isSelected ? 'text-black/50' : 'text-white/30'}`}>
-                            до {slotEnd}
-                          </span>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Waitlist hint */}
-                {slots.length > 0 && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="mt-6 text-center text-[12px] text-white/30"
-                  >
-                    Не можете найти подходящее время?{' '}
-                    <button className="font-medium text-violet-300 transition-opacity active:opacity-60">
-                      Записаться в список ожидания
-                    </button>
-                  </motion.p>
-                )}
-              </motion.div>
-            )}
-
-            {/* ═══ STEP 4: Confirmation ═══ */}
+            {/* ═══ STEP 3: Confirmation ═══ */}
             {step === 'confirm' && selectedDate && selectedTime && (
               <motion.div
                 key="confirm"
@@ -1154,29 +1059,6 @@ export default function MiniAppBookPage() {
                 disabled={selectedServices.length === 0}
                 className={`flex w-full items-center justify-center rounded-2xl py-4 text-[15px] font-semibold transition-colors ${
                   selectedServices.length > 0
-                    ? 'bg-white text-black active:bg-white/80'
-                    : 'bg-white/[0.03] text-white/25'
-                }`}
-              >
-                Продолжить
-              </button>
-            </motion.div>
-          )}
-
-          {step === 'date' && (
-            <motion.div
-              key="footer-date"
-              initial={{ y: 80, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 80, opacity: 0 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0a0a] px-4 pb-8 pt-4"
-            >
-              <button
-                onClick={proceedFromDate}
-                disabled={!selectedDate || (slots.length === 0 && !slotsLoading)}
-                className={`flex w-full items-center justify-center rounded-2xl py-4 text-[15px] font-semibold transition-colors ${
-                  selectedDate && slots.length > 0
                     ? 'bg-white text-black active:bg-white/80'
                     : 'bg-white/[0.03] text-white/25'
                 }`}
