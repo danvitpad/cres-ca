@@ -164,8 +164,23 @@ export default function MiniAppSettingsPage() {
     setSigningOut(true);
     // HARD sign-out: unlink TG from the current profile first, else
     // /telegram auto-relinks back the moment we redirect there.
+    // Uses initData (cookie auth doesn't survive TG Webview).
     try {
-      await fetch('/api/telegram/unlink', { method: 'POST' });
+      const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+      let initData = w.Telegram?.WebApp?.initData;
+      if (!initData) {
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) initData = (JSON.parse(stash) as { initData?: string }).initData;
+        } catch {}
+      }
+      if (initData) {
+        await fetch('/api/telegram/unlink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+      }
     } catch {}
     const supabase = createClient();
     await supabase.auth.signOut();
