@@ -304,7 +304,10 @@ export default function MiniAppBookPage() {
       today.setHours(0, 0, 0, 0);
       if (date < today) return true;
       const dayName = WEEKDAYS[date.getDay()];
-      const wh = master?.working_hours ?? DEFAULT_WORKING_HOURS;
+      // Empty {} isn't null, so ?? won't swap it — explicitly fall back when
+      // master.working_hours is missing OR empty (master hasn't configured).
+      const whRaw = master?.working_hours;
+      const wh = whRaw && Object.keys(whRaw).length > 0 ? whRaw : DEFAULT_WORKING_HOURS;
       return !wh[dayName];
     },
     [master],
