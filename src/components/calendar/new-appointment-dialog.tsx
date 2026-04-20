@@ -87,39 +87,58 @@ export function NewAppointmentDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    e.stopPropagation();
     if (!serviceId) { toast.error('Выберите услугу'); return; }
     if (!clientId) { toast.error('Выберите клиента'); return; }
 
     const service = services.find((s) => s.id === serviceId);
     if (!service) { toast.error('Услуга не найдена'); return; }
 
+    if (!date || !time) { toast.error('Укажите дату и время'); return; }
     const startsAt = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(startsAt.getTime())) {
+      toast.error(`Некорректные дата/время: ${date} ${time}`);
+      return;
+    }
     const endsAt = new Date(startsAt.getTime() + service.duration_minutes * 60 * 1000);
 
     setSaving(true);
     const supabase = createClient();
 
-    const { data: masterRow } = await supabase
-      .from('masters').select('salon_id').eq('id', masterId).maybeSingle();
-    const masterSalonId = (masterRow as { salon_id: string | null } | null)?.salon_id ?? null;
+    let inserted: { id: string } | null = null;
+    try {
+      const { data: masterRow } = await supabase
+        .from('masters').select('salon_id').eq('id', masterId).maybeSingle();
+      const masterSalonId = (masterRow as { salon_id: string | null } | null)?.salon_id ?? null;
 
-    const { data: inserted, error } = await supabase.from('appointments').insert({
-      client_id: clientId,
-      master_id: masterId,
-      service_id: serviceId,
-      salon_id: masterSalonId,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      price: service.price,
-      currency: service.currency,
-      notes: notes || null,
-      status: 'booked',
-      booked_via: 'manual',
-      created_by_role: createdByRole,
-    }).select('id').single();
-    setSaving(false);
+      const { data, error } = await supabase.from('appointments').insert({
+        client_id: clientId,
+        master_id: masterId,
+        service_id: serviceId,
+        salon_id: masterSalonId,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        price: service.price,
+        currency: service.currency,
+        notes: notes || null,
+        status: 'booked',
+        booked_via: 'manual',
+        created_by_role: createdByRole,
+      }).select('id').single();
+      setSaving(false);
 
-    if (error) { toast.error(error.message); return; }
+      if (error) {
+        console.error('[new-appointment-dialog] insert error:', error);
+        toast.error(error.message || 'Не удалось создать запись');
+        return;
+      }
+      inserted = data as { id: string } | null;
+    } catch (err) {
+      setSaving(false);
+      console.error('[new-appointment-dialog] insert threw:', err);
+      toast.error((err as Error).message || 'Ошибка при создании записи');
+      return;
+    }
 
     // Fire-and-forget notification to client — via /api/notifications/dispatch
     // so it's delivered to Telegram immediately (not queued for daily cron).

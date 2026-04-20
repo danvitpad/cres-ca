@@ -355,38 +355,11 @@ export default function CalendarPage() {
   }
 
   function handleSlotClick(time: string) {
-    setSidePanelTime(time);
-    setSidePanelSelectedClient(null);
-    setSidePanelServiceSearch('');
-    setSidePanelOpen(true);
-    setSidePanelLoading(true);
-    // Load services and clients for side panel
-    if (master?.id) {
-      const supabase = createClient();
-      Promise.all([
-        supabase.from('services')
-          .select('id, name, duration_minutes, price, currency, category_id')
-          .eq('master_id', master.id).eq('is_active', true).order('name'),
-        supabase.from('service_categories')
-          .select('id, name')
-          .eq('master_id', master.id),
-        supabase.from('clients')
-          .select('id, full_name')
-          .eq('master_id', master.id).order('full_name').limit(200),
-      ]).then(([servicesRes, catsRes, clientsRes]) => {
-        const catMap = new Map<string, string>();
-        if (catsRes.data) catsRes.data.forEach((c: any) => catMap.set(c.id, c.name));
-        if (servicesRes.data) {
-          setSidePanelServices(servicesRes.data.map((s: any) => ({
-            id: s.id, name: s.name, duration_minutes: s.duration_minutes,
-            price: s.price, currency: s.currency,
-            category_name: s.category_id ? catMap.get(s.category_id) : undefined,
-          })));
-        }
-        if (clientsRes.data) setSidePanelClients(clientsRes.data);
-        setSidePanelLoading(false);
-      });
-    }
+    // Unified flow: slot-click opens the same NewAppointmentDialog as the
+    // top "+ Добавить запись" button, with date+time pre-filled.
+    const dateStr = currentDate.toISOString().split('T')[0];
+    setNewDialogDefaults({ date: dateStr, time });
+    setNewDialogOpen(true);
   }
 
   function closeSidePanel() {
