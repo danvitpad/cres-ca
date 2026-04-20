@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { aiChat } from '@/lib/ai/openrouter';
+import { parseTextIntent } from '@/lib/ai/gemini-voice';
 
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -92,6 +93,30 @@ export async function POST(request: Request) {
     .eq('profile_id', profile.id)
     .maybeSingle();
   if (!master) return NextResponse.json({ error: 'no_master' }, { status: 404 });
+
+  // ── STEP 1: try parsing as an action (text command) ──
+  // If the user said something like "потратил 500 на краску", execute it
+  // directly instead of routing to Q&A chat.
+  try {
+    const intent = await parseTextIntent(message.trim());
+    if (intent.action !== 'query' && intent.action !== 'unknown') {
+      const result = await executeTextAction(admin, master.id, profile.id, intent);
+      if (result) {
+        await admin.from('ai_actions_log').insert({
+          master_id: master.id,
+          source: 'web',
+          action_type: intent.action,
+          input_text: message.trim().slice(0, 500),
+          result: { answer: result.answer.slice(0, 2000) },
+          status: result.ok ? 'success' : 'failed',
+          error_message: result.ok ? null : result.answer.slice(0, 200),
+        });
+        return NextResponse.json({ answer: result.answer, action: intent.action, executed: result.ok });
+      }
+    }
+  } catch {
+    // Intent parsing failed — fall through to Q&A mode
+  }
 
   const now = new Date();
   const startOfToday = new Date(now); startOfToday.setUTCHours(0, 0, 0, 0);
@@ -198,4 +223,153 @@ ${svcList.join(', ') || '—'}
   });
 
   return NextResponse.json({ answer: ai.text, model: ai.model });
+}
+
+/**
+ * Execute a text command from the /today chat.
+ * Handles the "doing" intents (reminder, expense, revenue, client_note, etc.).
+ * Complex flows that need inline buttons (supplier_order, appointment cancel/
+ * reschedule) are redirected back to voice bot or dashboard.
+ * Returns null if action not supported in text mode → caller falls to Q&A.
+ */
+async function executeTextAction(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  masterId: string,
+  profileId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  intent: any,
+): Promise<{ ok: boolean; answer: string } | null> {
+  switch (intent.action) {
+    case 'reminder': {
+      const { error } = await admin.from('reminders').insert({
+        master_id: masterId,
+        text: intent.text,
+        due_at: intent.due_at,
+        source: 'text',
+      });
+      if (error) return { ok: false, answer: `❌ Не удалось сохранить напоминание: ${error.message}` };
+      const when = intent.due_at
+        ? new Date(intent.due_at).toLocaleString('ru-RU', {
+            timeZone: 'Europe/Kyiv', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+          })
+        : 'без даты';
+      return { ok: true, answer: `✅ Напоминание: «${intent.text}» (${when})` };
+    }
+
+    case 'expense': {
+      if (!intent.amount) return { ok: false, answer: '❓ Уточни сумму: «потратил 500 на краску».' };
+      const { error } = await admin.from('expenses').insert({
+        master_id: masterId,
+        amount: intent.amount,
+        currency: 'UAH',
+        date: new Date().toISOString().slice(0, 10),
+        description: intent.text,
+        category: intent.category || 'Прочее',
+      });
+      if (error) return { ok: false, answer: `❌ Не удалось сохранить трату: ${error.message}` };
+      return { ok: true, answer: `✅ Расход: ${intent.text} — ${intent.amount} ₴` };
+    }
+
+    case 'expense_recurring': {
+      if (!intent.amount || !intent.day_of_month) {
+        return { ok: false, answer: '❓ Нужна сумма и день месяца: «аренда 5000 каждое 1-е число».' };
+      }
+      const dom = Math.min(28, Math.max(1, Math.round(intent.day_of_month)));
+      const { error } = await admin.from('recurring_expenses').insert({
+        master_id: masterId,
+        name: intent.text.slice(0, 80),
+        amount: intent.amount,
+        currency: 'UAH',
+        category: intent.category || 'Прочее',
+        day_of_month: dom,
+        active: true,
+      });
+      if (error) return { ok: false, answer: `❌ ${error.message}` };
+      return { ok: true, answer: `✅ Регулярный расход: ${intent.text} — ${intent.amount} ₴ каждое ${dom}-е число.` };
+    }
+
+    case 'revenue': {
+      const items = Array.isArray(intent.items) ? intent.items : [];
+      if (items.length === 0) {
+        return { ok: false, answer: '❓ Скажи кто и сколько: «Аня стрижка 1200, Маша окрашивание 2500».' };
+      }
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const rows = items
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .filter((it: any) => Number(it.amount) > 0)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((it: any) => ({
+          master_id: masterId,
+          amount: Number(it.amount),
+          currency: 'UAH',
+          date: todayIso,
+          description: `${it.service_name || 'Услуга'} — ${it.client_name || 'Клиент'}`,
+          category: 'revenue_voice',
+          source: 'text',
+        }));
+      if (rows.length === 0) return { ok: false, answer: '❓ Не понял суммы.' };
+      const { error } = await admin.from('manual_incomes').insert(rows);
+      if (error) return { ok: false, answer: `❌ ${error.message}` };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const total = rows.reduce((s: number, r: any) => s + Number(r.amount), 0);
+      return { ok: true, answer: `✅ Записал ${rows.length} прихода на ${total} ₴.` };
+    }
+
+    case 'client_note': {
+      if (!intent.client_name) return { ok: false, answer: '❓ Укажи имя клиента.' };
+      const tokens = intent.client_name.trim().split(/\s+/).filter((t: string) => t.length >= 3);
+      const or = tokens.length > 0
+        ? tokens.map((t: string) => `full_name.ilike.%${t}%`).join(',')
+        : `full_name.ilike.%${intent.client_name}%`;
+      const { data: clients } = await admin
+        .from('clients').select('id, full_name, notes').eq('master_id', masterId).or(or).limit(1);
+      if (!clients || clients.length === 0) {
+        return { ok: false, answer: `⚠️ Клиент «${intent.client_name}» не найден.` };
+      }
+      const c = clients[0];
+      const stamp = `[${new Date().toLocaleDateString('ru-RU')}]`;
+      const newNotes = c.notes ? `${c.notes}\n${stamp} ${intent.text}` : `${stamp} ${intent.text}`;
+      await admin.from('clients').update({ notes: newNotes }).eq('id', c.id);
+      return { ok: true, answer: `✅ Заметка к ${c.full_name}: «${intent.text}»` };
+    }
+
+    case 'inventory': {
+      if (!intent.service_name || !intent.amount) {
+        return { ok: false, answer: '❓ Скажи что и сколько: «списал 200 мл краски».' };
+      }
+      const { data: items } = await admin
+        .from('inventory_items').select('id, name, quantity')
+        .eq('master_id', masterId)
+        .ilike('name', `%${intent.service_name}%`)
+        .limit(1);
+      if (!items || items.length === 0) {
+        return { ok: false, answer: `⚠️ «${intent.service_name}» не найдено в складе.` };
+      }
+      const item = items[0];
+      const newQty = Math.max(0, Number(item.quantity) - Number(intent.amount));
+      await admin.from('inventory_items').update({ quantity: newQty }).eq('id', item.id);
+      await admin.from('inventory_usage').insert({
+        master_id: masterId,
+        item_id: item.id,
+        quantity: intent.amount,
+        created_by: profileId,
+      });
+      return { ok: true, answer: `✅ Списано ${intent.amount} ед. ${item.name}. Остаток: ${newQty}.` };
+    }
+
+    case 'cancel':
+    case 'reschedule':
+    case 'supplier_order':
+    case 'appointment':
+    case 'create_client':
+      // These need interactive buttons / multi-step flows — fall back to voice bot.
+      return {
+        ok: false,
+        answer: '💡 Для записей клиентов и заказов поставщикам — отправь голосовое сообщение боту в Telegram. Там есть кнопки подтверждения.',
+      };
+
+    default:
+      return null; // fall through to Q&A
+  }
 }

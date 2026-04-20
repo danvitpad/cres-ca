@@ -184,6 +184,10 @@ export default function TodayPage() {
         ? json.answer
         : (json.error === 'ai_unavailable' ? 'AI временно недоступен. Попробуй позже.' : 'Что-то пошло не так.');
       setChat((prev) => [...prev, { role: 'assistant', content: answer, ts: Date.now() }]);
+      // If an action was executed, refresh today widgets (reminders/birthdays/stats).
+      if (json.executed) {
+        fetchToday();
+      }
     } catch {
       setChat((prev) => [...prev, { role: 'assistant', content: 'Ошибка сети.', ts: Date.now() }]);
     } finally {
@@ -330,7 +334,7 @@ export default function TodayPage() {
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
             }}
             rows={1}
-            placeholder="Спроси что-нибудь — «сколько заработаю на этой неделе?», «кто спящий клиент?»"
+            placeholder="Спроси или продиктуй — «потратил 500 на краску», «напомни завтра позвонить Анне», «сколько заработаю?»"
             className="flex-1 resize-none rounded-lg border bg-background px-3.5 py-3 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[48px] max-h-[140px]"
             disabled={sending}
           />
