@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       .update({
         status: 'cancelled_by_client',
         cancelled_at: new Date().toISOString(),
-        cancelled_by: profile.id,
+        cancelled_by: 'client',
         cancellation_reason: 'client_miniapp',
       })
       .eq('id', appointment_id);

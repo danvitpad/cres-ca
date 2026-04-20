@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       .update({
         status: 'cancelled_by_client',
         cancelled_at: new Date().toISOString(),
-        cancelled_by: profile.id,
+        cancelled_by: 'client',
         cancellation_reason: 'rescheduled',
       })
       .eq('id', reschedule_id)
