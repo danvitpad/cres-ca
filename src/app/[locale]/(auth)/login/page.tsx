@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLocale } from 'next-intl';
@@ -18,7 +18,6 @@ import { createClient } from '@/lib/supabase/client';
 import {
   InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator,
 } from '@/components/ui/input-otp';
-import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Shield,
   CalendarCheck, User as UserIcon, Building2,
@@ -550,14 +549,9 @@ export default function AuthPage() {
 
                             {role !== 'salon_admin' && (
                               <Field label="Дата рождения">
-                                <div className="glass-wrap" style={{ padding: '6px 4px' }}>
-                                  <DateWheelPicker
-                                    size="sm"
-                                    locale="ru-RU"
-                                    value={fromISODay(dob)}
-                                    onChange={(d) => setDob(toISODay(d))}
-                                  />
-                                </div>
+                                <GlassWrap>
+                                  <DobInput value={dob} onChange={setDob} />
+                                </GlassWrap>
                               </Field>
                             )}
                           </>
@@ -904,6 +898,53 @@ function Field({ label, right, children }: { label: string; right?: ReactNode; c
 
 function GlassWrap({ children }: { children: ReactNode }) {
   return <div className="glass-wrap">{children}</div>;
+}
+
+/** Plain text input for DOB — same look as other fields. Accepts DD.MM.YYYY, emits ISO YYYY-MM-DD. */
+function DobInput({ value, onChange }: { value: string; onChange: (isoOrEmpty: string) => void }) {
+  const isoToDmy = (iso: string) => {
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+  };
+  const [text, setText] = useState<string>(isoToDmy(value));
+
+  useEffect(() => {
+    // Sync when parent changes ISO externally
+    setText(isoToDmy(value));
+  }, [value]);
+
+  function handleChange(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) formatted = `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+    else if (digits.length > 2) formatted = `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    setText(formatted);
+
+    const full = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (full) {
+      const [, d, m, y] = full;
+      const day = +d, month = +m, year = +y;
+      const valid =
+        month >= 1 && month <= 12 &&
+        day >= 1 && day <= 31 &&
+        year >= 1900 && year <= new Date().getFullYear();
+      onChange(valid ? `${y}-${m}-${d}` : '');
+    } else {
+      onChange('');
+    }
+  }
+
+  return (
+    <input
+      className="glass-input"
+      type="text"
+      inputMode="numeric"
+      autoComplete="bday"
+      placeholder="ДД.ММ.ГГГГ"
+      value={text}
+      onChange={(e) => handleChange(e.target.value)}
+    />
+  );
 }
 
 function PrimaryButton({
