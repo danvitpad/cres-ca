@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendUp, CaretRight, Robot, PaperPlaneTilt } from '@phosphor-icons/react';
+import { TrendUp, CaretRight, Robot, PaperPlaneTilt, Broom } from '@phosphor-icons/react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -194,22 +194,55 @@ export default function MasterMiniAppHome() {
         </div>
       ) : null}
 
+      {/* Finance first — quick status glance */}
+      <Link
+        href="/telegram/m/stats"
+        className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <TrendUp size={18} weight="bold" className="text-emerald-300" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Финансы · неделя</p>
+            <p className="mt-1 text-base font-bold tabular-nums">
+              {weekRevenue.toFixed(0)} ₴
+              <span className="ml-2 text-[11px] font-normal text-white/50">{weekCompleted} записей</span>
+            </p>
+          </div>
+        </div>
+        <CaretRight size={16} className="text-white/40" />
+      </Link>
+
+      {/* AI chat — expanded, with Clear button */}
       <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-        <div className="flex items-center gap-2 px-1 pt-1">
-          <Robot size={14} weight="fill" className="text-violet-300" />
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">AI-чат</p>
+        <div className="flex items-center justify-between gap-2 px-1 pt-1">
+          <div className="flex items-center gap-2">
+            <Robot size={14} weight="fill" className="text-violet-300" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">AI-чат</p>
+          </div>
+          {chat.length > 0 && (
+            <button
+              onClick={() => { haptic('light'); setChat([]); }}
+              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/40 active:text-white/80 active:bg-white/[0.06] transition-colors"
+              aria-label="Очистить"
+            >
+              <Broom size={12} weight="regular" />
+              Очистить
+            </button>
+          )}
         </div>
 
         {chat.length === 0 && !sending ? (
           <div className="px-1 pb-1 text-[12px] leading-snug text-white/50">
-            Спроси что угодно по своему бизнесу: сколько заработал, кто давно не приходил, что с неделей.
+            Спроси или продиктуй — ассистент запишет расход, создаст напоминание, ответит про выручку или клиентов.
           </div>
         ) : (
-          <div className="max-h-60 space-y-2 overflow-y-auto px-1 pb-1">
+          <div className="max-h-[55vh] min-h-[240px] space-y-2 overflow-y-auto px-1 pb-1">
             {chat.map((m, i) => (
               <div
                 key={i}
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-snug ${
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-snug whitespace-pre-wrap ${
                   m.role === 'user'
                     ? 'ml-auto bg-violet-500/20 text-white'
                     : 'bg-white/[0.06] text-white/90'
@@ -250,25 +283,6 @@ export default function MasterMiniAppHome() {
           </button>
         </div>
       </div>
-
-      <Link
-        href="/telegram/m/stats"
-        className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <TrendUp size={18} weight="bold" className="text-emerald-300" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Финансы · неделя</p>
-            <p className="mt-1 text-base font-bold tabular-nums">
-              {weekRevenue.toFixed(0)} ₴
-              <span className="ml-2 text-[11px] font-normal text-white/50">{weekCompleted} записей</span>
-            </p>
-          </div>
-        </div>
-        <CaretRight size={16} className="text-white/40" />
-      </Link>
     </motion.div>
   );
 }

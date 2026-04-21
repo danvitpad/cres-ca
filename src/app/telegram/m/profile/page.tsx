@@ -65,6 +65,7 @@ export default function MasterMiniAppProfile() {
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [posts, setPosts] = useState<PostRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewPost, setPreviewPost] = useState<PostRow | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -256,13 +257,16 @@ export default function MasterMiniAppProfile() {
           </button>
 
           {posts.map((p) => (
-            <div
+            <button
               key={p.id}
-              className="relative aspect-square overflow-hidden rounded-sm bg-white/[0.03]"
+              type="button"
+              onClick={() => { haptic('light'); setPreviewPost(p); }}
+              className="relative aspect-square overflow-hidden rounded-sm bg-white/[0.03] active:opacity-80 transition-opacity"
+              aria-label="Открыть публикацию"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.image_url} alt={p.caption ?? ''} className="size-full object-cover" loading="lazy" />
-            </div>
+            </button>
           ))}
         </div>
 
@@ -272,6 +276,43 @@ export default function MasterMiniAppProfile() {
           </p>
         )}
       </div>
+
+      {/* Post preview lightbox */}
+      <AnimatePresence>
+        {previewPost && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewPost(null)}
+            className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm"
+            style={{ paddingTop: 'max(24px, env(safe-area-inset-top))', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+          >
+            <div className="flex items-center justify-end px-5">
+              <button
+                onClick={() => setPreviewPost(null)}
+                className="flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-white active:bg-white/[0.12] transition-colors"
+                aria-label="Закрыть"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-1 items-center justify-center px-4" onClick={(e) => e.stopPropagation()}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPost.image_url}
+                alt={previewPost.caption ?? ''}
+                className="max-h-full max-w-full rounded-xl object-contain"
+              />
+            </div>
+            {previewPost.caption && (
+              <p className="mt-3 px-6 text-center text-[13px] text-white/80" onClick={(e) => e.stopPropagation()}>
+                {previewPost.caption}
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <input
         ref={fileInputRef}
