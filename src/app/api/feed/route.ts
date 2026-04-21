@@ -7,13 +7,49 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { validateInitData } from '@/lib/telegram/validate-init-data';
 
 const PAGE = 20;
 
-export async function GET(req: Request) {
+/**
+ * Resolve the viewer's profile id.
+ * TG Mini App sends initData header (cookie auth unreliable in WebView).
+ * Dashboard uses cookie auth via Supabase SSR.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AdminDb = any;
+async function resolveViewer(req: Request): Promise<{ id: string; admin: AdminDb } | null> {
+  const initData = req.headers.get('x-tg-init-data');
+  if (initData) {
+    const res = validateInitData(initData);
+    if (!('error' in res)) {
+      const admin = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        { auth: { persistSession: false, autoRefreshToken: false } },
+      );
+      const { data: p } = await admin.from('profiles').select('id').eq('telegram_id', res.user.id).maybeSingle();
+      if (p?.id) return { id: p.id, admin };
+    }
+  }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (user) {
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    return { id: user.id, admin };
+  }
+  return null;
+}
+
+export async function GET(req: Request) {
+  const viewer = await resolveViewer(req);
+  if (!viewer) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const supabase = viewer.admin;
 
   const { searchParams } = new URL(req.url);
   const cursor = searchParams.get('cursor');
@@ -21,9 +57,10 @@ export async function GET(req: Request) {
   const { data: follows } = await supabase
     .from('follows')
     .select('following_id')
-    .eq('follower_id', user.id);
+    .eq('follower_id', viewer.id);
 
-  const followingIds = (follows ?? []).map((f) => f.following_id);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const followingIds = ((follows ?? []) as Array<{ following_id: string }>).map((f: { following_id: string }) => f.following_id);
   if (followingIds.length === 0) {
     return NextResponse.json({ posts: [], nextCursor: null, likes: [] });
   }
@@ -40,8 +77,10 @@ export async function GET(req: Request) {
   const { data: rows, error } = await q;
   if (error) return NextResponse.json({ error: 'query_failed', detail: error.message }, { status: 500 });
 
-  const hasMore = (rows ?? []).length > PAGE;
-  const posts = (rows ?? []).slice(0, PAGE);
+  interface PostRow { id: string; author_id: string; image_url: string; caption: string | null; likes_count: number; comments_count: number; created_at: string }
+  const rowsArr = ((rows ?? []) as PostRow[]);
+  const hasMore = rowsArr.length > PAGE;
+  const posts = rowsArr.slice(0, PAGE);
   const nextCursor = hasMore ? posts[posts.length - 1].created_at : null;
 
   const authorIds = Array.from(new Set(posts.map((p) => p.author_id)));
@@ -64,8 +103,9 @@ export async function GET(req: Request) {
     masterByProfile.set(m.profile_id, { id: m.id, salon_id: m.salon_id, specialization: m.specialization, salon: s });
   }
 
-  const authorMap = new Map(
-    (authors ?? []).map((a) => {
+  interface AuthorRow { id: string; full_name: string | null; avatar_url: string | null; public_id: string | null; slug: string | null; role: string | null }
+  const authorMap = new Map<string, AuthorRow & { master_id: string | null; salon_id: string | null; specialization: string | null; salon: SalonEmbed | null }>(
+    ((authors ?? []) as AuthorRow[]).map((a) => {
       const m = masterByProfile.get(a.id) ?? null;
       return [
         a.id,
@@ -85,11 +125,11 @@ export async function GET(req: Request) {
     ? await supabase
         .from('post_likes')
         .select('post_id')
-        .eq('profile_id', user.id)
+        .eq('profile_id', viewer.id)
         .in('post_id', postIds)
     : { data: [] };
 
-  const likedSet = new Set((viewerLikes ?? []).map((l) => l.post_id));
+  const likedSet = new Set(((viewerLikes ?? []) as Array<{ post_id: string }>).map((l) => l.post_id));
 
   const enriched = posts.map((p) => ({
     ...p,

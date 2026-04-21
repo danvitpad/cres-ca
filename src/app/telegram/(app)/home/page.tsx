@@ -81,7 +81,20 @@ export default function MiniAppHomePage() {
   const loadFeed = useCallback(
     async (cursor?: string) => {
       const url = cursor ? `/api/feed?cursor=${encodeURIComponent(cursor)}` : '/api/feed';
-      const res = await fetch(url);
+      const initData = (() => {
+        if (typeof window === 'undefined') return null;
+        const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+        const live = w.Telegram?.WebApp?.initData;
+        if (live) return live;
+        try {
+          const stash = sessionStorage.getItem('cres:tg');
+          if (stash) return (JSON.parse(stash) as { initData?: string }).initData ?? null;
+        } catch { /* ignore */ }
+        return null;
+      })();
+      const res = await fetch(url, {
+        headers: initData ? { 'x-tg-init-data': initData } : {},
+      });
       if (!res.ok) return;
       const data = await res.json();
       setPosts((prev) => (cursor ? [...prev, ...data.posts] : data.posts));

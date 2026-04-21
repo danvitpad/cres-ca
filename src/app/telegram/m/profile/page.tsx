@@ -286,9 +286,10 @@ export default function MasterMiniAppProfile() {
             exit={{ opacity: 0 }}
             onClick={() => setPreviewPost(null)}
             className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm"
-            style={{ paddingTop: 'max(24px, env(safe-area-inset-top))', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+            style={{ paddingTop: 'max(16px, env(safe-area-inset-top))', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
           >
-            <div className="flex items-center justify-end px-5">
+            <div className="flex shrink-0 items-center justify-between px-5 pb-3">
+              <div className="text-[11px] uppercase tracking-[0.18em] text-white/50">Публикация</div>
               <button
                 onClick={() => setPreviewPost(null)}
                 className="flex size-9 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-white active:bg-white/[0.12] transition-colors"
@@ -297,19 +298,32 @@ export default function MasterMiniAppProfile() {
                 ✕
               </button>
             </div>
-            <div className="flex flex-1 items-center justify-center px-4" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex min-h-0 flex-1 items-center justify-center px-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewPost.image_url}
                 alt={previewPost.caption ?? ''}
-                className="max-h-full max-w-full rounded-xl object-contain"
+                className="h-auto max-h-full w-auto max-w-full rounded-xl object-contain"
+                style={{ maxHeight: 'calc(100dvh - 200px)' }}
               />
             </div>
-            {previewPost.caption && (
-              <p className="mt-3 px-6 text-center text-[13px] text-white/80" onClick={(e) => e.stopPropagation()}>
-                {previewPost.caption}
-              </p>
-            )}
+            <div
+              className="shrink-0 px-6 pt-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {previewPost.caption ? (
+                <p className="text-center text-[13px] leading-relaxed text-white/85 whitespace-pre-wrap">
+                  {previewPost.caption}
+                </p>
+              ) : (
+                <p className="text-center text-[12px] text-white/40 italic">
+                  Без подписи
+                </p>
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

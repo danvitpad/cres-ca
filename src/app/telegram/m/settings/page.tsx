@@ -27,25 +27,24 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
-// Only paths that actually exist (all 404s swapped out).
-// Mobile-adapted Mini App pages preferred; web /ru pages marked with a "🖥" indicator.
+// All paths are mobile-adapted /telegram/m/* — no more web redirects.
 interface SettingsItem {
   key: string;
   href: string;
   label: string;
   icon: ComponentType<{ size?: number; weight?: IconWeight; className?: string }>;
-  isWeb?: boolean;
 }
 const ITEMS: SettingsItem[] = [
   { key: 'profile', href: '/telegram/m/profile', label: 'Профиль и портфолио', icon: UserCircle },
-  { key: 'services', href: '/ru/services', label: 'Услуги и цены', icon: Scissors, isWeb: true },
-  { key: 'schedule', href: '/ru/settings', label: 'График работы', icon: CalendarCheck, isWeb: true },
+  { key: 'services', href: '/telegram/m/settings/services', label: 'Услуги и цены', icon: Scissors },
+  { key: 'schedule', href: '/telegram/m/settings/schedule', label: 'График работы', icon: CalendarCheck },
   { key: 'finance', href: '/telegram/m/stats', label: 'Финансы', icon: ChartLineUp },
-  { key: 'billing', href: '/ru/settings/billing', label: 'Тариф и платежи', icon: CreditCard, isWeb: true },
+  { key: 'billing', href: '/telegram/m/settings/billing', label: 'Тариф и платежи', icon: CreditCard },
   { key: 'notifications', href: '/telegram/notifications', label: 'Уведомления', icon: Bell },
+  { key: 'language', href: '/telegram/m/settings/language', label: 'Язык', icon: Globe },
   { key: 'voice', href: '/telegram/m/voice-assistant', label: 'Голосовой помощник', icon: Microphone },
-  { key: 'help', href: '/ru/settings/faq', label: 'Помощь и поддержка', icon: Question, isWeb: true },
-  { key: 'feedback', href: '/ru/settings/feedback', label: 'Обратная связь', icon: Globe, isWeb: true },
+  { key: 'help', href: '/telegram/m/settings/help', label: 'Помощь', icon: Question },
+  { key: 'feedback', href: '/telegram/m/settings/feedback', label: 'Обратная связь', icon: Question },
 ];
 
 export default function MasterMiniAppSettings() {
@@ -76,11 +75,6 @@ export default function MasterMiniAppSettings() {
                   <Icon size={18} weight="regular" />
                 </div>
                 <span className="flex-1 text-[14px] font-medium">{item.label}</span>
-                {item.isWeb && (
-                  <span className="rounded-md border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-white/40">
-                    web
-                  </span>
-                )}
                 <CaretRight size={14} className="text-white/30" />
               </Link>
             </li>
