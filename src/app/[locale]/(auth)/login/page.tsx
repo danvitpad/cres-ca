@@ -400,48 +400,51 @@ export default function AuthPage() {
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
 
-      <div className="auth-glass" style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* Top bar */}
+      <div className="auth-glass" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+        {/* Top bar — slim */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '18px clamp(20px,4vw,48px)',
+          padding: '10px clamp(16px,3vw,36px)',
+          flexShrink: 0,
         }}>
           <Link href="/" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            fontWeight: 800, fontSize: 17, letterSpacing: '-.03em',
+            fontWeight: 800, fontSize: 15, letterSpacing: '-.03em',
           }}>
             <span style={{
-              width: 26, height: 26, borderRadius: 7,
+              width: 22, height: 22, borderRadius: 6,
               background: 'var(--aviolet)', display: 'grid', placeItems: 'center',
-              color: '#fff', fontSize: 12, fontWeight: 900,
+              color: '#fff', fontSize: 10, fontWeight: 900,
             }}>C</span>
             CRES-CA
           </Link>
           <Link href="/" style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 13, color: 'var(--afg3)',
+            fontSize: 12, color: 'var(--afg3)',
           }}>
-            <ArrowLeft size={14} /> На главную
+            <ArrowLeft size={12} /> На главную
           </Link>
         </div>
 
-        {/* Split layout */}
+        {/* Split layout — fills remaining viewport, no page scroll */}
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'row', gap: 0,
-          padding: 'clamp(8px, 2vw, 16px)',
-          minHeight: 'calc(100dvh - 70px)',
+          padding: 'clamp(6px, 1.2vw, 12px)',
+          minHeight: 0,
         }}>
-          {/* Form column */}
+          {/* Form column — scrolls internally only if form is truly too tall */}
           <motion.section
             layout
             transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             style={{
               flex: 1, order: isSignUp ? 2 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 'clamp(16px, 3vw, 40px) clamp(16px, 4vw, 48px)',
+              padding: 'clamp(8px, 1.5vw, 20px) clamp(12px, 2.5vw, 32px)',
+              overflowY: 'auto',
+              minHeight: 0,
             }}
           >
-              <div style={{ width: '100%', maxWidth: 440 }}>
+              <div style={{ width: '100%', maxWidth: 400 }}>
                 {/* Role toggle */}
                 <div style={{
                   display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
@@ -501,7 +504,7 @@ export default function AuthPage() {
                         </>
                       )}
 
-                      <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: isSignUp ? 10 : 14 }}>
+                      <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: isSignUp ? 8 : 12 }}>
                         {mode === 'signup' && (
                           <>
                             {role === 'salon_admin' ? (

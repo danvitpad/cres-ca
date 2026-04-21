@@ -27,6 +27,8 @@ const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
 interface Appointment {
   id: string; starts_at: string; ends_at: string; status: string; price: number | null;
+  client_id?: string | null;
+  service?: { id: string; name: string; color: string | null } | { id: string; name: string; color: string | null }[] | null;
 }
 
 interface ClientBirthday { id: string; full_name: string; date_of_birth: string; }
@@ -83,7 +85,7 @@ export default function TodayPage() {
 
     const [apptRes, clientRes, remRes] = await Promise.all([
       supabase.from('appointments')
-        .select('id, starts_at, ends_at, status, price')
+        .select('id, starts_at, ends_at, status, price, client_id, service:services(id, name, color)')
         .eq('master_id', master.id)
         .gte('starts_at', weekStart.toISOString())
         .lte('starts_at', weekEnd.toISOString())
@@ -163,6 +165,45 @@ export default function TodayPage() {
 
   const activeReminders = useMemo(() => reminders.slice(0, 5), [reminders]);
 
+  // Weekly load — Mon..Sun count of non-cancelled appointments
+  const weeklyLoad = useMemo(() => {
+    const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const counts = new Array(7).fill(0);
+    for (const a of appointments) {
+      if (a.status === 'cancelled' || a.status === 'cancelled_by_client' || a.status === 'cancelled_by_master') continue;
+      const d = new Date(a.starts_at);
+      const dayIdx = (d.getDay() + 6) % 7; // Mon=0
+      counts[dayIdx] += 1;
+    }
+    const max = Math.max(1, ...counts);
+    return labels.map((label, i) => ({ label, value: counts[i], ratio: counts[i] / max }));
+  }, [appointments]);
+
+  // Top services of the week — count + color
+  const topServices = useMemo(() => {
+    const byId = new Map<string, { id: string; name: string; color: string; count: number }>();
+    for (const a of appointments) {
+      const svc = Array.isArray(a.service) ? a.service[0] : a.service;
+      if (!svc) continue;
+      const key = svc.id;
+      const e = byId.get(key);
+      if (e) e.count += 1;
+      else byId.set(key, { id: svc.id, name: svc.name, color: svc.color ?? '#8b5cf6', count: 1 });
+    }
+    const arr = Array.from(byId.values()).sort((a, b) => b.count - a.count).slice(0, 4);
+    const total = arr.reduce((s, x) => s + x.count, 0);
+    return { items: arr, total };
+  }, [appointments]);
+
+  const newClientsThisWeek = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of appointments) {
+      const d = new Date(a.starts_at);
+      if (d >= weekStart && d <= todayEnd && a.client_id) ids.add(a.client_id);
+    }
+    return ids.size;
+  }, [appointments, weekStart, todayEnd]);
+
   const firstName = master?.profile?.first_name || master?.profile?.full_name?.split(' ')[0] || '';
   const fmtMoney = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n) + ' ' + CURRENCY;
 
@@ -223,8 +264,8 @@ export default function TodayPage() {
         </p>
       </motion.div>
 
-      {/* 3 StatCards */}
-      <motion.div {...stagger(1)} className="shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* 4 StatCards */}
+      <motion.div {...stagger(1)} className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard
           label={t('todayAppointments')}
           value={todayAppts.length}
@@ -238,12 +279,68 @@ export default function TodayPage() {
         <StatCard
           label={t('thisWeek')}
           value={fmtMoney(weekRevenue)}
+          icon={<Coins className="w-5 h-5" />}
+        />
+        <StatCard
+          label="Новые клиенты · неделя"
+          value={newClientsThisWeek}
           icon={<Users className="w-5 h-5" />}
         />
       </motion.div>
 
+      {/* Weekly load + Top services — promised on landing, now real */}
+      <motion.div {...stagger(2)} className="shrink-0 grid grid-cols-1 md:grid-cols-5 gap-3">
+        {/* Weekly load bars */}
+        <div className="md:col-span-3 rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Загрузка по дням</h2>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {weeklyLoad.reduce((s, d) => s + d.value, 0)} записей
+            </span>
+          </div>
+          <div className="flex items-end gap-2 h-20">
+            {weeklyLoad.map((d) => (
+              <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
+                <div
+                  className="w-full rounded-md bg-[var(--ds-accent)] transition-all"
+                  style={{
+                    height: `${Math.max(6, d.ratio * 64)}px`,
+                    opacity: d.value === 0 ? 0.15 : 0.45 + d.ratio * 0.55,
+                  }}
+                  title={`${d.value}`}
+                />
+                <span className="text-[10px] font-medium text-muted-foreground">{d.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Top services donut-ish */}
+        <div className="md:col-span-2 rounded-xl border bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Топ услуги</h2>
+            <span className="text-xs text-muted-foreground tabular-nums">{topServices.total}</span>
+          </div>
+          {topServices.items.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">Нет услуг за неделю</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {topServices.items.map((s) => {
+                const pct = topServices.total > 0 ? Math.round((s.count / topServices.total) * 100) : 0;
+                return (
+                  <li key={s.id} className="flex items-center gap-2 text-xs">
+                    <span className="size-2 shrink-0 rounded-full" style={{ background: s.color }} />
+                    <span className="flex-1 truncate">{s.name}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{pct}%</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </motion.div>
+
       {/* Row: Reminders | AI chat (wide) | Birthdays — fills remaining viewport */}
-      <motion.div {...stagger(2)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+      <motion.div {...stagger(3)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
         {/* Reminders — 1 col, scrolls internally */}
         <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
           <div className="flex items-center justify-between mb-3 shrink-0">
