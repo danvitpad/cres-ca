@@ -1629,12 +1629,13 @@ async function handleReviewStars(chatId: number, telegramId: number, apptId: str
     return;
   }
 
-  // Insert review — trigger enforces all authenticity rules
+  // Insert review — trigger enforces all authenticity rules.
+  // Prod schema is polymorphic: reviewer_id + target_id + target_type.
   const { error } = await supabase.from('reviews').insert({
     appointment_id: row.id,
     target_type: 'master',
-    target_master_id: row.master_id,
-    reviewer_profile_id: profile.id,
+    target_id: row.master_id,
+    reviewer_id: profile.id,
     score,
     is_published: true,
   });
