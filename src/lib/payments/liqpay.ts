@@ -98,3 +98,13 @@ export function verifyCallback(data: string, receivedSignature: string): LiqPayC
   const decoded = Buffer.from(data, 'base64').toString('utf-8');
   return JSON.parse(decoded) as LiqPayCallback;
 }
+
+/** Maps LiqPay status strings to the successful-payment concept (includes sandbox). */
+export function isSuccessStatus(status: string | undefined): boolean {
+  return status === 'success' || status === 'sandbox';
+}
+
+/** Status values that mean money was returned to client (LiqPay has both). */
+export function isRefundStatus(status: string | undefined): boolean {
+  return status === 'reversed' || status === 'refund';
+}

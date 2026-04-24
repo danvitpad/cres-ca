@@ -1,11 +1,27 @@
 /** --- YAML
  * name: LiqPay Webhook
- * description: POST endpoint handling LiqPay payment callbacks — verifies signature and updates payment/appointment status
+ * description: POST endpoint handling LiqPay payment callbacks. Routes by order_id:
+ *              - UUID that matches payment_intents.id  → escrow deposit flow (Phase 2)
+ *              - "sub_{profileId}_{tier}" format       → subscription flow
+ *              - Otherwise                              → legacy payments table update
+ *              Verifies HMAC signature in all paths.
  * --- */
 
 import { NextResponse } from 'next/server';
-import { verifyCallback } from '@/lib/payments/liqpay';
+import { verifyCallback, isSuccessStatus } from '@/lib/payments/liqpay';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { markHeld } from '@/lib/payments/escrow';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
 
 export async function POST(request: Request) {
   const formData = await request.formData();
@@ -21,8 +37,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   }
 
-  const supabase = await createClient();
   const orderId = callback.order_id;
+
+  // ─── Escrow deposit path: order_id is UUID of payment_intents ───
+  if (UUID_RE.test(orderId)) {
+    const db = admin();
+    const { data: intent } = await db
+      .from('payment_intents')
+      .select('id, status')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (intent) {
+      if (isSuccessStatus(callback.status)) {
+        await markHeld(db, intent.id, String(callback.transaction_id ?? ''), signature);
+      } else if (['failure', 'error'].includes(callback.status)) {
+        await db
+          .from('payment_intents')
+          .update({ status: 'failed', error_message: callback.err_description ?? callback.status })
+          .eq('id', intent.id)
+          .eq('status', 'pending');
+      } else if (['reversed', 'refund'].includes(callback.status)) {
+        await db
+          .from('payment_intents')
+          .update({ status: 'refunded', refunded_at: new Date().toISOString() })
+          .eq('id', intent.id);
+      }
+      return NextResponse.json({ status: 'ok', path: 'escrow' });
+    }
+    // If UUID but not in payment_intents — fall through to legacy path
+  }
+
+  const supabase = await createClient();
 
   // Map LiqPay status to our payment status
   let paymentStatus: string;

@@ -25,6 +25,7 @@
     { "path": "/api/cron/voice-reminders",    "schedule": "0 19 * * *" },
     { "path": "/api/cron/purge-clients",      "schedule": "0 20 * * *" },
     { "path": "/api/cron/rebook-scan",        "schedule": "0 21 * * *" },
-    { "path": "/api/cron/review-request",     "schedule": "0 22 * * *" }
+    { "path": "/api/cron/review-request",     "schedule": "0 22 * * *" },
+    { "path": "/api/cron/payments-auto-release", "schedule": "0 23 * * *" }
   ]
 }
