@@ -23,6 +23,7 @@ import { StatCard } from '@/components/shared/primitives/stat-card';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { CURRENCY, pageContainer } from '@/lib/dashboard-theme';
 import { RebookPanel, type RebookCardData } from '@/components/rebook/rebook-panel';
+import { PublicPageBanner } from '@/components/dashboard/public-page-banner';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -346,6 +347,11 @@ export default function TodayPage() {
             </ul>
           )}
         </div>
+      </motion.div>
+
+      {/* Public page banner — shows master's /m/[slug] URL with copy button */}
+      <motion.div {...stagger(3)} className="shrink-0">
+        <PublicPageBanner />
       </motion.div>
 
       {/* Rebook suggestions — show only when there are any */}

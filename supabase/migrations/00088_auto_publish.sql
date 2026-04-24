@@ -15,7 +15,7 @@ where m.is_public = false
   and exists (
     select 1 from public.subscriptions s
     where s.profile_id = m.profile_id
-      and s.status in ('active','trial')
+      and s.status = 'active'
   );
 
 -- 2. Трigger: автогенерация slug при INSERT мастера (и при UPDATE если slug пустой)
@@ -79,7 +79,7 @@ as $$
     where m.id = p_master_id
       and m.is_public = true
       and m.is_active = true
-      and (s.status is null or s.status in ('active','trial'))
+      and (s.status is null or s.status = 'active')
   );
 $$;
 
@@ -94,7 +94,7 @@ create policy "masters_public_read" on public.masters
     and exists (
       select 1 from public.subscriptions s
       where s.profile_id = masters.profile_id
-        and s.status in ('active','trial')
+        and s.status = 'active'
     )
   );
 
@@ -107,7 +107,7 @@ create policy "services_public_read" on public.services
       join public.subscriptions s on s.profile_id = m.profile_id
       where m.is_public = true
         and m.is_active = true
-        and s.status in ('active','trial')
+        and s.status = 'active'
     )
   );
 
@@ -121,7 +121,7 @@ create policy "reviews_public_master_read" on public.reviews
       join public.subscriptions s on s.profile_id = m.profile_id
       where m.is_public = true
         and m.is_active = true
-        and s.status in ('active','trial')
+        and s.status = 'active'
     )
   );
 
@@ -139,10 +139,10 @@ left join public.reviews r
   and r.is_published = true
 where m.is_public = true
   and m.is_active = true
-  and s.status in ('active','trial')
+  and s.status = 'active'
 group by m.id;
 
 grant select on public.master_ratings to anon, authenticated;
 
 comment on function public.is_master_indexable is
-  'Master is publicly indexable iff: is_public=true AND is_active=true AND subscription status in (active, trial).';
+  'Master is publicly indexable iff: is_public=true AND is_active=true AND subscription status = active (covers paying + trial users — trial rows have tier=trial, status=active).';

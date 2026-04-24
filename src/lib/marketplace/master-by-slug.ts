@@ -88,7 +88,8 @@ export async function getPublicMasterBySlug(slug: string): Promise<PublicMaster 
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!sub || !['active', 'trial'].includes(sub.status as string)) {
+  // Trial users have tier='trial' but status='active'. So a single 'active' check covers both.
+  if (!sub || sub.status !== 'active') {
     return null;
   }
 
@@ -186,6 +187,6 @@ export async function listPublicMasterSlugs(limit = 5000): Promise<Array<{ slug:
 
   type Row = { slug: string; updated_at: string; subscriptions: Array<{ status: string }> | null };
   return ((data ?? []) as unknown as Row[])
-    .filter((r) => (r.subscriptions ?? []).some((s) => ['active', 'trial'].includes(s.status)))
+    .filter((r) => (r.subscriptions ?? []).some((s) => s.status === 'active'))
     .map((r) => ({ slug: r.slug, updatedAt: r.updated_at }));
 }

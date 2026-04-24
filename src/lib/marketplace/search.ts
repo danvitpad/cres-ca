@@ -78,7 +78,7 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
   };
   // Only masters with active or trial subscription are indexable
   let rows = (masters as unknown as MRow[])
-    .filter((m) => (m.subscriptions ?? []).some((s) => ['active', 'trial'].includes(s.status)))
+    .filter((m) => (m.subscriptions ?? []).some((s) => s.status === 'active'))
     .slice(0, limit);
 
   // Stage 2: service keyword filter — if specified, only keep masters with matching service
