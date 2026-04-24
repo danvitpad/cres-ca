@@ -53,10 +53,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('[sitemap] failed to fetch master slugs:', (e as Error).message);
   }
 
-  // /search entry for each locale
+  // /find entry for each locale (public marketplace search; /search is client-only logged-in)
   for (const locale of LOCALES) {
     entries.push({
-      url: `${BASE_URL}/${locale}/search`,
+      url: `${BASE_URL}/${locale}/find`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.9,

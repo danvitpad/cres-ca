@@ -36,7 +36,7 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
   return {
     title,
     description,
-    alternates: { canonical: `/search${sp.q || sp.city ? `?${new URLSearchParams({ ...(sp.q ? { q: sp.q } : {}), ...(sp.city ? { city: sp.city } : {}) })}` : ''}` },
+    alternates: { canonical: `/find${sp.q || sp.city ? `?${new URLSearchParams({ ...(sp.q ? { q: sp.q } : {}), ...(sp.city ? { city: sp.city } : {}) })}` : ''}` },
     openGraph: { title, description, type: 'website' },
   };
 }

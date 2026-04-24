@@ -1575,7 +1575,7 @@ async function handleClientSearch(chatId: number, query: string) {
     if (intent.price_max) searchParams.set('price_max', String(intent.price_max));
     await sendMessage(chatId, '👇 Ещё больше результатов', {
       reply_markup: {
-        inline_keyboard: [[{ text: '🔎 Открыть поиск', url: `${appUrl}/ru/search?${searchParams.toString()}` }]],
+        inline_keyboard: [[{ text: '🔎 Открыть поиск', url: `${appUrl}/ru/find?${searchParams.toString()}` }]],
       },
     });
   } catch (e) {
