@@ -39,6 +39,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { HeaderNotificationsDropdown } from '@/components/dashboard/header-notifications-dropdown';
 import { HeaderAnnouncementStrip } from '@/components/dashboard/header-announcement-strip';
+import { PublicPageDropdown } from '@/components/dashboard/public-page-dropdown';
 import { SessionNavBar, type SidebarNavItem } from '@/components/ui/sidebar';
 
 /* ─── Layout constants (header) ─── */
@@ -144,6 +145,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               {t('header.continueSetup')}
             </button>
+            <PublicPageDropdown />
             <TrialBadge />
           </div>
 

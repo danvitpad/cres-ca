@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Info,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -61,6 +62,7 @@ interface MasterInfo {
   avatar_url: string | null;
   profile_id: string | null;
   address?: string | null;
+  booking_important_info?: string | null;
 }
 
 /* ─────────────────── Constants ─────────────────── */
@@ -241,7 +243,7 @@ export default function MiniAppBookPage() {
 
       const { data: masterData } = await supabase
         .from('masters')
-        .select('id, working_hours, display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name, avatar_url)')
+        .select('id, working_hours, display_name, profile_id, booking_important_info, profile:profiles!masters_profile_id_fkey(full_name, avatar_url)')
         .eq('id', masterId)
         .single();
 
@@ -251,6 +253,7 @@ export default function MiniAppBookPage() {
           working_hours: MasterInfo['working_hours'];
           display_name: string | null;
           profile_id: string | null;
+          booking_important_info: string | null;
           profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
         };
         const p = Array.isArray(m.profile) ? m.profile[0] : m.profile;
@@ -261,6 +264,7 @@ export default function MiniAppBookPage() {
           full_name: p?.full_name ?? null,
           avatar_url: p?.avatar_url ?? null,
           profile_id: m.profile_id,
+          booking_important_info: m.booking_important_info,
         });
       }
 
@@ -1055,6 +1059,27 @@ export default function MiniAppBookPage() {
                     </p>
                   </div>
                 </motion.div>
+
+                {master?.booking_important_info && master.booking_important_info.trim().length > 0 && (
+                  <motion.div
+                    variants={fadeUp}
+                    initial="hidden"
+                    animate="visible"
+                    className="mt-4 overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-400/[0.06]"
+                  >
+                    <div className="flex items-start gap-3 p-5">
+                      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+                        <Info className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-semibold text-white/90">Важная информация</p>
+                        <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-white/65">
+                          {master.booking_important_info}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

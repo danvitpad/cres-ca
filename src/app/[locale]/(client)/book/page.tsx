@@ -23,7 +23,7 @@ import { WaitlistButton } from '@/components/booking/waitlist-button';
 import { LiqPayButton } from '@/components/booking/liqpay-button';
 import { ConsentForm, getConsentFormText } from '@/components/shared/consent-form';
 import { format } from 'date-fns';
-import { ArrowLeft, Clock, Check, Plus, User, Users } from 'lucide-react';
+import { ArrowLeft, Clock, Check, Plus, User, Users, Info } from 'lucide-react';
 
 type Step = 'service' | 'date' | 'time' | 'consent' | 'confirm';
 
@@ -50,6 +50,7 @@ interface MasterInfo {
   id: string;
   working_hours: Record<string, { start: string; end: string; break_start?: string; break_end?: string } | null> | null;
   display_name: string | null;
+  booking_important_info: string | null;
   profile: { full_name: string } | null;
 }
 
@@ -137,7 +138,7 @@ export default function BookPage() {
       const supabase = createClient();
       const { data: masterData } = await supabase
         .from('masters')
-        .select('id, working_hours, display_name, profile:profiles!masters_profile_id_fkey(full_name)')
+        .select('id, working_hours, display_name, booking_important_info, profile:profiles!masters_profile_id_fkey(full_name)')
         .eq('id', preselectedMasterId!)
         .single();
 
@@ -593,23 +594,54 @@ export default function BookPage() {
         <p className="text-sm text-muted-foreground">{(master.display_name ?? master.profile?.full_name ?? '')}</p>
       )}
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-2">
-        {(consentRequired
-          ? ['service', 'date', 'time', 'consent', 'confirm'] as Step[]
-          : ['service', 'date', 'time', 'confirm'] as Step[]
-        ).map((s, i, arr) => (
-          <div
-            key={s}
-            className={cn(
-              'h-1 flex-1 rounded-full transition-colors',
-              i <= arr.indexOf(step)
-                ? 'bg-primary'
-                : 'bg-muted',
-            )}
-          />
-        ))}
-      </div>
+      {/* Step indicator — Fresha-style breadcrumb */}
+      {(() => {
+        const labels: Record<Step, string> = {
+          service: 'Услуги',
+          date: 'Дата',
+          time: 'Время',
+          consent: 'Согласие',
+          confirm: 'Подтверждение',
+        };
+        const allSteps: Step[] = consentRequired
+          ? ['service', 'date', 'time', 'consent', 'confirm']
+          : ['service', 'date', 'time', 'confirm'];
+        const currentIdx = allSteps.indexOf(step);
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              {allSteps.map((s, i) => (
+                <div key={s} className="flex items-center gap-1.5">
+                  <span
+                    className={cn(
+                      'transition-colors',
+                      i < currentIdx && 'text-muted-foreground',
+                      i === currentIdx && 'text-foreground font-semibold',
+                      i > currentIdx && 'text-muted-foreground/50',
+                    )}
+                  >
+                    {labels[s]}
+                  </span>
+                  {i < allSteps.length - 1 && (
+                    <span className="text-muted-foreground/40">/</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {allSteps.map((s, i) => (
+                <div
+                  key={s}
+                  className={cn(
+                    'h-1 flex-1 rounded-full transition-colors',
+                    i <= currentIdx ? 'bg-primary' : 'bg-muted',
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Step 1: Service */}
       {step === 'service' && (
@@ -839,6 +871,23 @@ export default function BookPage() {
               )}
             </CardContent>
           </Card>
+          {master?.booking_important_info && master.booking_important_info.trim().length > 0 && (
+            <Card>
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                    <Info className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold">Важная информация</h3>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                      {master.booking_important_info}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {paymentData ? (
             <LiqPayButton
               data={paymentData.data}

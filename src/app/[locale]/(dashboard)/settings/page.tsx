@@ -513,6 +513,10 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   const [birthdayGreet, setBirthdayGreet] = useState((master as unknown as Record<string, unknown>).birthday_auto_greet as boolean ?? false);
   const [birthdayDiscount, setBirthdayDiscount] = useState((master as unknown as Record<string, unknown>).birthday_discount_percent as number ?? 0);
 
+  const [importantInfo, setImportantInfo] = useState(
+    ((master as unknown as Record<string, unknown>).booking_important_info as string) ?? '',
+  );
+
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
@@ -522,6 +526,7 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
         cancellation_policy: { free_hours: freeHours, partial_hours: partialHours, partial_percent: partialPercent },
         birthday_auto_greet: birthdayGreet,
         birthday_discount_percent: birthdayDiscount,
+        booking_important_info: importantInfo.trim() || null,
       })
       .eq('id', master.id);
     setSaving(false);
@@ -565,6 +570,21 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
               <Input type="number" min={0} max={50} value={birthdayDiscount} onChange={(e) => setBirthdayDiscount(Number(e.target.value))} />
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold">Важная информация для клиента</h4>
+          <p className="text-xs text-muted-foreground">
+            Показывается на странице подтверждения записи. Например: адрес, телефон, что взять с собой, условия оплаты.
+          </p>
+          <Textarea
+            value={importantInfo}
+            onChange={(e) => setImportantInfo(e.target.value)}
+            placeholder={'Виникло питання?\nТелефонуй: 0670113860\n\nАдрес: вул. Європейська 27/24, вхід з вулиці 1100-річчя.'}
+            rows={6}
+            maxLength={2000}
+          />
+          <p className="text-[11px] text-muted-foreground text-right">{importantInfo.length}/2000</p>
         </div>
 
         <Button onClick={handleSave} disabled={saving}>

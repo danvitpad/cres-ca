@@ -9,7 +9,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, MapPin, Sparkles, Calendar } from 'lucide-react';
+import { Star, MapPin, Sparkles, Calendar, Clock, Phone } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PortfolioGrid } from '@/components/master/portfolio-grid';
 import { MasterLikeButton } from '@/components/master/like-button';
@@ -43,6 +43,8 @@ interface MasterRow {
   badges: string[] | null;
   level: number | null;
   likes_count: number | null;
+  working_hours: Record<string, { start: string; end: string; closed?: boolean } | null> | null;
+  booking_important_info: string | null;
 }
 
 interface ServiceRow {
@@ -108,7 +110,7 @@ function admin() {
 async function loadMaster(handle: string): Promise<MasterRow | null> {
   const cols =
     'id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
-    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, likes_count';
+    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, likes_count, working_hours, booking_important_info';
 
   // Try slug first (preferred, SEO-friendly). Require is_public for slug-based visits.
   const bySlug = await admin()
@@ -393,6 +395,84 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           </Link>
         </div>
 
+        {services.length > 0 && (
+          <div className="mt-12">
+            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+              <Sparkles className="size-5 text-violet-600" />
+              Услуги
+            </h2>
+            <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
+              {services.map(s => (
+                <div
+                  key={s.id}
+                  className="flex items-start justify-between gap-4 px-5 py-4"
+                >
+                  <div className="flex-1">
+                    <Link
+                      href={`/ru/book?master=${master.id}&service=${s.id}`}
+                      className="block hover:text-violet-600"
+                    >
+                      <div className="font-medium">{s.name}</div>
+                      {s.description && (
+                        <div className="mt-0.5 text-sm text-neutral-500">{s.description}</div>
+                      )}
+                      {s.duration_minutes && (
+                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-neutral-400">
+                          <Clock className="size-3" /> {s.duration_minutes} мин
+                        </div>
+                      )}
+                    </Link>
+                    {(s.preparation || s.aftercare || (s.faq && s.faq.length > 0)) && (
+                      <details className="mt-2 text-xs">
+                        <summary className="cursor-pointer text-violet-600 hover:underline">
+                          Как подготовиться и FAQ
+                        </summary>
+                        <div className="mt-2 space-y-3 border-l-2 border-violet-200 pl-3 text-neutral-700">
+                          {s.preparation && (
+                            <div>
+                              <div className="font-semibold">Как подготовиться</div>
+                              <div className="whitespace-pre-line">{s.preparation}</div>
+                            </div>
+                          )}
+                          {s.aftercare && (
+                            <div>
+                              <div className="font-semibold">Уход после</div>
+                              <div className="whitespace-pre-line">{s.aftercare}</div>
+                            </div>
+                          )}
+                          {s.faq && s.faq.length > 0 && (
+                            <div className="space-y-2">
+                              {s.faq.map((f, i) => (
+                                <div key={i}>
+                                  <div className="font-semibold">{f.q}</div>
+                                  <div>{f.a}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    {s.price != null && (
+                      <div className="font-semibold">
+                        {s.price} {s.currency ?? 'UAH'}
+                      </div>
+                    )}
+                    <Link
+                      href={`/ru/book?master=${master.id}&service=${s.id}`}
+                      className="inline-flex items-center rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-violet-400 hover:text-violet-700"
+                    >
+                      Выбрать
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {stories.length > 0 && (
           <div className="mt-10 -mx-5 px-5 sm:mx-0 sm:px-0">
             <div className="flex gap-4 overflow-x-auto pb-2">
@@ -530,73 +610,78 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           </div>
         )}
 
-        {services.length > 0 && (
+        {(master.city || master.working_hours) && (
           <div className="mt-12 mb-16">
-            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-              <Sparkles className="size-5 text-violet-600" />
-              Услуги
-            </h2>
-            <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
-              {services.map(s => (
-                <div
-                  key={s.id}
-                  className="flex items-start justify-between gap-4 px-5 py-4"
-                >
-                  <div className="flex-1">
-                    <Link
-                      href={`/ru/book?master=${master.id}&service=${s.id}`}
-                      className="block hover:text-violet-600"
-                    >
-                      <div className="font-medium">{s.name}</div>
-                      {s.description && (
-                        <div className="mt-0.5 text-sm text-neutral-500">{s.description}</div>
-                      )}
-                      {s.duration_minutes && (
-                        <div className="mt-1 text-xs text-neutral-400">{s.duration_minutes} мин</div>
-                      )}
-                    </Link>
-                    {(s.preparation || s.aftercare || (s.faq && s.faq.length > 0)) && (
-                      <details className="mt-2 text-xs">
-                        <summary className="cursor-pointer text-violet-600 hover:underline">
-                          Как подготовиться и FAQ
-                        </summary>
-                        <div className="mt-2 space-y-3 border-l-2 border-violet-200 pl-3 text-neutral-700">
-                          {s.preparation && (
-                            <div>
-                              <div className="font-semibold">Как подготовиться</div>
-                              <div className="whitespace-pre-line">{s.preparation}</div>
-                            </div>
-                          )}
-                          {s.aftercare && (
-                            <div>
-                              <div className="font-semibold">Уход после</div>
-                              <div className="whitespace-pre-line">{s.aftercare}</div>
-                            </div>
-                          )}
-                          {s.faq && s.faq.length > 0 && (
-                            <div className="space-y-2">
-                              {s.faq.map((f, i) => (
-                                <div key={i}>
-                                  <div className="font-semibold">{f.q}</div>
-                                  <div>{f.a}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                  {s.price != null && (
-                    <div className="text-right">
-                      <div className="font-semibold">
-                        {s.price} {s.currency ?? 'UAH'}
-                      </div>
+            <h2 className="mb-4 text-xl font-semibold">Контакты и часы работы</h2>
+            <div className="grid gap-5 sm:grid-cols-2">
+              {master.city && (
+                <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                      <MapPin className="size-4" />
                     </div>
-                  )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">Город</p>
+                      <p className="mt-0.5 text-sm text-neutral-600">{master.city}</p>
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(master.city)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:underline"
+                      >
+                        Открыть на карте →
+                      </a>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
+              {master.working_hours && (
+                <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                      <Clock className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">Часы работы</p>
+                      <ul className="mt-2 space-y-1 text-xs text-neutral-600">
+                        {(() => {
+                          const days: Array<[string, string]> = [
+                            ['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'],
+                            ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс'],
+                          ];
+                          return days.map(([key, label]) => {
+                            const wh = master.working_hours?.[key];
+                            return (
+                              <li key={key} className="flex justify-between gap-3">
+                                <span className="text-neutral-500">{label}</span>
+                                <span className="font-medium text-neutral-800">
+                                  {wh && !wh.closed && wh.start && wh.end ? `${wh.start}–${wh.end}` : 'Выходной'}
+                                </span>
+                              </li>
+                            );
+                          });
+                        })()}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+            {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
+              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                    <Phone className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-amber-900">Важная информация</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-amber-900/80">
+                      {master.booking_important_info}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
