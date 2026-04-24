@@ -147,6 +147,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // /find [query] — AI concierge search for a master
+  if (text.startsWith('/find') || /^(найди|найти|подскажи|ищу)\s/i.test(text)) {
+    const q = text.replace(/^\/find\s*/i, '').replace(/^(найди|найти|подскажи|ищу)\s+/i, '').trim();
+    await handleClientSearch(chatId, q);
+    return NextResponse.json({ ok: true });
+  }
+
   // /feedback [text] — save user feedback. If no text, ask for follow-up message.
   if (text.startsWith('/feedback')) {
     await handleTextFeedback(chatId, telegramId, text.replace(/^\/feedback\s*/, '').trim(), firstName);
@@ -157,7 +164,7 @@ export async function POST(request: Request) {
   if (text.startsWith('/help')) {
     await sendMessage(
       chatId,
-      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/feedback — оставить отзыв\n/help — справка\n\n🎤 <b>Голосовой ассистент (мастера):</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход.\n\n💬 <b>Отзыв голосом (все):</b>\nЗапиши голосовое со словами «обратная связь» — я сохраню в feedback.\n\nПримеры:\n• «Напомни завтра в 10 позвонить Марии»\n• «Обратная связь: хотелось бы увидеть темную тему»',
+      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/find — найти мастера (AI-консьерж)\n/feedback — оставить отзыв\n/help — справка\n\n🔎 <b>AI-консьерж (для клиентов):</b>\nНапиши что хочешь — AI подберёт лучших:\n• «найди маникюр в Киеве до 800»\n• «ищу парикмахера во Львове»\n• <code>/find педикюр</code>\n\n🎤 <b>Голосовой ассистент (мастера):</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход.\n\n💬 <b>Отзыв голосом (все):</b>\nЗапиши голосовое со словами «обратная связь» — я сохраню в feedback.',
       { parse_mode: 'HTML' },
     );
     return NextResponse.json({ ok: true });
@@ -1490,6 +1497,90 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
       await sendMessage(chatId, `❌ Ошибка отправки: ${(err as Error).message}`);
     }
     return;
+  }
+}
+
+/* ─── AI concierge: /find ─── */
+
+async function handleClientSearch(chatId: number, query: string) {
+  if (!query || query.length < 3) {
+    await sendMessage(chatId,
+      '🔍 <b>Найти мастера</b>\n\nНапиши что хочешь, например:\n<code>найди маникюр в центре Киева до 800 грн</code>\n<code>ищу парикмахера во Львове</code>\n<code>/find педикюр</code>',
+      { parse_mode: 'HTML' });
+    return;
+  }
+
+  await sendMessage(chatId, '🎯 Ищу подходящих мастеров…');
+
+  try {
+    const { parseClientConciergeText, isConciergeUsable } = await import('@/lib/ai/client-concierge');
+    const { searchMasters } = await import('@/lib/marketplace/search');
+
+    const intent = await parseClientConciergeText(query);
+    if (!isConciergeUsable(intent)) {
+      await sendMessage(chatId,
+        '🤔 Не понял что искать. Попробуй указать услугу или город:\n<code>маникюр Киев</code>',
+        { parse_mode: 'HTML' });
+      return;
+    }
+
+    const results = await searchMasters({
+      service: intent.service ?? undefined,
+      city: intent.city ?? undefined,
+      priceMax: intent.price_max ?? undefined,
+      limit: 5,
+    });
+
+    if (results.length === 0) {
+      const hints: string[] = [];
+      if (intent.service) hints.push(`услуга: ${intent.service}`);
+      if (intent.city) hints.push(`город: ${intent.city}`);
+      if (intent.price_max) hints.push(`до ${intent.price_max} ₴`);
+      await sendMessage(chatId,
+        `😔 Не нашёл мастеров по фильтрам:\n${hints.join(' · ') || query}\n\nПопробуй изменить запрос или убрать фильтры.`);
+      return;
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+
+    // Header message with summary
+    const title = intent.service ? intent.service[0].toUpperCase() + intent.service.slice(1) : 'Мастера';
+    const cityLine = intent.city ? ` в ${intent.city}` : '';
+    await sendMessage(chatId,
+      `✨ <b>${title}${cityLine}</b>\n\nНашёл ${results.length} ${results.length === 1 ? 'мастера' : 'мастеров'} — от лучших рейтинг-wise:`,
+      { parse_mode: 'HTML' });
+
+    // Cards: one message per master with inline button to open profile
+    for (const m of results) {
+      const ratingStr = m.rating !== null ? `⭐ ${m.rating.toFixed(1)} (${m.reviewsCount})` : 'Новый';
+      const topSvc = m.topServices[0];
+      const priceStr = topSvc ? `\nот ${topSvc.price} ${topSvc.currency} · ${topSvc.name}` : '';
+      const specLine = m.specialization ? `\n${m.specialization}` : '';
+      const cityStr = m.city ? `\n📍 ${m.city}` : '';
+
+      await sendMessage(chatId,
+        `<b>${m.fullName}</b>${specLine}\n${ratingStr}${cityStr}${priceStr}`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[{ text: '👉 Открыть профиль', url: `${appUrl}/m/${m.slug}` }]],
+          },
+        });
+    }
+
+    // Footer — link to full search
+    const searchParams = new URLSearchParams();
+    if (intent.service) searchParams.set('q', intent.service);
+    if (intent.city) searchParams.set('city', intent.city);
+    if (intent.price_max) searchParams.set('price_max', String(intent.price_max));
+    await sendMessage(chatId, '👇 Ещё больше результатов', {
+      reply_markup: {
+        inline_keyboard: [[{ text: '🔎 Открыть поиск', url: `${appUrl}/ru/search?${searchParams.toString()}` }]],
+      },
+    });
+  } catch (e) {
+    console.error('[concierge] failed:', e);
+    await sendMessage(chatId, '❌ AI-консьерж временно недоступен. Попробуй открыть приложение и искать вручную.');
   }
 }
 

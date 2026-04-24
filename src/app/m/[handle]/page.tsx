@@ -33,7 +33,10 @@ interface MasterRow {
   avatar_url: string | null;
   cover_url: string | null;
   invite_code: string | null;
+  slug: string | null;
   is_active: boolean | null;
+  is_public: boolean | null;
+  headline: string | null;
   meta_title: string | null;
   meta_description: string | null;
   og_image_url: string | null;
@@ -103,13 +106,28 @@ function admin() {
 }
 
 async function loadMaster(handle: string): Promise<MasterRow | null> {
-  const { data } = await admin()
+  const cols =
+    'id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
+    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, likes_count';
+
+  // Try slug first (preferred, SEO-friendly). Require is_public for slug-based visits.
+  const bySlug = await admin()
     .from('masters')
-    .select('id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, invite_code, is_active, meta_title, meta_description, og_image_url, badges, level, likes_count')
+    .select(cols)
+    .eq('slug', handle)
+    .eq('is_active', true)
+    .eq('is_public', true)
+    .maybeSingle();
+  if (bySlug.data) return (bySlug.data as unknown) as MasterRow;
+
+  // Fallback: invite_code (direct link from master, works even without public opt-in)
+  const byCode = await admin()
+    .from('masters')
+    .select(cols)
     .eq('invite_code', handle)
     .eq('is_active', true)
     .maybeSingle();
-  return (data as MasterRow | null) ?? null;
+  return ((byCode.data as unknown) as MasterRow | null) ?? null;
 }
 
 async function loadServices(masterId: string): Promise<ServiceRow[]> {
@@ -215,23 +233,29 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : `${name} · CRES-CA`);
   const description =
     master.meta_description ??
+    master.headline ??
     (master.bio
       ? master.bio.slice(0, 160)
-      : `Book ${name}${master.city ? ` in ${master.city}` : ''} online via CRES-CA.`);
+      : `Записаться к ${name}${master.city ? ` в городе ${master.city}` : ''} онлайн · CRES-CA`);
   const ogImage = master.og_image_url ?? master.cover_url ?? master.avatar_url ?? undefined;
+  const canonicalPath = master.slug ? `/m/${master.slug}` : undefined;
   return {
     title,
     description,
+    alternates: canonicalPath ? { canonical: canonicalPath } : undefined,
+    robots: master.is_public ? { index: true, follow: true } : { index: false, follow: true },
     openGraph: {
       title,
       description,
       images: ogImage ? [ogImage] : undefined,
       type: 'profile',
+      url: canonicalPath,
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: ogImage ? [ogImage] : undefined,
     },
   };
 }
@@ -265,7 +289,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     aggregateRating: reviews > 0
       ? { '@type': 'AggregateRating', ratingValue: rating, reviewCount: reviews }
       : undefined,
-    url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/m/${handle}`,
+    url: `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/m/${master.slug ?? handle}`,
     priceRange: services.length > 0
       ? `${Math.min(...services.map(s => s.price ?? 0))}-${Math.max(...services.map(s => s.price ?? 0))} UAH`
       : undefined,
