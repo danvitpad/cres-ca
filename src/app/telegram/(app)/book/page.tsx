@@ -485,7 +485,34 @@ export default function MiniAppBookPage() {
       return;
     }
 
+    const result = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      appointmentIds?: string[];
+      depositsRequired?: Array<{ appointment_id: string; amount: number; currency: string; reason: string | null }>;
+    };
+
     haptic('success');
+
+    // If any appointment requires a deposit — create intent + redirect to Hutko immediately.
+    // We kick off deposit for the FIRST appointment; follow-ups handled individually.
+    const deposit = result.depositsRequired?.[0];
+    if (deposit) {
+      try {
+        const payRes = await fetch('/api/payments/deposit/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ appointmentId: deposit.appointment_id }),
+        });
+        const payData = (await payRes.json().catch(() => ({}))) as { checkoutUrl?: string };
+        if (payRes.ok && payData.checkoutUrl) {
+          window.location.href = payData.checkoutUrl;
+          return;
+        }
+      } catch (e) {
+        console.error('[book] deposit init failed', e);
+      }
+    }
+
     router.push('/telegram/activity');
   }
 

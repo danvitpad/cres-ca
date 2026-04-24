@@ -103,7 +103,7 @@ export async function POST(request: Request) {
   const { data: inserted, error: insErr } = await admin
     .from('appointments')
     .insert(rows)
-    .select('id, starts_at');
+    .select('id, starts_at, service_id, price, currency');
   if (insErr) {
     console.error('[book] insert failed:', insErr.message, { master_id, clientId, rows });
     return NextResponse.json({ error: insErr.message }, { status: 500 });
@@ -111,6 +111,40 @@ export async function POST(request: Request) {
   if (!inserted || inserted.length === 0) {
     console.error('[book] insert returned no rows', { master_id, clientId, rows });
     return NextResponse.json({ error: 'insert_empty' }, { status: 500 });
+  }
+
+  // 2b. Check if master has escrow enabled AND any appointment needs a deposit
+  const { computeDepositForBooking } = await import('@/lib/payments/escrow');
+  const { data: masterConfig } = await admin
+    .from('masters')
+    .select('escrow_enabled')
+    .eq('id', master_id)
+    .maybeSingle();
+
+  const depositsRequired: Array<{ appointment_id: string; amount: number; currency: string; reason: string | null }> = [];
+  if (masterConfig?.escrow_enabled) {
+    for (const appt of inserted as Array<{ id: string; service_id: string; price: number; currency: string }>) {
+      const deposit = await computeDepositForBooking(admin, {
+        serviceId: appt.service_id,
+        masterId: master_id,
+        clientId: clientId!,
+      });
+      if (deposit.required) {
+        await admin
+          .from('appointments')
+          .update({
+            deposit_required: true,
+            deposit_amount: deposit.amount,
+          })
+          .eq('id', appt.id);
+        depositsRequired.push({
+          appointment_id: appt.id,
+          amount: deposit.amount,
+          currency: appt.currency,
+          reason: deposit.reason,
+        });
+      }
+    }
   }
 
   // 3. If reschedule: cancel original appointment. Match by id + master_id
@@ -170,5 +204,10 @@ export async function POST(request: Request) {
     });
   }
 
-  return NextResponse.json({ ok: true, clientId });
+  return NextResponse.json({
+    ok: true,
+    clientId,
+    appointmentIds: (inserted as Array<{ id: string }>).map((a) => a.id),
+    depositsRequired,
+  });
 }

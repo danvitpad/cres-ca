@@ -96,13 +96,14 @@ export async function POST(req: Request) {
 
   const description = `Предоплата ${deposit.amount} ${row.currency} · ${row.services?.name ?? 'визит'}`;
   try {
+    const currency = (row.currency === 'USD' || row.currency === 'EUR') ? row.currency : 'UAH';
     const intent = await createPaymentIntent({
       db,
       appointmentId: row.id,
       masterId: row.master_id,
       clientId: row.client_id,
       amount: deposit.amount,
-      currency: row.currency,
+      currency,
       description,
       metadata: { reason: deposit.reason },
     });
@@ -119,11 +120,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       intentId: intent.intentId,
-      checkoutUrl:
-        `https://www.liqpay.ua/api/3/checkout?data=${encodeURIComponent(intent.checkoutData)}` +
-        `&signature=${encodeURIComponent(intent.checkoutSignature)}`,
-      checkoutData: intent.checkoutData,
-      checkoutSignature: intent.checkoutSignature,
+      checkoutUrl: intent.redirectUrl,
     });
   } catch (e) {
     console.error('[payments/deposit/create] failed:', e);
