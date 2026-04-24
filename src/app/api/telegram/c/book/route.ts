@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, full_name, phone')
+    .select('id, full_name, phone, telegram_id')
     .eq('telegram_id', result.user.id)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 403 });
@@ -177,8 +177,9 @@ export async function POST(request: Request) {
   const title = isReschedule ? '🔄 Запись перенесена' : '✨ Новая запись';
   const bodyText = `${service_names ?? 'Услуга'} — ${date_formatted ?? ''} в ${selected_time ?? ''}`;
 
+  const { sendMessage } = await import('@/lib/telegram/bot');
+
   if (masterTg) {
-    const { sendMessage } = await import('@/lib/telegram/bot');
     try {
       const clientName = profile.full_name ?? 'Клиент';
       const heading = isReschedule
@@ -190,6 +191,29 @@ export async function POST(request: Request) {
         { parse_mode: 'HTML' },
       );
     } catch { /* ignore */ }
+  }
+
+  // 4b. Notify CLIENT — confirmation DM in their TG
+  // Client has a profile_id, and we can look up their telegram_id directly.
+  try {
+    if (profile.telegram_id) {
+      const masterProfileFetch = await admin
+        .from('masters')
+        .select('display_name, profile:profiles!masters_profile_id_fkey(full_name)')
+        .eq('id', master_id)
+        .maybeSingle();
+      const masterRow = masterProfileFetch.data as { display_name: string | null; profile: { full_name: string | null } | null } | null;
+      const masterName = masterRow?.profile?.full_name ?? masterRow?.display_name ?? 'мастер';
+
+      const clientHeading = isReschedule
+        ? `<b>🔄 Запись перенесена</b>`
+        : `<b>✅ Запись подтверждена</b>`;
+      const clientBody = `${clientHeading}\n\nМастер: ${masterName}\nУслуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nВремя: ${selected_time ?? '—'}\n\nНапомним за день и за 2 часа до визита.`;
+
+      await sendMessage(profile.telegram_id as unknown as number, clientBody, { parse_mode: 'HTML' });
+    }
+  } catch (e) {
+    console.error('[book] client TG notify failed:', (e as Error).message);
   }
 
   if (masterProfileId && service_names && date_formatted && selected_time) {

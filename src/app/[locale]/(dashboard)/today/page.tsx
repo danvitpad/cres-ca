@@ -15,7 +15,7 @@ import { format, startOfDay, endOfDay, startOfWeek, differenceInDays, getYear, s
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles, Trash2, HelpCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles, Trash2, HelpCircle, Check } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -384,10 +384,20 @@ export default function TodayPage() {
             ) : (
               <ul className="space-y-2">
                 {activeReminders.map((r) => (
-                  <li key={r.id} className="flex items-start gap-2 rounded-lg bg-muted/30 p-2 text-sm">
-                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-                      <Bell className="w-3 h-3" />
-                    </div>
+                  <li key={r.id} className="group flex items-start gap-2 rounded-lg bg-muted/30 p-2 text-sm transition-colors hover:bg-muted/50">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const supabase = createClient();
+                        await supabase.from('reminders').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', r.id);
+                        setReminders((prev) => prev.filter((x) => x.id !== r.id));
+                      }}
+                      aria-label="Отметить выполненным"
+                      className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--ds-accent)]/40 bg-[var(--ds-accent-soft)] text-[var(--ds-accent)] transition-all hover:bg-[var(--ds-accent)] hover:text-white"
+                    >
+                      <Bell className="w-3 h-3 group-hover:hidden" />
+                      <Check className="hidden w-3 h-3 group-hover:block" />
+                    </button>
                     <div className="flex-1 min-w-0">
                       <p className="truncate text-xs">{r.text}</p>
                       {r.due_at && (
