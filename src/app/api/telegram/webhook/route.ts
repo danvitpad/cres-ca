@@ -147,11 +147,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // /feedback [text] — save user feedback. If no text, ask for follow-up message.
+  if (text.startsWith('/feedback')) {
+    await handleTextFeedback(chatId, telegramId, text.replace(/^\/feedback\s*/, '').trim(), firstName);
+    return NextResponse.json({ ok: true });
+  }
+
   // /help
   if (text.startsWith('/help')) {
     await sendMessage(
       chatId,
-      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/help — справка\n\n🎤 <b>Голосовой ассистент:</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход или заметку.\n\nПримеры:\n• «Напомни завтра в 10 позвонить Марии»\n• «Запиши Анну на стрижку в пятницу в 14»\n• «Потратил 500 грн на краску»',
+      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/feedback — оставить отзыв\n/help — справка\n\n🎤 <b>Голосовой ассистент (мастера):</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход.\n\n💬 <b>Отзыв голосом (все):</b>\nЗапиши голосовое со словами «обратная связь» — я сохраню в feedback.\n\nПримеры:\n• «Напомни завтра в 10 позвонить Марии»\n• «Обратная связь: хотелось бы увидеть темную тему»',
       { parse_mode: 'HTML' },
     );
     return NextResponse.json({ ok: true });
@@ -188,6 +194,39 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     return;
   }
 
+  // Processing indicator
+  await sendMessage(chatId, '🎧 Обрабатываю...');
+
+  let base64 = '';
+  let mimeType = 'audio/ogg';
+  try {
+    const dl = await downloadTelegramFile(fileId);
+    base64 = dl.base64;
+    mimeType = dl.mimeType;
+  } catch (err) {
+    console.error('[voice] download failed:', err);
+    await sendMessage(chatId, '❌ Не удалось скачать голосовое из Telegram. Запиши заново.');
+    return;
+  }
+
+  // Voice feedback path — available to ANY profile (client, master, salon_admin).
+  // We first transcribe, then decide: is this a feedback message, or an AI command?
+  try {
+    const { voiceToText } = await import('@/lib/ai/router');
+    const { data: transcript } = await voiceToText({ audioBase64: base64, mimeType });
+    const t = (transcript ?? '').trim();
+    if (isFeedbackTranscript(t)) {
+      await saveFeedbackAndNotify(session.profile_id, t, 'telegram_voice');
+      await sendMessage(chatId, FEEDBACK_THANKS);
+      return;
+    }
+    // Store transcript on the scope so we do not re-transcribe in intent parsing
+    (base64 as unknown as string) && void 0; // no-op, keeps base64 live for fallthrough
+  } catch (err) {
+    console.warn('[voice] pre-transcription failed, falling back to intent path:', err);
+  }
+
+  // Not feedback → master-only AI intent path
   const { data: master } = await supabase
     .from('masters')
     .select('id')
@@ -195,17 +234,11 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     .single();
 
   if (!master) {
-    await sendMessage(chatId, '❌ Голосовой ассистент доступен только мастерам.');
+    await sendMessage(chatId, '❌ Голосовой ассистент (создание записей, расходов, напоминаний) доступен только мастерам и салонам. Для отзыва скажи «обратная связь».');
     return;
   }
 
-  // Processing indicator
-  await sendMessage(chatId, '🎧 Обрабатываю...');
-
   try {
-    // Download voice → base64
-    const { base64, mimeType } = await downloadTelegramFile(fileId);
-
     // Gemini: audio → structured intent
     const intent = await parseVoiceIntent(base64, mimeType);
 
@@ -1433,4 +1466,103 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
     }
     return;
   }
+}
+
+/* ─── Feedback via bot ─── */
+
+const FEEDBACK_PROMPT = 'Запиши голосовое или напиши текстом — расскажи что улучшить, что сломалось, какая фича нужна. Твой отзыв прочитает команда CRES-CA лично.';
+
+const FEEDBACK_THANKS = 'Команда CRES-CA благодарит вас за отзыв 💜\n\nМы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.';
+
+async function saveFeedbackAndNotify(profileId: string, transcript: string, source: 'telegram_bot' | 'telegram_voice') {
+  const supabase = createServiceClient();
+
+  const { data: row } = await supabase
+    .from('feedback')
+    .insert({
+      profile_id: profileId,
+      source,
+      original_text: transcript,
+      cleaned_text: transcript,
+    })
+    .select('id')
+    .single();
+
+  // Notify founder DM + optional team channel
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, role')
+    .eq('id', profileId)
+    .maybeSingle();
+  const profileName = profile?.full_name ?? 'User';
+  const profileRole = profile?.role ?? null;
+
+  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID;
+  const adminId = process.env.SUPERADMIN_TG_CHAT_ID;
+  if (channelId || adminId) {
+    const roleLine = profileRole ? ` (${profileRole})` : '';
+    const icon = source === 'telegram_voice' ? '🎙' : '💬';
+    const text =
+      `${icon} <b>Новый feedback</b>\n` +
+      `<b>От:</b> ${profileName}${roleLine}\n` +
+      `<b>Источник:</b> ${source}\n` +
+      (row?.id ? `<b>ID:</b> <code>${row.id}</code>\n\n` : '\n') +
+      `${transcript}`;
+
+    const targets = new Set<string>();
+    if (channelId) targets.add(channelId);
+    if (adminId) targets.add(adminId);
+    await Promise.all(
+      Array.from(targets).map((chat) =>
+        fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML' }),
+        }).catch(() => null),
+      ),
+    );
+  }
+}
+
+async function handleTextFeedback(chatId: number, telegramId: number, text: string, firstName: string) {
+  const supabase = createServiceClient();
+  const { data: session } = await supabase
+    .from('telegram_sessions')
+    .select('profile_id')
+    .eq('chat_id', chatId)
+    .maybeSingle();
+
+  if (!session) {
+    await sendMessage(chatId, `👋 ${firstName}, сначала войди в CRES-CA через Mini App, чтобы оставить отзыв.`, {
+      reply_markup: {
+        inline_keyboard: [[{ text: '✨ Открыть CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
+      },
+    });
+    return;
+  }
+
+  if (!text) {
+    await sendMessage(chatId, `💬 ${FEEDBACK_PROMPT}\n\nПример: <code>/feedback хотелось бы видеть напоминания за 2 часа</code>`, {
+      parse_mode: 'HTML',
+    });
+    return;
+  }
+
+  if (text.length < 4) {
+    await sendMessage(chatId, '❌ Слишком коротко. Напиши хотя бы пару фраз.');
+    return;
+  }
+
+  await saveFeedbackAndNotify(session.profile_id, text, 'telegram_bot');
+  await sendMessage(chatId, FEEDBACK_THANKS);
+}
+
+/** Returns true if this transcript should be treated as feedback rather than an AI intent command. */
+function isFeedbackTranscript(transcript: string): boolean {
+  const t = transcript.toLowerCase();
+  return (
+    t.includes('обратн') && (t.includes('связ') || t.includes('отзыв'))
+    || t.includes('фидбэк') || t.includes('фидбек') || t.includes('feedback')
+    || t.startsWith('отзыв')
+  );
 }

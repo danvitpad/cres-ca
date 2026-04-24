@@ -49,12 +49,10 @@ export async function listUsers(f: UsersListFilters = {}): Promise<UsersListResu
   const limit = Math.min(f.limit ?? 50, 200);
   const offset = f.offset ?? 0;
 
+  // Step 1: get profiles with basic filters (no embeds — avoids PostgREST ambiguity)
   let q = db
     .from('profiles')
-    .select(
-      'id, email, full_name, first_name, phone, role, created_at, masters:masters!masters_profile_id_fkey(id, city), salons:salons!salons_owner_id_fkey(id, city), subscriptions(tier, status, created_at), platform_whitelist(profile_id)',
-      { count: 'exact' },
-    )
+    .select('id, email, full_name, first_name, phone, role, created_at', { count: 'exact' })
     .is('deleted_at', null);
 
   if (f.query && f.query.trim()) {
@@ -68,42 +66,60 @@ export async function listUsers(f: UsersListFilters = {}): Promise<UsersListResu
 
   q = q.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
-  const { data, count } = await q;
+  const { data: profiles, count, error } = await q;
+  if (error) {
+    console.error('[superadmin/users] profiles query error:', error.message, error.details, error.hint);
+    return { rows: [], total: 0 };
+  }
 
-  type Row = {
-    id: string;
-    email: string | null;
-    full_name: string | null;
-    first_name: string | null;
-    phone: string | null;
-    role: string;
-    created_at: string;
-    masters: Array<{ id: string; city: string | null }> | null;
-    salons: Array<{ id: string; city: string | null }> | null;
-    subscriptions: Array<{ tier: string; status: string; created_at: string }> | null;
-    platform_whitelist: Array<{ profile_id: string }> | null;
-  };
+  const profileIds = (profiles ?? []).map((p) => p.id);
+  if (profileIds.length === 0) return { rows: [], total: count ?? 0 };
 
-  const rows: UsersListRow[] = ((data ?? []) as unknown as Row[]).map((r) => {
-    const hasMaster = (r.masters?.length ?? 0) > 0;
-    const hasSalon = (r.salons?.length ?? 0) > 0;
-    const type: UsersListRow['type'] = hasSalon ? 'salon' : hasMaster ? 'master' : r.role === 'client' ? 'client' : 'other';
+  // Step 2: parallel side queries for masters, salons, subs, whitelist (flat IN-queries, no embeds)
+  const [mastersRes, salonsRes, subsRes, wlRes] = await Promise.all([
+    db.from('masters').select('profile_id, city').in('profile_id', profileIds),
+    db.from('salons').select('owner_id, city').in('owner_id', profileIds),
+    db.from('subscriptions').select('profile_id, tier, status, created_at').in('profile_id', profileIds).order('created_at', { ascending: false }),
+    db.from('platform_whitelist').select('profile_id').in('profile_id', profileIds),
+  ]);
 
-    const subs = (r.subscriptions ?? []).slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-    const latest = subs[0] ?? null;
+  if (mastersRes.error) console.error('[superadmin/users] masters error:', mastersRes.error.message);
+  if (salonsRes.error) console.error('[superadmin/users] salons error:', salonsRes.error.message);
+  if (subsRes.error) console.error('[superadmin/users] subs error:', subsRes.error.message);
+  if (wlRes.error) console.error('[superadmin/users] whitelist error:', wlRes.error.message);
 
+  const mastersByProfile = new Map<string, { city: string | null }>();
+  for (const m of (mastersRes.data ?? []) as Array<{ profile_id: string; city: string | null }>) {
+    if (!mastersByProfile.has(m.profile_id)) mastersByProfile.set(m.profile_id, { city: m.city });
+  }
+  const salonsByProfile = new Map<string, { city: string | null }>();
+  for (const s of (salonsRes.data ?? []) as Array<{ owner_id: string; city: string | null }>) {
+    if (!salonsByProfile.has(s.owner_id)) salonsByProfile.set(s.owner_id, { city: s.city });
+  }
+  const latestSubByProfile = new Map<string, { tier: string; status: string }>();
+  for (const s of (subsRes.data ?? []) as Array<{ profile_id: string; tier: string; status: string; created_at: string }>) {
+    // subs are sorted desc by created_at, so first hit per profile is the latest
+    if (!latestSubByProfile.has(s.profile_id)) latestSubByProfile.set(s.profile_id, { tier: s.tier, status: s.status });
+  }
+  const whitelistedSet = new Set<string>((wlRes.data ?? []).map((w: { profile_id: string }) => w.profile_id));
+
+  const rows: UsersListRow[] = (profiles ?? []).map((p) => {
+    const hasMaster = mastersByProfile.has(p.id);
+    const hasSalon = salonsByProfile.has(p.id);
+    const type: UsersListRow['type'] = hasSalon ? 'salon' : hasMaster ? 'master' : p.role === 'client' ? 'client' : 'other';
+    const sub = latestSubByProfile.get(p.id);
     return {
-      id: r.id,
-      email: r.email,
-      displayName: r.full_name || r.first_name || 'Без имени',
-      phone: r.phone,
-      role: r.role,
+      id: p.id,
+      email: p.email,
+      displayName: p.full_name || p.first_name || 'Без имени',
+      phone: p.phone,
+      role: p.role,
       type,
-      subscriptionTier: latest?.tier ?? null,
-      subscriptionStatus: latest?.status ?? null,
-      whitelisted: (r.platform_whitelist?.length ?? 0) > 0,
-      city: r.masters?.[0]?.city ?? r.salons?.[0]?.city ?? null,
-      createdAt: r.created_at,
+      subscriptionTier: sub?.tier ?? null,
+      subscriptionStatus: sub?.status ?? null,
+      whitelisted: whitelistedSet.has(p.id),
+      city: mastersByProfile.get(p.id)?.city ?? salonsByProfile.get(p.id)?.city ?? null,
+      createdAt: p.created_at,
     };
   });
 
@@ -145,6 +161,10 @@ export interface UserDetail {
     expiresAt: string | null;
     createdAt: string;
   } | null;
+  blacklist: {
+    reason: string | null;
+    bannedAt: string;
+  } | null;
   activity: {
     lastSignInAt: string | null;
     appointmentsCount: number;
@@ -163,11 +183,12 @@ export async function getUserDetail(profileId: string): Promise<UserDetail | nul
     .maybeSingle();
   if (!p) return null;
 
-  const [master, salon, sub, wl, appts, apptsDone, voice, payments] = await Promise.all([
+  const [master, salon, sub, wl, bl, appts, apptsDone, voice, payments] = await Promise.all([
     db.from('masters').select('id, city, specialization, is_active').eq('profile_id', profileId).maybeSingle(),
     db.from('salons').select('id, name, city').eq('owner_id', profileId).maybeSingle(),
     db.from('subscriptions').select('tier, status, trial_ends_at, current_period_end, billing_period, created_at').eq('profile_id', profileId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     db.from('platform_whitelist').select('granted_plan, reason, expires_at, created_at').eq('profile_id', profileId).maybeSingle(),
+    db.from('platform_blacklist').select('reason, banned_at').eq('profile_id', profileId).maybeSingle(),
     db.from('appointments').select('id', { count: 'exact', head: true }).or(`client_id.eq.${profileId},master_id.eq.${profileId}`),
     db.from('appointments').select('id', { count: 'exact', head: true }).eq('status', 'completed').or(`client_id.eq.${profileId},master_id.eq.${profileId}`),
     db.from('ai_actions_log').select('id', { count: 'exact', head: true }).eq('profile_id', profileId).eq('source', 'voice'),
@@ -198,6 +219,7 @@ export async function getUserDetail(profileId: string): Promise<UserDetail | nul
         }
       : null,
     whitelist: wl.data ? { grantedPlan: wl.data.granted_plan, reason: wl.data.reason, expiresAt: wl.data.expires_at, createdAt: wl.data.created_at } : null,
+    blacklist: bl.data ? { reason: bl.data.reason, bannedAt: bl.data.banned_at } : null,
     activity: {
       lastSignInAt: null,
       appointmentsCount: appts.count ?? 0,

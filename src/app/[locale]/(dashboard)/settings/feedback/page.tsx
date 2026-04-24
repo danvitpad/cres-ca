@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { MessageSquareHeart, Send, CheckCircle2 } from 'lucide-react';
+import { VoiceRecordButton } from '@/components/feedback/voice-record-button';
 
 export default function FeedbackPage() {
   const [text, setText] = useState('');
@@ -54,9 +55,9 @@ export default function FeedbackPage() {
           <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/10">
             <CheckCircle2 className="size-8 text-emerald-600" />
           </div>
-          <h1 className="text-xl font-bold">Спасибо за feedback</h1>
+          <h1 className="text-xl font-bold">Команда CRES-CA благодарит вас за отзыв</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Команда CRES-CA прочитает ваше сообщение в ближайшее время.
+            Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.
           </p>
           <button
             type="button"
@@ -109,11 +110,21 @@ export default function FeedbackPage() {
         </button>
       </div>
 
-      <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-xs text-muted-foreground">
-        <p className="mb-1 font-medium text-foreground">Голосом:</p>
-        <p>
-          В Telegram-боте отправьте команду <code className="rounded bg-background px-1.5 py-0.5">/feedback</code> или
-          голосовое сообщение со словами "обратная связь" — AI транскрибирует и очистит.
+      <div className="rounded-2xl border border-border bg-muted/20 p-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">или голосом</p>
+        <p className="mt-1.5 mb-3 text-sm text-muted-foreground">
+          Нажмите и расскажите — AI расшифрует и очистит от слов-паразитов.
+        </p>
+        <VoiceRecordButton
+          source="web_settings"
+          onSent={() => {
+            setDone(true);
+            toast.success('Голосовой отзыв отправлен');
+          }}
+          onError={(err) => toast.error(err)}
+        />
+        <p className="mt-3 text-xs text-muted-foreground">
+          Или через Telegram-бота: команда <code className="rounded bg-background px-1.5 py-0.5">/feedback</code> или голосовое со словом «обратная связь».
         </p>
       </div>
     </div>

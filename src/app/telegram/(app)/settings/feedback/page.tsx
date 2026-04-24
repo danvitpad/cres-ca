@@ -1,21 +1,23 @@
 /** --- YAML
- * name: MasterMiniAppSettings/Feedback
- * description: Mobile feedback form for Mini App master. Sends to /api/feedback.
- * created: 2026-04-20
+ * name: ClientMiniAppSettings/Feedback
+ * description: Feedback form for client Mini App. Text + reference to voice via TG bot. POSTs to /api/feedback with source=mobile.
+ * created: 2026-04-21
  * --- */
 
 'use client';
 
 import { useState } from 'react';
-import { PaperPlaneTilt, Heart } from '@phosphor-icons/react';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { ChevronLeft, Heart, Send } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { SettingsShell } from '@/components/miniapp/settings-shell';
 import { VoiceRecordButton } from '@/components/feedback/voice-record-button';
 import { toast } from 'sonner';
 
 const MAX = 2000;
 
-export default function MiniAppFeedbackPage() {
+export default function ClientMiniAppFeedbackPage() {
+  const router = useRouter();
   const { haptic } = useTelegram();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -47,41 +49,82 @@ export default function MiniAppFeedbackPage() {
 
   if (sent) {
     return (
-      <SettingsShell title="Обратная связь">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-5 px-5 pt-4 pb-20"
+      >
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+            aria-label="Назад"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <h1 className="text-[22px] font-bold">Обратная связь</h1>
+        </div>
+
         <div className="flex flex-col items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-10 text-center">
           <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
-            <Heart size={22} weight="fill" />
+            <Heart size={22} fill="currentColor" />
           </div>
           <p className="mt-4 text-[16px] font-semibold text-emerald-100">Команда CRES-CA благодарит вас за отзыв</p>
           <p className="mt-2 text-[12.5px] leading-relaxed text-emerald-200/80">
             Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.
           </p>
           <button
-            onClick={() => { setText(''); setSent(false); }}
+            onClick={() => {
+              setText('');
+              setSent(false);
+            }}
             className="mt-6 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[12px] font-semibold text-white/80 active:bg-white/[0.1]"
           >
             Написать ещё
           </button>
         </div>
-      </SettingsShell>
+      </motion.div>
     );
   }
 
   return (
-    <SettingsShell title="Обратная связь" subtitle="Напиши что улучшить, что сломано, какая фича нужна">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-5 px-5 pt-4 pb-20"
+    >
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.back()}
+          className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+          aria-label="Назад"
+        >
+          <ChevronLeft className="size-5" />
+        </button>
+        <div>
+          <h1 className="text-[22px] font-bold">Обратная связь</h1>
+          <p className="text-[12px] text-white/50">Напишите что улучшить, что не работает, какая фича нужна</p>
+        </div>
+      </div>
+
       <div>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, MAX))}
-          placeholder="Например: в календаре тяжело попадать пальцем по 15-минутным слотам, было бы удобнее…"
+          placeholder="Например: хотелось бы видеть напоминания за 2 часа, а не только за сутки…"
           rows={8}
           className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] leading-relaxed text-white placeholder:text-white/30 focus:border-violet-500/40 focus:outline-none"
         />
         <div className="mt-1.5 flex items-center justify-between px-1">
-          <p className="text-[11px] text-white/40">{text.length} / {MAX}</p>
+          <p className="text-[11px] text-white/40">
+            {text.length} / {MAX}
+          </p>
           <p className="text-[11px] text-white/40">AI автоматически уберёт мусор</p>
         </div>
       </div>
+
       <button
         onClick={send}
         disabled={text.trim().length < 4 || sending}
@@ -91,15 +134,16 @@ export default function MiniAppFeedbackPage() {
           'Отправка…'
         ) : (
           <>
-            <PaperPlaneTilt size={15} weight="fill" />
+            <Send size={15} />
             Отправить
           </>
         )}
       </button>
+
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">или голосом</p>
         <p className="mt-1.5 mb-3 text-[12px] leading-relaxed text-white/70">
-          Нажми и расскажи что хочется улучшить. AI расшифрует и очистит.
+          Нажмите кнопку и расскажите что на душе. AI расшифрует и очистит от слов-паразитов.
         </p>
         <VoiceRecordButton
           source="mobile"
@@ -117,6 +161,6 @@ export default function MiniAppFeedbackPage() {
           Или через Telegram-бота: команда <code className="rounded bg-white/10 px-1 text-violet-200">/feedback</code> или голосовое со словом «обратная связь».
         </p>
       </div>
-    </SettingsShell>
+    </motion.div>
   );
 }

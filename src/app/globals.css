@@ -4,6 +4,49 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ═══════════════════════════════════════════════════════════
+ * BRAND TOKENS — source of truth: src/design/brand.tokens.ts
+ * Редактируй значения здесь и в brand.tokens.ts синхронно.
+ * Docs: .workspace/brand/BRAND.md
+ * ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* Brand accent */
+  --color-accent:          #7c3aed;
+  --color-accent-hover:    #6d28d9;
+  --color-accent-active:   #5b21b6;
+  --color-accent-soft:     rgba(124, 58, 237, 0.1);
+  --color-accent-border:   rgba(124, 58, 237, 0.3);
+  --color-accent-text:     #c4b5fd;
+
+  /* Semantic */
+  --color-success:         #10b981;
+  --color-success-soft:    rgba(16, 185, 129, 0.1);
+  --color-warning:         #f59e0b;
+  --color-warning-soft:    rgba(245, 158, 11, 0.1);
+  --color-danger:          #ef4444;
+  --color-danger-soft:     rgba(239, 68, 68, 0.1);
+  --color-info:            #3b82f6;
+  --color-info-soft:       rgba(59, 130, 246, 0.1);
+
+  /* Brand radius (token-scale — отдельно от --radius shadcn) */
+  --brand-radius-sm:       6px;
+  --brand-radius-md:       10px;
+  --brand-radius-lg:       14px;
+  --brand-radius-xl:       20px;
+  --brand-radius-2xl:      28px;
+
+  /* Motion */
+  --duration-instant:      80ms;
+  --duration-fast:         150ms;
+  --duration-base:         240ms;
+  --duration-slow:         400ms;
+  --ease-standard:         cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Brand typography scale (fontFeatureSettings применяется в <html>) */
+  --font-feature-settings: "ss01", "cv11", "cv02";
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

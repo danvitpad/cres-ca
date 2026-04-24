@@ -19,6 +19,7 @@ import {
   Globe,
   Shield,
   HelpCircle,
+  Heart,
   Loader2,
   Mail,
   Phone as PhoneIcon,
@@ -291,6 +292,22 @@ export default function MiniAppSettingsPage() {
           <Row icon={Globe} label="Язык" hint="Русский" onClick={() => haptic('light')} />
           <Row icon={Shield} label="Приватность" hint="Видимость профиля" onClick={() => haptic('light')} />
           <Row icon={HelpCircle} label="Помощь" hint="FAQ и поддержка" onClick={() => haptic('light')} />
+          <li>
+            <Link
+              href="/telegram/settings/feedback"
+              onClick={() => haptic('light')}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors"
+            >
+              <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                <Heart className="size-4 text-rose-300" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm">Обратная связь</p>
+                <p className="text-[11px] text-white/45">Напишите или запишите голосом</p>
+              </div>
+              <ChevronRight className="size-4 text-white/40" />
+            </Link>
+          </li>
         </ul>
 
         <button

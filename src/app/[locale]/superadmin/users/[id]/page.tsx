@@ -6,8 +6,9 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Mail, Phone, Send } from 'lucide-react';
+import { ArrowLeft, Ban, Mail, Phone, Send } from 'lucide-react';
 import { getUserDetail } from '@/lib/superadmin/users';
+import { BanUserButton } from '@/components/superadmin/ban-user-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export default async function SuperadminUserDetailPage({ params }: { params: Pro
   const detail = await getUserDetail(id);
   if (!detail) notFound();
 
-  const { profile, master, salon, subscription, whitelist, activity, paymentsCount } = detail;
+  const { profile, master, salon, subscription, whitelist, blacklist, activity, paymentsCount } = detail;
 
   return (
     <div className="p-6">
@@ -55,6 +56,20 @@ export default async function SuperadminUserDetailPage({ params }: { params: Pro
         <ArrowLeft className="size-3.5" />
         Все пользователи
       </Link>
+
+      {blacklist && (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-rose-400/30 bg-rose-500/[0.06] p-4">
+          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-rose-500/15 text-rose-300">
+            <Ban className="size-4.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-rose-200">Пользователь заблокирован</div>
+            <div className="mt-0.5 text-[12px] text-white/65">
+              {blacklist.reason ? `Причина: ${blacklist.reason}` : 'Причина не указана'} · {fmtDate(blacklist.bannedAt)}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
@@ -179,6 +194,7 @@ export default async function SuperadminUserDetailPage({ params }: { params: Pro
           >
             Отправить предложение
           </Link>
+          <BanUserButton profileId={profile.id} profileName={profile.displayName} isBanned={!!blacklist} />
         </div>
       </div>
     </div>

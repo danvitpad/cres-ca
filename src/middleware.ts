@@ -78,6 +78,18 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Blacklist check: if logged-in user is banned, redirect to /banned page (which reads reason
+  // via RPC while session is still valid, then signs out client-side). Skip /banned itself to
+  // avoid an infinite redirect loop.
+  // Uses SECURITY DEFINER RPC because platform_blacklist RLS only grants SELECT to superadmins.
+  const isBannedPage = strippedPath === '/banned' || strippedPath.startsWith('/banned/');
+  if (user && !isBannedPage) {
+    const { data: banned } = await supabase.rpc('is_profile_banned', { p_profile_id: user.id });
+    if (banned === true) {
+      return NextResponse.redirect(new URL('/banned', request.url));
+    }
+  }
+
   // Root: if logged in, route to role-appropriate home
   if (isRoot) {
     if (!user) return response;

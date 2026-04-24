@@ -48,30 +48,14 @@ async function cleanText(original: string): Promise<string> {
   }
 }
 
-async function sendToTgChannel(payload: {
-  profileName: string;
-  source: string;
-  original: string;
-  cleaned: string;
-  feedbackId: string;
-}): Promise<number | null> {
+async function sendTg(chatId: string, text: string): Promise<number | null> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID;
-  if (!botToken || !channelId) return null;
-
-  const text =
-    `💬 <b>Новый feedback</b>\n` +
-    `<b>От:</b> ${payload.profileName}\n` +
-    `<b>Источник:</b> ${payload.source}\n` +
-    `<b>ID:</b> <code>${payload.feedbackId}</code>\n\n` +
-    `<b>Суть:</b>\n${payload.cleaned}\n\n` +
-    `<i>Оригинал:</i>\n${payload.original}`;
-
+  if (!botToken) return null;
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: channelId, text, parse_mode: 'HTML' }),
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
     });
     const j = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
     if (!j.ok) return null;
@@ -79,6 +63,42 @@ async function sendToTgChannel(payload: {
   } catch {
     return null;
   }
+}
+
+/**
+ * Broadcast feedback to Telegram. Sends in parallel to both targets when configured:
+ *   - FEEDBACK_TG_CHANNEL_ID — team channel (if any)
+ *   - SUPERADMIN_TG_CHAT_ID  — personal DM to the founder
+ * Either may be omitted. Returns the channel message id (for superadmin table cross-link).
+ */
+async function sendToTgChannel(payload: {
+  profileName: string;
+  profileRole: string | null;
+  source: string;
+  original: string;
+  cleaned: string;
+  feedbackId: string;
+  voiceFileUrl: string | null;
+}): Promise<number | null> {
+  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID;
+  const adminId = process.env.SUPERADMIN_TG_CHAT_ID;
+  if (!channelId && !adminId) return null;
+
+  const voiceLine = payload.voiceFileUrl ? `\n<b>🎙 Аудио:</b> ${payload.voiceFileUrl}` : '';
+  const roleLine = payload.profileRole ? ` (${payload.profileRole})` : '';
+  const text =
+    `💬 <b>Новый feedback</b>\n` +
+    `<b>От:</b> ${payload.profileName}${roleLine}\n` +
+    `<b>Источник:</b> ${payload.source}\n` +
+    `<b>ID:</b> <code>${payload.feedbackId}</code>${voiceLine}\n\n` +
+    `<b>Суть:</b>\n${payload.cleaned}\n\n` +
+    `<i>Оригинал:</i>\n${payload.original}`;
+
+  const [channelMsgId] = await Promise.all([
+    channelId ? sendTg(channelId, text) : Promise.resolve(null),
+    adminId && adminId !== channelId ? sendTg(adminId, text) : Promise.resolve(null),
+  ]);
+  return channelMsgId;
 }
 
 export async function POST(req: Request) {
@@ -94,10 +114,11 @@ export async function POST(req: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, role')
     .eq('id', user.id)
     .maybeSingle();
   const profileName = profile?.full_name ?? user.email ?? 'User';
+  const profileRole = profile?.role ?? null;
 
   const { data: row, error } = await supabase
     .from('feedback')
@@ -115,10 +136,12 @@ export async function POST(req: Request) {
 
   const tgMessageId = await sendToTgChannel({
     profileName,
+    profileRole,
     source: body.source ?? 'web_settings',
     original,
     cleaned,
     feedbackId: row.id,
+    voiceFileUrl: body.voice_file_url ?? null,
   });
 
   if (tgMessageId) {

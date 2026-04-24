@@ -75,6 +75,38 @@ export async function voiceToIntent(params: {
   throw new AIUnavailableError('All Gemini audio models failed', log);
 }
 
+/**
+ * Voice audio → plain text transcription.
+ * Same Gemini chain as voiceToIntent but with a transcription-only prompt —
+ * no JSON parsing, just the raw transcript text in the source language.
+ */
+export async function voiceToText(params: {
+  audioBase64: string;
+  mimeType: string;
+}): Promise<AICallResult> {
+  const log: AICallLog[] = [];
+  const systemPrompt =
+    'Ты транскрибируешь аудио в текст. Верни ТОЛЬКО транскрипт, без комментариев, без markdown. ' +
+    'Сохраняй язык оригинала. Убирай мусорные слова-паразиты («ну», «эээ», повторы). Сохраняй смысл.';
+
+  for (let i = 0; i < VOICE_GEMINI_MODELS.length; i++) {
+    const model = VOICE_GEMINI_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callGeminiAudio(model, { ...params, systemPrompt });
+      if (text) {
+        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `gemini/${model}`, log };
+      }
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
+  }
+
+  throw new AIUnavailableError('All Gemini transcription models failed', log);
+}
+
 /* ═══════════════ TEXT (text → JSON) ═══════════════ */
 
 export async function textToJSON(params: {

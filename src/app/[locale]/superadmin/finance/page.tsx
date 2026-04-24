@@ -4,7 +4,7 @@
  * created: 2026-04-19
  * --- */
 
-import { TrendingUp, TrendingDown, Users, Building2, Star, CircleDollarSign, AlertTriangle, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, Building2, Star, CircleDollarSign, AlertTriangle, Target, HelpCircle } from 'lucide-react';
 import { getFinanceSnapshot } from '@/lib/superadmin/finance-data';
 import { MrrLineChart } from '@/components/superadmin/dashboard-charts';
 
@@ -26,32 +26,95 @@ export default async function SuperadminFinancePage() {
       </div>
 
       <div className="mb-5 grid grid-cols-4 gap-3">
-        <KpiCard label="MRR" value={`${fmt(snap.mrr)} ₴`} accent="emerald" Icon={CircleDollarSign} />
-        <KpiCard label="ARR" value={`${fmt(snap.arr)} ₴`} accent="sky" Icon={TrendingUp} />
-        <KpiCard label="ARPU" value={`${fmt(snap.arpu)} ₴`} accent="violet" Icon={Users} />
-        <KpiCard label="Активных подписок" value={fmt(snap.activeSubs)} accent="amber" Icon={Star} sub={`Whitelist: ${snap.whitelistCount}`} />
+        <KpiCard
+          label="Доход в месяц"
+          en="MRR"
+          tooltip="Monthly Recurring Revenue. Сколько денег в сумме платят все активные подписчики каждый месяц. Главная метрика SaaS."
+          value={`${fmt(snap.mrr)} ₴`}
+          accent="emerald"
+          Icon={CircleDollarSign}
+        />
+        <KpiCard
+          label="Доход в год"
+          en="ARR"
+          tooltip="Annual Recurring Revenue = MRR × 12. Прогноз годового дохода, если все текущие подписчики останутся."
+          value={`${fmt(snap.arr)} ₴`}
+          accent="sky"
+          Icon={TrendingUp}
+        />
+        <KpiCard
+          label="Средний чек"
+          en="ARPU"
+          tooltip="Average Revenue Per User. Сколько в среднем платит один активный подписчик. MRR ÷ количество подписок."
+          value={`${fmt(snap.arpu)} ₴`}
+          accent="violet"
+          Icon={Users}
+        />
+        <KpiCard
+          label="Активных подписок"
+          en="Active subscriptions"
+          tooltip="Количество сейчас платящих подписчиков (не считая whitelist)."
+          value={fmt(snap.activeSubs)}
+          accent="amber"
+          Icon={Star}
+          sub={`Whitelist: ${snap.whitelistCount}`}
+        />
       </div>
 
       <div className="mb-5 grid grid-cols-4 gap-3">
-        <KpiCard label="Новый MRR" value={`+${fmt(snap.newMrr)} ₴`} accent="emerald" Icon={TrendingUp} sub="за этот месяц" />
-        <KpiCard label="Churned MRR" value={`-${fmt(snap.churnedMrr)} ₴`} accent="rose" Icon={TrendingDown} sub={`${snap.churnedCount} отмен`} />
         <KpiCard
-          label="Net New MRR"
+          label="Прирост за месяц"
+          en="New MRR"
+          tooltip="Сумма денег, добавившихся к MRR от новых подписок в этом месяце."
+          value={`+${fmt(snap.newMrr)} ₴`}
+          accent="emerald"
+          Icon={TrendingUp}
+          sub="за этот месяц"
+        />
+        <KpiCard
+          label="Потеряно (отмены)"
+          en="Churned MRR"
+          tooltip="Сумма денег, потерянная из-за отмен подписок в этом месяце."
+          value={`-${fmt(snap.churnedMrr)} ₴`}
+          accent="rose"
+          Icon={TrendingDown}
+          sub={`${snap.churnedCount} отмен`}
+        />
+        <KpiCard
+          label="Чистый прирост"
+          en="Net New MRR"
+          tooltip="Новый MRR минус потерянный. Если плюс — платформа растёт, если минус — падает."
           value={`${snap.netNewMrr >= 0 ? '+' : ''}${fmt(snap.netNewMrr)} ₴`}
           accent={snap.netNewMrr >= 0 ? 'emerald' : 'rose'}
           Icon={snap.netNewMrr >= 0 ? TrendingUp : TrendingDown}
         />
-        <KpiCard label="Churn %" value={`${snap.churnPercent}%`} accent={snap.churnPercent > 5 ? 'rose' : 'amber'} Icon={AlertTriangle} sub={`месяц`} />
+        <KpiCard
+          label="Отток"
+          en="Churn %"
+          tooltip="Процент подписчиков, отменивших подписку в этом месяце. Нормально для SaaS: 3-5%. Больше 7% — тревожно."
+          value={`${snap.churnPercent}%`}
+          accent={snap.churnPercent > 5 ? 'rose' : 'amber'}
+          Icon={AlertTriangle}
+          sub={`месяц`}
+        />
       </div>
 
       <div className="mb-5 grid grid-cols-[1.4fr_1fr] gap-5">
-        <Block title="График MRR · 12 месяцев">
+        <Block
+          title="Доход по месяцам · 12 месяцев"
+          subtitle="MRR history"
+          tooltip="Как менялся ежемесячный доход за последний год."
+        >
           <div className="h-[240px]">
             <MrrLineChart data={snap.mrrSeries.map((p) => ({ label: p.label, value: p.mrr }))} />
           </div>
         </Block>
 
-        <Block title="MRR по планам">
+        <Block
+          title="Доход по тарифам"
+          subtitle="MRR per plan"
+          tooltip="Сколько приносит каждый тариф. Помогает понять какой план наиболее прибыльный."
+        >
           {snap.planBreakdown.length === 0 ? (
             <EmptyLine text="Нет активных подписок" />
           ) : (
@@ -75,7 +138,7 @@ export default async function SuperadminFinancePage() {
                 </div>
               ))}
               <div className="flex items-center justify-between border-t border-white/10 pt-3 text-[13px]">
-                <span className="text-white/65">Итого MRR</span>
+                <span className="text-white/65">Итого доход в месяц</span>
                 <span className="font-semibold text-emerald-300">{fmt(snap.mrr)} ₴</span>
               </div>
             </div>
@@ -84,7 +147,11 @@ export default async function SuperadminFinancePage() {
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-5">
-        <Block title="Причины отмен (90 дней)">
+        <Block
+          title="Причины отмен"
+          subtitle="за последние 90 дней"
+          tooltip="Что именно пользователи указывают как причину отказа от подписки. Главный источник инсайтов для улучшения продукта."
+        >
           {snap.churnReasons.length === 0 ? (
             <EmptyLine text="За 90 дней отмен не было" />
           ) : (
@@ -99,7 +166,11 @@ export default async function SuperadminFinancePage() {
           )}
         </Block>
 
-        <Block title="LTV">
+        <Block
+          title="Пожизненная ценность клиента"
+          subtitle="LTV — Lifetime Value"
+          tooltip="Сколько денег один пользователь принесёт проекту за всё время подписки. Чем выше — тем больше можно тратить на привлечение."
+        >
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] p-3">
               <div className="flex items-center gap-2">
@@ -130,7 +201,10 @@ export default async function SuperadminFinancePage() {
         </Block>
       </div>
 
-      <Block title="Прогноз">
+      <Block
+        title="Прогноз"
+        tooltip="Сколько нужно подписок и какой рост MRR чтобы дойти до целевого дохода."
+      >
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-lg border border-white/5 bg-white/[0.02] p-4">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-violet-200">
@@ -162,7 +236,23 @@ export default async function SuperadminFinancePage() {
   );
 }
 
-function KpiCard({ label, value, sub, accent, Icon }: { label: string; value: string; sub?: string; accent: 'emerald' | 'violet' | 'sky' | 'amber' | 'rose'; Icon: React.ComponentType<{ className?: string }> }) {
+function KpiCard({
+  label,
+  en,
+  tooltip,
+  value,
+  sub,
+  accent,
+  Icon,
+}: {
+  label: string;
+  en?: string;
+  tooltip?: string;
+  value: string;
+  sub?: string;
+  accent: 'emerald' | 'violet' | 'sky' | 'amber' | 'rose';
+  Icon: React.ComponentType<{ className?: string }>;
+}) {
   const accentMap = {
     emerald: 'bg-emerald-500/15 text-emerald-200',
     violet: 'bg-violet-500/15 text-violet-200',
@@ -172,22 +262,56 @@ function KpiCard({ label, value, sub, accent, Icon }: { label: string; value: st
   } as const;
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] uppercase tracking-wider text-white/55">{label}</span>
-        <div className={['grid size-7 place-items-center rounded-md', accentMap[accent]].join(' ')}>
+      <div className="flex items-start justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] font-medium text-white/80">{label}</span>
+            {tooltip && (
+              <span className="group relative inline-flex">
+                <HelpCircle className="size-3 text-white/35 hover:text-white/70 cursor-help" />
+                <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 hidden w-60 -translate-x-1/2 rounded-lg border border-white/10 bg-[#1a1b20] px-3 py-2 text-[11px] leading-relaxed text-white/75 shadow-xl group-hover:block">
+                  {tooltip}
+                </span>
+              </span>
+            )}
+          </div>
+          {en && <div className="mt-0.5 text-[10px] uppercase tracking-wider text-white/35">{en}</div>}
+        </div>
+        <div className={['grid size-7 place-items-center rounded-md shrink-0', accentMap[accent]].join(' ')}>
           <Icon className="size-3.5" />
         </div>
       </div>
-      <div className="mt-1.5 text-[20px] font-semibold text-white">{value}</div>
+      <div className="mt-2 text-[22px] font-semibold text-white">{value}</div>
       {sub && <div className="mt-0.5 text-[11px] text-white/45">{sub}</div>}
     </div>
   );
 }
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+function Block({
+  title,
+  subtitle,
+  tooltip,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  tooltip?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
-      <h3 className="mb-3 text-[13px] font-medium uppercase tracking-wider text-white/55">{title}</h3>
+      <div className="mb-3 flex items-baseline gap-2">
+        <h3 className="text-[13px] font-semibold text-white/85">{title}</h3>
+        {subtitle && <span className="text-[10px] uppercase tracking-wider text-white/35">{subtitle}</span>}
+        {tooltip && (
+          <span className="group relative inline-flex">
+            <HelpCircle className="size-3 text-white/35 hover:text-white/70 cursor-help" />
+            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 hidden w-60 -translate-x-1/2 rounded-lg border border-white/10 bg-[#1a1b20] px-3 py-2 text-[11px] leading-relaxed text-white/75 shadow-xl group-hover:block">
+              {tooltip}
+            </span>
+          </span>
+        )}
+      </div>
       {children}
     </div>
   );
