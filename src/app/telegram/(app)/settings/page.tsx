@@ -20,6 +20,7 @@ import {
   Shield,
   HelpCircle,
   Heart,
+  Bell,
   Loader2,
   Mail,
   Phone as PhoneIcon,
@@ -289,6 +290,22 @@ export default function MiniAppSettingsPage() {
 
         {/* General */}
         <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
+          <li>
+            <Link
+              href="/telegram/settings/notifications"
+              onClick={() => haptic('light')}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors"
+            >
+              <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                <Bell className="size-4 text-violet-300" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm">Напоминания</p>
+                <p className="text-[11px] text-white/45">Когда и как часто напоминать о визите</p>
+              </div>
+              <ChevronRight className="size-4 text-white/40" />
+            </Link>
+          </li>
           <Row icon={Globe} label="Язык" hint="Русский" onClick={() => haptic('light')} />
           <Row icon={Shield} label="Приватность" hint="Видимость профиля" onClick={() => haptic('light')} />
           <Row icon={HelpCircle} label="Помощь" hint="FAQ и поддержка" onClick={() => haptic('light')} />

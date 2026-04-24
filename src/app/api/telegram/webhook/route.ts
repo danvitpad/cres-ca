@@ -1860,7 +1860,7 @@ async function handleRebookAccept(chatId: number, telegramId: number, suggestion
     .eq('id', row.id);
 
   // Notify client + master
-  const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const DOW = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
   const dateStr = `${DOW[startsAt.getDay()]}, ${startsAt.getDate()} ${startsAt.toLocaleDateString('ru-RU', { month: 'long' })}`;
   const timeStr = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 

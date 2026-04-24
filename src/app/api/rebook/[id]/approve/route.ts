@@ -147,10 +147,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
 function formatSlotLabel(iso: string): string {
   const d = new Date(iso);
-  const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const DOW = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
   const day = DOW[d.getDay()];
   const date = d.getDate();
-  const month = d.toLocaleDateString('ru-RU', { month: 'short' });
+  const month = d.toLocaleDateString('ru-RU', { month: 'long' });
   const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   return `${day}, ${date} ${month} · ${time}`;
 }
