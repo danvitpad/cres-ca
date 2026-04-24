@@ -55,7 +55,7 @@ export async function getPublicMasterBySlug(slug: string): Promise<PublicMaster 
   const { data: master } = await db
     .from('masters')
     .select(
-      'id, slug, specialization, city, bio, latitude, longitude, headline, is_public, is_active, ' +
+      'id, slug, specialization, city, bio, latitude, longitude, headline, is_public, is_active, profile_id, ' +
       'profile:profiles!masters_profile_id_fkey(full_name, first_name, avatar_url)',
     )
     .eq('slug', slug)
@@ -74,10 +74,23 @@ export async function getPublicMasterBySlug(slug: string): Promise<PublicMaster 
     headline: string | null;
     is_public: boolean;
     is_active: boolean;
+    profile_id: string;
     profile: { full_name: string | null; first_name: string | null; avatar_url: string | null } | null;
   };
   const m = master as unknown as MRow | null;
   if (!m) return null;
+
+  // Gate on active subscription (trial or paid). Expired/cancelled → hidden.
+  const { data: sub } = await db
+    .from('subscriptions')
+    .select('status')
+    .eq('profile_id', m.profile_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!sub || !['active', 'trial'].includes(sub.status as string)) {
+    return null;
+  }
 
   const [servicesRes, reviewsRes, ratingRes] = await Promise.all([
     db.from('services')
@@ -158,15 +171,21 @@ export async function getPublicMasterBySlug(slug: string): Promise<PublicMaster 
   };
 }
 
-/** List slugs for sitemap generation — returns up to N most-recent public masters. */
+/** List slugs for sitemap generation — only masters with active subscription. */
 export async function listPublicMasterSlugs(limit = 5000): Promise<Array<{ slug: string; updatedAt: string }>> {
   const db = admin();
+  // Join with subscriptions to gate on active/trial status — only indexable masters land in sitemap.
   const { data } = await db
     .from('masters')
-    .select('slug, updated_at')
+    .select('slug, updated_at, profile_id, subscriptions:subscriptions!subscriptions_profile_id_fkey(status)')
     .eq('is_public', true)
     .eq('is_active', true)
+    .not('slug', 'is', null)
     .order('updated_at', { ascending: false })
     .limit(limit);
-  return (data ?? []).map((r) => ({ slug: r.slug as string, updatedAt: r.updated_at as string }));
+
+  type Row = { slug: string; updated_at: string; subscriptions: Array<{ status: string }> | null };
+  return ((data ?? []) as unknown as Row[])
+    .filter((r) => (r.subscriptions ?? []).some((s) => ['active', 'trial'].includes(s.status)))
+    .map((r) => ({ slug: r.slug, updatedAt: r.updated_at }));
 }

@@ -44,16 +44,18 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
   const db = admin();
   const limit = Math.min(params.limit ?? 50, 100);
 
-  // Stage 1: masters (filtered by city + public)
+  // Stage 1: masters (public + active subscription required)
   let q = db
     .from('masters')
     .select(
-      'id, slug, specialization, city, latitude, longitude, headline, ' +
-      'profile:profiles!masters_profile_id_fkey(full_name, first_name, avatar_url)',
+      'id, slug, specialization, city, latitude, longitude, headline, profile_id, ' +
+      'profile:profiles!masters_profile_id_fkey(full_name, first_name, avatar_url), ' +
+      'subscriptions:subscriptions!subscriptions_profile_id_fkey(status)',
     )
     .eq('is_public', true)
     .eq('is_active', true)
-    .limit(limit);
+    .not('slug', 'is', null)
+    .limit(limit * 2);  // oversample to allow subscription filter
 
   if (params.city) {
     q = q.ilike('city', `%${params.city.trim()}%`);
@@ -70,9 +72,14 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
     latitude: number | null;
     longitude: number | null;
     headline: string | null;
+    profile_id: string;
     profile: { full_name: string | null; first_name: string | null; avatar_url: string | null } | null;
+    subscriptions: Array<{ status: string }> | null;
   };
-  let rows = masters as unknown as MRow[];
+  // Only masters with active or trial subscription are indexable
+  let rows = (masters as unknown as MRow[])
+    .filter((m) => (m.subscriptions ?? []).some((s) => ['active', 'trial'].includes(s.status)))
+    .slice(0, limit);
 
   // Stage 2: service keyword filter — if specified, only keep masters with matching service
   if (params.service && params.service.trim()) {
