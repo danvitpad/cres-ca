@@ -1431,6 +1431,31 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
     return;
   }
 
+  // Review stars — rv:<appointmentId>:<1-5>
+  if (data.startsWith('rv:')) {
+    const [, apptId, scoreStr] = data.split(':');
+    const score = parseInt(scoreStr ?? '0', 10);
+    if (score >= 1 && score <= 5) {
+      await handleReviewStars(chatId, telegramId, apptId, score);
+    }
+    return;
+  }
+
+  // Rebook: client accepted a slot — rb_yes:<suggestionId>:<slotIdx>
+  if (data.startsWith('rb_yes:')) {
+    const [, suggestionId, slotIdxStr] = data.split(':');
+    const slotIdx = parseInt(slotIdxStr ?? '0', 10);
+    await handleRebookAccept(chatId, telegramId, suggestionId, slotIdx);
+    return;
+  }
+
+  // Rebook: client declined — rb_no:<suggestionId>
+  if (data.startsWith('rb_no:')) {
+    const [, suggestionId] = data.split(':');
+    await handleRebookDecline(chatId, telegramId, suggestionId);
+    return;
+  }
+
   // Supplier order channel pick: so_tg: / so_em: / so_pdf: / so_cancel:
   if (data.startsWith('so_')) {
     const [action, orderId] = data.split(':');
@@ -1565,4 +1590,220 @@ function isFeedbackTranscript(transcript: string): boolean {
     || t.includes('фидбэк') || t.includes('фидбек') || t.includes('feedback')
     || t.startsWith('отзыв')
   );
+}
+
+/* ─── Review stars ─── */
+
+async function handleReviewStars(chatId: number, telegramId: number, apptId: string, score: number) {
+  const supabase = createServiceClient();
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('telegram_id', telegramId)
+    .maybeSingle();
+  if (!profile) return;
+
+  const { data: appt } = await supabase
+    .from('appointments')
+    .select('id, client_id, master_id, status, ends_at, review_submitted_at, ' +
+      'clients:client_id!appointments_client_id_fkey(profile_id)')
+    .eq('id', apptId)
+    .maybeSingle();
+
+  type Loaded = {
+    id: string;
+    client_id: string;
+    master_id: string;
+    status: string;
+    ends_at: string;
+    review_submitted_at: string | null;
+    clients: { profile_id: string | null } | null;
+  };
+  const row = appt as unknown as Loaded | null;
+  if (!row) return;
+  if (row.clients?.profile_id !== profile.id) return;
+  if (row.status !== 'completed') return;
+  if (row.review_submitted_at) {
+    await sendMessage(chatId, '⚠️ Ты уже оставил оценку для этого визита.');
+    return;
+  }
+
+  // Insert review — trigger enforces all authenticity rules
+  const { error } = await supabase.from('reviews').insert({
+    appointment_id: row.id,
+    target_type: 'master',
+    target_master_id: row.master_id,
+    reviewer_profile_id: profile.id,
+    score,
+    is_published: true,
+  });
+
+  if (error) {
+    console.error('[review-stars] insert failed:', error.message);
+    await sendMessage(chatId, `❌ ${error.message}`);
+    return;
+  }
+
+  await supabase
+    .from('appointments')
+    .update({ review_submitted_at: new Date().toISOString() })
+    .eq('id', row.id);
+
+  const thanks = score >= 4
+    ? `💜 Спасибо за ${score} ${score === 5 ? 'звёзд' : 'звезды'}! Если хочешь — напиши пару слов комментария ответом на это сообщение, мастер увидит.`
+    : `Спасибо за оценку. Если было что-то не так — напиши ответом, я передам мастеру чтобы исправил.`;
+  await sendMessage(chatId, thanks);
+}
+
+/* ─── Rebook client responses ─── */
+
+async function handleRebookAccept(chatId: number, telegramId: number, suggestionId: string, slotIdx: number) {
+  const supabase = createServiceClient();
+
+  // Resolve client profile + suggestion
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('telegram_id', telegramId)
+    .maybeSingle();
+  if (!profile) {
+    await sendMessage(chatId, '❌ Не удалось определить твой аккаунт. Открой приложение заново.');
+    return;
+  }
+
+  const { data: s } = await supabase
+    .from('rebook_suggestions')
+    .select('id, master_id, client_id, service_id, suggested_starts_at, suggested_duration_min, alt_slots, status, ' +
+      'services:service_id!rebook_suggestions_service_id_fkey(name, price, currency), ' +
+      'clients:client_id!rebook_suggestions_client_id_fkey(profile_id, full_name), ' +
+      'masters:master_id!rebook_suggestions_master_id_fkey(profiles:profile_id(telegram_id))')
+    .eq('id', suggestionId)
+    .maybeSingle();
+
+  type Loaded = {
+    id: string;
+    master_id: string;
+    client_id: string;
+    service_id: string | null;
+    suggested_starts_at: string;
+    suggested_duration_min: number;
+    alt_slots: Array<{ starts_at: string }>;
+    status: string;
+    services: { name: string; price: number; currency: string } | null;
+    clients: { profile_id: string | null; full_name: string } | null;
+    masters: { profiles: { telegram_id: number | null } | null } | null;
+  };
+  const row = s as unknown as Loaded | null;
+  if (!row) {
+    await sendMessage(chatId, '❌ Предложение не найдено.');
+    return;
+  }
+  if (row.status !== 'sent_client') {
+    await sendMessage(chatId, '⚠️ Это предложение уже неактивно.');
+    return;
+  }
+  if (row.clients?.profile_id && row.clients.profile_id !== profile.id) {
+    await sendMessage(chatId, '❌ Это предложение не для тебя.');
+    return;
+  }
+
+  const allSlots = [{ starts_at: row.suggested_starts_at }, ...(row.alt_slots ?? [])];
+  const chosen = allSlots[slotIdx];
+  if (!chosen) {
+    await sendMessage(chatId, '❌ Слот не найден.');
+    return;
+  }
+
+  // Re-check slot freshness — someone might have booked in meantime
+  const { data: isFree } = await supabase.rpc('is_slot_free', {
+    p_master_id: row.master_id,
+    p_starts_at: chosen.starts_at,
+    p_duration_min: row.suggested_duration_min,
+  });
+  if (isFree !== true) {
+    await supabase.from('rebook_suggestions').update({ status: 'stale' }).eq('id', row.id);
+    await sendMessage(chatId, '😔 Этот слот только что заняли. Напиши мастеру напрямую — подберём другое время.');
+    return;
+  }
+
+  if (!row.service_id) {
+    await sendMessage(chatId, '❌ Услуга в предложении пропала. Свяжись с мастером.');
+    return;
+  }
+
+  const startsAt = new Date(chosen.starts_at);
+  const endsAt = new Date(startsAt.getTime() + row.suggested_duration_min * 60 * 1000);
+
+  const { data: appt, error: apptErr } = await supabase
+    .from('appointments')
+    .insert({
+      client_id: row.client_id,
+      master_id: row.master_id,
+      service_id: row.service_id,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      status: 'booked',
+      price: row.services?.price ?? 0,
+      currency: row.services?.currency ?? 'UAH',
+      booked_via: 'telegram',
+      notes: 'Авто-запись через AI-рекомендацию',
+    })
+    .select('id')
+    .single();
+
+  if (apptErr || !appt) {
+    console.error('[rebook-accept] appointment insert failed:', apptErr);
+    await sendMessage(chatId, '❌ Не удалось создать запись. Попробуй позже.');
+    return;
+  }
+
+  await supabase
+    .from('rebook_suggestions')
+    .update({
+      status: 'accepted',
+      client_responded_at: new Date().toISOString(),
+      appointment_id: appt.id,
+    })
+    .eq('id', row.id);
+
+  // Notify client + master
+  const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const dateStr = `${DOW[startsAt.getDay()]}, ${startsAt.getDate()} ${startsAt.toLocaleDateString('ru-RU', { month: 'long' })}`;
+  const timeStr = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  await sendMessage(chatId, `✅ <b>Записал!</b>\n\n${dateStr} · ${timeStr}\n${row.services?.name ?? ''}\n\nДо встречи 💜`, { parse_mode: 'HTML' });
+
+  const masterTg = row.masters?.profiles?.telegram_id;
+  if (masterTg) {
+    await sendMessage(masterTg, `✅ <b>${row.clients?.full_name ?? 'Клиент'}</b> вернулся через авто-запись!\n\n${dateStr} · ${timeStr}\n${row.services?.name ?? ''}`, { parse_mode: 'HTML' });
+  }
+}
+
+async function handleRebookDecline(chatId: number, telegramId: number, suggestionId: string) {
+  const supabase = createServiceClient();
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('telegram_id', telegramId)
+    .maybeSingle();
+  if (!profile) return;
+
+  const { data: s } = await supabase
+    .from('rebook_suggestions')
+    .select('id, client_id, status, clients:client_id!rebook_suggestions_client_id_fkey(profile_id)')
+    .eq('id', suggestionId)
+    .maybeSingle();
+
+  type Loaded = { id: string; client_id: string; status: string; clients: { profile_id: string | null } | null };
+  const row = s as unknown as Loaded | null;
+  if (!row || row.status !== 'sent_client') return;
+  if (row.clients?.profile_id && row.clients.profile_id !== profile.id) return;
+
+  await supabase
+    .from('rebook_suggestions')
+    .update({ status: 'declined', client_responded_at: new Date().toISOString() })
+    .eq('id', row.id);
+
+  await sendMessage(chatId, '👌 Хорошо, напишу позже. Если захочешь записаться сама — просто открой приложение.');
 }

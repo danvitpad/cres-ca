@@ -22,6 +22,7 @@ import { useMaster } from '@/hooks/use-master';
 import { StatCard } from '@/components/shared/primitives/stat-card';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { CURRENCY, pageContainer } from '@/lib/dashboard-theme';
+import { RebookPanel, type RebookCardData } from '@/components/rebook/rebook-panel';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -68,6 +69,7 @@ export default function TodayPage() {
   const [birthdays, setBirthdays] = useState<ClientBirthday[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rebookItems, setRebookItems] = useState<RebookCardData[]>([]);
 
   // AI chat state
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -105,6 +107,13 @@ export default function TodayPage() {
     setAppointments((apptRes.data as unknown as Appointment[]) || []);
     setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
     setReminders((remRes.data as unknown as Reminder[]) || []);
+
+    // Load rebook suggestions (best-effort, never blocks render)
+    fetch('/api/rebook/list')
+      .then((r) => (r.ok ? r.json() : Promise.resolve({ items: [] })))
+      .then((d) => setRebookItems((d.items as RebookCardData[]) ?? []))
+      .catch(() => setRebookItems([]));
+
     setLoading(false);
   }, [master?.id]);
 
@@ -339,8 +348,15 @@ export default function TodayPage() {
         </div>
       </motion.div>
 
+      {/* Rebook suggestions — show only when there are any */}
+      {rebookItems.length > 0 && (
+        <motion.div {...stagger(3)} className="shrink-0">
+          <RebookPanel items={rebookItems} />
+        </motion.div>
+      )}
+
       {/* Row: Reminders | AI chat (wide) | Birthdays — fills remaining viewport */}
-      <motion.div {...stagger(3)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+      <motion.div {...stagger(4)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
         {/* Reminders — 1 col, scrolls internally */}
         <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
           <div className="flex items-center justify-between mb-3 shrink-0">

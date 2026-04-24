@@ -33,7 +33,7 @@ interface Props {
   createdByRole?: 'master' | 'admin' | 'receptionist';
 }
 
-interface ClientOption { id: string; full_name: string }
+interface ClientOption { id: string; full_name: string; no_show_count?: number }
 interface ServiceOption { id: string; name: string; duration_minutes: number; price: number; currency: string }
 
 export function NewAppointmentDialog({
@@ -67,7 +67,7 @@ export function NewAppointmentDialog({
   async function loadOptions() {
     const supabase = createClient();
     const [clientsRes, servicesRes] = await Promise.all([
-      supabase.from('clients').select('id, full_name').eq('master_id', masterId).order('full_name').limit(200),
+      supabase.from('clients').select('id, full_name, no_show_count').eq('master_id', masterId).order('full_name').limit(200),
       supabase.from('services').select('id, name, duration_minutes, price, currency').eq('master_id', masterId).eq('is_active', true).order('name'),
     ]);
     if (clientsRes.data) setClients(clientsRes.data);
@@ -282,12 +282,19 @@ export function NewAppointmentDialog({
                 {clientIds.map((cid) => {
                   const c = clients.find((x) => x.id === cid);
                   if (!c) return null;
+                  const risky = (c.no_show_count ?? 0) >= 2;
                   return (
                     <span
                       key={cid}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/15 px-3 py-1 text-[12px] font-semibold text-violet-100"
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-semibold ${
+                        risky
+                          ? 'border-amber-500/50 bg-amber-500/15 text-amber-100'
+                          : 'border-violet-500/30 bg-violet-500/15 text-violet-100'
+                      }`}
+                      title={risky ? `У клиента ${c.no_show_count} пропусков — рекомендуется предоплата` : undefined}
                     >
                       {c.full_name}
+                      {risky && <span className="text-[10px] opacity-70">⚠ {c.no_show_count}×</span>}
                       <button
                         type="button"
                         onClick={() => removeClient(cid)}
