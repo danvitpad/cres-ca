@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
-import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase } from 'lucide-react';
+import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 
@@ -527,6 +527,8 @@ function ServiceForm({
     { id: string; name: string; unit: string }[]
   >([]);
   const [recipeMap, setRecipeMap] = useState<Record<string, number>>({});
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -636,6 +638,49 @@ function ServiceForm({
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+
+  async function suggestMaterialsWithAi() {
+    if (!name.trim()) {
+      toast.error('Сначала введи название услуги');
+      return;
+    }
+    setAiSuggesting(true);
+    setAiSummary(null);
+    try {
+      const res = await fetch('/api/services/suggest-materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_name: name.trim(),
+          duration_minutes: parseInt(duration) || null,
+          service_id: editing?.id ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error === 'ai_failed' ? 'AI не смог обработать' : 'Ошибка');
+        return;
+      }
+      type S = { item_id: string; quantity: number };
+      const suggestions = (data.suggestions ?? []) as S[];
+      if (suggestions.length === 0) {
+        toast(data.summary || 'AI не нашёл подходящих расходников из твоего склада', { icon: '🤔' });
+        setAiSummary(data.summary ?? null);
+        return;
+      }
+      setRecipeMap((prev) => {
+        const next = { ...prev };
+        for (const s of suggestions) next[s.item_id] = s.quantity;
+        return next;
+      });
+      setAiSummary(data.summary ?? null);
+      toast.success(`AI предложил ${suggestions.length} ${suggestions.length === 1 ? 'расходник' : 'расходников'} — проверь и сохрани`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Ошибка');
+    } finally {
+      setAiSuggesting(false);
+    }
+  }
 
   return (
     <>
@@ -839,7 +884,67 @@ function ServiceForm({
         )}
       </div>
 
-      {/* Advanced — collapsed by default */}
+      {/* Materials per visit — primary block (auto-deducts from inventory on completion) */}
+      <div className="space-y-2 rounded-lg border-2 border-border p-3">
+        <div className="flex items-center justify-between gap-2">
+          <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Расходники на один визит
+          </Label>
+          {inventoryItems.length > 0 && (
+            <button
+              type="button"
+              onClick={suggestMaterialsWithAi}
+              disabled={aiSuggesting || !name.trim()}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15 disabled:opacity-40"
+              title={!name.trim() ? 'Сначала введи название услуги' : 'AI предложит примерные дозы из твоего склада'}
+            >
+              <Sparkles className="size-3" />
+              {aiSuggesting ? 'AI считает…' : 'Помоги рассчитать (AI)'}
+            </button>
+          )}
+        </div>
+
+        {inventoryItems.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">
+            На складе пока нет материалов. Добавь их в разделе «Склад» — тогда сможешь связать с услугой.
+          </p>
+        ) : (
+          <>
+            <p className="text-[11px] text-muted-foreground">
+              Автоматически спишется со склада, когда услуга помечена «Завершено». Цифру можно редактировать вручную.
+            </p>
+            <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+              {inventoryItems.map((it) => (
+                <div key={it.id} className="flex items-center gap-2 text-sm">
+                  <span className="flex-1 truncate">{it.name}</span>
+                  <Input
+                    type="number" min={0} step="0.01"
+                    className="h-7 w-20 border border-border"
+                    value={recipeMap[it.id] ?? ''}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setRecipeMap((prev) => {
+                        const next = { ...prev };
+                        if (v === '') delete next[it.id]; else next[it.id] = parseFloat(v) || 0;
+                        return next;
+                      });
+                    }}
+                  />
+                  <span className="w-8 text-[11px] text-muted-foreground">{it.unit}</span>
+                </div>
+              ))}
+            </div>
+            {aiSummary && (
+              <p className="rounded-md bg-primary/5 px-2.5 py-1.5 text-[11px] text-primary">
+                {aiSummary}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Advanced — collapsed by default (prep + aftercare only) */}
       <div>
         <button
           type="button"
@@ -852,7 +957,8 @@ function ServiceForm({
           <div className="mt-3 space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Как подготовиться              </Label>
+                Как подготовиться
+              </Label>
               <Textarea
                 rows={2}
                 value={preparation}
@@ -863,7 +969,8 @@ function ServiceForm({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Уход после              </Label>
+                Уход после
+              </Label>
               <Textarea
                 rows={2}
                 value={aftercare}
@@ -872,37 +979,6 @@ function ServiceForm({
                 className="border-2 border-border focus-visible:border-primary"
               />
             </div>
-            {inventoryItems.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Расходники на визит                </Label>
-                <p className="text-[11px] text-muted-foreground -mt-1">
-                  Автоматически спишется со склада когда услуга завершена.
-                </p>
-                <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border-2 border-border p-2">
-                  {inventoryItems.map((it) => (
-                    <div key={it.id} className="flex items-center gap-2 text-sm">
-                      <span className="flex-1 truncate">{it.name}</span>
-                      <Input
-                        type="number" min={0} step="0.01"
-                        className="h-7 w-20 border border-border"
-                        value={recipeMap[it.id] ?? ''}
-                        placeholder="0"
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setRecipeMap((prev) => {
-                            const next = { ...prev };
-                            if (v === '') delete next[it.id]; else next[it.id] = parseFloat(v) || 0;
-                            return next;
-                          });
-                        }}
-                      />
-                      <span className="w-8 text-[11px] text-muted-foreground">{it.unit}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
