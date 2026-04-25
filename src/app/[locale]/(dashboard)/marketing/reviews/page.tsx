@@ -80,15 +80,9 @@ export default function ReviewsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Star className="h-6 w-6 text-primary" />
-          Отзывы клиентов
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Сводка по всем отзывам. Опубликованные отзывы показываются на публичной странице.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Сводка по всем отзывам. Опубликованные отзывы показываются на публичной странице.
+      </p>
 
       <div className="grid gap-4 rounded-lg border bg-card p-5 md:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center justify-center md:border-r md:pr-6">

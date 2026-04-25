@@ -9,11 +9,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Sparkles } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Sparkles, Pencil } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
 import { BirthdaySettingsDialog } from '@/components/marketing/birthday-settings-dialog';
+import { TemplateEditorDialog, AUTOMATION_KIND_SPECS } from '@/components/marketing/template-editor-dialog';
 
 type AutomationKey =
   | 'reminder_24h'
@@ -116,6 +117,7 @@ export default function AutomationPage() {
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [bdayDialogOpen, setBdayDialogOpen] = useState(false);
+  const [editingKind, setEditingKind] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!master?.id) return;
@@ -152,14 +154,9 @@ export default function AutomationPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Автоматизация</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Встроенные правила автоматических сообщений. Настраивай таймеры, включай/выключай нужные автоматизации.
-          </p>
-        </div>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Встроенные правила автоматических сообщений. Настраивай тексты, включай/выключай нужные правила и пробуй на себе.
+      </p>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Загрузка…</p>
@@ -168,6 +165,7 @@ export default function AutomationPage() {
           {RULES.map((r) => {
             const Icon = r.icon;
             const enabled = settings[r.key];
+            const editable = !!AUTOMATION_KIND_SPECS[r.key];
             return (
               <div
                 key={r.key}
@@ -187,9 +185,22 @@ export default function AutomationPage() {
                 </div>
                 <div className="mt-4 font-semibold">{r.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">{r.description}</div>
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Settings className="size-3" />
-                  {r.trigger}
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Settings className="size-3" />
+                    {r.trigger}
+                  </div>
+                  {editable && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingKind(r.key)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-primary/10 hover:border-primary/40"
+                      title="Редактировать текст шаблона"
+                    >
+                      <Pencil className="size-2.5" />
+                      Шаблон
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -232,6 +243,15 @@ export default function AutomationPage() {
         <BirthdaySettingsDialog
           open={bdayDialogOpen}
           onOpenChange={setBdayDialogOpen}
+          masterId={master.id}
+        />
+      )}
+
+      {master?.id && editingKind && AUTOMATION_KIND_SPECS[editingKind] && (
+        <TemplateEditorDialog
+          open={true}
+          onOpenChange={(o) => !o && setEditingKind(null)}
+          spec={AUTOMATION_KIND_SPECS[editingKind]}
           masterId={master.id}
         />
       )}

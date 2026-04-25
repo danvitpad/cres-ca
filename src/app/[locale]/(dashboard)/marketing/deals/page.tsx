@@ -290,23 +290,18 @@ export default function DealsPage() {
 
   return (
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, color: C.text, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Tag size={24} style={{ color: C.accent }} />
-            Промокоды и акции
-          </h1>
-          <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 6 }}>
-            Создавай промокоды со скидками, отправляй клиентам и отслеживай результаты
-          </p>
-        </div>
+      {/* Header — only subtitle + action; main h1 lives on the parent /marketing page */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16 }}>
+        <p style={{ fontSize: 14, color: C.textSecondary, margin: 0 }}>
+          Создавай промокоды со скидками, отправляй клиентам и отслеживай результаты.
+        </p>
         <button
           onClick={openCreate}
           style={{
             padding: '8px 16px', borderRadius: 8, border: 'none',
             background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600,
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+            flexShrink: 0,
           }}
         >
           <Plus size={14} />

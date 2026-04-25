@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Megaphone, Users, Send, Search, Check } from 'lucide-react';
+import { Users, Send, Search, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { useConfirm } from '@/hooks/use-confirm';
@@ -208,15 +208,9 @@ export default function CampaignsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Megaphone className="h-6 w-6 text-primary" />
-          Массовые рассылки
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Выбери сегмент клиентов или отдельных получателей и отправь сообщение через Telegram.
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Выбери сегмент клиентов или отдельных получателей и отправь сообщение через Telegram, email или оба канала.
+      </p>
 
       {/* Mode switcher */}
       <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
