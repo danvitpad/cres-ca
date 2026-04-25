@@ -29,10 +29,11 @@ import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
 import { ExportMenu } from '@/components/finance/export-menu';
+import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
-type SubTab = 'overview' | 'income' | 'expenses';
+type SubTab = 'overview' | 'income' | 'expenses' | 'recurring';
 const EXPENSE_CATEGORIES = ['Расходники', 'Аренда', 'Еда', 'Транспорт', 'Коммунальные', 'Реклама', 'Оборудование', 'Прочее'];
 
 interface PeriodMetrics {
@@ -337,6 +338,7 @@ export default function FinancePage() {
     { value: 'overview', label: 'Обзор' },
     { value: 'income', label: 'Доходы', count: payments.length + manualIncomes.length },
     { value: 'expenses', label: 'Расходы', count: expenses.length },
+    { value: 'recurring', label: 'Постоянные расходы' },
   ];
 
   const expensesTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
@@ -951,6 +953,18 @@ export default function FinancePage() {
                 </div>
               </div>
             )}
+          </motion.div>
+        )}
+
+        {activeTab === 'recurring' && (
+          <motion.div
+            key="recurring"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <RecurringExpensesTab />
           </motion.div>
         )}
       </AnimatePresence>

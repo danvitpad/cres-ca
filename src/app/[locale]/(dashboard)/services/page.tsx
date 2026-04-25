@@ -35,6 +35,30 @@ import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase, 
 import { motion } from 'framer-motion';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 
+/**
+ * Convert a quantity from one unit to a compatible base unit.
+ * Returns the converted number, or null if the units are incompatible.
+ * Used so service_recipes.quantity is always stored in the SAME unit the
+ * inventory_items.quantity uses, so the auto-deduct trigger does plain
+ * subtraction without conversion.
+ */
+function convertToBaseUnit(qty: number, fromUnit: string, toUnit: string): number | null {
+  const f = (fromUnit || '').toLowerCase().trim();
+  const t = (toUnit || '').toLowerCase().trim();
+  if (!f || !t || f === t) return qty;
+  const table: Record<string, Record<string, number>> = {
+    'мл': { 'л': 1 / 1000 },
+    'л':  { 'мл': 1000 },
+    'г':  { 'кг': 1 / 1000 },
+    'кг': { 'г': 1000 },
+    'см': { 'м': 1 / 100 },
+    'м':  { 'см': 100 },
+  };
+  const factor = table[f]?.[t];
+  if (typeof factor !== 'number') return null;
+  return qty * factor;
+}
+
 const serviceSchema = z.object({
   name: z.string().min(1),
   duration_minutes: z.number().int().min(5).max(480),
@@ -527,6 +551,9 @@ function ServiceForm({
     { id: string; name: string; unit: string }[]
   >([]);
   const [recipeMap, setRecipeMap] = useState<Record<string, number>>({});
+  // Per-recipe unit override (e.g. material stored in literals but consumed in ml).
+  // Keyed by inventory_item.id; null/undefined → use the inventory item's own unit.
+  const [recipeUnitMap, setRecipeUnitMap] = useState<Record<string, string>>({});
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
 
@@ -542,13 +569,16 @@ function ServiceForm({
       if (editing) {
         const { data: recs } = await supabase
           .from('service_recipes')
-          .select('item_id, quantity')
+          .select('item_id, quantity, unit')
           .eq('service_id', editing.id);
         const map: Record<string, number> = {};
-        for (const r of (recs ?? []) as { item_id: string; quantity: number }[]) {
+        const unitMap: Record<string, string> = {};
+        for (const r of (recs ?? []) as { item_id: string; quantity: number; unit: string | null }[]) {
           map[r.item_id] = Number(r.quantity);
+          if (r.unit) unitMap[r.item_id] = r.unit;
         }
         setRecipeMap(map);
+        setRecipeUnitMap(unitMap);
       }
 
       // Load active partners for the "recommend another master" dropdown
@@ -626,7 +656,26 @@ function ServiceForm({
       await supabase.from('service_recipes').delete().eq('service_id', serviceId);
       const recipeRows = Object.entries(recipeMap)
         .filter(([, q]) => q > 0)
-        .map(([item_id, quantity]) => ({ service_id: serviceId, item_id, quantity }));
+        .map(([item_id, qtyInDisplayUnit]) => {
+          const inv = inventoryItems.find((x) => x.id === item_id);
+          const displayUnit = recipeUnitMap[item_id] || inv?.unit || '';
+          const baseQty = convertToBaseUnit(qtyInDisplayUnit, displayUnit, inv?.unit || displayUnit);
+          if (baseQty === null) {
+            // Incompatible — store as-is with display unit so master sees their original value
+            return {
+              service_id: serviceId,
+              item_id,
+              quantity: qtyInDisplayUnit,
+              unit: displayUnit || null,
+            };
+          }
+          return {
+            service_id: serviceId,
+            item_id,
+            quantity: baseQty,
+            unit: displayUnit && displayUnit !== inv?.unit ? displayUnit : null,
+          };
+        });
       if (recipeRows.length > 0) {
         await supabase.from('service_recipes').insert(recipeRows);
       }
@@ -913,27 +962,55 @@ function ServiceForm({
             <p className="text-[11px] text-muted-foreground">
               Автоматически спишется со склада, когда услуга помечена «Завершено». Цифру можно редактировать вручную.
             </p>
-            <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border border-border p-2">
-              {inventoryItems.map((it) => (
-                <div key={it.id} className="flex items-center gap-2 text-sm">
-                  <span className="flex-1 truncate">{it.name}</span>
-                  <Input
-                    type="number" min={0} step="0.01"
-                    className="h-7 w-20 border border-border"
-                    value={recipeMap[it.id] ?? ''}
-                    placeholder="0"
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setRecipeMap((prev) => {
-                        const next = { ...prev };
-                        if (v === '') delete next[it.id]; else next[it.id] = parseFloat(v) || 0;
-                        return next;
-                      });
-                    }}
-                  />
-                  <span className="w-8 text-[11px] text-muted-foreground">{it.unit}</span>
-                </div>
-              ))}
+            <div className="max-h-60 space-y-1 overflow-y-auto rounded-md border border-border p-2">
+              {inventoryItems.map((it) => {
+                const overrideUnit = recipeUnitMap[it.id] || '';
+                return (
+                  <div key={it.id} className="flex items-center gap-2 text-sm">
+                    <span className="flex-1 truncate">
+                      {it.name}
+                      <span className="ml-1.5 text-[10px] text-muted-foreground">(на складе в {it.unit})</span>
+                    </span>
+                    <Input
+                      type="number" min={0} step="0.01"
+                      className="h-7 w-20 border border-border"
+                      value={recipeMap[it.id] ?? ''}
+                      placeholder="0"
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRecipeMap((prev) => {
+                          const next = { ...prev };
+                          if (v === '') delete next[it.id]; else next[it.id] = parseFloat(v) || 0;
+                          return next;
+                        });
+                      }}
+                    />
+                    <select
+                      value={overrideUnit}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRecipeUnitMap((prev) => {
+                          const next = { ...prev };
+                          if (!v) delete next[it.id]; else next[it.id] = v;
+                          return next;
+                        });
+                      }}
+                      className="h-7 w-[88px] rounded-md border border-border bg-background px-1.5 text-[11px] outline-none"
+                      title="Единица расхода (можно отличать от единицы хранения, e.g. ml вместо л)"
+                    >
+                      <option value="">{it.unit}</option>
+                      <option value="мл">мл</option>
+                      <option value="л">л</option>
+                      <option value="г">г</option>
+                      <option value="кг">кг</option>
+                      <option value="шт">шт</option>
+                      <option value="м">м</option>
+                      <option value="см">см</option>
+                      <option value="упак">упак</option>
+                    </select>
+                  </div>
+                );
+              })}
             </div>
             {aiSummary && (
               <p className="rounded-md bg-primary/5 px-2.5 py-1.5 text-[11px] text-primary">
@@ -1100,19 +1177,16 @@ function CategoryDialog({
   );
 }
 
-/* ─── Catalogue tab router: Услуги / Склад / Постоянные расходы / Заказы ─── */
+/* ─── Catalogue tab router: Услуги / Склад / Заказы поставщикам ─── */
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import InventoryPage from '../inventory/page';
-import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
 import { SupplierOrdersTab } from '@/components/catalogue/supplier-orders-tab';
-import { PillTabs } from '@/components/shared/pill-tabs';
 
-type CatalogueTab = 'services' | 'inventory' | 'recurring' | 'orders';
+type CatalogueTab = 'services' | 'inventory' | 'orders';
 
 const CAT_TABS = [
   { value: 'services',  label: 'Услуги' },
   { value: 'inventory', label: 'Склад' },
-  { value: 'recurring', label: 'Постоянные расходы' },
   { value: 'orders',    label: 'Заказы поставщикам' },
 ] as const;
 
@@ -1140,17 +1214,44 @@ export default function ServicesPage() {
           Каталог
         </h1>
         <p style={{ fontSize: 13, color: C.textTertiary, margin: '4px 0 0 0' }}>
-          Услуги, склад, постоянные расходы и заказы поставщикам
+          Услуги, склад и заказы поставщикам
         </p>
       </div>
 
-      <div style={{ marginBottom: 24, marginTop: 16, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <PillTabs items={CAT_TABS} value={active} onChange={setTab} />
+      {/* Underline tabs — same styling as Finance */}
+      <div style={{
+        marginTop: 16, marginBottom: 24,
+        display: 'flex', gap: 4,
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        {CAT_TABS.map((tab) => {
+          const isActive = active === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setTab(tab.value)}
+              style={{
+                padding: '10px 16px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${isActive ? C.accent : 'transparent'}`,
+                color: isActive ? C.text : C.textSecondary,
+                fontSize: 14,
+                fontWeight: isActive ? 600 : 500,
+                cursor: 'pointer',
+                marginBottom: -1,
+                transition: 'all 150ms ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {active === 'services' && <ServicesCatalogueView />}
       {active === 'inventory' && <InventoryPage />}
-      {active === 'recurring' && <RecurringExpensesTab />}
       {active === 'orders' && <SupplierOrdersTab />}
     </div>
   );

@@ -51,6 +51,7 @@ interface InventoryItem {
   low_stock_threshold: number;
   barcode: string | null;
   expiry_date: string | null;
+  preferred_supplier_id: string | null;
 }
 
 interface Supplier {
@@ -61,6 +62,17 @@ interface Supplier {
   telegram_id: string | null;
   note: string | null;
 }
+
+const UNIT_OPTIONS: { value: string; label: string }[] = [
+  { value: 'шт',  label: 'шт. — штуки' },
+  { value: 'мл',  label: 'мл — миллилитры' },
+  { value: 'л',   label: 'л — литры' },
+  { value: 'г',   label: 'г — граммы' },
+  { value: 'кг',  label: 'кг — килограммы' },
+  { value: 'м',   label: 'м — метры' },
+  { value: 'см',  label: 'см — сантиметры' },
+  { value: 'упак', label: 'упак. — упаковки' },
+];
 
 type Tab = 'materials' | 'suppliers';
 
@@ -79,9 +91,10 @@ export default function InventoryPage() {
   // Item form state
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [unit, setUnit] = useState('pcs');
+  const [unit, setUnit] = useState('шт');
   const [costPerUnit, setCostPerUnit] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState('5');
+  const [preferredSupplierId, setPreferredSupplierId] = useState<string | null>(null);
 
   // Supplier state
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -137,18 +150,19 @@ export default function InventoryPage() {
   }, [master?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (tab === 'suppliers' && suppliers.length === 0) {
-      loadSuppliers();
-    }
-  }, [tab, suppliers.length, loadSuppliers]);
+    // Suppliers are needed both for the suppliers tab AND for the material form's
+    // "preferred supplier" selector — preload as soon as master is known.
+    if (suppliers.length === 0) loadSuppliers();
+  }, [suppliers.length, loadSuppliers]);
 
   function openAddDialog() {
     setEditItem(null);
     setName('');
     setQuantity('');
-    setUnit('pcs');
+    setUnit('шт');
     setCostPerUnit('');
     setLowStockThreshold('5');
+    setPreferredSupplierId(null);
     setDialogOpen(true);
   }
 
@@ -159,6 +173,7 @@ export default function InventoryPage() {
     setUnit(item.unit);
     setCostPerUnit(String(item.cost_per_unit));
     setLowStockThreshold(String(item.low_stock_threshold));
+    setPreferredSupplierId(item.preferred_supplier_id ?? null);
     setDialogOpen(true);
   }
 
@@ -172,6 +187,7 @@ export default function InventoryPage() {
       unit,
       cost_per_unit: parseFloat(costPerUnit) || 0,
       low_stock_threshold: parseInt(lowStockThreshold) || 5,
+      preferred_supplier_id: preferredSupplierId,
     };
 
     if (editItem) {
@@ -300,44 +316,42 @@ export default function InventoryPage() {
         </motion.div>
       )}
 
-      {/* Header with tabs */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      {/* Header — sub-tabs (Материалы / Поставщики) without icons + Add button */}
+      <div className="flex items-end justify-between border-b border-border">
+        <div className="flex gap-1">
           <button
+            type="button"
             onClick={() => setTab('materials')}
             className={cn(
-              'text-2xl font-bold tracking-tight flex items-center gap-2 transition-colors',
-              tab === 'materials' ? 'text-foreground' : 'text-muted-foreground/50 hover:text-muted-foreground',
+              'px-4 py-2.5 text-sm transition-colors -mb-px border-b-2',
+              tab === 'materials'
+                ? 'border-primary text-foreground font-semibold'
+                : 'border-transparent text-muted-foreground hover:text-foreground font-medium',
             )}
           >
-            <Package className="size-6" />
-            {t('addItem').replace('Add ', '')}
+            Материалы
           </button>
           <button
+            type="button"
             onClick={() => setTab('suppliers')}
             className={cn(
-              'text-2xl font-bold tracking-tight flex items-center gap-2 transition-colors',
-              tab === 'suppliers' ? 'text-foreground' : 'text-muted-foreground/50 hover:text-muted-foreground',
+              'px-4 py-2.5 text-sm transition-colors -mb-px border-b-2',
+              tab === 'suppliers'
+                ? 'border-primary text-foreground font-semibold'
+                : 'border-transparent text-muted-foreground hover:text-foreground font-medium',
             )}
           >
-            <Truck className="size-6" />
-            {t('suppliers')}
+            Поставщики
           </button>
         </div>
-        <div className="flex gap-2">
-          <Link href="/inventory/scan" className={cn(buttonVariants({ variant: 'outline' }), 'gap-1.5')}>
+        <div className="flex gap-2 pb-2">
+          <Link href="/inventory/scan" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
             <ScanBarcode className="size-4" />
           </Link>
           {tab === 'materials' ? (
-            <Button onClick={openAddDialog} className="gap-1.5">
-              <Plus className="size-4" />
-              {t('addItem')}
-            </Button>
+            <Button size="sm" onClick={openAddDialog}>{t('addItem')}</Button>
           ) : (
-            <Button onClick={openAddSupplier} className="gap-1.5">
-              <Plus className="size-4" />
-              {t('addSupplier')}
-            </Button>
+            <Button size="sm" onClick={openAddSupplier}>{t('addSupplier')}</Button>
           )}
         </div>
       </div>
@@ -532,28 +546,73 @@ export default function InventoryPage() {
             <DialogTitle>{editItem ? tc('edit') : t('addItem')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label>{t('itemName')}</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('itemName')}
+              </Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('itemNamePlaceholder')} />
             </div>
+
+            {/* Quantity / Unit / Price — uniform label height */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label>{t('quantity')}</Label>
-                <Input type="number" min="0" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              <div className="space-y-1.5">
+                <Label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4">
+                  Количество
+                </Label>
+                <Input type="number" min="0" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="h-10" />
               </div>
-              <div className="space-y-2">
-                <Label>{t('unit')}</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder={t('unitPlaceholder')} />
+              <div className="space-y-1.5">
+                <Label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4">
+                  Ед. измерения
+                </Label>
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {UNIT_OPTIONS.map((u) => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
               </div>
-              <div className="space-y-2">
-                <Label>{t('costPerUnit')}</Label>
-                <Input type="number" min="0" step="0.01" value={costPerUnit} onChange={(e) => setCostPerUnit(e.target.value)} />
+              <div className="space-y-1.5">
+                <Label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4">
+                  Цена / ед.
+                </Label>
+                <Input type="number" min="0" step="0.01" value={costPerUnit} onChange={(e) => setCostPerUnit(e.target.value)} className="h-10" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('lowStockThreshold')}</Label>
-              <Input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Низкий остаток
+                </Label>
+                <Input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Поставщик
+                </Label>
+                <select
+                  value={preferredSupplierId ?? ''}
+                  onChange={(e) => setPreferredSupplierId(e.target.value || null)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">— Не указан —</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+            {suppliers.length === 0 && (
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                Привяжи поставщика, чтобы при формировании заказа сюда попадали только его товары.
+                Сначала добавь поставщиков во вкладке «Поставщики».
+              </p>
+            )}
+
             <Button onClick={saveItem} className="w-full">
               {tc('save')}
             </Button>

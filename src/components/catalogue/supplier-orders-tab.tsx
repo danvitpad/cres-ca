@@ -8,7 +8,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Truck, Plus, X, Trash2 } from 'lucide-react';
+import { Truck, Plus, X, Trash2, Send, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -24,11 +24,17 @@ interface OrderRow {
   currency: string;
   items: unknown[];
   created_at: string;
-  supplier: { name: string } | null;
+  supplier: { name: string; email: string | null; telegram_id: string | null } | null;
 }
 
 interface SupplierOpt { id: string; name: string; }
-interface InventoryOpt { id: string; name: string; cost_per_unit: number | null; quantity: number; }
+interface InventoryOpt {
+  id: string;
+  name: string;
+  cost_per_unit: number | null;
+  quantity: number;
+  preferred_supplier_id: string | null;
+}
 
 interface OrderItem {
   inventory_item_id: string;
@@ -59,13 +65,15 @@ export function SupplierOrdersTab() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAllInventory, setShowAllInventory] = useState(false);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!master?.id) return;
     const supabase = createClient();
     const { data } = await supabase
       .from('supplier_orders')
-      .select('id, status, total_cost, currency, items, created_at, supplier:suppliers(name)')
+      .select('id, status, total_cost, currency, items, created_at, supplier:suppliers(name, email, telegram_id)')
       .eq('master_id', master.id)
       .order('created_at', { ascending: false })
       .limit(100);
@@ -80,13 +88,14 @@ export function SupplierOrdersTab() {
     const supabase = createClient();
     const [{ data: sup }, { data: inv }] = await Promise.all([
       supabase.from('suppliers').select('id, name').eq('master_id', master.id).eq('is_active', true).order('name'),
-      supabase.from('inventory_items').select('id, name, cost_per_unit, quantity').eq('master_id', master.id).order('name'),
+      supabase.from('inventory_items').select('id, name, cost_per_unit, quantity, preferred_supplier_id').eq('master_id', master.id).order('name'),
     ]);
     setSuppliers((sup || []) as SupplierOpt[]);
     setInventory((inv || []) as InventoryOpt[]);
     setSupplierId(sup?.[0]?.id || '');
     setItems([]);
     setNote('');
+    setShowAllInventory(false);
     setCreateOpen(true);
   }
 
@@ -140,6 +149,29 @@ export function SupplierOrdersTab() {
     }
   }
 
+  async function sendOrder(orderId: string, via: 'telegram' | 'email') {
+    setSendingId(orderId);
+    try {
+      const res = await fetch(`/api/supplier-orders/${orderId}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ via }),
+      });
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        toast.error((data as { message?: string }).message || 'Не удалось отправить');
+        return;
+      }
+      if (via === 'email' && (data as { mailto?: string }).mailto) {
+        window.location.href = (data as { mailto: string }).mailto;
+      }
+      toast.success(via === 'telegram' ? 'Заказ ушёл в Telegram' : 'Открываю почтовый клиент…');
+      load();
+    } finally {
+      setSendingId(null);
+    }
+  }
+
   const statusColor = (s: OrderStatus) =>
     s === 'delivered' ? C.success :
       s === 'cancelled' ? C.danger :
@@ -185,7 +217,7 @@ export function SupplierOrdersTab() {
                 key={o.id}
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '80px 1fr 140px 120px',
+                  gridTemplateColumns: '80px 1fr 130px 120px 140px',
                   alignItems: 'center',
                   gap: 14,
                   padding: '14px 20px',
@@ -213,6 +245,42 @@ export function SupplierOrdersTab() {
                 }}>
                   {Number(o.total_cost).toLocaleString()} {o.currency || CURRENCY}
                 </span>
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  {o.status === 'draft' && (
+                    <>
+                      <button
+                        onClick={() => sendOrder(o.id, 'telegram')}
+                        disabled={sendingId === o.id || !o.supplier?.telegram_id}
+                        title={o.supplier?.telegram_id ? 'Отправить в Telegram' : 'У поставщика нет Telegram ID'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '5px 9px', borderRadius: 6, border: 'none',
+                          background: o.supplier?.telegram_id ? C.accent : C.borderStrong,
+                          color: '#fff', fontSize: 11, fontWeight: 600,
+                          cursor: o.supplier?.telegram_id ? 'pointer' : 'not-allowed',
+                          opacity: sendingId === o.id ? 0.5 : 1,
+                        }}
+                      >
+                        <Send size={11} /> TG
+                      </button>
+                      <button
+                        onClick={() => sendOrder(o.id, 'email')}
+                        disabled={sendingId === o.id || !o.supplier?.email}
+                        title={o.supplier?.email ? 'Открыть в почтовом клиенте' : 'У поставщика нет email'}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '5px 9px', borderRadius: 6, border: `1px solid ${C.border}`,
+                          background: 'transparent', color: o.supplier?.email ? C.text : C.textTertiary,
+                          fontSize: 11, fontWeight: 600,
+                          cursor: o.supplier?.email ? 'pointer' : 'not-allowed',
+                          opacity: sendingId === o.id ? 0.5 : 1,
+                        }}
+                      >
+                        <Mail size={11} /> Email
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -267,24 +335,56 @@ export function SupplierOrdersTab() {
                   {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
 
-                {/* Add item dropdown */}
-                <label style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Добавить позицию</label>
-                <select
-                  value=""
-                  onChange={(e) => { if (e.target.value) { addInventoryItem(e.target.value); e.target.value = ''; } }}
-                  style={{
-                    width: '100%', padding: '10px 12px', marginBottom: 14,
-                    background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
-                    color: C.text, fontSize: 14, fontFamily: FONT,
-                  }}
-                >
-                  <option value="">— выбери материал со склада —</option>
-                  {inventory.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      {i.name} (на складе: {i.quantity})
-                    </option>
-                  ))}
-                </select>
+                {/* Add item dropdown — filtered by preferred supplier */}
+                {(() => {
+                  const filtered = showAllInventory
+                    ? inventory
+                    : inventory.filter((i) => !i.preferred_supplier_id || i.preferred_supplier_id === supplierId);
+                  const hiddenCount = inventory.length - filtered.length;
+                  return (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                          Добавить позицию
+                        </label>
+                        {hiddenCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllInventory(true)}
+                            style={{ background: 'none', border: 'none', color: C.accent, fontSize: 11, fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            Показать ещё {hiddenCount} (без поставщика)
+                          </button>
+                        )}
+                        {showAllInventory && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllInventory(false)}
+                            style={{ background: 'none', border: 'none', color: C.textTertiary, fontSize: 11, fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            Только этого поставщика
+                          </button>
+                        )}
+                      </div>
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.target.value) { addInventoryItem(e.target.value); e.target.value = ''; } }}
+                        style={{
+                          width: '100%', padding: '10px 12px', marginBottom: 14,
+                          background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+                          color: C.text, fontSize: 14, fontFamily: FONT,
+                        }}
+                      >
+                        <option value="">— выбери материал со склада —</option>
+                        {filtered.map((i) => (
+                          <option key={i.id} value={i.id}>
+                            {i.name} (на складе: {i.quantity})
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  );
+                })()}
 
                 {/* Items list */}
                 {items.length > 0 && (
