@@ -1,10 +1,11 @@
 /** --- YAML
  * name: Marketing — Test-send template to self
- * description: Renders a draft template against a sample context and pushes it to the
- *              master's own Telegram (or email) so they can preview the real message
- *              before flipping the automation on. Auth: cookie session, master must
- *              own the kind.
+ * description: Renders a draft template (subject + body) against a sample context and pushes
+ *              it to the master's own Telegram (or email) so they can preview the real message
+ *              before flipping the automation on. Auth: cookie session, master must own the
+ *              kind. Body without a subject still works (subject becomes a kind-default title).
  * created: 2026-04-25
+ * updated: 2026-04-25
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -66,20 +67,34 @@ const SAMPLE_CONTEXT_BY_KIND: Record<string, Record<string, string>> = {
   },
 };
 
+const FALLBACK_SUBJECT_BY_KIND: Record<string, string> = {
+  reminder_24h: '📅 Завтра у вас запись',
+  reminder_2h: '⏰ Через 2 часа',
+  review_request: '⭐ Оцените визит',
+  cadence: '⏰ Пора записаться',
+  win_back: '💜 Скучаем по вам',
+  nps: '📊 Короткий опрос',
+  pre_visit_master: '⏳ Через 30 минут',
+  birthday_client: '🎂 С днём рождения!',
+};
+
 export async function POST(req: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = await req.json().catch(() => null) as
-    | { kind?: string; content?: string; channel?: 'telegram' | 'email' }
+    | { kind?: string; subject?: string; content?: string; channel?: 'telegram' | 'email' }
     | null;
   if (!body?.kind || !body?.content) {
     return NextResponse.json({ error: 'missing_params' }, { status: 400 });
   }
 
   const ctx = SAMPLE_CONTEXT_BY_KIND[body.kind] ?? SAMPLE_CONTEXT_BY_KIND.reminder_24h;
-  const rendered = renderTemplate(body.content, ctx);
+  const renderedSubject = body.subject
+    ? renderTemplate(body.subject, ctx)
+    : FALLBACK_SUBJECT_BY_KIND[body.kind] ?? `🧪 Тест шаблона: ${body.kind}`;
+  const renderedBody = renderTemplate(body.content, ctx);
   const channel = body.channel === 'email' ? 'email' : 'telegram';
 
   const admin = createAdminClient(
@@ -88,18 +103,15 @@ export async function POST(req: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  // Verify caller is a master and find their profile_id
   const { data: master } = await admin
     .from('masters').select('id').eq('profile_id', user.id).maybeSingle();
   if (!master) return NextResponse.json({ error: 'not_master' }, { status: 403 });
 
-  // Queue notification to the master's own profile (the cron / pg_net trigger
-  // will dispatch immediately because scheduled_for = now()).
   const { error } = await admin.from('notifications').insert({
     profile_id: user.id,
     channel,
-    title: `🧪 Тест шаблона: ${body.kind}`,
-    body: rendered,
+    title: `🧪 ${renderedSubject}`,
+    body: renderedBody,
     data: { test_send: true, kind: body.kind, sample: true },
     scheduled_for: new Date().toISOString(),
   });
@@ -108,7 +120,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     channel,
-    rendered,
+    subject: renderedSubject,
+    body: renderedBody,
     sample_context: ctx,
   });
 }

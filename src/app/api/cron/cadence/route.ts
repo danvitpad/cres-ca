@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
 /* ─── Default smart template ─── */
@@ -103,7 +103,7 @@ export async function GET(request: Request) {
   /* ── 3. Load message templates ── */
   const { data: tplRows } = await supabase
     .from('message_templates')
-    .select('master_id, content, is_active')
+    .select('master_id, subject, content, is_active')
     .eq('kind', 'cadence')
     .eq('is_active', true)
     .in('master_id', masterIds);
@@ -218,24 +218,25 @@ export async function GET(request: Request) {
     /* ── Build message ── */
     const hasSmart = dayName && usualTime;
     const defaultTpl = hasSmart ? DEFAULT_CADENCE : FALLBACK_CADENCE;
-    const tpl = pickTemplate(tplMap.get(c.master_id), defaultTpl);
+    const tpl = pickFullTemplate(tplMap.get(c.master_id), defaultTpl, '⏰ Пора записаться');
 
-    const body = renderTemplate(tpl, {
+    const ctxVars = {
       client_name: c.full_name ?? 'клиент',
       avg: avgInterval,
       days: Math.round(daysSinceLast),
       day_name: dayName ?? '',
       usual_time: usualTime ?? '',
       service_id: topServiceId ?? '',
-    });
+    };
+    const rendered = renderFullTemplate(tpl, ctxVars);
 
     const marker = `[cadence:${c.id}:${today}]`;
 
     notifyRows.push({
       profile_id: c.profile_id!,
       channel: 'telegram',
-      title: '\u23F0 Пора записаться',
-      body: `${body} ${marker}`,
+      title: rendered.subject ?? '⏰ Пора записаться',
+      body: `${rendered.body} ${marker}`,
       scheduled_for: now.toISOString(),
     });
   }

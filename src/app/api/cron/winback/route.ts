@@ -1,16 +1,17 @@
 /** --- YAML
  * name: Win-back Cron
- * description: Находит клиентов, которые не были 60+ дней, и отправляет TG-пуш с win-back шаблоном. Дедуп по маркеру [winback:clientId:YYYYMM] чтобы не слать чаще раза в месяц. Использует message_templates kind='win_back'.
+ * description: Находит клиентов, которые не были 60+ дней, и отправляет TG-пуш с win-back шаблоном (subject + body). Дедуп по маркеру [winback:clientId:YYYYMM]. Шаблон message_templates kind='win_back'.
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-25
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-const DEFAULT_WINBACK =
+const DEFAULT_WINBACK_SUBJECT = '💜 Скучаем по вам';
+const DEFAULT_WINBACK_BODY =
   '{client_name}, давно тебя не было 🙂 Хочешь вернуться? Есть свободные слоты на этой неделе. [winback:{client_id}:{tag}]';
 
 const WINBACK_DAYS = 60;
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
   const automationSettings = await loadAutomationSettings(supabase, masterIds);
   const { data: tplRows } = await supabase
     .from('message_templates')
-    .select('master_id, content, is_active')
+    .select('master_id, subject, content, is_active')
     .eq('kind', 'win_back')
     .eq('is_active', true)
     .in('master_id', masterIds);
@@ -79,14 +80,15 @@ export async function GET(request: Request) {
     const daysSince = Math.round(
       (now.getTime() - new Date(c.last_visit_at!).getTime()) / (24 * 60 * 60 * 1000),
     );
-    const tpl = pickTemplate(tplMap.get(c.master_id), DEFAULT_WINBACK);
-    let body = renderTemplate(tpl, {
+    const tpl = pickFullTemplate(tplMap.get(c.master_id), DEFAULT_WINBACK_BODY, DEFAULT_WINBACK_SUBJECT);
+    const rendered = renderFullTemplate(tpl, {
       client_name: c.full_name ?? 'клиент',
       master_name: masterNameById.get(c.master_id) ?? '',
       days: daysSince,
       client_id: c.id,
       tag,
     });
+    let body = rendered.body;
     if (!body.includes(`[winback:${c.id}:${tag}]`)) {
       body = `${body} [winback:${c.id}:${tag}]`;
     }
@@ -94,7 +96,7 @@ export async function GET(request: Request) {
     await supabase.from('notifications').insert({
       profile_id: c.profile_id,
       channel: 'telegram',
-      title: '💜 Скучаем по вам',
+      title: rendered.subject ?? DEFAULT_WINBACK_SUBJECT,
       body,
       scheduled_for: now.toISOString(),
     });

@@ -1,16 +1,17 @@
 /** --- YAML
  * name: NPS Survey Cron
- * description: После 3-го completed visit (и каждого 10-го после) отправляет NPS-опрос клиенту. Дедуп по маркеру [nps:clientId:N]. Шаблон kind='nps'.
+ * description: После 3-го completed visit (и каждого 10-го после) отправляет NPS-опрос клиенту. Дедуп по маркеру [nps:clientId:N]. Шаблон kind='nps' (subject + body).
  * created: 2026-04-13
- * updated: 2026-04-13
+ * updated: 2026-04-25
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-const DEFAULT_NPS =
+const DEFAULT_NPS_SUBJECT = '📊 Короткий опрос';
+const DEFAULT_NPS_BODY =
   '{client_name}, вы были у нас уже {total} раз. Оцените от 0 до 10 — насколько вы рекомендовали бы нас друзьям? [nps:{client_id}:{total}]';
 
 const NPS_TRIGGER_VISITS = [3, 10, 20, 50];
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
   const automationSettings = await loadAutomationSettings(supabase, masterIds);
   const { data: tplRows } = await supabase
     .from('message_templates')
-    .select('master_id, content, is_active')
+    .select('master_id, subject, content, is_active')
     .eq('kind', 'nps')
     .eq('is_active', true)
     .in('master_id', masterIds);
@@ -63,12 +64,13 @@ export async function GET(request: Request) {
     const marker = `${c.id}:${c.total_visits}`;
     if (alreadySent.has(marker)) continue;
 
-    const tpl = pickTemplate(tplMap.get(c.master_id), DEFAULT_NPS);
-    let body = renderTemplate(tpl, {
+    const tpl = pickFullTemplate(tplMap.get(c.master_id), DEFAULT_NPS_BODY, DEFAULT_NPS_SUBJECT);
+    const rendered = renderFullTemplate(tpl, {
       client_name: c.full_name ?? 'клиент',
       total: c.total_visits,
       client_id: c.id,
     });
+    let body = rendered.body;
     if (!body.includes(`[nps:${c.id}:${c.total_visits}]`)) {
       body = `${body} [nps:${c.id}:${c.total_visits}]`;
     }
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
     await supabase.from('notifications').insert({
       profile_id: c.profile_id,
       channel: 'telegram',
-      title: '📊 Короткий опрос',
+      title: rendered.subject ?? DEFAULT_NPS_SUBJECT,
       body,
       scheduled_for: now.toISOString(),
     });

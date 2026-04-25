@@ -1,31 +1,39 @@
 /** --- YAML
  * name: Appointment Reminder Cron
- * description: Preferences-driven appointment reminders. For every upcoming appointment in the next 30 days,
- *              computes which offsets (from notification_preferences per-profile) fall within this cron tick,
- *              and queues notifications for both client and master. Dedups via notifications.data.appointment_id+offset.
- *              Also handles master pre-visit brief (30 min before) and auto-release of unconfirmed bookings at 2h.
+ * description: Preferences-driven appointment reminders. Per upcoming appointment computes which
+ *              offsets to fire (per-recipient) and queues notifications. Client-wins dedup —
+ *              when a client has an explicit `notification_preferences` row, it overrides the
+ *              master's automation toggles; otherwise master's `master_automation_settings`
+ *              (reminder_24h/reminder_2h) are the fallback. Subjects + bodies come from
+ *              `message_templates` (kind = reminder_24h | reminder_2h) and are rendered
+ *              against per-appointment context. Master-side reminders (to the master's own
+ *              profile) are independent and follow the master's notification_preferences.
  * created: 2026-04-13
- * updated: 2026-04-24
+ * updated: 2026-04-25
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { renderTemplate, pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
 interface TemplateRow {
   master_id: string;
   kind: string;
+  subject: string | null;
   content: string;
   is_active: boolean;
 }
 
-const DEFAULT_OFFSETS = [1440, 120]; // 24h + 2h (fallback when prefs row is missing)
-const WINDOW_MINUTES = 10;            // tolerance ±10 min (cron runs every 15 min → single fire per offset)
+const DEFAULT_OFFSETS = [1440, 120]; // 24h + 2h
+const WINDOW_MINUTES = 10;            // ±10 min tolerance
 
-const DEFAULT_24H = '📅 {client_name}, завтра в {time} у вас {service_name}. Подтвердите приход: {confirm_url} — {master_name}';
-const DEFAULT_2H = '⏰ {client_name}, через 2 часа в {time} — {service_name}. Не опаздывайте!';
-const DEFAULT_GENERIC = '🔔 {client_name}, напоминаем: {service_name} {date} в {time}. {master_name}';
+const DEFAULT_24H_SUBJECT = '📅 Завтра у вас запись';
+const DEFAULT_24H_BODY = '{client_name}, завтра в {time} у вас {service_name}. Подтвердите приход: {confirm_url} — {master_name}';
+const DEFAULT_2H_SUBJECT = '⏰ Через 2 часа — {service_name}';
+const DEFAULT_2H_BODY = '{client_name}, через 2 часа в {time} — {service_name}. Не опаздывайте!';
+const DEFAULT_GENERIC_SUBJECT = '🔔 Напоминание о визите';
+const DEFAULT_GENERIC_BODY = '{client_name}, напоминаем: {service_name} {date} в {time}. {master_name}';
 
 function formatOffset(min: number): string {
   if (min >= 1440) {
@@ -49,10 +57,10 @@ export async function GET(request: Request) {
   const now = new Date();
   let created = 0;
 
-  // 1. Load master templates
+  // 1. Load master templates (subject + body) for client reminders
   const { data: tplRows } = await supabase
     .from('message_templates')
-    .select('master_id, kind, content, is_active')
+    .select('master_id, kind, subject, content, is_active')
     .in('kind', ['reminder_24h', 'reminder_2h'])
     .eq('is_active', true);
 
@@ -64,10 +72,18 @@ export async function GET(request: Request) {
     templatesByMasterKind.set(key, arr);
   }
 
-  const getTemplate = (masterId: string, kind: 'reminder_24h' | 'reminder_2h', fallback: string) =>
-    pickTemplate(templatesByMasterKind.get(`${masterId}:${kind}`), fallback);
+  const getTemplate = (
+    masterId: string,
+    kind: 'reminder_24h' | 'reminder_2h',
+    fallbackSubject: string,
+    fallbackBody: string,
+  ) => pickFullTemplate(
+    templatesByMasterKind.get(`${masterId}:${kind}`),
+    fallbackBody,
+    fallbackSubject,
+  );
 
-  // 2. Upcoming appointments in next 30 days (wide net; we'll filter per-offset)
+  // 2. Upcoming appointments in next 30 days
   type AppointmentRow = {
     id: string;
     starts_at: string;
@@ -94,7 +110,7 @@ export async function GET(request: Request) {
 
   if (!upcoming.length) return NextResponse.json({ created: 0 });
 
-  // 3. Gather all profile_ids involved (clients + masters) to batch-load preferences
+  // 3. Gather profile_ids (clients + masters) to batch-load notification_preferences
   const profileIds = new Set<string>();
   for (const apt of upcoming) {
     const client = apt.clients as unknown as { profile_id: string | null } | null;
@@ -108,7 +124,7 @@ export async function GET(request: Request) {
     .select('profile_id, offsets_minutes, enabled, quiet_hours_start, quiet_hours_end')
     .in('profile_id', Array.from(profileIds));
 
-  interface Prefs { offsets: number[]; enabled: boolean; qStart: number | null; qEnd: number | null }
+  interface Prefs { offsets: number[]; enabled: boolean; qStart: number | null; qEnd: number | null; explicit: boolean }
   const prefsByProfile = new Map<string, Prefs>();
   for (const p of (prefsRows ?? []) as Array<{ profile_id: string; offsets_minutes: number[]; enabled: boolean; quiet_hours_start: number | null; quiet_hours_end: number | null }>) {
     prefsByProfile.set(p.profile_id, {
@@ -116,15 +132,34 @@ export async function GET(request: Request) {
       enabled: p.enabled,
       qStart: p.quiet_hours_start,
       qEnd: p.quiet_hours_end,
+      explicit: true,
     });
   }
-  const getPrefs = (pid: string): Prefs => prefsByProfile.get(pid) ?? { offsets: DEFAULT_OFFSETS, enabled: true, qStart: null, qEnd: null };
+  const getPrefs = (pid: string): Prefs => prefsByProfile.get(pid)
+    ?? { offsets: DEFAULT_OFFSETS, enabled: true, qStart: null, qEnd: null, explicit: false };
 
-  // 4. Automation settings per master (for template toggles + auto_release)
+  // 4. Master automation settings (used as FALLBACK for clients without explicit prefs)
   const masterIds = Array.from(new Set(upcoming.map((a) => a.master_id)));
   const automationSettings = await loadAutomationSettings(supabase, masterIds);
 
-  // 5. Load already-queued reminder notifications for these appointments to dedup
+  // Derive client-side offsets per appointment with "client wins, master fallback" dedup:
+  // - If client has an explicit notification_preferences row → those offsets are authoritative.
+  // - Otherwise, fall back to master's reminder_24h / reminder_2h toggles.
+  function getClientOffsets(clientProfileId: string | null | undefined, masterId: string): { offsets: number[]; enabled: boolean } {
+    if (!clientProfileId) return { offsets: [], enabled: false };
+    const prefs = getPrefs(clientProfileId);
+    if (prefs.explicit) {
+      // Client wins — even if disabled (then no reminders at all).
+      return { offsets: prefs.enabled ? prefs.offsets : [], enabled: prefs.enabled };
+    }
+    // No explicit prefs → derive from master's automation toggles.
+    const offs: number[] = [];
+    if (isEnabled(automationSettings, masterId, 'reminder_24h')) offs.push(1440);
+    if (isEnabled(automationSettings, masterId, 'reminder_2h')) offs.push(120);
+    return { offsets: offs, enabled: offs.length > 0 };
+  }
+
+  // 5. Existing notifications dedup index
   const apptIds = upcoming.map((a) => a.id);
   const { data: existingNotifs } = await supabase
     .from('notifications')
@@ -143,7 +178,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // Helper: create a notification for one recipient at one offset, with dedup + quiet-hours
   async function queueReminder(
     profileId: string,
     apptId: string,
@@ -157,7 +191,6 @@ export async function GET(request: Request) {
     const prefs = getPrefs(profileId);
     if (!prefs.enabled) return false;
 
-    // Quiet hours: delay scheduled_for until end of quiet window
     let scheduledFor = now.toISOString();
     if (prefs.qStart !== null && prefs.qEnd !== null) {
       const curHour = now.getHours();
@@ -184,7 +217,7 @@ export async function GET(request: Request) {
     return true;
   }
 
-  // 6. Main loop — for each appointment, for each offset per recipient
+  // 6. Main loop
   for (const apt of upcoming) {
     const client = apt.clients;
     const service = apt.services;
@@ -219,49 +252,50 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // Client reminders per client's preferences
+    // CLIENT REMINDERS — derived offsets (client prefs explicit OR master fallback)
     if (client?.profile_id) {
-      const clientPrefs = getPrefs(client.profile_id);
-      for (const off of clientPrefs.offsets) {
+      const { offsets } = getClientOffsets(client.profile_id, apt.master_id);
+      for (const off of offsets) {
         if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
-        let title = `🔔 Напоминание за ${formatOffset(off)}`;
+        let title: string;
         let body: string;
         if (off === 1440) {
-          title = '📅 Запись завтра';
-          body = renderTemplate(getTemplate(apt.master_id, 'reminder_24h', DEFAULT_24H), ctx);
+          const tpl = getTemplate(apt.master_id, 'reminder_24h', DEFAULT_24H_SUBJECT, DEFAULT_24H_BODY);
+          const r = renderFullTemplate(tpl, ctx);
+          title = r.subject ?? DEFAULT_24H_SUBJECT;
+          body = r.body;
         } else if (off === 120) {
-          title = '⏰ Запись через 2 часа';
-          body = renderTemplate(getTemplate(apt.master_id, 'reminder_2h', DEFAULT_2H), ctx);
+          const tpl = getTemplate(apt.master_id, 'reminder_2h', DEFAULT_2H_SUBJECT, DEFAULT_2H_BODY);
+          const r = renderFullTemplate(tpl, ctx);
+          title = r.subject ?? DEFAULT_2H_SUBJECT;
+          body = r.body;
         } else {
-          body = renderTemplate(DEFAULT_GENERIC, ctx).replace('Напоминаем:', `Напоминаем (за ${formatOffset(off)}):`);
+          title = `🔔 Напоминание за ${formatOffset(off)}`;
+          body = renderTemplate(DEFAULT_GENERIC_BODY, ctx).replace('Напоминаем:', `Напоминаем (за ${formatOffset(off)}):`);
         }
         if (await queueReminder(client.profile_id, apt.id, off, title, body)) created++;
       }
     }
 
-    // Master reminders per master's preferences (defaults to 24h + 2h)
+    // MASTER REMINDERS — master's own preference offsets (this notifies the master themselves
+    // about upcoming work, independent of "send-to-client" automations).
     if (master?.profile_id) {
       const masterPrefs = getPrefs(master.profile_id);
-      for (const off of masterPrefs.offsets) {
-        if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
-        let title: string;
-        let body: string;
-        if (off === 1440) {
-          title = '📅 Завтра запись клиента';
-          body = `${ctx.client_name} — ${ctx.service_name} в ${time}`;
-        } else if (off === 120) {
-          title = '⏰ Через 2 часа';
-          body = `${ctx.client_name} — ${ctx.service_name} в ${time}`;
-        } else {
-          title = `🔔 Через ${formatOffset(off)}`;
-          body = `${ctx.client_name} — ${ctx.service_name} в ${time}`;
+      if (masterPrefs.enabled) {
+        for (const off of masterPrefs.offsets) {
+          if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
+          let title: string;
+          if (off === 1440) title = '📅 Завтра запись клиента';
+          else if (off === 120) title = '⏰ Через 2 часа';
+          else title = `🔔 Через ${formatOffset(off)}`;
+          const body = `${ctx.client_name} — ${ctx.service_name} в ${time}`;
+          if (await queueReminder(master.profile_id, apt.id, off, title, body)) created++;
         }
-        if (await queueReminder(master.profile_id, apt.id, off, title, body)) created++;
       }
     }
   }
 
-  // 7. Pre-visit brief for master — 30 min before (context-rich, independent from prefs)
+  // 7. Pre-visit brief for master — 30 min before
   type PreVisitRow = {
     id: string;
     starts_at: string;

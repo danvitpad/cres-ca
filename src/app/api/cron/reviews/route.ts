@@ -7,11 +7,12 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderTemplate, pickTemplate } from '@/lib/messaging/render-template';
+import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-const DEFAULT_REVIEW_REQUEST =
-  '⭐ {client_name}, как прошёл визит «{service_name}» у {master_name}? Оцените визит: https://cres.ca/review/{apt_id} [review:{apt_id}]';
+const DEFAULT_REVIEW_SUBJECT = '⭐ Оцените визит';
+const DEFAULT_REVIEW_BODY =
+  '{client_name}, как прошёл визит «{service_name}» у {master_name}? Оцените визит: https://cres.ca/review/{apt_id} [review:{apt_id}]';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -67,7 +68,7 @@ export async function GET(request: Request) {
   const automationSettings = await loadAutomationSettings(supabase, masterIds);
   const { data: tplRows } = await supabase
     .from('message_templates')
-    .select('master_id, content, is_active')
+    .select('master_id, subject, content, is_active')
     .eq('kind', 'review_request')
     .eq('is_active', true)
     .in('master_id', masterIds);
@@ -92,19 +93,19 @@ export async function GET(request: Request) {
     const masterName = master?.display_name ?? master?.profiles?.full_name ?? 'мастер';
     const serviceName = service?.name ?? 'визит';
 
-    const tpl = pickTemplate(tplMap.get(apt.master_id), DEFAULT_REVIEW_REQUEST);
-    const body = renderTemplate(tpl, {
+    const tpl = pickFullTemplate(tplMap.get(apt.master_id), DEFAULT_REVIEW_BODY, DEFAULT_REVIEW_SUBJECT);
+    const rendered = renderFullTemplate(tpl, {
       client_name: client.full_name ?? 'клиент',
       service_name: serviceName,
       master_name: masterName,
       apt_id: apt.id,
     });
-    const finalBody = body.includes(`[review:${apt.id}]`) ? body : `${body} [review:${apt.id}]`;
+    const finalBody = rendered.body.includes(`[review:${apt.id}]`) ? rendered.body : `${rendered.body} [review:${apt.id}]`;
 
     await supabase.from('notifications').insert({
       profile_id: client.profile_id,
       channel: 'telegram',
-      title: '⭐ Оцените визит',
+      title: rendered.subject ?? DEFAULT_REVIEW_SUBJECT,
       body: finalBody,
       scheduled_for: now.toISOString(),
     });
