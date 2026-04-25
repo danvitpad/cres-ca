@@ -160,31 +160,10 @@ export function AppointmentDetailDrawer({
     // Completion stats (visits/spent/bonus) handled by `appointments_on_completed` trigger (J1)
 
     if (newStatus === 'cancelled') {
-      const { data: cl } = await supabase.from('clients').select('cancellation_count, behavior_indicators').eq('id', appointment.client_id).single();
-      const newCount = (cl?.cancellation_count || 0) + 1;
-      const indicators: string[] = Array.isArray(cl?.behavior_indicators) ? [...cl.behavior_indicators] : [];
-      if (newCount >= 3 && !indicators.includes('frequent_canceller')) {
-        indicators.push('frequent_canceller');
-      }
-      await supabase.from('clients').update({
-        cancellation_count: newCount,
-        behavior_indicators: indicators,
-      }).eq('id', appointment.client_id);
-
-      // Late-cancel detection: record lost revenue if < free_hours before appointment
-      const hoursUntil = Math.max(0, (new Date(appointment.starts_at).getTime() - Date.now()) / 3_600_000);
-      const { data: masterRow } = await supabase
-        .from('masters')
-        .select('cancellation_policy')
-        .eq('id', appointment.master_id)
-        .single();
-      const policy = (masterRow?.cancellation_policy as { free_hours: number } | null) ?? { free_hours: 24 };
-      if (hoursUntil < policy.free_hours) {
-        await supabase.from('appointments').update({
-          cancelled_at: new Date().toISOString(),
-          cancellation_reason: hoursUntil < 2 ? 'late_cancel' : 'short_notice',
-        }).eq('id', appointment.id);
-      }
+      // Cancellation accounting (counters, late-cancel detection, indicators) is now
+      // handled by the `trg_appointments_account_cancellation` Postgres trigger.
+      // Master-initiated cancellations bump master_cancellation_count, not the
+      // client's cancellation_count — that fix lives in DB.
 
       // Notify everyone on waitlist for this date
       const aptDate = new Date(appointment.starts_at).toISOString().split('T')[0];

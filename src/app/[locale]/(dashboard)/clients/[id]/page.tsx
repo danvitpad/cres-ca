@@ -37,7 +37,7 @@ import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
   Mic, Square, Users, BarChart3, Bell,
   Phone, Mail, Cake, Calendar as CalendarIcon, FileText,
-  Heart, Camera, Star,
+  Heart, Camera, Star, User as UserIcon,
 } from 'lucide-react';
 import {
   FONT, FONT_FEATURES, CURRENCY,
@@ -69,6 +69,10 @@ interface ClientDetail {
   is_blacklisted: boolean;
   blacklist_reason: string | null;
   tier?: 'new' | 'regular' | 'vip';
+  cancellation_count: number;
+  late_cancellation_count: number;
+  master_cancellation_count: number;
+  no_show_count: number;
 }
 
 interface ClientIntake {
@@ -516,77 +520,214 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
 function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => void; C: PageTheme }) {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
-  const [saving, setSaving] = useState(false);
-  const [fullName, setFullName] = useState(client.full_name);
-  const [phone, setPhone] = useState(client.phone ?? '');
-  const [email, setEmail] = useState(client.email ?? '');
-  const [dob, setDob] = useState(client.date_of_birth ?? '');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [notes, setNotes] = useState(client.notes ?? '');
 
-  async function handleSave() {
-    setSaving(true);
+  async function saveNotes() {
+    setSavingNotes(true);
     const supabase = createClient();
-    const { error } = await supabase.from('clients').update({
-      full_name: fullName,
-      phone: phone || null,
-      email: email || null,
-      date_of_birth: dob || null,
-    }).eq('id', client.id);
-    setSaving(false);
+    const { error } = await supabase.from('clients').update({ notes: notes || null }).eq('id', client.id);
+    setSavingNotes(false);
     if (error) toast.error(error.message);
     else { toast.success(tc('success')); onSaved(); }
   }
 
-  const dirty =
-    fullName !== (client.full_name ?? '') ||
-    phone !== (client.phone ?? '') ||
-    email !== (client.email ?? '') ||
-    dob !== (client.date_of_birth ?? '');
+  const notesDirty = notes !== (client.notes ?? '');
+  const dobLabel = client.date_of_birth
+    ? new Date(client.date_of_birth).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '—';
+
+  const fieldLabel: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600, color: C.textTertiary,
+    letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0,
+  };
+  const fieldValue: React.CSSProperties = {
+    fontSize: 14, color: C.text, margin: '4px 0 0', wordBreak: 'break-word',
+  };
+  const sectionTitle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 14px',
+    fontSize: 13, fontWeight: 650, color: C.text, letterSpacing: '-0.1px',
+  };
+
+  // Profile-linked = client manages their own data via Mini App / web
+  const isLinked = !!client.profile_id;
 
   return (
-    <div style={{ ...cardStyle(C), display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* Editable personal fields up top — master's main point of control */}
-      <div>
-        <p style={{ fontSize: 12, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.04em', textTransform: 'uppercase', margin: '0 0 10px' }}>
-          Личные данные
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Label>{t('name')}</Label>
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Label>{t('phone')}</Label>
-            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Label>{t('email')}</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <Label>{t('dateOfBirth')}</Label>
-            <div style={{ border: `1px solid ${C.border}`, borderRadius: 10, padding: '4px 0' }}>
-              <DateWheelPicker
-                size="sm"
-                locale="ru-RU"
-                value={fromISODay(dob)}
-                onChange={(d) => setDob(toISODay(d))}
-              />
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 1fr)', gap: 14 }}>
+      {/* LEFT — Personal data (read-only) + analytics */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={cardStyle(C)}>
+          <h3 style={sectionTitle}>
+            <UserIcon size={15} style={{ color: C.accent }} />
+            Личные данные
+            {isLinked && (
+              <span style={{
+                fontSize: 10, fontWeight: 500, padding: '2px 8px',
+                borderRadius: 999, background: C.accentSoft, color: C.accent,
+                marginLeft: 'auto', textTransform: 'none', letterSpacing: 0,
+              }}>
+                Клиент управляет сам
+              </span>
+            )}
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <p style={fieldLabel}>{t('name')}</p>
+              <p style={fieldValue}>{client.full_name || '—'}</p>
+            </div>
+            <div>
+              <p style={fieldLabel}>{t('phone')}</p>
+              <p style={fieldValue}>{client.phone ? formatPhone(client.phone) : '—'}</p>
+            </div>
+            <div>
+              <p style={fieldLabel}>{t('email')}</p>
+              <p style={fieldValue}>{client.email || '—'}</p>
+            </div>
+            <div>
+              <p style={fieldLabel}>{t('dateOfBirth')}</p>
+              <p style={fieldValue}>{dobLabel}</p>
             </div>
           </div>
+          <p style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.border}`, fontSize: 11, color: C.textTertiary, lineHeight: 1.5 }}>
+            {isLinked
+              ? 'Эти данные клиент устанавливает сам в своём аккаунте. Только он может их изменить.'
+              : 'Клиент пока не привязал учётку. Когда он войдёт через Telegram — данные синхронизируются автоматически.'}
+          </p>
+        </div>
+
+        <div style={cardStyle(C)}>
+          <h3 style={sectionTitle}>
+            <BarChart3 size={15} style={{ color: C.accent }} />
+            Аналитика
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <AnalyticTile label="Визитов" value={client.total_visits} accent="violet" C={C} />
+            <AnalyticTile label="Потратил" value={`${client.total_spent} ₴`} accent="violet" C={C} />
+            <AnalyticTile label="Средний чек" value={`${client.avg_check} ₴`} accent="violet" C={C} />
+            <AnalyticTile label="Рейтинг" value={client.rating > 0 ? client.rating.toFixed(1) : '—'} accent="violet" C={C} />
+          </div>
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}`, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <AnalyticTile label="Поздних отмен" value={client.late_cancellation_count ?? 0} accent={(client.late_cancellation_count ?? 0) > 0 ? 'amber' : 'muted'} C={C} hint="Отмена клиентом позже разрешённого срока" />
+            <AnalyticTile label="Не пришёл" value={client.no_show_count ?? 0} accent={(client.no_show_count ?? 0) > 0 ? 'rose' : 'muted'} C={C} />
+            <AnalyticTile label="Отменил мастер" value={client.master_cancellation_count ?? 0} accent="muted" C={C} hint="Не учитывается против клиента" />
+          </div>
+          {(client.cancellation_count ?? 0) > 0 && (
+            <p style={{ marginTop: 12, fontSize: 11, color: C.textTertiary, lineHeight: 1.5 }}>
+              Всего отмен клиентом: {client.cancellation_count}. Из них своевременных: {(client.cancellation_count ?? 0) - (client.late_cancellation_count ?? 0)} (без штрафа).
+            </p>
+          )}
         </div>
       </div>
 
-      <Button onClick={handleSave} disabled={saving || !dirty} style={{ alignSelf: 'flex-start' }}>
-        {saving ? tc('loading') : tc('save')}
-      </Button>
+      {/* RIGHT — Master's private notes + health summary */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={cardStyle(C)}>
+          <h3 style={sectionTitle}>
+            <Mic size={15} style={{ color: C.accent }} />
+            Мои заметки
+          </h3>
+          <p style={{ fontSize: 11, color: C.textTertiary, margin: '0 0 10px', lineHeight: 1.5 }}>
+            Личные заметки про клиента (питомец, дети, предпочтения). Видны только тебе.
+          </p>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Например: собака — пудель, зовут Бакс. Двое детей. Предпочитает чай зелёный."
+            rows={6}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
+              background: C.surfaceElevated,
+              color: C.text,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              resize: 'vertical',
+              minHeight: 100,
+              outline: 'none',
+            }}
+            onFocus={(e) => e.currentTarget.style.borderColor = C.accent}
+            onBlur={(e) => e.currentTarget.style.borderColor = C.border}
+          />
+          <Button
+            onClick={saveNotes}
+            disabled={savingNotes || !notesDirty}
+            style={{ marginTop: 10, alignSelf: 'flex-start' }}
+            size="sm"
+          >
+            {savingNotes ? tc('loading') : tc('save')}
+          </Button>
+        </div>
 
-      {/* Visit stats — read-only, below the editable form */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, fontSize: 13, borderTop: `1px solid ${C.border}`, paddingTop: 14 }}>
-        <div><span style={{ color: C.textSecondary }}>{t('totalVisits')}:</span> {client.total_visits}</div>
-        <div><span style={{ color: C.textSecondary }}>{t('totalSpent')}:</span> {client.total_spent}</div>
-        <div><span style={{ color: C.textSecondary }}>{t('avgCheck')}:</span> {client.avg_check}</div>
-        <div><span style={{ color: C.textSecondary }}>{t('rating')}:</span> {client.rating}</div>
+        <div style={cardStyle(C)}>
+          <h3 style={sectionTitle}>
+            <Heart size={15} style={{ color: C.danger }} />
+            Здоровье
+            {client.has_health_alert && (
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px',
+                borderRadius: 999, background: 'rgba(239,68,68,0.12)', color: C.danger,
+                marginLeft: 'auto', textTransform: 'none', letterSpacing: 0,
+              }}>
+                Внимание
+              </span>
+            )}
+          </h3>
+          {client.allergies?.length || client.contraindications?.length ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {client.allergies?.length > 0 && (
+                <div>
+                  <p style={fieldLabel}>Аллергии</p>
+                  <p style={{ ...fieldValue, color: C.danger }}>{client.allergies.join(', ')}</p>
+                </div>
+              )}
+              {client.contraindications?.length > 0 && (
+                <div>
+                  <p style={fieldLabel}>Противопоказания</p>
+                  <p style={fieldValue}>{client.contraindications.join(', ')}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>
+              Клиент не указал данных о здоровье. {isLinked && 'Он может заполнить их в своём профиле.'}
+            </p>
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function AnalyticTile({
+  label, value, accent, C, hint,
+}: {
+  label: string;
+  value: number | string;
+  accent: 'violet' | 'rose' | 'amber' | 'muted';
+  C: PageTheme;
+  hint?: string;
+}) {
+  const accentMap: Record<typeof accent, { bg: string; fg: string }> = {
+    violet: { bg: C.accentSoft, fg: C.accent },
+    rose: { bg: 'rgba(239,68,68,0.10)', fg: C.danger },
+    amber: { bg: 'rgba(245,158,11,0.10)', fg: C.warning },
+    muted: { bg: C.surfaceElevated, fg: C.textSecondary },
+  };
+  const acc = accentMap[accent];
+  return (
+    <div
+      title={hint}
+      style={{
+        padding: '10px 12px',
+        borderRadius: 10,
+        background: acc.bg,
+        border: `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{ fontSize: 18, fontWeight: 600, color: acc.fg, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ marginTop: 6, fontSize: 11, color: C.textSecondary, letterSpacing: '0.02em' }}>{label}</div>
     </div>
   );
 }
