@@ -11,7 +11,7 @@ import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Star, MapPin, Clock, Loader2, Heart, Share2,
+  ArrowLeft, Star, MapPin, Clock, Loader2, Share2,
   ChevronRight, Camera, MessageSquare, CalendarCheck,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -131,8 +131,6 @@ export default function MiniAppMasterDetailPage() {
 
   const [master, setMaster] = useState<MasterDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState(false);
-  const [likeLoading, setLikeLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('services');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showBottomBar, setShowBottomBar] = useState(false);
@@ -249,44 +247,6 @@ export default function MiniAppMasterDetailPage() {
       setLoading(false);
     })();
   }, [params?.id]);
-
-  /* ─── like status check ─── */
-  useEffect(() => {
-    if (!params?.id || !userId) return;
-    const supabase = createClient();
-    supabase
-      .from('master_likes')
-      .select('master_id')
-      .eq('master_id', params.id)
-      .eq('profile_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setLiked(true);
-      });
-  }, [params?.id, userId]);
-
-  /* ─── like toggle ─── */
-  const toggleLike = useCallback(async () => {
-    if (!master || !userId || likeLoading) return;
-    setLikeLoading(true);
-    haptic(liked ? 'light' : 'success');
-    const supabase = createClient();
-
-    if (liked) {
-      await supabase
-        .from('master_likes')
-        .delete()
-        .eq('master_id', master.id)
-        .eq('profile_id', userId);
-      setLiked(false);
-    } else {
-      await supabase
-        .from('master_likes')
-        .insert({ master_id: master.id, profile_id: userId });
-      setLiked(true);
-    }
-    setLikeLoading(false);
-  }, [master, userId, liked, likeLoading, haptic]);
 
   /* ─── share ─── */
   const handleShare = useCallback(() => {
@@ -447,17 +407,6 @@ export default function MiniAppMasterDetailPage() {
               className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform"
             >
               <Share2 className="size-[18px] text-white" />
-            </button>
-            <button
-              onClick={toggleLike}
-              disabled={likeLoading || !userId}
-              className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform disabled:opacity-40"
-            >
-              <Heart
-                className={`size-[18px] transition-colors duration-200 ${
-                  liked ? 'fill-rose-500 text-rose-500' : 'text-white'
-                }`}
-              />
             </button>
           </div>
         </motion.div>

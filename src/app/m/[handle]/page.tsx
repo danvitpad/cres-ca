@@ -12,7 +12,6 @@ import Image from 'next/image';
 import { Star, MapPin, Sparkles, Calendar, Clock, Phone } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PortfolioGrid } from '@/components/master/portfolio-grid';
-import { MasterLikeButton } from '@/components/master/like-button';
 import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
@@ -42,7 +41,6 @@ interface MasterRow {
   og_image_url: string | null;
   badges: string[] | null;
   level: number | null;
-  likes_count: number | null;
   working_hours: Record<string, { start: string; end: string; closed?: boolean } | null> | null;
   booking_important_info: string | null;
 }
@@ -57,13 +55,6 @@ interface ServiceRow {
   preparation: string | null;
   aftercare: string | null;
   faq: { q: string; a: string }[] | null;
-}
-
-interface StoryRow {
-  id: string;
-  title: string;
-  cover_url: string | null;
-  photos: string[];
 }
 
 interface PortfolioItem {
@@ -110,7 +101,7 @@ function admin() {
 async function loadMaster(handle: string): Promise<MasterRow | null> {
   const cols =
     'id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
-    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, likes_count, working_hours, booking_important_info';
+    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info';
 
   // Try slug first (preferred, SEO-friendly). Require is_public for slug-based visits.
   const bySlug = await admin()
@@ -213,16 +204,6 @@ async function loadPartners(masterId: string): Promise<PartnerRow[]> {
   return (partners as PartnerRow[] | null) ?? [];
 }
 
-async function loadStories(masterId: string): Promise<StoryRow[]> {
-  const { data } = await admin()
-    .from('master_stories')
-    .select('id, title, cover_url, photos')
-    .eq('master_id', masterId)
-    .eq('is_published', true)
-    .order('sort_order', { ascending: true });
-  return (data as StoryRow[]) ?? [];
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   const master = await loadMaster(handle);
@@ -267,9 +248,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const [services, stories, portfolio, beforeAfter, reviewsList, partners] = await Promise.all([
+  const [services, portfolio, beforeAfter, reviewsList, partners] = await Promise.all([
     loadServices(master.id),
-    loadStories(master.id),
     loadPortfolio(master.id),
     loadBeforeAfter(master.id),
     loadReviews(master.id),
@@ -373,7 +353,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               </div>
             )}
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-              <MasterLikeButton masterId={master.id} initialCount={master.likes_count ?? 0} />
               <ShareStoryButton masterId={master.id} masterName={displayName} />
             </div>
           </div>
@@ -470,46 +449,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {stories.length > 0 && (
-          <div className="mt-10 -mx-5 px-5 sm:mx-0 sm:px-0">
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {stories.map(story => (
-                <a
-                  key={story.id}
-                  href={`#story-${story.id}`}
-                  className="flex shrink-0 flex-col items-center gap-1.5"
-                >
-                  <div className="size-20 overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 p-[3px]">
-                    <div className="relative size-full overflow-hidden rounded-full bg-white">
-                      {story.cover_url && (
-                        <Image src={story.cover_url} alt={story.title} fill className="object-cover" />
-                      )}
-                    </div>
-                  </div>
-                  <div className="max-w-[80px] truncate text-center text-xs text-neutral-600">{story.title}</div>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {stories.length > 0 && (
-          <div className="mt-12 space-y-10">
-            {stories.map(story => (
-              <div key={story.id} id={`story-${story.id}`}>
-                <h3 className="mb-3 text-lg font-semibold">{story.title}</h3>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {story.photos.map((url, i) => (
-                    <div key={`${story.id}-${i}`} className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100">
-                      <Image src={url} alt="" fill className="object-cover" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         )}
 

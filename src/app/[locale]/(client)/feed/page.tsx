@@ -1,892 +1,229 @@
 /** --- YAML
- * name: FeedPage
- * description: Instagram-style feed with stories row and posts from followed masters
+ * name: ClientFeedPage
+ * description: Утилитарная лента — ближайшие свободные окна у мастеров и салонов из контактов клиента.
+ *              Не Instagram-feed: нет лайков/комментов/постов с фото, только slot-карточки.
+ * created: 2026-04-14
+ * updated: 2026-04-25
  * --- */
 
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Scissors, Sparkles, ArrowLeftRight, MessageSquare, Heart, Share2, Search, Stethoscope, Wrench, Car, Dumbbell, GraduationCap, PartyPopper, Leaf, Clock, Users, ArrowRight, Star, CalendarCheck, Compass } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/stores/auth-store';
-import { cn } from '@/lib/utils';
-import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
-import { EmptyState } from '@/components/shared/primitives/empty-state';
-import { ShimmerSkeleton } from '@/components/shared/primitives/shimmer-skeleton';
-import { MasterSalonCard } from '@/components/shared/primitives/master-salon-card';
-import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
+import { motion } from 'framer-motion';
+import { Calendar, Clock, MapPin, Sparkles, ChevronRight, Loader2, Search } from 'lucide-react';
 
-type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null } | null;
-
-function unwrapSalon(s: SalonEmbed | SalonEmbed[] | null | undefined): SalonRef | null {
-  if (!s) return null;
-  const obj = Array.isArray(s) ? s[0] ?? null : s;
-  if (!obj) return null;
-  return { id: obj.id, name: obj.name, logo_url: obj.logo_url, city: obj.city, rating: obj.rating };
+interface SalonEmbed {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  city: string | null;
 }
 
-interface FeedPost {
+interface MasterRef {
   id: string;
-  type: 'new_service' | 'promotion' | 'before_after' | 'burning_slot' | 'update';
+  name: string | null;
+  avatar: string | null;
+  specialization: string | null;
+  salon: SalonEmbed | null;
+}
+
+interface ServiceRef {
+  id: string;
+  name: string;
+  price: number | null;
+  duration_minutes: number | null;
+}
+
+interface FeedItem {
+  id: string;
+  master: MasterRef | null;
+  service: ServiceRef | null;
   title: string | null;
   body: string | null;
-  image_url: string | null;
-  linked_service_id: string | null;
-  expires_at: string | null;
+  starts_at: string | null;
   created_at: string;
-  master: {
-    id: string;
-    salon_id: string | null;
-    specialization: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-    profile: {
-      full_name: string;
-      avatar_url: string | null;
-    } | null;
-    salon: SalonEmbed;
-  };
 }
 
-interface FollowedMaster {
-  master_id: string;
-  master: {
-    id: string;
-    salon_id: string | null;
-    specialization: string | null;
-    display_name: string | null;
-    avatar_url: string | null;
-    profile: {
-      full_name: string;
-      avatar_url: string | null;
-    } | null;
-    salon: SalonEmbed;
-  };
-  hasNewPosts: boolean;
-}
-
-const typeIcons: Record<string, React.ReactNode> = {
-  new_service: <Scissors className="h-3.5 w-3.5" />,
-  promotion: <Sparkles className="h-3.5 w-3.5" />,
-  before_after: <ArrowLeftRight className="h-3.5 w-3.5" />,
-  burning_slot: <Clock className="h-3.5 w-3.5" />,
-  update: <MessageSquare className="h-3.5 w-3.5" />,
-};
-
-const typeColors: Record<string, string> = {
-  new_service: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
-  promotion: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
-  before_after: 'bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-400',
-  burning_slot: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400',
-  update: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
-};
-
-const PAGE_SIZE = 10;
-
-// Broad industry chips — beauty is just one of many categories
-const INDUSTRIES = [
-  { key: 'beauty', icon: Sparkles },
-  { key: 'health', icon: Stethoscope },
-  { key: 'wellness', icon: Leaf },
-  { key: 'home', icon: Wrench },
-  { key: 'auto', icon: Car },
-  { key: 'fitness', icon: Dumbbell },
-  { key: 'education', icon: GraduationCap },
-  { key: 'events', icon: PartyPopper },
-] as const;
-
-const INDUSTRY_PROFESSIONS: Record<string, readonly string[]> = {
-  beauty: ['hairdresser', 'colorist', 'barber', 'nailMaster', 'brows', 'makeup', 'cosmetologist', 'depilation', 'massage', 'tattoo'],
-  health: ['dentist', 'therapist', 'pediatrician', 'psychologist', 'nutritionist', 'physio'],
-  wellness: ['yoga', 'meditation', 'spa', 'sauna', 'massage'],
-  home: ['plumber', 'electrician', 'cleaner', 'handyman', 'mover', 'painter'],
-  auto: ['carWash', 'carRepair', 'tireChange', 'detailing'],
-  fitness: ['personalTrainer', 'crossfit', 'boxing', 'swim', 'pilates', 'yoga'],
-  education: ['tutor', 'languages', 'music', 'art', 'driving'],
-  events: ['photographer', 'dj', 'decorator', 'catering', 'animator', 'makeup'],
-};
-
-export default function FeedPage() {
-  const t = useTranslations('feed');
-  const tInd = useTranslations('industries');
-  const tProf = useTranslations('professions');
-  const tCard = useTranslations('cardLabels');
-  const cardLabels = {
-    masterPlaceholder: tCard('masterPlaceholder'),
-    salonPlaceholder: tCard('salonPlaceholder'),
-    managerAssigned: tCard('managerAssigned'),
-  };
-  const [activeIndustry, setActiveIndustry] = useState<string | null>(null);
-  const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [masters, setMasters] = useState<FollowedMaster[]>([]);
-  const [burningSlots, setBurningSlots] = useState<FeedPost[]>([]);
-  const [discover, setDiscover] = useState<FollowedMaster[]>([]);
-  const [nextAppt, setNextAppt] = useState<{
-    id: string;
-    starts_at: string;
-    service: string | null;
-    masterId: string;
-    masterName: string;
-    masterAvatar: string | null;
-    masterSpecialization: string | null;
-    salon: SalonRef | null;
-  } | null>(null);
-  const [usual, setUsual] = useState<{
-    masterId: string;
-    masterName: string;
-    masterAvatar: string | null;
-    masterSpecialization: string | null;
-    salon: SalonRef | null;
-    serviceId: string;
-    serviceName: string;
-    visits: number;
-  } | null>(null);
-  const [recommendations, setRecommendations] = useState<Array<{
-    id: string;
-    fromName: string;
-    toMasterId: string;
-    toName: string;
-    toAvatar: string | null;
-    toSpec: string | null;
-    toSalon: SalonRef | null;
-    note: string | null;
-  }>>([]);
-  const { userId } = useAuthStore();
+export default function ClientFeedPage() {
+  const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  const fetchPosts = useCallback(async (offset = 0) => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('feed_posts')
-      .select(`
-        id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))
-      `)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-
-    const items = (data ?? []) as unknown as FeedPost[];
-    if (items.length < PAGE_SIZE) setHasMore(false);
-    return items;
-  }, []);
-
-  const fetchMasters = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('client_master_links')
-      .select(`
-        master_id,
-        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))
-      `)
-      .limit(20);
-    return (data ?? []).map((d) => ({ ...d, hasNewPosts: false })) as unknown as FollowedMaster[];
-  }, []);
-
-  const fetchBurning = useCallback(async (followedIds: string[]) => {
-    const supabase = createClient();
-    let q = supabase
-      .from('feed_posts')
-      .select(`
-        id, type, title, body, image_url, linked_service_id, expires_at, created_at,
-        master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))
-      `)
-      .in('type', ['burning_slot', 'promotion', 'before_after', 'new_service', 'update'])
-      .order('created_at', { ascending: false })
-      .limit(12);
-    if (followedIds.length > 0) {
-      q = q.in('master_id', followedIds);
-    }
-    const { data } = await q;
-    return (data ?? []) as unknown as FeedPost[];
-  }, []);
-
-  const fetchDiscover = useCallback(async () => {
-    // TODO Phase 8: combine geo + paid placement ranking via RPC
-    const supabase = createClient();
-    const { data } = await supabase
-      .from('masters')
-      .select('id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city)')
-      .limit(8);
-    return (data ?? []).map((master) => ({
-      master_id: master.id,
-      master,
-      hasNewPosts: false,
-    })) as unknown as FollowedMaster[];
-  }, []);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function init() {
-      const m = await fetchMasters();
-      const followedIds = m.map((x) => x.master_id);
-      const [p, b, d] = await Promise.all([
-        fetchPosts(0),
-        fetchBurning(followedIds),
-        fetchDiscover(),
-      ]);
-      setPosts(p);
-      setMasters(m);
-      setBurningSlots(b);
-      setDiscover(d);
-
-      if (userId) {
-        const supabase = createClient();
-        const { data: clientRows } = await supabase.from('clients').select('id').eq('profile_id', userId);
-        const clientIds = clientRows?.map((c: { id: string }) => c.id) ?? [];
-        if (clientIds.length) {
-          // Cross-master recommendations: "Your nail master suggests this massage therapist"
-          const { data: recs } = await supabase
-            .from('master_recommendations')
-            .select('id, note, from_master:masters!master_recommendations_from_master_id_fkey(display_name, profile:profiles!masters_profile_id_fkey(full_name)), to_master:masters!master_recommendations_to_master_id_fkey(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))')
-            .in('client_id', clientIds)
-            .eq('status', 'pending')
-            .order('created_at', { ascending: false })
-            .limit(5);
-          if (recs) {
-            type RecRow = {
-              id: string;
-              note: string | null;
-              from_master: { display_name: string | null; profile: { full_name: string | null } | null } | null;
-              to_master: { id: string; salon_id: string | null; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null; salon: SalonEmbed | SalonEmbed[] | null } | null;
-            };
-            setRecommendations(
-              (recs as unknown as RecRow[])
-                .filter((r) => r.to_master)
-                .map((r) => ({
-                  id: r.id,
-                  fromName: r.from_master?.display_name ?? r.from_master?.profile?.full_name ?? '?',
-                  toMasterId: r.to_master!.id,
-                  toName: r.to_master!.display_name ?? r.to_master!.profile?.full_name ?? '?',
-                  toAvatar: r.to_master!.avatar_url ?? r.to_master!.profile?.avatar_url ?? null,
-                  toSpec: r.to_master!.specialization,
-                  toSalon: unwrapSalon(r.to_master!.salon),
-                  note: r.note,
-                })),
-            );
-          }
-
-          const { data: appt } = await supabase
-            .from('appointments')
-            .select('id, starts_at, master_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))')
-            .in('client_id', clientIds)
-            .gte('starts_at', new Date().toISOString())
-            .order('starts_at', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-          if (appt) {
-            const a = appt as unknown as { id: string; starts_at: string; service: { name: string } | { name: string }[] | null; master: { id: string; salon_id: string | null; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null; salon: SalonEmbed | SalonEmbed[] | null } };
-            const svc = Array.isArray(a.service) ? a.service[0] : a.service;
-            setNextAppt({
-              id: a.id,
-              starts_at: a.starts_at,
-              service: svc?.name ?? null,
-              masterName: a.master.display_name ?? a.master.profile?.full_name ?? '?',
-              masterAvatar: a.master.avatar_url ?? a.master.profile?.avatar_url ?? null,
-              masterId: a.master.id,
-              masterSpecialization: a.master.specialization,
-              salon: unwrapSalon(a.master.salon),
-            });
-          } else {
-            // "Your usual": aggregate last 30 completed visits → pick most-frequent (master, service).
-            // Only surface if ≥3 visits with the same pair AND no upcoming appointment.
-            const { data: completed } = await supabase
-              .from('appointments')
-              .select('master_id, service_id, service:services(name), master:masters!inner(id, salon_id, specialization, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city))')
-              .in('client_id', clientIds)
-              .eq('status', 'completed')
-              .order('starts_at', { ascending: false })
-              .limit(30);
-
-            if (completed && completed.length >= 3) {
-              type Row = { master_id: string; service_id: string; service: { name: string } | { name: string }[] | null; master: { id: string; salon_id: string | null; specialization: string | null; display_name: string | null; avatar_url: string | null; profile: { full_name: string | null; avatar_url: string | null } | null; salon: SalonEmbed | SalonEmbed[] | null } };
-              const counts = new Map<string, { n: number; row: Row }>();
-              for (const r of completed as unknown as Row[]) {
-                const key = `${r.master_id}::${r.service_id}`;
-                const prev = counts.get(key);
-                counts.set(key, { n: (prev?.n ?? 0) + 1, row: prev?.row ?? r });
-              }
-              let best: { n: number; row: Row } | null = null;
-              for (const v of counts.values()) if (!best || v.n > best.n) best = v;
-              if (best && best.n >= 3) {
-                const svc = Array.isArray(best.row.service) ? best.row.service[0] : best.row.service;
-                setUsual({
-                  masterId: best.row.master.id,
-                  masterName: best.row.master.display_name ?? best.row.master.profile?.full_name ?? '?',
-                  masterAvatar: best.row.master.avatar_url ?? best.row.master.profile?.avatar_url ?? null,
-                  masterSpecialization: best.row.master.specialization,
-                  salon: unwrapSalon(best.row.master.salon),
-                  serviceId: best.row.service_id,
-                  serviceName: svc?.name ?? '—',
-                  visits: best.n,
-                });
-              }
-            }
-          }
+    (async () => {
+      try {
+        const res = await fetch('/api/feed');
+        if (!res.ok) {
+          if (res.status === 401) setError('unauthorized');
+          else setError('error');
+          return;
         }
+        const data = await res.json();
+        setItems((data.items ?? []) as FeedItem[]);
+      } catch {
+        setError('network');
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
-    }
-    init();
-  }, [fetchPosts, fetchMasters, fetchBurning, fetchDiscover, userId]);
-
-  // Infinite scroll
-  useEffect(() => {
-    if (!sentinelRef.current || !hasMore || loading) return;
-    const obs = new IntersectionObserver(
-      async ([entry]) => {
-        if (entry.isIntersecting && !loadingMore && hasMore) {
-          setLoadingMore(true);
-          const more = await fetchPosts(posts.length);
-          setPosts((prev) => [...prev, ...more]);
-          setLoadingMore(false);
-        }
-      },
-      { rootMargin: '200px' },
-    );
-    obs.observe(sentinelRef.current);
-    return () => obs.disconnect();
-  }, [hasMore, loading, loadingMore, posts.length, fetchPosts]);
-
-  function hoursUntil(dateStr: string) {
-    const diff = new Date(dateStr).getTime() - Date.now();
-    return Math.max(0, Math.round(diff / 3600000));
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-4 p-[var(--space-page)]">
-        {/* Stories skeleton */}
-        <div className="flex gap-3 overflow-hidden">
-          {Array.from({ length: 6 }, (_, i) => (
-            <ShimmerSkeleton key={i} className="h-16 w-16 shrink-0" rounded="full" />
-          ))}
-        </div>
-        {/* Posts skeleton */}
-        {Array.from({ length: 3 }, (_, i) => (
-          <ShimmerSkeleton key={i} className="h-48 w-full" rounded="lg" />
-        ))}
-      </div>
-    );
-  }
+    })();
+  }, []);
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8">
-      <div className="min-w-0">
-      {/* Stories row */}
-      <div className="flex gap-3 overflow-x-auto px-[var(--space-page)] py-3 scrollbar-thin">
-        {masters.map((m) => {
-          const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
-          const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
-          return (
-            <Link
-              key={m.master_id}
-              href={`/masters/${m.master_id}`}
-              className="flex shrink-0 flex-col items-center gap-1"
-            >
-              <AvatarRing src={avatar} name={name} size={64} hasNewContent={m.hasNewPosts} />
-              <span className="max-w-[64px] truncate text-xs text-muted-foreground">{name.split(' ')[0]}</span>
-            </Link>
-          );
-        })}
-      </div>
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+      <header className="mb-6">
+        <h1 className="text-[26px] font-bold tracking-tight">Свободные окна</h1>
+        <p className="mt-1 text-[14px] text-neutral-500">
+          Ближайшие открытые часы у твоих контактов — мастеров, салонов и команд.
+        </p>
+      </header>
 
-      {/* Industry chips — click expands a profession sublist underneath */}
-      <div className="px-[var(--space-page)] pb-3">
-        <div className="flex gap-2 overflow-x-auto scrollbar-thin">
-          {INDUSTRIES.map(({ key, icon: Icon }) => {
-            const active = activeIndustry === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setActiveIndustry(active ? null : key)}
-                className={cn(
-                  'flex shrink-0 items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-medium transition-all',
-                  active
-                    ? 'border-[var(--ds-accent)] bg-[var(--ds-accent)]/10 text-[var(--ds-accent)]'
-                    : 'bg-card hover:bg-muted hover:-translate-y-0.5 hover:shadow-sm',
-                )}
-              >
-                <Icon className="size-4" />
-                <span>{tInd(key)}</span>
-              </button>
-            );
-          })}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="size-5 animate-spin text-neutral-400" />
         </div>
-
-        <AnimatePresence>
-          {activeIndustry && INDUSTRY_PROFESSIONS[activeIndustry] && (
-            <motion.div
-              key={activeIndustry}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="flex flex-wrap gap-2 pt-3">
-                {INDUSTRY_PROFESSIONS[activeIndustry].map((prof) => (
-                  <Link
-                    key={prof}
-                    href={`/masters?industry=${activeIndustry}&profession=${prof}`}
-                    className="rounded-full border bg-background px-3.5 py-1.5 text-xs text-muted-foreground hover:border-[var(--ds-accent)] hover:text-foreground transition-colors"
-                  >
-                    {tProf(prof)}
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* От твоих мастеров — immersive hero cards, equal height, gradient fallback when no image */}
-      {burningSlots.length > 0 && (
-        <div className="pb-6">
-          <div className="flex items-center justify-between px-[var(--space-page)] pb-3">
-            <div className="flex items-center gap-2">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-              <h3 className="text-lg font-semibold tracking-tight">{t('subscriptionsTitle')}</h3>
-              <span className="text-xs text-muted-foreground">· {t('subscriptionsSubtitle')}</span>
-            </div>
-          </div>
-          <div className="flex gap-4 overflow-x-auto px-[var(--space-page)] pb-2 scrollbar-thin">
-            {burningSlots.map((slot) => {
-              const slotName = slot.master.display_name ?? slot.master.profile?.full_name ?? '?';
-              const slotAvatar = slot.master.avatar_url ?? slot.master.profile?.avatar_url ?? null;
-              const sd = resolveCardDisplay(
-                { id: slot.master.id, display_name: slotName, avatar_url: slotAvatar, specialization: slot.master.specialization, salon_id: slot.master.salon_id },
-                unwrapSalon(slot.master.salon),
-                cardLabels,
-              );
-              const typeBgs: Record<string, string> = {
-                burning_slot: 'bg-emerald-600',
-                promotion: 'bg-rose-500',
-                before_after: 'bg-violet-600',
-                new_service: 'bg-sky-600',
-                update: 'bg-zinc-700',
-              };
-              const gradient = typeBgs[slot.type] ?? typeBgs.update;
-              return (
-                <Link
-                  key={slot.id}
-                  href={`/book?master_id=${slot.master.id}${slot.linked_service_id ? `&service_id=${slot.linked_service_id}` : ''}`}
-                  className="group/slot relative flex h-[340px] w-[260px] shrink-0 flex-col overflow-hidden rounded-[28px] border border-border/50 bg-card shadow-[var(--shadow-card)] transition-all hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)]"
-                >
-                  {/* Hero — image or solid-tinted fallback */}
-                  <div className={cn('relative h-[180px] w-full overflow-hidden', gradient)}>
-                    {slot.image_url ? (
-                      <img
-                        src={slot.image_url}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover/slot:scale-105"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-white/90">
-                          {typeIcons[slot.type]
-                            ? <span className="[&>svg]:size-16 [&>svg]:stroke-[1.2]">{typeIcons[slot.type]}</span>
-                            : <Sparkles className="size-16 stroke-[1.2]" />}
-                        </span>
-                      </div>
-                    )}
-                    {/* Bottom scrim for legibility */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/55 to-transparent" />
-                    {/* Type pill */}
-                    <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-foreground backdrop-blur-md">
-                      {typeIcons[slot.type]}
-                      {t(slot.type as 'burning_slot' | 'promotion' | 'before_after' | 'new_service' | 'update')}
-                    </span>
-                    {/* Master/Salon chip over the hero */}
-                    <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                      {sd.avatarSrc ? (
-                        <img src={sd.avatarSrc} alt={sd.avatarName} className="size-8 rounded-full object-cover ring-2 ring-white/90" />
-                      ) : (
-                        <div className="flex size-8 items-center justify-center rounded-full bg-white/95 text-xs font-bold text-foreground ring-2 ring-white/90">
-                          {sd.avatarName[0]}
-                        </div>
-                      )}
-                      <span className="max-w-[160px] truncate text-xs font-semibold text-white drop-shadow-md">{sd.primary}</span>
-                    </div>
-                  </div>
-                  {/* Body — fixed height so all cards align */}
-                  <div className="flex flex-1 flex-col justify-between gap-2 p-4">
-                    <div className="space-y-1">
-                      {slot.title && <p className="line-clamp-2 text-sm font-semibold leading-snug">{slot.title}</p>}
-                      {sd.secondary && (
-                        <p className="truncate text-[11px] text-muted-foreground">{sd.secondary}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between pt-1">
-                      {slot.expires_at ? (
-                        <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                          <Clock className="size-3" />
-                          {t('expiresIn', { hours: hoursUntil(slot.expires_at) })}
-                        </div>
-                      ) : <span />}
-                      <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover/slot:translate-x-1 group-hover/slot:text-foreground" />
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Feed */}
-      {posts.length === 0 ? (
-        <EmptyState
-          icon={<Sparkles className="h-7 w-7" />}
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
-          action={
-            <Link
-              href="/masters"
-              className="inline-flex items-center gap-2 rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
-            >
-              <Search className="h-4 w-4" />
-              {t('discover')}
-            </Link>
-          }
+      ) : error === 'unauthorized' ? (
+        <EmptyCard
+          title="Войди, чтобы увидеть свободные окна"
+          desc="Лента собирается из подписок на мастеров и салоны."
+          ctaHref="/auth/login"
+          ctaLabel="Войти"
+        />
+      ) : items.length === 0 ? (
+        <EmptyCard
+          title="Пока тишина"
+          desc="Добавь в контакты любимых мастеров и салоны — здесь будут их ближайшие свободные окна и акции."
+          ctaHref="/find"
+          ctaLabel="Найти мастеров"
         />
       ) : (
-        <div className="space-y-4 px-[var(--space-page)] pb-4">
-          {posts.map((post, i) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05, duration: 0.25 }}
-            >
-              <FeedCard post={post} t={t} hoursUntil={hoursUntil} />
-            </motion.div>
+        <ul className="space-y-3">
+          {items.map((it) => (
+            <SlotCard key={it.id} item={it} />
           ))}
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} className="h-1" />
-          {loadingMore && (
-            <div className="flex justify-center py-4">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--ds-accent)] border-t-transparent" />
-            </div>
-          )}
-        </div>
+        </ul>
       )}
-      </div>
-
-      {/* Right rail — densified context. pr-3 mirrors left sidebar inner padding so distances are symmetric */}
-      <aside className="hidden lg:block pr-3">
-        <div className="sticky top-4 space-y-4">
-          {/* Next appointment */}
-          <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
-            <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
-              <CalendarCheck className="size-4 text-[var(--ds-accent)]" />
-              <h3 className="text-sm font-semibold">{t('nextApptTitle')}</h3>
-            </div>
-            {nextAppt ? (() => {
-              const nd = resolveCardDisplay(
-                { id: nextAppt.masterId, display_name: nextAppt.masterName, avatar_url: nextAppt.masterAvatar, specialization: nextAppt.masterSpecialization, salon_id: nextAppt.salon?.id ?? null },
-                nextAppt.salon,
-                cardLabels,
-              );
-              return (
-                <Link href={`/my-calendar`} className="block p-4 transition-colors hover:bg-muted/40">
-                  <div className="flex items-center gap-3">
-                    {nd.avatarSrc ? (
-                      <img src={nd.avatarSrc} alt="" className="size-11 rounded-full object-cover" />
-                    ) : (
-                      <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
-                        {nd.avatarName[0]}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{nextAppt.service ?? '—'}</p>
-                      <p className="truncate text-xs font-medium text-foreground">{nd.primary}</p>
-                      {nd.secondary && (
-                        <p className="truncate text-[11px] text-muted-foreground">{nd.secondary}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
-                    <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                      {new Date(nextAppt.starts_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-                    </span>
-                    <span className="text-sm font-bold tabular-nums text-[var(--ds-accent)]">
-                      {new Date(nextAppt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })() : (
-              <div className="p-5 text-center">
-                <p className="text-xs text-muted-foreground">{t('nextApptEmpty')}</p>
-                <Link href="/masters" className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[var(--ds-accent)] hover:underline">
-                  {t('discover')}
-                  <ArrowRight className="size-3" />
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Your usual — shown when no next appt but client has a repeat pattern */}
-          {!nextAppt && usual && (() => {
-            const ud = resolveCardDisplay(
-              { id: usual.masterId, display_name: usual.masterName, avatar_url: usual.masterAvatar, specialization: usual.masterSpecialization, salon_id: usual.salon?.id ?? null },
-              usual.salon,
-              cardLabels,
-            );
-            return (
-            <Link
-              href={`/book?master_id=${usual.masterId}&service_id=${usual.serviceId}`}
-              className="group/usual block overflow-hidden rounded-3xl border border-border bg-card transition-all hover:border-[var(--ds-accent)]/30"
-            >
-              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
-                <Sparkles className="size-4 text-[var(--ds-accent)]" />
-                <h3 className="text-sm font-semibold">{t('usualTitle')}</h3>
-              </div>
-              <div className="p-4">
-                <div className="flex items-center gap-3">
-                  {ud.avatarSrc ? (
-                    <img src={ud.avatarSrc} alt="" className="size-11 rounded-full object-cover ring-1 ring-border/60" />
-                  ) : (
-                    <div className="flex size-11 items-center justify-center rounded-full bg-[var(--ds-accent)]/15 text-sm font-semibold text-[var(--ds-accent)]">
-                      {ud.avatarName[0]}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{usual.serviceName}</p>
-                    <p className="truncate text-xs font-medium text-foreground">{ud.primary}</p>
-                    {ud.secondary && (
-                      <p className="truncate text-[11px] text-muted-foreground">{ud.secondary}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
-                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                    {t('usualSubtitle', { visits: usual.visits })}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs font-semibold text-[var(--ds-accent)] group-hover/usual:underline">
-                    {t('bookYourUsual')}
-                    <ArrowRight className="size-3" />
-                  </span>
-                </div>
-              </div>
-            </Link>
-            );
-          })()}
-
-          {/* Cross-master recommendations — "your nail master suggests this massage therapist" */}
-          {recommendations.length > 0 && (
-            <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
-              <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
-                <Sparkles className="size-4 text-[var(--ds-accent)]" />
-                <h3 className="text-sm font-semibold">{t('recsTitle')}</h3>
-              </div>
-              <ul className="divide-y divide-border/60">
-                {recommendations.map((r) => {
-                  const rd = resolveCardDisplay(
-                    { id: r.toMasterId, display_name: r.toName, avatar_url: r.toAvatar, specialization: r.toSpec, salon_id: r.toSalon?.id ?? null },
-                    r.toSalon,
-                    cardLabels,
-                  );
-                  return (
-                  <li key={r.id}>
-                    <Link href={`/masters/${r.toMasterId}`} className="group/rec flex items-start gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
-                      {rd.avatarSrc ? (
-                        <img src={rd.avatarSrc} alt="" className="size-10 shrink-0 rounded-full object-cover ring-1 ring-border/60" />
-                      ) : (
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
-                          {rd.avatarName[0]}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold group-hover/rec:text-[var(--ds-accent)]">{rd.primary}</p>
-                        {rd.secondary && <p className="truncate text-xs text-muted-foreground">{rd.secondary}</p>}
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {t('recsFrom', { name: r.fromName })}
-                          {r.note ? ` — ${r.note}` : ''}
-                        </p>
-                      </div>
-                      <ArrowRight className="size-4 shrink-0 self-center text-muted-foreground transition-colors group-hover/rec:text-[var(--ds-accent)]" />
-                    </Link>
-                  </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
-          {/* Recommended masters */}
-          {discover.length > 0 && (
-            <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-[var(--shadow-card)]">
-              <div className="flex items-center justify-between border-b border-border/60 px-5 py-3">
-                <div className="flex items-center gap-2">
-                  <Compass className="size-4 text-[var(--ds-accent)]" />
-                  <h3 className="text-sm font-semibold">{t('recommendedTitle')}</h3>
-                </div>
-                <Link href="/masters" className="text-[11px] font-medium text-[var(--ds-accent)] hover:underline">
-                  {t('viewAll')}
-                </Link>
-              </div>
-              <ul className="divide-y divide-border/60">
-                {discover.slice(0, 6).map((m) => {
-                  const name = m.master.display_name ?? m.master.profile?.full_name ?? '?';
-                  const avatar = m.master.avatar_url ?? m.master.profile?.avatar_url ?? null;
-                  const dd = resolveCardDisplay(
-                    { id: m.master.id, display_name: name, avatar_url: avatar, specialization: m.master.specialization, salon_id: m.master.salon_id },
-                    unwrapSalon(m.master.salon),
-                    cardLabels,
-                  );
-                  return (
-                    <li key={m.master.id}>
-                      <Link href={`/masters/${m.master.id}`} className="group/rec flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
-                        {dd.avatarSrc ? (
-                          <img src={dd.avatarSrc} alt="" className="size-10 rounded-full object-cover ring-1 ring-border/60" />
-                        ) : (
-                          <div className="flex size-10 items-center justify-center rounded-full bg-[var(--ds-accent)]/10 text-xs font-semibold text-[var(--ds-accent)]">
-                            {dd.avatarName[0]}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-semibold">{dd.primary}</p>
-                          {dd.secondary && (
-                            <p className="truncate text-[10px] text-muted-foreground">{dd.secondary}</p>
-                          )}
-                        </div>
-                        <span className="rounded-full bg-[var(--ds-accent)]/10 px-2 py-0.5 text-[10px] font-semibold text-[var(--ds-accent)] opacity-0 transition-opacity group-hover/rec:opacity-100">
-                          {t('viewMaster')}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
-      </aside>
     </div>
   );
 }
 
-function FeedCard({
-  post,
-  t,
-  hoursUntil,
-}: {
-  post: FeedPost;
-  t: ReturnType<typeof useTranslations<'feed'>>;
-  hoursUntil: (d: string) => number;
-}) {
-  const tCard = useTranslations('cardLabels');
-  const typeKey = post.type as keyof typeof typeColors;
-  const isPromo = post.type === 'promotion';
-  // TODO Phase 8: real social-proof from bookings
-  const bookedCount = (post.id.charCodeAt(0) % 9) + 2;
+function SlotCard({ item }: { item: FeedItem }) {
+  const masterName = item.master?.name ?? 'Мастер';
+  const salonName = item.master?.salon?.name;
+  const city = item.master?.salon?.city;
+  const startsAt = item.starts_at ? new Date(item.starts_at) : null;
+  const price = item.service?.price ?? null;
+  const duration = item.service?.duration_minutes ?? null;
 
-  const name = post.master.display_name ?? post.master.profile?.full_name ?? '?';
-  const avatar = post.master.avatar_url ?? post.master.profile?.avatar_url ?? null;
-  const fd = resolveCardDisplay(
-    { id: post.master.id, display_name: name, avatar_url: avatar, specialization: post.master.specialization, salon_id: post.master.salon_id },
-    unwrapSalon(post.master.salon),
-    {
-      masterPlaceholder: tCard('masterPlaceholder'),
-      salonPlaceholder: tCard('salonPlaceholder'),
-      managerAssigned: tCard('managerAssigned'),
-    },
-  );
+  const dateParam = startsAt ? startsAt.toISOString().slice(0, 10) : null;
+  const timeParam = startsAt
+    ? `${startsAt.getHours().toString().padStart(2, '0')}:${startsAt.getMinutes().toString().padStart(2, '0')}`
+    : null;
+  const bookHref = `/book?master=${item.master?.id ?? ''}${
+    item.service?.id ? `&service=${item.service.id}` : ''
+  }${dateParam ? `&date=${dateParam}` : ''}${timeParam ? `&time=${encodeURIComponent(timeParam)}` : ''}`;
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-border/60 bg-card shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-elevated)]">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4">
-        <Link href={`/masters/${post.master.id}`}>
-          <AvatarRing
-            src={fd.avatarSrc}
-            name={fd.avatarName}
-            size={44}
-          />
-        </Link>
-        <div className="flex-1 min-w-0">
-          <Link href={`/masters/${post.master.id}`} className="flex items-center gap-1 text-sm font-semibold hover:underline">
-            {fd.primary}
-            <Star className="size-3 fill-amber-400 text-amber-400" />
-          </Link>
-          {fd.secondary && (
-            <p className="truncate text-xs text-muted-foreground">{fd.secondary}</p>
-          )}
-        </div>
-        {isPromo ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
-            <Sparkles className="h-3 w-3" />
-            {t('promoBadge')}
-          </span>
-        ) : (
-          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium', typeColors[typeKey])}>
-            {typeIcons[typeKey]}
-            {t(typeKey)}
-          </span>
-        )}
-      </div>
-
-      {/* Image — only renders when we have a valid src and onError hides the whole block */}
-      {post.image_url && post.image_url.trim().length > 0 && (
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-muted">
-          <img
-            src={post.image_url}
-            alt=""
-            className="h-full w-full object-cover"
-            onError={(e) => {
-              const parent = (e.currentTarget as HTMLImageElement).parentElement;
-              if (parent) parent.style.display = 'none';
-            }}
-          />
-          <div className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
-            <Users className="size-3" />
-            {t('peopleBooked', { count: bookedCount })}
+    <motion.li
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <Link
+        href={bookHref}
+        className="block rounded-2xl border border-neutral-200 bg-white p-4 transition-shadow hover:shadow-md sm:p-5"
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-100 text-base font-semibold text-neutral-600 sm:size-14">
+            {item.master?.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.master.avatar} alt="" className="size-full object-cover" />
+            ) : (
+              (masterName[0] ?? '?').toUpperCase()
+            )}
           </div>
-        </div>
-      )}
-
-      {/* Content */}
-      <div className="space-y-2 p-4">
-        {post.title && <p className="text-base font-semibold leading-snug">{post.title}</p>}
-        {post.body && <p className="text-sm text-muted-foreground line-clamp-3">{post.body}</p>}
-
-        {post.type === 'burning_slot' && post.expires_at && (
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-            <Clock className="size-3" />
-            {t('expiresIn', { hours: hoursUntil(post.expires_at) })}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-semibold text-neutral-900">
+              {item.service?.name ?? item.title ?? 'Свободное окно'}
+            </p>
+            <p className="mt-0.5 truncate text-[13px] text-neutral-600">
+              {masterName}
+              {item.master?.specialization ? ` · ${item.master.specialization}` : ''}
+            </p>
+            {(salonName || city) && (
+              <p className="mt-0.5 flex items-center gap-1 truncate text-[12px] text-neutral-500">
+                <MapPin className="size-3" />
+                {salonName}
+                {city ? ` · ${city}` : ''}
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              {startsAt && (
+                <span className="inline-flex items-center gap-1 text-[13px] font-medium text-violet-700">
+                  <Calendar className="size-3.5" />
+                  {formatDateTime(startsAt)}
+                </span>
+              )}
+              {duration && (
+                <span className="inline-flex items-center gap-1 text-[12px] text-neutral-500">
+                  <Clock className="size-3" />
+                  {duration} мин
+                </span>
+              )}
+              {price !== null && (
+                <span className="text-[13px] font-semibold text-neutral-900">
+                  {Math.round(price).toLocaleString('ru-RU')} ₴
+                </span>
+              )}
+            </div>
+            {item.body && (
+              <p className="mt-2 line-clamp-2 text-[12px] text-neutral-600">{item.body}</p>
+            )}
           </div>
-        )}
-      </div>
+          <ChevronRight className="mt-1 size-4 shrink-0 text-neutral-300" />
+        </div>
+      </Link>
+    </motion.li>
+  );
+}
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 border-t border-border/60 px-3 py-2">
-        <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          <Heart className="h-4 w-4" />
-          {t('save')}
-        </button>
-        <button className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-          <Share2 className="h-4 w-4" />
-          {t('share')}
-        </button>
-        <div className="flex-1" />
-        <Link
-          href={post.linked_service_id ? `/book?master=${post.master.id}&service=${post.linked_service_id}` : `/masters/${post.master.id}`}
-          className="rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
-        >
-          {t('bookNow')}
-        </Link>
+function EmptyCard({
+  title,
+  desc,
+  ctaHref,
+  ctaLabel,
+}: {
+  title: string;
+  desc: string;
+  ctaHref: string;
+  ctaLabel: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+        <Sparkles className="size-5" />
       </div>
+      <h2 className="mt-4 text-[16px] font-semibold text-neutral-900">{title}</h2>
+      <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-neutral-500">{desc}</p>
+      <Link
+        href={ctaHref}
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-violet-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-violet-700"
+      >
+        <Search className="size-4" />
+        {ctaLabel}
+      </Link>
     </div>
   );
+}
+
+function formatDateTime(d: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 86400000);
+  const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  if (target.getTime() === today.getTime()) return `Сегодня · ${time}`;
+  if (target.getTime() === tomorrow.getTime()) return `Завтра · ${time}`;
+  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} · ${time}`;
 }

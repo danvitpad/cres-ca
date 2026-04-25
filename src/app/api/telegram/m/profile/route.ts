@@ -1,8 +1,8 @@
 /** --- YAML
  * name: Telegram Master Profile API
- * description: Returns master self profile + subscription info + portfolio posts + aggregate stats for the mini-app Instagram-style profile screen.
+ * description: Returns master self profile + subscription info + aggregate stats for Mini App profile.
  * created: 2026-04-17
- * updated: 2026-04-19
+ * updated: 2026-04-25
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -33,10 +33,10 @@ export async function POST(request: Request) {
     .eq('telegram_id', tg.id)
     .maybeSingle();
   if (!profile) {
-    return NextResponse.json({ master: null, profile: null, subscription: null, posts: [], stats: null });
+    return NextResponse.json({ master: null, profile: null, subscription: null, stats: null });
   }
 
-  const [{ data: master }, { data: subscription }, { data: posts }] = await Promise.all([
+  const [{ data: master }, { data: subscription }] = await Promise.all([
     admin
       .from('masters')
       .select('id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, invite_code')
@@ -47,12 +47,6 @@ export async function POST(request: Request) {
       .select('tier, status, trial_ends_at, current_period_end')
       .eq('profile_id', profile.id)
       .maybeSingle(),
-    admin
-      .from('posts')
-      .select('id, image_url, caption, created_at')
-      .eq('author_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(60),
   ]);
 
   let stats = null as null | { appointments: number; clients: number };
@@ -74,5 +68,5 @@ export async function POST(request: Request) {
     };
   }
 
-  return NextResponse.json({ profile, master, subscription, posts: posts ?? [], stats });
+  return NextResponse.json({ profile, master, subscription, stats });
 }

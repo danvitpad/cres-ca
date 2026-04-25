@@ -1,8 +1,9 @@
 /** --- YAML
  * name: MiniAppProfilePage
- * description: Mini App profile — Instagram-style. Name + CRES-ID link at top, avatar + stats, Edit/Share, balance, referral, minimal menu. Flat cards (Phase 7.14).
+ * description: Mini App profile — Fresha-style. Name+subtitle left, avatar right, gradient wallet card,
+ *              menu cards (Профиль/Связи/Анкеты/Настройки + Поддержка/Язык), sign out row. Dark theme.
  * created: 2026-04-13
- * updated: 2026-04-18
+ * updated: 2026-04-24
  * --- */
 
 'use client';
@@ -17,9 +18,13 @@ import {
   X,
   Loader2,
   Settings,
-  Share2,
   LogOut,
-  Bell,
+  User as UserIcon,
+  Users,
+  FileText,
+  HelpCircle,
+  Globe,
+  Wallet,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -41,17 +46,13 @@ export default function MiniAppProfilePage() {
   const { user, haptic } = useTelegram();
   const { userId, clearAuth } = useAuthStore();
   const [balance, setBalance] = useState(0);
-  const [bonusPoints, setBonusPoints] = useState(0);
   const [fullName, setFullName] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
   const [publicId, setPublicId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [phone, setPhone] = useState<string | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [copiedRef, setCopiedRef] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
   // Follow list modal
@@ -72,6 +73,8 @@ export default function MiniAppProfilePage() {
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
   useEffect(() => {
     if (!userId) return;
     (async () => {
@@ -86,14 +89,11 @@ export default function MiniAppProfilePage() {
         if (res.ok) {
           const { profile: data } = await res.json();
           setBalance(Number(data.bonus_balance ?? 0));
-          setBonusPoints(Number(data.bonus_points ?? 0));
           setFullName(data.full_name ?? null);
           setBio(data.bio ?? null);
           setSlug(data.slug ?? null);
           setPublicId(data.public_id ?? null);
           setAvatarUrl(data.avatar_url ?? null);
-          setPhone(data.phone ?? null);
-          setEmail(data.email ?? null);
           setFollowersCount(Number(data.followers_count ?? 0));
           setFollowingCount(Number(data.following_count ?? 0));
         }
@@ -101,18 +101,6 @@ export default function MiniAppProfilePage() {
       setProfileLoaded(true);
     })();
   }, [userId]);
-
-  function copyReferral() {
-    if (!publicId) return;
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-    const link = botUsername
-      ? `https://t.me/${botUsername}?startapp=u_${publicId}`
-      : `${window.location.origin}/u/${publicId}`;
-    navigator.clipboard.writeText(link);
-    haptic('success');
-    setCopiedRef(true);
-    setTimeout(() => setCopiedRef(false), 2000);
-  }
 
   function openEdit() {
     setEditName(fullName ?? '');
@@ -160,9 +148,6 @@ export default function MiniAppProfilePage() {
     haptic('medium');
     setSigningOut(true);
     try {
-      // HARD sign-out: unlink TG from the current profile first,
-      // else /telegram auto-relinks back on redirect.
-      // Uses initData (cookie auth doesn't survive TG Webview).
       try {
         const w = window as { Telegram?: { WebApp?: { initData?: string } } };
         let initData = w.Telegram?.WebApp?.initData;
@@ -186,7 +171,6 @@ export default function MiniAppProfilePage() {
       try {
         sessionStorage.removeItem('cres:tg');
       } catch {}
-      // Hard reload so TG Webview forgets any cached state / SB session.
       window.location.href = '/telegram';
     } catch {
       setSigningOut(false);
@@ -241,29 +225,8 @@ export default function MiniAppProfilePage() {
     }
   }
 
-  function shareProfile() {
-    if (!publicId) return;
-    haptic('light');
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'cres_ca_bot';
-    const link = `https://t.me/${botUsername}?startapp=u_${publicId}`;
-    const text = `${fullName ?? 'Мой профиль'} — CRES-CA`;
-    const tg = window.Telegram?.WebApp;
-    if (tg?.openTelegramLink) {
-      tg.openTelegramLink(
-        `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`,
-      );
-    } else if (navigator.share) {
-      navigator.share({ title: text, url: link }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(link);
-    }
-  }
-
-  const [profileLoaded, setProfileLoaded] = useState(false);
   const tgFullName = user ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}` : '';
-  // Don't show Telegram name until DB loads — prevents flash of wrong name
   const displayName = profileLoaded ? (fullName ?? tgFullName ?? 'Гость') : '';
-  // Only use Telegram avatar if DB full_name is empty or exactly matches Telegram name
   const showTgPhoto = profileLoaded && !!user?.photo_url && (!fullName || fullName.trim() === tgFullName.trim());
 
   // Auto-open edit modal when navigated from settings with ?edit=true
@@ -281,14 +244,22 @@ export default function MiniAppProfilePage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="space-y-5 px-5 pt-6"
+        className="space-y-4 px-5 pt-6 pb-6"
       >
-        {/* Telegram-style: Avatar left, Name + ID right */}
-        <div className="flex items-center gap-4">
+        {/* Header: Name + subtitle LEFT, Avatar RIGHT (Fresha layout) */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            {profileLoaded ? (
+              <h1 className="truncate text-[24px] font-bold leading-tight">{displayName}</h1>
+            ) : (
+              <div className="h-7 w-40 animate-pulse rounded-lg bg-white/[0.06]" />
+            )}
+            <p className="mt-1 text-[13px] text-white/50">Личный профиль</p>
+          </div>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={avatarBusy}
-            className="relative flex size-[72px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90 transition-colors active:bg-white/[0.1]"
+            className="relative flex size-[64px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90 transition-colors active:bg-white/[0.1]"
             aria-label="Изменить аватар"
           >
             {!profileLoaded ? (
@@ -319,73 +290,69 @@ export default function MiniAppProfilePage() {
               e.target.value = '';
             }}
           />
+        </div>
 
-          <div className="min-w-0 flex-1">
-            {profileLoaded ? (
-              <h1 className="truncate text-[20px] font-bold leading-tight">{displayName}</h1>
-            ) : (
-              <div className="h-6 w-36 animate-pulse rounded-lg bg-white/[0.06]" />
-            )}
-            {profileLoaded && publicId && (
-              <button
-                onClick={() => {
-                  const id = slug ?? publicId.toLowerCase();
-                  navigator.clipboard.writeText(`cres-id//${id}`);
-                  haptic('success');
-                }}
-                className="mt-0.5 truncate font-mono text-[12px] text-white/35 active:text-white/50 transition-colors"
-              >
-                cres-id//{slug ?? publicId.toLowerCase()}
-              </button>
-            )}
+        {/* Wallet gradient card */}
+        <Link
+          href="/telegram/bonuses"
+          onClick={() => haptic('light')}
+          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#a855f7] via-[#7c3aed] to-[#ec4899] p-5 text-white shadow-lg shadow-violet-500/20 active:opacity-90 transition-opacity"
+        >
+          <p className="text-[13px] font-medium text-white/80">Баланс кошелька</p>
+          <p className="mt-1 text-[32px] font-bold leading-none tracking-tight">
+            {balance.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₴
+          </p>
+          <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/40 px-3.5 py-1.5 text-[12px] font-semibold">
+            <Wallet className="size-3.5" />
+            Открыть кошелек
           </div>
-        </div>
+        </Link>
 
-        {/* Stats row */}
-        <div className="flex gap-4">
-          <Stat value={followersCount} label="подписчиков" onClick={() => openList('followers')} />
-          <Stat value={followingCount} label="подписок" onClick={() => openList('following')} />
-        </div>
-
-        {bio && (
-          <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-white/70">{bio}</p>
-        )}
-
-        {/* Edit + Share */}
-        <div className="flex gap-2">
-          <button
-            onClick={openEdit}
-            className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] py-2 text-[13px] font-semibold active:bg-white/[0.06] transition-colors"
-          >
-            Редактировать
-          </button>
-          <button
-            onClick={shareProfile}
-            disabled={!publicId}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] py-2 text-[13px] font-semibold active:bg-white/[0.06] transition-colors disabled:opacity-50"
-          >
-            <Share2 className="size-3.5" /> Поделиться
-          </button>
-        </div>
-
-        {/* Balance + Referral moved to Bonuses tab — profile stays minimal */}
-
-        {/* Quick links */}
-        <ul className="divide-y divide-white/5 rounded-2xl border border-white/10 bg-white/[0.03]">
-          <MenuItemLink icon={Bell} label="Уведомления" href="/telegram/notifications" onClick={() => haptic('light')} />
-          <MenuItemLink icon={Settings} label="Настройки" href="/telegram/settings" onClick={() => haptic('light')} />
+        {/* Main menu card */}
+        <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <MenuRow icon={UserIcon} label="Профиль" onClick={openEdit} />
+          <MenuRowLink
+            icon={Users}
+            label="Контакты"
+            sub={followingCount > 0 ? `${followingCount} подписок` : undefined}
+            href="/telegram/connections"
+            onClick={() => haptic('light')}
+          />
+          <MenuRowLink icon={FileText} label="Анкеты" href="/telegram/forms" onClick={() => haptic('light')} />
+          <MenuRowLink icon={Settings} label="Настройки" href="/telegram/settings" onClick={() => haptic('light')} />
         </ul>
 
-        {/* Sign out */}
-        <button
-          onClick={signOut}
-          disabled={signingOut}
-          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] py-3.5 text-[13px] font-semibold text-rose-300 active:bg-white/[0.06] transition-colors disabled:opacity-60"
-        >
-          <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
-          {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-          Выйти из аккаунта
-        </button>
+        {/* Secondary menu card */}
+        <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <MenuRowLink icon={HelpCircle} label="Поддержка" href="/telegram/settings/feedback" onClick={() => haptic('light')} />
+          <MenuRow icon={Globe} label="Язык" value="Русский" onClick={() => haptic('light')} />
+        </ul>
+
+        {/* Sign out row */}
+        <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
+          <li>
+            <button
+              onClick={signOut}
+              disabled={signingOut}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-rose-300 active:bg-white/[0.03] transition-colors disabled:opacity-60"
+            >
+              <div className="flex size-9 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/10">
+                {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+              </div>
+              <span className="flex-1 text-sm font-medium">Выйти из аккаунта</span>
+            </button>
+          </li>
+        </ul>
+
+        {bio && (
+          <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-white/45 px-1">{bio}</p>
+        )}
+
+        {/* Hidden-but-accessible followers/following triggers for deep links */}
+        <div className="sr-only">
+          <button onClick={() => openList('followers')}>Подписчики: {followersCount}</button>
+          <button onClick={() => openList('following')}>Подписки: {followingCount}</button>
+        </div>
 
         <div className="h-4" />
       </motion.div>
@@ -571,55 +538,70 @@ export default function MiniAppProfilePage() {
           </motion.div>
         )}
       </AnimatePresence>
-
     </>
   );
 }
 
-function Stat({
-  value,
+function MenuRow({
+  icon: Icon,
   label,
+  value,
+  sub,
   onClick,
 }: {
-  value: number;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
-  onClick: () => void;
+  value?: string;
+  sub?: string;
+  onClick?: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center rounded-xl px-1 py-1 transition-opacity active:opacity-60"
-    >
-      <span className="text-lg font-bold">{formatCount(value)}</span>
-      <span className="text-[10px] text-white/50">{label}</span>
-    </button>
+    <li>
+      <button
+        onClick={onClick}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors"
+      >
+        <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+          <Icon className="size-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-sm">{label}</p>
+          {sub && <p className="truncate text-[11px] text-white/40">{sub}</p>}
+        </div>
+        {value && <span className="text-[13px] text-white/50">{value}</span>}
+        <ChevronRight className="size-4 text-white/40" />
+      </button>
+    </li>
   );
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
-  return n.toString();
-}
-
-function MenuItemLink({
+function MenuRowLink({
   icon: Icon,
   label,
+  sub,
   href,
   onClick,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
+  sub?: string;
   href: string;
   onClick?: () => void;
 }) {
   return (
     <li>
-      <Link href={href} onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors">
+      <Link
+        href={href}
+        onClick={onClick}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors"
+      >
         <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
           <Icon className="size-4" />
         </div>
-        <span className="flex-1 text-sm">{label}</span>
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-sm">{label}</p>
+          {sub && <p className="truncate text-[11px] text-white/40">{sub}</p>}
+        </div>
         <ChevronRight className="size-4 text-white/40" />
       </Link>
     </li>
