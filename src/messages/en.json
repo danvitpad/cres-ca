@@ -518,7 +518,9 @@
       "inProgress": "In Progress",
       "completed": "Completed",
       "cancelled": "Cancelled",
-      "noShow": "No Show"
+      "noShow": "No Show",
+      "in_progress": "In progress",
+      "no_show": "No show"
     }
   },
   "clients": {

@@ -154,10 +154,10 @@ export default function FinancePage() {
         .eq('master_id', master.id)
         .gte('date', period.start.toISOString().slice(0, 10)).lte('date', period.end.toISOString().slice(0, 10))
         .order('date', { ascending: false }),
-      supabase.from('appointments').select('id, starts_at, status, services(name), clients(full_name)')
+      supabase.from('appointments').select('id, starts_at, status, price, services(name), clients(full_name)')
         .eq('master_id', master.id)
         .gte('starts_at', period.start.toISOString()).lte('starts_at', period.end.toISOString())
-        .order('starts_at', { ascending: false }).limit(5),
+        .order('starts_at', { ascending: false }).limit(20),
     ]);
 
     const curRow = Array.isArray(curMetrics.data) ? curMetrics.data[0] : curMetrics.data;
@@ -171,12 +171,28 @@ export default function FinancePage() {
     setExpenses((allExpenses.data ?? []) as ExpenseRow[]);
     setLastAppointments((apts.data as unknown as AppointmentRow[]) || []);
 
+    // Top services — count from completed appointments + payments (excludes refunds)
     const svcMap = new Map<string, { total: number; count: number }>();
     paymentsData.forEach(p => {
       if (p.type === 'refund') return;
       const name = p.appointment?.service?.name || 'Без услуги';
       const entry = svcMap.get(name) || { total: 0, count: 0 };
       entry.total += Number(p.amount);
+      entry.count += 1;
+      svcMap.set(name, entry);
+    });
+    type AptWithSvc = {
+      id: string;
+      status: string;
+      price: number | null;
+      services: { name: string } | { name: string }[] | null;
+    };
+    ((apts.data as unknown as AptWithSvc[]) || []).forEach(a => {
+      if (a.status !== 'completed') return;
+      const svc = Array.isArray(a.services) ? a.services[0] : a.services;
+      const name = svc?.name || 'Без услуги';
+      const entry = svcMap.get(name) || { total: 0, count: 0 };
+      entry.total += Number(a.price || 0);
       entry.count += 1;
       svcMap.set(name, entry);
     });

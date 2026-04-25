@@ -518,7 +518,9 @@
       "inProgress": "В процессе",
       "completed": "Завершено",
       "cancelled": "Отменено",
-      "noShow": "Не пришёл"
+      "noShow": "Не пришёл",
+      "in_progress": "В процессе",
+      "no_show": "Не пришёл"
     }
   },
   "clients": {

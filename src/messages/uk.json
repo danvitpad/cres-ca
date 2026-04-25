@@ -500,7 +500,9 @@
       "inProgress": "В процесі",
       "completed": "Завершено",
       "cancelled": "Скасовано",
-      "noShow": "Не прийшов"
+      "noShow": "Не прийшов",
+      "in_progress": "У процесі",
+      "no_show": "Не прийшов"
     }
   },
   "clients": {
