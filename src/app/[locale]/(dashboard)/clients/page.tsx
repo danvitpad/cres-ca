@@ -829,7 +829,13 @@ function PartnersSection({ C }: { C: PageTheme }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {active.map(p => (
               <div key={p.id} style={cardBase}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <Link
+                  href={`/partners/${p.id}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10,
+                    textDecoration: 'none', color: 'inherit',
+                  }}
+                >
                   <div style={avatarCss(p.partner.full_name || '?')}>{initials(p.partner.full_name || '?')}</div>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -839,22 +845,19 @@ function PartnersSection({ C }: { C: PageTheme }) {
                       {p.partner.specialization || 'Мастер'}
                     </div>
                   </div>
-                </div>
+                </Link>
                 <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                  {p.partner.slug && (
-                    <Link
-                      href={`/m/${p.partner.slug}`}
-                      target="_blank"
-                      style={{
-                        flex: 1, textAlign: 'center',
-                        padding: '6px 10px', borderRadius: 8,
-                        background: C.accentSoft, color: C.accent,
-                        fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                      }}
-                    >
-                      Профиль
-                    </Link>
-                  )}
+                  <Link
+                    href={`/partners/${p.id}`}
+                    style={{
+                      flex: 1, textAlign: 'center',
+                      padding: '6px 10px', borderRadius: 8,
+                      background: C.accentSoft, color: C.accent,
+                      fontSize: 12, fontWeight: 600, textDecoration: 'none',
+                    }}
+                  >
+                    Открыть
+                  </Link>
                   <button
                     onClick={() => respond(p.id, 'end')}
                     style={{

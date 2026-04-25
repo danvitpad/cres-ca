@@ -126,6 +126,23 @@ export default function MasterMiniAppClientsPage() {
 
   return (
     <div className="space-y-4 px-5 pt-6 pb-10">
+      {/* Tabs: Clients / Partners */}
+      <div className="flex gap-1.5 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+        <button
+          onClick={() => haptic('selection')}
+          className="flex-1 rounded-xl bg-white/10 py-1.5 text-[12px] font-semibold"
+        >
+          Клиенты
+        </button>
+        <Link
+          href="/telegram/m/partners"
+          onClick={() => haptic('selection')}
+          className="flex-1 rounded-xl py-1.5 text-center text-[12px] font-semibold text-white/50"
+        >
+          Партнёры
+        </Link>
+      </div>
+
       {/* Search — no page title per miniapp redesign (2026-04-19) */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
