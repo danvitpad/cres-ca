@@ -1,8 +1,9 @@
 /** --- YAML
  * name: TelegramMiniAppLayout
- * description: Mini App shell — fixed top safe-area, scrollable content, bottom tab bar with 5 sections (Home / Search / Appointments / Bonuses / Profile). Provides Telegram WebApp context. Notifications accessible via Profile menu.
+ * description: Mini App shell — bottom tab bar with 4 sections (Главная / Поиск / Записи / Профиль).
+ *              Финансы и бонусы убраны как отдельная вкладка — баланс отображается в профиле.
  * created: 2026-04-13
- * updated: 2026-04-19
+ * updated: 2026-04-25
  * --- */
 
 'use client';
@@ -10,7 +11,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Search, CalendarDays, Sparkles, User } from 'lucide-react';
+import { Home, Search, CalendarDays, User } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,6 @@ const tabs = [
   { key: 'home', href: '/telegram/home', icon: Home, label: 'Главная' },
   { key: 'search', href: '/telegram/search', icon: Search, label: 'Поиск' },
   { key: 'activity', href: '/telegram/activity', icon: CalendarDays, label: 'Записи' },
-  { key: 'bonuses', href: '/telegram/bonuses', icon: Sparkles, label: 'Бонусы' },
   { key: 'profile', href: '/telegram/profile', icon: User, label: 'Профиль' },
 ] as const;
 

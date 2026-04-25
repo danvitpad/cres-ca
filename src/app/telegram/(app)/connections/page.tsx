@@ -11,9 +11,28 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, Sparkles } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      return parsed.initData ?? null;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function authHeaders(): Record<string, string> {
+  const initData = getInitData();
+  return initData ? { 'x-tg-init-data': initData } : {};
+}
 
 type Tab = 'masters' | 'salons' | 'friends';
 
@@ -68,114 +87,21 @@ export default function MiniAppContactsPage() {
     if (!userId) return;
     (async () => {
       setLoading(true);
-      const supabase = createClient();
-
-      // 1. Masters from client_master_links
-      const mastersPromise = supabase
-        .from('client_master_links')
-        .select(
-          'master_id, masters:masters!client_master_links_master_id_fkey(id, specialization, rating, city, display_name, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(name))',
-        )
-        .eq('profile_id', userId);
-
-      // 2. All follows (for salons + friends)
-      const followsPromise = supabase
-        .from('follows')
-        .select('following_id, created_at')
-        .eq('follower_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(500);
-
-      const [mastersRes, followsRes] = await Promise.all([mastersPromise, followsPromise]);
-
-      // Masters
-      const mastersList: MasterItem[] = (mastersRes.data ?? [])
-        .map((row: { masters: unknown }) => {
-          const m = row.masters as {
-            id?: string;
-            specialization?: string | null;
-            rating?: number | null;
-            city?: string | null;
-            display_name?: string | null;
-            avatar_url?: string | null;
-            profiles?: { full_name?: string | null; avatar_url?: string | null } | null;
-            salon?: { name?: string } | { name?: string }[] | null;
-          } | null;
-          if (!m?.id) return null;
-          const salon = Array.isArray(m.salon) ? m.salon[0] : m.salon;
-          return {
-            id: m.id,
-            name: m.display_name ?? m.profiles?.full_name ?? null,
-            avatar: m.avatar_url ?? m.profiles?.avatar_url ?? null,
-            city: m.city ?? null,
-            rating: m.rating ?? null,
-            specialization: m.specialization ?? null,
-            salonName: salon?.name ?? null,
+      try {
+        const res = await fetch('/api/me/contacts', { headers: authHeaders() });
+        if (res.ok) {
+          const data = await res.json() as {
+            masters: MasterItem[];
+            salons: SalonItem[];
+            friends: FriendItem[];
           };
-        })
-        .filter((x): x is MasterItem => x !== null);
-      setMasters(mastersList);
-
-      // Salons + friends derive from followed profile_ids
-      const followedIds = (followsRes.data ?? []).map((r) => r.following_id).filter(Boolean);
-
-      if (followedIds.length > 0) {
-        const [salonsRes, profilesRes, mutualsRes] = await Promise.all([
-          supabase
-            .from('salons')
-            .select('id, name, logo_url, city, rating, owner_id')
-            .in('owner_id', followedIds),
-          supabase
-            .from('profiles')
-            .select('id, full_name, avatar_url, public_id, slug, role')
-            .in('id', followedIds),
-          // mutual: who also follows back
-          supabase
-            .from('follows')
-            .select('follower_id')
-            .eq('following_id', userId)
-            .in('follower_id', followedIds),
-        ]);
-
-        setSalons(
-          (salonsRes.data ?? []).map((s: { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null }) => ({
-            id: s.id,
-            name: s.name,
-            logo: s.logo_url,
-            city: s.city,
-            rating: s.rating,
-          })),
-        );
-
-        // Friends = mutual follows where profile is client (not master, not salon owner)
-        const salonOwnerIds = new Set((salonsRes.data ?? []).map((s: { owner_id: string }) => s.owner_id));
-        const mutualIds = new Set((mutualsRes.data ?? []).map((r: { follower_id: string }) => r.follower_id));
-
-        // Exclude master profiles — fetch which followed ids are masters
-        const { data: masterProfiles } = await supabase
-          .from('masters')
-          .select('profile_id')
-          .in('profile_id', followedIds);
-        const masterProfileIds = new Set((masterProfiles ?? []).map((m: { profile_id: string }) => m.profile_id));
-
-        const friendsList: FriendItem[] = (profilesRes.data ?? [])
-          .filter((p: { id: string; role: string | null }) =>
-            mutualIds.has(p.id) && !salonOwnerIds.has(p.id) && !masterProfileIds.has(p.id),
-          )
-          .map((p: { id: string; full_name: string | null; avatar_url: string | null; public_id: string | null; slug: string | null }) => ({
-            id: p.id,
-            name: p.full_name,
-            avatar: p.avatar_url,
-            publicId: p.public_id,
-            slug: p.slug,
-          }));
-        setFriends(friendsList);
-      } else {
-        setSalons([]);
-        setFriends([]);
+          setMasters(data.masters ?? []);
+          setSalons(data.salons ?? []);
+          setFriends(data.friends ?? []);
+        }
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     })();
   }, [userId]);
 
@@ -185,7 +111,7 @@ export default function MiniAppContactsPage() {
     (async () => {
       setSlotsLoading(true);
       try {
-        const res = await fetch(`/api/me/followed-slots?profileId=${userId}`);
+        const res = await fetch(`/api/me/followed-slots?profileId=${userId}`, { headers: authHeaders() });
         if (res.ok) {
           const data = await res.json();
           setNextSlots((data.items ?? []).slice(0, 5));

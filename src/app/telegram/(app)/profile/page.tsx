@@ -292,21 +292,16 @@ export default function MiniAppProfilePage() {
           />
         </div>
 
-        {/* Wallet gradient card */}
-        <Link
-          href="/telegram/bonuses"
-          onClick={() => haptic('light')}
-          className="block overflow-hidden rounded-3xl bg-gradient-to-br from-[#a855f7] via-[#7c3aed] to-[#ec4899] p-5 text-white shadow-lg shadow-violet-500/20 active:opacity-90 transition-opacity"
-        >
-          <p className="text-[13px] font-medium text-white/80">Баланс кошелька</p>
+        {/* Wallet card — display only */}
+        <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#a855f7] via-[#7c3aed] to-[#ec4899] p-5 text-white shadow-lg shadow-violet-500/20">
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-white/80">
+            <Wallet className="size-3.5" />
+            Баланс
+          </div>
           <p className="mt-1 text-[32px] font-bold leading-none tracking-tight">
             {balance.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₴
           </p>
-          <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/40 px-3.5 py-1.5 text-[12px] font-semibold">
-            <Wallet className="size-3.5" />
-            Открыть кошелек
-          </div>
-        </Link>
+        </div>
 
         {/* Main menu card */}
         <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">

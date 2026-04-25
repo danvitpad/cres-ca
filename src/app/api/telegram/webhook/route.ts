@@ -1619,31 +1619,52 @@ async function saveFeedbackAndNotify(profileId: string, transcript: string, sour
   const profileName = profile?.full_name ?? 'User';
   const profileRole = profile?.role ?? null;
 
-  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID;
-  const adminId = process.env.SUPERADMIN_TG_CHAT_ID;
-  if (channelId || adminId) {
-    const roleLine = profileRole ? ` (${profileRole})` : '';
-    const icon = source === 'telegram_voice' ? '🎙' : '💬';
-    const text =
-      `${icon} <b>Новый feedback</b>\n` +
-      `<b>От:</b> ${profileName}${roleLine}\n` +
-      `<b>Источник:</b> ${source}\n` +
-      (row?.id ? `<b>ID:</b> <code>${row.id}</code>\n\n` : '\n') +
-      `${transcript}`;
+  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID?.trim();
+  const adminId = process.env.SUPERADMIN_TG_CHAT_ID?.trim();
+  if (!channelId && !adminId) {
+    console.warn('[feedback] No FEEDBACK_TG_CHANNEL_ID or SUPERADMIN_TG_CHAT_ID set — feedback saved to DB only');
+    return;
+  }
 
-    const targets = new Set<string>();
-    if (channelId) targets.add(channelId);
-    if (adminId) targets.add(adminId);
-    await Promise.all(
-      Array.from(targets).map((chat) =>
-        fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+  const roleLine = profileRole ? ` (${escapeHtml(profileRole)})` : '';
+  const icon = source === 'telegram_voice' ? '🎙' : '💬';
+  const text =
+    `${icon} <b>Новый feedback</b>\n` +
+    `<b>От:</b> ${escapeHtml(profileName)}${roleLine}\n` +
+    `<b>Источник:</b> ${source}\n` +
+    (row?.id ? `<b>ID:</b> <code>${row.id}</code>\n\n` : '\n') +
+    escapeHtml(transcript);
+
+  const targets = new Set<string>();
+  if (channelId) targets.add(channelId);
+  if (adminId) targets.add(adminId);
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    console.error('[feedback] TELEGRAM_BOT_TOKEN missing — cannot deliver');
+    return;
+  }
+
+  await Promise.all(
+    Array.from(targets).map(async (chat) => {
+      try {
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML' }),
-        }).catch(() => null),
-      ),
-    );
-  }
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => '');
+          console.error(`[feedback] Telegram sendMessage failed for chat=${chat} status=${res.status}: ${body}`);
+        }
+      } catch (e) {
+        console.error(`[feedback] Telegram sendMessage threw for chat=${chat}:`, e);
+      }
+    }),
+  );
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 async function handleTextFeedback(chatId: number, telegramId: number, text: string, firstName: string) {
