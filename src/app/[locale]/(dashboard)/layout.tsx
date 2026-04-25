@@ -15,7 +15,7 @@ import { AnimatePresence } from 'framer-motion';
 import {
   FreshaHome,
   FreshaCalendar,
-  FreshaTag,
+  FreshaWallet,
   FreshaSmile,
   FreshaBook,
   FreshaMegaphone,
@@ -77,7 +77,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     () => [
       { key: 'today', icon: FreshaHome, href: '/today', label: t('nav.dashboard') },
       { key: 'calendar', icon: FreshaCalendar, href: '/calendar', label: t('nav.calendar') },
-      { key: 'sales', icon: FreshaTag, href: '/finance', label: t('nav.sales') },
+      { key: 'finance', icon: FreshaWallet, href: '/finance', label: t('nav.finance') },
       { key: 'clients', icon: FreshaSmile, href: '/clients', label: t('nav.clients') },
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },

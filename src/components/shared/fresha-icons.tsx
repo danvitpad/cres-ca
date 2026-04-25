@@ -25,12 +25,21 @@ export function FreshaCalendar({ style }: IconProps) {
   );
 }
 
-/** Tag / Sales */
+/** Tag / Sales (legacy — kept for backwards compatibility) */
 export function FreshaTag({ style }: IconProps) {
   return (
     <svg fill="currentColor" viewBox="0 0 32 32" style={style}>
       <path fillRule="evenodd" d="M15.145 2.256a2 2 0 0 1 1.8.55l13.046 13.046a1.99 1.99 0 0 1 0 2.834L18.686 29.99a1.99 1.99 0 0 1-2.834 0L2.806 16.945a2 2 0 0 1-.55-1.8v-.003L4.27 5.054a1 1 0 0 1 .785-.785l10.088-2.012zm.385 1.963L6.1 6.1 4.22 15.53l13.05 13.05 11.31-11.311z" clipRule="evenodd" />
       <path d="M10.5 12a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3" />
+    </svg>
+  );
+}
+
+/** Wallet / Finance */
+export function FreshaWallet({ style }: IconProps) {
+  return (
+    <svg fill="currentColor" viewBox="0 0 32 32" style={style}>
+      <path fillRule="evenodd" d="M5 8a3 3 0 0 1 3-3h18a3 3 0 0 1 3 3v3h-2V8a1 1 0 0 0-1-1H8a1 1 0 0 0 0 2h17a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3zm3 3h17a1 1 0 0 1 1 1v3h-5a3 3 0 1 0 0 6h5v3a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V10.83A3 3 0 0 0 8 11m13 6a1 1 0 0 1 1-1h5v2h-5a1 1 0 0 1-1-1" clipRule="evenodd" />
     </svg>
   );
 }

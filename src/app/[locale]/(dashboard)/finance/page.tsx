@@ -25,7 +25,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer } from '@/lib/dashboard-theme';
 import { StatCard } from '@/components/shared/primitives/stat-card';
-import { PillTabs, type PillTabItem } from '@/components/shared/pill-tabs';
+import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
 import { ExportMenu } from '@/components/finance/export-menu';
@@ -56,13 +56,14 @@ interface PaymentRow {
 interface ManualIncomeRow {
   id: string; amount: number; currency: string; date: string;
   client_name: string | null; service_name: string | null;
-  payment_method: string | null; note: string | null;
+  payment_method: string | null; category: string | null; note: string | null;
   created_at: string;
 }
 
 interface ExpenseRow {
   id: string; date: string; amount: number; currency: string;
   category: string | null; description: string | null; vendor: string | null;
+  payment_method: string | null;
 }
 
 interface AppointmentRow {
@@ -110,13 +111,18 @@ export default function FinancePage() {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
+  const todayIso = () => new Date().toISOString().slice(0, 10);
   const [expAmount, setExpAmount] = useState('');
   const [expCategory, setExpCategory] = useState('Расходники');
   const [expVendor, setExpVendor] = useState('');
+  const [expDate, setExpDate] = useState(todayIso);
+  const [expPaymentMethod, setExpPaymentMethod] = useState('cash');
 
   const [incAmount, setIncAmount] = useState('');
   const [incMethod, setIncMethod] = useState('cash');
   const [incNote, setIncNote] = useState('');
+  const [incDate, setIncDate] = useState(todayIso);
+  const [incCategory, setIncCategory] = useState('Услуга');
 
   const [loading, setLoading] = useState(true);
 
@@ -140,11 +146,11 @@ export default function FinancePage() {
         .eq('master_id', master.id).eq('status', 'completed')
         .gte('created_at', period.start.toISOString()).lte('created_at', period.end.toISOString())
         .order('created_at', { ascending: false }).limit(50),
-      supabase.from('manual_incomes').select('id, amount, currency, date, client_name, service_name, payment_method, note, created_at')
+      supabase.from('manual_incomes').select('id, amount, currency, date, client_name, service_name, payment_method, category, note, created_at')
         .eq('master_id', master.id)
         .gte('date', period.start.toISOString().slice(0, 10)).lte('date', period.end.toISOString().slice(0, 10))
         .order('created_at', { ascending: false }).limit(50),
-      supabase.from('expenses').select('id, date, amount, currency, category, description, vendor')
+      supabase.from('expenses').select('id, date, amount, currency, category, description, vendor, payment_method')
         .eq('master_id', master.id)
         .gte('date', period.start.toISOString().slice(0, 10)).lte('date', period.end.toISOString().slice(0, 10))
         .order('date', { ascending: false }),
@@ -235,19 +241,21 @@ export default function FinancePage() {
       .from('expenses')
       .insert({
         master_id: master.id,
-        date: new Date().toISOString().slice(0, 10),
+        date: expDate || new Date().toISOString().slice(0, 10),
         amount: Number(expAmount),
         currency: 'UAH',
         category: expCategory,
-        description: [expCategory, expVendor].filter(Boolean).join(' — '),
+        description: expVendor || null,
         vendor: expVendor || null,
+        payment_method: expPaymentMethod,
       })
-      .select('id, date, amount, currency, category, description, vendor')
+      .select('id, date, amount, currency, category, description, vendor, payment_method')
       .single();
     if (error) { toast.error(error.message); return; }
     setExpenses(prev => [data as ExpenseRow, ...prev]);
     setExpAmount('');
     setExpVendor('');
+    setExpDate(todayIso());
     toast.success('Расход добавлен');
     loadData();
   }
@@ -271,16 +279,18 @@ export default function FinancePage() {
         master_id: master.id,
         amount: amt,
         currency: 'UAH',
-        date: new Date().toISOString().slice(0, 10),
+        date: incDate || new Date().toISOString().slice(0, 10),
         payment_method: incMethod,
+        category: incCategory || null,
         note: incNote || null,
       })
-      .select('id, amount, currency, date, client_name, service_name, payment_method, note, created_at')
+      .select('id, amount, currency, date, client_name, service_name, payment_method, category, note, created_at')
       .single();
     if (error) { toast.error(error.message); return; }
     setManualIncomes(prev => [data as ManualIncomeRow, ...prev]);
     setIncAmount('');
     setIncNote('');
+    setIncDate(todayIso());
     toast.success('Доход добавлен');
     loadData();
   }
@@ -322,20 +332,34 @@ export default function FinancePage() {
       amount: Number(p.amount),
       title: p.appointment?.service?.name || 'Оплата',
       subtitle: p.appointment?.client?.full_name || '—',
+      paymentMethod: p.payment_method ?? null,
       source: 'payment' as const,
     }));
     const manualRows = manualIncomes.map((m) => ({
       id: `m_${m.id}`,
       date: m.date + 'T00:00:00',
       amount: Number(m.amount),
-      title: m.service_name || m.note || 'Ручной доход',
-      subtitle: m.client_name || '—',
+      title: m.category || m.service_name || 'Ручной доход',
+      subtitle: m.note || m.client_name || '—',
+      paymentMethod: m.payment_method ?? null,
       source: 'manual' as const,
     }));
     return [...paymentRows, ...manualRows].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   }, [payments, manualIncomes]);
+
+  const PAYMENT_LABELS: Record<string, string> = {
+    cash: 'Наличные',
+    card: 'Карта',
+    transfer: 'Перевод',
+    other: 'Другое',
+  };
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+  };
 
   const incomeRowsTotal = useMemo(
     () => incomeRows.reduce((s, r) => s + r.amount, 0),
@@ -428,13 +452,52 @@ export default function FinancePage() {
         </div>
       </motion.div>
 
-      {/* PillTabs — Обзор / Доходы / Расходы */}
-      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
-        <PillTabs
-          items={SUB_TABS}
-          value={activeTab}
-          onChange={(v) => setActiveTab(v as SubTab)}
-        />
+      {/* Tabs — Обзор / Доходы / Расходы (underline style matching dashboard) */}
+      <div style={{
+        marginBottom: 20,
+        display: 'flex',
+        gap: 4,
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        {SUB_TABS.map((tab) => {
+          const isActive = activeTab === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setActiveTab(tab.value as SubTab)}
+              style={{
+                padding: '10px 16px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${isActive ? C.accent : 'transparent'}`,
+                color: isActive ? C.text : C.textSecondary,
+                fontSize: 14,
+                fontWeight: isActive ? 600 : 500,
+                cursor: 'pointer',
+                marginBottom: -1,
+                transition: 'all 150ms ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span style={{
+                  fontSize: 12,
+                  padding: '1px 7px',
+                  borderRadius: 999,
+                  background: isActive ? C.accentSoft : 'transparent',
+                  color: isActive ? C.accent : C.textTertiary,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <AnimatePresence mode="wait">
@@ -566,17 +629,32 @@ export default function FinancePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            {/* Quick-add income */}
+            {/* Quick-add income — Дата / Категория / Комментарий / Тип / Сумма */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              display: 'grid',
+              gridTemplateColumns: '140px 160px 1fr 140px 120px auto',
+              gap: 8,
               padding: '14px 18px', background: C.surface, border: `1px solid ${C.border}`,
               borderRadius: 12, marginBottom: 16,
             }}>
               <input
-                type="number" value={incAmount} onChange={e => setIncAmount(e.target.value)} placeholder="Сумма"
-                style={{ ...inputStyle, width: 120 }}
+                type="date" value={incDate} onChange={e => setIncDate(e.target.value)}
+                style={inputStyle}
                 onFocus={e => e.currentTarget.style.borderColor = C.accent}
                 onBlur={e => e.currentTarget.style.borderColor = C.border as string}
+              />
+              <select value={incCategory} onChange={e => setIncCategory(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="Услуга">Услуга</option>
+                <option value="Чаевые">Чаевые</option>
+                <option value="Возврат">Возврат</option>
+                <option value="Другое">Другое</option>
+              </select>
+              <input
+                value={incNote} onChange={e => setIncNote(e.target.value)} placeholder="Комментарий"
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                onBlur={e => e.currentTarget.style.borderColor = C.border as string}
+                onKeyDown={e => { if (e.key === 'Enter') addManualIncome(); }}
               />
               <select value={incMethod} onChange={e => setIncMethod(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="cash">Наличные</option>
@@ -585,11 +663,10 @@ export default function FinancePage() {
                 <option value="other">Другое</option>
               </select>
               <input
-                value={incNote} onChange={e => setIncNote(e.target.value)} placeholder="Комментарий"
-                style={{ ...inputStyle, flex: 1, minWidth: 140 }}
+                type="number" value={incAmount} onChange={e => setIncAmount(e.target.value)} placeholder="Сумма"
+                style={inputStyle}
                 onFocus={e => e.currentTarget.style.borderColor = C.accent}
                 onBlur={e => e.currentTarget.style.borderColor = C.border as string}
-                onKeyDown={e => { if (e.key === 'Enter') addManualIncome(); }}
               />
               <button
                 onClick={addManualIncome} disabled={!incAmount || !master?.id}
@@ -600,6 +677,7 @@ export default function FinancePage() {
                   cursor: !incAmount || !master?.id ? 'not-allowed' : 'pointer',
                   opacity: !incAmount || !master?.id ? 0.5 : 1,
                   display: 'inline-flex', alignItems: 'center', gap: 4,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <Plus size={14} /> Добавить
@@ -618,15 +696,34 @@ export default function FinancePage() {
               <div style={{
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflowX: 'auto',
               }}>
+                {/* Header row */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '110px 1.4fr 1fr 110px 130px',
+                  minWidth: 620,
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '10px 20px',
+                  borderBottom: `1px solid ${C.border}`,
+                  fontSize: 11, fontWeight: 600, color: C.textTertiary,
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}>
+                  <span>Дата</span>
+                  <span>Категория</span>
+                  <span>Комментарий</span>
+                  <span>Тип</span>
+                  <span style={{ textAlign: 'right' }}>Сумма</span>
+                </div>
                 {incomeRows.map((r, i) => {
-                  const dateStr = format(new Date(r.date), 'd MMM', { locale: dfLocale });
+                  const dateStr = fmtDate(r.date);
+                  const methodLabel = r.paymentMethod ? (PAYMENT_LABELS[r.paymentMethod] ?? r.paymentMethod) : '—';
                   return (
                     <div
                       key={r.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '80px 1.2fr 1fr 140px',
-                        minWidth: 520,
+                        gridTemplateColumns: '110px 1.4fr 1fr 110px 130px',
+                        minWidth: 620,
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px 20px',
@@ -645,6 +742,9 @@ export default function FinancePage() {
                       <span style={{ fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {r.subtitle}
                       </span>
+                      <span style={{ fontSize: 13, color: C.textSecondary }}>
+                        {methodLabel}
+                      </span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: C.success, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         +{r.amount.toLocaleString()} {CURRENCY}
                       </span>
@@ -653,8 +753,8 @@ export default function FinancePage() {
                 })}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '80px 1.2fr 1fr 140px',
-                  minWidth: 520,
+                  gridTemplateColumns: '110px 1.4fr 1fr 110px 130px',
+                  minWidth: 620,
                   gap: 14,
                   padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,
@@ -662,6 +762,7 @@ export default function FinancePage() {
                 }}>
                   <span />
                   <span style={{ color: C.textSecondary }}>Итого</span>
+                  <span />
                   <span />
                   <span style={{ color: C.success, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                     +{incomeRowsTotal.toLocaleString()} {CURRENCY}
@@ -678,15 +779,17 @@ export default function FinancePage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            {/* Quick-add expense */}
+            {/* Quick-add expense — Дата / Категория / Комментарий / Тип / Сумма */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              display: 'grid',
+              gridTemplateColumns: '140px 160px 1fr 140px 120px auto',
+              gap: 8,
               padding: '14px 18px', background: C.surface, border: `1px solid ${C.border}`,
               borderRadius: 12, marginBottom: 16,
             }}>
               <input
-                type="number" value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="Сумма"
-                style={{ ...inputStyle, width: 100 }}
+                type="date" value={expDate} onChange={e => setExpDate(e.target.value)}
+                style={inputStyle}
                 onFocus={e => e.currentTarget.style.borderColor = C.accent}
                 onBlur={e => e.currentTarget.style.borderColor = C.border as string}
               />
@@ -694,11 +797,23 @@ export default function FinancePage() {
                 {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <input
-                value={expVendor} onChange={e => setExpVendor(e.target.value)} placeholder="Описание"
-                style={{ ...inputStyle, flex: 1 }}
+                value={expVendor} onChange={e => setExpVendor(e.target.value)} placeholder="Комментарий"
+                style={inputStyle}
                 onFocus={e => e.currentTarget.style.borderColor = C.accent}
                 onBlur={e => e.currentTarget.style.borderColor = C.border as string}
                 onKeyDown={e => { if (e.key === 'Enter') addExpense(); }}
+              />
+              <select value={expPaymentMethod} onChange={e => setExpPaymentMethod(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                <option value="cash">Наличные</option>
+                <option value="card">Карта</option>
+                <option value="transfer">Перевод</option>
+                <option value="other">Другое</option>
+              </select>
+              <input
+                type="number" value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="Сумма"
+                style={inputStyle}
+                onFocus={e => e.currentTarget.style.borderColor = C.accent}
+                onBlur={e => e.currentTarget.style.borderColor = C.border as string}
               />
               <button
                 onClick={addExpense} disabled={!expAmount || !master?.id}
@@ -709,6 +824,7 @@ export default function FinancePage() {
                   fontSize: 13, fontWeight: 600, fontFamily: FONT,
                   cursor: !expAmount ? 'default' : 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 4,
+                  whiteSpace: 'nowrap',
                 }}
               >
                 <Plus size={14} /> Добавить
@@ -727,21 +843,40 @@ export default function FinancePage() {
               <div style={{
                 background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflowX: 'auto',
               }}>
+                {/* Header row */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '110px 1.4fr 1fr 110px 130px 32px',
+                  minWidth: 660,
+                  alignItems: 'center',
+                  gap: 14,
+                  padding: '10px 20px',
+                  borderBottom: `1px solid ${C.border}`,
+                  fontSize: 11, fontWeight: 600, color: C.textTertiary,
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}>
+                  <span>Дата</span>
+                  <span>Категория</span>
+                  <span>Комментарий</span>
+                  <span>Тип</span>
+                  <span style={{ textAlign: 'right' }}>Сумма</span>
+                  <span />
+                </div>
                 {expenses.map((e, i) => {
                   const rawCategory = e.category || '';
                   const isVoice = rawCategory === 'revenue_voice';
                   let category = e.category || 'Прочее';
                   if (category === 'other' || category === 'Other' || category === 'revenue_voice') category = 'Прочее';
                   const description = e.description || e.vendor || '';
-                  const d = new Date(e.date + 'T00:00:00');
-                  const dateStr = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                  const dateStr = fmtDate(e.date + 'T00:00:00');
+                  const methodLabel = e.payment_method ? (PAYMENT_LABELS[e.payment_method] ?? e.payment_method) : '—';
                   return (
                     <div
                       key={e.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '80px 1.2fr 1fr 140px 32px',
-                        minWidth: 560,
+                        gridTemplateColumns: '110px 1.4fr 1fr 110px 130px 32px',
+                        minWidth: 660,
                         alignItems: 'center',
                         gap: 14,
                         padding: '14px 20px',
@@ -757,6 +892,9 @@ export default function FinancePage() {
                       </span>
                       <span style={{ fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {description || '—'}
+                      </span>
+                      <span style={{ fontSize: 13, color: C.textSecondary }}>
+                        {methodLabel}
                       </span>
                       <span style={{ fontSize: 14, fontWeight: 600, color: C.danger, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         −{Number(e.amount).toLocaleString()} {CURRENCY}
@@ -779,8 +917,8 @@ export default function FinancePage() {
                 })}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '80px 1.2fr 1fr 140px 32px',
-                  minWidth: 560,
+                  gridTemplateColumns: '110px 1.4fr 1fr 110px 130px 32px',
+                  minWidth: 660,
                   gap: 14,
                   padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`, fontSize: 14, fontWeight: 600,
@@ -788,6 +926,7 @@ export default function FinancePage() {
                 }}>
                   <span />
                   <span style={{ color: C.textSecondary }}>Итого</span>
+                  <span />
                   <span />
                   <span style={{ color: C.danger, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                     −{expensesTotal.toLocaleString()} {CURRENCY}
