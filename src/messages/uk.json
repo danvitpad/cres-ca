@@ -408,7 +408,8 @@
         "timesheets": "Табелі",
         "payrun": "Прогони платежів"
       },
-      "finance": "Фінанси"
+      "finance": "Фінанси",
+      "contacts": "Контакти"
     },
     "header": {
       "continueSetup": "Продовжити налаштування",

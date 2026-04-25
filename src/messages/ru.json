@@ -426,7 +426,8 @@
         "timesheets": "Табели",
         "payrun": "Прогоны платежей"
       },
-      "finance": "Финансы"
+      "finance": "Финансы",
+      "contacts": "Контакты"
     },
     "header": {
       "continueSetup": "Продолжить настройку",

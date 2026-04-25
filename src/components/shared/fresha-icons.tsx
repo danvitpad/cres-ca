@@ -44,6 +44,15 @@ export function FreshaWallet({ style }: IconProps) {
   );
 }
 
+/** Person / Contacts */
+export function FreshaPerson({ style }: IconProps) {
+  return (
+    <svg fill="currentColor" viewBox="0 0 32 32" style={style}>
+      <path fillRule="evenodd" d="M16 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12m-4 6a4 4 0 1 1 8 0 4 4 0 0 1-8 0M9 22a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v6h2v-6a5 5 0 0 0-5-5h-8a5 5 0 0 0-5 5v6h2z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 /** Smiley / Clients */
 export function FreshaSmile({ style }: IconProps) {
   return (

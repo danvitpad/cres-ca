@@ -426,7 +426,8 @@
         "timesheets": "Timesheets",
         "payrun": "Payruns"
       },
-      "finance": "Finance"
+      "finance": "Finance",
+      "contacts": "Contacts"
     },
     "header": {
       "continueSetup": "Continue setup",

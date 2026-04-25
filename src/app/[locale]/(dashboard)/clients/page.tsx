@@ -430,7 +430,7 @@ export default function ClientsPage() {
       }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px', margin: 0 }}>
-            Клиенты
+            Контакты
           </h1>
           <p style={{ fontSize: 14, color: C.textTertiary, margin: '4px 0 0' }}>
             Всего {counts.all} · активных {counts.all - counts.overdue}
