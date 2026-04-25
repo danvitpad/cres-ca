@@ -32,7 +32,13 @@ DECLARE
 BEGIN
   SELECT decrypted_secret INTO v_token
   FROM vault.decrypted_secrets
-  WHERE name = 'telegram_bot_token'
+  WHERE name IN ('telegram_bot_token', 'TELEGRAM_BOT_TOKEN', 'tg_bot_token', 'TG_BOT_TOKEN')
+  ORDER BY CASE name
+    WHEN 'telegram_bot_token' THEN 1
+    WHEN 'TELEGRAM_BOT_TOKEN' THEN 2
+    WHEN 'tg_bot_token' THEN 3
+    WHEN 'TG_BOT_TOKEN' THEN 4
+  END
   LIMIT 1;
   RETURN v_token;
 END;
@@ -43,17 +49,21 @@ CREATE OR REPLACE FUNCTION public.send_notification_via_pg_net(p_notification_id
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, extensions
+SET search_path = public, net
 AS $$
 DECLARE
   v_token text;
   v_n record;
   v_text text;
   v_app_url text;
+  v_request_id bigint;
 BEGIN
   v_token := public.get_tg_bot_token();
   IF v_token IS NULL OR v_token = '' THEN
-    RAISE WARNING '[notify] telegram_bot_token missing in vault — cannot dispatch %', p_notification_id;
+    UPDATE public.notifications
+    SET status = 'failed',
+        data = COALESCE(data, '{}'::jsonb) || jsonb_build_object('error', 'no_telegram_bot_token_in_vault')
+    WHERE id = p_notification_id;
     RETURN;
   END IF;
 
@@ -86,7 +96,7 @@ BEGIN
   v_text := '<b>' || COALESCE(v_n.title, '') || '</b>' || E'\n\n' || COALESCE(v_n.body, '');
 
   -- Async fire — pg_net queues the request, response handled in background
-  PERFORM extensions.http_post(
+  SELECT net.http_post(
     url := 'https://api.telegram.org/bot' || v_token || '/sendMessage',
     body := jsonb_build_object(
       'chat_id', v_n.telegram_id,
@@ -101,14 +111,19 @@ BEGIN
     ),
     headers := jsonb_build_object('Content-Type', 'application/json'),
     timeout_milliseconds := 8000
-  );
+  ) INTO v_request_id;
 
   UPDATE public.notifications
-  SET status = 'sent', sent_at = now()
+  SET status = 'sent',
+      sent_at = now(),
+      data = COALESCE(data, '{}'::jsonb) || jsonb_build_object('pg_net_request_id', v_request_id)
   WHERE id = p_notification_id;
 
 EXCEPTION WHEN OTHERS THEN
-  RAISE WARNING '[notify] dispatch failed for %: %', p_notification_id, SQLERRM;
+  UPDATE public.notifications
+  SET status = 'failed',
+      data = COALESCE(data, '{}'::jsonb) || jsonb_build_object('error', SQLERRM)
+  WHERE id = p_notification_id;
 END;
 $$;
 
