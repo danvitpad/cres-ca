@@ -577,8 +577,10 @@ export default function InventoryPage() {
                   Ед. измерения
                 </Label>
                 <Select value={unit} onValueChange={(v) => v && setUnit(v)}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue />
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue>
+                      {(v) => UNIT_OPTIONS.find((o) => o.value === v)?.label ?? v}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {UNIT_OPTIONS.map((u) => (
@@ -610,8 +612,10 @@ export default function InventoryPage() {
                   value={preferredSupplierId ?? '__none__'}
                   onValueChange={(v) => setPreferredSupplierId(v === '__none__' ? null : v)}
                 >
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Не указан" />
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue placeholder="— Не указан —">
+                      {(v) => v === '__none__' ? '— Не указан —' : (suppliers.find((s) => s.id === v)?.name ?? '— Не указан —')}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— Не указан —</SelectItem>

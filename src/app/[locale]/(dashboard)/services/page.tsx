@@ -997,7 +997,9 @@ function ServiceForm({
                       }}
                     >
                       <SelectTrigger className="h-7 w-[92px] text-[11px]" title="Единица расхода (может отличаться от единицы хранения)">
-                        <SelectValue />
+                        <SelectValue>
+                          {(v) => v === '__same__' ? it.unit : v}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__same__">{it.unit}</SelectItem>

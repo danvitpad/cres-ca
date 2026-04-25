@@ -78,7 +78,9 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
   }
 
-  const masterName = (master?.display_name as string | null) ?? mp?.full_name ?? 'Мастер';
+  // Prefer the real profile name; fall back to display_name only if profile is empty.
+  // The legacy display_name is sometimes a generic placeholder ('Мастер') and looks ugly on the PDF.
+  const masterName = (mp?.full_name as string | null) ?? (master?.display_name as string | null) ?? 'Мастер';
   // Hydrate units from inventory_items (so PDF table shows ml / l)
   const rawItems = Array.isArray(order.items) ? (order.items as Array<{ name: string; qty?: number; quantity?: number; price_per_unit?: number; unit_price?: number; unit?: string; inventory_item_id?: string; total?: number }>) : [];
   const itemIds = rawItems.map((r) => r.inventory_item_id).filter(Boolean) as string[];

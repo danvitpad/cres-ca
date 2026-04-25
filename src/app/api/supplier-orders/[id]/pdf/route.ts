@@ -64,8 +64,9 @@ export async function GET(_req: Request, { params }: RouteContext) {
     ? (master as any).profile[0]
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     : (master as any)?.profile;
+  // Prefer profile.full_name; legacy display_name often holds 'Мастер' placeholder.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const masterName = (master as any)?.display_name ?? profile?.full_name ?? 'Мастер';
+  const masterName = profile?.full_name ?? (master as any)?.display_name ?? 'Мастер';
 
   type SupplierShape = { name: string; contact_person: string | null; phone: string | null; email: string | null };
   let supplier: SupplierShape | null = null;
