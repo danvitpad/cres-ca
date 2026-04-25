@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { buildSupplierOrderPDF, type SupplierOrderItem } from '@/lib/pdf/supplier-order-pdf';
 import { getResend } from '@/lib/email/resend';
+import { signSupplierOrderToken } from '@/app/api/supplier-orders/[id]/pdf/route';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -127,30 +128,26 @@ export async function POST(req: Request, { params }: RouteContext) {
   const filename = `order-${order.id.slice(0, 8)}.pdf`;
 
   if (channel === 'telegram') {
-    if (!supplierTg) return NextResponse.json({ error: 'no_supplier_telegram' }, { status: 400 });
-    try {
-      // sendDocument multipart
-      const form = new FormData();
-      form.append('chat_id', String(supplierTg));
-      form.append('caption', summary);
-      form.append('document', new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' }), filename);
+    // Suppliers don't use our app, so the bot can't initiate a chat (Telegram limitation).
+    // Instead we hand the master a t.me/share/url link with a public PDF. The master picks
+    // their existing contact for the supplier and forwards from their own Telegram account.
+    const token = signSupplierOrderToken(order.id);
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${req.headers.get('host') || 'cres-ca.com'}`;
+    const publicPdfUrl = `${baseUrl}/api/supplier-orders/${order.id}/pdf?t=${token}`;
+    const shareText = `${summary}\n\n${publicPdfUrl}`;
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(publicPdfUrl)}&text=${encodeURIComponent(shareText)}`;
 
-      const res = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendDocument`, {
-        method: 'POST',
-        body: form,
-      });
-      const json = await res.json();
-      if (!json.ok) return NextResponse.json({ error: 'tg_send_failed', detail: json.description }, { status: 500 });
-
-      await admin.from('supplier_orders').update({
-        status: 'sent',
-        sent_via: 'telegram',
-        sent_at: new Date().toISOString(),
-      }).eq('id', order.id);
-      return NextResponse.json({ ok: true, channel: 'telegram' });
-    } catch (e) {
-      return NextResponse.json({ error: 'tg_send_error', detail: (e as Error).message }, { status: 500 });
-    }
+    await admin.from('supplier_orders').update({
+      status: 'sent',
+      sent_via: 'telegram_share',
+      sent_at: new Date().toISOString(),
+    }).eq('id', order.id);
+    return NextResponse.json({
+      ok: true,
+      channel: 'telegram',
+      share_url: shareUrl,
+      pdf_url: publicPdfUrl,
+    });
   }
 
   if (channel === 'email') {

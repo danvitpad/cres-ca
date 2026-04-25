@@ -28,7 +28,11 @@ interface ClientRow {
   tier: string | null;
   total_visits: number | null;
   last_visit_at: string | null;
+  email?: string | null;
+  has_telegram?: boolean | null;
 }
+
+type Channel = 'telegram' | 'email' | 'both';
 
 const SEGMENTS: { key: Segment; label: string; desc: string }[] = [
   { key: 'all', label: 'Все', desc: 'Все клиенты с Telegram' },
@@ -48,6 +52,8 @@ export default function CampaignsPage() {
   const [search, setSearch] = useState('');
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [channel, setChannel] = useState<Channel>('telegram');
+  const [scheduleAt, setScheduleAt] = useState<string>(''); // local datetime-input value, '' = send immediately
 
   const load = useCallback(async () => {
     if (!master?.id) return;
@@ -120,24 +126,39 @@ export default function CampaignsPage() {
       toast.error(mode === 'segment' ? 'Пустой сегмент' : 'Выбери получателей');
       return;
     }
+    const scheduledIso = scheduleAt ? new Date(scheduleAt).toISOString() : new Date().toISOString();
+    if (scheduleAt && new Date(scheduleAt).getTime() < Date.now() - 60_000) {
+      toast.error('Время в прошлом — поставь будущую дату или оставь поле пустым для немедленной отправки');
+      return;
+    }
+    const channels: ('telegram' | 'email')[] = channel === 'both' ? ['telegram', 'email'] : [channel];
+    const whenLabel = scheduleAt
+      ? new Date(scheduleAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : 'сейчас';
+    const channelLabel = channel === 'both' ? 'Telegram + Email' : channel === 'email' ? 'Email' : 'Telegram';
     if (!(await confirm({
       title: 'Отправить рассылку?',
-      description: `Сообщение уйдёт ${targets.length} ${targets.length === 1 ? 'клиенту' : 'клиентам'}.`,
-      confirmLabel: 'Отправить',
+      description: `${channelLabel} · ${targets.length} ${targets.length === 1 ? 'клиенту' : 'клиентам'} · ${whenLabel}.`,
+      confirmLabel: scheduleAt ? 'Запланировать' : 'Отправить',
     }))) return;
 
     setSending(true);
     const supabase = createClient();
     const campaignId = crypto.randomUUID().slice(0, 8);
-    const rows = targets
-      .filter((c) => c.profile_id)
-      .map((c) => ({
-        profile_id: c.profile_id as string,
-        channel: 'telegram' as const,
-        title: '📣 Сообщение от мастера',
-        body: `${content.trim()} [camp:${campaignId}]`,
-        scheduled_for: new Date().toISOString(),
-      }));
+    type Row = { profile_id: string; channel: 'telegram' | 'email'; title: string; body: string; scheduled_for: string };
+    const rows: Row[] = [];
+    for (const c of targets) {
+      if (!c.profile_id) continue;
+      for (const ch of channels) {
+        rows.push({
+          profile_id: c.profile_id,
+          channel: ch,
+          title: '📣 Сообщение от мастера',
+          body: `${content.trim()} [camp:${campaignId}]`,
+          scheduled_for: scheduledIso,
+        });
+      }
+    }
     const { error } = await supabase.from('notifications').insert(rows);
     setSending(false);
     if (error) {
@@ -177,8 +198,11 @@ export default function CampaignsPage() {
         status: 'success',
       });
     }
-    toast.success(`Отправлено ${rows.length} сообщений`);
+    toast.success(scheduleAt
+      ? `Запланировано ${rows.length} сообщений`
+      : `Отправлено ${rows.length} сообщений`);
     setContent('');
+    setScheduleAt('');
     if (mode === 'manual') setPickedIds(new Set());
   }
 
@@ -330,10 +354,51 @@ export default function CampaignsPage() {
           </div>
         </div>
 
-        <div className="flex justify-end">
+        {/* Channel + schedule */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-border">
+          <div>
+            <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Канал доставки</Label>
+            <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
+              {(['telegram', 'email', 'both'] as Channel[]).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setChannel(c)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    channel === c
+                      ? 'bg-background shadow-sm text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {c === 'telegram' ? 'Telegram' : c === 'email' ? 'Email' : 'TG + Email'}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {channel === 'telegram' && 'Только клиентам, у кого подключён Telegram-бот.'}
+              {channel === 'email' && 'Только клиентам, у кого есть email в профиле.'}
+              {channel === 'both' && 'TG + Email одновременно — каждый канал получит сообщение.'}
+            </p>
+          </div>
+          <div>
+            <Label className="mb-2 block text-xs uppercase tracking-wide text-muted-foreground">Когда отправить</Label>
+            <Input
+              type="datetime-local"
+              value={scheduleAt}
+              onChange={(e) => setScheduleAt(e.target.value)}
+              className="h-9"
+              placeholder="Сразу"
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Оставь пустым для немедленной отправки. Иначе — точное время доставки.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2">
           <Button onClick={send} disabled={sending || !targets.length}>
             <Send className="mr-1 h-4 w-4" />
-            {sending ? 'Отправка…' : `Отправить (${targets.length})`}
+            {sending ? 'Отправка…' : scheduleAt ? `Запланировать (${targets.length})` : `Отправить (${targets.length})`}
           </Button>
         </div>
       </div>

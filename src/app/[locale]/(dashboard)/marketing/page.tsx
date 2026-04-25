@@ -10,7 +10,6 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
-import { PillTabs } from '@/components/shared/pill-tabs';
 
 import CampaignsPage from './campaigns/page';
 import AutomationPage from './automation/page';
@@ -53,20 +52,50 @@ export default function MarketingPage() {
       minHeight: '100%',
     }}>
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 8 }}>
         <h1 style={{
-          fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px',
+          fontSize: 24, fontWeight: 600, color: C.text, letterSpacing: '-0.3px',
           margin: 0,
         }}>
           Маркетинг
         </h1>
-        <p style={{ fontSize: 14, color: C.textTertiary, margin: '4px 0 0' }}>
-          Рассылки, автоматические напоминания, акции и отзывы
+        <p style={{ fontSize: 13, color: C.textTertiary, margin: '4px 0 0' }}>
+          Рассылки, автоматика, акции, отзывы и рекомендации
         </p>
       </div>
 
-      <div style={{ marginBottom: 24, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <PillTabs items={TABS} value={activeTab} onChange={setTab} />
+      {/* Underline tabs — matches Finance and Catalog styling */}
+      <div style={{
+        marginTop: 16, marginBottom: 24,
+        display: 'flex', gap: 4,
+        borderBottom: `1px solid ${C.border}`,
+        overflowX: 'auto',
+      }}>
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setTab(tab.value)}
+              style={{
+                padding: '10px 16px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${isActive ? C.accent : 'transparent'}`,
+                color: isActive ? C.text : C.textSecondary,
+                fontSize: 14,
+                fontWeight: isActive ? 600 : 500,
+                cursor: 'pointer',
+                marginBottom: -1,
+                transition: 'all 150ms ease',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <motion.div

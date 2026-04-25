@@ -192,14 +192,22 @@ export function SupplierOrdersTab() {
       if (!res.ok) {
         const code = (data as { error?: string }).error || '';
         const detail = (data as { detail?: string }).detail || '';
-        toast.error(code === 'no_supplier_telegram' ? 'У поставщика не указан Telegram ID'
-                  : code === 'no_supplier_email' ? 'У поставщика не указан email'
-                  : code === 'tg_send_failed' ? `Telegram: ${detail || 'не удалось отправить'}`
+        toast.error(code === 'no_supplier_email' ? 'У поставщика не указан email'
                   : code === 'email_send_failed' ? `Email: ${detail || 'не удалось отправить'}`
                   : detail || 'Не удалось отправить');
         return;
       }
-      toast.success(channel === 'telegram' ? 'PDF ушёл в Telegram' : 'Email отправлен');
+      if (channel === 'telegram') {
+        const shareUrl = (data as { share_url?: string }).share_url;
+        if (shareUrl) {
+          window.open(shareUrl, '_blank');
+          toast.success('Telegram открывается — выбери контакт поставщика');
+        } else {
+          toast.success('Готово');
+        }
+      } else {
+        toast.success('Email отправлен');
+      }
       load();
     } finally {
       setSendingId(null);
@@ -300,14 +308,14 @@ export function SupplierOrdersTab() {
                     <>
                       <button
                         onClick={() => sendOrder(o.id, 'telegram')}
-                        disabled={sendingId === o.id || !o.supplier?.telegram_id}
-                        title={o.supplier?.telegram_id ? 'Отправить PDF в Telegram' : 'У поставщика нет Telegram ID'}
+                        disabled={sendingId === o.id}
+                        title="Открыть Telegram — выберешь контакт поставщика и отправишь PDF от своего имени"
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
                           padding: '5px 9px', borderRadius: 6, border: 'none',
-                          background: o.supplier?.telegram_id ? C.accent : C.borderStrong,
+                          background: C.accent,
                           color: '#fff', fontSize: 11, fontWeight: 600,
-                          cursor: o.supplier?.telegram_id ? 'pointer' : 'not-allowed',
+                          cursor: 'pointer',
                           opacity: sendingId === o.id ? 0.5 : 1,
                         }}
                       >

@@ -5,9 +5,26 @@
  * --- */
 
 import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { buildSupplierOrderPDF, type SupplierOrderItem } from '@/lib/pdf/supplier-order-pdf';
+
+/** Compute a deterministic share token for a supplier order. */
+export function signSupplierOrderToken(orderId: string): string {
+  const secret = process.env.PDF_SHARE_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return crypto.createHmac('sha256', secret).update(`supplier-order:${orderId}`).digest('hex').slice(0, 32);
+}
+
+function verifyToken(orderId: string, token: string): boolean {
+  if (!token || token.length !== 32) return false;
+  const expected = signSupplierOrderToken(orderId);
+  try {
+    return crypto.timingSafeEqual(Buffer.from(token, 'utf8'), Buffer.from(expected, 'utf8'));
+  } catch {
+    return false;
+  }
+}
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -24,11 +41,10 @@ interface OrderItemRow {
   total?: number;
 }
 
-export async function GET(_req: Request, { params }: RouteContext) {
+export async function GET(req: Request, { params }: RouteContext) {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const url = new URL(req.url);
+  const token = url.searchParams.get('t');
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,6 +59,23 @@ export async function GET(_req: Request, { params }: RouteContext) {
     .maybeSingle();
   if (!order) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
+  // Auth path 1: signed share token (supplier opens link from TG/email)
+  // Auth path 2: cookie-authenticated owning master (master views from dashboard)
+  if (token) {
+    if (!verifyToken(id, token)) {
+      return NextResponse.json({ error: 'invalid_token' }, { status: 403 });
+    }
+  } else {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    const { data: callerMaster } = await admin
+      .from('masters').select('id').eq('profile_id', user.id).maybeSingle();
+    if (!callerMaster || callerMaster.id !== order.master_id) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    }
+  }
+
   const { data: master } = await admin
     .from('masters')
     .select(`
@@ -51,12 +84,6 @@ export async function GET(_req: Request, { params }: RouteContext) {
     `)
     .eq('id', order.master_id)
     .maybeSingle();
-  // ensure caller is the owning master
-  const { data: callerMaster } = await admin
-    .from('masters').select('id').eq('profile_id', user.id).maybeSingle();
-  if (!callerMaster || callerMaster.id !== order.master_id) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const profile = Array.isArray((master as any)?.profile)
