@@ -19,6 +19,7 @@ import { ThreeDayView } from '@/components/calendar/three-day-view';
 import { MonthView } from '@/components/calendar/month-view';
 import { ListView } from '@/components/calendar/list-view';
 import { NewAppointmentDialog } from '@/components/calendar/new-appointment-dialog';
+import { NewAppointmentDrawer } from '@/components/calendar/new-appointment-drawer';
 import { AppointmentDetailDrawer } from '@/components/calendar/appointment-detail-drawer';
 import { CalendarDrawer } from '@/components/calendar/calendar-drawer';
 import { SettingsDrawerContent } from '@/components/calendar/settings-drawer';
@@ -190,6 +191,8 @@ export default function CalendarPage() {
     clientId?: string;
     serviceId?: string;
   }>({});
+  const [newDrawerOpen, setNewDrawerOpen] = useState(false);
+  const [newDrawerGroup, setNewDrawerGroup] = useState(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<AppointmentData | null>(null);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -355,11 +358,11 @@ export default function CalendarPage() {
   }
 
   function handleSlotClick(time: string) {
-    // Unified flow: slot-click opens the same NewAppointmentDialog as the
-    // top "+ Добавить запись" button, with date+time pre-filled.
+    // Slot-click opens the new Fresha-style right-side drawer.
     const dateStr = currentDate.toISOString().split('T')[0];
     setNewDialogDefaults({ date: dateStr, time });
-    setNewDialogOpen(true);
+    setNewDrawerGroup(false);
+    setNewDrawerOpen(true);
   }
 
   function closeSidePanel() {
@@ -736,7 +739,7 @@ export default function CalendarPage() {
               <div style={{ ...popoverStyleFn(F), top: TS.btnHeight + 4, right: 0, width: 260 }}>
                 <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
                   <button
-                    onClick={() => { setAddDropdownOpen(false); setNewDialogDefaults({}); setNewDialogOpen(true); }}
+                    onClick={() => { setAddDropdownOpen(false); setNewDialogDefaults({}); setNewDrawerGroup(false); setNewDrawerOpen(true); }}
                     style={popoverItemStyle(F,false, hoveredItem === 'add-appt')}
                     onMouseEnter={() => setHoveredItem('add-appt')}
                     onMouseLeave={() => setHoveredItem(null)}
@@ -744,7 +747,15 @@ export default function CalendarPage() {
                     <CalendarPlus style={{ width: 20, height: 20, color: F.textMuted }} />
                     <span>{t('addAppointment')}</span>
                   </button>
-                  {/* Group appointment removed — not yet implemented (TODO: separate flow) */}
+                  <button
+                    onClick={() => { setAddDropdownOpen(false); setNewDialogDefaults({}); setNewDrawerGroup(true); setNewDrawerOpen(true); }}
+                    style={popoverItemStyle(F,false, hoveredItem === 'add-group')}
+                    onMouseEnter={() => setHoveredItem('add-group')}
+                    onMouseLeave={() => setHoveredItem(null)}
+                  >
+                    <Users style={{ width: 20, height: 20, color: F.textMuted }} />
+                    <span>Групповая запись</span>
+                  </button>
                   <button
                     onClick={() => { setAddDropdownOpen(false); setBlockTimeDefault(undefined); setEditingBlock(undefined); setActiveDrawer('blockTime'); }}
                     style={popoverItemStyle(F,false, hoveredItem === 'add-block')}
@@ -1116,6 +1127,26 @@ export default function CalendarPage() {
           <AnalyticsDrawerContent
             masterId={master.id}
             theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+          />
+        </CalendarDrawer>
+
+        {/* New appointment Fresha-style right panel */}
+        <CalendarDrawer
+          open={newDrawerOpen}
+          onClose={() => setNewDrawerOpen(false)}
+          title={newDrawerGroup ? 'Групповая запись' : 'Новая запись'}
+          width={520}
+          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+        >
+          <NewAppointmentDrawer
+            masterId={master.id}
+            defaultDate={newDialogDefaults.date}
+            defaultTime={newDialogDefaults.time}
+            defaultClientId={newDialogDefaults.clientId}
+            defaultServiceId={newDialogDefaults.serviceId}
+            groupMode={newDrawerGroup}
+            onSaved={refetch}
+            onClose={() => setNewDrawerOpen(false)}
           />
         </CalendarDrawer>
 

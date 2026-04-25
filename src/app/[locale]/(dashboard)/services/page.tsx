@@ -735,7 +735,38 @@ function ServiceForm({
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Цвет услуги в календаре определяется категорией.
+          Категория группирует услуги в каталоге. Цвет в календаре выбирается ниже отдельно.
+        </p>
+      </div>
+
+      {/* Color picker — same palette as category swatches */}
+      <div className="space-y-1.5">
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Цвет в календаре
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+            '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
+            '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+          ].map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setColor(c)}
+              style={{
+                width: 32, height: 32, borderRadius: 999,
+                background: c,
+                border: color === c ? '3px solid #fff' : '2px solid transparent',
+                boxShadow: color === c ? `0 0 0 2px ${c}` : '0 0 0 1px rgba(0,0,0,0.1)',
+                cursor: 'pointer',
+              }}
+              aria-label={c}
+            />
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Цвет используется как фон карточки записи в календаре.
         </p>
       </div>
 
