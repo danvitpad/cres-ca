@@ -387,7 +387,17 @@ const SelectItem = forwardRef<HTMLDivElement, SelectItemProps>(
     const hasMounted = useRef(false);
 
     useEffect(() => { hasMounted.current = true; }, []);
-    useEffect(() => { if (typeof children === 'string') selectCtx.labelMap.current.set(value, children); }, [value, children, selectCtx.labelMap]);
+    useEffect(() => {
+      // Extract a flat text label from any children shape (string / number / array of strings+expressions)
+      const flatten = (node: ReactNode): string => {
+        if (node === null || node === undefined || typeof node === 'boolean') return '';
+        if (typeof node === 'string' || typeof node === 'number') return String(node);
+        if (Array.isArray(node)) return node.map(flatten).join('');
+        return '';
+      };
+      const label = flatten(children).trim();
+      if (label) selectCtx.labelMap.current.set(value, label);
+    }, [value, children, selectCtx.labelMap]);
     useEffect(() => { contentCtx?.registerItem(index, internalRef.current); return () => contentCtx?.registerItem(index, null); }, [index, contentCtx]);
 
     const isActive = contentCtx?.activeIndex === index;
