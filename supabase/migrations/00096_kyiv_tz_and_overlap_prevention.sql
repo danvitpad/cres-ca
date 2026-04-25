@@ -10,7 +10,14 @@
  * created: 2026-04-25
  * --- */
 
--- Notification timezone
+-- Drop legacy master-notification triggers — user explicitly doesn't want master to
+-- receive booking lifecycle messages (those are for clients only).
+DROP TRIGGER IF EXISTS trg_notify_master_on_appointment_insert ON public.appointments;
+DROP TRIGGER IF EXISTS trg_notify_master_on_appointment_cancel ON public.appointments;
+DROP FUNCTION IF EXISTS public.notify_master_on_appointment_insert();
+DROP FUNCTION IF EXISTS public.notify_master_on_appointment_cancel();
+
+-- Full-format client notification with master / service / date / time / price / duration in Kyiv tz
 CREATE OR REPLACE FUNCTION public.dispatch_booking_notification(
   event_type text,
   apt_id uuid,
@@ -25,14 +32,23 @@ DECLARE
   v_apt record;
   v_title text;
   v_body text;
-  v_local_dt text;
-  v_old_local_dt text;
+  v_date_label text;
+  v_time_label text;
+  v_old_date_label text;
+  v_old_time_label text;
+  v_price_label text;
+  v_duration_label text;
+  v_currency text;
+  v_dur_h int;
+  v_dur_m int;
 BEGIN
   SELECT
-    a.id, a.starts_at, a.client_id, a.master_id, a.service_id,
+    a.id, a.starts_at, a.ends_at, a.client_id, a.master_id, a.service_id, a.price,
     c.profile_id AS client_profile_id,
     COALESCE(m.display_name, mp.full_name, 'мастер')::text AS master_name,
-    COALESCE(s.name, 'услуга')::text AS service_name
+    COALESCE(s.name, 'услуга')::text AS service_name,
+    s.duration_minutes,
+    s.currency
   INTO v_apt
   FROM appointments a
   LEFT JOIN clients c ON c.id = a.client_id
@@ -43,20 +59,57 @@ BEGIN
 
   IF v_apt.id IS NULL OR v_apt.client_profile_id IS NULL THEN RETURN; END IF;
 
-  v_local_dt := to_char(v_apt.starts_at AT TIME ZONE 'Europe/Kyiv', 'DD.MM HH24:MI');
+  v_date_label := to_char(v_apt.starts_at AT TIME ZONE 'Europe/Kyiv', 'DD ') ||
+    CASE EXTRACT(MONTH FROM v_apt.starts_at AT TIME ZONE 'Europe/Kyiv')::int
+      WHEN 1 THEN 'января' WHEN 2 THEN 'февраля' WHEN 3 THEN 'марта'
+      WHEN 4 THEN 'апреля' WHEN 5 THEN 'мая' WHEN 6 THEN 'июня'
+      WHEN 7 THEN 'июля' WHEN 8 THEN 'августа' WHEN 9 THEN 'сентября'
+      WHEN 10 THEN 'октября' WHEN 11 THEN 'ноября' WHEN 12 THEN 'декабря'
+    END || to_char(v_apt.starts_at AT TIME ZONE 'Europe/Kyiv', ' YYYY') || ' г.';
+  v_time_label := to_char(v_apt.starts_at AT TIME ZONE 'Europe/Kyiv', 'HH24:MI');
+
+  v_currency := COALESCE(v_apt.currency, 'UAH');
+  -- Format price: integers => '1 000', floats => '1 000.50'. Use space as thousands separator.
+  v_price_label := CASE
+    WHEN COALESCE(v_apt.price, 0) = floor(COALESCE(v_apt.price, 0)) THEN
+      regexp_replace(to_char(COALESCE(v_apt.price, 0)::int, 'FM999G999G990'), '[,.]', ' ', 'g')
+    ELSE
+      regexp_replace(to_char(COALESCE(v_apt.price, 0), 'FM999G999G990D00'), ',', ' ', 1)
+  END || ' ' || v_currency;
+
+  v_dur_h := COALESCE(v_apt.duration_minutes, 0) / 60;
+  v_dur_m := COALESCE(v_apt.duration_minutes, 0) % 60;
+  v_duration_label := CASE
+    WHEN v_dur_h > 0 AND v_dur_m > 0 THEN v_dur_h || ' ч ' || v_dur_m || ' мин'
+    WHEN v_dur_h > 0 THEN v_dur_h || ' ч'
+    ELSE COALESCE(v_apt.duration_minutes, 0) || ' мин'
+  END;
 
   IF event_type = 'created' THEN
-    v_title := 'Запись подтверждена';
-    v_body := 'Вы записаны к ' || v_apt.master_name || ' на ' || v_local_dt || '. Услуга: ' || v_apt.service_name || '.';
+    v_title := '📅 Вас записали на визит';
+    v_body :=
+      'Мастер: ' || v_apt.master_name || E'\n' ||
+      'Услуга: ' || v_apt.service_name || E'\n' ||
+      'Дата: ' || v_date_label || E'\n' ||
+      'Время: ' || v_time_label || E'\n' ||
+      'Стоимость: ' || v_price_label || E'\n' ||
+      'Длительность: ' || v_duration_label;
   ELSIF event_type = 'cancelled' THEN
-    v_title := 'Запись отменена';
-    v_body := 'Запись к ' || v_apt.master_name || ' на ' || v_local_dt || ' отменена.';
+    v_title := '❌ Запись отменена';
+    v_body :=
+      'Мастер: ' || v_apt.master_name || E'\n' ||
+      'Услуга: ' || v_apt.service_name || E'\n' ||
+      'Дата: ' || v_date_label || E'\n' ||
+      'Время: ' || v_time_label;
   ELSIF event_type = 'rescheduled' THEN
-    v_old_local_dt := to_char(old_starts_at AT TIME ZONE 'Europe/Kyiv', 'DD.MM HH24:MI');
-    v_title := 'Запись перенесена';
-    v_body := 'Запись к ' || v_apt.master_name
-      || COALESCE(' с ' || v_old_local_dt, '')
-      || ' перенесена на ' || v_local_dt || '.';
+    v_old_date_label := to_char(old_starts_at AT TIME ZONE 'Europe/Kyiv', 'DD.MM');
+    v_old_time_label := to_char(old_starts_at AT TIME ZONE 'Europe/Kyiv', 'HH24:MI');
+    v_title := '🔄 Запись перенесена';
+    v_body :=
+      'Мастер: ' || v_apt.master_name || E'\n' ||
+      'Услуга: ' || v_apt.service_name || E'\n' ||
+      'Было: ' || v_old_date_label || ' ' || v_old_time_label || E'\n' ||
+      'Стало: ' || v_date_label || ', ' || v_time_label;
   ELSE RETURN; END IF;
 
   PERFORM 1 FROM notifications
@@ -75,27 +128,36 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+-- DELETE shows up to client as 'cancelled' (don't expose hard-delete to client UX)
 CREATE OR REPLACE FUNCTION public.trg_booking_deleted()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_client_profile_id uuid;
   v_master_name text;
-  v_local_dt text;
+  v_service_name text;
+  v_date_label text;
+  v_time_label text;
   v_body text;
 BEGIN
   IF OLD.status NOT IN ('booked', 'confirmed') THEN RETURN OLD; END IF;
-  SELECT c.profile_id, COALESCE(m.display_name, mp.full_name, 'мастер')::text
-  INTO v_client_profile_id, v_master_name
+  SELECT c.profile_id, COALESCE(m.display_name, mp.full_name, 'мастер')::text,
+         COALESCE(s.name, 'услуга')::text
+  INTO v_client_profile_id, v_master_name, v_service_name
   FROM clients c
   LEFT JOIN masters m ON m.id = OLD.master_id
   LEFT JOIN profiles mp ON mp.id = m.profile_id
+  LEFT JOIN services s ON s.id = OLD.service_id
   WHERE c.id = OLD.client_id;
   IF v_client_profile_id IS NULL THEN RETURN OLD; END IF;
-  v_local_dt := to_char(OLD.starts_at AT TIME ZONE 'Europe/Kyiv', 'DD.MM HH24:MI');
-  v_body := 'Запись к ' || v_master_name || ' на ' || v_local_dt || ' удалена.';
+  v_date_label := to_char(OLD.starts_at AT TIME ZONE 'Europe/Kyiv', 'DD.MM');
+  v_time_label := to_char(OLD.starts_at AT TIME ZONE 'Europe/Kyiv', 'HH24:MI');
+  v_body := 'Мастер: ' || v_master_name || E'\n' ||
+            'Услуга: ' || v_service_name || E'\n' ||
+            'Дата: ' || v_date_label || E'\n' ||
+            'Время: ' || v_time_label;
   INSERT INTO notifications (profile_id, channel, title, body, data, status, scheduled_for)
-  VALUES (v_client_profile_id, 'telegram', 'Запись удалена', v_body,
-    jsonb_build_object('kind', 'booking_deleted', 'apt_id', OLD.id, 'master_id', OLD.master_id),
+  VALUES (v_client_profile_id, 'telegram', '❌ Запись отменена', v_body,
+    jsonb_build_object('kind', 'booking_cancelled', 'apt_id', OLD.id, 'master_id', OLD.master_id),
     'pending', now());
   RETURN OLD;
 EXCEPTION WHEN OTHERS THEN
@@ -110,7 +172,7 @@ RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
   v_conflict record;
 BEGIN
-  IF NEW.status IN ('cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show') THEN
+  IF NEW.status IN ('cancelled', 'cancelled_by_client', 'no_show', 'completed') THEN
     RETURN NEW;
   END IF;
 
