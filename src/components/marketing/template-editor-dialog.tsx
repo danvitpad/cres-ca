@@ -168,9 +168,17 @@ export function TemplateEditorDialog({
       if (error) { toast.error(error.message); return; }
       toast.success('Сохранено');
     } else {
+      // Older schema requires a `name` column (human-readable label).
+      // Use the spec.title; the kind column is what crons match on.
       const { data, error } = await supabase
         .from('message_templates')
-        .insert({ master_id: masterId, kind: spec.kind, content, is_active: true })
+        .insert({
+          master_id: masterId,
+          kind: spec.kind,
+          name: spec.title,
+          content,
+          is_active: true,
+        })
         .select('id')
         .single();
       setSaving(false);
