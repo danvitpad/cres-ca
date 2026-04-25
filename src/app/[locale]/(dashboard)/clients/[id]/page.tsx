@@ -26,7 +26,6 @@ import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-whee
 import { TagInput } from '@/components/shared/tag-input';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { FileUpload } from '@/components/client-card/file-upload';
-import { ClientDebtBanner } from '@/components/finance/client-debt-banner';
 import { useMaster } from '@/hooks/use-master';
 import { useLocale } from 'next-intl';
 import { ImageComparisonSlider } from '@/components/ui/image-comparison-slider';
@@ -388,50 +387,6 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </Link>
       </motion.div>
 
-      {/* ═══ Tab bar ═══ */}
-      <div style={{
-        display: 'flex', gap: 4,
-        background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
-        padding: 4, marginBottom: 12, overflowX: 'auto',
-      }}>
-        {([
-          { key: 'info', label: t('infoTab') || 'Инфо', icon: FileText },
-          { key: 'history', label: 'История', icon: CalendarIcon },
-          { key: 'notes', label: 'Заметки', icon: Mic },
-          ...(features.healthProfile ? [{ key: 'health' as const, label: 'Здоровье', icon: Heart }] : []),
-          { key: 'analytics', label: 'Аналитика', icon: BarChart3 },
-          ...(features.familyLinks && familyMembers.length > 0 ? [{ key: 'family' as const, label: t('familyTab') || 'Семья', icon: Users }] : []),
-          ...(features.gallery ? [{ key: 'files' as const, label: 'Фото', icon: Camera }] : []),
-        ] as Array<{ key: CardTab; label: string; icon: React.ElementType }>).map((tabItem) => {
-          const Icon = tabItem.icon;
-          const active = tab === tabItem.key;
-          return (
-            <button
-              key={tabItem.key}
-              onClick={() => setTab(tabItem.key)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '8px 14px', borderRadius: 8,
-                border: 'none', cursor: 'pointer',
-                background: active ? C.accent : 'transparent',
-                color: active ? '#fff' : C.textSecondary,
-                fontSize: 13, fontWeight: 550, whiteSpace: 'nowrap',
-                fontFamily: FONT,
-                transition: 'background 0.15s',
-              }}
-            >
-              <Icon size={13} />
-              {tabItem.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ═══ Debt banner ═══ */}
-      {master?.id && (
-        <ClientDebtBanner clientId={id} masterId={master.id} locale={locale} />
-      )}
-
       {/* ═══ Blacklist warning ═══ */}
       {blacklist?.warning && (
         <div style={{
@@ -449,61 +404,25 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* ═══ Tab content — only active section renders ═══ */}
-      {tab === 'info' && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <InfoTab client={client} onSaved={loadClient} C={C} />
-        </motion.section>
-      )}
+      {/* ═══ AI Chat — single point of input for everything master knows about client ═══ */}
+      <ClientAiChat client={client} clientId={id} onApplied={loadClient} C={C} />
 
-      {tab === 'notes' && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><Mic size={15} style={{ color: C.accent }} />Заметки</h3>
-          <NotesTab client={client} clientId={id} onSaved={loadClient} C={C} />
-        </motion.section>
-      )}
+      {/* ═══ Personal data (read-only) + Analytics + Health summary ═══ */}
+      <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
+        <InfoTab client={client} onSaved={loadClient} C={C} />
+      </motion.section>
 
-      {tab === 'health' && features.healthProfile && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><Heart size={15} style={{ color: C.danger }} />Медицинское и согласия</h3>
-          <HealthTab client={client} intake={intake} vertical={vertical} onSaved={loadClient} C={C} />
-        </motion.section>
-      )}
-
-      {tab === 'history' && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><CalendarIcon size={15} style={{ color: C.accent }} />История посещений</h3>
-          <HistoryTab appointments={appointments} clientId={id} C={C} />
-          {reviews.length > 0 && (
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-              <h3 style={sectionTitle}><Star size={15} style={{ color: C.warning }} />Отзывы клиента</h3>
-              <ReviewsTab reviews={reviews} C={C} />
-            </div>
-          )}
-        </motion.section>
-      )}
-
-      {tab === 'analytics' && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><BarChart3 size={15} style={{ color: C.accent }} />Аналитика</h3>
-          <AnalyticsTab client={client} appointments={appointments} C={C} />
-        </motion.section>
-      )}
-
-      {tab === 'family' && features.familyLinks && familyMembers.length > 0 && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><Users size={15} style={{ color: C.accent }} />{t('familyTab')}</h3>
-          <FamilyTab members={familyMembers} C={C} />
-        </motion.section>
-      )}
-
-      {tab === 'files' && features.gallery && (
-        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={sectionStyle}>
-          <h3 style={sectionTitle}><Camera size={15} style={{ color: C.accent }} />Файлы и фото до/после</h3>
-          <FileUpload clientId={id} />
-          <BeforeAfterSection clientId={id} C={C} />
-        </motion.section>
-      )}
+      {/* ═══ Visit history — collapsible, read-only ═══ */}
+      <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} style={{ ...sectionStyle, marginTop: 12 }}>
+        <h3 style={sectionTitle}><CalendarIcon size={15} style={{ color: C.accent }} />История посещений</h3>
+        <HistoryTab appointments={appointments} clientId={id} C={C} />
+        {reviews.length > 0 && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            <h3 style={sectionTitle}><Star size={15} style={{ color: C.warning }} />Отзывы клиента</h3>
+            <ReviewsTab reviews={reviews} C={C} />
+          </div>
+        )}
+      </motion.section>
 
       {/* ═══ Blacklist action (bottom) ═══ */}
       {!client.is_blacklisted && (
@@ -515,24 +434,154 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   );
 }
 
-/* ────────────────────── Info Tab ────────────────────── */
+/* ────────────────────── AI Chat (single-input for client info) ────────────────────── */
 
-function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => void; C: PageTheme }) {
-  const t = useTranslations('clients');
-  const tc = useTranslations('common');
-  const [savingNotes, setSavingNotes] = useState(false);
-  const [notes, setNotes] = useState(client.notes ?? '');
+function ClientAiChat({
+  client, clientId, onApplied, C,
+}: {
+  client: ClientDetail;
+  clientId: string;
+  onApplied: () => void;
+  C: PageTheme;
+}) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [lastSummary, setLastSummary] = useState<string | null>(null);
 
-  async function saveNotes() {
-    setSavingNotes(true);
-    const supabase = createClient();
-    const { error } = await supabase.from('clients').update({ notes: notes || null }).eq('id', client.id);
-    setSavingNotes(false);
-    if (error) toast.error(error.message);
-    else { toast.success(tc('success')); onSaved(); }
+  async function send() {
+    const value = text.trim();
+    if (!value || busy) return;
+    setBusy(true);
+    setLastSummary(null);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/parse-note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: value }),
+      });
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error || 'AI не смог обработать');
+        return;
+      }
+      const d = data as { applied: boolean; summary?: string };
+      setLastSummary(d.summary ?? null);
+      if (d.applied) {
+        setText('');
+        toast.success(d.summary || 'Сохранено');
+        onApplied();
+      } else {
+        toast(d.summary || 'Ничего не сохранено', { icon: '⚠️' });
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Ошибка');
+    } finally {
+      setBusy(false);
+    }
   }
 
-  const notesDirty = notes !== (client.notes ?? '');
+  const recent = (client.notes ?? '').split('\n').filter(Boolean).slice(-3).reverse();
+
+  return (
+    <div
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: 16,
+        marginBottom: 12,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Mic size={15} style={{ color: C.accent }} />
+        <h3 style={{ fontSize: 13, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.1px' }}>
+          Запиши в чат всё что знаешь о клиенте
+        </h3>
+      </div>
+      <p style={{ fontSize: 12, color: C.textTertiary, margin: '0 0 12px', lineHeight: 1.5 }}>
+        Просто пиши обычным языком — питомцы, дети, аллергии, привычки, дата рождения. AI сам разнесёт по нужным полям.
+      </p>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder="Например: «У клиента собака пудель Бакс, аллергия на латекс, двое детей — Маша и Петя»"
+          rows={3}
+          disabled={busy}
+          style={{
+            flex: 1,
+            padding: '10px 12px',
+            borderRadius: 10,
+            border: `1px solid ${C.border}`,
+            background: C.surfaceElevated,
+            color: C.text,
+            fontSize: 13,
+            fontFamily: 'inherit',
+            resize: 'vertical',
+            minHeight: 64,
+            outline: 'none',
+          }}
+          onFocus={(e) => e.currentTarget.style.borderColor = C.accent}
+          onBlur={(e) => e.currentTarget.style.borderColor = C.border}
+        />
+        <button
+          onClick={send}
+          disabled={busy || text.trim().length < 2}
+          style={{
+            padding: '10px 18px',
+            borderRadius: 10,
+            border: 'none',
+            background: C.accent,
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: busy || text.trim().length < 2 ? 'not-allowed' : 'pointer',
+            opacity: busy || text.trim().length < 2 ? 0.5 : 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {busy ? '…' : 'Записать'}
+        </button>
+      </div>
+
+      {lastSummary && (
+        <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: C.accentSoft, color: C.accent, fontSize: 12 }}>
+          {lastSummary}
+        </div>
+      )}
+
+      {recent.length > 0 && (
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.04em', textTransform: 'uppercase', margin: '0 0 8px' }}>
+            Последние записи
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recent.map((line, i) => (
+              <div key={i} style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5 }}>
+                {line}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ────────────────────── Info Tab ────────────────────── */
+
+function InfoTab({ client, C }: { client: ClientDetail; onSaved: () => void; C: PageTheme }) {
+  const t = useTranslations('clients');
   const dobLabel = client.date_of_birth
     ? new Date(client.date_of_birth).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
     : '—';
@@ -619,45 +668,22 @@ function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => 
         </div>
       </div>
 
-      {/* RIGHT — Master's private notes + health summary */}
+      {/* RIGHT — Master's notes (saved by AI from chat) + health summary */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={cardStyle(C)}>
           <h3 style={sectionTitle}>
-            <Mic size={15} style={{ color: C.accent }} />
-            Мои заметки
+            <FileText size={15} style={{ color: C.accent }} />
+            Заметки
           </h3>
-          <p style={{ fontSize: 11, color: C.textTertiary, margin: '0 0 10px', lineHeight: 1.5 }}>
-            Личные заметки про клиента (питомец, дети, предпочтения). Видны только тебе.
-          </p>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Например: собака — пудель, зовут Бакс. Двое детей. Предпочитает чай зелёный."
-            rows={6}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              borderRadius: 10,
-              border: `1px solid ${C.border}`,
-              background: C.surfaceElevated,
-              color: C.text,
-              fontSize: 13,
-              fontFamily: 'inherit',
-              resize: 'vertical',
-              minHeight: 100,
-              outline: 'none',
-            }}
-            onFocus={(e) => e.currentTarget.style.borderColor = C.accent}
-            onBlur={(e) => e.currentTarget.style.borderColor = C.border}
-          />
-          <Button
-            onClick={saveNotes}
-            disabled={savingNotes || !notesDirty}
-            style={{ marginTop: 10, alignSelf: 'flex-start' }}
-            size="sm"
-          >
-            {savingNotes ? tc('loading') : tc('save')}
-          </Button>
+          {client.notes ? (
+            <div style={{ fontSize: 13, color: C.text, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+              {client.notes}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>
+              Пока пусто. Используй чат сверху чтобы записать любую инфу про клиента — AI сам разнесёт.
+            </p>
+          )}
         </div>
 
         <div style={cardStyle(C)}>
@@ -691,7 +717,7 @@ function InfoTab({ client, onSaved, C }: { client: ClientDetail; onSaved: () => 
             </div>
           ) : (
             <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>
-              Клиент не указал данных о здоровье. {isLinked && 'Он может заполнить их в своём профиле.'}
+              Если у клиента есть аллергии или противопоказания — упомяни их в чате сверху.
             </p>
           )}
         </div>
