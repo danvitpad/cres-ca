@@ -17,12 +17,45 @@ interface Offset {
   minutes: number;
 }
 
+interface DraftInput {
+  days: string;
+  hours: string;
+  minutes: string;
+}
+
 function minutesToOffset(m: number): Offset {
   const days = Math.floor(m / (24 * 60));
   const rem = m - days * 24 * 60;
   const hours = Math.floor(rem / 60);
   const minutes = rem - hours * 60;
   return { days, hours, minutes };
+}
+
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      return parsed.initData ?? null;
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
+function authHeaders(): Record<string, string> {
+  const initData = getInitData();
+  return initData ? { 'x-tg-init-data': initData } : {};
+}
+
+function clampNumber(s: string, min: number, max: number): number {
+  if (s === '') return 0;
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(min, Math.min(max, n));
 }
 
 function offsetToMinutes(o: Offset): number {
@@ -45,14 +78,14 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
   const [offsets, setOffsets] = useState<Offset[]>([]);
   const [quietStart, setQuietStart] = useState<string>('');
   const [quietEnd, setQuietEnd] = useState<string>('');
-  const [draft, setDraft] = useState<Offset>({ days: 0, hours: 2, minutes: 0 });
+  const [draft, setDraft] = useState<DraftInput>({ days: '', hours: '2', minutes: '' });
 
   const isDark = theme === 'dark';
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/me/notification-preferences');
+        const res = await fetch('/api/me/notification-preferences', { headers: authHeaders() });
         if (res.ok) {
           const data = (await res.json()) as {
             offsets_minutes: number[];
@@ -72,7 +105,12 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
   }, []);
 
   const addOffset = () => {
-    const mins = offsetToMinutes(draft);
+    const o: Offset = {
+      days: clampNumber(draft.days, 0, 30),
+      hours: clampNumber(draft.hours, 0, 23),
+      minutes: clampNumber(draft.minutes, 0, 59),
+    };
+    const mins = offsetToMinutes(o);
     if (mins <= 0) {
       toast.error('Укажи хотя бы 1 минуту');
       return;
@@ -81,14 +119,14 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
       toast.error('Максимум 10 напоминаний');
       return;
     }
-    if (offsets.some((o) => offsetToMinutes(o) === mins)) {
+    if (offsets.some((existing) => offsetToMinutes(existing) === mins)) {
       toast.error('Такое напоминание уже есть');
       return;
     }
     setOffsets((prev) =>
-      [...prev, draft].sort((a, b) => offsetToMinutes(b) - offsetToMinutes(a)),
+      [...prev, o].sort((a, b) => offsetToMinutes(b) - offsetToMinutes(a)),
     );
-    setDraft({ days: 0, hours: 2, minutes: 0 });
+    setDraft({ days: '', hours: '', minutes: '' });
   };
 
   const removeOffset = (idx: number) => {
@@ -104,7 +142,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
     try {
       const res = await fetch('/api/me/notification-preferences', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           offsets_minutes: offsets.map(offsetToMinutes),
           enabled,
@@ -118,6 +156,8 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
         const j = await res.json().catch(() => ({}));
         toast.error(j.error ?? 'Ошибка');
       }
+    } catch (e) {
+      toast.error((e as Error)?.message ?? 'Сетевая ошибка');
     } finally {
       setSaving(false);
     }
@@ -202,10 +242,12 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
               <div>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min={0}
                   max={30}
+                  placeholder="0"
                   value={draft.days}
-                  onChange={(e) => setDraft({ ...draft, days: Math.max(0, Math.min(30, Number(e.target.value) || 0)) })}
+                  onChange={(e) => setDraft({ ...draft, days: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })}
                   className={inputCls}
                 />
                 <p className={`mt-1 text-center text-[10px] ${textMuted}`}>дней</p>
@@ -213,10 +255,12 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
               <div>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min={0}
                   max={23}
+                  placeholder="0"
                   value={draft.hours}
-                  onChange={(e) => setDraft({ ...draft, hours: Math.max(0, Math.min(23, Number(e.target.value) || 0)) })}
+                  onChange={(e) => setDraft({ ...draft, hours: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })}
                   className={inputCls}
                 />
                 <p className={`mt-1 text-center text-[10px] ${textMuted}`}>часов</p>
@@ -224,11 +268,12 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
               <div>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min={0}
                   max={59}
-                  step={5}
+                  placeholder="0"
                   value={draft.minutes}
-                  onChange={(e) => setDraft({ ...draft, minutes: Math.max(0, Math.min(59, Number(e.target.value) || 0)) })}
+                  onChange={(e) => setDraft({ ...draft, minutes: e.target.value.replace(/[^0-9]/g, '').slice(0, 2) })}
                   className={inputCls}
                 />
                 <p className={`mt-1 text-center text-[10px] ${textMuted}`}>минут</p>

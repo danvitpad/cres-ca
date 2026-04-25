@@ -216,32 +216,38 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     return;
   }
 
-  // Voice feedback path — available to ANY profile (client, master, salon_admin).
-  // We first transcribe, then decide: is this a feedback message, or an AI command?
+  // Pre-load master record (needed both for feedback routing and AI intent path)
+  const { data: master } = await supabase
+    .from('masters')
+    .select('id')
+    .eq('profile_id', session.profile_id)
+    .maybeSingle();
+
+  // Voice feedback path — for clients voice is always feedback (they have no AI assistant).
+  // For masters: explicit feedback keywords route to feedback, else master AI intent path.
   try {
     const { voiceToText } = await import('@/lib/ai/router');
     const { data: transcript } = await voiceToText({ audioBase64: base64, mimeType });
     const t = (transcript ?? '').trim();
-    if (isFeedbackTranscript(t)) {
+
+    const isFeedback = isFeedbackTranscript(t);
+    // Clients (no master record) → all voice is feedback by default if transcript non-empty
+    if (isFeedback || (!master && t.length >= 4)) {
+      if (t.length < 4) {
+        await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуй сказать чётче или напиши текстом командой /feedback');
+        return;
+      }
       await saveFeedbackAndNotify(session.profile_id, t, 'telegram_voice');
       await sendMessage(chatId, FEEDBACK_THANKS);
       return;
     }
-    // Store transcript on the scope so we do not re-transcribe in intent parsing
-    (base64 as unknown as string) && void 0; // no-op, keeps base64 live for fallthrough
   } catch (err) {
     console.warn('[voice] pre-transcription failed, falling back to intent path:', err);
   }
 
   // Not feedback → master-only AI intent path
-  const { data: master } = await supabase
-    .from('masters')
-    .select('id')
-    .eq('profile_id', session.profile_id)
-    .single();
-
   if (!master) {
-    await sendMessage(chatId, '❌ Голосовой ассистент (создание записей, расходов, напоминаний) доступен только мастерам и салонам. Для отзыва скажи «обратная связь».');
+    await sendMessage(chatId, '❌ Не удалось обработать голосовое. Если это отзыв — повтори голосом или напиши /feedback <текст>.');
     return;
   }
 
@@ -1677,9 +1683,13 @@ async function handleTextFeedback(chatId: number, telegramId: number, text: stri
 function isFeedbackTranscript(transcript: string): boolean {
   const t = transcript.toLowerCase();
   return (
-    t.includes('обратн') && (t.includes('связ') || t.includes('отзыв'))
+    t.includes('обратн')                                    // обратная связь / обратный отзыв
     || t.includes('фидбэк') || t.includes('фидбек') || t.includes('feedback')
-    || t.startsWith('отзыв')
+    || t.includes('отзыв')                                  // отзыв / отзывы / отзыва
+    || t.includes('пожелан')                                // пожелание / пожелания
+    || t.includes('предложен')                              // предложение
+    || t.includes('жалоб')                                  // жалоба
+    || /^(привет|здравств).{0,40}(хочу|хотел|хотіл).{0,30}(сказать|поделить|сообщ|оставить)/i.test(t)
   );
 }
 

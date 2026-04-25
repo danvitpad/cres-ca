@@ -20,12 +20,8 @@ import {
   AlertTriangle,
   RefreshCw,
   Ban,
-  Repeat,
-  History,
-  Users,
   Pencil,
   MessageSquare,
-  FileText,
   Shield,
 } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
@@ -772,66 +768,6 @@ export function AppointmentDetailDrawer({
                     <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, color: C.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                       Быстрые действия
                     </div>
-                    {[
-                      { icon: MessageSquare, label: 'Добавить заметку' },
-                      { icon: FileText, label: 'Добавить анкету' },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => setOptionsOpen(false)}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          borderRadius: 8,
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          color: C.text,
-                          fontSize: 14,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.controlBg; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      >
-                        <item.icon style={{ width: 16, height: 16, color: C.textMuted }} />
-                        {item.label}
-                      </button>
-                    ))}
-                    <div style={{ height: 1, backgroundColor: C.border, margin: '4px 0' }} />
-                    {[
-                      { icon: History, label: 'Посмотреть историю записи' },
-                      { icon: Repeat, label: 'Включить повторение' },
-                      { icon: Users, label: 'Добавить в групповую запись' },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => setOptionsOpen(false)}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          borderRadius: 8,
-                          border: 'none',
-                          backgroundColor: 'transparent',
-                          color: C.text,
-                          fontSize: 14,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.controlBg; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      >
-                        <item.icon style={{ width: 16, height: 16, color: C.textMuted }} />
-                        {item.label}
-                      </button>
-                    ))}
                     <button
                       type="button"
                       onClick={() => { setOptionsOpen(false); onRepeat(appointment); onClose(); }}
