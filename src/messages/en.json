@@ -425,7 +425,8 @@
         "shifts": "Shift schedule",
         "timesheets": "Timesheets",
         "payrun": "Payruns"
-      }
+      },
+      "finance": "Finance"
     },
     "header": {
       "continueSetup": "Continue setup",
