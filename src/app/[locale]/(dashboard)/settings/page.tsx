@@ -35,7 +35,9 @@ import {
   KeyRound,
   Briefcase,
   MessageSquareHeart,
+  Settings as SettingsCogIcon,
 } from 'lucide-react';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 import { DEFAULT_FEATURES, type VerticalFeatures } from '@/lib/verticals/feature-flags';
 import {
   Accordion,
@@ -107,14 +109,7 @@ export default function SettingsPage() {
 
   if (activeSection) {
     return (
-      <div className="space-y-5" style={{ padding: '32px 40px', maxWidth: 1024 }}>
-        <button
-          onClick={() => setActiveSection(null)}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          {t('editProfile')}
-        </button>
+      <SettingsSectionShell onBack={() => setActiveSection(null)} backLabel={t('settingsTitle') || 'Настройки'}>
         {activeSection === 'profile' && <ProfileTab master={master} userId={userId!} onSaved={refetch} />}
         {activeSection === 'vertical' && <VerticalTab master={master} onSaved={refetch} />}
         {activeSection === 'features' && <FeaturesTab master={master} onSaved={refetch} />}
@@ -124,44 +119,111 @@ export default function SettingsPage() {
         {activeSection === 'invite' && <InviteLinkTab master={master} />}
         {activeSection === 'policies' && <PoliciesTab master={master} onSaved={refetch} />}
         {activeSection === 'notifications' && <NotificationsTab master={master} onSaved={refetch} />}
-      </div>
+      </SettingsSectionShell>
     );
   }
 
-  return (
-    <div className="space-y-5" style={{ padding: '32px 40px', maxWidth: 1024 }}>
-      <div>
-        <h2 className="text-xl font-bold">{t('settingsTitle') || 'Настройки'}</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">{t('settingsDesc') || 'Управляйте настройками рабочего пространства'}</p>
-      </div>
+  return <SettingsHomeView sections={settingSections} onSelect={setActiveSection} />;
+}
 
-      {/* Fresha-style card grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {settingSections.map((section, i) => {
+/* ── Help-styled outer shell for the settings home page ─────────────── */
+function SettingsHomeView({
+  sections,
+  onSelect,
+}: {
+  sections: Array<{
+    key: string;
+    icon: typeof UserCircle;
+    title: string;
+    desc: string;
+    href?: string;
+  }>;
+  onSelect: (key: string) => void;
+}) {
+  const { C, mounted } = usePageTheme();
+  if (!mounted) return null;
+
+  return (
+    <div style={{
+      ...pageContainer,
+      color: C.text,
+      background: C.bg,
+      minHeight: '100%',
+      paddingBottom: 96,
+      fontFamily: FONT,
+      fontFeatureSettings: FONT_FEATURES,
+    }}>
+      {/* Hero — same shape as /help */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+        style={{
+          background: C.accentSoft,
+          border: `1px solid ${C.aiBorder}`,
+          borderRadius: 16,
+          padding: '28px 32px',
+          marginBottom: 28,
+        }}
+      >
+        <h1 style={{
+          fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px',
+          margin: 0, display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <SettingsCogIcon size={24} style={{ color: C.accent }} />
+          Настройки
+        </h1>
+        <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.5 }}>
+          Здесь собрано всё про твой аккаунт, рабочее пространство и подписку. Каждый раздел — отдельный экран с подробными настройками.
+        </p>
+      </motion.div>
+
+      {/* Grid — same minmax(320, 1fr) as /help */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+        gap: 14,
+      }}>
+        {sections.map((section, i) => {
           const Icon = section.icon;
-          const cardInner = (
-            <>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                <Icon className="h-5 w-5" />
+          const inner = (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: C.accentSoft, color: C.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Icon size={16} />
               </div>
-              <div>
-                <h3 className="font-semibold text-sm">{section.title}</h3>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{section.desc}</p>
+              <div style={{ minWidth: 0, textAlign: 'left' }}>
+                <div style={{ fontSize: 14, fontWeight: 650, color: C.text, lineHeight: 1.2 }}>{section.title}</div>
+                <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 3 }}>{section.desc}</div>
               </div>
-            </>
+            </div>
           );
-          const cardCls =
-            'flex flex-col items-start gap-3 rounded-2xl border bg-card p-5 text-left shadow-sm transition-all hover:shadow-md hover:border-primary/20 hover:-translate-y-0.5 group';
+          const cardStyle: React.CSSProperties = {
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 14,
+            padding: 18,
+            cursor: 'pointer',
+            textDecoration: 'none',
+            display: 'block',
+            transition: 'border-color 0.15s, transform 0.15s',
+          };
           if (section.href) {
             return (
               <motion.div
                 key={section.key}
-                initial={{ opacity: 0, y: 12 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.03 }}
               >
-                <Link href={section.href} className={cardCls}>
-                  {cardInner}
+                <Link href={section.href} style={cardStyle}>
+                  {inner}
                 </Link>
               </motion.div>
             );
@@ -169,17 +231,65 @@ export default function SettingsPage() {
           return (
             <motion.button
               key={section.key}
-              initial={{ opacity: 0, y: 12 }}
+              type="button"
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              onClick={() => setActiveSection(section.key)}
-              className={cardCls}
+              transition={{ delay: i * 0.03 }}
+              onClick={() => onSelect(section.key)}
+              style={{ ...cardStyle, width: '100%', font: 'inherit' }}
             >
-              {cardInner}
+              {inner}
             </motion.button>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ── Section page wrapper (back button + centered max-width) ───────── */
+function SettingsSectionShell({
+  onBack,
+  backLabel,
+  children,
+}: {
+  onBack: () => void;
+  backLabel: string;
+  children: React.ReactNode;
+}) {
+  const { C, mounted } = usePageTheme();
+  if (!mounted) return null;
+
+  return (
+    <div style={{
+      ...pageContainer,
+      color: C.text,
+      background: C.bg,
+      minHeight: '100%',
+      paddingBottom: 96,
+      fontFamily: FONT,
+      fontFeatureSettings: FONT_FEATURES,
+    }}>
+      <button
+        onClick={onBack}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: C.textSecondary,
+          fontSize: 13,
+          cursor: 'pointer',
+          padding: 0,
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontFamily: FONT,
+        }}
+      >
+        <ChevronLeft size={14} />
+        {backLabel}
+      </button>
+      <div className="space-y-5">{children}</div>
     </div>
   );
 }
