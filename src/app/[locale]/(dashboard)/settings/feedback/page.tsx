@@ -11,7 +11,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { MessageSquareHeart, Send, CheckCircle2 } from 'lucide-react';
-import { VoiceRecordButton } from '@/components/feedback/voice-record-button';
 
 export default function FeedbackPage() {
   const [text, setText] = useState('');
@@ -111,20 +110,9 @@ export default function FeedbackPage() {
       </div>
 
       <div className="rounded-2xl border border-border bg-muted/20 p-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">или голосом</p>
-        <p className="mt-1.5 mb-3 text-sm text-muted-foreground">
-          Нажмите и расскажите — AI расшифрует и очистит от слов-паразитов.
-        </p>
-        <VoiceRecordButton
-          source="web_settings"
-          onSent={() => {
-            setDone(true);
-            toast.success('Голосовой отзыв отправлен');
-          }}
-          onError={(err) => toast.error(err)}
-        />
-        <p className="mt-3 text-xs text-muted-foreground">
-          Или через Telegram-бота: команда <code className="rounded bg-background px-1.5 py-0.5">/feedback</code> или голосовое со словом «обратная связь».
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">или голосом — в Telegram</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Открой нашего <a href="https://t.me/cres_ca_bot" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">Telegram-бота</a> и отправь команду <code className="rounded bg-background px-1.5 py-0.5">/feedback</code> или просто голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
         </p>
       </div>
     </div>

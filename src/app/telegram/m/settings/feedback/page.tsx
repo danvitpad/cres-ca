@@ -10,8 +10,6 @@ import { useState } from 'react';
 import { PaperPlaneTilt, Heart } from '@phosphor-icons/react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
-import { VoiceRecordButton } from '@/components/feedback/voice-record-button';
-import { toast } from 'sonner';
 
 const MAX = 2000;
 
@@ -97,24 +95,9 @@ export default function MiniAppFeedbackPage() {
         )}
       </button>
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">или голосом</p>
-        <p className="mt-1.5 mb-3 text-[12px] leading-relaxed text-white/70">
-          Нажми и расскажи что хочется улучшить. AI расшифрует и очистит.
-        </p>
-        <VoiceRecordButton
-          source="mobile"
-          onSent={(transcript) => {
-            haptic('success');
-            setText(transcript);
-            setSent(true);
-          }}
-          onError={(err) => {
-            haptic('error');
-            toast.error(err);
-          }}
-        />
-        <p className="mt-3 text-[11px] leading-relaxed text-white/45">
-          Или через Telegram-бота: команда <code className="rounded bg-white/10 px-1 text-violet-200">/feedback</code> или голосовое со словом «обратная связь».
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">или голосом — в Telegram</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-white/70">
+          Открой нашего <a href="https://t.me/cres_ca_bot" target="_blank" rel="noreferrer" className="font-semibold text-violet-300 underline">Telegram-бота</a> и отправь команду <code className="rounded bg-white/10 px-1 text-violet-200">/feedback</code> или голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
         </p>
       </div>
     </SettingsShell>
