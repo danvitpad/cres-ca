@@ -22,6 +22,9 @@ export interface SupplierOrderPDFInput {
   orderNumber: string;
   orderDate: string;
   masterName: string;
+  masterPhone?: string | null;
+  masterEmail?: string | null;
+  masterTelegram?: string | null;
   supplierName: string;
   supplierContact?: string | null;
   supplierPhone?: string | null;
@@ -84,31 +87,39 @@ export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array 
 
   const font = registerFont(doc);
 
-  // Header
+  // ─── Header band (master block on the left) ───
   doc.setFont(font, 'bold');
   doc.setFontSize(20);
-  doc.text('CRES-CA', 40, 50);
+  doc.text(input.masterName, 40, 56);
 
-  doc.setFontSize(10);
   doc.setFont(font, 'normal');
-  doc.text(input.masterName, 40, 68);
+  doc.setFontSize(10);
+  doc.setTextColor(90);
+  let mY = 74;
+  if (input.masterPhone)    { doc.text(`Тел.: ${input.masterPhone}`, 40, mY); mY += 13; }
+  if (input.masterEmail)    { doc.text(`Email: ${input.masterEmail}`, 40, mY); mY += 13; }
+  if (input.masterTelegram) { doc.text(`Telegram: ${input.masterTelegram}`, 40, mY); mY += 13; }
+  doc.setTextColor(0);
 
+  // ─── Order title ───
   doc.setFontSize(16);
   doc.setFont(font, 'bold');
-  doc.text(`Заказ поставщику №${input.orderNumber}`, 40, 110);
+  doc.text(`Заказ поставщику №${input.orderNumber}`, 40, mY + 16);
 
   doc.setFontSize(10);
   doc.setFont(font, 'normal');
-  doc.text(`Дата: ${input.orderDate}`, 40, 128);
+  doc.text(`Дата: ${input.orderDate}`, 40, mY + 34);
 
+  // ─── Supplier block ───
   doc.setFont(font, 'bold');
-  doc.text('Поставщик:', 40, 156);
+  let y = mY + 64;
+  doc.text('Поставщик:', 40, y);
   doc.setFont(font, 'normal');
-  doc.text(input.supplierName, 120, 156);
-  let y = 172;
+  doc.text(input.supplierName, 120, y);
+  y += 16;
   if (input.supplierContact) { doc.text(`Контакт: ${input.supplierContact}`, 40, y); y += 14; }
-  if (input.supplierPhone) { doc.text(`Телефон: ${input.supplierPhone}`, 40, y); y += 14; }
-  if (input.supplierEmail) { doc.text(`Email: ${input.supplierEmail}`, 40, y); y += 14; }
+  if (input.supplierPhone)   { doc.text(`Телефон: ${input.supplierPhone}`, 40, y); y += 14; }
+  if (input.supplierEmail)   { doc.text(`Email: ${input.supplierEmail}`, 40, y); y += 14; }
 
   const total = input.items.reduce((s, it) => s + it.total, 0);
 

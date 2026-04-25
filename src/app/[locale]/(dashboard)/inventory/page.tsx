@@ -25,7 +25,6 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { useSubscription } from '@/hooks/use-subscription';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +36,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
@@ -375,76 +381,80 @@ export default function InventoryPage() {
               }
             />
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               <AnimatePresence>
                 {items.map((item, i) => {
                   const isLow = item.quantity <= item.low_stock_threshold;
+                  const supplierName = suppliers.find((s) => s.id === item.preferred_supplier_id)?.name;
                   return (
                     <motion.div
                       key={item.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: i * 0.03 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ delay: Math.min(i, 12) * 0.02 }}
+                      className={cn(
+                        'group relative rounded-xl border bg-card/80 backdrop-blur p-3 transition-all hover:shadow-md',
+                        isLow ? 'border-amber-400/50 bg-amber-500/[0.04]' : 'border-border/50',
+                      )}
                     >
-                      <Card className={cn(
-                        'bg-card/80 backdrop-blur border-border/50 transition-all hover:shadow-sm',
-                        isLow && 'border-amber-400/50 bg-amber-500/5',
-                      )}>
-                        <CardContent className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              'flex size-10 items-center justify-center rounded-xl shrink-0',
-                              isLow ? 'bg-amber-500/10' : 'bg-primary/10',
-                            )}>
-                              {isLow ? (
-                                <AlertTriangle className="size-5 text-amber-500" />
-                              ) : (
-                                <Package className="size-5 text-primary" />
-                              )}
-                            </div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className={cn(
+                          'flex size-8 items-center justify-center rounded-lg shrink-0',
+                          isLow ? 'bg-amber-500/15' : 'bg-primary/10',
+                        )}>
+                          {isLow
+                            ? <AlertTriangle className="size-4 text-amber-500" />
+                            : <Package className="size-4 text-primary" />}
+                        </div>
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openEditDialog(item)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </div>
 
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-medium truncate">{item.name}</h3>
-                                {isLow && (
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-400 text-amber-600 shrink-0">
-                                    {t('lowStock')}
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {item.cost_per_unit > 0 && `${item.cost_per_unit} UAH/${item.unit}`}
-                              </p>
-                            </div>
+                      <h3 className="text-sm font-semibold leading-tight truncate" title={item.name}>
+                        {item.name}
+                      </h3>
 
-                            <div className="text-right shrink-0">
-                              <p className={cn(
-                                'text-lg font-bold',
-                                isLow ? 'text-amber-500' : 'text-foreground',
-                              )}>
-                                {item.quantity}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">{item.unit}</p>
-                            </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className={cn(
+                          'text-xl font-bold tabular-nums',
+                          isLow ? 'text-amber-500' : 'text-foreground',
+                        )}>
+                          {item.quantity}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">{item.unit}</span>
+                        {item.cost_per_unit > 0 && (
+                          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
+                            {item.cost_per_unit}₴/{item.unit}
+                          </span>
+                        )}
+                      </div>
 
-                            <div className="flex gap-1 shrink-0">
-                              <button
-                                onClick={() => openEditDialog(item)}
-                                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                              >
-                                <Pencil className="size-3.5" />
-                              </button>
-                              <button
-                                onClick={() => deleteItem(item.id)}
-                                className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                        {isLow && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-400 text-amber-600 dark:text-amber-400">
+                            мало
+                          </Badge>
+                        )}
+                        {supplierName && (
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-border text-muted-foreground gap-1">
+                            <Truck className="size-2.5" />
+                            {supplierName}
+                          </Badge>
+                        )}
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -473,64 +483,65 @@ export default function InventoryPage() {
               }
             />
           ) : (
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               <AnimatePresence>
                 {suppliers.map((s, i) => (
                   <motion.div
                     key={s.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: i * 0.03 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: Math.min(i, 12) * 0.02 }}
+                    className="group relative rounded-xl border border-border/50 bg-card/80 backdrop-blur p-3 transition-all hover:shadow-md"
                   >
-                    <Card className="bg-card/80 backdrop-blur border-border/50 transition-all hover:shadow-sm">
-                      <CardContent className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex size-10 items-center justify-center rounded-xl shrink-0 bg-primary/10">
-                            <Truck className="size-5 text-primary" />
-                          </div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex size-8 items-center justify-center rounded-lg shrink-0 bg-primary/10">
+                        <Truck className="size-4 text-primary" />
+                      </div>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => openEditSupplier(s)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          onClick={() => deleteSupplier(s.id)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
 
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium truncate">{s.name}</h3>
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
-                              {s.phone && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Phone className="size-3" />{s.phone}
-                                </span>
-                              )}
-                              {s.email && (
-                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                  <Mail className="size-3" />{s.email}
-                                </span>
-                              )}
-                              {s.telegram_id && (
-                                <span className="text-xs text-sky-600 dark:text-sky-400 flex items-center gap-1">
-                                  <Send className="size-3" />TG
-                                </span>
-                              )}
-                            </div>
-                            {s.note && (
-                              <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{s.note}</p>
-                            )}
-                          </div>
+                    <h3 className="text-sm font-semibold leading-tight truncate" title={s.name}>
+                      {s.name}
+                    </h3>
 
-                          <div className="flex gap-1 shrink-0">
-                            <button
-                              onClick={() => openEditSupplier(s)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                            >
-                              <Pencil className="size-3.5" />
-                            </button>
-                            <button
-                              onClick={() => deleteSupplier(s.id)}
-                              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          </div>
+                    <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
+                      {s.phone && (
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="size-3 shrink-0" />
+                          <span className="truncate">{s.phone}</span>
                         </div>
-                      </CardContent>
-                    </Card>
+                      )}
+                      {s.email && (
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="size-3 shrink-0" />
+                          <span className="truncate">{s.email}</span>
+                        </div>
+                      )}
+                      {s.telegram_id && (
+                        <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+                          <Send className="size-3 shrink-0" />
+                          <span className="truncate">{s.telegram_id}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {s.note && (
+                      <p className="mt-2 text-[10px] text-muted-foreground/70 line-clamp-2">{s.note}</p>
+                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -565,15 +576,16 @@ export default function InventoryPage() {
                 <Label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4">
                   Ед. измерения
                 </Label>
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {UNIT_OPTIONS.map((u) => (
-                    <option key={u.value} value={u.value}>{u.label}</option>
-                  ))}
-                </select>
+                <Select value={unit} onValueChange={(v) => v && setUnit(v)}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIT_OPTIONS.map((u) => (
+                      <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="block text-xs font-semibold uppercase tracking-wide text-muted-foreground leading-4">
@@ -594,16 +606,20 @@ export default function InventoryPage() {
                 <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Поставщик
                 </Label>
-                <select
-                  value={preferredSupplierId ?? ''}
-                  onChange={(e) => setPreferredSupplierId(e.target.value || null)}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                <Select
+                  value={preferredSupplierId ?? '__none__'}
+                  onValueChange={(v) => setPreferredSupplierId(v === '__none__' ? null : v)}
                 >
-                  <option value="">— Не указан —</option>
-                  {suppliers.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Не указан" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— Не указан —</SelectItem>
+                    {suppliers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {suppliers.length === 0 && (

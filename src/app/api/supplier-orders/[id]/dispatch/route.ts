@@ -46,12 +46,13 @@ export async function POST(req: Request, { params }: RouteContext) {
 
   const { data: master } = await admin
     .from('masters')
-    .select('display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name, telegram_id)')
+    .select('display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name, phone, email, username, telegram_id)')
     .eq('id', order.master_id)
     .maybeSingle();
 
   // Authorization: caller's telegram_id must match master's profile.telegram_id
-  const masterProfile = (master as { profile?: { telegram_id?: number | null; full_name?: string | null } | { telegram_id?: number | null; full_name?: string | null }[] | null } | null)?.profile;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const masterProfile = (master as any)?.profile;
   const mp = Array.isArray(masterProfile) ? masterProfile[0] : masterProfile;
   const masterTg = mp?.telegram_id;
   if (callerTgId && masterTg && Number(callerTgId) !== Number(masterTg)) {
@@ -77,14 +78,38 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
   }
 
-  const masterName = (master?.display_name as string | null) ?? mp?.full_name ?? 'Master';
-  const items = Array.isArray(order.items) ? (order.items as SupplierOrderItem[]) : [];
+  const masterName = (master?.display_name as string | null) ?? mp?.full_name ?? 'Мастер';
+  // Hydrate units from inventory_items (so PDF table shows ml / l)
+  const rawItems = Array.isArray(order.items) ? (order.items as Array<{ name: string; qty?: number; quantity?: number; price_per_unit?: number; unit_price?: number; unit?: string; inventory_item_id?: string; total?: number }>) : [];
+  const itemIds = rawItems.map((r) => r.inventory_item_id).filter(Boolean) as string[];
+  const { data: invRows } = itemIds.length
+    ? await admin.from('inventory_items').select('id, unit').in('id', itemIds)
+    : { data: [] as { id: string; unit: string }[] };
+  const unitById = new Map((invRows ?? []).map((i) => [i.id, i.unit]));
+
+  const items: SupplierOrderItem[] = rawItems.map((it) => {
+    const qty = Number(it.qty ?? it.quantity ?? 0);
+    const unitPrice = Number(it.price_per_unit ?? it.unit_price ?? 0);
+    return {
+      name: it.name,
+      quantity: qty,
+      unit: it.unit || unitById.get(it.inventory_item_id || '') || 'шт',
+      unit_price: unitPrice,
+      total: it.total ?? qty * unitPrice,
+    };
+  });
 
   // Build PDF
   const pdfBytes = buildSupplierOrderPDF({
     orderNumber: order.id.slice(0, 8).toUpperCase(),
-    orderDate: new Date(order.created_at).toISOString().slice(0, 10),
+    orderDate: new Date(order.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     masterName,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    masterPhone: (mp as any)?.phone ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    masterEmail: (mp as any)?.email ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    masterTelegram: (mp as any)?.username ? `@${(mp as any).username}` : ((mp as any)?.telegram_id ? String((mp as any).telegram_id) : null),
     supplierName,
     supplierContact: null,
     supplierPhone,

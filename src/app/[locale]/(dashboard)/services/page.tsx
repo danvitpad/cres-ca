@@ -985,29 +985,32 @@ function ServiceForm({
                         });
                       }}
                     />
-                    <select
-                      value={overrideUnit}
-                      onChange={(e) => {
-                        const v = e.target.value;
+                    <Select
+                      value={overrideUnit || '__same__'}
+                      onValueChange={(v) => {
+                        if (!v) return;
                         setRecipeUnitMap((prev) => {
                           const next = { ...prev };
-                          if (!v) delete next[it.id]; else next[it.id] = v;
+                          if (v === '__same__') delete next[it.id]; else next[it.id] = v;
                           return next;
                         });
                       }}
-                      className="h-7 w-[88px] rounded-md border border-border bg-background px-1.5 text-[11px] outline-none"
-                      title="Единица расхода (можно отличать от единицы хранения, e.g. ml вместо л)"
                     >
-                      <option value="">{it.unit}</option>
-                      <option value="мл">мл</option>
-                      <option value="л">л</option>
-                      <option value="г">г</option>
-                      <option value="кг">кг</option>
-                      <option value="шт">шт</option>
-                      <option value="м">м</option>
-                      <option value="см">см</option>
-                      <option value="упак">упак</option>
-                    </select>
+                      <SelectTrigger className="h-7 w-[92px] text-[11px]" title="Единица расхода (может отличаться от единицы хранения)">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__same__">{it.unit}</SelectItem>
+                        <SelectItem value="мл">мл</SelectItem>
+                        <SelectItem value="л">л</SelectItem>
+                        <SelectItem value="г">г</SelectItem>
+                        <SelectItem value="кг">кг</SelectItem>
+                        <SelectItem value="шт">шт</SelectItem>
+                        <SelectItem value="м">м</SelectItem>
+                        <SelectItem value="см">см</SelectItem>
+                        <SelectItem value="упак">упак</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 );
               })}
