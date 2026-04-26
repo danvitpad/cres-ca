@@ -77,18 +77,34 @@ export async function GET(request: Request) {
     }
   }
 
+  // Helper: «39 лет» / «41 год» / «42 года» по правилам русского склонения.
+  const ruYears = (n: number) => {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return `${n} год`;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} года`;
+    return `${n} лет`;
+  };
+  const RU_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const fmtBirthday = (dob: string) => {
+    const d = new Date(dob);
+    const age = today.getFullYear() - d.getFullYear();
+    return { dateLabel: `${d.getDate()} ${RU_MONTHS[d.getMonth()]}`, ageLabel: ruYears(age) };
+  };
+
   for (const client of clientHits) {
     const master = masterMap.get(client.master_id);
     if (!master?.profile_id) continue;
 
-    // Always notify the master themselves
+    // Always notify the master themselves — с конкретной датой и возрастом
     const masterMarker = `[bday:master:${client.id}:${dayKey}]`;
     if (!sentMarkers.has(masterMarker)) {
+      const { dateLabel, ageLabel } = fmtBirthday(client.date_of_birth!);
       inserts.push({
         profile_id: master.profile_id,
         channel: 'telegram',
         title: '🎂 День рождения сегодня',
-        body: `У клиента ${client.full_name} день рождения сегодня! ${masterMarker}`,
+        body: `Сегодня (${dateLabel}) у клиента ${client.full_name} день рождения — исполняется ${ageLabel}! ${masterMarker}`,
         scheduled_for: new Date().toISOString(),
       });
     }
@@ -159,6 +175,79 @@ export async function GET(request: Request) {
       channel: 'telegram',
       title: '🎉 Годовщина!',
       body: `${c.full_name}, уже ${years} ${years === 1 ? 'год' : 'года'} вместе! Спасибо за доверие. ${marker}`,
+      scheduled_for: new Date().toISOString(),
+    });
+  }
+
+  // 1c. Partner birthdays — мастер↔мастер. Для каждой accepted-партнёрки
+  //     уведомляем владельца записи о ДР партнёра (с датой + возрастом).
+  const { data: partnerships } = await supabase
+    .from('master_partnerships')
+    .select(`
+      master_id,
+      partner:masters!master_partnerships_partner_id_fkey(
+        id,
+        display_name,
+        profile:profiles!masters_profile_id_fkey(full_name, date_of_birth)
+      )
+    `)
+    .eq('status', 'accepted');
+
+  type PartnerRow = {
+    master_id: string;
+    partner: {
+      id: string;
+      display_name: string | null;
+      profile: { full_name: string | null; date_of_birth: string | null } | { full_name: string | null; date_of_birth: string | null }[] | null;
+    } | null;
+  };
+
+  // Map: master_id -> profile_id, чтобы знать кому слать (используем уже собранный + добираем недостающих)
+  const masterOwnerProfileIds = new Map<string, string | null>();
+  for (const [mid, info] of masterMap.entries()) masterOwnerProfileIds.set(mid, info.profile_id);
+  const partnerHits: Array<{ ownerMasterId: string; partnerName: string; dob: string; partnerMasterId: string }> = [];
+
+  for (const row of (partnerships ?? []) as PartnerRow[]) {
+    const p = row.partner;
+    if (!p) continue;
+    const profile = Array.isArray(p.profile) ? p.profile[0] : p.profile;
+    const dob = profile?.date_of_birth;
+    if (!dob) continue;
+    const dobDate = new Date(dob);
+    if (dobDate.getMonth() + 1 !== month || dobDate.getDate() !== day) continue;
+    partnerHits.push({
+      ownerMasterId: row.master_id,
+      partnerName: p.display_name || profile?.full_name || 'Партнёр',
+      dob,
+      partnerMasterId: p.id,
+    });
+  }
+
+  // Дозабираем profile_id для мастеров-владельцев, которых ещё не было в map'е (только у клиентских попаданий)
+  const missingOwnerIds = partnerHits
+    .map((h) => h.ownerMasterId)
+    .filter((id) => !masterOwnerProfileIds.has(id));
+  if (missingOwnerIds.length) {
+    const { data: extraOwners } = await supabase
+      .from('masters')
+      .select('id, profile_id')
+      .in('id', missingOwnerIds);
+    for (const m of extraOwners ?? []) {
+      masterOwnerProfileIds.set(m.id, (m as { profile_id: string | null }).profile_id);
+    }
+  }
+
+  for (const hit of partnerHits) {
+    const ownerProfileId = masterOwnerProfileIds.get(hit.ownerMasterId);
+    if (!ownerProfileId) continue;
+    const marker = `[bday:partner:${hit.partnerMasterId}:${hit.ownerMasterId}:${dayKey}]`;
+    if (sentMarkers.has(marker)) continue;
+    const { dateLabel, ageLabel } = fmtBirthday(hit.dob);
+    inserts.push({
+      profile_id: ownerProfileId,
+      channel: 'telegram',
+      title: '🎂 ДР партнёра',
+      body: `Сегодня (${dateLabel}) у партнёра ${hit.partnerName} день рождения — исполняется ${ageLabel}! ${marker}`,
       scheduled_for: new Date().toISOString(),
     });
   }

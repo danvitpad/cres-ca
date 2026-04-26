@@ -32,7 +32,7 @@ interface Appointment {
   service?: { id: string; name: string; color: string | null } | { id: string; name: string; color: string | null }[] | null;
 }
 
-interface ClientBirthday { id: string; full_name: string; date_of_birth: string; }
+interface ClientBirthday { id: string; full_name: string; date_of_birth: string; kind: 'client' | 'partner'; }
 
 interface Reminder { id: string; text: string; due_at: string | null; }
 
@@ -51,6 +51,16 @@ function nextBirthday(dob: string): Date {
   let next = setYear(birth, getYear(now));
   if (next < startOfDay(now)) next = setYear(birth, getYear(now) + 1);
   return next;
+}
+
+/** Возвращает {date, age} к следующему ДР: «29 апреля» + сколько исполнится. */
+function birthdayMeta(dob: string, dfLoc: typeof ru) {
+  const birth = new Date(dob);
+  const next = nextBirthday(dob);
+  return {
+    dateLabel: format(next, 'd MMMM', { locale: dfLoc }),
+    age: getYear(next) - getYear(birth),
+  };
 }
 
 const stagger = (i: number) => ({
@@ -87,7 +97,7 @@ export default function TodayPage() {
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfDay(now);
 
-    const [apptRes, clientRes, remRes] = await Promise.all([
+    const [apptRes, clientRes, remRes, partnersRes] = await Promise.all([
       supabase.from('appointments')
         .select('id, starts_at, ends_at, status, price, client_id, service:services(id, name, color)')
         .eq('master_id', master.id)
@@ -104,10 +114,39 @@ export default function TodayPage() {
         .eq('completed', false)
         .order('due_at', { ascending: true, nullsFirst: false })
         .limit(5),
+      // Партнёры — accepted master↔master, тянем ФИО + ДР через masters.profile
+      supabase.from('master_partnerships')
+        .select('id, partner:masters!master_partnerships_partner_id_fkey(id, display_name, profile:profiles!masters_profile_id_fkey(full_name, date_of_birth))')
+        .eq('master_id', master.id)
+        .eq('status', 'accepted'),
     ]);
 
     setAppointments((apptRes.data as unknown as Appointment[]) || []);
-    setBirthdays((clientRes.data as unknown as ClientBirthday[]) || []);
+
+    // Merge clients + partners into birthdays list with `kind` discriminator
+    const clientRows = ((clientRes.data ?? []) as Array<{ id: string; full_name: string; date_of_birth: string }>)
+      .map((c) => ({ ...c, kind: 'client' as const }));
+
+    type PartnerRow = {
+      id: string;
+      partner: { id: string; display_name: string | null; profile: { full_name: string | null; date_of_birth: string | null } | { full_name: string | null; date_of_birth: string | null }[] | null } | null;
+    };
+    const partnerRows: ClientBirthday[] = ((partnersRes.data ?? []) as PartnerRow[])
+      .flatMap((row) => {
+        const p = row.partner;
+        if (!p) return [];
+        const profile = Array.isArray(p.profile) ? p.profile[0] : p.profile;
+        const dob = profile?.date_of_birth;
+        if (!dob) return [];
+        return [{
+          id: `partner:${p.id}`,
+          full_name: p.display_name || profile?.full_name || 'Партнёр',
+          date_of_birth: dob,
+          kind: 'partner' as const,
+        }];
+      });
+
+    setBirthdays([...clientRows, ...partnerRows]);
     setReminders((remRes.data as unknown as Reminder[]) || []);
 
     // Load rebook suggestions (best-effort, never blocks render)
@@ -437,7 +476,7 @@ export default function TodayPage() {
           </div>
         </section>
 
-        {/* Birthdays — 1 col, scrolls internally */}
+        {/* Birthdays — clients + partners merged. 1 col, scrolls internally */}
         <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
           <div className="flex items-center justify-between mb-3 shrink-0">
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -445,7 +484,7 @@ export default function TodayPage() {
               Ближайшие ДР
             </h2>
             <Link href="/clients" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Клиенты
+              Клиенты + партнёры
             </Link>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
@@ -458,18 +497,29 @@ export default function TodayPage() {
           ) : (
             <ul className="space-y-2">
               {upcomingBirthdays.map((c) => {
-                const label =
+                const meta = birthdayMeta(c.date_of_birth, dfLocale);
+                const whenLabel =
                   c.daysUntil === 0 ? 'сегодня' :
                   c.daysUntil === 1 ? 'завтра' :
                   `через ${c.daysUntil} дн.`;
+                const isPartner = c.kind === 'partner';
                 return (
                   <li key={c.id} className="flex items-center gap-2 rounded-lg bg-muted/30 p-2 text-sm">
                     <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
                       <Cake className="w-3 h-3" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-medium">{c.full_name}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate text-xs font-medium">{c.full_name}</p>
+                        {isPartner && (
+                          <span className="shrink-0 rounded-full border border-[var(--ds-accent)]/30 bg-[var(--ds-accent-soft)] px-1.5 py-0 text-[9px] font-semibold uppercase tracking-wide text-[var(--ds-accent)]">
+                            партнёр
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {meta.dateLabel} · {meta.age} {meta.age % 10 === 1 && meta.age % 100 !== 11 ? 'год' : meta.age % 10 >= 2 && meta.age % 10 <= 4 && (meta.age % 100 < 10 || meta.age % 100 >= 20) ? 'года' : 'лет'} · {whenLabel}
+                      </p>
                     </div>
                   </li>
                 );
