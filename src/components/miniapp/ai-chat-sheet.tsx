@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, X, Star, Calendar } from 'lucide-react';
+import { Send, Sparkles, X, Star, Calendar, Mic } from 'lucide-react';
 import { useTelegram } from './telegram-provider';
 import { AvatarCircle } from './shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from './design';
@@ -48,8 +48,12 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Restore history from sessionStorage on first open
   useEffect(() => {
@@ -90,6 +94,62 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
       el.scrollTop = el.scrollHeight;
     });
   }, [messages, sending]);
+
+  async function startRecording() {
+    if (recording || transcribing) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const rec = new MediaRecorder(stream, { mimeType: pickMimeType() });
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      rec.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        if (audioChunksRef.current.length === 0) {
+          setRecording(false);
+          return;
+        }
+        const blob = new Blob(audioChunksRef.current, { type: rec.mimeType });
+        await transcribe(blob);
+        setRecording(false);
+      };
+      mediaRecorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+      haptic('medium');
+    } catch {
+      alert('Не удалось получить доступ к микрофону');
+    }
+  }
+
+  function stopRecording() {
+    const rec = mediaRecorderRef.current;
+    if (!rec) return;
+    if (rec.state === 'recording') rec.stop();
+    haptic('light');
+  }
+
+  async function transcribe(blob: Blob) {
+    setTranscribing(true);
+    try {
+      const fd = new FormData();
+      const ext = blob.type.includes('webm') ? 'webm' : blob.type.includes('mp4') ? 'm4a' : 'audio';
+      fd.append('audio', new File([blob], `voice.${ext}`, { type: blob.type }));
+      const res = await fetch('/api/ai/client-voice', { method: 'POST', body: fd });
+      const j = await res.json();
+      if (j.text) {
+        setInput(j.text);
+        haptic('success');
+      } else {
+        haptic('error');
+      }
+    } catch {
+      haptic('error');
+    } finally {
+      setTranscribing(false);
+    }
+  }
 
   async function sendNow(text: string) {
     const trimmed = text.trim();
@@ -338,20 +398,65 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                 }}
                 autoFocus
               />
+              {/* Voice button — visible when input is empty. Long-press semantics:
+                  pointerdown → start recording, pointerup → stop + transcribe.
+                  Touch + mouse через Pointer Events (унификация). */}
+              {!input.trim() && (
+                <button
+                  type="button"
+                  disabled={sending || transcribing}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    void startRecording();
+                  }}
+                  onPointerUp={(e) => {
+                    e.preventDefault();
+                    if (recording) stopRecording();
+                  }}
+                  onPointerCancel={() => {
+                    if (recording) stopRecording();
+                  }}
+                  onPointerLeave={() => {
+                    if (recording) stopRecording();
+                  }}
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    border: 'none',
+                    background: recording ? T.danger : T.accent,
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'background 150ms ease, transform 150ms ease',
+                    transform: recording ? 'scale(1.1)' : 'scale(1)',
+                    boxShadow: recording ? `0 0 0 6px ${T.danger}33` : 'none',
+                    opacity: transcribing ? 0.5 : 1,
+                  }}
+                  aria-label={recording ? 'Идёт запись' : 'Записать голосом'}
+                  title="Зажми и говори"
+                >
+                  <Mic size={18} strokeWidth={2.4} />
+                </button>
+              )}
+              {input.trim() && (
               <button
                 type="submit"
-                disabled={sending || !input.trim()}
+                disabled={sending}
                 style={{
                   width: 44,
                   height: 44,
                   borderRadius: '50%',
                   border: 'none',
-                  background: input.trim() ? T.accent : T.bgSubtle,
-                  color: input.trim() ? '#fff' : T.textTertiary,
+                  background: T.accent,
+                  color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: sending || !input.trim() ? 'not-allowed' : 'pointer',
+                  cursor: sending ? 'not-allowed' : 'pointer',
                   flexShrink: 0,
                   transition: 'background 200ms ease',
                 }}
@@ -359,6 +464,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
               >
                 <Send size={18} />
               </button>
+              )}
             </form>
           </motion.div>
         </>
@@ -548,6 +654,9 @@ interface AppointmentCardData {
 }
 
 function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
+
   const d = new Date(data.starts_at);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -559,36 +668,98 @@ function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
   if (target.getTime() === today.getTime()) dateLabel = `Сегодня в ${time}`;
   else if (target.getTime() === tomorrow.getTime()) dateLabel = `Завтра в ${time}`;
 
+  async function handleCancel(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (cancelling || cancelled) return;
+    if (!confirm('Отменить эту запись?')) return;
+    setCancelling(true);
+    try {
+      const res = await fetch('/api/ai/client-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', appointment_id: data.id }),
+      });
+      const j = await res.json();
+      if (j.ok) setCancelled(true);
+      else alert(j.message || j.error || 'Не удалось отменить');
+    } catch {
+      alert('Сетевая ошибка');
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   return (
-    <Link
-      href={`/telegram/activity/${data.id}`}
+    <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 4,
+        gap: 8,
         padding: 14,
         background: T.surface,
         border: `1px solid ${T.borderSubtle}`,
         borderRadius: R.md,
-        textDecoration: 'none',
-        color: T.text,
         boxShadow: SHADOW.card,
+        opacity: cancelled ? 0.5 : 1,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.accent, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        <Calendar size={12} /> Ближайшая запись
-      </div>
-      <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{data.service_name}</p>
-      <p style={{ ...TYPE.caption }}>
-        {dateLabel}{data.master_name ? ` · ${data.master_name}` : ''}
-      </p>
-      {data.price && data.price > 0 && (
-        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, fontSize: 14 }}>
-          {formatMoney(data.price, data.currency)}
+      <Link
+        href={`/telegram/activity/${data.id}`}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+          textDecoration: 'none',
+          color: T.text,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.accent, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <Calendar size={12} /> {cancelled ? 'Отменено' : 'Ближайшая запись'}
+        </div>
+        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{data.service_name}</p>
+        <p style={{ ...TYPE.caption }}>
+          {dateLabel}{data.master_name ? ` · ${data.master_name}` : ''}
         </p>
+        {data.price && data.price > 0 && (
+          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, fontSize: 14 }}>
+            {formatMoney(data.price, data.currency)}
+          </p>
+        )}
+      </Link>
+      {!cancelled && (
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={cancelling}
+          style={{
+            alignSelf: 'flex-start',
+            padding: '6px 12px',
+            borderRadius: R.pill,
+            border: `1px solid ${T.danger}40`,
+            background: T.dangerSoft,
+            color: T.danger,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: cancelling ? 'wait' : 'pointer',
+            fontFamily: 'inherit',
+            opacity: cancelling ? 0.6 : 1,
+          }}
+        >
+          {cancelling ? 'Отменяем…' : 'Отменить запись'}
+        </button>
       )}
-    </Link>
+    </div>
   );
+}
+
+function pickMimeType(): string {
+  if (typeof MediaRecorder === 'undefined') return 'audio/webm';
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  for (const t of candidates) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return 'audio/webm';
 }
 
 function TypingDots() {
