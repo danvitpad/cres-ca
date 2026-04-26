@@ -70,14 +70,14 @@ interface Supplier {
 }
 
 const UNIT_OPTIONS: { value: string; label: string }[] = [
-  { value: 'шт',  label: 'шт. — штуки' },
-  { value: 'мл',  label: 'мл — миллилитры' },
-  { value: 'л',   label: 'л — литры' },
-  { value: 'г',   label: 'г — граммы' },
-  { value: 'кг',  label: 'кг — килограммы' },
-  { value: 'м',   label: 'м — метры' },
-  { value: 'см',  label: 'см — сантиметры' },
-  { value: 'упак', label: 'упак. — упаковки' },
+  { value: 'шт',   label: 'шт.' },
+  { value: 'мл',   label: 'мл' },
+  { value: 'л',    label: 'л' },
+  { value: 'г',    label: 'г' },
+  { value: 'кг',   label: 'кг' },
+  { value: 'м',    label: 'м' },
+  { value: 'см',   label: 'см' },
+  { value: 'упак', label: 'упак.' },
 ];
 
 type Tab = 'materials' | 'suppliers';
@@ -298,8 +298,9 @@ export default function InventoryPage({
 
   return (
     <div className="space-y-6" style={{ padding: '32px 40px' }}>
-      {/* Low stock banner */}
-      {lowStockCount > 0 && (
+      {/* Low stock banner — показываем только на вкладке «Материалы» (склад).
+          На «Поставщики»/«Заказы поставщикам» это лишний шум. */}
+      {tab === 'materials' && lowStockCount > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -620,12 +621,12 @@ export default function InventoryPage({
                   onValueChange={(v) => setPreferredSupplierId(v === '__none__' ? null : v)}
                 >
                   <SelectTrigger className="h-10 w-full">
-                    <SelectValue placeholder="— Не указан —">
-                      {(v) => v === '__none__' ? '— Не указан —' : (suppliers.find((s) => s.id === v)?.name ?? '— Не указан —')}
+                    <SelectValue placeholder="Без поставщика">
+                      {(v) => v === '__none__' ? 'Без поставщика' : (suppliers.find((s) => s.id === v)?.name ?? 'Без поставщика')}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">— Не указан —</SelectItem>
+                    <SelectItem value="__none__">Без поставщика</SelectItem>
                     {suppliers.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}

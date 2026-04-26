@@ -131,7 +131,7 @@ export default function TodayPage() {
       id: string;
       partner: { id: string; display_name: string | null; profile: { full_name: string | null; date_of_birth: string | null } | { full_name: string | null; date_of_birth: string | null }[] | null } | null;
     };
-    const partnerRows: ClientBirthday[] = ((partnersRes.data ?? []) as PartnerRow[])
+    const partnerRows: ClientBirthday[] = ((partnersRes.data ?? []) as unknown as PartnerRow[])
       .flatMap((row) => {
         const p = row.partner;
         if (!p) return [];

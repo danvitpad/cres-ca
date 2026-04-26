@@ -207,7 +207,7 @@ export async function GET(request: Request) {
   for (const [mid, info] of masterMap.entries()) masterOwnerProfileIds.set(mid, info.profile_id);
   const partnerHits: Array<{ ownerMasterId: string; partnerName: string; dob: string; partnerMasterId: string }> = [];
 
-  for (const row of (partnerships ?? []) as PartnerRow[]) {
+  for (const row of (partnerships ?? []) as unknown as PartnerRow[]) {
     const p = row.partner;
     if (!p) continue;
     const profile = Array.isArray(p.profile) ? p.profile[0] : p.profile;

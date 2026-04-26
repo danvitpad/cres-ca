@@ -68,6 +68,8 @@ interface ClientRow {
   tier: 'new' | 'regular' | 'vip';
   cancellation_count: number;
   no_show_count: number;
+  // Аватар берём из профиля линкованного клиента (single source of truth).
+  avatar_url: string | null;
 }
 
 type FilterKey = 'all' | 'vip' | 'overdue' | 'risk' | 'new' | 'birthday';
@@ -180,8 +182,14 @@ function ClientCard({ client, C, isDark, index }: {
             background: avatarBg, color: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18, fontWeight: 600, flexShrink: 0,
+            overflow: 'hidden',
           }}>
-            {getInitials(client.full_name)}
+            {client.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={client.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              getInitials(client.full_name)
+            )}
           </div>
           {badge && (
             <div style={{
@@ -286,7 +294,7 @@ export default function ClientsPage() {
     const supabase = createClient();
     let query = supabase
       .from('clients')
-      .select('id, full_name, phone, email, date_of_birth, notes, total_visits, avg_check, last_visit_at, created_at, has_health_alert, behavior_indicators, tier, cancellation_count, no_show_count')
+      .select('id, full_name, phone, email, date_of_birth, notes, total_visits, avg_check, last_visit_at, created_at, has_health_alert, behavior_indicators, tier, cancellation_count, no_show_count, profile:profiles!clients_profile_id_fkey(avatar_url)')
       .eq('master_id', master.id)
       .order('last_visit_at', { ascending: false, nullsFirst: false })
       .limit(PAGE_SIZE * 3);
@@ -296,7 +304,14 @@ export default function ClientsPage() {
     }
 
     const { data } = await query;
-    if (data) setClients(data as ClientRow[]);
+    if (data) {
+      // Plumb embedded profile.avatar_url onto the flat row.
+      const flat = (data as unknown as Array<Record<string, unknown> & { profile?: { avatar_url: string | null } | { avatar_url: string | null }[] | null }>).map((r) => {
+        const prof = Array.isArray(r.profile) ? r.profile[0] : r.profile;
+        return { ...r, avatar_url: prof?.avatar_url ?? null } as unknown as ClientRow;
+      });
+      setClients(flat);
+    }
     setLoading(false);
   }, [master, search]);
 
