@@ -359,9 +359,7 @@ export default function InventoryPage({
           </div>
         ) : <div />}
         <div className="flex gap-2 pb-2">
-          <Link href="/inventory/scan" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
-            <ScanBarcode className="size-4" />
-          </Link>
+          {/* QR-scan removed: feature is unused and adds noise to the toolbar. */}
           {tab === 'materials' ? (
             <Button size="sm" onClick={openAddDialog}>{t('addItem')}</Button>
           ) : (
@@ -435,17 +433,17 @@ export default function InventoryPage({
                         {item.name}
                       </h3>
 
-                      <div className="mt-2 flex items-baseline gap-1">
+                      <div className="mt-2 flex items-baseline gap-1.5">
                         <span className={cn(
-                          'text-xl font-bold tabular-nums',
+                          'text-3xl font-bold tabular-nums leading-none',
                           isLow ? 'text-amber-500' : 'text-foreground',
                         )}>
                           {item.quantity}
                         </span>
-                        <span className="text-[11px] text-muted-foreground">{item.unit}</span>
+                        <span className="text-base font-medium text-muted-foreground">{item.unit}</span>
                         {item.cost_per_unit > 0 && (
-                          <span className="ml-auto text-[11px] text-muted-foreground tabular-nums">
-                            {item.cost_per_unit}₴/{item.unit}
+                          <span className="ml-auto text-sm font-semibold text-muted-foreground tabular-nums">
+                            {item.cost_per_unit} ₴/{item.unit}
                           </span>
                         )}
                       </div>

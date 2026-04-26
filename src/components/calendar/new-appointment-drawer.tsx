@@ -27,6 +27,7 @@ interface ServiceOption {
   price: number;
   currency: string;
   color: string | null;
+  total_uses?: number | null;
 }
 
 interface Props {
@@ -67,19 +68,30 @@ export function NewAppointmentDrawer({
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>(defaultClientId ? [defaultClientId] : []);
   const [selectedServiceId, setSelectedServiceId] = useState(defaultServiceId ?? '');
-  const [groupMode, setGroupMode] = useState(initialGroupMode);
   const [date, setDate] = useState(defaultDate ?? new Date().toISOString().split('T')[0]);
   const [time, setTime] = useState(defaultTime ?? '09:00');
   const [notes, setNotes] = useState('');
   const [clientSearch, setClientSearch] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Групповая запись определяется автоматически по числу выбранных клиентов:
+  // 1 = одиночная, 2+ = групповая. Никаких ручных тумблеров.
+  const isGroup = selectedClientIds.length > 1;
+  void initialGroupMode; // сигнатура сохраняется для обратной совместимости
 
   useEffect(() => {
     (async () => {
       const supabase = createClient();
       const [clientsRes, servicesRes] = await Promise.all([
         supabase.from('clients').select('id, full_name, no_show_count').eq('master_id', masterId).order('full_name').limit(500),
-        supabase.from('services').select('id, name, duration_minutes, price, currency, color').eq('master_id', masterId).eq('is_active', true).order('name'),
+        supabase
+          .from('services')
+          .select('id, name, duration_minutes, price, currency, color, total_uses')
+          .eq('master_id', masterId)
+          .eq('is_active', true)
+          .order('total_uses', { ascending: false, nullsFirst: false })
+          .order('name'),
       ]);
       if (clientsRes.data) setClients(clientsRes.data as ClientOption[]);
       if (servicesRes.data) setServices(servicesRes.data as ServiceOption[]);
@@ -92,10 +104,22 @@ export function NewAppointmentDrawer({
     return clients.filter((c) => c.full_name.toLowerCase().includes(q));
   }, [clients, clientSearch]);
 
+  // Топ-5 услуг по числу использований (если на сервисе нет total_uses
+  // — оно null/0 — попадают в общий список ниже).
+  const quickServices = useMemo(() => {
+    return services.filter((s) => (s.total_uses ?? 0) > 0).slice(0, 5);
+  }, [services]);
+
+  const filteredServices = useMemo(() => {
+    const q = serviceSearch.trim().toLowerCase();
+    if (!q) return services;
+    return services.filter((s) => s.name.toLowerCase().includes(q));
+  }, [services, serviceSearch]);
+
   function toggleClient(id: string) {
     setSelectedClientIds((prev) => {
       if (prev.includes(id)) return prev.filter((cid) => cid !== id);
-      if (!groupMode) return [id];
+      // Авто-групповой режим: разрешаем добавлять любого, кол-во определяет тип записи.
       return [...prev, id];
     });
   }
@@ -161,45 +185,41 @@ export function NewAppointmentDrawer({
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-        {/* Date + Time row — tighter, with bigger inputs and inline icons */}
+        {/* Date + Time row — иконка слева внутри инпута, без подписи сверху
+            (Calendar/Clock-иконки самодостаточны, текст «Дата» / «Время» был лишним) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Field label="Дата" icon={<Calendar size={13} />} C={C}>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                style={{ ...inputStyle(C), height: 42 }}
-              />
-            </div>
-          </Field>
-          <Field label="Время" icon={<Clock size={13} />} C={C}>
+          <IconInput icon={<Calendar size={15} />} C={C}>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{
+                width: '100%', height: 44, padding: '0 12px 0 38px',
+                borderRadius: 10,
+                background: C.surface, border: `0.8px solid ${C.border}`,
+                color: C.text, fontSize: 14, outline: 'none', fontFamily: FONT,
+              }}
+            />
+          </IconInput>
+          <IconInput icon={<Clock size={15} />} C={C}>
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               step={300}
-              style={{ ...inputStyle(C), height: 42 }}
+              style={{
+                width: '100%', height: 44, padding: '0 12px 0 38px',
+                borderRadius: 10,
+                background: C.surface, border: `0.8px solid ${C.border}`,
+                color: C.text, fontSize: 14, outline: 'none', fontFamily: FONT,
+              }}
             />
-          </Field>
+          </IconInput>
         </div>
 
-        {/* CLIENTS section */}
+        {/* CLIENTS section. Автогрупповой режим: 2+ клиентов = групповая запись. */}
         <Section
-          title={selectedClientIds.length > 1 ? `Клиенты (${selectedClientIds.length})` : 'Клиент'}
-          right={
-            <button
-              type="button"
-              onClick={() => setGroupMode(!groupMode)}
-              style={{
-                fontSize: 12, color: groupMode ? C.accent : C.textSecondary,
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              {groupMode ? '✓ Группа' : '+ Несколько'}
-            </button>
-          }
+          title={isGroup ? `Клиенты (${selectedClientIds.length})` : 'Клиент'}
           C={C}
         >
           {/* Selected client chips */}
@@ -316,10 +336,69 @@ export function NewAppointmentDrawer({
           </div>
         </Section>
 
-        {/* SERVICES section */}
+        {/* SERVICES section. Поиск + блок «Частые» — мастер не должен скроллить
+            простыню из 50 услуг, чтобы найти нужную. */}
         <Section title="Услуга" C={C}>
+          {/* Search */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 10px', borderRadius: 10,
+            background: C.surface, border: `0.8px solid ${C.border}`,
+            marginBottom: 10,
+          }}>
+            <Search size={14} style={{ color: C.textSecondary }} />
+            <input
+              type="text"
+              value={serviceSearch}
+              onChange={(e) => setServiceSearch(e.target.value)}
+              placeholder="Поиск услуги..."
+              style={{
+                flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                color: C.text, fontSize: 14, fontFamily: FONT,
+              }}
+            />
+          </div>
+
+          {/* Quick services — топ-5 по использованию, скрываются при поиске */}
+          {!serviceSearch.trim() && quickServices.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: C.textTertiary,
+                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6,
+              }}>
+                Частые
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {quickServices.map((s) => {
+                  const isSelected = selectedServiceId === s.id;
+                  return (
+                    <button
+                      key={`q-${s.id}`}
+                      type="button"
+                      onClick={() => setSelectedServiceId(s.id)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '6px 10px', borderRadius: 999,
+                        background: isSelected ? C.accentSoft : C.surface,
+                        border: `1px solid ${isSelected ? C.accent : C.border}`,
+                        color: C.text, fontSize: 12, cursor: 'pointer',
+                        fontFamily: FONT,
+                      }}
+                    >
+                      <span style={{
+                        width: 6, height: 6, borderRadius: 999,
+                        background: s.color || '#6366f1',
+                      }} />
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {services.map((s) => {
+            {filteredServices.map((s) => {
               const isSelected = selectedServiceId === s.id;
               const stripe = s.color || '#6366f1';
               return (
@@ -353,9 +432,9 @@ export function NewAppointmentDrawer({
                 </button>
               );
             })}
-            {services.length === 0 && (
+            {filteredServices.length === 0 && (
               <div style={{ padding: 16, textAlign: 'center', color: C.textSecondary, fontSize: 13 }}>
-                Нет услуг — добавь их в разделе «Услуги»
+                {serviceSearch.trim() ? 'Не нашлось — измени запрос' : 'Нет услуг — добавь их в разделе «Услуги»'}
               </div>
             )}
           </div>
@@ -410,7 +489,7 @@ export function NewAppointmentDrawer({
             opacity: (saving || !selectedServiceId || selectedClientIds.length === 0) ? 0.5 : 1,
           }}
         >
-          {saving ? 'Сохранение...' : selectedClientIds.length > 1 ? 'Создать групповую запись' : 'Создать'}
+          {saving ? 'Сохранение...' : isGroup ? 'Создать групповую запись' : 'Создать'}
         </button>
       </div>
     </div>
@@ -425,15 +504,6 @@ function avatarStyle(id: string, size: number): React.CSSProperties {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     fontWeight: 600, fontSize: Math.round(size * 0.4),
     flexShrink: 0,
-  };
-}
-
-function inputStyle(C: ReturnType<typeof usePageTheme>['C']): React.CSSProperties {
-  return {
-    width: '100%', height: 38, padding: '0 12px',
-    borderRadius: 10,
-    background: C.surface, border: `0.8px solid ${C.border}`,
-    color: C.text, fontSize: 14, outline: 'none', fontFamily: FONT,
   };
 }
 
@@ -462,23 +532,25 @@ function Section({
   );
 }
 
-function Field({
-  label, icon, children, C,
+/** Input wrapper с иконкой слева внутри поля. Заменяет старый Field+label —
+    календарь/часы-иконки самодостаточны, дублирующая подпись «Дата» / «Время»
+    больше не нужна. */
+function IconInput({
+  icon, children, C,
 }: {
-  label: string;
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   children: React.ReactNode;
   C: ReturnType<typeof usePageTheme>['C'];
 }) {
   return (
-    <div>
-      <label style={{
-        fontSize: 11, fontWeight: 500, color: C.textSecondary,
-        display: 'flex', alignItems: 'center', gap: 4,
-        marginBottom: 4,
+    <div style={{ position: 'relative' }}>
+      <span style={{
+        position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+        color: C.textSecondary, pointerEvents: 'none',
+        display: 'flex', alignItems: 'center',
       }}>
-        {icon}{label}
-      </label>
+        {icon}
+      </span>
       {children}
     </div>
   );

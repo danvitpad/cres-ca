@@ -87,7 +87,7 @@ const RULES: {
   },
   {
     key: 'cadence',
-    title: 'Smart rebooking',
+    title: 'Умное возвращение',
     description: 'Клиент перестал приходить по своей привычке — напомнить',
     trigger: 'При просрочке визита',
     icon: TrendingUp,
@@ -95,7 +95,7 @@ const RULES: {
   },
   {
     key: 'win_back',
-    title: 'Win-back',
+    title: 'Возврат «спящих»',
     description: 'Клиент не был 60+ дней — вернуть со скидкой',
     trigger: 'После 60 дней без визита',
     icon: Heart,
@@ -103,8 +103,8 @@ const RULES: {
   },
   {
     key: 'nps',
-    title: 'NPS опрос',
-    description: 'После 3, 10, 20, 50 визитов — короткий опрос лояльности',
+    title: 'Опрос лояльности',
+    description: 'После 3, 10, 20, 50 визитов — короткий опрос «насколько порекомендуете»',
     trigger: 'После 3/10/20/50 визитов',
     icon: BarChart3,
     accent: '#06b6d4',

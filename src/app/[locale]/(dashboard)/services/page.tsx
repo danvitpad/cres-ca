@@ -273,25 +273,9 @@ function ServicesCatalogueView() {
             }}
           />
         </div>
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '10px 16px', borderRadius: 999,
-          border: `1px solid ${C.border}`, backgroundColor: 'transparent',
-          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
-        }}>
-          <SlidersHorizontal style={{ width: 14, height: 14 }} />
-          {t('filters') || 'Фильтры'}
-        </button>
-        <div style={{ flex: 1 }} />
-        <button style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '10px 16px', borderRadius: 999,
-          border: `1px solid ${C.border}`, backgroundColor: 'transparent',
-          color: C.text, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: FONT,
-        }}>
-          <ArrowUpDown style={{ width: 14, height: 14 }} />
-          {t('reorder') || 'Изменить порядок'}
-        </button>
+        {/* «Фильтры» / «Изменить порядок» убраны — были заглушками без обработчиков.
+            Вернём с настоящей реализацией когда определим конкретный набор фильтров
+            (по категории / цене / длительности) и режим drag-to-reorder. */}
       </div>
 
       {/* ── Main content: categories card + service rows ── */}
@@ -1256,7 +1240,7 @@ export default function ServicesPage() {
       </div>
 
       {active === 'services' && <ServicesCatalogueView />}
-      {active === 'inventory' && <InventoryPage />}
+      {active === 'inventory' && <InventoryPage initialTab="materials" hideTabs />}
       {active === 'suppliers' && <SuppliersAndOrdersWrapper />}
     </div>
   );

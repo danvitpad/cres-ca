@@ -325,21 +325,18 @@ export default function TodayPage() {
       <motion.div {...stagger(4)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
         {/* Reminders — 1 col, scrolls internally */}
         <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
-          <div className="flex items-center justify-between mb-3 shrink-0">
+          <div className="flex items-center mb-3 shrink-0">
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Bell className="w-3.5 h-3.5" />
               Напоминания
             </h2>
-            <Link href="/settings" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Все
-            </Link>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
             {activeReminders.length === 0 ? (
               <EmptyState
                 icon={<Bell className="w-5 h-5" />}
                 title="Нет напоминаний"
-                description="Добавь голосом или вручную."
+                description="Добавь голосом в Telegram-боте."
               />
             ) : (
               <ul className="space-y-2">
@@ -383,7 +380,6 @@ export default function TodayPage() {
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 AI-помощник
               </h2>
-              <span className="text-xs text-muted-foreground">отвечает и делает действия по твоей БД</span>
             </div>
             <div className="flex items-center gap-1">
               <button
@@ -418,14 +414,10 @@ export default function TodayPage() {
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Продиктуй или спроси — я выполню действие или отвечу по твоим данным.
+                    Спроси или поручи — я выполню действие или отвечу по твоим данным.
+                    <br />
+                    <span className="text-[11px] opacity-70">Голосом — продиктуй в Telegram-боте.</span>
                   </p>
-                  <button
-                    onClick={() => setShowHelp(true)}
-                    className="mt-3 text-xs text-[var(--ds-accent)] hover:underline"
-                  >
-                    Посмотреть список команд
-                  </button>
                 </div>
               </div>
             ) : (
@@ -478,14 +470,11 @@ export default function TodayPage() {
 
         {/* Birthdays — clients + partners merged. 1 col, scrolls internally */}
         <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
-          <div className="flex items-center justify-between mb-3 shrink-0">
+          <div className="flex items-center mb-3 shrink-0">
             <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Cake className="w-3.5 h-3.5" />
               Ближайшие ДР
             </h2>
-            <Link href="/clients" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-              Клиенты + партнёры
-            </Link>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
           {upcomingBirthdays.length === 0 ? (

@@ -747,15 +747,8 @@ export default function CalendarPage() {
                     <CalendarPlus style={{ width: 20, height: 20, color: F.textMuted }} />
                     <span>{t('addAppointment')}</span>
                   </button>
-                  <button
-                    onClick={() => { setAddDropdownOpen(false); setNewDialogDefaults({}); setNewDrawerGroup(true); setNewDrawerOpen(true); }}
-                    style={popoverItemStyle(F,false, hoveredItem === 'add-group')}
-                    onMouseEnter={() => setHoveredItem('add-group')}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <Users style={{ width: 20, height: 20, color: F.textMuted }} />
-                    <span>Групповая запись</span>
-                  </button>
+                  {/* «Групповая запись» убрана — drawer сам определяет одиночная/групповая
+                      по числу выбранных клиентов: 1 = одиночная, 2+ = групповая. */}
                   <button
                     onClick={() => { setAddDropdownOpen(false); setBlockTimeDefault(undefined); setEditingBlock(undefined); setActiveDrawer('blockTime'); }}
                     style={popoverItemStyle(F,false, hoveredItem === 'add-block')}

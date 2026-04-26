@@ -64,12 +64,13 @@ export default function MarketingPage() {
         </p>
       </div>
 
-      {/* Underline tabs — matches Finance and Catalog styling */}
+      {/* Underline tabs — matches Finance and Catalog styling.
+          Wrap on narrow screens, never horizontal-scroll (the scroll added
+          visual noise on desktop without solving anything). */}
       <div style={{
         marginTop: 16, marginBottom: 24,
-        display: 'flex', gap: 4,
+        display: 'flex', gap: 4, flexWrap: 'wrap',
         borderBottom: `1px solid ${C.border}`,
-        overflowX: 'auto',
       }}>
         {TABS.map((tab) => {
           const isActive = activeTab === tab.value;
