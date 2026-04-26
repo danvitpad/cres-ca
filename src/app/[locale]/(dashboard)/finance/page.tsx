@@ -7,13 +7,14 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Loader2, Plus, Trash2,
   Calendar as CalendarIcon, Trophy,
   CreditCard, Receipt, TrendingUp, Wallet, Mic,
+  ArrowRight,
 } from 'lucide-react';
 import { format, type Locale } from 'date-fns';
 import { ru } from 'date-fns/locale/ru';
@@ -23,7 +24,7 @@ import { toast } from 'sonner';
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer, type PageTheme } from '@/lib/dashboard-theme';
 import { StatCard } from '@/components/shared/primitives/stat-card';
 import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
@@ -456,41 +457,17 @@ export default function FinancePage() {
         />
       </div>
 
-      {/* AI Insight banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
-        style={{
-          background: C.surface,
-          border: `1px solid ${C.border}`,
-          borderRadius: 12,
-          padding: '16px 20px',
-          marginBottom: 28,
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 14,
-        }}
-      >
-        <div style={{
-          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-          background: C.accentSoft,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Sparkles size={16} style={{ color: C.accent }} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              AI-помощник
-            </span>
-            {aiLoading && <Loader2 size={12} className="animate-spin" style={{ color: C.accent }} />}
-          </div>
-          <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.55, margin: 0 }}>
-            {aiLoading
-              ? 'Анализирую ваши данные...'
-              : aiInsight || 'Пока нечего прокомментировать — добавьте больше записей или расходов, и помощник даст рекомендации.'}
-          </p>
-        </div>
-      </motion.div>
+      {/* AI Insight + ask-anything bubble.
+          Кликабельная подсказка превращается в строку ввода — мастер пишет
+          конкретный вопрос («проверь топ-3 расхода», «почему за апрель меньше доход»),
+          AI отвечает с контекстом 30 дней. */}
+      <FinanceAiPanel
+        insight={aiInsight}
+        loading={aiLoading}
+        C={C}
+      />
+
+      {/* ↑ см. определение FinanceAiPanel в конце файла */}
 
       {/* Tabs — Обзор / Доходы / Расходы (underline style matching dashboard) */}
       <div style={{
@@ -990,6 +967,180 @@ export default function FinancePage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/* ────────────────────── Finance AI Panel ────────────────────── */
+/* Hint card по умолчанию показывает текущий insight. Клик «Спросить AI»
+   раскрывает строку ввода — мастер задаёт конкретный вопрос про свои
+   деньги, ответ появляется ниже. Esc / клик мимо закрывает строку. */
+
+function FinanceAiPanel({
+  insight, loading, C,
+}: {
+  insight: string | null;
+  loading: boolean;
+  C: PageTheme;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    function onPointer(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (wrapRef.current.contains(e.target as Node)) return;
+      if (busy) return;
+      setExpanded(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !busy) setExpanded(false);
+    }
+    document.addEventListener('mousedown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [expanded, busy]);
+
+  async function ask() {
+    const q = question.trim();
+    if (!q || busy) return;
+    setBusy(true);
+    setAnswer(null);
+    try {
+      const res = await fetch('/api/finance/ai-question', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+      });
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error || 'AI не смог ответить');
+      } else {
+        const a = (data as { answer?: string }).answer;
+        setAnswer(a ?? null);
+        setQuestion('');
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Ошибка');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: '16px 20px',
+        marginBottom: 28,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+          background: C.accentSoft,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Sparkles size={16} style={{ color: C.accent }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              AI-помощник
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setExpanded((v) => !v);
+                setAnswer(null);
+                setTimeout(() => inputRef.current?.focus(), 50);
+              }}
+              style={{
+                fontSize: 12, fontWeight: 600,
+                color: expanded ? C.textSecondary : C.accent,
+                background: 'transparent', border: 'none', cursor: 'pointer',
+              }}
+            >
+              {expanded ? 'Свернуть' : 'Спросить AI'}
+            </button>
+          </div>
+          <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.55, margin: 0 }}>
+            {loading
+              ? 'Анализирую ваши данные...'
+              : insight || 'Пока нечего прокомментировать — добавь больше записей или расходов, помощник даст рекомендации.'}
+          </p>
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{
+          marginTop: 12,
+          paddingTop: 12,
+          borderTop: `1px solid ${C.border}`,
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 10px 8px 14px', borderRadius: 999,
+            background: C.surfaceElevated, border: `1px solid ${C.border}`,
+          }}>
+            <input
+              ref={inputRef}
+              type="text"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+              }}
+              placeholder="Например: «Какая категория расходов самая большая?» / «Сколько я заработал за апрель?»"
+              disabled={busy}
+              style={{
+                flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                color: C.text, fontSize: 13,
+              }}
+            />
+            <button
+              type="button"
+              onClick={ask}
+              disabled={busy || question.trim().length < 2}
+              style={{
+                width: 32, height: 32, borderRadius: 999,
+                border: 'none', background: C.accent, color: '#fff',
+                cursor: busy || question.trim().length < 2 ? 'not-allowed' : 'pointer',
+                opacity: busy || question.trim().length < 2 ? 0.5 : 1,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}
+              aria-label="Спросить"
+            >
+              {busy ? '…' : <ArrowRight size={14} />}
+            </button>
+          </div>
+          {answer && (
+            <div style={{
+              padding: '12px 14px', borderRadius: 10,
+              background: C.accentSoft, color: C.text,
+              fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-line',
+            }}>
+              {answer}
+            </div>
+          )}
+          <p style={{ fontSize: 11, color: C.textTertiary, lineHeight: 1.5, margin: 0 }}>
+            Контекст: последние 30 дней доходов и расходов. Enter — отправить, Esc — закрыть.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
