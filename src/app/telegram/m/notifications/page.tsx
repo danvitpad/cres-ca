@@ -11,6 +11,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users, X } from 'lucide-react';
+import { MobilePage, PageHeader, EmptyState } from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
   const w = window as { Telegram?: { WebApp?: { initData?: string } } };
@@ -75,9 +78,9 @@ const NOTIF_ICONS: Record<string, typeof Bell> = {
   mutual_follow: Users,
 };
 
-const NOTIF_ICON_COLORS: Record<string, string> = {
-  new_follower: 'text-blue-300',
-  mutual_follow: 'text-emerald-300',
+const NOTIF_ICON_BG: Record<string, { bg: string; color: string }> = {
+  new_follower: { bg: '#dbeafe', color: '#1d4ed8' },
+  mutual_follow: { bg: '#dcfce7', color: '#15803d' },
 };
 
 export default function MasterMiniAppNotifications() {
@@ -187,9 +190,11 @@ export default function MasterMiniAppNotifications() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
-      </div>
+      <MobilePage>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+          <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
+        </div>
+      </MobilePage>
     );
   }
 
@@ -197,144 +202,288 @@ export default function MasterMiniAppNotifications() {
   const groups = groupByDay(items);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-4 px-5 pt-6 pb-10"
-    >
-      {/* No page title per miniapp redesign — just actions if there's content */}
-      {items.length > 0 && (
-        <div className="flex items-center justify-between">
-          <p className="text-[11px] text-white/50">
-            {unreadCount > 0 ? `${unreadCount} непрочитанных` : 'Всё прочитано'}
-          </p>
-          <div className="flex items-center gap-2">
+    <MobilePage>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
+        <PageHeader
+          title="Уведомления"
+          subtitle={
+            items.length > 0
+              ? unreadCount > 0
+                ? `${unreadCount} непрочитанных`
+                : 'Всё прочитано'
+              : undefined
+          }
+        />
+
+        {items.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
             {unreadCount > 0 && (
               <button
+                type="button"
                 onClick={markAllRead}
-                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: R.pill,
+                  border: `1px solid ${T.border}`,
+                  background: T.surface,
+                  color: T.text,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
               >
                 Прочитать всё
               </button>
             )}
             <button
+              type="button"
               onClick={dismissAll}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold text-white/60 active:bg-white/[0.06] transition-colors"
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: R.pill,
+                border: `1px solid ${T.border}`,
+                background: 'transparent',
+                color: T.textSecondary,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
             >
               Очистить всё
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
-          ))}
-        </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-            <Inbox className="size-6 text-white/60" />
-          </div>
-          <p className="mt-4 text-base font-semibold">Пусто</p>
-          <p className="mt-1 text-xs text-white/50">Новые записи и события появятся здесь</p>
-        </div>
-      ) : (
-        <div className="space-y-5">
-          {groups.map((g) => (
-            <div key={g.key}>
-              <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/40">
-                {formatDay(g.date)}
-              </p>
-              <ul className="space-y-2">
-                {g.items.map((n) => {
-                  const notifType = n.data?.type ?? '';
-                  const Icon = NOTIF_ICONS[notifType] ?? Bell;
-                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-white/40' : 'text-violet-300');
-                  const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
-                  const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
-                  const followState = followerProfileId ? followStates[followerProfileId] : undefined;
-
-                  return (
-                    <li key={n.id}>
-                      <button
-                        onClick={() => {
-                          markRead(n.id);
-                          if (isFollowNotif && followerProfileId) {
-                            navigateToProfile(followerProfileId);
-                          }
-                        }}
-                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
-                      >
-                        {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                          <Icon className={`size-4 ${iconColor}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold">{n.title}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-white/60">{n.body}</p>
-                          <p className="mt-1 text-[10px] text-white/40">
-                            {new Date(n.sent_at ?? n.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                            {' · '}
-                            {n.channel}
-                          </p>
-                        </div>
-
-                        {/* Follow-back button for new_follower notifications */}
-                        {isFollowNotif && notifType === 'new_follower' && followerProfileId && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFollow(followerProfileId);
-                            }}
-                            disabled={followState === 'loading'}
-                            className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
-                              followState === true
-                                ? 'border border-white/10 bg-white/[0.03] text-white/70 active:bg-white/[0.06]'
-                                : 'bg-white text-black active:bg-white/80'
-                            }`}
-                          >
-                            {followState === 'loading' ? (
-                              <Loader2 className="size-3 animate-spin" />
-                            ) : followState === true ? (
-                              <><UserCheck className="size-3" /> Взаимно</>
-                            ) : (
-                              <><UserPlus className="size-3" /> Подписаться</>
-                            )}
-                          </button>
-                        )}
-
-                        {/* Mutual badge */}
-                        {notifType === 'mutual_follow' && (
-                          <span className="shrink-0 rounded-full border border-emerald-500/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
-                            Взаимно
-                          </span>
-                        )}
-
-                        {/* Dismiss (X) */}
-                        <span
-                          role="button"
-                          aria-label="Скрыть уведомление"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            dismissOne(n.id);
-                          }}
-                          className="shrink-0 flex size-7 items-center justify-center rounded-lg text-white/40 active:bg-white/[0.06] active:text-white/70 transition-colors"
-                        >
-                          <X className="size-3.5" />
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+        <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{ height: 72, borderRadius: R.md, background: T.bgSubtle }}
+                />
+              ))}
             </div>
-          ))}
+          ) : items.length === 0 ? (
+            <EmptyState
+              icon={
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: R.md,
+                    background: `linear-gradient(135deg, ${T.gradientFrom}40, ${T.gradientTo}40)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Inbox size={28} color={T.accent} strokeWidth={2} />
+                </div>
+              }
+              title="Пусто"
+              desc="Новые записи и события появятся здесь"
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {groups.map((g) => (
+                <div key={g.key}>
+                  <p
+                    style={{
+                      ...TYPE.micro,
+                      padding: '0 4px 8px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                    }}
+                  >
+                    {formatDay(g.date)}
+                  </p>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {g.items.map((n) => {
+                      const notifType = n.data?.type ?? '';
+                      const Icon = NOTIF_ICONS[notifType] ?? Bell;
+                      const iconStyle = NOTIF_ICON_BG[notifType] ?? {
+                        bg: n.read_at ? T.bgSubtle : T.accentSoft,
+                        color: n.read_at ? T.textTertiary : T.accent,
+                      };
+                      const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
+                      const isFollowNotif =
+                        (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
+                      const followState = followerProfileId ? followStates[followerProfileId] : undefined;
+
+                      return (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              markRead(n.id);
+                              if (isFollowNotif && followerProfileId) {
+                                navigateToProfile(followerProfileId);
+                              }
+                            }}
+                            style={{
+                              position: 'relative',
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 12,
+                              width: '100%',
+                              padding: '14px 14px 14px 18px',
+                              borderRadius: R.md,
+                              background: T.surface,
+                              border: `1px solid ${T.borderSubtle}`,
+                              boxShadow: SHADOW.card,
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              fontFamily: 'inherit',
+                            }}
+                          >
+                            {!n.read_at && (
+                              <span
+                                style={{
+                                  position: 'absolute',
+                                  left: 0,
+                                  top: 12,
+                                  bottom: 12,
+                                  width: 4,
+                                  borderRadius: '0 4px 4px 0',
+                                  background: T.accent,
+                                }}
+                              />
+                            )}
+                            <div
+                              style={{
+                                width: 36,
+                                height: 36,
+                                flexShrink: 0,
+                                borderRadius: 10,
+                                background: iconStyle.bg,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <Icon size={16} color={iconStyle.color} strokeWidth={2.2} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {n.title}
+                              </p>
+                              <p
+                                style={{
+                                  ...TYPE.caption,
+                                  marginTop: 2,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical' as const,
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {n.body}
+                              </p>
+                              <p style={{ ...TYPE.micro, marginTop: 4 }}>
+                                {new Date(n.sent_at ?? n.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                                {' · '}
+                                {n.channel}
+                              </p>
+                            </div>
+
+                            {isFollowNotif && notifType === 'new_follower' && followerProfileId && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFollow(followerProfileId);
+                                }}
+                                disabled={followState === 'loading'}
+                                style={{
+                                  flexShrink: 0,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  padding: '6px 12px',
+                                  borderRadius: 10,
+                                  border: followState === true ? `1px solid ${T.border}` : 'none',
+                                  background: followState === true ? T.surface : T.text,
+                                  color: followState === true ? T.textSecondary : T.bg,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: followState === 'loading' ? 'wait' : 'pointer',
+                                  opacity: followState === 'loading' ? 0.6 : 1,
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {followState === 'loading' ? (
+                                  <Loader2 size={11} className="animate-spin" />
+                                ) : followState === true ? (
+                                  <>
+                                    <UserCheck size={11} /> Взаимно
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus size={11} /> Подписаться
+                                  </>
+                                )}
+                              </button>
+                            )}
+
+                            {notifType === 'mutual_follow' && (
+                              <span
+                                style={{
+                                  flexShrink: 0,
+                                  padding: '4px 10px',
+                                  borderRadius: 999,
+                                  background: T.successSoft,
+                                  color: T.success,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Взаимно
+                              </span>
+                            )}
+
+                            <span
+                              role="button"
+                              aria-label="Скрыть уведомление"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dismissOne(n.id);
+                              }}
+                              style={{
+                                flexShrink: 0,
+                                width: 28,
+                                height: 28,
+                                borderRadius: 8,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: T.textTertiary,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <X size={14} />
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </motion.div>
+      </motion.div>
+    </MobilePage>
   );
 }
