@@ -183,7 +183,12 @@ export default async function PublicSalonPage({ params }: PageProps) {
       : undefined,
   };
 
-  const bookHref = `/ru/book?salon=${salon.id}`;
+  // If solo salon (1 master) — direct deep-link to that master's page.
+  // Otherwise scroll to team section so client picks the master first.
+  const soloMaster = masters.length === 1 ? masters[0] : null;
+  const bookHref = soloMaster?.invite_code
+    ? `/m/${soloMaster.invite_code}`
+    : '#salon-team';
 
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -238,11 +243,16 @@ export default async function PublicSalonPage({ params }: PageProps) {
             />
 
             {masters.length > 0 ? (
-              <section>
+              <section id="salon-team" className="scroll-mt-24">
                 <div className="mb-4 flex items-baseline gap-2">
                   <h2 className="text-[22px] font-bold text-neutral-900">Команда</h2>
                   <span className="text-[14px] text-neutral-500">{masters.length}</span>
                 </div>
+                {masters.length > 1 && (
+                  <p className="mb-4 text-[14px] text-neutral-600">
+                    Выбери мастера, чтобы записаться — у каждого своё расписание и свои услуги.
+                  </p>
+                )}
                 <SalonTeamGrid members={masters} />
               </section>
             ) : (
