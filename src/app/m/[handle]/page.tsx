@@ -17,6 +17,7 @@ import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
 import { OwnerEditButton } from '@/components/master/owner-edit-button';
+import { FollowMasterButton } from '@/components/master/follow-master-button';
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -424,7 +425,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           </p>
         )}
 
-        <div className="mt-8 flex justify-center sm:justify-start">
+        <div className="mt-8 flex flex-wrap justify-center gap-3 sm:justify-start">
           <Link
             href={`/ru/book?master=${master.id}`}
             className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -433,6 +434,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             <Calendar className="size-4" />
             Записаться
           </Link>
+          <FollowMasterButton masterId={master.id} accent={accent} />
         </div>
 
         {/* Contacts + socials + interests — all gated on per-field public flags */}

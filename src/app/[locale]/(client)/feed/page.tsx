@@ -90,12 +90,15 @@ export default function ClientFeedPage() {
           ctaLabel="Войти"
         />
       ) : items.length === 0 ? (
-        <EmptyCard
-          title="Пока тишина"
-          desc="Добавь в контакты любимых мастеров и салоны — здесь будут их ближайшие свободные окна и акции."
-          ctaHref="/find"
-          ctaLabel="Найти мастеров"
-        />
+        <>
+          <EmptyCard
+            title="Пока тишина"
+            desc="Добавь в контакты любимых мастеров и салоны — здесь будут их ближайшие свободные окна и акции."
+            ctaHref="/search"
+            ctaLabel="Найти мастеров"
+          />
+          <CategoriesBlock />
+        </>
       ) : (
         <ul className="space-y-3">
           {items.map((it) => (
@@ -184,6 +187,45 @@ function SlotCard({ item }: { item: FeedItem }) {
         </div>
       </Link>
     </motion.li>
+  );
+}
+
+/* Quick-pick category chips shown when feed is empty —
+ * gives the client a discovery starting point instead of a dead-end empty screen.
+ * Categories mirror the universal vertical list (no beauty bias).
+ */
+const CATEGORIES: { key: string; label: string; emoji: string; q: string }[] = [
+  { key: 'beauty',    label: 'Красота',     emoji: '💅', q: 'красота' },
+  { key: 'health',    label: 'Здоровье',    emoji: '🩺', q: 'здоровье' },
+  { key: 'wellness',  label: 'Велнес',      emoji: '🌿', q: 'велнес' },
+  { key: 'massage',   label: 'Массаж',      emoji: '💆', q: 'массаж' },
+  { key: 'fitness',   label: 'Фитнес',      emoji: '🏋️', q: 'фитнес' },
+  { key: 'auto',      label: 'Авто',        emoji: '🚗', q: 'авто' },
+  { key: 'home',      label: 'Дом',         emoji: '🛠️', q: 'ремонт' },
+  { key: 'pets',      label: 'Питомцы',     emoji: '🐾', q: 'груминг' },
+  { key: 'education', label: 'Образование', emoji: '📚', q: 'обучение' },
+  { key: 'tattoo',    label: 'Тату',        emoji: '🎨', q: 'тату' },
+];
+
+function CategoriesBlock() {
+  return (
+    <section className="mt-8">
+      <h2 className="mb-3 text-[14px] font-semibold text-neutral-900 dark:text-neutral-100">
+        Что ищем сегодня?
+      </h2>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {CATEGORIES.map((c) => (
+          <Link
+            key={c.key}
+            href={`/search?q=${encodeURIComponent(c.q)}`}
+            className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-3 py-3 text-[13px] font-medium text-neutral-800 transition-all hover:-translate-y-0.5 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"
+          >
+            <span className="text-[18px]">{c.emoji}</span>
+            <span className="truncate">{c.label}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
