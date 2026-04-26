@@ -1,14 +1,18 @@
 /** --- YAML
  * name: ReferralProgramPanel
- * description: Рекомендательная программа — toggle on/off, reward type/value, min_visits. Writes to masters.client_referral_*. Share link to /r/{handle}.
+ * description: Программа рекомендаций. Настраивается прямо здесь — без перехода
+ *              в Settings. Сегментный селектор типа скидки в стиле сайта,
+ *              компактные input'ы, шаблон реферальной ссылки `/m/{slug}?ref=<код клиента>`.
+ *              Если slug ещё не задан — inline-кнопка генерирует его из имени без
+ *              перехода в Settings.
  * created: 2026-04-18
- * updated: 2026-04-18
+ * updated: 2026-04-26
  * --- */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Gift, Copy, Check, Users } from 'lucide-react';
+import { Gift, Copy, Check, Users, Link as LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -22,6 +26,12 @@ interface ReferralConfig {
   reward_value: number;
   min_visits: number;
 }
+
+const REWARD_TYPES: { v: RewardType; label: string }[] = [
+  { v: 'percent', label: 'Скидка %' },
+  { v: 'fixed',   label: `Фикс ${CURRENCY}` },
+  { v: 'service', label: 'Бесплатная услуга' },
+];
 
 export function ReferralProgramPanel() {
   const { C } = usePageTheme();
@@ -37,6 +47,8 @@ export function ReferralProgramPanel() {
   const [loaded, setLoaded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [referralCount, setReferralCount] = useState<number>(0);
+  const [slug, setSlug] = useState<string | null>(null);
+  const [creatingSlug, setCreatingSlug] = useState(false);
 
   useEffect(() => {
     if (!master) return;
@@ -47,6 +59,7 @@ export function ReferralProgramPanel() {
       reward_value: Number(m.client_referral_reward_value ?? 10),
       min_visits: Number(m.client_referral_min_visits ?? 1),
     });
+    setSlug((m.slug as string | null) ?? null);
     setLoaded(true);
 
     // Load referral count
@@ -81,16 +94,44 @@ export function ReferralProgramPanel() {
     toast.success('Сохранено');
   }
 
-  const handle = (master as { handle?: string } | null)?.handle;
-  const shareUrl = typeof window !== 'undefined' && handle
-    ? `${window.location.origin}/r/${handle}`
+  async function generateSlug() {
+    if (!master) return;
+    const m = master as unknown as Record<string, unknown>;
+    const profile = (m.profile as { full_name?: string; first_name?: string } | undefined) ?? {};
+    const base = (profile.full_name || profile.first_name || 'master').toString();
+    // Простая транслитерация + dash
+    const ru: Record<string, string> = {
+      'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
+      'и':'i','й':'i','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
+      'с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh','щ':'shch',
+      'ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya','і':'i','ї':'i','є':'e','ґ':'g',
+    };
+    const candidate = base.toLowerCase()
+      .split('').map((ch) => ru[ch] ?? ch).join('')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      .slice(0, 60) || `master-${Date.now().toString(36)}`;
+
+    setCreatingSlug(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('masters')
+      .update({ slug: candidate, is_public: true })
+      .eq('id', (master as { id: string }).id);
+    setCreatingSlug(false);
+    if (error) { toast.error(error.message); return; }
+    setSlug(candidate);
+    toast.success('Публичный адрес создан');
+  }
+
+  const shareUrl = typeof window !== 'undefined' && slug
+    ? `${window.location.origin}/m/${slug}?ref={код_клиента}`
     : '';
 
   async function copyLink() {
     if (!shareUrl) return;
     await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    toast.success('Ссылка скопирована');
+    toast.success('Шаблон ссылки скопирован');
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -99,15 +140,16 @@ export function ReferralProgramPanel() {
   }
 
   const inputStyle = {
-    padding: '8px 12px', borderRadius: 8,
-    border: `1px solid ${C.border}`, background: 'transparent',
-    color: C.text, fontSize: 13, fontFamily: FONT, outline: 'none',
+    padding: '8px 10px', borderRadius: 8,
+    border: `1px solid ${C.border}`, background: C.surface,
+    color: C.text, fontSize: 14, fontFamily: FONT, outline: 'none',
+    fontVariantNumeric: 'tabular-nums' as const,
   };
 
   const rewardUnit = cfg.reward_type === 'percent' ? '%' : cfg.reward_type === 'fixed' ? CURRENCY : '';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header with toggle */}
       <div style={{
         background: C.surface, border: `1px solid ${C.border}`,
@@ -150,7 +192,9 @@ export function ReferralProgramPanel() {
             </button>
           </div>
           <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.5, margin: 0 }}>
-            Клиенты получают бонус, когда приводят друзей. Новый клиент переходит по вашей ссылке — вы видите, кто привёл, и вознаграждаете после {cfg.min_visits}-го визита.
+            Каждый клиент получает свою реферальную ссылку. Когда друг по ней
+            записывается и приходит на {cfg.min_visits}-й визит — мастер автоматически
+            начисляет бонус приведшему клиенту.
           </p>
         </div>
       </div>
@@ -163,46 +207,61 @@ export function ReferralProgramPanel() {
         transition: 'opacity 0.2s',
         pointerEvents: cfg.enabled ? 'auto' : 'none',
       }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 14, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.textTertiary, marginBottom: 12, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           Настройка вознаграждения
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 12, color: C.textSecondary }}>Тип вознаграждения</span>
-            <select
-              value={cfg.reward_type}
-              onChange={(e) => save({ reward_type: e.target.value as RewardType })}
-              style={{ ...inputStyle, cursor: 'pointer' }}
-            >
-              <option value="percent">Скидка, %</option>
-              <option value="fixed">Фиксированная, {CURRENCY}</option>
-              <option value="service">Бесплатная услуга</option>
-            </select>
-          </label>
+        {/* Сегментный селектор типа — наш стиль, без native dropdown */}
+        <div style={{ display: 'inline-flex', borderRadius: 999, padding: 4, gap: 2, background: C.surfaceElevated, border: `1px solid ${C.border}`, marginBottom: 14 }}>
+          {REWARD_TYPES.map((opt) => {
+            const active = cfg.reward_type === opt.v;
+            return (
+              <button
+                key={opt.v}
+                type="button"
+                onClick={() => save({ reward_type: opt.v })}
+                style={{
+                  padding: '6px 12px', borderRadius: 999, border: 'none',
+                  background: active ? C.accent : 'transparent',
+                  color: active ? '#fff' : C.textSecondary,
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: FONT, transition: 'all 120ms ease',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
 
+        {/* Узкие input'ы — раньше были широкими полями для маленьких чисел */}
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {cfg.reward_type !== 'service' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 12, color: C.textSecondary }}>Размер, {rewardUnit}</span>
-              <input
-                type="number"
-                value={cfg.reward_value}
-                onChange={(e) => setCfg({ ...cfg, reward_value: Number(e.target.value) })}
-                onBlur={() => save({ reward_value: cfg.reward_value })}
-                style={inputStyle}
-              />
+              <span style={{ fontSize: 11, color: C.textSecondary }}>Размер</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="number"
+                  value={cfg.reward_value}
+                  onChange={(e) => setCfg({ ...cfg, reward_value: Number(e.target.value) })}
+                  onBlur={() => save({ reward_value: cfg.reward_value })}
+                  style={{ ...inputStyle, width: 88, textAlign: 'center' }}
+                />
+                <span style={{ fontSize: 13, color: C.textSecondary, fontWeight: 600 }}>{rewardUnit}</span>
+              </div>
             </label>
           )}
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 12, color: C.textSecondary }}>Минимум визитов</span>
+            <span style={{ fontSize: 11, color: C.textSecondary }}>Минимум визитов</span>
             <input
               type="number"
               min={1}
               value={cfg.min_visits}
               onChange={(e) => setCfg({ ...cfg, min_visits: Number(e.target.value) })}
               onBlur={() => save({ min_visits: cfg.min_visits })}
-              style={inputStyle}
+              style={{ ...inputStyle, width: 88, textAlign: 'center' }}
             />
           </label>
         </div>
@@ -215,7 +274,7 @@ export function ReferralProgramPanel() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: C.textTertiary, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-            Ссылка для приглашений
+            Шаблон реферальной ссылки клиента
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.textTertiary, fontSize: 12 }}>
             <Users size={12} />
@@ -223,31 +282,57 @@ export function ReferralProgramPanel() {
           </div>
         </div>
 
-        {!handle ? (
-          <p style={{ fontSize: 13, color: C.textTertiary, margin: 0 }}>
-            Задайте публичный handle в настройках, чтобы получить ссылку.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <input
-              value={shareUrl}
-              readOnly
-              onFocus={(e) => e.currentTarget.select()}
-              style={{ ...inputStyle, flex: 1, minWidth: 200, fontFamily: 'ui-monospace, monospace' }}
-            />
+        {!slug ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: 12, borderRadius: 10,
+            background: C.accentSoft, border: `1px dashed ${C.accent}`,
+          }}>
+            <LinkIcon size={16} style={{ color: C.accent, flexShrink: 0 }} />
+            <p style={{ fontSize: 13, color: C.text, lineHeight: 1.5, margin: 0, flex: 1 }}>
+              Чтобы получить ссылку — задай публичный адрес мастера. Сгенерируем из твоего имени.
+            </p>
             <button
-              onClick={copyLink}
+              type="button"
+              onClick={generateSlug}
+              disabled={creatingSlug}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '8px 14px', borderRadius: 8, border: 'none',
-                background: copied ? C.success : C.accent, color: '#fff',
-                fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: 'pointer',
+                background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600,
+                cursor: creatingSlug ? 'wait' : 'pointer', fontFamily: FONT,
+                opacity: creatingSlug ? 0.6 : 1, whiteSpace: 'nowrap',
               }}
             >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              {copied ? 'Скопировано' : 'Копировать'}
+              {creatingSlug ? '…' : 'Создать адрес'}
             </button>
           </div>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                value={shareUrl}
+                readOnly
+                onFocus={(e) => e.currentTarget.select()}
+                style={{ ...inputStyle, flex: 1, minWidth: 200, fontFamily: 'ui-monospace, monospace', fontSize: 12 }}
+              />
+              <button
+                onClick={copyLink}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 14px', borderRadius: 8, border: 'none',
+                  background: copied ? C.success : C.accent, color: '#fff',
+                  fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: 'pointer',
+                }}
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                {copied ? 'Скопировано' : 'Копировать'}
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: C.textTertiary, lineHeight: 1.5, margin: '8px 0 0' }}>
+              Каждому клиенту автоматически выдаётся уникальный <code>код_клиента</code>. В Mini App
+              у клиента в разделе «Бонусы» он видит свою готовую ссылку — копирует и отправляет другу.
+            </p>
+          </>
         )}
       </div>
     </div>

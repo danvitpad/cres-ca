@@ -145,6 +145,7 @@ export default function AppointmentsPage() {
   const [ratingFor, setRatingFor] = useState<AppointmentRow | null>(null);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
+  const [ratingAnonymous, setRatingAnonymous] = useState(false);
   const [ratingBusy, setRatingBusy] = useState(false);
 
   // Before/after slider
@@ -346,6 +347,7 @@ export default function AppointmentsPage() {
       score: ratingScore,
       comment: ratingComment.trim() || null,
       is_published: true,
+      is_anonymous: ratingAnonymous,
     });
     setRatingBusy(false);
     if (error) {
@@ -357,6 +359,7 @@ export default function AppointmentsPage() {
     setRatingFor(null);
     setRatingScore(5);
     setRatingComment('');
+    setRatingAnonymous(false);
   }
 
   function handleRepeat(a: AppointmentRow) {
@@ -709,6 +712,19 @@ export default function AppointmentsPage() {
                 placeholder={tr('commentPlaceholder')}
                 rows={3}
               />
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border/60 bg-card/50 p-2.5 text-xs">
+                <input
+                  type="checkbox"
+                  checked={ratingAnonymous}
+                  onChange={(e) => setRatingAnonymous(e.target.checked)}
+                  className="mt-0.5 size-4 cursor-pointer accent-[var(--ds-accent)]"
+                />
+                <span className="flex-1 text-muted-foreground leading-relaxed">
+                  <span className="font-medium text-foreground">Анонимный отзыв</span>
+                  <br />
+                  Имя не будет показано публично. Мастер видит автора только в админке.
+                </span>
+              </label>
               <div className="flex gap-2">
                 <Button variant="ghost" className="flex-1" disabled={ratingBusy} onClick={() => setRatingFor(null)}>
                   {tc('cancel')}
