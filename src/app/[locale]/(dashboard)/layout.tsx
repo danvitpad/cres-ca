@@ -272,7 +272,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               initials: getInitials(masterName),
               avatarUrl: master?.profile?.avatar_url || null,
               menuItems: [
-                { icon: UserCircle, label: 'Мой профиль', href: '/settings?section=profile' },
+                // «Мой профиль» убран — он дублировал «Настройки → Редактировать профиль».
+                // Профиль редактируется внутри настроек как одна из карточек.
                 { icon: SettingsIcon, label: 'Настройки', href: '/settings' },
                 {
                   icon: LogOut,

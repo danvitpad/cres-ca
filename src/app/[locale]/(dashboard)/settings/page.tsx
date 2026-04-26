@@ -64,10 +64,11 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
-  // Sync with URL ?section=... (deep-link from header dropdown)
+  // Sync with URL ?section=... (deep-link from header dropdown).
+  // Reset to null when the param is removed so /settings always shows the home grid.
   useEffect(() => {
     const s = searchParams.get('section');
-    if (s) setActiveSection(s);
+    setActiveSection(s);
   }, [searchParams]);
 
   if (loading) {
