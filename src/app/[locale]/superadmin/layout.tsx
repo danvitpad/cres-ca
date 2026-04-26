@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server';
 import { isSuperadminEmail } from '@/lib/superadmin/access';
 import { SuperadminShell } from '@/components/superadmin/superadmin-shell';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();

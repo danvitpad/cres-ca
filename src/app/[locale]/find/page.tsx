@@ -11,8 +11,6 @@ import Image from 'next/image';
 import { Star, MapPin, Search as SearchIcon } from 'lucide-react';
 import { searchMasters } from '@/lib/marketplace/search';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 300; // 5min ISR
 
 interface SearchPageProps {
   params: Promise<{ locale: string }>;

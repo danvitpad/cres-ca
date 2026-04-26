@@ -10,7 +10,6 @@ import { ArrowLeft, Ban, Mail, Phone, Send } from 'lucide-react';
 import { getUserDetail } from '@/lib/superadmin/users';
 import { BanUserButton } from '@/components/superadmin/ban-user-button';
 
-export const dynamic = 'force-dynamic';
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (

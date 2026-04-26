@@ -7,7 +7,6 @@
 import { getSubscriptionsBuckets } from '@/lib/superadmin/subscriptions-data';
 import { SubscriptionsClient } from '@/components/superadmin/subscriptions-client';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminSubscriptionsPage() {
   const buckets = await getSubscriptionsBuckets();

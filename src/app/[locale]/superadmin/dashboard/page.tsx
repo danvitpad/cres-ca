@@ -7,7 +7,6 @@
 import { getDashboardData } from '@/lib/superadmin/metrics';
 import { MrrLineChart, RegistrationsChart } from '@/components/superadmin/dashboard-charts';
 
-export const revalidate = 300;
 
 function fmt(n: number) {
   return n.toLocaleString('ru-RU');

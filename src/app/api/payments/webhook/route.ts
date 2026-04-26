@@ -12,7 +12,6 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { markHeld } from '@/lib/payments/escrow';
 
-export const dynamic = 'force-dynamic';
 
 function admin() {
   return createAdminClient(

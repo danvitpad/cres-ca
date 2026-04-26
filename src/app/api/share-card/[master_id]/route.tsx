@@ -8,7 +8,6 @@
 import { ImageResponse } from 'next/og';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
-export const runtime = 'nodejs';
 
 export async function GET(request: Request, { params }: { params: Promise<{ master_id: string }> }) {
   const { master_id } = await params;

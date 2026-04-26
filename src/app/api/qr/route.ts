@@ -8,7 +8,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import QRCode from 'qrcode';
 
-export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   const handle = req.nextUrl.searchParams.get('handle')?.trim();

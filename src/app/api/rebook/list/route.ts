@@ -8,7 +8,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { listRebookForMaster } from '@/lib/rebook/list-for-master';
 
-export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const supabase = await createClient();

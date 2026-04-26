@@ -7,7 +7,6 @@
 import { listOffers } from '@/lib/superadmin/offers-data';
 import { OffersClient } from '@/components/superadmin/offers-client';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminOffersPage() {
   const rows = await listOffers();

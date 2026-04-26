@@ -8,7 +8,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { voiceToText, AIUnavailableError } from '@/lib/ai/router';
 
-export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 async function sendTg(chatId: string, text: string): Promise<number | null> {

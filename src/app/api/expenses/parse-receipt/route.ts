@@ -7,7 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
 
 const PROMPT = `Extract the total amount, currency, merchant name, date, and expense category from this receipt image. Return ONLY a compact JSON object with keys: amount (number), currency (ISO code like UAH/USD/EUR), vendor (string), date (YYYY-MM-DD), category (string, e.g. "Расходники", "Аренда", "Еда", "Транспорт", "Коммунальные", "Реклама", "Прочее"). If a field is missing, use null. No prose.`;
 

@@ -8,7 +8,6 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
-export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 function admin() {

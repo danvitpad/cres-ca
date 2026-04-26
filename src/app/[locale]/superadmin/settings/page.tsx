@@ -7,7 +7,6 @@
 import { getPlatformSettings } from '@/lib/superadmin/settings-data';
 import { SettingsClient } from '@/components/superadmin/settings-client';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminSettingsPage() {
   const data = await getPlatformSettings();

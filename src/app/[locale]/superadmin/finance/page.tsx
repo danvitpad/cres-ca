@@ -8,8 +8,6 @@ import { TrendingUp, TrendingDown, Users, Building2, Star, CircleDollarSign, Ale
 import { getFinanceSnapshot } from '@/lib/superadmin/finance-data';
 import { MrrLineChart } from '@/components/superadmin/dashboard-charts';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 300;
 
 function fmt(n: number): string {
   return n.toLocaleString('ru-RU');

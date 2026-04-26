@@ -19,6 +19,12 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  // React Compiler — auto-memoizes components (Next.js 16 stable)
+  reactCompiler: true,
+  // Cache Components — TODO: enable after Suspense boundaries audit on /consent/[token]
+  // and /[locale]/user-flow + similar pages. Requires every uncached data access
+  // (cookies, DB queries) to be wrapped in <Suspense>. Plan as separate refactor.
+  // cacheComponents: true,
   experimental: {
     optimizePackageImports: [
       'lucide-react', 'motion', 'framer-motion',

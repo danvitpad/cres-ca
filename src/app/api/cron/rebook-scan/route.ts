@@ -8,7 +8,6 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { scanRebookSuggestions } from '@/lib/rebook/scan';
 
-export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 function admin() {

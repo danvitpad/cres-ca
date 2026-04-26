@@ -10,7 +10,6 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { release, capture, getAutoReleaseHours } from '@/lib/payments/escrow';
 
-export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 function admin() {

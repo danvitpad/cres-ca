@@ -8,7 +8,6 @@ import Link from 'next/link';
 import { listUsers, type UserType, type UserSubFilter } from '@/lib/superadmin/users';
 import { UsersFilters } from '@/components/superadmin/users-filters';
 
-export const dynamic = 'force-dynamic';
 
 const TYPE_LABEL: Record<string, string> = { client: 'Клиент', master: 'Мастер', salon: 'Салон', other: '—' };
 

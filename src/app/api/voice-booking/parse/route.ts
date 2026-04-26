@@ -7,7 +7,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-export const runtime = 'nodejs';
 
 const PROMPT = `You are a booking assistant. The master speaks or types a command like "запиши Машу на завтра в 15:00 на стрижку". Extract a compact JSON with: client_name (string), date (YYYY-MM-DD using today's date as reference), time (HH:MM 24h), duration_min (number, default 60 if unknown), service_hint (string or null). Today's date is provided. If a field is missing use null. Respond with ONLY the JSON, no prose.`;
 

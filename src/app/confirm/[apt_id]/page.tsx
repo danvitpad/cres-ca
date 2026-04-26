@@ -8,8 +8,6 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { CheckCircle, XCircle } from 'lucide-react';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 export default async function ConfirmAppointmentPage({
   params,

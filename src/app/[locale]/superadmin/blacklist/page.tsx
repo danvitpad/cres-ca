@@ -7,7 +7,6 @@
 import { listBlacklist } from '@/lib/superadmin/blacklist-data';
 import { BlacklistClient } from '@/components/superadmin/blacklist-client';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminBlacklistPage() {
   const rows = await listBlacklist();

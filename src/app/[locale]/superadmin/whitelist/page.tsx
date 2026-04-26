@@ -7,7 +7,6 @@
 import { listWhitelist } from '@/lib/superadmin/whitelist-data';
 import { WhitelistClient } from '@/components/superadmin/whitelist-client';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminWhitelistPage({
   searchParams,

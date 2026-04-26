@@ -7,7 +7,6 @@
 import { listFeedback, getFeedbackCounts } from '@/lib/superadmin/feedback-data';
 import { FeedbackClient } from '@/components/superadmin/feedback-client';
 
-export const dynamic = 'force-dynamic';
 
 export default async function SuperadminFeedbackPage() {
   const [rows, counts] = await Promise.all([listFeedback(), getFeedbackCounts()]);

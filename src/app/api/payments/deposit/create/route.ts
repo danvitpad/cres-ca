@@ -12,7 +12,6 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/server';
 import { createPaymentIntent, computeDepositForBooking } from '@/lib/payments/escrow';
 
-export const dynamic = 'force-dynamic';
 
 function admin() {
   return createAdminClient(

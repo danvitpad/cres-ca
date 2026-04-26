@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { validateInitData } from '@/lib/telegram/validate-init-data';
 
-export const dynamic = 'force-dynamic';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminDb = any;

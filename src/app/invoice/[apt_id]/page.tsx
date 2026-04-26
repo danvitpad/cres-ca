@@ -9,8 +9,6 @@ import { notFound } from 'next/navigation';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PrintButton } from './print-button';
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ apt_id: string }>;
