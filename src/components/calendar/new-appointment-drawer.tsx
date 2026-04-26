@@ -159,25 +159,27 @@ export function NewAppointmentDrawer({
 
   return (
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 32px', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
-        {/* Date + Time row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Field label="Дата" icon={<Calendar size={14} />} C={C}>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              style={inputStyle(C)}
-            />
+        {/* Date + Time row — tighter, with bigger inputs and inline icons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <Field label="Дата" icon={<Calendar size={13} />} C={C}>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={{ ...inputStyle(C), height: 42 }}
+              />
+            </div>
           </Field>
-          <Field label="Время" icon={<Clock size={14} />} C={C}>
+          <Field label="Время" icon={<Clock size={13} />} C={C}>
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
               step={300}
-              style={inputStyle(C)}
+              style={{ ...inputStyle(C), height: 42 }}
             />
           </Field>
         </div>
