@@ -25,6 +25,8 @@ import { PublicHeroCard } from '@/components/master/public-hero-card';
 import { PublicServicesList } from '@/components/master/public-services-list';
 import { BookingDrawerProvider } from '@/components/master/booking/booking-provider';
 import { BookingCTA } from '@/components/master/booking/booking-cta';
+import { InlineCoverBanner } from '@/components/master/inline/cover-banner';
+import { InlineBioBlock } from '@/components/master/inline/bio-block';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
@@ -431,20 +433,15 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Optional thin cover banner — shown ONLY when master uploaded one.
-          Не overlap'ится с hero card; hero card стоит ниже самостоятельной секцией. */}
-      {master.cover_url && (
-        <div className="relative h-40 w-full overflow-hidden bg-neutral-100 sm:h-52 lg:h-64">
-          <Image
-            src={master.cover_url}
-            alt=""
-            fill
-            priority
-            className="object-cover"
-            style={{ objectPosition: `center ${bannerY}%` }}
-          />
-        </div>
-      )}
+      {/* Cover banner — inline-editable для owner. Если cover_url пуст и
+          текущий пользователь — owner, показывается dashed-CTA «Добавь обложку».
+          Иначе для клиента — image либо ничего. */}
+      <InlineCoverBanner
+        masterId={master.id}
+        masterProfileId={master.profile_id}
+        initialCoverUrl={master.cover_url}
+        initialBannerY={master.banner_position_y}
+      />
 
       <BookingDrawerProvider
         master={{
@@ -472,6 +469,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           <div className="lg:col-span-4">
             <PublicHeroCard
               masterId={master.id}
+              masterProfileId={master.profile_id}
               displayName={displayName}
               specialization={master.specialization}
               rating={rating}
@@ -513,15 +511,14 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Bio */}
-            {hasBio && (
-              <section id="bio">
-                <h2 className="mb-3 text-[22px] font-bold text-neutral-900">О мастере</h2>
-                <p className="whitespace-pre-line text-[15px] leading-relaxed text-neutral-700">
-                  {master.bio}
-                </p>
-              </section>
-            )}
+            {/* Bio — inline-editable. Скрыто для клиента если пусто; для owner —
+                CTA «Добавь описание». */}
+            <InlineBioBlock
+              masterId={master.id}
+              masterProfileId={master.profile_id}
+              initialBio={master.bio}
+            />
+            {void hasBio /* legacy var, rendering moved to InlineBioBlock */}
 
             {/* Services */}
             {hasServices && (

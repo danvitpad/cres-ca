@@ -10,12 +10,13 @@
  * --- */
 
 import { Star, MapPin } from 'lucide-react';
-import { MasterAvatar } from './master-avatar';
 import { ShareStoryButton } from './share-story-button';
 import { BookingCTA } from './booking/booking-cta';
+import { InlineAvatarEdit } from './inline/avatar-edit';
 
 interface Props {
   masterId: string;
+  masterProfileId: string | null;
   displayName: string;
   specialization: string | null;
   rating: number;
@@ -29,14 +30,12 @@ interface Props {
   workplaceAddress: string | null;
   joinedAt: string | null;
   bookHref: string;
-  /** Triggered when the user clicks main «Записаться» CTA. Returning false bypasses the link.
-   *  Server-component cannot pass functions, so the link href is always used; client-side
-   *  enhancement (BookingDrawer) intercepts via event delegation on data-book-cta. */
   accent?: string;
 }
 
 export function PublicHeroCard({
   masterId,
+  masterProfileId,
   displayName,
   specialization,
   rating,
@@ -52,10 +51,9 @@ export function PublicHeroCard({
   bookHref,
   accent = '#0a0a0a',
 }: Props) {
-  void masterId; // reserved for future inline-edit prop drilling
+  void masterId;
+  void bookHref;
   void accent;
-  const initials = displayName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
-  void initials;
 
   const joinedLabel = (() => {
     if (!joinedAt) return null;
@@ -72,9 +70,14 @@ export function PublicHeroCard({
         <ShareStoryButton masterId={masterId} masterName={displayName} />
       </div>
 
-      {/* Avatar (centered, large) */}
+      {/* Avatar (centered, large) — inline-editable for owner */}
       <div className="mx-auto mt-2 size-40 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-black/5">
-        <MasterAvatar url={avatarUrl} name={displayName} />
+        <InlineAvatarEdit
+          masterProfileId={masterProfileId}
+          initialUrl={avatarUrl}
+          name={displayName}
+          className="size-full"
+        />
       </div>
 
       {/* Identity */}
