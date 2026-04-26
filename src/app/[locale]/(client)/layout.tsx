@@ -37,6 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { ClientOnboardingWizard } from '@/components/client/onboarding-wizard';
+import { ConfirmProvider } from '@/hooks/use-confirm';
 import { cn } from '@/lib/utils';
 
 // IG-style sidebar — hover to expand.
@@ -321,6 +322,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   }
 
   return (
+    <ConfirmProvider>
     <div className="flex h-dvh flex-col bg-background">
       {/* Top header — Fresha-style global search. Logo left, pill absolutely centered, notifications right. */}
       <header className="sticky top-0 z-50 relative flex h-[72px] shrink-0 items-center justify-between border-b bg-background px-4 lg:px-8">
@@ -760,5 +762,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         initial={onboardingInitial}
       />
     </div>
+    </ConfirmProvider>
   );
 }
