@@ -5,7 +5,9 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { sendMessage } from '@/lib/telegram/bot';
+import { sendMessage, sendDocument } from '@/lib/telegram/bot';
+
+interface AttachmentRef { url: string; name?: string }
 import { getResend } from '@/lib/email/resend';
 
 export async function GET(request: Request) {
@@ -39,6 +41,8 @@ export async function GET(request: Request) {
   for (const n of notifications) {
     const profile = n.profiles as { telegram_id: string | null; full_name: string } | null;
 
+    const attachments = (n.data as Record<string, unknown> | null)?.attachment_urls as AttachmentRef[] | undefined;
+
     if (n.channel === 'telegram' && profile?.telegram_id) {
       try {
         await sendMessage(profile.telegram_id, `<b>${n.title}</b>\n\n${n.body}`, {
@@ -47,6 +51,14 @@ export async function GET(request: Request) {
             inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: appUrl } }]],
           },
         });
+        // Re-send each attached file as a separate document message.
+        if (attachments?.length) {
+          for (const a of attachments) {
+            if (a?.url) {
+              await sendDocument(profile.telegram_id, a.url, a.name).catch(() => null);
+            }
+          }
+        }
         await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', n.id);
         sent++;
       } catch (err) {
@@ -62,11 +74,16 @@ export async function GET(request: Request) {
       if (email) {
         try {
           const resend = getResend();
+          // Build attachment list: pass the public URL to Resend so it fetches & attaches.
+          const resendAttachments = (attachments ?? [])
+            .filter((a): a is AttachmentRef => Boolean(a?.url))
+            .map((a) => ({ filename: a.name || 'attachment', path: a.url }));
           await resend.emails.send({
             from: 'CRES-CA <noreply@cres-ca.com>',
             to: email,
             subject: n.title ?? 'CRES-CA',
             html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;"><h2 style="color: #0f172a;">${n.title ?? ''}</h2><p style="color: #334155;">${n.body ?? ''}</p></div>`,
+            ...(resendAttachments.length ? { attachments: resendAttachments } : {}),
           });
         } catch {
           // Resend not configured or failed — mark as sent anyway to avoid retry loop

@@ -49,6 +49,7 @@ interface PaymentRow {
   id: string; amount: number; currency: string; type: string;
   payment_method: string | null; created_at: string;
   appointment: {
+    id?: string;
     service: { name: string } | null;
     client: { full_name: string } | null;
   } | null;
@@ -68,7 +69,7 @@ interface ExpenseRow {
 }
 
 interface AppointmentRow {
-  id: string; starts_at: string; status: string;
+  id: string; starts_at: string; status: string; price: number | null;
   services: { name: string } | null;
   clients: { full_name: string } | null;
 }
@@ -143,7 +144,7 @@ export default function FinancePage() {
         p_start: prev.start.toISOString(),
         p_end: prev.end.toISOString(),
       }),
-      supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, appointment:appointments(service:services(name), client:clients(full_name))')
+      supabase.from('payments').select('id, amount, currency, type, payment_method, created_at, appointment:appointments(id, service:services(name), client:clients(full_name))')
         .eq('master_id', master.id).eq('status', 'completed')
         .gte('created_at', period.start.toISOString()).lte('created_at', period.end.toISOString())
         .order('created_at', { ascending: false }).limit(50),
@@ -158,7 +159,7 @@ export default function FinancePage() {
       supabase.from('appointments').select('id, starts_at, status, price, services(name), clients(full_name)')
         .eq('master_id', master.id)
         .gte('starts_at', period.start.toISOString()).lte('starts_at', period.end.toISOString())
-        .order('starts_at', { ascending: false }).limit(20),
+        .order('starts_at', { ascending: false }).limit(500),
     ]);
 
     const curRow = Array.isArray(curMetrics.data) ? curMetrics.data[0] : curMetrics.data;
@@ -362,10 +363,31 @@ export default function FinancePage() {
       paymentMethod: m.payment_method ?? null,
       source: 'manual' as const,
     }));
-    return [...paymentRows, ...manualRows].sort(
+    // Completed appointments without an explicit payment row (auto-income).
+    // Most masters mark appointments completed without separately creating a payment;
+    // the KPI tile already counts these via master_period_metrics, so the table needs
+    // to mirror that. Dedup against payments by appointment_id to avoid double-counting
+    // for masters who use the explicit payment flow.
+    const paidApptIds = new Set<string>();
+    for (const p of payments) {
+      const apt = p.appointment as { id?: string } | null | undefined;
+      if (apt?.id) paidApptIds.add(apt.id);
+    }
+    const apptRows = lastAppointments
+      .filter((a) => a.status === 'completed' && !paidApptIds.has(a.id) && Number(a.price ?? 0) > 0)
+      .map((a) => ({
+        id: `a_${a.id}`,
+        date: a.starts_at,
+        amount: Number(a.price ?? 0),
+        title: (a.services as { name?: string } | null)?.name || 'Услуга',
+        subtitle: (a.clients as { full_name?: string } | null)?.full_name || '—',
+        paymentMethod: null as string | null,
+        source: 'appointment' as const,
+      }));
+    return [...paymentRows, ...manualRows, ...apptRows].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [payments, manualIncomes]);
+  }, [payments, manualIncomes, lastAppointments]);
 
   const PAYMENT_LABELS: Record<string, string> = {
     cash: 'Наличные',

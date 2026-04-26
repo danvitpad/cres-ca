@@ -24,6 +24,20 @@ export async function sendMessage(chatId: string | number, text: string, options
   return res.json();
 }
 
+/** Send a document by URL — used by broadcast/notification dispatch when notifications.data.attachment_urls is set. */
+export async function sendDocument(chatId: string | number, documentUrl: string, caption?: string) {
+  const res = await fetch(`${API_BASE}/sendDocument`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      document: documentUrl,
+      caption: caption ?? undefined,
+    }),
+  });
+  return res.json();
+}
+
 export async function setWebhook(url: string) {
   const res = await fetch(`${API_BASE}/setWebhook`, {
     method: 'POST',
