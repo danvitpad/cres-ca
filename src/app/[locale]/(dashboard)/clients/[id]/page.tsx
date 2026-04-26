@@ -24,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { useMaster } from '@/hooks/use-master';
 import { motion } from 'framer-motion';
+import { LoyaltyCreditButton } from '@/components/clients/loyalty-credit-button';
 import { differenceInYears, differenceInDays, setYear, getYear, startOfDay } from 'date-fns';
 import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
@@ -291,6 +292,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           <Divider C={C} />
           <Stat label="Ср. чек" value={`${Math.round(client.avg_check).toLocaleString()} ${CURRENCY}`} C={C} />
         </div>
+
+        {master?.id && (
+          <LoyaltyCreditButton
+            masterId={master.id}
+            profileId={client.profile_id ?? null}
+          />
+        )}
 
         <Link
           href={`/calendar?client_id=${id}`}

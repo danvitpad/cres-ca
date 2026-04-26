@@ -96,11 +96,10 @@ export default function BookPage() {
   const [clientName, setClientName] = useState('');
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [bookingFor, setBookingFor] = useState<FamilyMember | null>(null);
+  // Per-master loyalty balance (loyalty_balances). Replaces the cross-master
+  // profiles.bonus_points pool which was retired in migration 00102.
   const [bonusPoints, setBonusPoints] = useState(0);
-  // useBonuses temporarily disabled — bonus spending UI is hidden until the loyalty
-  // system is rebuilt (см. CLAUDE.md → Bonus rebuild epic). Keeping bonusPoints state
-  // because we still want to load the balance (read-only display elsewhere).
-  const useBonuses = false;
+  const [useBonuses, setUseBonuses] = useState(false);
 
   // Salon → pick first active master and redirect (keeps /book?salon=<id> CTA working).
   useEffect(() => {
@@ -193,11 +192,19 @@ export default function BookPage() {
       const supabase = createClient();
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, bonus_points')
+        .select('full_name')
         .eq('id', userId!)
         .single();
       if (profile?.full_name) setClientName(profile.full_name);
-      if (profile?.bonus_points != null) setBonusPoints(Number(profile.bonus_points));
+
+      // Unified loyalty: per-master balance instead of cross-master profiles.bonus_points
+      const { data: balanceRow } = await supabase
+        .from('loyalty_balances')
+        .select('balance')
+        .eq('master_id', preselectedMasterId!)
+        .eq('profile_id', userId!)
+        .maybeSingle();
+      setBonusPoints(Number(balanceRow?.balance ?? 0));
 
       const { data: client } = await supabase
         .from('clients')
@@ -439,7 +446,7 @@ export default function BookPage() {
     }
 
     const referrerProfileId = typeof window !== 'undefined' ? window.sessionStorage.getItem('cres_ref') : null;
-    const { error } = await supabase.from('appointments').insert({
+    const { data: insertedApt, error } = await supabase.from('appointments').insert({
       client_id: clientId,
       master_id: preselectedMasterId,
       service_id: selectedService.id,
@@ -450,7 +457,20 @@ export default function BookPage() {
       price: totalPrice,
       currency: selectedService.currency,
       referrer_profile_id: referrerProfileId,
-    });
+    }).select('id').single();
+    const newAppointmentId: string | null = (insertedApt as { id?: string } | null)?.id ?? null;
+
+    // Persist referrer link for award_referral_reward to use after first paid visit completes.
+    if (referrerProfileId && userId && referrerProfileId !== userId) {
+      await supabase.from('referrals').upsert(
+        {
+          referrer_profile_id: referrerProfileId,
+          referred_profile_id: userId,
+          bonus_points: 0,
+        },
+        { onConflict: 'referred_profile_id', ignoreDuplicates: false },
+      );
+    }
 
     if (error) {
       toast.error(tc('error'));
@@ -533,11 +553,16 @@ export default function BookPage() {
       }
     }
 
-    if (bonusToSpend > 0) {
-      await supabase
-        .from('profiles')
-        .update({ bonus_points: Math.max(0, bonusPoints - bonusToSpend) })
-        .eq('id', userId);
+    if (bonusToSpend > 0 && preselectedMasterId && userId) {
+      // Unified loyalty: server-side RPC writes the audit row + decrements
+      // loyalty_balances atomically. Links the spend to the new appointment
+      // for downstream analytics («куда ушли мои баллы»).
+      await supabase.rpc('redeem_loyalty_bonus', {
+        p_master_id: preselectedMasterId,
+        p_profile_id: userId,
+        p_amount: bonusToSpend,
+        p_appointment_id: newAppointmentId,
+      });
     }
 
     toast.success(t('bookingSuccess'));
@@ -843,12 +868,25 @@ export default function BookPage() {
                 <span className="text-sm text-muted-foreground">{t('duration')}</span>
                 <span className="text-sm font-medium">{totalDuration} {t('min')}</span>
               </div>
-              {/* Bonus-spending UI скрыт. Текущая программа лояльности построена в убыток мастеру
-                  (см. CLAUDE.md → Bonus rebuild epic). Вернуть когда:
-                  1) баллы привязаны к мастеру (client_bonuses(master_id, profile_id, balance))
-                  2) мастер сам контролирует %, cap, expiry
-                  3) реферал платит мастеру за нового клиента, а не списывает у него.
-                  Пока баланс просто отображается на /bonuses без возможности тратить. */}
+              {bonusPoints > 0 && (
+                <label className="flex items-center gap-3 pt-1 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={useBonuses}
+                    onChange={(e) => setUseBonuses(e.target.checked)}
+                    className="size-4 rounded border-input accent-primary"
+                  />
+                  <span className="flex-1 text-sm">
+                    Использовать {Math.min(bonusPoints, Math.floor(basePrice))} {selectedService.currency} бонусов у этого мастера
+                  </span>
+                </label>
+              )}
+              {bonusPreview > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Скидка бонусами</span>
+                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{bonusPreview} {selectedService.currency}</span>
+                </div>
+              )}
               <div className="border-t pt-2 flex justify-between">
                 <span className="font-medium">{t('totalLabel')}</span>
                 <span className="font-bold">{totalPrice.toFixed(0)} {selectedService.currency}</span>
