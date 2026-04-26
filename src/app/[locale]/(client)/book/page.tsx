@@ -97,7 +97,10 @@ export default function BookPage() {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [bookingFor, setBookingFor] = useState<FamilyMember | null>(null);
   const [bonusPoints, setBonusPoints] = useState(0);
-  const [useBonuses, setUseBonuses] = useState(false);
+  // useBonuses temporarily disabled — bonus spending UI is hidden until the loyalty
+  // system is rebuilt (см. CLAUDE.md → Bonus rebuild epic). Keeping bonusPoints state
+  // because we still want to load the balance (read-only display elsewhere).
+  const useBonuses = false;
 
   // Salon → pick first active master and redirect (keeps /book?salon=<id> CTA working).
   useEffect(() => {
@@ -840,28 +843,12 @@ export default function BookPage() {
                 <span className="text-sm text-muted-foreground">{t('duration')}</span>
                 <span className="text-sm font-medium">{totalDuration} {t('min')}</span>
               </div>
-              {bonusPoints > 0 && (
-                <label className="flex items-center gap-3 pt-1 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={useBonuses}
-                    onChange={(e) => setUseBonuses(e.target.checked)}
-                    className="size-4 rounded border-input accent-primary"
-                  />
-                  <span className="flex-1 text-sm">
-                    {t('useBonuses', {
-                      amount: Math.min(bonusPoints, Math.floor(basePrice)),
-                      currency: selectedService.currency,
-                    })}
-                  </span>
-                </label>
-              )}
-              {bonusPreview > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">{t('bonusDiscount')}</span>
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{bonusPreview} {selectedService.currency}</span>
-                </div>
-              )}
+              {/* Bonus-spending UI скрыт. Текущая программа лояльности построена в убыток мастеру
+                  (см. CLAUDE.md → Bonus rebuild epic). Вернуть когда:
+                  1) баллы привязаны к мастеру (client_bonuses(master_id, profile_id, balance))
+                  2) мастер сам контролирует %, cap, expiry
+                  3) реферал платит мастеру за нового клиента, а не списывает у него.
+                  Пока баланс просто отображается на /bonuses без возможности тратить. */}
               <div className="border-t pt-2 flex justify-between">
                 <span className="font-medium">{t('totalLabel')}</span>
                 <span className="font-bold">{totalPrice.toFixed(0)} {selectedService.currency}</span>

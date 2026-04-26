@@ -114,7 +114,7 @@ export default function MiniAppBonusesPage() {
             <p className="mt-2 text-5xl font-bold tabular-nums">
               {loading ? '—' : bonusPoints.toFixed(0)}
             </p>
-            <p className="mt-1 text-[11px] text-white/60">1 бонус = 1 ₴ скидки</p>
+            <p className="mt-1 text-[11px] text-amber-300/80">Программа лояльности обновляется — скоро вернём возможность тратить</p>
           </div>
           <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
             <Sparkles className="size-6 text-amber-300" />
