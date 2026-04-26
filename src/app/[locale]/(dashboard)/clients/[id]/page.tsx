@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback, useRef, use } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -345,27 +345,104 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         </div>
       )}
 
-      {/* ═══ 2×2 grid ═══ */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: 'auto auto',
-          gap: 12,
-          marginBottom: 12,
-        }}
-      >
-        <PersonalDataBlock client={client} C={C} />
-        <NotesBlock client={client} clientId={id} onSaved={loadClient} C={C} />
-        <HistoryBlock appointments={appointments} reviews={reviews} clientId={id} C={C} />
-        <AnalyticsBlock client={client} C={C} />
-      </div>
-
-      {/* ═══ AI chat input — full width, bottom ═══ */}
+      {/* ═══ AI floating chat — между хедером и табами.
+          Иконка превращается в строку ввода при клике, мастер
+          печатает заметки → AI разносит по категориям и дописывает их в client.notes. */}
       <ClientAiChat clientId={id} onApplied={loadClient} C={C} />
 
-      {/* «Добавить в чёрный список» теперь живёт в хедере карточки —
-          icon-кнопка с tooltip + dialog для причины. */}
+      {/* ═══ Tabs ═══ */}
+      <ClientTabs
+        client={client}
+        appointments={appointments}
+        reviews={reviews}
+        clientId={id}
+        onSaved={loadClient}
+        C={C}
+      />
+    </div>
+  );
+}
+
+/* ────────────────────── Tab Container ────────────────────── */
+type ClientTabKey = 'profile' | 'history' | 'analytics';
+
+function ClientTabs({
+  client, appointments, reviews, clientId, onSaved, C,
+}: {
+  client: ClientDetail;
+  appointments: AppointmentRow[];
+  reviews: ReviewRow[];
+  clientId: string;
+  onSaved: () => void;
+  C: PageTheme;
+}) {
+  const [tab, setTab] = useState<ClientTabKey>('profile');
+
+  const tabs: { key: ClientTabKey; label: string; count?: number }[] = [
+    { key: 'profile', label: 'Профиль' },
+    { key: 'history', label: 'История посещений', count: appointments.length },
+    { key: 'analytics', label: 'Аналитика' },
+  ];
+
+  return (
+    <div>
+      {/* Underline tabs — match Finance / Catalog / Marketing visual language */}
+      <div style={{
+        display: 'flex', gap: 4, flexWrap: 'wrap',
+        borderBottom: `1px solid ${C.border}`,
+        marginBottom: 16,
+      }}>
+        {tabs.map((tdef) => {
+          const isActive = tab === tdef.key;
+          return (
+            <button
+              key={tdef.key}
+              type="button"
+              onClick={() => setTab(tdef.key)}
+              style={{
+                padding: '10px 16px',
+                background: 'transparent', border: 'none',
+                borderBottom: `2px solid ${isActive ? C.accent : 'transparent'}`,
+                color: isActive ? C.text : C.textSecondary,
+                fontSize: 14, fontWeight: isActive ? 600 : 500,
+                cursor: 'pointer', marginBottom: -1,
+                transition: 'all 150ms ease',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontFamily: FONT,
+              }}
+            >
+              {tdef.label}
+              {typeof tdef.count === 'number' && tdef.count > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 999,
+                  background: isActive ? C.accentSoft : C.surfaceElevated,
+                  color: isActive ? C.accent : C.textSecondary,
+                }}>{tdef.count}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === 'profile' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <PersonalDataBlock client={client} C={C} />
+          <NotesBlock client={client} clientId={clientId} onSaved={onSaved} C={C} />
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <div>
+          <HistoryBlock appointments={appointments} reviews={reviews} clientId={clientId} C={C} />
+        </div>
+      )}
+
+      {tab === 'analytics' && (
+        <div>
+          <AnalyticsBlock client={client} C={C} />
+        </div>
+      )}
     </div>
   );
 }
@@ -534,13 +611,26 @@ function PersonalDataBlock({ client, C }: { client: ClientDetail; C: PageTheme }
 
 /* ────────────────────── Notes block (editable) ────────────────────── */
 
+type NoteCategory = 'personal' | 'family' | 'preferences' | 'health' | 'other';
+
+const NOTE_CATEGORIES: { key: NoteCategory; label: string; emoji: string }[] = [
+  { key: 'family',      label: 'Семья',         emoji: '👨‍👩‍👧' },
+  { key: 'preferences', label: 'Предпочтения',  emoji: '✨' },
+  { key: 'personal',    label: 'Личное',        emoji: '🪄' },
+  { key: 'health',      label: 'Здоровье',      emoji: '🩺' },
+  { key: 'other',       label: 'Прочее',        emoji: '📎' },
+];
+
 interface NoteEntry {
   index: number;
   date: string | null;
+  category: NoteCategory;
   body: string;
   raw: string;
 }
 
+/** Формат строки notes: `[<DD.MM.YYYY>|<category>] body` либо `[<DD.MM.YYYY>] body` (легаси).
+ *  Если категория не задана — попадает в `other`. */
 function parseNotes(notes: string | null): NoteEntry[] {
   if (!notes) return [];
   return notes
@@ -549,10 +639,21 @@ function parseNotes(notes: string | null): NoteEntry[] {
       const raw = line.trim();
       if (!raw) return null;
       const m = raw.match(/^\[([^\]]+)\]\s*(.*)$/);
+      let date: string | null = null;
+      let category: NoteCategory = 'other';
+      if (m) {
+        const headParts = m[1]!.split('|').map((s) => s.trim());
+        date = headParts[0] || null;
+        const catRaw = headParts[1] as string | undefined;
+        if (catRaw && NOTE_CATEGORIES.some((c) => c.key === catRaw)) {
+          category = catRaw as NoteCategory;
+        }
+      }
       return {
         index,
-        date: m ? m[1] : null,
-        body: m ? m[2] : raw,
+        date,
+        category,
+        body: m ? m[2]! : raw,
         raw,
       };
     })
@@ -699,14 +800,29 @@ function NotesBlock({
         </div>
       )}
 
-      {/* List */}
+      {/* List grouped by category */}
       {entries.length === 0 && !adding ? (
         <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, lineHeight: 1.5 }}>
-          Пусто. Добавь вручную или просто напиши в чат снизу — AI разнесёт.
+          Пусто. Нажми «AI заметка» сверху над карточкой — AI разнесёт по категориям.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
-          {entries.map((entry) => {
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
+          {NOTE_CATEGORIES
+            .map((cat) => ({ ...cat, items: entries.filter((e) => e.category === cat.key) }))
+            .filter((g) => g.items.length > 0)
+            .map((group) => (
+              <div key={group.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                  textTransform: 'uppercase', color: C.textTertiary,
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '2px 0',
+                }}>
+                  <span style={{ fontSize: 12 }}>{group.emoji}</span>
+                  {group.label}
+                  <span style={{ color: C.textTertiary, fontWeight: 500 }}>· {group.items.length}</span>
+                </div>
+                {group.items.map((entry) => {
             const isEditing = editingIndex === entry.index;
             return (
               <div
@@ -802,6 +918,8 @@ function NotesBlock({
               </div>
             );
           })}
+              </div>
+            ))}
         </div>
       )}
     </BlockFrame>
@@ -984,6 +1102,12 @@ function Tile({
 
 /* ────────────────────── AI Chat (bottom, full-width) ────────────────────── */
 
+/** Плавающий AI-помощник в карточке клиента.
+ *  collapsed: компактная пилюля «✨ AI заметка» по центру.
+ *  expanded:  одна строка ввода с placeholder и иконкой отправки.
+ *  Enter — отправить, поле остаётся открытым (мастер пишет несколько коротких заметок подряд).
+ *  Click outside / Escape — закрыть.
+ *  AI разносит каждый факт в свою категорию (см. /api/clients/[id]/parse-note). */
 function ClientAiChat({
   clientId, onApplied, C,
 }: {
@@ -991,10 +1115,13 @@ function ClientAiChat({
   onApplied: () => void;
   C: PageTheme;
 }) {
+  const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
-  async function send() {
+  const send = useCallback(async () => {
     const value = text.trim();
     if (!value || busy) return;
     setBusy(true);
@@ -1014,6 +1141,8 @@ function ClientAiChat({
         setText('');
         toast.success(d.summary || 'Сохранено');
         onApplied();
+        // оставляем поле открытым — мастер пишет следующую заметку
+        setTimeout(() => inputRef.current?.focus(), 50);
       } else {
         toast(d.summary || 'Ничего не сохранено', { icon: '⚠️' });
       }
@@ -1022,63 +1151,117 @@ function ClientAiChat({
     } finally {
       setBusy(false);
     }
+  }, [text, busy, clientId, onApplied]);
+
+  // Click outside → collapse (но не закрываем если есть несохранённый текст с busy=false)
+  useEffect(() => {
+    if (!expanded) return;
+    function onPointer(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (wrapRef.current.contains(e.target as Node)) return;
+      // Если мастер начал печатать, не сбрасываем мгновенно — сохраняем что есть.
+      // Иначе — просто схлопываем.
+      if (text.trim()) {
+        setExpanded(false);
+        // не очищаем text, чтобы при повторном открытии он продолжил
+      } else {
+        setExpanded(false);
+      }
+    }
+    document.addEventListener('mousedown', onPointer);
+    return () => document.removeEventListener('mousedown', onPointer);
+  }, [expanded, text]);
+
+  // Escape → close
+  useEffect(() => {
+    if (!expanded) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setExpanded(false);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
+  function open() {
+    setExpanded(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
   }
 
   return (
     <div
+      ref={wrapRef}
       style={{
-        background: C.surface,
-        border: `1px solid ${C.border}`,
-        borderRadius: 14,
-        padding: 14,
+        display: 'flex', justifyContent: 'center',
+        margin: '4px 0 16px',
+        position: 'relative',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Sparkles size={14} style={{ color: C.accent }} />
-        <h3 style={{ fontSize: 13, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.1px' }}>
-          Запиши в чат всё что знаешь о клиенте
-        </h3>
-        <span style={{ marginLeft: 'auto', fontSize: 11, color: C.textTertiary }}>
-          AI разнесёт по полям
-        </span>
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              send();
-            }
-          }}
-          placeholder="Например: «У клиента собака пудель Бакс, аллергия на латекс, двое детей — Маша и Петя»"
-          rows={2}
-          disabled={busy}
-          style={{
-            flex: 1, padding: '10px 12px', borderRadius: 10,
-            border: `1px solid ${C.border}`, background: C.surfaceElevated,
-            color: C.text, fontSize: 13, fontFamily: 'inherit',
-            resize: 'vertical', minHeight: 56, outline: 'none', boxSizing: 'border-box',
-          }}
-          onFocus={(e) => e.currentTarget.style.borderColor = C.accent}
-          onBlur={(e) => e.currentTarget.style.borderColor = C.border}
-        />
+      {!expanded ? (
         <button
-          onClick={send}
-          disabled={busy || text.trim().length < 2}
+          type="button"
+          onClick={open}
+          title="Записать заметку через AI — он разнесёт по категориям"
           style={{
-            padding: '10px 16px', borderRadius: 10, border: 'none',
-            background: C.accent, color: '#fff', fontSize: 13, fontWeight: 600,
-            cursor: busy || text.trim().length < 2 ? 'not-allowed' : 'pointer',
-            opacity: busy || text.trim().length < 2 ? 0.5 : 1,
-            display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
-            height: 56,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '8px 16px', borderRadius: 999,
+            background: C.accentSoft, border: `1px solid ${C.accent}33`,
+            color: C.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            fontFamily: FONT, transition: 'transform 120ms ease',
           }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          {busy ? '…' : <><Send size={14} /> Записать</>}
+          <Sparkles size={14} />
+          AI заметка
         </button>
-      </div>
+      ) : (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          width: '100%', maxWidth: 600,
+          padding: '6px 8px 6px 16px', borderRadius: 999,
+          background: C.surface, border: `1px solid ${C.accent}`,
+          boxShadow: `0 0 0 4px ${C.accent}15`,
+        }}>
+          <Sparkles size={14} style={{ color: C.accent, flexShrink: 0 }} />
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Аллергия на латекс. Любит зелёный чай. Сын Артём…"
+            disabled={busy}
+            style={{
+              flex: 1, border: 'none', outline: 'none', background: 'transparent',
+              color: C.text, fontSize: 14, fontFamily: FONT,
+            }}
+          />
+          <button
+            type="button"
+            onClick={send}
+            disabled={busy || text.trim().length < 2}
+            title="Отправить (Enter)"
+            style={{
+              width: 36, height: 36, borderRadius: 999,
+              border: 'none', background: C.accent, color: '#fff',
+              cursor: busy || text.trim().length < 2 ? 'not-allowed' : 'pointer',
+              opacity: busy || text.trim().length < 2 ? 0.5 : 1,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {busy ? '…' : <Send size={14} />}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

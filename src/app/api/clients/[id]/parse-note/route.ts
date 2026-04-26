@@ -12,42 +12,66 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { aiComplete } from '@/lib/ai/openrouter';
 
-interface ParseResult {
-  notes_append?: string;          // freeform text added to client.notes
-  allergies_add?: string[];       // concrete allergens (peanut / lidocaine / etc)
-  contraindications_add?: string[]; // health flags (pregnancy / hypertension / etc)
-  summary?: string;               // short human-readable confirmation
+type NoteCategory = 'personal' | 'family' | 'preferences' | 'health' | 'other';
+const VALID_CATEGORIES: NoteCategory[] = ['personal', 'family', 'preferences', 'health', 'other'];
+
+interface ParseNoteEntry {
+  category: NoteCategory;
+  text: string;
 }
 
-const SYSTEM_PROMPT = `Ты помощник CRES-CA. Мастер записывает свободным текстом информацию про клиента.
+interface ParseResult {
+  notes?: ParseNoteEntry[];        // freeform notes split by category
+  allergies_add?: string[];        // concrete allergens (peanut / lidocaine / etc)
+  contraindications_add?: string[]; // health flags (pregnancy / hypertension / etc)
+  summary?: string;                // short human-readable confirmation
+}
+
+const SYSTEM_PROMPT = `Ты помощник CRESCA. Мастер записывает свободным текстом информацию про клиента.
 Твоя задача — классифицировать сказанное и вернуть строго JSON следующей формы:
 
 {
-  "notes_append": "<строка ДЛЯ заметок мастера: питомцы, хобби, семья, предпочтения, наблюдения, любые личные детали>",
+  "notes": [
+    { "category": "family" | "preferences" | "personal" | "health" | "other", "text": "<краткая заметка одной строкой от 3-го лица>" }
+  ],
   "allergies_add": ["<аллерген>", ...],
   "contraindications_add": ["<медицинское противопоказание>", ...],
   "summary": "<1-2 предложения по-русски, что добавлено>"
 }
 
+Категории:
+- family — родственники / дети / питомцы / партнёр («Собака — пудель Бакс», «Муж Олег», «Двое детей: Маша и Петя»)
+- preferences — вкусы / привычки / интересы / любимое ("Любит зелёный чай", "Любит Латвию", "Слушает рок")
+- personal — биография / профессия / увлечения / другие персональные факты («Работает учителем», «Занималась балетом»)
+- health — медицинские наблюдения, не классифицируемые как allergy/contraindication («Чувствительная кожа», «Низкое давление по утрам»)
+- other — всё остальное, что не подходит ни в одну категорию
+
 Правила:
-- ВСЕ поля опциональны — добавляй только то, что реально вытекает из текста
-- notes_append — связное предложение от 3-го лица (например "Собака — пудель, кличка Бакс. Двое детей")
-- allergies_add — только аллергены/непереносимости (никотин, латекс, лидокаин, орехи)
-- contraindications_add — только медицинские противопоказания (беременность, гипертония, диабет)
-- НЕ изобретай. НЕ перефразируй мастера в notes — кратко суммируй
-- summary всегда заполняй, 1-2 предложения, что добавлено
+- Если в одном сообщении несколько фактов — раздели на отдельные notes-объекты с правильной категорией каждый
+- notes[].text — связное предложение от 3-го лица, краткое, без воды
+- allergies_add — только аллергены/непереносимости (никотин, латекс, лидокаин, орехи) — НЕ дублируй в notes.health
+- contraindications_add — только медицинские противопоказания (беременность, гипертония, диабет) — НЕ дублируй в notes.health
+- НЕ изобретай. НЕ перефразируй ничего лишнего
+- summary — 1-2 предложения по-русски о том, что добавлено
 - Выводи ТОЛЬКО JSON, без markdown, без комментариев
 
 Примеры:
 
 Вход: "у клиента собака пудель, зовут бакс"
-Выход: {"notes_append":"Собака — пудель, кличка Бакс","summary":"Добавлена заметка про питомца."}
+Выход: {"notes":[{"category":"family","text":"Собака — пудель, кличка Бакс"}],"summary":"Добавил заметку про питомца."}
 
 Вход: "аллергия на латекс"
-Выход: {"allergies_add":["латекс"],"summary":"Добавлена аллергия: латекс."}
+Выход: {"allergies_add":["латекс"],"summary":"Добавил аллергию: латекс."}
 
-Вход: "беременная, второй триместр + муж зовут Олег, двое детей"
-Выход: {"contraindications_add":["беременность"],"notes_append":"Беременность, второй триместр. Муж — Олег. Двое детей","summary":"Сохранил беременность как противопоказание + личные детали в заметках."}`;
+Вход: "беременная, второй триместр + муж зовут Олег, двое детей и она любит Латвию"
+Выход: {
+  "contraindications_add":["беременность"],
+  "notes":[
+    {"category":"family","text":"Муж — Олег. Двое детей"},
+    {"category":"preferences","text":"Любит Латвию"}
+  ],
+  "summary":"Сохранил беременность в противопоказания, семью и предпочтения — в заметки."
+}`;
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -94,11 +118,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   // Apply to DB
   const updates: Record<string, unknown> = {};
-  if (parsed.notes_append) {
+  const newNotes: ParseNoteEntry[] = (parsed.notes ?? [])
+    .filter((n): n is ParseNoteEntry => !!n && typeof n.text === 'string' && n.text.trim().length > 0)
+    .map((n) => ({
+      category: VALID_CATEGORIES.includes(n.category) ? n.category : 'other',
+      text: n.text.trim(),
+    }));
+  if (newNotes.length) {
     const existing = (client.notes ?? '').trim();
     const stamp = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const block = `[${stamp}] ${parsed.notes_append}`;
-    updates.notes = existing ? `${existing}\n${block}` : block;
+    const blocks = newNotes.map((n) => `[${stamp}|${n.category}] ${n.text}`);
+    updates.notes = existing ? `${existing}\n${blocks.join('\n')}` : blocks.join('\n');
   }
   if (parsed.allergies_add?.length) {
     const existing = (client.allergies as string[] | null) ?? [];
