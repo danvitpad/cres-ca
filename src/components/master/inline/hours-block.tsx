@@ -25,19 +25,17 @@ interface DaySchedule {
 
 type WorkingHours = Record<string, DaySchedule | null>;
 
-const DAYS: Array<{ key: string; label: string }> = [
-  { key: 'mon', label: 'Понедельник' },
-  { key: 'tue', label: 'Вторник' },
-  { key: 'wed', label: 'Среда' },
-  { key: 'thu', label: 'Четверг' },
-  { key: 'fri', label: 'Пятница' },
-  { key: 'sat', label: 'Суббота' },
-  { key: 'sun', label: 'Воскресенье' },
+// Ключи совпадают с теми, что использует /settings + /api/slots (полные имена).
+// Источник правды — masters.working_hours { monday: { start, end, closed }, ... }.
+const DAYS: Array<{ key: string; label: string; short: string }> = [
+  { key: 'monday',    label: 'Понедельник', short: 'Пн' },
+  { key: 'tuesday',   label: 'Вторник',     short: 'Вт' },
+  { key: 'wednesday', label: 'Среда',       short: 'Ср' },
+  { key: 'thursday',  label: 'Четверг',     short: 'Чт' },
+  { key: 'friday',    label: 'Пятница',     short: 'Пт' },
+  { key: 'saturday',  label: 'Суббота',     short: 'Сб' },
+  { key: 'sunday',    label: 'Воскресенье', short: 'Вс' },
 ];
-
-const SHORT: Record<string, string> = {
-  mon: 'Пн', tue: 'Вт', wed: 'Ср', thu: 'Чт', fri: 'Пт', sat: 'Сб', sun: 'Вс',
-};
 
 interface Props {
   masterId: string;
@@ -51,13 +49,13 @@ function isOpen(d: DaySchedule | null | undefined): boolean {
 
 function defaultHours(): WorkingHours {
   return {
-    mon: { start: '10:00', end: '19:00' },
-    tue: { start: '10:00', end: '19:00' },
-    wed: { start: '10:00', end: '19:00' },
-    thu: { start: '10:00', end: '19:00' },
-    fri: { start: '10:00', end: '19:00' },
-    sat: { start: '11:00', end: '18:00', closed: true },
-    sun: { start: '11:00', end: '18:00', closed: true },
+    monday:    { start: '10:00', end: '19:00' },
+    tuesday:   { start: '10:00', end: '19:00' },
+    wednesday: { start: '10:00', end: '19:00' },
+    thursday:  { start: '10:00', end: '19:00' },
+    friday:    { start: '10:00', end: '19:00' },
+    saturday:  { start: '11:00', end: '18:00', closed: true },
+    sunday:    { start: '11:00', end: '18:00', closed: true },
   };
 }
 
@@ -92,14 +90,14 @@ export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Pr
   }
 
   function copyMondayToAll() {
-    const mon = draft.mon;
+    const mon = draft.monday;
     if (!mon || mon.closed) {
       toast.error('Сначала заполни понедельник');
       return;
     }
     const next: WorkingHours = { ...draft };
     for (const d of DAYS) {
-      if (d.key === 'mon') continue;
+      if (d.key === 'monday') continue;
       next[d.key] = { start: mon.start, end: mon.end, closed: false };
     }
     setDraft(next);
@@ -275,7 +273,7 @@ export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Pr
               const open = isOpen(cur);
               return (
                 <li key={d.key} className="flex items-center justify-between">
-                  <span className="text-neutral-500">{SHORT[d.key]}</span>
+                  <span className="text-neutral-500">{d.short}</span>
                   <span className={open ? 'font-medium text-neutral-900' : 'text-neutral-400'}>
                     {open ? `${cur!.start} – ${cur!.end}` : 'Выходной'}
                   </span>
