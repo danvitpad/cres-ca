@@ -66,6 +66,7 @@ interface ClientRow {
   has_health_alert: boolean;
   behavior_indicators: BehaviorIndicator[];
   tier: 'new' | 'regular' | 'vip';
+  manual_tier: 'new' | 'regular' | 'vip' | null;
   cancellation_count: number;
   no_show_count: number;
   // Аватар берём из профиля линкованного клиента (single source of truth).
@@ -128,13 +129,14 @@ function ClientCard({ client, C, isDark, index }: {
   const avatarBg = AVATAR_GRADIENTS_LIGHT[getAvatarIdx(client.full_name)];
   const totalSpent = client.avg_check * client.total_visits;
 
-  // Determine primary badge (priority order)
+  // Determine primary badge (priority order). Manual tier overrides auto.
+  const effectiveTier = client.manual_tier ?? client.tier;
   let badge: { label: string; color: string; bg: string; icon: typeof Star } | null = null;
   if ((client.cancellation_count || 0) + (client.no_show_count || 0) >= 3) {
     badge = { label: 'Риск', color: '#fff', bg: C.warning, icon: AlertTriangle };
   } else if (daysToBday !== null && daysToBday <= 7) {
     badge = { label: daysToBday === 0 ? 'ДР сегодня!' : `ДР ${daysToBday}д`, color: '#fff', bg: C.warning, icon: Cake };
-  } else if (client.tier === 'vip') {
+  } else if (effectiveTier === 'vip') {
     badge = { label: 'VIP', color: '#fff', bg: C.accent, icon: Star };
   } else if (daysSince !== null && daysSince > 60) {
     badge = { label: 'Просрочка', color: '#fff', bg: C.danger, icon: Clock };
@@ -304,7 +306,7 @@ export default function ClientsPage() {
     const supabase = createClient();
     let query = supabase
       .from('clients')
-      .select('id, full_name, phone, email, date_of_birth, notes, total_visits, avg_check, last_visit_at, created_at, has_health_alert, behavior_indicators, tier, cancellation_count, no_show_count, profile:profiles!clients_profile_id_fkey(avatar_url)')
+      .select('id, full_name, phone, email, date_of_birth, notes, total_visits, avg_check, last_visit_at, created_at, has_health_alert, behavior_indicators, tier, manual_tier, cancellation_count, no_show_count, profile:profiles!clients_profile_id_fkey(avatar_url)')
       .eq('master_id', master.id)
       .order('last_visit_at', { ascending: false, nullsFirst: false })
       .limit(PAGE_SIZE * 3);
@@ -391,7 +393,7 @@ export default function ClientsPage() {
     const now = Date.now();
     let vip = 0, overdue = 0, risk = 0, newC = 0, birthday = 0;
     for (const c of clients) {
-      if (c.tier === 'vip') vip++;
+      if ((c.manual_tier ?? c.tier) === 'vip') vip++;
       if (c.last_visit_at) {
         const days = (now - new Date(c.last_visit_at).getTime()) / 86400000;
         if (days > 60) overdue++;
@@ -411,7 +413,7 @@ export default function ClientsPage() {
     const now = Date.now();
     return clients.filter(c => {
       if (filter === 'all') return true;
-      if (filter === 'vip') return c.tier === 'vip';
+      if (filter === 'vip') return (c.manual_tier ?? c.tier) === 'vip';
       if (filter === 'overdue') {
         if (!c.last_visit_at) return false;
         return (now - new Date(c.last_visit_at).getTime()) / 86400000 > 60;

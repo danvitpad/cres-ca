@@ -62,6 +62,7 @@ interface ClientDetail {
   is_blacklisted: boolean;
   blacklist_reason: string | null;
   tier?: 'new' | 'regular' | 'vip';
+  manual_tier?: 'new' | 'regular' | 'vip' | null;
   cancellation_count: number;
   late_cancellation_count: number;
   master_cancellation_count: number;
@@ -255,12 +256,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                 <AlertTriangle size={14} style={{ color: C.danger }} />
               </span>
             )}
-            {client.tier === 'vip' && (
-              <span style={{
-                background: C.accent, color: '#fff',
-                padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 650, letterSpacing: '0.04em',
-              }}>VIP</span>
-            )}
+            <ManualTierPicker
+              clientId={id}
+              effectiveTier={(client.manual_tier ?? client.tier ?? 'new') as 'new' | 'regular' | 'vip'}
+              isManual={!!client.manual_tier}
+              onSaved={loadClient}
+              C={C}
+            />
             {client.is_blacklisted && <Badge variant="destructive">{t('manuallyBlacklisted')}</Badge>}
             {daysToBday !== null && daysToBday <= 14 && (
               <span style={{
@@ -1263,6 +1265,75 @@ function ClientAiChat({
         </div>
       )}
     </div>
+  );
+}
+
+/* ────────────────────── Manual Tier Picker ────────────────────── */
+/* Кликабельный chip в хедере, показывающий текущий tier (Новый / Постоянный / VIP).
+   Левый клик — циклом меняет вручную (manual_tier override). Длительный клик /
+   правый — сбрасывает на авто (manual_tier = null). Если tier выставлен вручную
+   — chip получает рамку acent-цвета, чтобы мастер видел: «здесь не автомат». */
+
+const TIER_LABELS: Record<'new' | 'regular' | 'vip', string> = {
+  new: 'Новый',
+  regular: 'Постоянный',
+  vip: 'VIP',
+};
+const TIER_CYCLE: ('new' | 'regular' | 'vip')[] = ['new', 'regular', 'vip'];
+
+function ManualTierPicker({
+  clientId, effectiveTier, isManual, onSaved, C,
+}: {
+  clientId: string;
+  effectiveTier: 'new' | 'regular' | 'vip';
+  isManual: boolean;
+  onSaved: () => void;
+  C: PageTheme;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function setManual(next: 'new' | 'regular' | 'vip' | null) {
+    setBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase.from('clients').update({
+      manual_tier: next,
+      manual_tier_set_at: next ? new Date().toISOString() : null,
+    }).eq('id', clientId);
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(next ? `Tier: ${TIER_LABELS[next]}` : 'Авто-tier');
+    onSaved();
+  }
+
+  function nextTier() {
+    const idx = TIER_CYCLE.indexOf(effectiveTier);
+    return TIER_CYCLE[(idx + 1) % TIER_CYCLE.length]!;
+  }
+
+  const isVip = effectiveTier === 'vip';
+  const isRegular = effectiveTier === 'regular';
+
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => setManual(nextTier())}
+      onContextMenu={(e) => { e.preventDefault(); setManual(null); }}
+      title={`Кликни — следующий tier (${TIER_LABELS[nextTier()]}). Правый клик — сбросить в авто.${isManual ? '\nСейчас: ручной override.' : '\nСейчас: автоматически по визитам.'}`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '2px 8px', borderRadius: 5, border: 'none', cursor: 'pointer',
+        background: isVip ? C.accent : isRegular ? C.accentSoft : C.surfaceElevated,
+        color: isVip ? '#fff' : isRegular ? C.accent : C.textSecondary,
+        fontSize: 10, fontWeight: 650, letterSpacing: '0.04em',
+        outline: isManual ? `1.5px dashed ${C.accent}` : 'none',
+        outlineOffset: 1,
+        opacity: busy ? 0.6 : 1,
+      }}
+    >
+      {isVip ? <Star size={10} fill="currentColor" stroke="currentColor" /> : null}
+      {TIER_LABELS[effectiveTier]}
+    </button>
   );
 }
 
