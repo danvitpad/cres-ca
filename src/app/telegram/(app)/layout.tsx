@@ -1,27 +1,28 @@
 /** --- YAML
  * name: TelegramMiniAppLayout
- * description: Mini App shell — bottom tab bar with 4 sections (Главная / Поиск / Записи / Профиль).
- *              Финансы и бонусы убраны как отдельная вкладка — баланс отображается в профиле.
+ * description: Premium Mini App shell — Fresha-style. Светлый фон, floating-pill bottom
+ *              nav (4 таба: Главная / Поиск / Записи / Профиль). Дизайн-токены из
+ *              `@/components/miniapp/design`. На /telegram/book вкладки скрыты.
  * created: 2026-04-13
- * updated: 2026-04-25
+ * updated: 2026-04-26
  * --- */
 
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Search, CalendarDays, User } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
+import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
+import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
-import { cn } from '@/lib/utils';
 
-const tabs = [
+const tabs: readonly NavTab[] = [
   { key: 'home', href: '/telegram/home', icon: Home, label: 'Главная' },
   { key: 'search', href: '/telegram/search', icon: Search, label: 'Поиск' },
   { key: 'activity', href: '/telegram/activity', icon: CalendarDays, label: 'Записи' },
   { key: 'profile', href: '/telegram/profile', icon: User, label: 'Профиль' },
-] as const;
+];
 
 export default function MiniAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -34,57 +35,30 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
     }
   }, [userId, router]);
 
-  // Fullscreen routes — hide bottom tabs, give full viewport to the page.
-  // Booking / reschedule wizard has its own sticky footer and needs every pixel.
+  // Fullscreen routes — booking flow has its own sticky footer.
   const isFullscreen = pathname.startsWith('/telegram/book');
 
   return (
     <TelegramProvider>
-      <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
+      <div
+        style={{
+          ...FONT_BASE,
+          minHeight: '100dvh',
+          background: T.bg,
+          color: T.text,
+        }}
+      >
         <main
-          className="flex-1 overflow-y-auto"
           style={{
             paddingTop: 'var(--tg-content-top, 0px)',
             paddingBottom: isFullscreen
               ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
-              : 'calc(72px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+              : 'calc(96px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           {children}
         </main>
-        {!isFullscreen && <nav
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
-          style={{
-            paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
-          }}
-        >
-          <ul className="mx-auto flex max-w-md items-center justify-around px-2 pt-2 pb-2">
-            {tabs.map((tab) => {
-              const active = pathname.startsWith(tab.href);
-              const Icon = tab.icon;
-              return (
-                <li key={tab.key} className="flex-1">
-                  <Link
-                    href={tab.href}
-                    aria-label={tab.label}
-                    className={cn(
-                      'relative flex items-center justify-center rounded-2xl px-1 py-3 transition-colors',
-                      active ? 'text-violet-300' : 'text-white/40 hover:text-white/70',
-                    )}
-                  >
-                    <Icon
-                      className={cn('size-[26px] transition-transform', active && 'scale-110')}
-                      strokeWidth={active ? 2.5 : 2}
-                    />
-                    {active && (
-                      <span className="absolute -top-[9px] left-1/2 h-[3px] w-8 -translate-x-1/2 rounded-full bg-violet-400" />
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>}
+        <MiniAppBottomNav tabs={tabs} hidden={isFullscreen} />
       </div>
     </TelegramProvider>
   );

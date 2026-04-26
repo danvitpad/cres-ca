@@ -1,19 +1,29 @@
 /** --- YAML
  * name: MiniAppHomePage
- * description: Главный экран клиента — ближайшая запись + свободные окна у мастеров из контактов.
- *              Не Instagram-feed, а утилитарная лента слотов. (Phase 8 — remove social).
+ * description: «Для вас» — Fresha-premium домашний экран клиента. Next appointment
+ *              hero + свободные окна у контактов + Рекомендуемые мастера + Explore
+ *              категории. Светлая тема, premium-карточки, анимация.
  * created: 2026-04-13
- * updated: 2026-04-25
+ * updated: 2026-04-26
  * --- */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, Search, Clock, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
+import { Calendar, Search, Clock, Star, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { formatMoney } from '@/lib/format/money';
+import {
+  MobilePage,
+  PageHeader,
+  SectionHeader,
+  AvatarCircle,
+} from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
 
 interface SalonRef {
   id: string;
@@ -21,7 +31,6 @@ interface SalonRef {
   logo_url: string | null;
   city: string | null;
 }
-
 interface NextAppointment {
   id: string;
   starts_at: string;
@@ -32,8 +41,8 @@ interface NextAppointment {
   salon: SalonRef | null;
   service_name: string;
   price: number;
+  currency: string | null;
 }
-
 interface SlotItem {
   masterId: string;
   name: string | null;
@@ -42,17 +51,47 @@ interface SlotItem {
   time: string;
   iso: string;
 }
+interface FeaturedMaster {
+  id: string;
+  slug: string;
+  fullName: string;
+  firstName: string;
+  avatarUrl: string | null;
+  city: string | null;
+  specialization: string | null;
+  rating: number | null;
+  reviewsCount: number;
+  topServices: Array<{ name: string; price: number; currency: string }>;
+}
+
+const CATEGORY_TILES = [
+  { key: 'beauty', label: 'Красота', q: 'красота', bg: '#f4b740', emoji: '💅' },
+  { key: 'health', label: 'Здоровье', q: 'здоровье', bg: '#3b82f6', emoji: '🩺' },
+  { key: 'nails', label: 'Ногти', q: 'маникюр', bg: '#ec4899', emoji: '💅' },
+  { key: 'massage', label: 'Массаж', q: 'массаж', bg: '#14b8a6', emoji: '💆' },
+  { key: 'medspa', label: 'Косметология', q: 'косметология', bg: '#f97316', emoji: '✨' },
+  { key: 'spa', label: 'Спа и сауна', q: 'спа', bg: '#84cc16', emoji: '🧖' },
+] as const;
+
+const TOP_CATEGORIES = [
+  { key: 'hair', label: 'Стрижка и укладка', q: 'стрижка' },
+  { key: 'manicure', label: 'Ногти', q: 'маникюр' },
+  { key: 'brows', label: 'Брови и ресницы', q: 'брови' },
+  { key: 'massage', label: 'Массаж', q: 'массаж' },
+  { key: 'facial', label: 'Косметология', q: 'лицо' },
+] as const;
 
 export default function MiniAppHomePage() {
   const { haptic } = useTelegram();
+  const router = useRouter();
   const { userId } = useAuthStore();
   const [next, setNext] = useState<NextAppointment | null>(null);
   const [slots, setSlots] = useState<SlotItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [featured, setFeatured] = useState<FeaturedMaster[]>([]);
+  const [, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) return;
-
     (async () => {
       const initData = (() => {
         if (typeof window === 'undefined') return null;
@@ -85,6 +124,7 @@ export default function MiniAppHomePage() {
                 id: string;
                 starts_at: string;
                 price: number | null;
+                currency: string | null;
                 master: {
                   id: string;
                   specialization: string | null;
@@ -108,6 +148,7 @@ export default function MiniAppHomePage() {
                 salon: rawSalon,
                 service_name: svc?.name ?? '—',
                 price: Number(a.price ?? 0),
+                currency: a.currency ?? 'UAH',
               });
             }
           }
@@ -123,145 +164,400 @@ export default function MiniAppHomePage() {
         }
       } catch { /* ignore */ }
 
+      // Featured masters (discovery)
+      try {
+        let city: string | undefined;
+        try {
+          const c = localStorage.getItem('cres-ca-city');
+          if (c) city = c;
+        } catch { /* ignore */ }
+        const qs = new URLSearchParams();
+        if (city) qs.set('city', city);
+        qs.set('limit', '10');
+        const res = await fetch(`/api/marketplace/featured?${qs.toString()}`);
+        if (res.ok) {
+          const j = await res.json();
+          setFeatured(Array.isArray(j.items) ? j.items : []);
+        }
+      } catch { /* ignore */ }
+
       setLoading(false);
     })();
   }, [userId]);
 
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 6) return 'Доброй ночи';
+    if (h < 12) return 'Доброе утро';
+    if (h < 18) return 'Добрый день';
+    return 'Добрый вечер';
+  }, []);
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-4 px-5 pt-6 pb-6"
-    >
-      <h1 className="text-[24px] font-bold leading-tight">Главная</h1>
+    <MobilePage>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
+      >
+        <PageHeader
+          title="Для вас"
+          subtitle={greeting}
+          right={
+            <button
+              type="button"
+              onClick={() => router.push('/telegram/search')}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                border: `1px solid ${T.border}`,
+                background: T.surface,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              aria-label="Поиск"
+            >
+              <Search size={20} color={T.text} strokeWidth={2.2} />
+            </button>
+          }
+        />
 
-      {/* Next appointment */}
-      {next ? (
-        <Link
-          href={`/telegram/booking/${next.id}`}
-          onClick={() => haptic('light')}
-          className="block rounded-3xl border border-violet-500/20 bg-gradient-to-br from-violet-500/15 via-violet-500/5 to-transparent p-5 active:opacity-90 transition-opacity"
-        >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-300/80">
-            <Calendar className="size-3.5" />
-            Ближайшая запись
-          </div>
-          <p className="mt-2 text-[15px] font-semibold leading-tight">{next.service_name}</p>
-          <p className="mt-1 text-[13px] text-white/70">
-            {formatDateTime(next.starts_at)} · {next.master_name}
-          </p>
-          {next.salon?.name && (
-            <p className="mt-1 text-[12px] text-white/50">{next.salon.name}{next.salon.city ? ` · ${next.salon.city}` : ''}</p>
-          )}
-          <div className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-violet-300">
-            Подробнее <ChevronRight className="size-3.5" />
-          </div>
-        </Link>
-      ) : !loading ? (
-        <Link
-          href="/telegram/find"
-          onClick={() => haptic('light')}
-          className="block rounded-3xl border border-white/10 bg-white/[0.03] p-5 active:bg-white/[0.06] transition-colors"
-        >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/50">
-            <Calendar className="size-3.5" />
-            Записей пока нет
-          </div>
-          <p className="mt-2 text-[15px] font-semibold">Найти мастера и записаться</p>
-          <p className="mt-1 text-[12px] text-white/55">
-            Найди исполнителя нужной услуги и забронируй удобное время.
-          </p>
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-black">
-            <Search className="size-3.5" />
-            Найти
-          </div>
-        </Link>
-      ) : null}
+        {/* Next appointment hero — gradient when есть, обычный если нет */}
+        {next ? (
+          <Link
+            href={`/telegram/activity/${next.id}`}
+            onClick={() => haptic('light')}
+            style={{
+              ...HERO_GRADIENT,
+              margin: `0 ${PAGE_PADDING_X}px`,
+              padding: 22,
+              borderRadius: R.lg,
+              color: '#fff',
+              boxShadow: SHADOW.elevated,
+              textDecoration: 'none',
+              display: 'block',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <Calendar size={13} /> Ближайшая запись
+            </div>
+            <p style={{ fontSize: 22, fontWeight: 800, marginTop: 8, marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
+              {next.service_name}
+            </p>
+            <p style={{ fontSize: 14, opacity: 0.95, margin: 0 }}>
+              {formatDateTime(next.starts_at)} · {next.master_name}
+            </p>
+            {next.salon?.name && (
+              <p style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
+                {next.salon.name}{next.salon.city ? ` · ${next.salon.city}` : ''}
+              </p>
+            )}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 14, fontSize: 13, fontWeight: 700 }}>
+              Подробнее <ChevronRight size={14} />
+            </div>
+          </Link>
+        ) : null}
 
-      {/* Free slots from contacts */}
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-300/80">
-          <Sparkles className="size-3.5" />
-          Свободные окна у моих контактов
+        {/* Свободные окна у моих контактов */}
+        {slots.length > 0 && (
+          <div>
+            <SectionHeader title="Свободные окна" href="/telegram/connections" rightLabel="Все контакты" />
+            <ul
+              style={{
+                listStyle: 'none',
+                padding: `0 ${PAGE_PADDING_X}px`,
+                margin: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {slots.slice(0, 4).map((s) => (
+                <li key={s.masterId + s.iso}>
+                  <Link
+                    href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
+                    onClick={() => haptic('light')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 12,
+                      background: T.surface,
+                      border: `1px solid ${T.borderSubtle}`,
+                      borderRadius: R.md,
+                      textDecoration: 'none',
+                      color: T.text,
+                    }}
+                  >
+                    <AvatarCircle url={s.avatar} name={s.name ?? 'Мастер'} size={44} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {s.name ?? 'Мастер'}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, ...TYPE.caption }}>
+                        <Clock size={13} />
+                        {formatSlotDate(s.date, s.time)}
+                      </div>
+                    </div>
+                    <ChevronRight size={18} color={T.textTertiary} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Рекомендуемые — Fresha "Recommended" */}
+        {featured.length > 0 && (
+          <div>
+            <SectionHeader title="Рекомендуемые" href="/telegram/search" />
+            <div
+              style={{
+                display: 'flex',
+                gap: 12,
+                overflowX: 'auto',
+                padding: `0 ${PAGE_PADDING_X}px 4px`,
+                scrollbarWidth: 'none',
+              }}
+            >
+              <style>{`
+                .featured-row::-webkit-scrollbar { display: none; }
+              `}</style>
+              <div className="featured-row" style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                {featured.map((m) => {
+                  const cheapest = m.topServices[0];
+                  return (
+                    <Link
+                      key={m.id}
+                      href={`/m/${m.slug}`}
+                      onClick={() => haptic('light')}
+                      style={{
+                        flexShrink: 0,
+                        width: 220,
+                        background: T.surface,
+                        border: `1px solid ${T.borderSubtle}`,
+                        borderRadius: R.md,
+                        overflow: 'hidden',
+                        textDecoration: 'none',
+                        color: T.text,
+                        boxShadow: SHADOW.card,
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'relative',
+                          aspectRatio: '4/3',
+                          background: m.avatarUrl
+                            ? 'transparent'
+                            : `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {m.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.avatarUrl}
+                            alt={m.fullName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '100%',
+                              height: '100%',
+                              fontSize: 56,
+                              fontWeight: 800,
+                              color: 'rgba(255,255,255,0.85)',
+                            }}
+                          >
+                            {m.firstName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        {(m.rating ?? 0) > 0 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 10,
+                              right: 10,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '4px 9px',
+                              borderRadius: R.pill,
+                              background: 'rgba(255,255,255,0.95)',
+                              backdropFilter: 'blur(8px)',
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}
+                          >
+                            <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                            {m.rating?.toFixed(1)}
+                            <span style={{ color: T.textTertiary, fontWeight: 500 }}>({m.reviewsCount})</span>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ padding: 12 }}>
+                        <p
+                          style={{
+                            ...TYPE.bodyStrong,
+                            margin: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {m.fullName}
+                        </p>
+                        {m.specialization && (
+                          <p
+                            style={{
+                              ...TYPE.caption,
+                              marginTop: 2,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {m.specialization}
+                          </p>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                          <span style={{ ...TYPE.micro }}>{m.city ?? ''}</span>
+                          {cheapest && (
+                            <span style={{ ...TYPE.bodyStrong, fontSize: 13 }}>
+                              от {formatMoney(cheapest.price, cheapest.currency)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Explore — colored category tiles (Fresha "Explore") */}
+        <div>
+          <SectionHeader title="Explore" href="/telegram/search" />
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 10,
+              padding: `0 ${PAGE_PADDING_X}px`,
+            }}
+          >
+            {CATEGORY_TILES.map((c) => (
+              <Link
+                key={c.key}
+                href={`/telegram/search?q=${encodeURIComponent(c.q)}`}
+                onClick={() => haptic('light')}
+                style={{
+                  position: 'relative',
+                  aspectRatio: '5/3',
+                  background: c.bg,
+                  borderRadius: R.md,
+                  textDecoration: 'none',
+                  color: '#fff',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  padding: 14,
+                  fontSize: 18,
+                  fontWeight: 800,
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: 12,
+                    right: 12,
+                    fontSize: 28,
+                    opacity: 0.85,
+                  }}
+                >
+                  {c.emoji}
+                </span>
+                {c.label}
+              </Link>
+            ))}
+          </div>
         </div>
 
-        {loading ? (
-          <div className="mt-4 flex items-center justify-center py-8">
-            <Loader2 className="size-5 animate-spin text-white/40" />
-          </div>
-        ) : slots.length === 0 ? (
-          <div className="mt-3">
-            <p className="text-[13px] text-white/55">
-              Добавь любимых мастеров и салоны в контакты — здесь будут их ближайшие свободные окна.
-            </p>
-            <Link
-              href="/telegram/connections"
-              onClick={() => haptic('light')}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-2 text-[12px] font-semibold text-white active:bg-white/[0.1] transition-colors"
-            >
-              Открыть контакты
-              <ChevronRight className="size-3.5" />
-            </Link>
-          </div>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {slots.map((s) => (
-              <li key={s.masterId + s.iso}>
+        {/* Top categories — circular avatars */}
+        <div>
+          <SectionHeader title="Топ категории" href="/telegram/search" />
+          <div
+            style={{
+              display: 'flex',
+              gap: 16,
+              overflowX: 'auto',
+              padding: `0 ${PAGE_PADDING_X}px 4px`,
+              scrollbarWidth: 'none',
+            }}
+          >
+            <style>{`.cat-row::-webkit-scrollbar { display: none; }`}</style>
+            <div className="cat-row" style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
+              {TOP_CATEGORIES.map((c, i) => (
                 <Link
-                  href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
+                  key={c.key}
+                  href={`/telegram/search?q=${encodeURIComponent(c.q)}`}
                   onClick={() => haptic('light')}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 active:bg-white/[0.08] transition-colors"
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: 88,
+                    flexShrink: 0,
+                    textDecoration: 'none',
+                    color: T.text,
+                  }}
                 >
-                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
-                    {s.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.avatar} alt="" className="size-full object-cover" />
-                    ) : (
-                      (s.name?.[0] ?? '?').toUpperCase()
-                    )}
+                  <div
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: '50%',
+                      background: `hsl(${(i * 53) % 360}, 70%, 88%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 32,
+                    }}
+                  >
+                    {['💇', '💅', '👁️', '💆', '✨'][i]}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-semibold">{s.name ?? 'Мастер'}</p>
-                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-white/60">
-                      <Clock className="size-3" />
-                      {formatSlotDate(s.date, s.time)}
-                    </div>
-                  </div>
-                  <ChevronRight className="size-4 shrink-0 text-white/30" />
+                  <span
+                    style={{
+                      ...TYPE.caption,
+                      color: T.text,
+                      fontWeight: 600,
+                      textAlign: 'center',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {c.label}
+                  </span>
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              ))}
+            </div>
+          </div>
+        </div>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Link
-          href="/telegram/find"
-          onClick={() => haptic('light')}
-          className="flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
-        >
-          <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
-            <Search className="size-4" />
-          </div>
-          <p className="text-[13px] font-semibold">Найти</p>
-          <p className="text-[11px] text-white/50">Поиск мастеров и салонов</p>
-        </Link>
-        <Link
-          href="/telegram/connections"
-          onClick={() => haptic('light')}
-          className="flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
-        >
-          <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
-            <Sparkles className="size-4" />
-          </div>
-          <p className="text-[13px] font-semibold">Контакты</p>
-          <p className="text-[11px] text-white/50">Мастера, салоны, друзья</p>
-        </Link>
-      </div>
-    </motion.div>
+        <div style={{ height: 8 }} />
+      </motion.div>
+    </MobilePage>
   );
 }
 

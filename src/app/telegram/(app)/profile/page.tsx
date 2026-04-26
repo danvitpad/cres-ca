@@ -1,15 +1,15 @@
 /** --- YAML
  * name: MiniAppProfilePage
- * description: Mini App profile — Fresha-style. Name+subtitle left, avatar right, gradient wallet card,
- *              menu cards (Профиль/Связи/Анкеты/Настройки + Поддержка/Язык), sign out row. Dark theme.
+ * description: Mini App клиента — Fresha-premium 2026. Светлая тема, gradient
+ *              wallet-card, чистые menu-list карточки. Бизнес-логика (avatar
+ *              upload / edit modal / followers list / sign out) сохранена.
  * created: 2026-04-13
- * updated: 2026-04-24
+ * updated: 2026-04-26
  * --- */
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -20,16 +20,24 @@ import {
   Settings,
   LogOut,
   User as UserIcon,
-  Users,
+  Heart,
   FileText,
   HelpCircle,
   Globe,
-  Wallet,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { mapError } from '@/lib/errors';
+import {
+  MobilePage,
+  PageHeader,
+  GradientHeroCard,
+  MenuList,
+  AvatarCircle,
+  type MenuItem,
+} from '@/components/miniapp/shells';
+import { T, R, TYPE, PAGE_PADDING_X, SHADOW } from '@/components/miniapp/design';
 
 interface FollowListEntry {
   id: string;
@@ -49,15 +57,14 @@ export default function MiniAppProfilePage() {
   const [fullName, setFullName] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
-  const [publicId, setPublicId] = useState<string | null>(null);
+  const [, setPublicId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
 
   // Follow list modal
   const [listOpen, setListOpen] = useState(false);
-  const [listType, setListType] = useState<'followers' | 'following'>('followers');
+  const [listType] = useState<'followers' | 'following'>('following');
   const [listLoading, setListLoading] = useState(false);
   const [listEntries, setListEntries] = useState<FollowListEntry[]>([]);
 
@@ -94,7 +101,6 @@ export default function MiniAppProfilePage() {
           setSlug(data.slug ?? null);
           setPublicId(data.public_id ?? null);
           setAvatarUrl(data.avatar_url ?? null);
-          setFollowersCount(Number(data.followers_count ?? 0));
           setFollowingCount(Number(data.following_count ?? 0));
         }
       }
@@ -177,22 +183,6 @@ export default function MiniAppProfilePage() {
     }
   }
 
-  async function openList(type: 'followers' | 'following') {
-    if (!userId) return;
-    haptic('light');
-    setListType(type);
-    setListOpen(true);
-    setListLoading(true);
-    setListEntries([]);
-    try {
-      const res = await fetch(`/api/follow/list?profileId=${userId}&type=${type}`);
-      const data = await res.json();
-      if (res.ok) setListEntries(data.list ?? []);
-    } finally {
-      setListLoading(false);
-    }
-  }
-
   async function onAvatarFile(file: File) {
     if (!userId || avatarBusy) return;
     setAvatarBusy(true);
@@ -227,7 +217,6 @@ export default function MiniAppProfilePage() {
 
   const tgFullName = user ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}` : '';
   const displayName = profileLoaded ? (fullName ?? tgFullName ?? 'Гость') : '';
-  const showTgPhoto = profileLoaded && !!user?.photo_url && (!fullName || fullName.trim() === tgFullName.trim());
 
   // Auto-open edit modal when navigated from settings with ?edit=true
   useEffect(() => {
@@ -238,129 +227,168 @@ export default function MiniAppProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoaded]);
 
+  const balanceFmt = balance.toLocaleString('ru-RU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const mainMenu: MenuItem[] = [
+    {
+      key: 'profile',
+      icon: <UserIcon size={22} strokeWidth={1.8} />,
+      label: 'Профиль',
+      onClick: openEdit,
+      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
+    },
+    {
+      key: 'favorites',
+      icon: <Heart size={22} strokeWidth={1.8} />,
+      label: 'Избранное',
+      href: '/telegram/connections',
+      rightSlot: (
+        <>
+          {followingCount > 0 && (
+            <span style={{ ...TYPE.caption, fontWeight: 600 }}>{followingCount}</span>
+          )}
+          <ChevronRight size={20} color={T.textTertiary} />
+        </>
+      ),
+    },
+    {
+      key: 'forms',
+      icon: <FileText size={22} strokeWidth={1.8} />,
+      label: 'Анкеты',
+      href: '/telegram/forms',
+      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
+    },
+    {
+      key: 'settings',
+      icon: <Settings size={22} strokeWidth={1.8} />,
+      label: 'Настройки',
+      href: '/telegram/settings',
+      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
+    },
+  ];
+
+  const supportMenu: MenuItem[] = [
+    {
+      key: 'support',
+      icon: <HelpCircle size={22} strokeWidth={1.8} />,
+      label: 'Поддержка',
+      href: '/telegram/settings/feedback',
+      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
+    },
+    {
+      key: 'language',
+      icon: <Globe size={22} strokeWidth={1.8} />,
+      label: 'русский (Украина)',
+      href: '/telegram/settings',
+      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
+    },
+  ];
+
+  const logoutMenu: MenuItem[] = [
+    {
+      key: 'logout',
+      icon: <LogOut size={22} strokeWidth={1.8} />,
+      label: signingOut ? 'Выходим...' : 'Выйти',
+      onClick: signOut,
+      danger: true,
+    },
+  ];
+
   return (
-    <>
+    <MobilePage>
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="space-y-4 px-5 pt-6 pb-6"
+        style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
       >
-        {/* Header: Name + subtitle LEFT, Avatar RIGHT (Fresha layout) */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            {profileLoaded ? (
-              <h1 className="truncate text-[24px] font-bold leading-tight">{displayName}</h1>
-            ) : (
-              <div className="h-7 w-40 animate-pulse rounded-lg bg-white/[0.06]" />
-            )}
-            <p className="mt-1 text-[13px] text-white/50">Личный профиль</p>
-          </div>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={avatarBusy}
-            className="relative flex size-[64px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90 transition-colors active:bg-white/[0.1]"
-            aria-label="Изменить аватар"
-          >
-            {!profileLoaded ? (
-              <div className="size-full animate-pulse bg-white/[0.06]" />
-            ) : avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="" className="size-full object-cover" />
-            ) : showTgPhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user!.photo_url!} alt="" className="size-full object-cover" />
-            ) : (
-              (displayName[0] ?? 'U').toUpperCase()
-            )}
-            {avatarBusy && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                <Loader2 className="size-5 animate-spin" />
-              </div>
-            )}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) onAvatarFile(f);
-              e.target.value = '';
-            }}
-          />
-        </div>
-
-        {/* Wallet card — display only */}
-        <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#a855f7] via-[#7c3aed] to-[#ec4899] p-5 text-white shadow-lg shadow-violet-500/20">
-          <div className="flex items-center gap-1.5 text-[13px] font-medium text-white/80">
-            <Wallet className="size-3.5" />
-            Баланс
-          </div>
-          <p className="mt-1 text-[32px] font-bold leading-none tracking-tight">
-            {balance.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₴
-          </p>
-        </div>
-
-        {/* Main menu card */}
-        <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-          <MenuRow icon={UserIcon} label="Профиль" onClick={openEdit} />
-          <MenuRowLink
-            icon={Users}
-            label="Контакты"
-            sub={followingCount > 0 ? `${followingCount} подписок` : undefined}
-            href="/telegram/connections"
-            onClick={() => haptic('light')}
-          />
-          <MenuRowLink icon={FileText} label="Анкеты" href="/telegram/forms" onClick={() => haptic('light')} />
-          <MenuRowLink icon={Settings} label="Настройки" href="/telegram/settings" onClick={() => haptic('light')} />
-        </ul>
-
-        {/* Secondary menu card */}
-        <ul className="divide-y divide-white/5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-          <MenuRowLink icon={HelpCircle} label="Поддержка" href="/telegram/settings/feedback" onClick={() => haptic('light')} />
-          <MenuRow icon={Globe} label="Язык" value="Русский" onClick={() => haptic('light')} />
-        </ul>
-
-        {/* Sign out row */}
-        <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
-          <li>
+        <PageHeader
+          title={displayName || ' '}
+          subtitle="Личный профиль"
+          right={
             <button
-              onClick={signOut}
-              disabled={signingOut}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-rose-300 active:bg-white/[0.03] transition-colors disabled:opacity-60"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarBusy}
+              style={{
+                position: 'relative',
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              aria-label="Изменить аватар"
             >
-              <div className="flex size-9 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/10">
-                {signingOut ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-              </div>
-              <span className="flex-1 text-sm font-medium">Выйти из аккаунта</span>
+              <AvatarCircle url={avatarUrl} name={displayName} size={64} />
+              {avatarBusy && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: '50%',
+                    background: 'rgba(0,0,0,0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Loader2 size={20} color="#fff" className="animate-spin" />
+                </span>
+              )}
             </button>
-          </li>
-        </ul>
+          }
+        />
 
-        {bio && (
-          <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-white/45 px-1">{bio}</p>
-        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onAvatarFile(f);
+            e.target.value = '';
+          }}
+        />
 
-        {/* Hidden-but-accessible followers/following triggers for deep links */}
-        <div className="sr-only">
-          <button onClick={() => openList('followers')}>Подписчики: {followersCount}</button>
-          <button onClick={() => openList('following')}>Подписки: {followingCount}</button>
-        </div>
+        <GradientHeroCard
+          label="Баланс кошелька"
+          value={`${balanceFmt} ₴`}
+          cta="Открыть кошелёк"
+          onCta={() => router.push('/telegram/bonuses')}
+        />
 
-        <div className="h-4" />
+        <MenuList items={mainMenu} />
+        <MenuList items={supportMenu} />
+        <MenuList items={logoutMenu} />
+
+        <div style={{ height: 8 }} />
       </motion.div>
 
-      {/* Followers / following bottom sheet */}
+      {/* Edit profile bottom sheet */}
       <AnimatePresence>
-        {listOpen && (
+        {editOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
-            onClick={() => setListOpen(false)}
+            onClick={() => setEditOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 60,
+              background: 'rgba(10,10,12,0.5)',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+            }}
           >
             <motion.div
               initial={{ y: 40, opacity: 0 }}
@@ -368,64 +396,256 @@ export default function MiniAppProfilePage() {
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[80dvh] w-full max-w-md overflow-hidden rounded-t-2xl border-t border-white/10 bg-[#0b0d17]"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+              style={{
+                width: '100%',
+                maxWidth: 460,
+                background: T.surface,
+                borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+                padding: `20px ${PAGE_PADDING_X}px`,
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                boxShadow: SHADOW.elevated,
+              }}
             >
-              <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-white/20" />
-              <div className="flex items-center justify-between px-5 py-4">
-                <h3 className="text-[15px] font-semibold">
-                  {listType === 'followers' ? 'Подписчики' : 'Подписки'}
-                </h3>
+              <div
+                style={{
+                  margin: '0 auto 16px',
+                  width: 40,
+                  height: 4,
+                  borderRadius: 999,
+                  background: T.border,
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 16,
+                }}
+              >
+                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Редактировать профиль</h3>
                 <button
-                  onClick={() => setListOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+                  type="button"
+                  onClick={() => setEditOpen(false)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: '50%',
+                    background: T.bgSubtle,
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                  aria-label="Закрыть"
                 >
-                  <X className="size-4" />
+                  <X size={18} color={T.textSecondary} />
                 </button>
               </div>
-              <div className="max-h-[60dvh] overflow-y-auto px-3 pb-4">
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <FieldBox label="Имя">
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value.slice(0, 80))}
+                    placeholder="Как вас зовут"
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      ...TYPE.body,
+                      color: T.text,
+                      padding: 0,
+                    }}
+                  />
+                </FieldBox>
+
+                <FieldBox label="Имя ссылки (slug)">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ color: T.textTertiary }}>@</span>
+                    <input
+                      value={editSlug}
+                      onChange={(e) =>
+                        setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32))
+                      }
+                      placeholder="username"
+                      style={{
+                        width: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        ...TYPE.body,
+                        color: T.text,
+                        padding: 0,
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                  <p style={{ ...TYPE.micro, marginTop: 6 }}>
+                    3–32 символа: латиница, цифры, точка, дефис, подчёркивание
+                  </p>
+                </FieldBox>
+
+                <FieldBox label="О себе">
+                  <textarea
+                    value={editBio}
+                    onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
+                    placeholder="Пара слов о вас"
+                    rows={4}
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      outline: 'none',
+                      resize: 'none',
+                      ...TYPE.body,
+                      color: T.text,
+                      padding: 0,
+                      fontFamily: 'inherit',
+                    }}
+                  />
+                  <p style={{ ...TYPE.micro, marginTop: 6, textAlign: 'right' }}>
+                    {editBio.length}/280
+                  </p>
+                </FieldBox>
+
+                {editError && (
+                  <div
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: R.md,
+                      background: T.dangerSoft,
+                      color: T.danger,
+                      fontSize: 13,
+                    }}
+                  >
+                    {editError}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  disabled={editBusy}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '16px 24px',
+                    borderRadius: R.pill,
+                    border: 'none',
+                    background: T.text,
+                    color: T.bg,
+                    fontSize: 16,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: editBusy ? 0.6 : 1,
+                  }}
+                >
+                  {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  Сохранить
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Followers/following sheet (kept for compatibility, but trigger removed
+          from main UI — followers count itself is now hidden, focus on Избранное) */}
+      <AnimatePresence>
+        {listOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setListOpen(false)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 60,
+              background: 'rgba(10,10,12,0.5)',
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+            }}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 460,
+                maxHeight: '80dvh',
+                background: T.surface,
+                borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  margin: '12px auto',
+                  width: 40,
+                  height: 4,
+                  borderRadius: 999,
+                  background: T.border,
+                }}
+              />
+              <h3 style={{ ...TYPE.h3, color: T.text, margin: 0, padding: `0 ${PAGE_PADDING_X}px 12px` }}>
+                {listType === 'followers' ? 'Подписчики' : 'Избранное'}
+              </h3>
+              <div style={{ maxHeight: '60dvh', overflowY: 'auto', padding: `0 ${PAGE_PADDING_X}px 16px` }}>
                 {listLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="size-5 animate-spin text-white/40" />
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+                    <Loader2 size={20} className="animate-spin" color={T.textTertiary} />
                   </div>
                 ) : listEntries.length === 0 ? (
-                  <div className="py-12 text-center text-[12px] text-white/40">
-                    {listType === 'followers'
-                      ? 'У вас пока нет подписчиков'
-                      : 'Вы пока ни на кого не подписаны'}
-                  </div>
+                  <p style={{ ...TYPE.caption, textAlign: 'center', padding: '32px 0' }}>
+                    Пусто
+                  </p>
                 ) : (
-                  <ul className="space-y-1">
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {listEntries.map((e) => (
                       <li key={e.id}>
                         <button
+                          type="button"
                           onClick={() => {
                             setListOpen(false);
-                            if (e.public_id) {
-                              window.location.href = `/telegram/u/${e.public_id}`;
-                            }
+                            if (e.public_id) window.location.href = `/telegram/u/${e.public_id}`;
                           }}
-                          className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left active:bg-white/[0.03] transition-colors"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            width: '100%',
+                            padding: '10px 0',
+                            background: 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                          }}
                         >
-                          <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
-                            {e.avatar_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={e.avatar_url} alt="" className="size-full object-cover" />
-                            ) : (
-                              (e.full_name?.[0] ?? 'U').toUpperCase()
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[14px] font-semibold">
+                          <AvatarCircle url={e.avatar_url} name={e.full_name ?? '?'} size={44} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>
                               {e.full_name ?? 'Пользователь'}
                             </p>
-                            <p className="truncate text-[11px] text-white/45">
+                            <p style={{ ...TYPE.micro }}>
                               {e.slug ? `@${e.slug}` : e.public_id ?? ''}
                               {e.role === 'master' && ' · Мастер'}
-                              {e.role === 'salon_admin' && ' · Салон'}
                             </p>
                           </div>
-                          <ChevronRight className="size-4 text-white/30" />
+                          <ChevronRight size={18} color={T.textTertiary} />
                         </button>
                       </li>
                     ))}
@@ -436,169 +656,33 @@ export default function MiniAppProfilePage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Edit profile modal */}
-      <AnimatePresence>
-        {editOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/70"
-            onClick={() => setEditOpen(false)}
-          >
-            <motion.div
-              initial={{ y: 40, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 40, opacity: 0 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-md rounded-t-2xl border-t border-white/10 bg-[#0b0d17] p-5"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
-            >
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-bold">Редактировать профиль</h3>
-                <button
-                  onClick={() => setEditOpen(false)}
-                  className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
-                >
-                  <X className="size-4" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    Имя
-                  </label>
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 80))}
-                    placeholder="Как вас зовут"
-                    className="mt-1 w-full bg-transparent text-base outline-none placeholder:text-white/30"
-                  />
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    Имя ссылки (slug)
-                  </label>
-                  <div className="mt-1 flex items-center gap-1 font-mono text-base">
-                    <span className="text-white/30">@</span>
-                    <input
-                      value={editSlug}
-                      onChange={(e) =>
-                        setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32))
-                      }
-                      placeholder="username"
-                      className="w-full bg-transparent outline-none placeholder:text-white/30"
-                    />
-                  </div>
-                  <p className="mt-1 text-[10px] text-white/35">
-                    3–32 символа: латиница, цифры, точка, дефис, подчёркивание
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-                    О себе
-                  </label>
-                  <textarea
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
-                    placeholder="Пара слов о вас"
-                    rows={4}
-                    className="mt-1 w-full resize-none bg-transparent text-sm outline-none placeholder:text-white/30"
-                  />
-                  <p className="mt-1 text-right text-[10px] text-white/35">{editBio.length}/280</p>
-                </div>
-
-                {editError && (
-                  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] p-3 pl-4 text-xs text-rose-300">
-                    <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
-                    {editError}
-                  </div>
-                )}
-
-                <button
-                  onClick={saveEdit}
-                  disabled={editBusy}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-60"
-                >
-                  {editBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-                  Сохранить
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
+    </MobilePage>
   );
 }
 
-function MenuRow({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value?: string;
-  sub?: string;
-  onClick?: () => void;
-}) {
+function FieldBox({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <li>
-      <button
-        onClick={onClick}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors"
+    <div
+      style={{
+        background: T.surfaceElevated,
+        border: `1px solid ${T.borderSubtle}`,
+        borderRadius: R.md,
+        padding: 14,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: T.textTertiary,
+          marginBottom: 6,
+        }}
       >
-        <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-          <Icon className="size-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="truncate text-sm">{label}</p>
-          {sub && <p className="truncate text-[11px] text-white/40">{sub}</p>}
-        </div>
-        {value && <span className="text-[13px] text-white/50">{value}</span>}
-        <ChevronRight className="size-4 text-white/40" />
-      </button>
-    </li>
-  );
-}
-
-function MenuRowLink({
-  icon: Icon,
-  label,
-  sub,
-  href,
-  onClick,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  sub?: string;
-  href: string;
-  onClick?: () => void;
-}) {
-  return (
-    <li>
-      <Link
-        href={href}
-        onClick={onClick}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.03] transition-colors"
-      >
-        <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-          <Icon className="size-4" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="truncate text-sm">{label}</p>
-          {sub && <p className="truncate text-[11px] text-white/40">{sub}</p>}
-        </div>
-        <ChevronRight className="size-4 text-white/40" />
-      </Link>
-    </li>
+        {label}
+      </div>
+      {children}
+    </div>
   );
 }
