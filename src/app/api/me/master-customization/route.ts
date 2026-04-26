@@ -75,6 +75,22 @@ export async function PATCH(req: Request) {
     update.page_type = body.page_type;
   }
   if ('is_public' in body) update.is_public = Boolean(body.is_public);
+  if ('languages' in body && Array.isArray(body.languages)) {
+    update.languages = body.languages
+      .filter((x): x is string => typeof x === 'string')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 10);
+  }
+  if ('workplace_name' in body) {
+    update.workplace_name = typeof body.workplace_name === 'string'
+      ? body.workplace_name.trim().slice(0, 200) || null
+      : body.workplace_name === null ? null : undefined;
+  }
+  if ('workplace_photo_url' in body) {
+    update.workplace_photo_url = typeof body.workplace_photo_url === 'string' || body.workplace_photo_url === null
+      ? body.workplace_photo_url : undefined;
+  }
 
   if (Object.keys(update).length === 0 && !('avatar_url' in body)) {
     return NextResponse.json({ ok: true, updated: 0 });

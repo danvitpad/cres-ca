@@ -29,6 +29,7 @@ interface MasterRow {
   display_name: string | null;
   specialization: string | null;
   bio: string | null;
+  address: string | null;
   city: string | null;
   rating: number | null;
   total_reviews: number | null;
@@ -59,6 +60,14 @@ interface MasterRow {
   interests: string[] | null;
   social_links: Record<string, string> | null;
   page_type: string | null;
+  // Migration 00114: cached public metrics + languages + workplace
+  completed_appointments_count: number;
+  served_clients_count: number;
+  languages: string[] | null;
+  workplace_photo_url: string | null;
+  workplace_name: string | null;
+  // Salon link (existing)
+  salon_id: string | null;
 }
 
 interface ServiceRow {
@@ -119,10 +128,11 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
   // Embed them via FK so the public page can render contacts gated by
   // phone_public / email_public / dob_public flags.
   const cols =
-    'id, profile_id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
+    'id, profile_id, display_name, specialization, bio, address, city, rating, total_reviews, avatar_url, cover_url, ' +
     'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
     'theme_primary_color, theme_background_color, banner_position_y, ' +
     'phone_public, email_public, dob_public, interests, social_links, page_type, ' +
+    'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
     'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth)';
 
   const flatten = (row: Record<string, unknown> | null): MasterRow | null => {
@@ -237,6 +247,24 @@ async function loadPartners(masterId: string): Promise<PartnerRow[]> {
   return (partners as PartnerRow[] | null) ?? [];
 }
 
+interface SalonInfo {
+  id: string;
+  name: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  city: string | null;
+  address: string | null;
+}
+async function loadSalon(salonId: string | null): Promise<SalonInfo | null> {
+  if (!salonId) return null;
+  const { data } = await admin()
+    .from('salons')
+    .select('id, name, logo_url, cover_url, city, address')
+    .eq('id', salonId)
+    .maybeSingle();
+  return (data as SalonInfo | null) ?? null;
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   const master = await loadMaster(handle);
@@ -293,12 +321,13 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const [services, portfolio, beforeAfter, reviewsList, partners] = await Promise.all([
+  const [services, portfolio, beforeAfter, reviewsList, partners, salon] = await Promise.all([
     loadServices(master.id),
     loadPortfolio(master.id),
     loadBeforeAfter(master.id),
     loadReviews(master.id),
     loadPartners(master.id),
+    loadSalon(master.salon_id),
   ]);
   const displayName = master.display_name ?? 'Master';
   const rating = Number(master.rating ?? 0);
@@ -383,11 +412,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               <p className="mt-1 text-sm text-neutral-600 sm:text-base">{master.specialization}</p>
             )}
             <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-sm text-neutral-600 sm:justify-start">
-              {master.city && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="size-4" /> {master.city}
-                </span>
-              )}
               {reviews > 0 && (
                 <span className="inline-flex items-center gap-1">
                   <Star className="size-4 fill-amber-400 text-amber-400" />
@@ -395,7 +419,38 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   <span className="text-neutral-400">({reviews})</span>
                 </span>
               )}
+              {master.city && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="size-4" /> {master.city}
+                </span>
+              )}
             </div>
+
+            {/* Public stats — completed visits + served clients (cached counters
+                from migration 00114). Hidden when both are zero (new master). */}
+            {(master.completed_appointments_count > 0 || master.served_clients_count > 0) && (
+              <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-neutral-600 sm:justify-start">
+                <span>
+                  Завершённые записи{' '}
+                  <strong className="tabular-nums text-neutral-900">{master.completed_appointments_count.toLocaleString('ru-RU')}</strong>
+                </span>
+                <span>
+                  Обслужено клиентов{' '}
+                  <strong className="tabular-nums text-neutral-900">{master.served_clients_count.toLocaleString('ru-RU')}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Languages */}
+            {(master.languages?.length ?? 0) > 0 && (
+              <div className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start">
+                {master.languages!.map((lang) => (
+                  <span key={lang} className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-700">
+                    {lang}
+                  </span>
+                ))}
+              </div>
+            )}
             {(master.badges?.length ?? 0) > 0 && (
               <div className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start">
                 {master.badges!.map((b) => {
@@ -697,26 +752,86 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           </div>
         )}
 
+        {/* «Работает в» — салон или собственный кабинет */}
+        {(salon || master.workplace_name || master.workplace_photo_url) && (
+          <div className="mt-12">
+            <h2 className="mb-4 text-xl font-semibold">Где принимаю</h2>
+            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+              {(salon?.cover_url || master.workplace_photo_url) && (
+                <div className="relative h-40 w-full overflow-hidden bg-neutral-100 sm:h-56">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={(salon?.cover_url ?? master.workplace_photo_url) as string}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex items-start gap-3 p-5">
+                {salon?.logo_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={salon.logo_url}
+                    alt=""
+                    className="size-12 rounded-full border border-neutral-200 object-cover"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-neutral-900">
+                    {salon?.name ?? master.workplace_name ?? 'Собственный кабинет'}
+                  </p>
+                  {(salon?.address || master.address) && (
+                    <p className="mt-0.5 text-sm text-neutral-600">
+                      {salon?.address ?? master.address}
+                      {master.city ? `, ${master.city}` : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {(master.city || master.working_hours) && (
           <div className="mt-12 mb-16">
             <h2 className="mb-4 text-xl font-semibold">Контакты и часы работы</h2>
             <div className="grid gap-5 sm:grid-cols-2">
-              {master.city && (
-                <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-                  <div className="flex items-start gap-3">
+              {(master.city || master.address || salon?.address) && (
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                  {/* OpenStreetMap iframe — бесплатный embed, без API-ключей.
+                      Bbox считается из города; если есть точный адрес — используем его. */}
+                  {(() => {
+                    const q = encodeURIComponent(
+                      [salon?.address ?? master.address, master.city].filter(Boolean).join(', ') || master.city || '',
+                    );
+                    if (!q) return null;
+                    return (
+                      <iframe
+                        title="Карта"
+                        src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&query=${q}`}
+                        className="h-48 w-full"
+                        loading="lazy"
+                      />
+                    );
+                  })()}
+                  <div className="flex items-start gap-3 p-5">
                     <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
                       <MapPin className="size-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">Город</p>
-                      <p className="mt-0.5 text-sm text-neutral-600">{master.city}</p>
+                      <p className="text-sm font-semibold">Адрес</p>
+                      <p className="mt-0.5 text-sm text-neutral-600">
+                        {[salon?.address ?? master.address, master.city].filter(Boolean).join(', ')}
+                      </p>
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(master.city)}`}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          [salon?.address ?? master.address, master.city].filter(Boolean).join(', ') || master.city || '',
+                        )}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:underline"
                       >
-                        Открыть на карте →
+                        Открыть в Google Maps →
                       </a>
                     </div>
                   </div>

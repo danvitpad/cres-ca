@@ -61,6 +61,10 @@ interface Master {
   social_links: Record<string, string> | null;
   page_type: string | null;
   is_public: boolean | null;
+  // Migration 00114
+  languages: string[] | null;
+  workplace_name: string | null;
+  workplace_photo_url: string | null;
   profile?: { avatar_url: string | null } | null;
 }
 
@@ -86,6 +90,12 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
   const [social, setSocial] = useState<Record<string, string>>(master.social_links ?? {});
   const [pageType, setPageType] = useState(master.page_type ?? 'master');
   const [isPublic, setIsPublic] = useState(master.is_public ?? true);
+  const [languages, setLanguages] = useState<string[]>(master.languages ?? []);
+  const [languageDraft, setLanguageDraft] = useState('');
+  const [workplaceName, setWorkplaceName] = useState(master.workplace_name ?? '');
+  const [workplacePhotoUrl, setWorkplacePhotoUrl] = useState<string | null>(master.workplace_photo_url);
+  const [workplaceBusy, setWorkplaceBusy] = useState(false);
+  const workplaceInput = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -108,6 +118,9 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
     setSocial(master.social_links ?? {});
     setPageType(master.page_type ?? 'master');
     setIsPublic(master.is_public ?? true);
+    setLanguages(master.languages ?? []);
+    setWorkplaceName(master.workplace_name ?? '');
+    setWorkplacePhotoUrl(master.workplace_photo_url);
   }, [open, master]);
 
   async function uploadImage(kind: 'cover' | 'avatar', file: File) {
@@ -159,6 +172,35 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
     setInterests(interests.filter((_, idx) => idx !== i));
   }
 
+  function addLanguage() {
+    const v = languageDraft.trim();
+    if (!v || languages.includes(v)) return;
+    if (languages.length >= 10) return;
+    setLanguages([...languages, v]);
+    setLanguageDraft('');
+  }
+  function removeLanguage(i: number) {
+    setLanguages(languages.filter((_, idx) => idx !== i));
+  }
+
+  async function uploadWorkplace(file: File) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Файл больше 8 MB');
+      return null;
+    }
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${user.id}/workplace-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('avatars').upload(path, file, {
+      cacheControl: '3600', upsert: false,
+    });
+    if (error) { toast.error(`Не удалось загрузить: ${error.message}`); return null; }
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+    return data.publicUrl;
+  }
+
   async function save() {
     setSaving(true);
     const res = await fetch('/api/me/master-customization', {
@@ -178,6 +220,9 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
         social_links: social,
         page_type: pageType,
         is_public: isPublic,
+        languages,
+        workplace_name: workplaceName.trim() || null,
+        workplace_photo_url: workplacePhotoUrl,
       }),
     });
     setSaving(false);
@@ -434,6 +479,91 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
+          </Section>
+
+          {/* Languages */}
+          <Section title="Языки общения">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {languages.map((lang, i) => (
+                <span key={lang} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs">
+                  {lang}
+                  <button type="button" onClick={() => removeLanguage(i)} className="ml-0.5 text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={languageDraft}
+                onChange={(e) => setLanguageDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLanguage(); } }}
+                placeholder="Українська, English, Русский..."
+                className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
+                maxLength={30}
+              />
+              <button
+                type="button"
+                onClick={addLanguage}
+                disabled={!languageDraft.trim()}
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </Section>
+
+          {/* Workplace — for solo masters without salon link */}
+          <Section title="Где принимаю">
+            <p className="text-[11px] text-muted-foreground mb-2">
+              Если ты не привязан к салону — укажи название и фото своего кабинета или мастерской,
+              чтобы клиенты понимали куда идти.
+            </p>
+            <input
+              type="text"
+              value={workplaceName}
+              onChange={(e) => setWorkplaceName(e.target.value)}
+              placeholder="Кабинет №3 / Студия на Печерске..."
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm outline-none focus:border-primary mb-2"
+              maxLength={120}
+            />
+            <input
+              ref={workplaceInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                setWorkplaceBusy(true);
+                const url = await uploadWorkplace(f);
+                setWorkplaceBusy(false);
+                if (url) setWorkplacePhotoUrl(url);
+              }}
+            />
+            {workplacePhotoUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={workplacePhotoUrl} alt="" className="h-32 w-full rounded-md object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setWorkplacePhotoUrl(null)}
+                  className="absolute right-2 top-2 rounded-full bg-black/60 p-1 text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => workplaceInput.current?.click()}
+                disabled={workplaceBusy}
+                className="w-full rounded-md border-2 border-dashed border-input px-3 py-4 text-xs text-muted-foreground hover:border-primary hover:text-primary"
+              >
+                {workplaceBusy ? 'Загрузка…' : 'Добавить фото кабинета'}
+              </button>
+            )}
           </Section>
 
           {/* Contact privacy */}
