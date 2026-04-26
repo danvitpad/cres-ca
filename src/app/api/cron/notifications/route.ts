@@ -43,13 +43,19 @@ export async function GET(request: Request) {
 
     const attachments = (n.data as Record<string, unknown> | null)?.attachment_urls as AttachmentRef[] | undefined;
 
+    // If the notification carries its own inline_keyboard (e.g. native TG review
+    // with 5 star buttons) — use it instead of the default «✨ CRES-CA» web-app
+    // button, otherwise users would see two keyboards stacked.
+    const customKeyboard = (n.data as Record<string, unknown> | null)?.inline_keyboard as unknown[] | undefined;
+    const replyMarkup = customKeyboard
+      ? { inline_keyboard: customKeyboard }
+      : { inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: appUrl } }]] };
+
     if (n.channel === 'telegram' && profile?.telegram_id) {
       try {
         await sendMessage(profile.telegram_id, `<b>${n.title}</b>\n\n${n.body}`, {
           parse_mode: 'HTML',
-          reply_markup: {
-            inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: appUrl } }]],
-          },
+          reply_markup: replyMarkup,
         });
         // Re-send each attached file as a separate document message.
         if (attachments?.length) {

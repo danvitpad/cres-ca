@@ -78,6 +78,7 @@ interface TelegramUpdate {
     text?: string;
     voice?: { file_id: string; duration: number };
     audio?: { file_id: string; duration: number };
+    reply_to_message?: { message_id: number; text?: string };
   };
   callback_query?: {
     id: string;
@@ -115,6 +116,34 @@ export async function POST(request: Request) {
 
   const text = update.message.text;
   if (!text) {
+    return NextResponse.json({ ok: true });
+  }
+
+  // ── Review comment via force_reply ──
+  // The earlier callback (review:<apt_id>:<stars>) sent a force_reply prompt
+  // tagged with [review:<apt_id>]. When the user replies, we attach the text
+  // as the reviews.comment. Quick path before falling through to the rest.
+  const reviewReplyMatch = update.message.reply_to_message?.text?.match(/\[review:([0-9a-f-]{36})\]/i);
+  if (reviewReplyMatch) {
+    const apptId = reviewReplyMatch[1];
+    const supabase = createServiceClient();
+    const { data: profile } = await supabase
+      .from('profiles').select('id').eq('telegram_id', telegramId).single();
+    if (profile) {
+      const { data: existing } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('appointment_id', apptId)
+        .eq('target_type', 'master')
+        .eq('reviewer_id', profile.id)
+        .maybeSingle();
+      if (existing) {
+        await supabase.from('reviews').update({ comment: text.slice(0, 2000) }).eq('id', existing.id);
+        await sendMessage(chatId, '✅ Спасибо! Комментарий сохранён.');
+      } else {
+        await sendMessage(chatId, '⚠️ Сначала поставь оценку звёздочками — комментарий привязывается к ней.');
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -1286,6 +1315,88 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
       body: JSON.stringify({ callback_query_id: cb.id }),
     });
   } catch {}
+
+  // review:<apt_id>:<stars>  — native TG rating without a web round-trip
+  if (data.startsWith('review:')) {
+    const parts = data.split(':');
+    const apptId = parts[1];
+    const stars = Number(parts[2]);
+    if (!apptId || !Number.isInteger(stars) || stars < 1 || stars > 5) {
+      await sendMessage(chatId, '⚠️ Не удалось распознать оценку.');
+      return;
+    }
+    const { data: profile } = await supabase
+      .from('profiles').select('id').eq('telegram_id', telegramId).single();
+    if (!profile) {
+      await sendMessage(chatId, '⚠️ Профиль не найден. Войди через /start в приложение.');
+      return;
+    }
+    const { data: appt } = await supabase
+      .from('appointments')
+      .select('id, master_id, client:clients!inner(profile_id)')
+      .eq('id', apptId)
+      .single();
+    if (!appt) {
+      await sendMessage(chatId, '⚠️ Запись не найдена.');
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apptClient = appt.client as any;
+    if (apptClient?.profile_id !== profile.id) {
+      await sendMessage(chatId, '⚠️ Это не ваша запись — оставлять оценку нельзя.');
+      return;
+    }
+
+    // Upsert by (appointment_id, target_type=master) so a re-tap updates score
+    const { data: existing } = await supabase
+      .from('reviews')
+      .select('id')
+      .eq('appointment_id', apptId)
+      .eq('target_type', 'master')
+      .eq('reviewer_id', profile.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('reviews').update({
+        score: stars,
+      }).eq('id', existing.id);
+    } else {
+      await supabase.from('reviews').insert({
+        appointment_id: apptId,
+        target_type: 'master',
+        target_id: appt.master_id,
+        reviewer_id: profile.id,
+        score: stars,
+        is_published: true,
+      });
+    }
+
+    // Replace the rating message with a thank-you and remove the keyboard
+    try {
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: cb.message.message_id,
+          text: `<b>Спасибо за оценку!</b>\nВы поставили ${'⭐'.repeat(stars)}`,
+          parse_mode: 'HTML',
+        }),
+      });
+    } catch {}
+
+    // Ask for an optional text comment via force_reply. The reply_to_message
+    // marker «[review:<apt_id>]» is what the inbound-message handler keys off.
+    await sendMessage(
+      chatId,
+      `Хочешь оставить комментарий? Просто ответь на это сообщение текстом.\n\n[review:${apptId}]`,
+      {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        reply_markup: { force_reply: true, selective: true } as any,
+      },
+    );
+    return;
+  }
 
   // cancel_appt:<uuid>
   if (data.startsWith('cancel_appt:')) {

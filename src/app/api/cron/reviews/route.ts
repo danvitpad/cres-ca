@@ -102,12 +102,27 @@ export async function GET(request: Request) {
     });
     const finalBody = rendered.body.includes(`[review:${apt.id}]`) ? rendered.body : `${rendered.body} [review:${apt.id}]`;
 
+    // Native TG rating — 5 inline buttons. Webhook handles `review:<apt_id>:<stars>`
+    // and writes the score into the reviews table without a web round-trip.
+    const inlineKeyboard = [[
+      { text: '⭐', callback_data: `review:${apt.id}:1` },
+      { text: '⭐⭐', callback_data: `review:${apt.id}:2` },
+      { text: '⭐⭐⭐', callback_data: `review:${apt.id}:3` },
+      { text: '⭐⭐⭐⭐', callback_data: `review:${apt.id}:4` },
+      { text: '⭐⭐⭐⭐⭐', callback_data: `review:${apt.id}:5` },
+    ]];
+
     await supabase.from('notifications').insert({
       profile_id: client.profile_id,
       channel: 'telegram',
       title: rendered.subject ?? DEFAULT_REVIEW_SUBJECT,
       body: finalBody,
       scheduled_for: now.toISOString(),
+      data: {
+        kind: 'review_request',
+        appointment_id: apt.id,
+        inline_keyboard: inlineKeyboard,
+      },
     });
     created++;
   }
