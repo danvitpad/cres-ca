@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Calendar, Target, Loader2, Award, XCircle, Plus, Minus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
@@ -29,7 +29,7 @@ function getInitData(): string | null {
   return null;
 }
 
-type Period = 'week' | 'month';
+type Period = 'today' | 'week' | 'month';
 
 interface AptRow {
   id: string;
@@ -39,7 +39,7 @@ interface AptRow {
   service_name: string;
 }
 
-const PAYMENT_METHODS = ['Наличные', 'Карта', 'Перевод', 'Криптовалюта'] as const;
+const PAYMENT_METHODS = ['Наличные', 'Карта', 'Перевод'] as const;
 const EXPENSE_CATEGORIES = ['Расходники', 'Аренда', 'Налоги', 'Реклама', 'Оборудование', 'Еда', 'Транспорт', 'Коммунальные', 'Другое'] as const;
 
 export default function MasterMiniAppStats() {
@@ -132,9 +132,9 @@ export default function MasterMiniAppStats() {
         transition={{ duration: 0.3 }}
         className="space-y-5 px-5 pt-6 pb-10"
       >
-        {/* Period tabs — no page title per miniapp redesign (2026-04-19) */}
+        {/* Period tabs — Today / 7 / 30 */}
         <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
-          {(['week', 'month'] as const).map((p) => (
+          {(['today', 'week', 'month'] as const).map((p) => (
             <button
               key={p}
               onClick={() => {
@@ -145,7 +145,7 @@ export default function MasterMiniAppStats() {
                 period === p ? 'bg-white text-black' : 'text-white/60'
               }`}
             >
-              {p === 'week' ? '7 дней' : '30 дней'}
+              {p === 'today' ? 'Сегодня' : p === 'week' ? '7 дней' : '30 дней'}
             </button>
           ))}
         </div>
@@ -287,6 +287,9 @@ function StatCard({
   );
 }
 
+interface ClientOpt { id: string; full_name: string | null; phone: string | null }
+interface ServiceOpt { id: string; name: string | null; price: number | null; currency: string | null }
+
 function FinanceEntryForm({
   kind,
   onSuccess,
@@ -302,6 +305,23 @@ function FinanceEntryForm({
   const [d, setD] = useState(''); // note or description
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clients, setClients] = useState<ClientOpt[]>([]);
+  const [services, setServices] = useState<ServiceOpt[]>([]);
+
+  // Подгружаем варианты для autocomplete (только в income-режиме нужны).
+  useEffect(() => {
+    if (kind !== 'income') return;
+    const initData = getInitData();
+    if (!initData) return;
+    fetch('/api/telegram/m/finance-options', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    }).then((r) => r.ok ? r.json() : null).then((j) => {
+      if (j?.clients) setClients(j.clients);
+      if (j?.services) setServices(j.services);
+    }).catch(() => { /* tolerant */ });
+  }, [kind]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -357,8 +377,42 @@ function FinanceEntryForm({
 
       {kind === 'income' ? (
         <>
-          <Field label="Клиент (опционально)" value={a} onChange={setA} placeholder="Имя или —" />
-          <Field label="Услуга (опционально)" value={b} onChange={setB} placeholder="Название услуги" />
+          <Autocomplete
+            label="Клиент (опционально)"
+            value={a}
+            onChange={setA}
+            placeholder="Начни печатать имя"
+            suggestions={clients
+              .filter((cl) => cl.full_name)
+              .map((cl) => ({
+                key: cl.id,
+                label: cl.full_name!,
+                hint: cl.phone ?? undefined,
+                value: cl.full_name!,
+              }))}
+          />
+          <Autocomplete
+            label="Услуга (опционально)"
+            value={b}
+            onChange={(v, picked) => {
+              setB(v);
+              // Если мастер выбрал услугу из списка, подставим её цену в поле «Сумма»,
+              // если он ещё ничего не вписал.
+              if (picked && !amount) {
+                const svc = services.find((s) => s.name === v);
+                if (svc?.price) setAmount(String(svc.price));
+              }
+            }}
+            placeholder="Начни печатать название"
+            suggestions={services
+              .filter((s) => s.name)
+              .map((s) => ({
+                key: s.id,
+                label: s.name!,
+                hint: s.price ? `${s.price} ${s.currency ?? '₴'}` : undefined,
+                value: s.name!,
+              }))}
+          />
           <div>
             <label className="text-[11px] uppercase tracking-wide text-white/40">Способ оплаты</label>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -434,6 +488,83 @@ function Field({
         placeholder={placeholder}
         className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm outline-none focus:border-white/20"
       />
+    </div>
+  );
+}
+
+interface Suggestion {
+  key: string;
+  label: string;
+  hint?: string;
+  /** Что подставится в поле при клике (по умолчанию label). */
+  value?: string;
+}
+
+function Autocomplete({
+  label,
+  value,
+  onChange,
+  placeholder,
+  suggestions,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string, picked?: boolean) => void;
+  placeholder?: string;
+  suggestions: Suggestion[];
+}) {
+  const [focused, setFocused] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  // Закрываем дропдаун при клике мимо
+  useEffect(() => {
+    if (!focused) return;
+    function onPointer(e: MouseEvent) {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) setFocused(false);
+    }
+    document.addEventListener('mousedown', onPointer);
+    return () => document.removeEventListener('mousedown', onPointer);
+  }, [focused]);
+
+  const filtered = useMemo(() => {
+    const q = value.trim().toLowerCase();
+    if (!q) return suggestions.slice(0, 6);
+    return suggestions
+      .filter((s) => s.label.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [value, suggestions]);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <label className="text-[11px] uppercase tracking-wide text-white/40">{label}</label>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm outline-none focus:border-white/20"
+      />
+      {focused && filtered.length > 0 && (
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl">
+          {filtered.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => {
+                onChange(s.value ?? s.label, true);
+                setFocused(false);
+              }}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] active:bg-white/[0.06]"
+            >
+              <span className="truncate">{s.label}</span>
+              {s.hint && <span className="shrink-0 text-[11px] text-white/40">{s.hint}</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

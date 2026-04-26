@@ -245,8 +245,37 @@ export default function MasterMiniAppCalendar() {
     );
   }
 
+  // Swipe-навигация по дням: горизонтальный жест влево/вправо
+  // переключает день вперёд/назад. Срабатывает после ≥60px горизонтальной
+  // дистанции и только если жест преимущественно горизонтальный
+  // (≥1.5×|dy|), чтобы не мешать вертикальному скроллу.
+  const swipeStart = { x: 0, y: 0, t: 0 };
+  function onTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    if (!t) return;
+    swipeStart.x = t.clientX;
+    swipeStart.y = t.clientY;
+    swipeStart.t = Date.now();
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    const t = e.changedTouches[0];
+    if (!t || !swipeStart.t) return;
+    const dx = t.clientX - swipeStart.x;
+    const dy = t.clientY - swipeStart.y;
+    const dt = Date.now() - swipeStart.t;
+    if (dt > 600) return;
+    if (Math.abs(dx) < 60) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    haptic('light');
+    setDay(addDays(day, dx < 0 ? 1 : -1));
+  }
+
   return (
-    <div className="space-y-4 px-5 pt-6 pb-10">
+    <div
+      className="space-y-4 px-5 pt-6 pb-10"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Day header — no page title, just the day + count + FAB */}
       <div className="flex items-center justify-between">
         <div>

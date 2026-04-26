@@ -26,9 +26,17 @@ export async function POST(request: Request) {
   const { data: master } = await admin.from('masters').select('id').eq('profile_id', profile.id).maybeSingle();
   if (!master) return NextResponse.json({ appointments: [] });
 
-  const days = period === 'month' ? 30 : 7;
+  // 'today' — с начала сегодня (00:00); 'week' — 7 последних дней; 'month' — 30
   const now = new Date();
-  const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  let from: Date;
+  if (period === 'today') {
+    from = new Date(now);
+    from.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  } else {
+    from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  }
 
   const [aptRes, manualRes] = await Promise.all([
     admin

@@ -8,7 +8,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Gear, Star, Share, Image as ImageIcon } from '@phosphor-icons/react';
@@ -57,6 +58,8 @@ export default function MasterMiniAppProfile() {
   const [sub, setSub] = useState<SubInfo | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -138,21 +141,66 @@ export default function MasterMiniAppProfile() {
       transition={{ duration: 0.3 }}
       className="space-y-4 px-5 pt-6 pb-6"
     >
-      {/* Header: avatar + name */}
+      {/* Header: avatar (clickable to upload) + name + tier badge inline */}
       <div className="flex items-start gap-4">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-3xl font-bold text-white/90">
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={avatarBusy}
+          className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-3xl font-bold text-white/90 active:scale-[0.98] transition-transform"
+          aria-label="Сменить аватар"
+        >
           {avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatar} alt="" className="size-full object-cover" />
           ) : (
             (displayName[0] ?? 'M').toUpperCase()
           )}
-        </div>
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider opacity-0 transition-opacity group-hover:opacity-100 sm:group-hover:opacity-100">
+            {avatarBusy ? '…' : 'Сменить'}
+          </span>
+        </button>
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            setAvatarBusy(true);
+            try {
+              const supabase = createClient();
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return;
+              if (f.size > 5 * 1024 * 1024) { alert('Файл больше 5 MB'); return; }
+              const ext = f.name.split('.').pop() || 'jpg';
+              const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+              const { error: upErr } = await supabase.storage.from('avatars').upload(path, f, {
+                cacheControl: '3600', upsert: false,
+              });
+              if (upErr) { alert(`Ошибка загрузки: ${upErr.message}`); return; }
+              const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+              await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
+              setProfileAvatar(pub.publicUrl);
+              haptic('success');
+            } finally {
+              setAvatarBusy(false);
+            }
+          }}
+        />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[20px] font-bold leading-tight">{displayName}</h1>
-          {master.specialization && (
-            <p className="mt-1 truncate text-[12px] text-white/60">{master.specialization}</p>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {master.specialization && (
+              <span className="truncate text-[12px] text-white/60">{master.specialization}</span>
+            )}
+            {tierLabel && (
+              <span className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
+                {tierLabel}
+              </span>
+            )}
+          </div>
           {master.city && (
             <p className="mt-0.5 truncate text-[11px] text-white/45">{master.city}</p>
           )}
@@ -166,13 +214,6 @@ export default function MasterMiniAppProfile() {
           <Gear size={18} weight="bold" />
         </Link>
       </div>
-
-      {/* Subscription chip */}
-      {tierLabel && (
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-300">
-          {tierLabel}
-        </div>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">
@@ -201,14 +242,28 @@ export default function MasterMiniAppProfile() {
           <Share size={16} weight="bold" />
           Поделиться
         </button>
-        <Link
-          href="/telegram/m/portfolio"
-          onClick={() => haptic('light')}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-semibold active:bg-white/[0.08] transition-colors"
-        >
-          <ImageIcon size={16} weight="bold" />
-          Портфолио
-        </Link>
+        {/* Portfolio в Mini App пока живёт только в составе публичной страницы.
+            Здесь — открываем её и пользователь видит свой портфолио раздел. */}
+        {master.invite_code ? (
+          <Link
+            href={`/m/${master.invite_code}#portfolio`}
+            onClick={() => haptic('light')}
+            target="_blank"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-semibold active:bg-white/[0.08] transition-colors"
+          >
+            <ImageIcon size={16} weight="bold" />
+            Портфолио
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-semibold opacity-50"
+          >
+            <ImageIcon size={16} weight="bold" />
+            Портфолио
+          </button>
+        )}
       </div>
 
       {master.invite_code && (
