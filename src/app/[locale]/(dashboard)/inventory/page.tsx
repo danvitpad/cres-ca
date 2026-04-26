@@ -82,13 +82,13 @@ const UNIT_OPTIONS: { value: string; label: string }[] = [
 
 type Tab = 'materials' | 'suppliers';
 
-export default function InventoryPage() {
+export default function InventoryPage({ initialTab }: { initialTab?: Tab } = {}) {
   const t = useTranslations('inventory');
   const tc = useTranslations('common');
   const { master, loading: masterLoading } = useMaster();
   const { canUse } = useSubscription();
 
-  const [tab, setTab] = useState<Tab>('materials');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'materials');
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);

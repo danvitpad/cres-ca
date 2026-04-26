@@ -39,7 +39,8 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { HeaderNotificationsDropdown } from '@/components/dashboard/header-notifications-dropdown';
 import { HeaderAnnouncementStrip } from '@/components/dashboard/header-announcement-strip';
-import { PublicPageDropdown } from '@/components/dashboard/public-page-dropdown';
+// PublicPageDropdown header chip retired — public page is reachable via «Мой профиль» in user menu.
+// Component file kept for now in case we want to re-introduce it as a separate widget.
 import { SessionNavBar, type SidebarNavItem } from '@/components/ui/sidebar';
 
 /* ─── Layout constants (header) ─── */
@@ -81,7 +82,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'contacts', icon: FreshaPerson, href: '/clients', label: t('nav.contacts') },
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
-      { key: 'integrations', icon: FreshaAddons, href: '/integrations', label: t('nav.integrations') },
+      // {key:'integrations'} hidden — раздел в разработке (см. CLAUDE.md → Stubs / deferred → Integrations).
+      // Когда будет готов конкретный набор интеграций (Google Cal sync, IG, etc.) — раскомментировать.
     ],
     [t],
   );
@@ -124,28 +126,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 CRES-CA
               </span>
             </Link>
-            <button
-              type="button"
-              onClick={() => router.push('/settings')}
-              style={{
-                height: 32,
-                padding: '0 14px',
-                borderRadius: 999,
-                border: 'none',
-                background: '#7c3aed',
-                color: '#ffffff',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'background-color 150ms',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#6d28d9'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
-            >
-              {t('header.continueSetup')}
-            </button>
-            <PublicPageDropdown />
+            {/* «Продолжить настройку» CTA убран — мастер заполняет всё на регистрации. */}
+            {/* PublicPageDropdown убран — профиль и публичная страница теперь одно и то же,
+                переход живёт в юзер-меню («Мой профиль»). */}
             <TrialBadge />
           </div>
 
@@ -272,8 +255,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               initials: getInitials(masterName),
               avatarUrl: master?.profile?.avatar_url || null,
               menuItems: [
-                // «Мой профиль» убран — он дублировал «Настройки → Редактировать профиль».
-                // Профиль редактируется внутри настроек как одна из карточек.
+                // «Мой профиль» = публичная страница мастера (/m/{slug}). Если slug не задан —
+                // ведём в настройки чтобы мастер заполнил профиль и slug сгенерировался.
+                {
+                  icon: UserCircle,
+                  label: 'Мой профиль',
+                  href: master?.slug ? `/m/${master.slug}` : '/settings?section=profile',
+                },
                 { icon: SettingsIcon, label: 'Настройки', href: '/settings' },
                 {
                   icon: LogOut,

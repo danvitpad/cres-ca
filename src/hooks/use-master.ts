@@ -21,6 +21,8 @@ export interface MasterData {
   vertical: string | null;
   feature_overrides: Record<string, boolean> | null;
   invite_code: string | null;
+  slug: string | null;
+  is_public: boolean | null;
   is_active: boolean;
   tax_rate_percent: number | null;
   bonus_points: number | null;

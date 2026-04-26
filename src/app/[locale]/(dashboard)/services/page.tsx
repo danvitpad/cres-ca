@@ -1187,12 +1187,12 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import InventoryPage from '../inventory/page';
 import { SupplierOrdersTab } from '@/components/catalogue/supplier-orders-tab';
 
-type CatalogueTab = 'services' | 'inventory' | 'orders';
+type CatalogueTab = 'services' | 'inventory' | 'suppliers';
 
 const CAT_TABS = [
   { value: 'services',  label: 'Услуги' },
   { value: 'inventory', label: 'Склад' },
-  { value: 'orders',    label: 'Заказы поставщикам' },
+  { value: 'suppliers', label: 'Поставщики' },
 ] as const;
 
 export default function ServicesPage() {
@@ -1257,7 +1257,55 @@ export default function ServicesPage() {
 
       {active === 'services' && <ServicesCatalogueView />}
       {active === 'inventory' && <InventoryPage />}
-      {active === 'orders' && <SupplierOrdersTab />}
+      {active === 'suppliers' && <SuppliersAndOrdersWrapper />}
+    </div>
+  );
+}
+
+/** Поставщики + Заказы поставщикам в двух вложенных табах. */
+function SuppliersAndOrdersWrapper() {
+  const { C } = usePageTheme();
+  const [sub, setSub] = useState<'suppliers' | 'orders'>('suppliers');
+
+  return (
+    <div>
+      <div style={{
+        marginBottom: 20,
+        display: 'flex',
+        gap: 4,
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        {([
+          { value: 'suppliers' as const, label: 'Поставщики' },
+          { value: 'orders' as const, label: 'Заказы поставщикам' },
+        ]).map((t) => {
+          const isActive = sub === t.value;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() => setSub(t.value)}
+              style={{
+                padding: '8px 14px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${isActive ? C.accent : 'transparent'}`,
+                color: isActive ? C.text : C.textSecondary,
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
+                cursor: 'pointer',
+                marginBottom: -1,
+                transition: 'all 150ms ease',
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {sub === 'suppliers' && <InventoryPage initialTab="suppliers" />}
+      {sub === 'orders' && <SupplierOrdersTab />}
     </div>
   );
 }
