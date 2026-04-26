@@ -111,7 +111,13 @@ export default function MasterMiniAppProfile() {
 
   const displayName = profileFullName || master.display_name || 'Мастер';
   const avatar = profileAvatar || master.avatar_url;
-  const tierLabel = sub?.tier ? (TIER_LABEL[sub.tier] ?? sub.tier) : null;
+  // Trial должен побеждать tier: если статус 'trialing', мастер видит «Триал»
+  // независимо от того, что лежит в master.subscription_tier (там может быть
+  // 'business' оставленный от первоначального промо-бампа).
+  const isTrial = sub?.status === 'trialing' || sub?.tier === 'trial';
+  const tierLabel = isTrial
+    ? 'Триал'
+    : sub?.tier ? (TIER_LABEL[sub.tier] ?? sub.tier) : null;
 
   function shareLink() {
     if (!master?.invite_code) return;

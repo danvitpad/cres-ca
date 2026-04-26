@@ -42,6 +42,7 @@ import { HeaderAnnouncementStrip } from '@/components/dashboard/header-announcem
 // PublicPageDropdown header chip retired — public page is reachable via «Мой профиль» in user menu.
 // Component file kept for now in case we want to re-introduce it as a separate widget.
 import { SessionNavBar, type SidebarNavItem } from '@/components/ui/sidebar';
+import { useUiPrefs } from '@/hooks/use-ui-prefs';
 
 /* ─── Layout constants (header) ─── */
 const S = {
@@ -63,6 +64,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { open: cmdOpen, setOpen: setCmdOpen } = useCommandPalette();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+  // Синхронизированные настройки (тема + язык интерфейса) — единый источник правды
+  // в profiles. На load подтягиваем + применяем; setTheme внутри useUiPrefs пишет
+  // в БД, чтобы Mini App увидел тот же выбор после reconnect'а.
+  const { updateTheme: persistTheme } = useUiPrefs();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -246,7 +251,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             bottomItems={bottomItems}
             themeToggle={{
               isDark,
-              onToggle: () => setTheme(isDark ? 'light' : 'dark'),
+              onToggle: () => {
+                const next = isDark ? 'light' : 'dark';
+                setTheme(next);
+                // Зеркалим выбор в profiles.ui_theme — Mini App увидит то же
+                persistTheme(next);
+              },
               lightIcon: Sun,
               darkIcon: Moon,
               label: 'Тема',
