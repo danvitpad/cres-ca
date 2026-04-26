@@ -1123,11 +1123,12 @@ export default function CalendarPage() {
           />
         </CalendarDrawer>
 
-        {/* New appointment Fresha-style right panel */}
+        {/* New appointment Fresha-style right panel.
+            Title всегда «Новая запись» — drawer auto-detect определяет группу по числу клиентов. */}
         <CalendarDrawer
           open={newDrawerOpen}
           onClose={() => setNewDrawerOpen(false)}
-          title={newDrawerGroup ? 'Групповая запись' : 'Новая запись'}
+          title="Новая запись"
           width={520}
           theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
         >

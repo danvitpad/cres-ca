@@ -5,6 +5,7 @@
 
 'use client';
 
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -39,6 +40,19 @@ const DARK = {
 
 export function CalendarDrawer({ open, onClose, title, width = 380, children, theme }: CalendarDrawerProps) {
   const C = theme === 'dark' ? DARK : LIGHT;
+
+  // Escape — закрыть drawer (нативно, как в Fresha/Notion/Linear).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   return (
     <AnimatePresence>

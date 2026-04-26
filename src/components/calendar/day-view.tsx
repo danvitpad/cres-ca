@@ -285,10 +285,6 @@ export function DayView({
     if (action === 'appointment') {
       onSlotClick(slotPopup.time);
       setSlotPopup(null);
-    } else if (action === 'group') {
-      onSlotClick(slotPopup.time);
-      setSlotPopup(null);
-      toast.info(t('groupBookingHint') || 'Выберите групповую услугу в диалоге записи');
     } else if (action === 'block') {
       setSlotPopup(null);
       onOpenBlockDrawer?.(slotPopup.time);
@@ -720,7 +716,8 @@ export function DayView({
                   <div style={{ padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {[
                       { key: 'appointment', icon: CalendarPlus, label: t('addAppointment') },
-                      { key: 'group', icon: Users, label: t('addGroupAppointment') },
+                      // «Добавить групповую запись» убрано — drawer auto-detect
+                      // определяет тип записи по числу выбранных клиентов.
                       { key: 'block', icon: Lock, label: t('blockTime') },
                     ].map(item => (
                       <button

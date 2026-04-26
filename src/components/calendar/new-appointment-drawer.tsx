@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Plus, Search, Check, X, Calendar, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -104,17 +104,20 @@ export function NewAppointmentDrawer({
     return clients.filter((c) => c.full_name.toLowerCase().includes(q));
   }, [clients, clientSearch]);
 
-  // Топ-5 услуг по числу использований (если на сервисе нет total_uses
-  // — оно null/0 — попадают в общий список ниже).
+  // Топ-5 услуг по числу использований. При поиске блок «Частые» скрывается,
+  // поэтому фильтрация для основного списка (без поиска) исключает quickServices —
+  // иначе одна и та же услуга появлялась бы и в чипах, и в карточках.
   const quickServices = useMemo(() => {
     return services.filter((s) => (s.total_uses ?? 0) > 0).slice(0, 5);
   }, [services]);
 
   const filteredServices = useMemo(() => {
     const q = serviceSearch.trim().toLowerCase();
-    if (!q) return services;
-    return services.filter((s) => s.name.toLowerCase().includes(q));
-  }, [services, serviceSearch]);
+    if (q) return services.filter((s) => s.name.toLowerCase().includes(q));
+    if (quickServices.length === 0) return services;
+    const quickIds = new Set(quickServices.map((s) => s.id));
+    return services.filter((s) => !quickIds.has(s.id));
+  }, [services, serviceSearch, quickServices]);
 
   function toggleClient(id: string) {
     setSelectedClientIds((prev) => {
@@ -124,7 +127,7 @@ export function NewAppointmentDrawer({
     });
   }
 
-  async function handleSave() {
+  const handleSave = useCallback(async () => {
     if (!selectedServiceId) { toast.error('Выберите услугу'); return; }
     if (selectedClientIds.length === 0) { toast.error('Добавьте хотя бы одного клиента'); return; }
 
@@ -179,7 +182,20 @@ export function NewAppointmentDrawer({
       setSaving(false);
       toast.error((err as Error).message || 'Ошибка при создании записи');
     }
-  }
+  }, [selectedServiceId, selectedClientIds, services, date, time, notes, masterId, createdByRole, onSaved, onClose]);
+
+  // Cmd/Ctrl+Enter — submit (Enter без модификатора оставляем для текстовых полей).
+  // Escape сам по себе — закрытие drawer'а уже обрабатывается родительским CalendarDrawer.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        if (!saving && selectedServiceId && selectedClientIds.length > 0) handleSave();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [saving, selectedServiceId, selectedClientIds, handleSave]);
 
   return (
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, display: 'flex', flexDirection: 'column', height: '100%' }}>
