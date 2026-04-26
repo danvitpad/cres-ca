@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { SalonHeroCard } from '@/components/salon/salon-hero-card';
 import { SalonTeamGrid } from '@/components/salon/salon-team-grid';
+import { SalonJoinRequestCard } from '@/components/salon/salon-join-request-card';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -31,6 +32,8 @@ interface SalonRow {
   cover_url: string | null;
   bio: string | null;
   team_mode: 'unified' | 'marketplace';
+  recruitment_open: boolean;
+  recruitment_message: string | null;
 }
 
 interface MemberRow {
@@ -68,7 +71,7 @@ async function loadSalon(slug: string): Promise<{
   const a = admin();
   const { data: salon } = await a
     .from('salons')
-    .select('id, owner_id, name, city, address, phone, email, logo_url, cover_url, bio, team_mode')
+    .select('id, owner_id, name, city, address, phone, email, logo_url, cover_url, bio, team_mode, recruitment_open, recruitment_message')
     .eq('id', slug)
     .maybeSingle();
 
@@ -217,6 +220,14 @@ export default async function PublicSalonPage({ params }: PageProps) {
 
           {/* RIGHT: team + content */}
           <div className="space-y-10 lg:col-span-8">
+            {/* Master-only: запрос на вступление в команду */}
+            <SalonJoinRequestCard
+              salonId={salon.id}
+              salonOwnerId={salon.owner_id}
+              recruitmentOpen={salon.recruitment_open}
+              recruitmentMessage={salon.recruitment_message}
+            />
+
             {masters.length > 0 ? (
               <section>
                 <div className="mb-4 flex items-baseline gap-2">
