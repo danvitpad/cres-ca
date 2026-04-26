@@ -21,6 +21,7 @@ export default function PublicReviewPage({ params }: PageProps) {
   const [score, setScore] = useState(5);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');
+  const [anonymous, setAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
   const [masterId, setMasterId] = useState<string | null>(null);
   const [existing, setExisting] = useState(false);
@@ -66,6 +67,7 @@ export default function PublicReviewPage({ params }: PageProps) {
       score,
       comment: comment.trim() || null,
       is_published: true,
+      is_anonymous: anonymous,
     });
     if (error) {
       toast.error(error.message);
@@ -131,6 +133,19 @@ export default function PublicReviewPage({ params }: PageProps) {
           rows={4}
           className="mt-4 w-full rounded-lg border border-neutral-300 p-3 text-sm outline-none focus:border-neutral-500"
         />
+
+        <label className="mt-3 flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={anonymous}
+            onChange={(e) => setAnonymous(e.target.checked)}
+            className="size-4 rounded border-neutral-300 text-neutral-900 focus:ring-0 focus:ring-offset-0"
+          />
+          <span className="text-sm text-neutral-700">Оставить анонимно</span>
+        </label>
+        <p className="mt-1 ml-6 text-[11px] text-neutral-500 leading-relaxed">
+          Имя скроется на публичной странице мастера. Мастер своё имя клиента всё равно увидит в кабинете.
+        </p>
 
         <button
           onClick={submit}
