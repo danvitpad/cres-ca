@@ -18,6 +18,8 @@ import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
 import { OwnerEditButton } from '@/components/master/owner-edit-button';
 import { FollowMasterButton } from '@/components/master/follow-master-button';
+import { MasterPageSectionTabs } from '@/components/master/section-tabs';
+import { ServicesByCategory } from '@/components/master/services-by-category';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
 
@@ -82,6 +84,7 @@ interface ServiceRow {
   preparation: string | null;
   aftercare: string | null;
   faq: { q: string; a: string }[] | null;
+  category: { name: string } | null;
 }
 
 interface PortfolioItem {
@@ -171,11 +174,16 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
 async function loadServices(masterId: string): Promise<ServiceRow[]> {
   const { data } = await admin()
     .from('services')
-    .select('id, name, description, price, currency, duration_minutes, preparation, aftercare, faq')
+    .select('id, name, description, price, currency, duration_minutes, preparation, aftercare, faq, category:service_categories(name)')
     .eq('master_id', masterId)
     .eq('is_active', true)
     .order('price', { ascending: true });
-  return (data as ServiceRow[]) ?? [];
+  // PostgREST возвращает joined relation как массив; нормализуем в одиночный объект.
+  return ((data ?? []) as unknown as Array<Omit<ServiceRow, 'category'> & { category: { name: string }[] | { name: string } | null }>)
+    .map((s) => ({
+      ...s,
+      category: Array.isArray(s.category) ? (s.category[0] ?? null) : s.category,
+    }));
 }
 
 async function loadReviews(masterId: string): Promise<ReviewRow[]> {
@@ -503,8 +511,23 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           <FollowMasterButton masterId={master.id} accent={accent} />
         </div>
 
+        {/* Sticky section nav — Fresha-style. Только показываем если есть хоть один таб контента. */}
+        {(() => {
+          const navSections: { id: string; label: string }[] = [];
+          if (services.length > 0) navSections.push({ id: 'services', label: 'Услуги' });
+          if (portfolio.length > 0 || beforeAfter.length > 0) navSections.push({ id: 'portfolio', label: 'Работы' });
+          if (reviewsList.length > 0) navSections.push({ id: 'reviews', label: 'Отзывы' });
+          if (partners.length > 0) navSections.push({ id: 'partners', label: 'Рекомендую' });
+          if (master.city || master.address || salon || master.workplace_name) {
+            navSections.push({ id: 'contacts', label: 'Контакты' });
+          }
+          return navSections.length > 1 ? (
+            <MasterPageSectionTabs sections={navSections} accent={accent} />
+          ) : null;
+        })()}
+
         {/* Two-column layout — Fresha-style: full content on left, sticky booking summary on right */}
-        <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <div className="min-w-0 space-y-12">
 
         {/* Contacts + socials + interests — all gated on per-field public flags */}
@@ -580,84 +603,20 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         )}
 
         {services.length > 0 && (
-          <div className="mt-12">
+          <div id="services" className="scroll-mt-20">
             <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-              <Sparkles className="size-5 text-violet-600" />
+              <Sparkles className="size-5" style={{ color: accent }} />
               Услуги
             </h2>
-            <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
-              {services.map(s => (
-                <div
-                  key={s.id}
-                  className="flex items-start justify-between gap-4 px-5 py-4"
-                >
-                  <div className="flex-1">
-                    <Link
-                      href={`/ru/book?master=${master.id}&service=${s.id}`}
-                      className="block hover:text-violet-600"
-                    >
-                      <div className="font-medium">{s.name}</div>
-                      {s.description && (
-                        <div className="mt-0.5 text-sm text-neutral-500">{s.description}</div>
-                      )}
-                      {s.duration_minutes && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-xs text-neutral-400">
-                          <Clock className="size-3" /> {s.duration_minutes} мин
-                        </div>
-                      )}
-                    </Link>
-                    {(s.preparation || s.aftercare || (s.faq && s.faq.length > 0)) && (
-                      <details className="mt-2 text-xs">
-                        <summary className="cursor-pointer text-violet-600 hover:underline">
-                          Как подготовиться и FAQ
-                        </summary>
-                        <div className="mt-2 space-y-3 border-l-2 border-violet-200 pl-3 text-neutral-700">
-                          {s.preparation && (
-                            <div>
-                              <div className="font-semibold">Как подготовиться</div>
-                              <div className="whitespace-pre-line">{s.preparation}</div>
-                            </div>
-                          )}
-                          {s.aftercare && (
-                            <div>
-                              <div className="font-semibold">Уход после</div>
-                              <div className="whitespace-pre-line">{s.aftercare}</div>
-                            </div>
-                          )}
-                          {s.faq && s.faq.length > 0 && (
-                            <div className="space-y-2">
-                              {s.faq.map((f, i) => (
-                                <div key={i}>
-                                  <div className="font-semibold">{f.q}</div>
-                                  <div>{f.a}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    {s.price != null && (
-                      <div className="font-semibold">
-                        {formatMoney(s.price, s.currency)}
-                      </div>
-                    )}
-                    <Link
-                      href={`/ru/book?master=${master.id}&service=${s.id}`}
-                      className="inline-flex items-center rounded-full border border-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:border-violet-400 hover:text-violet-700"
-                    >
-                      Выбрать
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ServicesByCategory services={services} masterId={master.id} accent={accent} locale="ru" />
           </div>
         )}
 
-        <PortfolioGrid items={portfolio} />
+        {(portfolio.length > 0 || beforeAfter.length > 0) && (
+          <div id="portfolio" className="scroll-mt-20">
+            <PortfolioGrid items={portfolio} />
+          </div>
+        )}
 
         {/* ─── До / После — интерактивные слайдеры ─── */}
         {beforeAfter.length > 0 && (
@@ -680,7 +639,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
         {/* ─── Рекомендую — partners ─── */}
         {partners.length > 0 && (
-          <div className="mt-12">
+          <div id="partners" className="mt-12 scroll-mt-20">
             <h2 className="mb-4 text-xl font-semibold">Рекомендую</h2>
             <p className="mb-4 text-sm text-neutral-500">Мастера, с которыми я работаю и доверяю.</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -717,7 +676,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         )}
 
         {reviewsList.length > 0 && (
-          <div className="mt-12">
+          <div id="reviews" className="mt-12 scroll-mt-20">
             <h2 className="mb-4 text-xl font-semibold">Отзывы</h2>
             <div className="space-y-4">
               {reviewsList.map(r => (
@@ -756,7 +715,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
         {/* «Работает в» — салон или собственный кабинет */}
         {(salon || master.workplace_name || master.workplace_photo_url) && (
-          <div className="mt-12">
+          <div id="workplace" className="mt-12 scroll-mt-20">
             <h2 className="mb-4 text-xl font-semibold">Где принимаю</h2>
             <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
               {(salon?.cover_url || master.workplace_photo_url) && (
@@ -793,7 +752,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         )}
 
         {(master.city || master.working_hours) && (
-          <div className="mt-12 mb-16">
+          <div id="contacts" className="mt-12 mb-16 scroll-mt-20">
             <h2 className="mb-4 text-xl font-semibold">Контакты и часы работы</h2>
             <div className="grid gap-5 sm:grid-cols-2">
               {(master.city || master.address || salon?.address) && (
