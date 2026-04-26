@@ -445,6 +445,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
 function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
   const t = useTranslations('profile');
   const tc = useTranslations('common');
+  const { C } = usePageTheme();
   const [saving, setSaving] = useState(false);
   const [hours, setHours] = useState<WorkingHours>(master.working_hours || {});
   const [bufferMin, setBufferMin] = useState<number>(((master as unknown) as { long_visit_buffer_minutes: number | null }).long_visit_buffer_minutes ?? 0);
@@ -498,78 +499,101 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
     else { toast.success(t('hoursSaved')); onSaved(); }
   }
 
+  const timeInputStyle: React.CSSProperties = {
+    ...settingsInputStyle(C),
+    width: 110,
+    padding: '8px 10px',
+  };
+
   return (
-    <Card>
-      <CardHeader><CardTitle>{t('workingHours')}</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        {DAYS.map((day) => {
-          const dayData = hours[day];
-          const isActive = dayData !== null && dayData !== undefined;
-          return (
-            <div key={day} className="flex flex-wrap items-center gap-3 py-2 border-b last:border-0">
-              <div className="w-28 font-medium text-sm">{t(day)}</div>
-              <Switch checked={isActive} onCheckedChange={(v) => toggleDay(day, v)} />
-              {isActive && dayData && (
-                <div className="flex flex-wrap gap-2 text-sm">
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground">{t('start')}</span>
-                    <Input type="time" value={dayData.start} onChange={(e) => updateDay(day, 'start', e.target.value)} className="w-28 h-8" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <SettingsBlock title={t('workingHours')} subtitle="Часы работы и обеды по дням недели" C={C}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {DAYS.map((day, idx) => {
+            const dayData = hours[day];
+            const isActive = dayData !== null && dayData !== undefined;
+            return (
+              <div
+                key={day}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '12px 0',
+                  borderBottom: idx < DAYS.length - 1 ? `1px solid ${C.border}` : 'none',
+                }}
+              >
+                <div style={{ width: 110, fontSize: 14, fontWeight: 600, color: C.text }}>{t(day)}</div>
+                <SettingsSwitch checked={isActive} onChange={(v) => toggleDay(day, v)} C={C} />
+                {isActive && dayData ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', fontSize: 13 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: C.textTertiary, fontSize: 12 }}>{t('start')}</span>
+                      <input type="time" value={dayData.start} onChange={(e) => updateDay(day, 'start', e.target.value)} style={timeInputStyle} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: C.textTertiary, fontSize: 12 }}>{t('end')}</span>
+                      <input type="time" value={dayData.end} onChange={(e) => updateDay(day, 'end', e.target.value)} style={timeInputStyle} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: C.textTertiary, fontSize: 12 }}>{t('breakStart')}</span>
+                      <input type="time" value={dayData.break_start ?? ''} onChange={(e) => updateDay(day, 'break_start', e.target.value)} style={timeInputStyle} />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: C.textTertiary, fontSize: 12 }}>{t('breakEnd')}</span>
+                      <input type="time" value={dayData.break_end ?? ''} onChange={(e) => updateDay(day, 'break_end', e.target.value)} style={timeInputStyle} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground">{t('end')}</span>
-                    <Input type="time" value={dayData.end} onChange={(e) => updateDay(day, 'end', e.target.value)} className="w-28 h-8" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground">{t('breakStart')}</span>
-                    <Input type="time" value={dayData.break_start ?? ''} onChange={(e) => updateDay(day, 'break_start', e.target.value)} className="w-28 h-8" />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground">{t('breakEnd')}</span>
-                    <Input type="time" value={dayData.break_end ?? ''} onChange={(e) => updateDay(day, 'break_end', e.target.value)} className="w-28 h-8" />
-                  </div>
-                </div>
-              )}
-              {!isActive && <span className="text-sm text-muted-foreground">{t('dayOff')}</span>}
-            </div>
-          );
-        })}
-        <div className="rounded-md border p-4 space-y-2">
-          <div className="text-sm font-semibold">Обеденный перерыв · применить ко всем дням</div>
-          <p className="text-xs text-muted-foreground">
-            Задай «обед» в одном дне, затем скопируй его в остальные рабочие дни одной кнопкой. Календарь автоматически блокирует это время.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            {DAYS.filter((d) => hours[d]?.break_start && hours[d]?.break_end).map((d) => (
-              <Button key={d} size="sm" variant="outline" onClick={() => applyBreakToAll(d)}>
-                Применить {t(d)} ({hours[d]?.break_start}–{hours[d]?.break_end})
-              </Button>
-            ))}
-            {!DAYS.some((d) => hours[d]?.break_start && hours[d]?.break_end) && (
-              <span className="text-xs text-muted-foreground">Задай обед хотя бы в одном дне, затем появится кнопка копирования.</span>
-            )}
-          </div>
+                ) : (
+                  <span style={{ fontSize: 13, color: C.textTertiary }}>{t('dayOff')}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
-        <div className="rounded-md border p-4 space-y-3">
-          <div className="text-sm font-semibold">Smart scheduling · буфер после длинных визитов</div>
-          <p className="text-xs text-muted-foreground">
-            Если визит длиннее порога, следующий слот не откроется сразу — оставляем буфер на отдых/уборку.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Буфер (мин)</div>
-              <Input type="number" min={0} max={120} value={bufferMin} onChange={(e) => setBufferMin(Number(e.target.value) || 0)} />
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Порог длительности (мин)</div>
-              <Input type="number" min={30} max={480} value={bufferThreshold} onChange={(e) => setBufferThreshold(Number(e.target.value) || 120)} />
-            </div>
-          </div>
+      </SettingsBlock>
+
+      <SettingsBlock
+        title="Обеденный перерыв · применить ко всем дням"
+        subtitle="Задай «обед» в одном дне, затем скопируй его в остальные рабочие дни одной кнопкой. Календарь автоматически блокирует это время."
+        C={C}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {DAYS.filter((d) => hours[d]?.break_start && hours[d]?.break_end).map((d) => (
+            <SettingsButton key={d} variant="secondary" onClick={() => applyBreakToAll(d)} C={C}>
+              Применить {t(d)} ({hours[d]?.break_start}–{hours[d]?.break_end})
+            </SettingsButton>
+          ))}
+          {!DAYS.some((d) => hours[d]?.break_start && hours[d]?.break_end) && (
+            <span style={{ fontSize: 12, color: C.textTertiary }}>
+              Задай обед хотя бы в одном дне, затем появится кнопка копирования.
+            </span>
+          )}
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+      </SettingsBlock>
+
+      <SettingsBlock
+        title="Smart scheduling · буфер после длинных визитов"
+        subtitle="Если визит длиннее порога, следующий слот не откроется сразу — оставляем буфер на отдых/уборку."
+        C={C}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+          <SettingsField label="Буфер (мин)" C={C}>
+            <input type="number" min={0} max={120} value={bufferMin} onChange={(e) => setBufferMin(Number(e.target.value) || 0)} style={settingsInputStyle(C)} />
+          </SettingsField>
+          <SettingsField label="Порог длительности (мин)" C={C}>
+            <input type="number" min={30} max={480} value={bufferThreshold} onChange={(e) => setBufferThreshold(Number(e.target.value) || 120)} style={settingsInputStyle(C)} />
+          </SettingsField>
+        </div>
+      </SettingsBlock>
+
+      <div>
+        <SettingsButton onClick={handleSave} disabled={saving} C={C}>
           {saving ? tc('loading') : tc('save')}
-        </Button>
-      </CardContent>
-    </Card>
+        </SettingsButton>
+      </div>
+    </div>
   );
 }
 
@@ -759,6 +783,7 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
 }
 
 function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const { C } = usePageTheme();
   const [notifyWeb, setNotifyWeb] = useState((master as unknown as Record<string, unknown>).notify_web !== false);
   const [notifyTelegram, setNotifyTelegram] = useState((master as unknown as Record<string, unknown>).notify_telegram !== false);
   const [closeMode, setCloseMode] = useState<'confirm' | 'auto'>(
@@ -799,92 +824,101 @@ function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<
     else { toast.success('Сохранено'); onSaved(); }
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BellRing className="h-5 w-5" />
-          Уведомления
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Напоминания на сайте</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Всплывающие уведомления о напоминаниях в правом нижнем углу
-            </p>
-          </div>
-          <Switch
-            checked={notifyWeb}
-            onCheckedChange={(v) => handleToggle('notify_web', v)}
-            disabled={saving}
-          />
-        </div>
-
-        <div className="h-px bg-border" />
-
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Уведомления в Telegram</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Бот присылает напоминание в Telegram при наступлении срока
-            </p>
-          </div>
-          <Switch
-            checked={notifyTelegram}
-            onCheckedChange={(v) => handleToggle('notify_telegram', v)}
-            disabled={saving}
-          />
-        </div>
-
-        <div className="h-px bg-border" />
-
-        {/* Appointment close mode */}
+  function ModeCard({ value, title, desc }: { value: 'confirm' | 'auto'; title: string; desc: string }) {
+    const active = closeMode === value;
+    return (
+      <button
+        type="button"
+        onClick={() => setCloseModeAndSave(value)}
+        style={{
+          display: 'flex',
+          gap: 12,
+          alignItems: 'flex-start',
+          padding: 14,
+          borderRadius: 12,
+          background: active ? C.accentSoft : C.surfaceElevated,
+          border: `2px solid ${active ? C.accent : C.border}`,
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+          transition: 'all 120ms ease',
+        }}
+      >
+        <span
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            border: `2px solid ${active ? C.accent : C.border}`,
+            background: active ? C.accent : 'transparent',
+            flexShrink: 0,
+            marginTop: 2,
+            position: 'relative',
+          }}
+        >
+          {active && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 3,
+                left: 3,
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: '#fff',
+              }}
+            />
+          )}
+        </span>
         <div>
-          <p className="text-sm font-medium mb-1">Закрытие записей</p>
-          <p className="text-xs text-muted-foreground mb-3">
-            Когда время записи прошло — как засчитывать доход?
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
-              closeMode === 'confirm' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-            }`}>
-              <input
-                type="radio"
-                name="closeMode"
-                className="mt-1"
-                checked={closeMode === 'confirm'}
-                onChange={() => setCloseModeAndSave('confirm')}
-              />
-              <div>
-                <div className="text-sm font-semibold">С подтверждением</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Бот напишет «Состоялась?» после записи — подтверждаю сам.
-                </div>
-              </div>
-            </label>
-            <label className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${
-              closeMode === 'auto' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
-            }`}>
-              <input
-                type="radio"
-                name="closeMode"
-                className="mt-1"
-                checked={closeMode === 'auto'}
-                onChange={() => setCloseModeAndSave('auto')}
-              />
-              <div>
-                <div className="text-sm font-semibold">Автоматически</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  Как только время записи прошло — засчитываю доход без вопросов.
-                </div>
-              </div>
-            </label>
-          </div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{title}</div>
+          <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.45 }}>{desc}</div>
         </div>
-      </CardContent>
-    </Card>
+      </button>
+    );
+  }
+
+  function ToggleRow({ title, desc, checked, onChange }: { title: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{title}</div>
+          <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.45 }}>{desc}</div>
+        </div>
+        <SettingsSwitch checked={checked} onChange={onChange} C={C} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <SettingsBlock title="Каналы доставки" subtitle="Где получать напоминания о напоминаниях клиентам, отменах и платежах" C={C}>
+        <ToggleRow
+          title="Напоминания на сайте"
+          desc="Всплывающие уведомления в правом нижнем углу"
+          checked={notifyWeb}
+          onChange={(v) => !saving && handleToggle('notify_web', v)}
+        />
+        <div style={{ height: 1, background: C.border }} />
+        <ToggleRow
+          title="Уведомления в Telegram"
+          desc="Бот присылает напоминание в Telegram при наступлении срока"
+          checked={notifyTelegram}
+          onChange={(v) => !saving && handleToggle('notify_telegram', v)}
+        />
+      </SettingsBlock>
+
+      <SettingsBlock
+        title="Закрытие записей"
+        subtitle="Когда время записи прошло — как засчитывать доход?"
+        C={C}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
+          <ModeCard value="confirm" title="С подтверждением" desc="Бот напишет «Состоялась?» после записи — подтверждаю сам." />
+          <ModeCard value="auto" title="Автоматически" desc="Как только время записи прошло — засчитываю доход без вопросов." />
+        </div>
+      </SettingsBlock>
+    </div>
   );
 }
 
@@ -903,6 +937,7 @@ const VERTICAL_LABELS: Record<VerticalKey, { label: string; icon: string }> = {
 };
 
 function VerticalTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const { C } = usePageTheme();
   const [saving, setSaving] = useState(false);
   const current = (master.vertical as VerticalKey) || 'other';
 
@@ -918,34 +953,48 @@ function VerticalTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Моя сфера деятельности</CardTitle>
-        <p className="text-sm text-muted-foreground">Влияет на шаблоны услуг, анамнез, доп. поля клиента и модули дашборда.</p>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {(Object.keys(VERTICAL_LABELS) as VerticalKey[]).map(k => {
-            const v = VERTICAL_LABELS[k];
-            const active = k === current;
-            return (
-              <button
-                key={k}
-                onClick={() => setVertical(k)}
-                disabled={saving}
-                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
-                  active ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/30'
-                }`}
-              >
-                <span className="text-2xl">{v.icon}</span>
-                <span className="text-xs font-medium text-center">{v.label}</span>
-                {active && <span className="text-[10px] font-semibold text-primary uppercase tracking-wide">Активно</span>}
-              </button>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+    <SettingsBlock
+      title="Моя сфера деятельности"
+      subtitle="Влияет на шаблоны услуг, анамнез, доп. поля клиента и модули дашборда."
+      C={C}
+    >
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+        {(Object.keys(VERTICAL_LABELS) as VerticalKey[]).map((k) => {
+          const v = VERTICAL_LABELS[k];
+          const active = k === current;
+          return (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setVertical(k)}
+              disabled={saving}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                padding: 14,
+                borderRadius: 12,
+                background: active ? C.accentSoft : C.surfaceElevated,
+                border: `2px solid ${active ? C.accent : C.border}`,
+                cursor: saving ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+                transition: 'all 120ms ease',
+                opacity: saving && !active ? 0.6 : 1,
+              }}
+            >
+              <span style={{ fontSize: 26, lineHeight: 1 }}>{v.icon}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.text, textAlign: 'center' }}>{v.label}</span>
+              {active && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.accent, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  Активно
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </SettingsBlock>
   );
 }
 
@@ -967,15 +1016,16 @@ const FEATURE_LABELS: Record<keyof VerticalFeatures, { label: string; desc: stri
 };
 
 function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
+  const { C } = usePageTheme();
   const features = useFeatures();
   const [saving, setSaving] = useState(false);
   const vertical = (master.vertical as VerticalKey) || 'other';
   const defaults = DEFAULT_FEATURES[vertical];
+  const featureKeys = Object.keys(FEATURE_LABELS) as (keyof VerticalFeatures)[];
 
   async function toggleFeature(key: keyof VerticalFeatures, value: boolean) {
     setSaving(true);
     const overrides = { ...(master.feature_overrides || {}) };
-    // If toggling back to default, remove override; otherwise add
     if (defaults[key] === value) {
       delete overrides[key];
     } else {
@@ -989,35 +1039,60 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Модули дашборда</CardTitle>
-        <p className="text-sm text-muted-foreground">Включите только то, что нужно. Дефолты зависят от вашей сферы ({VERTICAL_LABELS[vertical].label}).</p>
-      </CardHeader>
-      <CardContent className="space-y-0 divide-y">
-        {(Object.keys(FEATURE_LABELS) as (keyof VerticalFeatures)[]).map(key => {
+    <SettingsBlock
+      title="Модули дашборда"
+      subtitle={`Включите только то, что нужно. Дефолты зависят от вашей сферы (${VERTICAL_LABELS[vertical].label}).`}
+      C={C}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {featureKeys.map((key, idx) => {
           const meta = FEATURE_LABELS[key];
           const active = features[key];
           const isDefault = defaults[key] === active;
           return (
-            <div key={key} className="flex items-center justify-between py-3">
-              <div className="flex-1 min-w-0 pr-4">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{meta.label}</p>
-                  {!isDefault && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold uppercase">изменено</span>}
+            <div
+              key={key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 14,
+                padding: '12px 0',
+                borderBottom: idx < featureKeys.length - 1 ? `1px solid ${C.border}` : 'none',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>{meta.label}</p>
+                  {!isDefault && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: '2px 7px',
+                        borderRadius: 4,
+                        background: C.accentSoft,
+                        color: C.accent,
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      изменено
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{meta.desc}</p>
+                <p style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.45 }}>{meta.desc}</p>
               </div>
-              <Switch
+              <SettingsSwitch
                 checked={active}
-                onCheckedChange={(v) => toggleFeature(key, v)}
-                disabled={saving}
+                onChange={(v) => !saving && toggleFeature(key, v)}
+                C={C}
               />
             </div>
           );
         })}
-      </CardContent>
-    </Card>
+      </div>
+    </SettingsBlock>
   );
 }
 
@@ -1320,6 +1395,7 @@ function LoyaltyTab({
   onSaved: () => void;
 }) {
   const tc = useTranslations('common');
+  const { C } = usePageTheme();
   const [enabled, setEnabled] = useState(master.loyalty_enabled ?? false);
   const [percent, setPercent] = useState(master.loyalty_visit_percent ?? 5);
   const [cap, setCap] = useState(master.loyalty_max_per_visit ?? 100);
@@ -1351,115 +1427,121 @@ function LoyaltyTab({
     else { toast.success('Сохранено'); onSaved(); }
   }
 
+  const dim: React.CSSProperties = enabled
+    ? {}
+    : { opacity: 0.5, pointerEvents: 'none' };
+  const dimBday: React.CSSProperties = bdayEnabled
+    ? {}
+    : { opacity: 0.5, pointerEvents: 'none' };
+
   return (
-    <div className="space-y-5">
-      <Card>
-        <CardHeader>
-          <CardTitle>Программа лояльности</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Один общий тумблер на 3 механики: баллы за визиты, реферальную программу и подарок на ДР.
-            Все баллы привязаны лично к тебе — клиент не может потратить их у другого мастера.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div>
-              <p className="text-sm font-semibold">Программа включена</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Когда выключено — никакие баллы не начисляются и не списываются. Уже начисленные сохраняются.
-              </p>
-            </div>
-            <Switch checked={enabled} onCheckedChange={setEnabled} />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <SettingsBlock
+        title="Программа лояльности"
+        subtitle="Один общий тумблер на 3 механики: баллы за визиты, реферальную программу и подарок на ДР. Все баллы привязаны лично к тебе — клиент не может потратить их у другого мастера."
+        C={C}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 14,
+            padding: 14,
+            borderRadius: 12,
+            background: C.surfaceElevated,
+            border: `1px solid ${C.border}`,
+          }}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Программа включена</p>
+            <p style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.45 }}>
+              Когда выключено — никакие баллы не начисляются и не списываются. Уже начисленные сохраняются.
+            </p>
           </div>
+          <SettingsSwitch checked={enabled} onChange={setEnabled} C={C} />
+        </div>
+      </SettingsBlock>
 
-          <div className={enabled ? '' : 'opacity-50 pointer-events-none'}>
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold">💎 Баллы за визиты</h4>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <Label>% от стоимости визита</Label>
-                  <Input
-                    type="number" min={0} max={20}
-                    value={percent}
-                    onChange={(e) => setPercent(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">1 балл = 1 ₴ скидки. Рекомендуем 3-5%.</p>
-                </div>
-                <div>
-                  <Label>Не больше N ₴ за визит</Label>
-                  <Input
-                    type="number" min={0}
-                    value={cap}
-                    onChange={(e) => setCap(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">Защита от больших чеков.</p>
-                </div>
-                <div>
-                  <Label>Срок жизни (мес.)</Label>
-                  <Input
-                    type="number" min={1} max={60}
-                    value={expiry}
-                    onChange={(e) => setExpiry(Math.max(1, Math.min(60, Number(e.target.value) || 6)))}
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">Через N месяцев баллы сгорают.</p>
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="text-sm font-semibold">🤝 Реферальная программа</h4>
-                <p className="text-xs text-muted-foreground mt-1 mb-3">
-                  Когда твой клиент приведёт нового и тот сделает первый оплаченный визит — ты автоматически
-                  начисляешь реферреру баллы. Поставь сумму меньше среднего чека первого визита, чтобы
-                  привлечение нового клиента было в плюс.
-                </p>
-                <div className="max-w-xs">
-                  <Label>Награда реферреру (₴)</Label>
-                  <Input
-                    type="number" min={0}
-                    value={referralReward}
-                    onChange={(e) => setReferralReward(Math.max(0, Number(e.target.value) || 0))}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold">🎂 Подарок на День Рождения</h4>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Утром в ДР клиента ты автоматически генерируешь ему персональный промокод на скидку.
-                      Это не накопительные баллы — клиент должен прийти в течение N дней или промо сгорит.
-                    </p>
-                  </div>
-                  <Switch checked={bdayEnabled} onCheckedChange={setBdayEnabled} />
-                </div>
-                <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${bdayEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
-                  <div>
-                    <Label>Скидка (%)</Label>
-                    <Input
-                      type="number" min={0} max={50}
-                      value={bdayPercent}
-                      onChange={(e) => setBdayPercent(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Действует (дней)</Label>
-                    <Input
-                      type="number" min={1} max={365}
-                      value={bdayValidity}
-                      onChange={(e) => setBdayValidity(Math.max(1, Math.min(365, Number(e.target.value) || 30)))}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+      <div style={{ ...dim, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <SettingsBlock title="💎 Баллы за визиты" subtitle="Клиент копит % от чека и тратит как скидку у тебя" C={C}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+            <SettingsField label="% от стоимости визита" hint="1 балл = 1 ₴ скидки. Рекомендуем 3-5%." C={C}>
+              <input
+                type="number" min={0} max={20}
+                value={percent}
+                onChange={(e) => setPercent(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+            <SettingsField label="Не больше N ₴ за визит" hint="Защита от больших чеков." C={C}>
+              <input
+                type="number" min={0}
+                value={cap}
+                onChange={(e) => setCap(Math.max(0, Number(e.target.value) || 0))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+            <SettingsField label="Срок жизни (мес.)" hint="Через N месяцев баллы сгорают." C={C}>
+              <input
+                type="number" min={1} max={60}
+                value={expiry}
+                onChange={(e) => setExpiry(Math.max(1, Math.min(60, Number(e.target.value) || 6)))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
           </div>
+        </SettingsBlock>
 
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? tc('loading') : tc('save')}
-          </Button>
-        </CardContent>
-      </Card>
+        <SettingsBlock
+          title="🤝 Реферальная программа"
+          subtitle="Когда твой клиент приведёт нового и тот сделает первый оплаченный визит — ты автоматически начисляешь реферреру баллы. Поставь сумму меньше среднего чека первого визита, чтобы привлечение нового клиента было в плюс."
+          C={C}
+        >
+          <div style={{ maxWidth: 320 }}>
+            <SettingsField label="Награда реферреру (₴)" C={C}>
+              <input
+                type="number" min={0}
+                value={referralReward}
+                onChange={(e) => setReferralReward(Math.max(0, Number(e.target.value) || 0))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+          </div>
+        </SettingsBlock>
+
+        <SettingsBlock
+          title="🎂 Подарок на День Рождения"
+          subtitle="Утром в ДР клиента ты автоматически генерируешь ему персональный промокод на скидку. Это не накопительные баллы — клиент должен прийти в течение N дней или промо сгорит."
+          C={C}
+          right={<SettingsSwitch checked={bdayEnabled} onChange={setBdayEnabled} C={C} />}
+        >
+          <div style={{ ...dimBday, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <SettingsField label="Скидка (%)" C={C}>
+              <input
+                type="number" min={0} max={50}
+                value={bdayPercent}
+                onChange={(e) => setBdayPercent(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+            <SettingsField label="Действует (дней)" C={C}>
+              <input
+                type="number" min={1} max={365}
+                value={bdayValidity}
+                onChange={(e) => setBdayValidity(Math.max(1, Math.min(365, Number(e.target.value) || 30)))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+          </div>
+        </SettingsBlock>
+      </div>
+
+      <div>
+        <SettingsButton onClick={handleSave} disabled={saving} C={C}>
+          {saving ? tc('loading') : tc('save')}
+        </SettingsButton>
+      </div>
     </div>
   );
 }
