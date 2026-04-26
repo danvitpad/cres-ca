@@ -136,15 +136,15 @@ export function PublicHeroCard({
         </dl>
       )}
 
-      {/* Workplace */}
-      {(workplaceName || workplaceAddress) && (
+      {/* Workplace — показываем только если есть осмысленное название
+          (салон или собственный кабинет). Только город — это уже отображено
+          под именем в hero, отдельный блок не нужен. */}
+      {workplaceName && (
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
             Работает в
           </p>
-          {workplaceName && (
-            <p className="mt-1 text-[15px] font-semibold text-neutral-900">{workplaceName}</p>
-          )}
+          <p className="mt-1 text-[15px] font-semibold text-neutral-900">{workplaceName}</p>
           {workplaceAddress && (
             <p className="mt-0.5 text-[13px] text-neutral-600">{workplaceAddress}</p>
           )}

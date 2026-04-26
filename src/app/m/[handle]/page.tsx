@@ -469,6 +469,11 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
           {/* ─── RIGHT col (scroll content) ─── */}
           <div className="space-y-10 lg:col-span-8">
+            {/* Owner-only completeness checklist — показывается только владельцу
+                страницы, ведёт в нужные разделы для заполнения. Прячется когда
+                всё заполнено. Сразу под навигацией, чтобы было заметно. */}
+            <OwnerCompletenessPrompt masterProfileId={master.profile_id} />
+
             {/* Sticky tab nav — only when there's something to navigate to */}
             {navSections.length > 1 && (
               <div className="sticky top-0 z-30 -mx-4 border-b border-neutral-200 bg-white/95 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
