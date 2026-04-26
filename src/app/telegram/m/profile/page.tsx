@@ -1,21 +1,23 @@
 /** --- YAML
  * name: MasterMiniAppProfile
- * description: Mini App мастер-профиль — Fresha-style. Avatar + name + specialization + bio + stats + share/settings.
- *              Без публикаций (Instagram grid удалён). Портфолио — отдельным экраном.
+ * description: Mini App мастер-профиль — Fresha-premium 2026 (light theme).
+ *              Avatar + name + specialization + tier badge + stats grid + bio.
+ *              Actions row: Поделиться + Портфолио. Public-page link внизу.
  * created: 2026-04-13
- * updated: 2026-04-25
+ * updated: 2026-04-26
  * --- */
 
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
-import { Gear, Star, Share, Image as ImageIcon } from '@phosphor-icons/react';
-import { Loader2 } from 'lucide-react';
+import { Settings, Star, Share2, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
 interface MasterSelf {
   id: string;
@@ -98,29 +100,28 @@ export default function MasterMiniAppProfile() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60dvh] items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-white/40" />
-      </div>
+      <MobilePage>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60dvh' }}>
+          <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
+        </div>
+      </MobilePage>
     );
   }
 
   if (!master) {
     return (
-      <div className="px-5 pt-10 text-center text-[13px] text-white/55">
-        Профиль мастера не найден.
-      </div>
+      <MobilePage>
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <p style={{ ...TYPE.body, color: T.textSecondary }}>Профиль мастера не найден.</p>
+        </div>
+      </MobilePage>
     );
   }
 
   const displayName = profileFullName || master.display_name || 'Мастер';
   const avatar = profileAvatar || master.avatar_url;
-  // Trial должен побеждать tier: если статус 'trialing', мастер видит «Триал»
-  // независимо от того, что лежит в master.subscription_tier (там может быть
-  // 'business' оставленный от первоначального промо-бампа).
   const isTrial = sub?.status === 'trialing' || sub?.tier === 'trial';
-  const tierLabel = isTrial
-    ? 'Триал'
-    : sub?.tier ? (TIER_LABEL[sub.tier] ?? sub.tier) : null;
+  const tierLabel = isTrial ? 'Триал' : sub?.tier ? TIER_LABEL[sub.tier] ?? sub.tier : null;
 
   function shareLink() {
     if (!master?.invite_code) return;
@@ -135,158 +136,317 @@ export default function MasterMiniAppProfile() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-4 px-5 pt-6 pb-6"
-    >
-      {/* Header: avatar (clickable to upload) + name + tier badge inline */}
-      <div className="flex items-start gap-4">
-        <button
-          type="button"
-          onClick={() => avatarInputRef.current?.click()}
-          disabled={avatarBusy}
-          className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-3xl font-bold text-white/90 active:scale-[0.98] transition-transform"
-          aria-label="Сменить аватар"
-        >
-          {avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatar} alt="" className="size-full object-cover" />
-          ) : (
-            (displayName[0] ?? 'M').toUpperCase()
-          )}
-          <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/60 py-0.5 text-center text-[9px] font-semibold uppercase tracking-wider opacity-0 transition-opacity group-hover:opacity-100 sm:group-hover:opacity-100">
-            {avatarBusy ? '…' : 'Сменить'}
-          </span>
-        </button>
-        <input
-          ref={avatarInputRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={async (e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            setAvatarBusy(true);
-            try {
-              const supabase = createClient();
-              const { data: { user } } = await supabase.auth.getUser();
-              if (!user) return;
-              if (f.size > 5 * 1024 * 1024) { alert('Файл больше 5 MB'); return; }
-              const ext = f.name.split('.').pop() || 'jpg';
-              const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-              const { error: upErr } = await supabase.storage.from('avatars').upload(path, f, {
-                cacheControl: '3600', upsert: false,
-              });
-              if (upErr) { alert(`Ошибка загрузки: ${upErr.message}`); return; }
-              const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-              await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
-              setProfileAvatar(pub.publicUrl);
-              haptic('success');
-            } finally {
-              setAvatarBusy(false);
-            }
-          }}
-        />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[20px] font-bold leading-tight">{displayName}</h1>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {master.specialization && (
-              <span className="truncate text-[12px] text-white/60">{master.specialization}</span>
-            )}
-            {tierLabel && (
-              <span className="inline-flex items-center rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] font-semibold text-violet-300">
-                {tierLabel}
-              </span>
-            )}
-          </div>
-          {master.city && (
-            <p className="mt-0.5 truncate text-[11px] text-white/45">{master.city}</p>
-          )}
-        </div>
-        <Link
-          href="/telegram/m/settings"
-          onClick={() => haptic('light')}
-          className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/80 active:bg-white/[0.08] transition-colors"
-          aria-label="Настройки"
-        >
-          <Gear size={18} weight="bold" />
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        <StatItem value={stats?.appointments ?? 0} label="Работ" />
-        <StatItem value={stats?.clients ?? 0} label="Клиентов" />
-        <StatItem
-          value={master.rating > 0 ? master.rating.toFixed(1) : '—'}
-          label={master.total_reviews > 0 ? `${master.total_reviews} отзывов` : 'Рейтинг'}
-          icon={master.rating > 0}
-        />
-      </div>
-
-      {/* Bio */}
-      {master.bio && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <p className="text-[13px] leading-relaxed text-white/75 whitespace-pre-wrap">{master.bio}</p>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={shareLink}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-semibold active:bg-white/[0.08] transition-colors"
-        >
-          <Share size={16} weight="bold" />
-          Поделиться
-        </button>
-        {/* Portfolio в Mini App пока живёт только в составе публичной страницы.
-            Здесь — открываем её и пользователь видит свой портфолио раздел. */}
-        {master.invite_code ? (
-          <Link
-            href={`/m/${master.invite_code}#portfolio`}
-            onClick={() => haptic('light')}
-            target="_blank"
-            className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-semibold active:bg-white/[0.08] transition-colors"
-          >
-            <ImageIcon size={16} weight="bold" />
-            Портфолио
-          </Link>
-        ) : (
+    <MobilePage>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
+        {/* Hero: avatar + name + tier + settings */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: `28px ${PAGE_PADDING_X}px 0` }}>
           <button
             type="button"
-            disabled
-            className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[13px] font-semibold opacity-50"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarBusy}
+            style={{
+              position: 'relative',
+              width: 80,
+              height: 80,
+              flexShrink: 0,
+              padding: 0,
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              borderRadius: '50%',
+            }}
+            aria-label="Сменить аватар"
           >
-            <ImageIcon size={16} weight="bold" />
-            Портфолио
+            <AvatarCircle url={avatar} name={displayName} size={80} />
+            {avatarBusy && (
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Loader2 size={20} className="animate-spin" color="#fff" />
+              </span>
+            )}
           </button>
-        )}
-      </div>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (!f) return;
+              setAvatarBusy(true);
+              try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+                if (f.size > 5 * 1024 * 1024) { alert('Файл больше 5 MB'); return; }
+                const ext = f.name.split('.').pop() || 'jpg';
+                const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+                const { error: upErr } = await supabase.storage.from('avatars').upload(path, f, {
+                  cacheControl: '3600', upsert: false,
+                });
+                if (upErr) { alert(`Ошибка загрузки: ${upErr.message}`); return; }
+                const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+                await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
+                setProfileAvatar(pub.publicUrl);
+                haptic('success');
+              } finally {
+                setAvatarBusy(false);
+              }
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
+            <h1
+              style={{
+                ...TYPE.h2,
+                color: T.text,
+                margin: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontSize: 22,
+              }}
+            >
+              {displayName}
+            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              {master.specialization && (
+                <span
+                  style={{
+                    ...TYPE.caption,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: 180,
+                  }}
+                >
+                  {master.specialization}
+                </span>
+              )}
+              {tierLabel && (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    background: T.accentSoft,
+                    color: T.accent,
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  {tierLabel}
+                </span>
+              )}
+            </div>
+            {master.city && (
+              <p style={{ ...TYPE.micro, marginTop: 4 }}>{master.city}</p>
+            )}
+          </div>
+          <Link
+            href="/telegram/m/settings"
+            onClick={() => haptic('light')}
+            style={{
+              flexShrink: 0,
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: T.text,
+              textDecoration: 'none',
+            }}
+            aria-label="Настройки"
+          >
+            <Settings size={20} strokeWidth={2} />
+          </Link>
+        </div>
 
-      {master.invite_code && (
-        <Link
-          href={`/m/${master.invite_code}`}
-          onClick={() => haptic('light')}
-          className="block rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center text-[12px] text-white/60 active:bg-white/[0.06] transition-colors"
-        >
-          Открыть публичную страницу
-        </Link>
-      )}
-    </motion.div>
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
+          <StatItem value={stats?.appointments ?? 0} label="Работ" />
+          <StatItem value={stats?.clients ?? 0} label="Клиентов" />
+          <StatItem
+            value={master.rating > 0 ? master.rating.toFixed(1) : '—'}
+            label={master.total_reviews > 0 ? `${master.total_reviews} отзывов` : 'Рейтинг'}
+            withStar={master.rating > 0}
+          />
+        </div>
+
+        {/* Bio */}
+        {master.bio && (
+          <div
+            style={{
+              margin: `0 ${PAGE_PADDING_X}px`,
+              padding: 16,
+              background: T.surface,
+              border: `1px solid ${T.borderSubtle}`,
+              borderRadius: R.md,
+              boxShadow: SHADOW.card,
+            }}
+          >
+            <p style={{ ...TYPE.body, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>
+              {master.bio}
+            </p>
+          </div>
+        )}
+
+        {/* Actions row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
+          <button
+            type="button"
+            onClick={shareLink}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '14px 16px',
+              borderRadius: R.md,
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              color: T.text,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              boxShadow: SHADOW.card,
+            }}
+          >
+            <Share2 size={16} strokeWidth={2.2} />
+            Поделиться
+          </button>
+          {master.invite_code ? (
+            <Link
+              href={`/m/${master.invite_code}#portfolio`}
+              onClick={() => haptic('light')}
+              target="_blank"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '14px 16px',
+                borderRadius: R.md,
+                border: `1px solid ${T.border}`,
+                background: T.surface,
+                color: T.text,
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: 'none',
+                boxShadow: SHADOW.card,
+              }}
+            >
+              <ImageIcon size={16} strokeWidth={2.2} />
+              Портфолио
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '14px 16px',
+                borderRadius: R.md,
+                border: `1px solid ${T.border}`,
+                background: T.surface,
+                color: T.textTertiary,
+                fontSize: 14,
+                fontWeight: 600,
+                opacity: 0.5,
+                cursor: 'not-allowed',
+                fontFamily: 'inherit',
+              }}
+            >
+              <ImageIcon size={16} strokeWidth={2.2} />
+              Портфолио
+            </button>
+          )}
+        </div>
+
+        {master.invite_code && (
+          <Link
+            href={`/m/${master.invite_code}`}
+            onClick={() => haptic('light')}
+            style={{
+              margin: `0 ${PAGE_PADDING_X}px`,
+              padding: 14,
+              borderRadius: R.md,
+              border: `1px solid ${T.borderSubtle}`,
+              background: T.surface,
+              textAlign: 'center',
+              ...TYPE.caption,
+              color: T.textSecondary,
+              textDecoration: 'none',
+            }}
+          >
+            Открыть публичную страницу
+          </Link>
+        )}
+      </motion.div>
+    </MobilePage>
   );
 }
 
-function StatItem({ value, label, icon }: { value: number | string; label: string; icon?: boolean }) {
+function StatItem({ value, label, withStar }: { value: number | string; label: string; withStar?: boolean }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-center">
-      <div className="flex items-center justify-center gap-1 text-[18px] font-bold">
-        {icon && <Star size={14} weight="fill" className="text-amber-400" />}
+    <div
+      style={{
+        background: T.surface,
+        border: `1px solid ${T.borderSubtle}`,
+        borderRadius: R.md,
+        padding: 14,
+        textAlign: 'center',
+        boxShadow: SHADOW.card,
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          fontSize: 20,
+          fontWeight: 800,
+          color: T.text,
+          letterSpacing: '-0.01em',
+        }}
+      >
+        {withStar && <Star size={16} fill="#f59e0b" color="#f59e0b" />}
         <span>{value}</span>
       </div>
-      <p className="mt-1 text-[10px] uppercase tracking-wider text-white/45">{label}</p>
+      <p
+        style={{
+          marginTop: 4,
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: T.textTertiary,
+        }}
+      >
+        {label}
+      </p>
     </div>
   );
 }

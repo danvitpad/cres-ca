@@ -1,9 +1,10 @@
 /** --- YAML
  * name: MasterMiniAppHome
- * description: Master Mini App home — greeting + date, AI brief card, AI chat input (phase 4, 2026-04-19),
- *              compact weekly finance link. KPI grid and next-appointment hero removed per miniapp redesign.
+ * description: Главная мастера в Mini App — Fresha-premium 2026 (light theme).
+ *              Greeting + дата + AI-чат-композер + finance-quick-link. Бизнес-логика
+ *              сохранена (assistant API, week-stats), визуально переписано на shells.
  * created: 2026-04-13
- * updated: 2026-04-19
+ * updated: 2026-04-26
  * --- */
 
 'use client';
@@ -12,9 +13,11 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendUp, CaretRight, Robot, PaperPlaneTilt, Broom } from '@phosphor-icons/react';
+import { TrendingUp, ChevronRight, Sparkles, Send, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -90,8 +93,6 @@ export default function MasterMiniAppHome() {
           setWeekCompleted(done.length);
         })
         .catch(() => { /* ignore */ });
-
-      // /brief endpoint больше не вызываем — секция «Бриф от AI» удалена.
     })();
   }, [userId]);
 
@@ -137,129 +138,236 @@ export default function MasterMiniAppHome() {
 
   if (!ready || loading) {
     return (
-      <div className="space-y-4 px-5 pt-6">
-        <div className="h-8 w-40 animate-pulse rounded-lg bg-white/5" />
-        <div className="h-24 w-full animate-pulse rounded-2xl bg-white/5" />
-        <div className="h-16 w-full animate-pulse rounded-2xl bg-white/5" />
-      </div>
+      <MobilePage>
+        <div style={{ padding: `28px ${PAGE_PADDING_X}px`, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ height: 32, width: 160, borderRadius: 8, background: T.bgSubtle }} />
+          <div style={{ height: 96, width: '100%', borderRadius: R.lg, background: T.bgSubtle }} />
+          <div style={{ height: 64, width: '100%', borderRadius: R.lg, background: T.bgSubtle }} />
+        </div>
+      </MobilePage>
     );
   }
 
   if (!masterId) {
     return (
-      <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-white/60">Профиль мастера не найден</p>
-      </div>
+      <MobilePage>
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <p style={{ ...TYPE.body, color: T.textSecondary }}>Профиль мастера не найден</p>
+        </div>
+      </MobilePage>
     );
   }
 
+  const greetingName = profileName ?? user?.first_name ?? 'мастер';
+  const dateLabel = new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' });
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6 px-5 pt-6"
-    >
-      <div>
-        <h1 className="text-2xl font-bold">Привет, {profileName ?? user?.first_name ?? 'мастер'}</h1>
-        <p className="mt-0.5 text-[12px] text-white/50">
-          {new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
-      </div>
-
-      {/* «Бриф от AI» удалён — оказался бесполезной декорацией. Полезные
-          подсказки теперь живут только в /finance AI-помощнике. */}
-
-      {/* Finance first — quick status glance */}
-      <Link
-        href="/telegram/m/stats"
-        className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4 active:bg-white/[0.06] transition-colors"
+    <MobilePage>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-            <TrendUp size={18} weight="bold" className="text-emerald-300" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Финансы · неделя</p>
-            <p className="mt-1 text-base font-bold tabular-nums">
-              {weekRevenue.toFixed(0)} ₴
-              <span className="ml-2 text-[11px] font-normal text-white/50">{weekCompleted} записей</span>
-            </p>
-          </div>
-        </div>
-        <CaretRight size={16} className="text-white/40" />
-      </Link>
+        <PageHeader title={`Привет, ${greetingName}`} subtitle={dateLabel} />
 
-      {/* AI chat — expanded, with Clear button */}
-      <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-        <div className="flex items-center justify-between gap-2 px-1 pt-1">
-          <div className="flex items-center gap-2">
-            <Robot size={14} weight="fill" className="text-violet-300" />
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">AI-чат</p>
-          </div>
-          {chat.length > 0 && (
-            <button
-              onClick={() => { haptic('light'); setChat([]); }}
-              className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white/40 active:text-white/80 active:bg-white/[0.06] transition-colors"
-              aria-label="Очистить"
+        {/* Finance quick link — premium card */}
+        <Link
+          href="/telegram/m/stats"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            margin: `0 ${PAGE_PADDING_X}px`,
+            padding: 16,
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.md,
+            textDecoration: 'none',
+            color: T.text,
+            boxShadow: SHADOW.card,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                flexShrink: 0,
+                borderRadius: 12,
+                background: T.successSoft,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <Broom size={12} weight="regular" />
-              Очистить
-            </button>
-          )}
-        </div>
-
-        {chat.length === 0 && !sending ? (
-          <div className="px-1 pb-1 text-[12px] leading-snug text-white/50">
-            Спроси — ассистент запишет расход, создаст напоминание, ответит про выручку или клиентов.
-            Голосом — продиктуй в основном чате с Telegram-ботом.
+              <TrendingUp size={20} color={T.success} strokeWidth={2.4} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.success, margin: 0 }}>
+                Финансы · неделя
+              </p>
+              <p style={{ ...TYPE.h3, color: T.text, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                {weekRevenue.toFixed(0)} ₴
+                <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 500, color: T.textTertiary }}>
+                  {weekCompleted} {pluralize(weekCompleted, ['запись', 'записи', 'записей'])}
+                </span>
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="max-h-[55vh] min-h-[240px] space-y-2 overflow-y-auto px-1 pb-1">
-            {chat.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[85%] rounded-2xl px-3 py-2 text-[13px] leading-snug whitespace-pre-wrap ${
-                  m.role === 'user'
-                    ? 'ml-auto bg-violet-500/20 text-white'
-                    : 'bg-white/[0.06] text-white/90'
-                }`}
+          <ChevronRight size={18} color={T.textTertiary} />
+        </Link>
+
+        {/* AI chat */}
+        <div
+          style={{
+            margin: `0 ${PAGE_PADDING_X}px`,
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.md,
+            padding: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            boxShadow: SHADOW.card,
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Sparkles size={14} color={T.accent} fill={T.accent} />
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.accent, margin: 0 }}>
+                AI-помощник
+              </p>
+            </div>
+            {chat.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { haptic('light'); setChat([]); }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  border: 'none',
+                  color: T.textTertiary,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
               >
-                {m.content}
-              </div>
-            ))}
-            {sending && (
-              <div className="bg-white/[0.06] text-white/60 max-w-[60%] rounded-2xl px-3 py-2 text-[13px]">
-                думаю…
-              </div>
+                <Trash2 size={11} />
+                Очистить
+              </button>
             )}
-            <div ref={chatEndRef} />
           </div>
-        )}
 
-        <div className="flex items-center gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
-            disabled={sending}
-            placeholder="Спросить ассистента…"
-            className="flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[13px] placeholder:text-white/30 focus:border-violet-500/40 focus:outline-none disabled:opacity-50"
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim() || sending}
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-violet-500/30 bg-violet-500/20 text-violet-200 active:bg-violet-500/30 transition disabled:opacity-40"
-          >
-            <PaperPlaneTilt size={16} weight="fill" />
-          </button>
+          {chat.length === 0 && !sending ? (
+            <div style={{ padding: '4px 4px 4px', fontSize: 12.5, lineHeight: 1.45, color: T.textSecondary }}>
+              Спроси — запишу расход, создам напоминание, отвечу про выручку или клиентов. Голосом — продиктуй в TG-боте.
+            </div>
+          ) : (
+            <div style={{ maxHeight: '55vh', minHeight: 240, overflowY: 'auto', padding: '0 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {chat.map((m, i) => (
+                <div
+                  key={i}
+                  style={{
+                    maxWidth: '85%',
+                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    padding: '8px 12px',
+                    borderRadius: 16,
+                    borderBottomRightRadius: m.role === 'user' ? 4 : 16,
+                    borderBottomLeftRadius: m.role === 'user' ? 16 : 4,
+                    background: m.role === 'user' ? T.accent : T.bgSubtle,
+                    color: m.role === 'user' ? '#fff' : T.text,
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    whiteSpace: 'pre-wrap',
+                  }}
+                >
+                  {m.content}
+                </div>
+              ))}
+              {sending && (
+                <div
+                  style={{
+                    alignSelf: 'flex-start',
+                    padding: '8px 12px',
+                    borderRadius: 16,
+                    background: T.bgSubtle,
+                    color: T.textSecondary,
+                    fontSize: 13,
+                  }}
+                >
+                  думаю…
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendMessage();
+                }
+              }}
+              disabled={sending}
+              placeholder="Спросить помощника…"
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: R.pill,
+                border: `1px solid ${T.border}`,
+                background: T.surfaceElevated,
+                fontSize: 13,
+                color: T.text,
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+            <button
+              type="button"
+              onClick={sendMessage}
+              disabled={!input.trim() || sending}
+              style={{
+                width: 40,
+                height: 40,
+                flexShrink: 0,
+                borderRadius: '50%',
+                border: 'none',
+                background: input.trim() ? T.accent : T.bgSubtle,
+                color: input.trim() ? '#fff' : T.textTertiary,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: input.trim() && !sending ? 'pointer' : 'not-allowed',
+                transition: 'background 200ms ease',
+              }}
+              aria-label="Отправить"
+            >
+              <Send size={16} />
+            </button>
+          </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </MobilePage>
   );
+}
+
+function pluralize(n: number, forms: [string, string, string]): string {
+  const m10 = n % 10;
+  const m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return forms[0];
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return forms[1];
+  return forms[2];
 }

@@ -13,6 +13,8 @@ import { motion } from 'framer-motion';
 import { Search, AlertTriangle, Star, Crown, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage, PageHeader, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
 function getInitData(): string | null {
   // 1) Live initData from Telegram WebApp
@@ -118,110 +120,200 @@ export default function MasterMiniAppClientsPage() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
-      </div>
+      <MobilePage>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+          <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
+        </div>
+      </MobilePage>
     );
   }
 
   return (
-    <div className="space-y-4 px-5 pt-6 pb-10">
+    <MobilePage>
+      <PageHeader title="Клиенты" subtitle={rows.length > 0 ? `${rows.length} ${plural(rows.length, ['клиент', 'клиента', 'клиентов'])}` : undefined} />
+
       {/* Tabs: Clients / Partners */}
-      <div className="flex gap-1.5 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      <div style={{ display: 'flex', gap: 6, padding: `8px ${PAGE_PADDING_X}px 0` }}>
         <button
+          type="button"
           onClick={() => haptic('selection')}
-          className="flex-1 rounded-xl bg-white/10 py-1.5 text-[12px] font-semibold"
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: R.pill,
+            border: 'none',
+            background: T.text,
+            color: T.bg,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
         >
           Клиенты
         </button>
         <Link
           href="/telegram/m/partners"
           onClick={() => haptic('selection')}
-          className="flex-1 rounded-xl py-1.5 text-center text-[12px] font-semibold text-white/50"
+          style={{
+            flex: 1,
+            padding: '10px 16px',
+            borderRadius: R.pill,
+            border: `1px solid ${T.border}`,
+            background: 'transparent',
+            color: T.textSecondary,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            textAlign: 'center',
+            textDecoration: 'none',
+          }}
         >
           Партнёры
         </Link>
       </div>
 
-      {/* Search — no page title per miniapp redesign (2026-04-19) */}
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
+      {/* Search */}
+      <div style={{ position: 'relative', padding: `12px ${PAGE_PADDING_X}px 0` }}>
+        <Search
+          size={18}
+          color={T.textTertiary}
+          style={{ position: 'absolute', left: PAGE_PADDING_X + 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+        />
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск по имени или телефону"
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-3 pl-11 pr-4 text-[13px] outline-none focus:border-white/20"
+          style={{
+            width: '100%',
+            padding: '12px 16px 12px 42px',
+            borderRadius: R.pill,
+            border: `1px solid ${T.border}`,
+            background: T.surfaceElevated,
+            ...TYPE.body,
+            color: T.text,
+            outline: 'none',
+            fontFamily: 'inherit',
+          }}
         />
       </div>
 
-      {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
-          ))}
-        </div>
-      ) : !masterId ? (
-        <p className="py-10 text-center text-sm text-white/60">Профиль мастера не найден</p>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-          <p className="text-sm font-semibold">
-            {rows.length === 0 ? 'Клиентов пока нет' : 'Ничего не найдено'}
-          </p>
-          <p className="mt-1 text-xs text-white/50">
-            {rows.length === 0 ? 'Они появятся после первых записей' : 'Попробуй другой запрос'}
-          </p>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {filtered.map((c, i) => {
-            const isVIP = c.total_visits >= 10;
-            const isExcellent = (c.behavior_indicators ?? []).includes('excellent');
-            const isRisky = (c.behavior_indicators ?? []).some((b) => b === 'frequent_canceller' || b === 'rude' || b === 'often_late');
-            return (
-              <motion.li
-                key={c.id}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i, 20) * 0.02 }}
-              >
-                <Link
-                  href={`/telegram/m/clients/${c.id}`}
-                  onClick={() => haptic('light')}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 active:bg-white/[0.06] transition-colors"
+      <div style={{ padding: `16px ${PAGE_PADDING_X}px 0` }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                style={{ height: 72, borderRadius: R.md, background: T.bgSubtle }}
+              />
+            ))}
+          </div>
+        ) : !masterId ? (
+          <EmptyState
+            icon={<span style={{ fontSize: 48 }}>👥</span>}
+            title="Профиль мастера не найден"
+          />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<span style={{ fontSize: 48 }}>{rows.length === 0 ? '👋' : '🔍'}</span>}
+            title={rows.length === 0 ? 'Клиентов пока нет' : 'Ничего не найдено'}
+            desc={rows.length === 0 ? 'Они появятся после первых записей' : 'Попробуй другой запрос'}
+          />
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map((c, i) => {
+              const isVIP = c.total_visits >= 10;
+              const isExcellent = (c.behavior_indicators ?? []).includes('excellent');
+              const isRisky = (c.behavior_indicators ?? []).some(
+                (b) => b === 'frequent_canceller' || b === 'rude' || b === 'often_late',
+              );
+              return (
+                <motion.li
+                  key={c.id}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: Math.min(i, 20) * 0.02 }}
                 >
-                  <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-[13px] font-bold text-white/90">
-                    {initials(c.full_name) || '—'}
-                    {c.has_health_alert && (
-                      <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-rose-500 ring-2 ring-black">
-                        <AlertTriangle className="size-2.5" />
+                  <Link
+                    href={`/telegram/m/clients/${c.id}`}
+                    onClick={() => haptic('light')}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: 12,
+                      background: T.surface,
+                      border: `1px solid ${T.borderSubtle}`,
+                      borderRadius: R.md,
+                      textDecoration: 'none',
+                      color: T.text,
+                      boxShadow: SHADOW.card,
+                    }}
+                  >
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <AvatarCircle url={null} name={initials(c.full_name) || '—'} size={48} />
+                      {c.has_health_alert && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: -2,
+                            right: -2,
+                            width: 18,
+                            height: 18,
+                            borderRadius: '50%',
+                            background: T.danger,
+                            border: `2px solid ${T.surface}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <AlertTriangle size={10} color="#fff" />
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.full_name}
+                        </p>
+                        {isVIP && <Crown size={13} color="#f59e0b" fill="#f59e0b" />}
+                        {isExcellent && <Star size={13} color="#f59e0b" fill="#f59e0b" />}
+                      </div>
+                      <p style={{ ...TYPE.caption, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
+                        {c.total_visits} {plural(c.total_visits, ['визит', 'визита', 'визитов'])} · {Number(c.total_spent).toFixed(0)} ₴
+                      </p>
+                      <p style={{ ...TYPE.micro, marginTop: 2 }}>
+                        {c.last_visit_at ? `Был ${daysAgo(c.last_visit_at)}` : 'Ещё не приходил'}
+                      </p>
+                    </div>
+                    {isRisky && (
+                      <span
+                        style={{
+                          flexShrink: 0,
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          border: `1px solid ${T.danger}40`,
+                          background: T.dangerSoft,
+                          color: T.danger,
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: '0.05em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        риск
                       </span>
                     )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-sm font-semibold">{c.full_name}</p>
-                      {isVIP && <Crown className="size-3 text-amber-300" />}
-                      {isExcellent && <Star className="size-3 fill-amber-300 text-amber-300" />}
-                    </div>
-                    <p className="mt-0.5 truncate text-[11px] text-white/50 tabular-nums">
-                      {c.total_visits} {plural(c.total_visits, ['визит', 'визита', 'визитов'])} · {Number(c.total_spent).toFixed(0)} ₴
-                    </p>
-                    <p className="mt-0.5 truncate text-[10px] text-white/40">
-                      {c.last_visit_at ? `Был ${daysAgo(c.last_visit_at)}` : 'Ещё не приходил'}
-                    </p>
-                  </div>
-                  {isRisky && (
-                    <span className="shrink-0 rounded-full border border-rose-500/30 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-rose-300">
-                      риск
-                    </span>
-                  )}
-                </Link>
-              </motion.li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+                  </Link>
+                </motion.li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </MobilePage>
   );
 }

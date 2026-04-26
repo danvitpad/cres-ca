@@ -1,8 +1,11 @@
 /** --- YAML
  * name: TelegramMasterMiniAppLayout
- * description: Master Mini App shell — unified dark theme matching web (#0b0d17), 5-tab icon-only bottom bar (Home, Calendar, Clients, Notifications, Profile) via Phosphor. Finance moved to Web-only (dashboard /finance); Mini App /stats page remains accessible from Profile.
+ * description: Master Mini App shell — Fresha-premium light theme. Floating-pill
+ *              bottom nav 5 табов (Home / Calendar / Clients / Notifications /
+ *              Profile). Тот же `MiniAppBottomNav` что у клиента — единый
+ *              дизайн-язык.
  * created: 2026-04-13
- * updated: 2026-04-19
+ * updated: 2026-04-26
  * --- */
 
 'use client';
@@ -10,15 +13,16 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  HouseSimple,
-  CalendarBlank,
+  Home,
+  CalendarDays,
   Users as UsersIcon,
   Bell,
-  UserCircle,
-} from '@phosphor-icons/react';
-import { Loader2 } from 'lucide-react';
+  User as UserIcon,
+  Loader2,
+} from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
-import { BottomTabs, type BottomTab } from '@/components/miniapp/bottom-tabs';
+import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
+import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 
@@ -93,7 +97,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       window.removeEventListener('focus', onFocus);
       clearInterval(interval);
     };
-  }, [userId]);
+  }, [userId, isSalonContext]);
 
   useEffect(() => {
     if (pathname === '/telegram/m/notifications' && unreadCount > 0) {
@@ -104,8 +108,18 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
 
   if (checking) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#0b0d17] text-white">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+      <div
+        style={{
+          ...FONT_BASE,
+          minHeight: '100dvh',
+          background: T.bg,
+          color: T.text,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
       </div>
     );
   }
@@ -114,54 +128,77 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     return <>{children}</>;
   }
 
-  const tabs: BottomTab[] = [
-    {
-      key: 'home',
-      href: '/telegram/m/home',
-      label: 'Home',
-      renderIcon: (active) => <HouseSimple size={24} weight={active ? 'fill' : 'regular'} />,
-    },
-    {
-      key: 'calendar',
-      href: '/telegram/m/calendar',
-      label: 'Calendar',
-      renderIcon: (active) => <CalendarBlank size={24} weight={active ? 'fill' : 'regular'} />,
-    },
-    {
-      key: 'clients',
-      href: '/telegram/m/clients',
-      label: 'Clients',
-      renderIcon: (active) => <UsersIcon size={24} weight={active ? 'fill' : 'regular'} />,
-    },
-    {
-      key: 'notifications',
-      href: '/telegram/m/notifications',
-      label: 'Notifications',
-      badge: unreadCount,
-      renderIcon: (active) => <Bell size={24} weight={active ? 'fill' : 'regular'} />,
-    },
-    {
-      key: 'profile',
-      href: '/telegram/m/profile',
-      label: 'Profile',
-      renderIcon: (active) => <UserCircle size={24} weight={active ? 'fill' : 'regular'} />,
-    },
+  const tabs: readonly NavTab[] = [
+    { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
+    { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
+    { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
+    { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
+    { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
   ];
+
+  // Fullscreen routes — booking/voice flows have own footers.
+  const isFullscreen =
+    pathname.startsWith('/telegram/m/voice-book') ||
+    pathname.startsWith('/telegram/m/voice-intro') ||
+    pathname.startsWith('/telegram/m/slot/');
 
   return (
     <TelegramProvider>
-      <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
+      <div
+        style={{
+          ...FONT_BASE,
+          minHeight: '100dvh',
+          background: T.bg,
+          color: T.text,
+        }}
+      >
         <main
-          className="flex-1 overflow-y-auto"
           style={{
             paddingTop: 'var(--tg-content-top, 0px)',
-            paddingBottom: 'calc(72px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+            paddingBottom: isFullscreen
+              ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
+              : 'calc(96px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           {children}
         </main>
-        <BottomTabs tabs={tabs} />
+        {!isFullscreen && (
+          <MiniAppBottomNav
+            tabs={tabs.map((t) => (t.key === 'notifications' && unreadCount > 0 ? { ...t } : t))}
+          />
+        )}
+        {/* Notification badge — render absolutely positioned over the nav bar */}
+        {!isFullscreen && unreadCount > 0 && <NotificationBadge count={unreadCount} />}
       </div>
     </TelegramProvider>
+  );
+}
+
+/** Floating badge over the Notifications icon — positioned over MiniAppBottomNav. */
+function NotificationBadge({ count }: { count: number }) {
+  return (
+    <span
+      style={{
+        position: 'fixed',
+        right: 'calc(12px + (100vw - 24px) * 0.3 + 4px)', // approx 4th tab on a 5-tab equal split
+        bottom: 'calc(12px + env(safe-area-inset-bottom, 0px) + 30px)',
+        zIndex: 51,
+        minWidth: 18,
+        height: 18,
+        padding: '0 5px',
+        borderRadius: 9,
+        background: T.danger,
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 700,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        border: `2px solid ${T.surface}`,
+        pointerEvents: 'none',
+      }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
   );
 }
