@@ -408,7 +408,7 @@ export default function FinancePage() {
   );
 
   return (
-    <div style={{ ...pageContainer, color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 48 }}>
+    <div style={{ ...pageContainer, color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 96 }}>
       {/* Header: title + period dropdown */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>

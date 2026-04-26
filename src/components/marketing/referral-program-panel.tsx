@@ -12,7 +12,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Gift, Copy, Check, Users, Link as LinkIcon } from 'lucide-react';
+import Link from 'next/link';
+import { Gift, Copy, Check, Users, Link as LinkIcon, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -49,6 +50,7 @@ export function ReferralProgramPanel() {
   const [referralCount, setReferralCount] = useState<number>(0);
   const [slug, setSlug] = useState<string | null>(null);
   const [creatingSlug, setCreatingSlug] = useState(false);
+  const [sampleClientCode, setSampleClientCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!master) return;
@@ -62,13 +64,25 @@ export function ReferralProgramPanel() {
     setSlug((m.slug as string | null) ?? null);
     setLoaded(true);
 
-    // Load referral count
+    // Load referral count + sample client referral_code so the master sees what
+    // a real link looks like (replaces the «{код_клиента}» placeholder for preview).
     const supabase = createClient();
     supabase
       .from('referrals')
       .select('id', { count: 'exact', head: true })
       .eq('master_id', (master as { id: string }).id)
       .then(({ count }) => setReferralCount(count ?? 0));
+    supabase
+      .from('clients')
+      .select('referral_code')
+      .eq('master_id', (master as { id: string }).id)
+      .not('referral_code', 'is', null)
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const r = data as { referral_code: string | null } | null;
+        if (r?.referral_code) setSampleClientCode(r.referral_code);
+      });
   }, [master]);
 
   async function save(next: Partial<ReferralConfig>) {
@@ -123,8 +137,13 @@ export function ReferralProgramPanel() {
     toast.success('Публичный адрес создан');
   }
 
+  // Превью ссылки. Если у мастера есть хотя бы 1 клиент с referral_code —
+  // подставляем его реальный код, чтобы мастер видел осмысленный URL вместо
+  // абстрактного «{код_клиента}». Это ссылка-пример для понимания формата —
+  // каждый клиент в Mini App видит свою личную ссылку со своим кодом.
+  const previewCode = sampleClientCode ?? 'a4f2c1b8e9d3';
   const shareUrl = typeof window !== 'undefined' && slug
-    ? `${window.location.origin}/m/${slug}?ref={код_клиента}`
+    ? `${window.location.origin}/m/${slug}?ref=${previewCode}`
     : '';
 
   async function copyLink() {
@@ -196,6 +215,17 @@ export function ReferralProgramPanel() {
             записывается и приходит на {cfg.min_visits}-й визит — мастер автоматически
             начисляет бонус приведшему клиенту.
           </p>
+          <Link
+            href="/settings?section=profile"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 11, color: C.textTertiary, textDecoration: 'none',
+              marginTop: 8,
+            }}
+          >
+            <Languages size={11} />
+            Язык исходящих уведомлений настраивается в «Редактировать профиль»
+          </Link>
         </div>
       </div>
 
@@ -329,8 +359,9 @@ export function ReferralProgramPanel() {
               </button>
             </div>
             <p style={{ fontSize: 12, color: C.textTertiary, lineHeight: 1.5, margin: '8px 0 0' }}>
-              Каждому клиенту автоматически выдаётся уникальный <code>код_клиента</code>. В Mini App
-              у клиента в разделе «Бонусы» он видит свою готовую ссылку — копирует и отправляет другу.
+              {sampleClientCode
+                ? <>В URL подставлен реальный код одного из клиентов — каждому клиенту автоматически выдаётся свой уникальный код. Сам мастер эту ссылку никому не отправляет — её копирует <strong>клиент</strong> в своём Mini App в разделе «Бонусы» и шлёт другу.</>
+                : <>Это пример формата. Реальный код у каждого клиента свой — генерируется автоматически при создании карточки. Клиент видит свою готовую ссылку в Mini App в разделе «Бонусы», копирует и отправляет другу.</>}
             </p>
           </>
         )}

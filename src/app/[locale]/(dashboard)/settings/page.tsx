@@ -317,6 +317,11 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
   const [bio, setBio] = useState(master.bio ?? '');
   const [address, setAddress] = useState(master.address ?? '');
   const [city, setCity] = useState(master.city ?? '');
+  // Публичный язык — на каком языке клиенты получают рассылки/напоминания
+  // и на каком языке формируются PDF поставщикам. Может отличаться от UI-языка.
+  const [publicLanguage, setPublicLanguage] = useState<'ru' | 'uk' | 'en'>(
+    (((master as unknown as Record<string, unknown>).public_language as string | undefined) ?? 'ru') as 'ru' | 'uk' | 'en',
+  );
 
   async function handleSave() {
     setSaving(true);
@@ -332,7 +337,10 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
         date_of_birth: dob || null,
         phone: phone || null,
       }).eq('id', userId),
-      supabase.from('masters').update({ specialization, bio, address, city }).eq('id', master.id),
+      supabase.from('masters').update({
+        specialization, bio, address, city,
+        public_language: publicLanguage,
+      }).eq('id', master.id),
     ]);
 
     setSaving(false);
@@ -406,6 +414,38 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
           <div className="space-y-1.5">
             <Label className={labelCls}>О себе</Label>
             <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="Коротко о себе и услугах (публично)" className={inputCls} />
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+
+      {/* Language for outgoing client/supplier comms */}
+      <AccordionItem value="language">
+        <AccordionTrigger>Язык исходящих уведомлений</AccordionTrigger>
+        <AccordionContent className="space-y-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            На этом языке клиенты получают TG-рассылки и напоминания о визите, поставщики — PDF-заказы.
+            Может отличаться от языка интерфейса (можно работать в RU UI, а уведомления слать на украинском).
+          </p>
+          <div className="inline-flex rounded-lg border bg-card p-0.5">
+            {([
+              { v: 'ru' as const, label: 'Русский' },
+              { v: 'uk' as const, label: 'Українська' },
+              { v: 'en' as const, label: 'English' },
+            ]).map((opt) => {
+              const active = publicLanguage === opt.v;
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setPublicLanguage(opt.v)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </AccordionContent>
       </AccordionItem>
@@ -631,11 +671,7 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
     ((master as unknown as Record<string, unknown>).booking_important_info as string) ?? '',
   );
 
-  // Публичный язык — на каком языке клиенты получают уведомления и
-  // на каком языке генерируется PDF поставщикам. Может отличаться от UI-языка мастера.
-  const [publicLanguage, setPublicLanguage] = useState<'ru' | 'uk' | 'en'>(
-    (((master as unknown as Record<string, unknown>).public_language as string | undefined) ?? 'ru') as 'ru' | 'uk' | 'en',
-  );
+  // public_language редактируется в табе «Редактировать профиль» — здесь его не трогаем.
 
   async function handleSave() {
     setSaving(true);
@@ -647,7 +683,6 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
         birthday_auto_greet: birthdayGreet,
         birthday_discount_percent: birthdayDiscount,
         booking_important_info: importantInfo.trim() || null,
-        public_language: publicLanguage,
       })
       .eq('id', master.id);
     setSaving(false);
@@ -679,34 +714,8 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
           </div>
         </div>
 
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold">Язык исходящих уведомлений</h4>
-          <p className="text-xs text-muted-foreground">
-            На этом языке клиенты получают рассылки и напоминания, поставщики — PDF-заказы.
-            Может отличаться от языка интерфейса.
-          </p>
-          <div className="inline-flex rounded-lg border bg-card p-0.5">
-            {([
-              { v: 'ru' as const, label: 'Русский' },
-              { v: 'uk' as const, label: 'Українська' },
-              { v: 'en' as const, label: 'English' },
-            ]).map((opt) => {
-              const active = publicLanguage === opt.v;
-              return (
-                <button
-                  key={opt.v}
-                  type="button"
-                  onClick={() => setPublicLanguage(opt.v)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* «Язык исходящих уведомлений» переехал в раздел «Редактировать профиль» —
+            он логически относится к мастеру, а не к политике отмены. */}
 
         <div className="space-y-3">
           <h4 className="text-sm font-semibold">{t('birthdaySettings')}</h4>

@@ -80,7 +80,7 @@ const STRINGS: Record<PublicLanguage, {
     total: 'Сумма',
     totalRow: 'ИТОГО',
     note: 'Примечание:',
-    brand: 'CRESCA',
+    brand: 'CRES-CA',
     brandTagline: '',
     support: 'Поддержка:',
   },
@@ -99,7 +99,7 @@ const STRINGS: Record<PublicLanguage, {
     total: 'Сума',
     totalRow: 'РАЗОМ',
     note: 'Примітка:',
-    brand: 'CRESCA',
+    brand: 'CRES-CA',
     brandTagline: '',
     support: 'Підтримка:',
   },
@@ -118,7 +118,7 @@ const STRINGS: Record<PublicLanguage, {
     total: 'Total',
     totalRow: 'TOTAL',
     note: 'Note:',
-    brand: 'CRESCA',
+    brand: 'CRES-CA',
     brandTagline: '',
     support: 'Support:',
   },
@@ -169,7 +169,7 @@ function registerFont(doc: jsPDF): string {
 }
 
 const SUPPORT_TG = 'https://t.me/cres_ca_bot?start=support';
-const SITE_URL = 'cresca.com';
+const SITE_URL = 'cres-ca.com';
 
 export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
