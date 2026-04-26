@@ -39,6 +39,13 @@ import {
   Settings as SettingsCogIcon,
 } from 'lucide-react';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
+import {
+  SettingsBlock,
+  SettingsField,
+  SettingsSegmented,
+  SettingsButton,
+  settingsInputStyle,
+} from '@/components/settings/settings-block';
 import { DEFAULT_FEATURES, type VerticalFeatures } from '@/lib/verticals/feature-flags';
 import {
   Accordion,
@@ -301,6 +308,7 @@ function SettingsSectionShell({
 function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; userId: string; onSaved: () => void }) {
   const t = useTranslations('profile');
   const tc = useTranslations('common');
+  const { C: pageThemeC } = usePageTheme();
   const [saving, setSaving] = useState(false);
 
   // Personal: last/first/middle/DOB/phone
@@ -352,111 +360,84 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
     }
   }
 
-  const inputCls = 'border-2 border-border focus-visible:border-primary';
-  const labelCls = 'text-xs font-semibold uppercase tracking-wide text-muted-foreground';
+  const C = pageThemeC;
+  const inputStyle = settingsInputStyle(C);
 
   return (
-    <Accordion multiple defaultValue={['personal', 'professional']} className="!max-w-none w-full rounded-xl border bg-card">
-      {/* Personal */}
-      <AccordionItem value="personal">
-        <AccordionTrigger>Личные данные</AccordionTrigger>
-        <AccordionContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Фамилия</Label>
-              <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Иванова" className={inputCls} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Имя</Label>
-              <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Мария" required className={inputCls} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Отчество</Label>
-              <Input value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Андреевна" className={inputCls} />
-            </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <SettingsBlock title="Личные данные" subtitle="Используется для идентификации и в подписках" C={C}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <SettingsField label="Фамилия" C={C}>
+            <input style={inputStyle} value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Иванова" />
+          </SettingsField>
+          <SettingsField label="Имя" C={C}>
+            <input style={inputStyle} value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Мария" required />
+          </SettingsField>
+          <SettingsField label="Отчество" C={C}>
+            <input style={inputStyle} value={middleName} onChange={(e) => setMiddleName(e.target.value)} placeholder="Андреевна" />
+          </SettingsField>
+        </div>
+        <SettingsField label="Телефон" C={C}>
+          <input type="tel" style={inputStyle} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380..." />
+        </SettingsField>
+        <SettingsField label="Дата рождения" C={C}>
+          <div style={{ borderRadius: 10, border: `1px solid ${C.border}`, background: C.surfaceElevated, padding: '4px 0' }}>
+            <DateWheelPicker
+              size="sm"
+              locale="ru-RU"
+              value={fromISODay(dob)}
+              onChange={(d) => setDob(toISODay(d))}
+            />
           </div>
-          <div className="space-y-1.5">
-            <Label className={labelCls}>Телефон</Label>
-            <Input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+380..." className={inputCls} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className={labelCls}>Дата рождения</Label>
-            <div className="rounded-lg border bg-background/50 py-1">
-              <DateWheelPicker
-                size="sm"
-                locale="ru-RU"
-                value={fromISODay(dob)}
-                onChange={(d) => setDob(toISODay(d))}
-              />
-            </div>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
+        </SettingsField>
+      </SettingsBlock>
 
-      {/* Professional */}
-      <AccordionItem value="professional">
-        <AccordionTrigger>Профессиональная информация</AccordionTrigger>
-        <AccordionContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Специализация</Label>
-              <Input value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('specializationPlaceholder')} className={inputCls} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className={labelCls}>Город</Label>
-              <Input value={city} onChange={(e) => setCity(e.target.value)} required className={inputCls} />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className={labelCls}>Адрес</Label>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ул., дом, кабинет" className={inputCls} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className={labelCls}>О себе</Label>
-            <Textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="Коротко о себе и услугах (публично)" className={inputCls} />
-          </div>
-        </AccordionContent>
-      </AccordionItem>
+      <SettingsBlock title="Профессиональная информация" subtitle="Видна на твоей публичной странице" C={C}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+          <SettingsField label="Специализация" C={C}>
+            <input style={inputStyle} value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('specializationPlaceholder')} />
+          </SettingsField>
+          <SettingsField label="Город" C={C}>
+            <input style={inputStyle} value={city} onChange={(e) => setCity(e.target.value)} required />
+          </SettingsField>
+        </div>
+        <SettingsField label="Адрес" C={C}>
+          <input style={inputStyle} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ул., дом, кабинет" />
+        </SettingsField>
+        <SettingsField label="О себе" C={C}>
+          <textarea
+            style={{ ...inputStyle, resize: 'vertical', minHeight: 80 }}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={3}
+            placeholder="Коротко о себе и услугах (публично)"
+          />
+        </SettingsField>
+      </SettingsBlock>
 
-      {/* Language for outgoing client/supplier comms */}
-      <AccordionItem value="language">
-        <AccordionTrigger>Язык исходящих уведомлений</AccordionTrigger>
-        <AccordionContent className="space-y-3">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            На этом языке клиенты получают TG-рассылки и напоминания о визите, поставщики — PDF-заказы.
-            Может отличаться от языка интерфейса (можно работать в RU UI, а уведомления слать на украинском).
-          </p>
-          <div className="inline-flex rounded-lg border bg-card p-0.5">
-            {([
-              { v: 'ru' as const, label: 'Русский' },
-              { v: 'uk' as const, label: 'Українська' },
-              { v: 'en' as const, label: 'English' },
-            ]).map((opt) => {
-              const active = publicLanguage === opt.v;
-              return (
-                <button
-                  key={opt.v}
-                  type="button"
-                  onClick={() => setPublicLanguage(opt.v)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-        </AccordionContent>
-      </AccordionItem>
+      <SettingsBlock
+        title="Язык исходящих уведомлений"
+        subtitle="На этом языке клиенты получают рассылки/напоминания, поставщики — PDF-заказы. Может отличаться от языка твоего интерфейса."
+        C={C}
+      >
+        <SettingsSegmented
+          value={publicLanguage}
+          onChange={setPublicLanguage}
+          options={[
+            { value: 'ru', label: 'Русский' },
+            { value: 'uk', label: 'Українська' },
+            { value: 'en', label: 'English' },
+          ]}
+          C={C}
+        />
+      </SettingsBlock>
 
-      {/* Save */}
-      <div className="p-4 border-t flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <SettingsButton onClick={handleSave} disabled={saving} C={C}>
           {saving ? tc('loading') : 'Сохранить изменения'}
-        </Button>
+        </SettingsButton>
       </div>
-    </Accordion>
+    </div>
   );
 }
 
