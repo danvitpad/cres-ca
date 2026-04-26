@@ -15,12 +15,14 @@ import CampaignsPage from './campaigns/page';
 import AutomationPage from './automation/page';
 import DealsPage from './deals/page';
 import ReviewsPage from './reviews/page';
+import BroadcastsPage from './broadcasts/page';
 import { ReferralProgramPanel } from '@/components/marketing/referral-program-panel';
 
-type TopTab = 'campaigns' | 'automation' | 'deals' | 'reviews' | 'referrals';
+type TopTab = 'campaigns' | 'broadcasts' | 'automation' | 'deals' | 'reviews' | 'referrals';
 
 const TABS = [
   { value: 'campaigns',  label: 'Рассылки' },
+  { value: 'broadcasts', label: 'Подписчикам' },
   { value: 'automation', label: 'Автоматика' },
   { value: 'deals',      label: 'Акции' },
   { value: 'reviews',    label: 'Отзывы' },
@@ -107,6 +109,7 @@ export default function MarketingPage() {
         style={activeTab === 'referrals' ? undefined : { margin: '0 -36px' /* cancel outer pageContainer horizontal padding */ }}
       >
         {activeTab === 'campaigns' && <CampaignsPage />}
+        {activeTab === 'broadcasts' && <BroadcastsPage />}
         {activeTab === 'automation' && <AutomationPage />}
         {activeTab === 'deals' && <DealsPage />}
         {activeTab === 'reviews' && <ReviewsPage />}
