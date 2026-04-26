@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { buildSupplierOrderPDF, type SupplierOrderItem } from '@/lib/pdf/supplier-order-pdf';
+import { buildSupplierOrderPDF, safeFilename, type SupplierOrderItem, type PublicLanguage } from '@/lib/pdf/supplier-order-pdf';
 
 /** Compute a deterministic share token for a supplier order. */
 export function signSupplierOrderToken(orderId: string): string {
@@ -79,8 +79,8 @@ export async function GET(req: Request, { params }: RouteContext) {
   const { data: master } = await admin
     .from('masters')
     .select(`
-      id, display_name,
-      profile:profiles!masters_profile_id_fkey(full_name, phone, email, username, telegram_id)
+      id, display_name, public_language,
+      profile:profiles!masters_profile_id_fkey(full_name, phone, email)
     `)
     .eq('id', order.master_id)
     .maybeSingle();
@@ -94,6 +94,9 @@ export async function GET(req: Request, { params }: RouteContext) {
   // Prefer profile.full_name; legacy display_name often holds 'Мастер' placeholder.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const masterName = profile?.full_name ?? (master as any)?.display_name ?? 'Мастер';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawLang = ((master as any)?.public_language as string | undefined) ?? 'ru';
+  const language: PublicLanguage = (rawLang === 'uk' || rawLang === 'en') ? rawLang : 'ru';
 
   type SupplierShape = { name: string; contact_person: string | null; phone: string | null; email: string | null };
   let supplier: SupplierShape | null = null;
@@ -125,13 +128,19 @@ export async function GET(req: Request, { params }: RouteContext) {
     };
   });
 
+  const orderNumber = order.id.slice(0, 8).toUpperCase();
+  const orderDateObj = new Date(order.created_at);
+  const dateLocale = language === 'uk' ? 'uk-UA' : language === 'en' ? 'en-GB' : 'ru-RU';
+  const orderDateStr = orderDateObj.toLocaleDateString(dateLocale, {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
   const pdfBytes = buildSupplierOrderPDF({
-    orderNumber: order.id.slice(0, 8).toUpperCase(),
-    orderDate: new Date(order.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    orderNumber,
+    orderDate: orderDateStr,
     masterName,
     masterPhone: profile?.phone ?? null,
     masterEmail: profile?.email ?? null,
-    masterTelegram: profile?.username ? `@${profile.username}` : (profile?.telegram_id ? String(profile.telegram_id) : null),
     supplierName: supplier?.name ?? 'Поставщик',
     supplierContact: supplier?.contact_person ?? null,
     supplierPhone: supplier?.phone ?? null,
@@ -139,12 +148,23 @@ export async function GET(req: Request, { params }: RouteContext) {
     items,
     currency: order.currency || 'UAH',
     note: order.note ?? null,
+    language,
   });
+
+  // Имя файла: <номер>_<дата YYYY-MM-DD>_<имя_мастера>_<телефон>.pdf
+  const dateForFile = orderDateObj.toISOString().slice(0, 10); // YYYY-MM-DD
+  const filename = safeFilename([
+    orderNumber,
+    dateForFile,
+    masterName,
+    profile?.phone ?? null,
+  ]) + '.pdf';
 
   return new NextResponse(new Uint8Array(pdfBytes), {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `inline; filename="order-${order.id.slice(0, 8)}.pdf"`,
+      // Передаём оба варианта filename для совместимости (RFC 5987 для UTF-8 + ASCII fallback)
+      'Content-Disposition': `inline; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
       'Cache-Control': 'no-store',
     },
   });

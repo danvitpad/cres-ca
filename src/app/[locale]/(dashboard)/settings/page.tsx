@@ -631,6 +631,12 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
     ((master as unknown as Record<string, unknown>).booking_important_info as string) ?? '',
   );
 
+  // Публичный язык — на каком языке клиенты получают уведомления и
+  // на каком языке генерируется PDF поставщикам. Может отличаться от UI-языка мастера.
+  const [publicLanguage, setPublicLanguage] = useState<'ru' | 'uk' | 'en'>(
+    (((master as unknown as Record<string, unknown>).public_language as string | undefined) ?? 'ru') as 'ru' | 'uk' | 'en',
+  );
+
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
@@ -641,6 +647,7 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
         birthday_auto_greet: birthdayGreet,
         birthday_discount_percent: birthdayDiscount,
         booking_important_info: importantInfo.trim() || null,
+        public_language: publicLanguage,
       })
       .eq('id', master.id);
     setSaving(false);
@@ -669,6 +676,35 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
               <Label>{t('partialPercent')}</Label>
               <Input type="number" min={0} max={100} value={partialPercent} onChange={(e) => setPartialPercent(Number(e.target.value))} />
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold">Язык исходящих уведомлений</h4>
+          <p className="text-xs text-muted-foreground">
+            На этом языке клиенты получают рассылки и напоминания, поставщики — PDF-заказы.
+            Может отличаться от языка интерфейса.
+          </p>
+          <div className="inline-flex rounded-lg border bg-card p-0.5">
+            {([
+              { v: 'ru' as const, label: 'Русский' },
+              { v: 'uk' as const, label: 'Українська' },
+              { v: 'en' as const, label: 'English' },
+            ]).map((opt) => {
+              const active = publicLanguage === opt.v;
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setPublicLanguage(opt.v)}
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { buildSupplierOrderPDF, type SupplierOrderItem } from '@/lib/pdf/supplier-order-pdf';
+import { buildSupplierOrderPDF, safeFilename, type SupplierOrderItem } from '@/lib/pdf/supplier-order-pdf';
 import { getResend } from '@/lib/email/resend';
 import { signSupplierOrderToken } from '@/app/api/supplier-orders/[id]/pdf/route';
 
@@ -47,9 +47,12 @@ export async function POST(req: Request, { params }: RouteContext) {
 
   const { data: master } = await admin
     .from('masters')
-    .select('display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name, phone, email, username, telegram_id)')
+    .select('display_name, profile_id, public_language, profile:profiles!masters_profile_id_fkey(full_name, phone, email, username, telegram_id)')
     .eq('id', order.master_id)
     .maybeSingle();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawLang = ((master as any)?.public_language as string | undefined) ?? 'ru';
+  const language: 'ru' | 'uk' | 'en' = (rawLang === 'uk' || rawLang === 'en') ? rawLang : 'ru';
 
   // Authorization: caller's telegram_id must match master's profile.telegram_id
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,16 +106,21 @@ export async function POST(req: Request, { params }: RouteContext) {
   });
 
   // Build PDF
+  const orderNumber = order.id.slice(0, 8).toUpperCase();
+  const orderDateObj = new Date(order.created_at);
+  const dateLocale = language === 'uk' ? 'uk-UA' : language === 'en' ? 'en-GB' : 'ru-RU';
+  const orderDateStr = orderDateObj.toLocaleDateString(dateLocale, {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  });
+
   const pdfBytes = buildSupplierOrderPDF({
-    orderNumber: order.id.slice(0, 8).toUpperCase(),
-    orderDate: new Date(order.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    orderNumber,
+    orderDate: orderDateStr,
     masterName,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     masterPhone: (mp as any)?.phone ?? null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     masterEmail: (mp as any)?.email ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    masterTelegram: (mp as any)?.username ? `@${(mp as any).username}` : ((mp as any)?.telegram_id ? String((mp as any).telegram_id) : null),
     supplierName,
     supplierContact: null,
     supplierPhone,
@@ -120,12 +128,17 @@ export async function POST(req: Request, { params }: RouteContext) {
     items,
     currency: order.currency ?? 'UAH',
     note: order.note ?? null,
+    language,
   });
 
   // Summary text for TG/email body (Cyrillic OK here)
   const itemsText = items.map((it) => `— ${it.name} × ${it.quantity} ${it.unit}`).join('\n');
-  const summary = `Заказ #${order.id.slice(0, 8).toUpperCase()}\n\nОт: ${masterName}\nДля: ${supplierName}\n\n${itemsText}${order.note ? `\n\nПримечание:\n${order.note}` : ''}`;
-  const filename = `order-${order.id.slice(0, 8)}.pdf`;
+  const summary = `Заказ #${orderNumber}\n\nОт: ${masterName}\nДля: ${supplierName}\n\n${itemsText}${order.note ? `\n\nПримечание:\n${order.note}` : ''}`;
+  // Имя файла: <номер>_<дата>_<имя_мастера>_<телефон>.pdf
+  const dateForFile = orderDateObj.toISOString().slice(0, 10);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const masterPhoneRaw = ((mp as any)?.phone ?? null) as string | null;
+  const filename = safeFilename([orderNumber, dateForFile, masterName, masterPhoneRaw]) + '.pdf';
 
   if (channel === 'telegram') {
     // Suppliers don't use our app, so the bot can't initiate a chat (Telegram limitation).

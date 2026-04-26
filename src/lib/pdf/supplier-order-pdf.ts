@@ -1,8 +1,13 @@
 /** --- YAML
  * name: Supplier Order PDF
- * description: Генерация накладной поставщику в PDF через jspdf + autotable.
- *              Принимает order + items + supplier + masterName. Возвращает Buffer.
+ * description: Накладная поставщику в PDF (jspdf + autotable).
+ *              Layout 4-блочный: «Заказ №…» сверху-слева, дата сверху-справа,
+ *              блок «Заказчик» под заказом, блок «Поставщик» под датой,
+ *              далее таблица позиций с итоговой строкой. Footer — бренд CRESCA
+ *              + сайт + ссылка на TG-менеджера поддержки. Локализация i18n
+ *              по публичному языку мастера (ru / uk / en).
  * created: 2026-04-19
+ * updated: 2026-04-26
  * --- */
 
 import { jsPDF } from 'jspdf';
@@ -18,13 +23,16 @@ export interface SupplierOrderItem {
   total: number;
 }
 
+export type PublicLanguage = 'ru' | 'uk' | 'en';
+
 export interface SupplierOrderPDFInput {
   orderNumber: string;
   orderDate: string;
+  /** Заказчик — мастер */
   masterName: string;
   masterPhone?: string | null;
   masterEmail?: string | null;
-  masterTelegram?: string | null;
+  /** Поставщик */
   supplierName: string;
   supplierContact?: string | null;
   supplierPhone?: string | null;
@@ -32,9 +40,89 @@ export interface SupplierOrderPDFInput {
   items: SupplierOrderItem[];
   currency: string;
   note?: string | null;
+  /** Публичный язык мастера — определяет все надписи в PDF. Default 'ru'. */
+  language?: PublicLanguage;
 }
 
 const FONT_NAME = 'PTSans';
+
+const STRINGS: Record<PublicLanguage, {
+  orderNumber: string;
+  orderDate: string;
+  customer: string;
+  supplier: string;
+  phone: string;
+  email: string;
+  contact: string;
+  itemName: string;
+  qty: string;
+  unit: string;
+  price: string;
+  total: string;
+  totalRow: string;
+  note: string;
+  brand: string;
+  brandTagline: string;
+  support: string;
+}> = {
+  ru: {
+    orderNumber: 'Заказ №',
+    orderDate: 'Дата:',
+    customer: 'Заказчик',
+    supplier: 'Поставщик',
+    phone: 'Тел.:',
+    email: 'Email:',
+    contact: 'Контакт:',
+    itemName: 'Наименование',
+    qty: 'Кол-во',
+    unit: 'Ед.',
+    price: 'Цена',
+    total: 'Сумма',
+    totalRow: 'ИТОГО',
+    note: 'Примечание:',
+    brand: 'CRESCA',
+    brandTagline: '',
+    support: 'Поддержка:',
+  },
+  uk: {
+    orderNumber: 'Замовлення №',
+    orderDate: 'Дата:',
+    customer: 'Замовник',
+    supplier: 'Постачальник',
+    phone: 'Тел.:',
+    email: 'Email:',
+    contact: 'Контакт:',
+    itemName: 'Найменування',
+    qty: 'К-сть',
+    unit: 'Од.',
+    price: 'Ціна',
+    total: 'Сума',
+    totalRow: 'РАЗОМ',
+    note: 'Примітка:',
+    brand: 'CRESCA',
+    brandTagline: '',
+    support: 'Підтримка:',
+  },
+  en: {
+    orderNumber: 'Order #',
+    orderDate: 'Date:',
+    customer: 'Customer',
+    supplier: 'Supplier',
+    phone: 'Phone:',
+    email: 'Email:',
+    contact: 'Contact:',
+    itemName: 'Item',
+    qty: 'Qty',
+    unit: 'Unit',
+    price: 'Price',
+    total: 'Total',
+    totalRow: 'TOTAL',
+    note: 'Note:',
+    brand: 'CRESCA',
+    brandTagline: '',
+    support: 'Support:',
+  },
+};
 
 /** Cache logo as base64 data URL (read once per cold start) */
 let _logoCache: string | null = null;
@@ -73,59 +161,80 @@ function registerFont(doc: jsPDF): string {
   try {
     doc.addFileToVFS('PTSans-Regular.ttf', base64);
     doc.addFont('PTSans-Regular.ttf', FONT_NAME, 'normal');
-    doc.addFont('PTSans-Regular.ttf', FONT_NAME, 'bold'); // same file, bold emulated via size/weight
+    doc.addFont('PTSans-Regular.ttf', FONT_NAME, 'bold');
     return FONT_NAME;
   } catch {
     return 'helvetica';
   }
 }
 
+const SUPPORT_TG = 'https://t.me/cres_ca_bot?start=support';
+const SITE_URL = 'cresca.com';
+
 export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
+  const lang: PublicLanguage = input.language ?? 'ru';
+  const S = STRINGS[lang];
 
   const font = registerFont(doc);
 
-  // ─── Header band (master block on the left) ───
+  const marginLeft = 40;
+  const marginRight = 40;
+  const colWidth = (pageW - marginLeft - marginRight) / 2;
+  const colLeftX = marginLeft;
+  const colRightX = marginLeft + colWidth + 16;
+
+  // ─── Top row: «Заказ №…» (left) + «Дата:…» (right) ───
   doc.setFont(font, 'bold');
   doc.setFontSize(20);
-  doc.text(input.masterName, 40, 56);
+  doc.setTextColor(0);
+  doc.text(`${S.orderNumber}${input.orderNumber}`, colLeftX, 56);
+  doc.text(`${S.orderDate} ${input.orderDate}`, colRightX, 56);
 
+  // ─── Two info blocks (Customer / Supplier) ───
+  const blockY = 96;
+  doc.setFontSize(11);
+  doc.setFont(font, 'bold');
+  doc.setTextColor(110);
+  doc.text(S.customer.toUpperCase(), colLeftX, blockY);
+  doc.text(S.supplier.toUpperCase(), colRightX, blockY);
+
+  doc.setTextColor(0);
+  // Customer block
+  let lY = blockY + 18;
+  doc.setFont(font, 'bold');
+  doc.setFontSize(13);
+  doc.text(input.masterName, colLeftX, lY);
   doc.setFont(font, 'normal');
   doc.setFontSize(10);
-  doc.setTextColor(90);
-  let mY = 74;
-  if (input.masterPhone)    { doc.text(`Тел.: ${input.masterPhone}`, 40, mY); mY += 13; }
-  if (input.masterEmail)    { doc.text(`Email: ${input.masterEmail}`, 40, mY); mY += 13; }
-  if (input.masterTelegram) { doc.text(`Telegram: ${input.masterTelegram}`, 40, mY); mY += 13; }
+  doc.setTextColor(60);
+  if (input.masterPhone) { lY += 14; doc.text(`${S.phone} ${input.masterPhone}`, colLeftX, lY); }
+  if (input.masterEmail) { lY += 13; doc.text(`${S.email} ${input.masterEmail}`, colLeftX, lY); }
+
+  // Supplier block
+  doc.setFont(font, 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(0);
+  let rY = blockY + 18;
+  doc.text(input.supplierName, colRightX, rY);
+  doc.setFont(font, 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(60);
+  if (input.supplierContact) { rY += 14; doc.text(`${S.contact} ${input.supplierContact}`, colRightX, rY); }
+  if (input.supplierPhone)   { rY += 13; doc.text(`${S.phone} ${input.supplierPhone}`, colRightX, rY); }
+  if (input.supplierEmail)   { rY += 13; doc.text(`${S.email} ${input.supplierEmail}`, colRightX, rY); }
+
   doc.setTextColor(0);
 
-  // ─── Order title ───
-  doc.setFontSize(16);
-  doc.setFont(font, 'bold');
-  doc.text(`Заказ поставщику №${input.orderNumber}`, 40, mY + 16);
-
-  doc.setFontSize(10);
-  doc.setFont(font, 'normal');
-  doc.text(`Дата: ${input.orderDate}`, 40, mY + 34);
-
-  // ─── Supplier block ───
-  doc.setFont(font, 'bold');
-  let y = mY + 64;
-  doc.text('Поставщик:', 40, y);
-  doc.setFont(font, 'normal');
-  doc.text(input.supplierName, 120, y);
-  y += 16;
-  if (input.supplierContact) { doc.text(`Контакт: ${input.supplierContact}`, 40, y); y += 14; }
-  if (input.supplierPhone)   { doc.text(`Телефон: ${input.supplierPhone}`, 40, y); y += 14; }
-  if (input.supplierEmail)   { doc.text(`Email: ${input.supplierEmail}`, 40, y); y += 14; }
-
+  // ─── Items table ───
   const total = input.items.reduce((s, it) => s + it.total, 0);
+  const tableStartY = Math.max(lY, rY) + 24;
 
   autoTable(doc, {
-    startY: y + 12,
-    head: [['Наименование', 'Кол-во', 'Ед.', 'Цена', 'Сумма']],
+    startY: tableStartY,
+    head: [[S.itemName, S.qty, S.unit, S.price, S.total]],
     body: input.items.map((it) => [
       it.name,
       it.quantity.toString(),
@@ -133,7 +242,7 @@ export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array 
       it.unit_price.toFixed(2),
       it.total.toFixed(2),
     ]),
-    foot: [['', '', '', 'ИТОГО', `${total.toFixed(2)} ${input.currency}`]],
+    foot: [['', '', '', S.totalRow, `${total.toFixed(2)} ${input.currency}`]],
     headStyles: { fillColor: [15, 16, 17], textColor: 255, font, fontStyle: 'bold' },
     footStyles: { fillColor: [240, 240, 240], textColor: 0, font, fontStyle: 'bold' },
     bodyStyles: { font, fontStyle: 'normal' },
@@ -145,26 +254,58 @@ export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array 
     const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
     doc.setFontSize(10);
     doc.setFont(font, 'bold');
-    doc.text('Примечание:', 40, finalY + 30);
+    doc.text(S.note, marginLeft, finalY + 30);
     doc.setFont(font, 'normal');
-    doc.text(doc.splitTextToSize(input.note, 500), 40, finalY + 44);
+    doc.text(doc.splitTextToSize(input.note, pageW - marginLeft - marginRight), marginLeft, finalY + 44);
   }
 
-  // Footer with CRES-CA logo
+  // ─── Footer: бренд CRESCA + сайт + ссылка на TG-менеджера поддержки ───
   const logo = loadLogoBase64();
   const footerY = pageH - 56;
   doc.setDrawColor(220);
-  doc.line(40, footerY - 10, pageW - 40, footerY - 10);
+  doc.line(marginLeft, footerY - 10, pageW - marginRight, footerY - 10);
   if (logo) {
-    try { doc.addImage(logo, 'PNG', 40, footerY - 4, 24, 24); } catch { /* ignore */ }
+    try { doc.addImage(logo, 'PNG', marginLeft, footerY - 4, 24, 24); } catch { /* ignore */ }
   }
+  doc.setFontSize(11);
+  doc.setTextColor(0);
+  doc.setFont(font, 'bold');
+  doc.text(S.brand, marginLeft + 32, footerY + 6);
+
+  doc.setFont(font, 'normal');
   doc.setFontSize(9);
   doc.setTextColor(120);
-  doc.setFont(font, 'bold');
-  doc.text('CRES-CA', 72, footerY + 4);
-  doc.setFont(font, 'normal');
-  doc.text('CRM для мастеров и салонов', 72, footerY + 16);
-  doc.text('cres-ca.com', pageW - 40, footerY + 10, { align: 'right' });
+  doc.text(SITE_URL, pageW - marginRight, footerY + 2, { align: 'right' });
+  doc.textWithLink(`${S.support} ${SUPPORT_TG}`, pageW - marginRight, footerY + 16, {
+    align: 'right',
+    url: SUPPORT_TG,
+  });
 
   return doc.output('arraybuffer') as unknown as Uint8Array;
+}
+
+/** Sanitize a string for use as a filename (latin-friendly + transliteration of cyrillic). */
+const TRANSLIT: Record<string, string> = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
+  'з': 'z', 'и': 'i', 'й': 'i', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+  'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
+  'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
+  'я': 'ya', 'і': 'i', 'ї': 'i', 'є': 'e', 'ґ': 'g',
+};
+
+export function safeFilename(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((p) => (p ?? '').toString().toLowerCase().trim())
+    .filter(Boolean)
+    .map((s) =>
+      s
+        .split('')
+        .map((ch) => TRANSLIT[ch] ?? (TRANSLIT[ch.toLowerCase()] ? '' : ch))
+        .join('')
+        .replace(/[^a-z0-9_\-+]+/gi, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, ''),
+    )
+    .filter(Boolean)
+    .join('_');
 }
