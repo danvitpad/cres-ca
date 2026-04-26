@@ -213,12 +213,22 @@ function ClientCard({ client, C, isDark, index }: {
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
             {client.full_name}
-            {client.has_health_alert && <AlertTriangle size={13} style={{ color: C.danger, flexShrink: 0 }} />}
+            {client.has_health_alert && (
+              <span
+                title="Есть аллергии или противопоказания — открой карточку, чтобы увидеть детали"
+                style={{ display: 'inline-flex', alignItems: 'center' }}
+              >
+                <AlertTriangle size={13} style={{ color: C.danger, flexShrink: 0 }} />
+              </span>
+            )}
           </div>
-          <div style={{ fontSize: 12, color: C.textTertiary, marginTop: 2 }}>
-            {age !== null ? `${age} лет` : 'возраст не указан'}
-            {client.phone && <span style={{ margin: '0 6px' }}>·</span>}
-            {formatPhone(client.phone)}
+          {/* Возраст и телефон без технического «·» — раздельно, читаемо. */}
+          <div style={{
+            fontSize: 12, color: C.textTertiary, marginTop: 2,
+            display: 'flex', flexWrap: 'wrap', columnGap: 10, rowGap: 2,
+          }}>
+            <span>{age !== null ? `${age} лет` : 'возраст не указан'}</span>
+            {client.phone && <span>{formatPhone(client.phone)}</span>}
           </div>
         </div>
 

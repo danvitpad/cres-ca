@@ -247,7 +247,14 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
             <h1 style={{ fontSize: 17, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.3px' }}>
               {client.full_name}
             </h1>
-            {client.has_health_alert && <AlertTriangle size={14} style={{ color: C.danger }} />}
+            {client.has_health_alert && (
+              <span
+                title="Есть аллергии или противопоказания — учитывай при процедуре"
+                style={{ display: 'inline-flex', alignItems: 'center' }}
+              >
+                <AlertTriangle size={14} style={{ color: C.danger }} />
+              </span>
+            )}
             {client.tier === 'vip' && (
               <span style={{
                 background: C.accent, color: '#fff',
@@ -300,6 +307,13 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           />
         )}
 
+        {/* Иконка-кнопка «В чёрный список» — всегда в хедере, без подписи.
+            Tooltip объясняет действие при наведении. Реальная блокировка
+            требует ввода причины в диалоге внизу. */}
+        {!client.is_blacklisted && (
+          <HeaderBlacklistButton clientId={id} onDone={loadClient} C={C} />
+        )}
+
         <Link
           href={`/calendar?client_id=${id}`}
           style={{
@@ -350,12 +364,8 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
       {/* ═══ AI chat input — full width, bottom ═══ */}
       <ClientAiChat clientId={id} onApplied={loadClient} C={C} />
 
-      {/* ═══ Blacklist action ═══ */}
-      {!client.is_blacklisted && (
-        <div style={{ marginTop: 16 }}>
-          <BlacklistButton clientId={id} onDone={loadClient} C={C} />
-        </div>
-      )}
+      {/* «Добавить в чёрный список» теперь живёт в хедере карточки —
+          icon-кнопка с tooltip + dialog для причины. */}
     </div>
   );
 }
@@ -1073,16 +1083,19 @@ function ClientAiChat({
   );
 }
 
-/* ────────────────────── Blacklist Button ────────────────────── */
+/* ────────────────────── Header Blacklist Button ────────────────────── */
+/* Иконка-кнопка ⛔ в хедере карточки клиента. На наведении — tooltip
+   «Добавить в чёрный список». При клике открывается inline-popup с textarea
+   для причины (обязательно) + confirm. */
 
-function BlacklistButton({ clientId, onDone, C }: { clientId: string; onDone: () => void; C: PageTheme }) {
+function HeaderBlacklistButton({ clientId, onDone, C }: { clientId: string; onDone: () => void; C: PageTheme }) {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
 
-  async function handleBlacklist() {
+  async function confirmBlacklist() {
     if (!reason.trim()) return;
     setSaving(true);
     const supabase = createClient();
@@ -1091,45 +1104,62 @@ function BlacklistButton({ clientId, onDone, C }: { clientId: string; onDone: ()
       blacklist_reason: reason.trim(),
     }).eq('id', clientId);
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     toast.success(tc('success'));
     setOpen(false);
     setReason('');
     onDone();
   }
 
-  if (!open) {
-    return (
-      <Button variant="outline" size="sm" style={{ color: C.danger }} onClick={() => setOpen(true)}>
-        <ShieldAlert style={{ width: 14, height: 14, marginRight: 6 }} />
-        {t('addToBlacklist')}
-      </Button>
-    );
-  }
-
   return (
-    <div style={{
-      paddingTop: 12, borderTop: `1px solid ${C.border}`,
-      display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      <Label>{t('blacklistReason')}</Label>
-      <Textarea
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder={t('blacklistReasonPlaceholder')}
-        rows={2}
-      />
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button variant="destructive" size="sm" onClick={handleBlacklist} disabled={saving || !reason.trim()}>
-          {saving ? tc('loading') : t('addToBlacklist')}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => { setOpen(false); setReason(''); }}>
-          {tc('back')}
-        </Button>
-      </div>
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={t('addToBlacklist') || 'Добавить в чёрный список'}
+        aria-label={t('addToBlacklist') || 'Добавить в чёрный список'}
+        style={{
+          width: 36, height: 36, borderRadius: 10,
+          border: `1px solid ${C.border}`,
+          background: open ? C.dangerSoft : 'transparent',
+          color: C.danger,
+          cursor: 'pointer',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}
+      >
+        <ShieldAlert size={16} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+          width: 320, padding: 12, borderRadius: 12,
+          background: C.surface, border: `1px solid ${C.border}`,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+          zIndex: 50,
+        }}>
+          <Label style={{ fontSize: 12, color: C.textSecondary }}>
+            {t('blacklistReason') || 'Причина (обязательно)'}
+          </Label>
+          <Textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder={t('blacklistReasonPlaceholder') || 'Например: грубое поведение / no-show 3 раза подряд'}
+            rows={3}
+            autoFocus
+          />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <Button variant="ghost" size="sm" onClick={() => { setOpen(false); setReason(''); }}>
+              {tc('cancel') || 'Отмена'}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={confirmBlacklist} disabled={saving || !reason.trim()}>
+              {saving ? '…' : (t('addToBlacklist') || 'В чёрный список')}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
