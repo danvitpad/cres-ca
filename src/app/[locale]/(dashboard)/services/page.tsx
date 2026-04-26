@@ -1304,7 +1304,7 @@ function SuppliersAndOrdersWrapper() {
         })}
       </div>
 
-      {sub === 'suppliers' && <InventoryPage initialTab="suppliers" />}
+      {sub === 'suppliers' && <InventoryPage initialTab="suppliers" hideTabs />}
       {sub === 'orders' && <SupplierOrdersTab />}
     </div>
   );

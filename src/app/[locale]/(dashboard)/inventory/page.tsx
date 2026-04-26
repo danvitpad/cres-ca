@@ -82,7 +82,10 @@ const UNIT_OPTIONS: { value: string; label: string }[] = [
 
 type Tab = 'materials' | 'suppliers';
 
-export default function InventoryPage({ initialTab }: { initialTab?: Tab } = {}) {
+export default function InventoryPage({
+  initialTab,
+  hideTabs = false,
+}: { initialTab?: Tab; hideTabs?: boolean } = {}) {
   const t = useTranslations('inventory');
   const tc = useTranslations('common');
   const { master, loading: masterLoading } = useMaster();
@@ -322,34 +325,38 @@ export default function InventoryPage({ initialTab }: { initialTab?: Tab } = {})
         </motion.div>
       )}
 
-      {/* Header — sub-tabs (Материалы / Поставщики) without icons + Add button */}
+      {/* Header — sub-tabs (Материалы / Поставщики) without icons + Add button.
+          Hidden when this component is embedded inside another tab wrapper that
+          already provides its own sub-tab bar (see /services?tab=suppliers). */}
       <div className="flex items-end justify-between border-b border-border">
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={() => setTab('materials')}
-            className={cn(
-              'px-4 py-2.5 text-sm transition-colors -mb-px border-b-2',
-              tab === 'materials'
-                ? 'border-primary text-foreground font-semibold'
-                : 'border-transparent text-muted-foreground hover:text-foreground font-medium',
-            )}
-          >
-            Материалы
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('suppliers')}
-            className={cn(
-              'px-4 py-2.5 text-sm transition-colors -mb-px border-b-2',
-              tab === 'suppliers'
-                ? 'border-primary text-foreground font-semibold'
-                : 'border-transparent text-muted-foreground hover:text-foreground font-medium',
-            )}
-          >
-            Поставщики
-          </button>
-        </div>
+        {!hideTabs ? (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setTab('materials')}
+              className={cn(
+                'px-4 py-2.5 text-sm transition-colors -mb-px border-b-2',
+                tab === 'materials'
+                  ? 'border-primary text-foreground font-semibold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground font-medium',
+              )}
+            >
+              Материалы
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('suppliers')}
+              className={cn(
+                'px-4 py-2.5 text-sm transition-colors -mb-px border-b-2',
+                tab === 'suppliers'
+                  ? 'border-primary text-foreground font-semibold'
+                  : 'border-transparent text-muted-foreground hover:text-foreground font-medium',
+              )}
+            >
+              Поставщики
+            </button>
+          </div>
+        ) : <div />}
         <div className="flex gap-2 pb-2">
           <Link href="/inventory/scan" className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
             <ScanBarcode className="size-4" />

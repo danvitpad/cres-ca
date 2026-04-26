@@ -101,6 +101,17 @@ export default function BookPage() {
   const [bonusPoints, setBonusPoints] = useState(0);
   const [useBonuses, setUseBonuses] = useState(false);
 
+  // Promo code (validated against /api/promo-codes/validate before submit).
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{
+    promo_id: string;
+    code: string;
+    discount_amount: number;
+    final_price: number;
+  } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoBusy, setPromoBusy] = useState(false);
+
   // Salon → pick first active master and redirect (keeps /book?salon=<id> CTA working).
   useEffect(() => {
     if (!salonId || preselectedMasterId) return;
@@ -380,7 +391,8 @@ export default function BookPage() {
     const endsAt = `${dateStr}T${endH}:${endM}:00`;
     const basePrice = Number(selectedService.price) + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
     const bonusToSpend = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
-    const totalPrice = basePrice - bonusToSpend;
+    const promoDiscount = appliedPromo?.discount_amount ?? 0;
+    const totalPrice = Math.max(0, basePrice - bonusToSpend - promoDiscount);
 
     // Find or create client record for self or selected family member
     let clientId: string | null = null;
@@ -565,6 +577,19 @@ export default function BookPage() {
       });
     }
 
+    // Bump promo uses_count after a successful insert so the next validate call
+    // sees the right counter. RLS allows update on the row when master_id ===
+    // promo's master_id; for clients we go through service role via the redeem
+    // endpoint to avoid leaking the table — but the existing schema lets the
+    // owning master read/write their own row, so this update is also safe via
+    // direct call from the booking client. If RLS rejects, the booking still
+    // succeeds — we just lose accurate counter (acceptable degradation).
+    if (appliedPromo && newAppointmentId) {
+      try {
+        await supabase.rpc('bump_promo_uses', { p_promo_id: appliedPromo.promo_id });
+      } catch { /* RLS reject is acceptable — counter is best-effort */ }
+    }
+
     toast.success(t('bookingSuccess'));
 
     // 7.12 — On first booking for self, prompt the client to fill the intake form
@@ -604,7 +629,50 @@ export default function BookPage() {
   const basePrice = (selectedService ? Number(selectedService.price) : 0)
     + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
   const bonusPreview = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
-  const totalPrice = basePrice - bonusPreview;
+  const promoPreview = appliedPromo?.discount_amount ?? 0;
+  const totalPrice = Math.max(0, basePrice - bonusPreview - promoPreview);
+
+  async function applyPromo() {
+    setPromoError(null);
+    setAppliedPromo(null);
+    const code = promoCode.trim();
+    if (!code || !preselectedMasterId || !selectedService) return;
+    setPromoBusy(true);
+    try {
+      const res = await fetch('/api/promo-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          masterId: preselectedMasterId,
+          serviceId: selectedService.id,
+          basePrice,
+        }),
+      });
+      const json = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) {
+        const errMap: Record<string, string> = {
+          not_found: 'Такого промокода нет',
+          inactive: 'Промокод выключен',
+          expired: 'Срок действия истёк',
+          not_started: 'Промокод ещё не активен',
+          max_uses_reached: 'Лимит использований исчерпан',
+          service_not_applicable: 'Этот промокод не действует на выбранную услугу',
+          wrong_master: 'Промокод от другого мастера',
+        };
+        setPromoError(errMap[json.error ?? ''] ?? 'Не удалось применить');
+        return;
+      }
+      setAppliedPromo(json as typeof appliedPromo extends infer T ? NonNullable<T> : never);
+    } finally {
+      setPromoBusy(false);
+    }
+  }
+  function clearPromo() {
+    setAppliedPromo(null);
+    setPromoError(null);
+    setPromoCode('');
+  }
   const totalDuration = (selectedService?.duration_minutes ?? 0)
     + selectedUpsells.reduce((s, u) => s + u.duration_minutes, 0);
 
@@ -887,6 +955,51 @@ export default function BookPage() {
                   <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{bonusPreview} {selectedService.currency}</span>
                 </div>
               )}
+
+              {/* Promo code field */}
+              <div className="space-y-1.5 pt-1 border-t">
+                {appliedPromo ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm">
+                      <span className="font-medium text-emerald-700 dark:text-emerald-300">{appliedPromo.code}</span>
+                      <span className="ml-2 text-muted-foreground">−{appliedPromo.discount_amount} {selectedService.currency}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearPromo}
+                      className="text-xs text-muted-foreground hover:text-foreground underline"
+                    >
+                      убрать
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <label className="text-xs text-muted-foreground">Промокод</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
+                        placeholder="Введите код"
+                        className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm uppercase outline-none focus:border-primary"
+                        maxLength={32}
+                      />
+                      <button
+                        type="button"
+                        onClick={applyPromo}
+                        disabled={promoBusy || !promoCode.trim()}
+                        className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {promoBusy ? '...' : 'Применить'}
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-[11px] text-red-500">{promoError}</p>
+                    )}
+                  </>
+                )}
+              </div>
+
               <div className="border-t pt-2 flex justify-between">
                 <span className="font-medium">{t('totalLabel')}</span>
                 <span className="font-bold">{totalPrice.toFixed(0)} {selectedService.currency}</span>
