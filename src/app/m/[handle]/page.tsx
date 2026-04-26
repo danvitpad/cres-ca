@@ -349,8 +349,12 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       />
 
       <div
-        className="relative h-52 w-full overflow-hidden sm:h-72"
-        style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}
+        className="relative h-56 w-full overflow-hidden sm:h-80 lg:h-[420px]"
+        style={
+          master.cover_url
+            ? undefined
+            : { background: `linear-gradient(135deg, ${accent}, ${accent}99)` }
+        }
       >
         {master.cover_url && (
           <Image
@@ -362,9 +366,13 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             style={{ objectPosition: `center ${bannerY}%` }}
           />
         )}
+        {/* Subtle vignette so light text remains readable on bright covers */}
+        {master.cover_url && (
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+        )}
       </div>
 
-      <div className="mx-auto -mt-16 max-w-3xl px-5 sm:-mt-20 sm:px-8">
+      <div className="mx-auto -mt-16 max-w-6xl px-4 sm:-mt-20 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:gap-6">
           <div className="relative size-28 shrink-0 overflow-hidden rounded-full border-4 border-white bg-neutral-100 shadow-xl sm:size-36">
             <MasterAvatar url={master.avatar_url} name={displayName} />
@@ -425,7 +433,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           </p>
         )}
 
-        <div className="mt-8 flex flex-wrap justify-center gap-3 sm:justify-start">
+        {/* Mobile-only CTA right under hero. Desktop has its own sticky CTA in the right column. */}
+        <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start lg:hidden">
           <Link
             href={`/ru/book?master=${master.id}`}
             className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -436,6 +445,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           </Link>
           <FollowMasterButton masterId={master.id} accent={accent} />
         </div>
+
+        {/* Two-column layout — Fresha-style: full content on left, sticky booking summary on right */}
+        <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="min-w-0 space-y-12">
 
         {/* Contacts + socials + interests — all gated on per-field public flags */}
         {(((master.phone && master.phone_public) ||
@@ -758,7 +771,66 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             )}
           </div>
         )}
+          </div>
+          {/* ─── Right column: sticky booking summary — desktop only ─── */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                Запись онлайн
+              </div>
+              {services.length > 0 && (() => {
+                const minPrice = Math.min(...services.filter(s => s.price != null).map(s => s.price as number));
+                const cur = services[0]?.currency ?? 'UAH';
+                return (
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-xs text-neutral-500">от</span>
+                    <span className="text-2xl font-bold text-neutral-900">{minPrice}</span>
+                    <span className="text-sm text-neutral-500">{cur}</span>
+                  </div>
+                );
+              })()}
+              {reviews > 0 && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-neutral-600">
+                  <Star className="size-4 fill-amber-400 text-amber-400" />
+                  <strong className="text-neutral-900">{rating.toFixed(1)}</strong>
+                  <span className="text-neutral-400">· {reviews} отзывов</span>
+                </div>
+              )}
+              <Link
+                href={`/ru/book?master=${master.id}`}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: accent }}
+              >
+                <Calendar className="size-4" />
+                Записаться
+              </Link>
+              <div className="mt-2">
+                <FollowMasterButton masterId={master.id} accent={accent} />
+              </div>
+              {master.city && (
+                <div className="mt-4 flex items-center gap-2 border-t border-neutral-100 pt-4 text-xs text-neutral-500">
+                  <MapPin className="size-3.5" />
+                  {master.city}
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
+
+      {/* Mobile sticky bottom CTA — visible while scrolling on phones */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur p-3 lg:hidden">
+        <Link
+          href={`/ru/book?master=${master.id}`}
+          className="flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          style={{ backgroundColor: accent }}
+        >
+          <Calendar className="size-4" />
+          Записаться
+        </Link>
+      </div>
+      {/* spacer so content above isn't covered by the mobile sticky bar */}
+      <div className="h-20 lg:hidden" />
     </div>
   );
 }
