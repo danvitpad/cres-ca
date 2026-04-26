@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "comment_about_schedule": "Hobby tier ограничивает cron на «once per day» (vercel.com/docs/cron-jobs/usage-and-pricing). Если выставить более частое расписание (*/5 / */15 / */30) — build падает с «Cron expressions that would run more frequently will fail during deployment». Поэтому ВСЕ cron здесь — daily. Для частых тиков (notifications dispatch, reminders 24h/2h, review request 90-150min, appointment auto-close, burning-slots) надо либо: (а) перейти на Pro и переставить на minute-интервалы, (б) использовать Supabase pg_cron внутри проекта, дёргая endpoint с CRON_SECRET. См. CLAUDE.md → Stubs / deferred → Hobby cron limit.",
   "crons": [
     { "path": "/api/cron/notifications",         "schedule": "15 0 * * *"   },
     { "path": "/api/cron/reminders",             "schedule": "0 14 * * *"   },
