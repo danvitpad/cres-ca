@@ -25,18 +25,23 @@ export interface AutomationKindSpec {
   variables: { key: string; label: string }[];
 }
 
+/* Дефолтные шаблоны — без приветствий типа «Привет», нейтрально для «ты» и «Вы».
+   Структурированный формат: услуга на время / стоимость / адрес. Мастер может
+   переопределить любой шаблон в диалоге. */
 export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
   reminder_24h: {
     kind: 'reminder_24h',
     title: 'Напоминание за 24 часа',
     description: 'Уходит клиенту за день до визита',
-    defaultSubject: '📅 Завтра у вас запись',
-    defaultContent: '{client_name}, завтра в {time} у вас {service_name}. Подтвердите приход: {confirm_url} — {master_name}',
+    defaultSubject: '📅 Запись на завтра',
+    defaultContent: 'Напоминаю о записи на завтра:\n{service_name} на {time}\nСтоимость: {price}\nАдрес: {address}',
     variables: [
-      { key: 'client_name', label: 'Имя клиента' },
-      { key: 'time', label: 'Время визита' },
       { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время визита' },
+      { key: 'price', label: 'Стоимость (с валютой)' },
+      { key: 'address', label: 'Адрес мастера' },
       { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
       { key: 'confirm_url', label: 'Ссылка подтверждения' },
     ],
   },
@@ -44,25 +49,27 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
     kind: 'reminder_2h',
     title: 'Напоминание за 2 часа',
     description: 'Уходит клиенту за 2 часа до визита',
-    defaultSubject: '⏰ Через 2 часа — {service_name}',
-    defaultContent: '{client_name}, через 2 часа в {time} — {service_name}. Не опаздывайте!',
+    defaultSubject: '⏰ Через 2 часа — запись',
+    defaultContent: 'Напоминаю — через 2 часа запись:\n{service_name} на {time}\nСтоимость: {price}\nАдрес: {address}',
     variables: [
-      { key: 'client_name', label: 'Имя клиента' },
-      { key: 'time', label: 'Время визита' },
       { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время визита' },
+      { key: 'price', label: 'Стоимость (с валютой)' },
+      { key: 'address', label: 'Адрес мастера' },
       { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
     ],
   },
   review_request: {
     kind: 'review_request',
     title: 'Запрос отзыва',
     description: 'Уходит клиенту через 2 часа после визита',
-    defaultSubject: '⭐ Как прошёл визит к {master_name}?',
-    defaultContent: 'Как прошёл визит, {client_name}? Поставьте оценку — это помогает другим клиентам найти хорошего специалиста.',
+    defaultSubject: '⭐ Оцените визит',
+    defaultContent: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста — это помогает другим клиентам найти хорошего специалиста.',
     variables: [
-      { key: 'client_name', label: 'Имя клиента' },
-      { key: 'master_name', label: 'Имя мастера' },
       { key: 'service_name', label: 'Услуга' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
     ],
   },
   cadence: {
@@ -70,21 +77,21 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
     title: 'Smart rebooking',
     description: 'Уходит клиенту, который перестал приходить по своей привычке',
     defaultSubject: '⏰ Пора записаться?',
-    defaultContent: '{client_name}, обычно ты приходишь раз в ~{avg} дней. Прошло уже {days} — пора записаться?',
+    defaultContent: 'Обычно интервал между визитами ~{avg} дней.\nПрошло уже {days} — пора записаться?',
     variables: [
-      { key: 'client_name', label: 'Имя клиента' },
       { key: 'avg', label: 'Средний интервал (дней)' },
       { key: 'days', label: 'Дней с последнего визита' },
       { key: 'day_name', label: 'День недели (smart)' },
       { key: 'usual_time', label: 'Обычное время (smart)' },
+      { key: 'client_name', label: 'Имя клиента' },
     ],
   },
   win_back: {
     kind: 'win_back',
     title: 'Win-back',
     description: 'Уходит клиенту, который не был 60+ дней',
-    defaultSubject: '💜 Скучаем по вам',
-    defaultContent: '{client_name}, давно тебя не было 🙂 Хочешь вернуться? Есть свободные слоты на этой неделе.',
+    defaultSubject: '💜 Давно не виделись',
+    defaultContent: 'Давно не виделись 🙂\nЕсть свободные слоты на этой неделе — записаться можно прямо в боте.',
     variables: [
       { key: 'client_name', label: 'Имя клиента' },
       { key: 'master_name', label: 'Имя мастера' },
@@ -95,10 +102,10 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
     title: 'NPS опрос',
     description: 'Уходит клиенту после 3 / 10 / 20 / 50 визитов',
     defaultSubject: '📊 Короткий опрос',
-    defaultContent: '{client_name}, вы были у нас уже {total} раз. Оцените от 0 до 10 — насколько вы рекомендовали бы нас друзьям?',
+    defaultContent: 'Уже {total}-й визит — спасибо за доверие!\nОцените от 0 до 10, насколько порекомендовали бы нас друзьям.',
     variables: [
-      { key: 'client_name', label: 'Имя клиента' },
       { key: 'total', label: 'Всего визитов' },
+      { key: 'client_name', label: 'Имя клиента' },
     ],
   },
 };

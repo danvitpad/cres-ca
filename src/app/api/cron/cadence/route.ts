@@ -14,15 +14,15 @@ import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-se
 type Lang = 'ru' | 'uk' | 'en';
 
 const SMART_CADENCE: Record<Lang, string> = {
-  ru: '{client_name}, ваше любимое окно в {day_name} в {usual_time} скоро займут. Забронировать?',
-  uk: '{client_name}, ваше улюблене вікно у {day_name} о {usual_time} скоро займуть. Забронювати?',
-  en: '{client_name}, your usual slot on {day_name} at {usual_time} will be taken soon. Want to book?',
+  ru: 'Любимое окно скоро займут:\n{day_name} в {usual_time}\n\nЗаписаться можно прямо в боте.',
+  uk: 'Улюблене вікно скоро займуть:\n{day_name} о {usual_time}\n\nЗаписатися можна прямо в боті.',
+  en: 'Your usual slot will be taken soon:\n{day_name} at {usual_time}\n\nBook straight in the bot.',
 };
 
 const FALLBACK_CADENCE_BY_LANG: Record<Lang, string> = {
-  ru: '{client_name}, обычно ты приходишь раз в ~{avg} дней. Прошло уже {days} — пора записаться?',
-  uk: '{client_name}, зазвичай ти приходиш раз на ~{avg} днів. Минуло вже {days} — час записатися?',
-  en: '{client_name}, you usually visit every ~{avg} days. It has been {days} — time to book?',
+  ru: 'Обычно интервал между визитами ~{avg} дней.\nПрошло уже {days} — пора записаться?',
+  uk: 'Зазвичай інтервал між візитами ~{avg} днів.\nМинуло вже {days} — час записатися?',
+  en: 'Usual interval between visits is ~{avg} days.\nIt has been {days} — time to book?',
 };
 
 const SUBJECT_BY_LANG: Record<Lang, string> = {

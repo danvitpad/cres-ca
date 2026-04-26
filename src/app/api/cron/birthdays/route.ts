@@ -155,16 +155,34 @@ export async function GET(request: Request) {
     if (cfg?.enabled && cfg.send_tg_greeting && client.profile_id) {
       const clientMarker = `[bday:client:${client.id}:${dayKey}]`;
       if (!sentMarkers.has(clientMarker)) {
-        const discountText = cfg.offer_discount
-          ? `${cfg.discount_percent}% скидка на ${cfg.discount_visits === 1 ? 'следующий визит' : `${cfg.discount_visits} визитов`}, действует ${cfg.discount_validity_days} дней`
-          : '🎁';
-        const body = (cfg.greeting_message || 'С днём рождения, {client_name}!')
-          .replace('{client_name}', client.full_name || 'друг')
-          .replace('{discount_text}', discountText) + ` ${clientMarker}`;
+        // Дефолтный шаблон без приветствия — работает и на «ты», и на «Вы».
+        const DEFAULT_GREETING_BY_LANG: Record<Lang, string> = {
+          ru: 'С днём рождения!\nВ подарок: {discount_text}',
+          uk: 'З днем народження!\nУ подарунок: {discount_text}',
+          en: 'Happy birthday!\nGift: {discount_text}',
+        };
+        const discountTextByLang: Record<Lang, string> = {
+          ru: cfg.offer_discount
+            ? `${cfg.discount_percent}% скидка на ${cfg.discount_visits === 1 ? 'следующий визит' : `${cfg.discount_visits} визитов`}, действует ${cfg.discount_validity_days} дней`
+            : '🎁',
+          uk: cfg.offer_discount
+            ? `${cfg.discount_percent}% знижка на ${cfg.discount_visits === 1 ? 'наступний візит' : `${cfg.discount_visits} візитів`}, діє ${cfg.discount_validity_days} днів`
+            : '🎁',
+          en: cfg.offer_discount
+            ? `${cfg.discount_percent}% off ${cfg.discount_visits === 1 ? 'next visit' : `${cfg.discount_visits} visits`}, valid ${cfg.discount_validity_days} days`
+            : '🎁',
+        };
+        const greetingTpl = (cfg.greeting_message && cfg.greeting_message.trim().length > 0)
+          ? cfg.greeting_message
+          : DEFAULT_GREETING_BY_LANG[lang];
+        const body = greetingTpl
+          .replace('{client_name}', client.full_name || '')
+          .replace('{discount_text}', discountTextByLang[lang]) + ` ${clientMarker}`;
+        const title = lang === 'uk' ? '🎂 З днем народження!' : lang === 'en' ? '🎂 Happy birthday!' : '🎂 С днём рождения!';
         inserts.push({
           profile_id: client.profile_id,
           channel: 'telegram',
-          title: '🎂 С днём рождения!',
+          title,
           body,
           scheduled_for: new Date().toISOString(),
         });

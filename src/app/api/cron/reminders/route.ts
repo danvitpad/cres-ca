@@ -14,7 +14,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { renderTemplate, pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
+import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
 interface TemplateRow {
@@ -29,57 +29,113 @@ const DEFAULT_OFFSETS = [1440, 120]; // 24h + 2h
 const WINDOW_MINUTES = 10;            // ±10 min tolerance
 
 /* Локализованные fallback-шаблоны напоминаний. Применяются когда мастер не задал
-   свой message_template — выбираются по masters.public_language. */
+   свой message_template — выбираются по masters.public_language.
+   Формат: без приветствия (чтобы работал и на «ты» и на «Вы»),
+   структурированный: услуга на время / стоимость / адрес.
+   Линии стоимости/адреса включаются только если значения непустые. */
 
 type Lang = 'ru' | 'uk' | 'en';
 
-const FALLBACK_24H: Record<Lang, { subject: string; body: string }> = {
-  ru: {
-    subject: '📅 Завтра у вас запись',
-    body: '{client_name}, завтра в {time} у вас {service_name}. Подтвердите приход: {confirm_url} — {master_name}',
-  },
-  uk: {
-    subject: '📅 Завтра у вас запис',
-    body: '{client_name}, завтра о {time} у вас {service_name}. Підтвердіть прихід: {confirm_url} — {master_name}',
-  },
-  en: {
-    subject: '📅 Your appointment is tomorrow',
-    body: '{client_name}, tomorrow at {time} you have {service_name}. Confirm: {confirm_url} — {master_name}',
-  },
-};
+interface ReminderCtx {
+  service_name: string;
+  time: string;
+  date: string;
+  price_label: string;     // "1350 грн" or ""
+  address_label: string;   // assembled "вул. ..., 8 этаж" or ""
+  master_name: string;
+  confirm_url: string;
+  offset_label: string;    // "через 2 часа", "через 30 мин", "сегодня в 14:00", etc.
+}
 
-const FALLBACK_2H: Record<Lang, { subject: string; body: string }> = {
+const L10N: Record<Lang, {
+  cost: string;
+  address: string;
+  reminder24h: string;     // header for the 24h template
+  reminder2h: string;
+  reminderGeneric: (ctx: ReminderCtx) => string;
+  on: string;              // preposition before time, e.g. "на" / "о" / "at"
+  subject24h: string;
+  subject2h: string;
+  subjectGeneric: string;
+}> = {
   ru: {
-    subject: '⏰ Через 2 часа — {service_name}',
-    body: '{client_name}, через 2 часа в {time} — {service_name}. Не опаздывайте!',
+    cost: 'Стоимость',
+    address: 'Адрес',
+    reminder24h: 'Напоминаю о записи на завтра:',
+    reminder2h: 'Напоминаю — через 2 часа запись:',
+    reminderGeneric: (ctx) => `Напоминаю о записи (${ctx.date}):`,
+    on: 'на',
+    subject24h: '📅 Запись на завтра',
+    subject2h: '⏰ Через 2 часа — запись',
+    subjectGeneric: '🔔 Напоминание о визите',
   },
   uk: {
-    subject: '⏰ Через 2 години — {service_name}',
-    body: '{client_name}, через 2 години о {time} — {service_name}. Не запізнюйтесь!',
+    cost: 'Вартість',
+    address: 'Адреса',
+    reminder24h: 'Нагадую про запис на завтра:',
+    reminder2h: 'Нагадую — через 2 години запис:',
+    reminderGeneric: (ctx) => `Нагадую про запис (${ctx.date}):`,
+    on: 'о',
+    subject24h: '📅 Запис на завтра',
+    subject2h: '⏰ Через 2 години — запис',
+    subjectGeneric: '🔔 Нагадування про візит',
   },
   en: {
-    subject: '⏰ In 2 hours — {service_name}',
-    body: '{client_name}, in 2 hours at {time} — {service_name}. Please be on time!',
-  },
-};
-
-const FALLBACK_GENERIC: Record<Lang, { subject: string; body: string }> = {
-  ru: {
-    subject: '🔔 Напоминание о визите',
-    body: '{client_name}, напоминаем: {service_name} {date} в {time}. {master_name}',
-  },
-  uk: {
-    subject: '🔔 Нагадування про візит',
-    body: '{client_name}, нагадуємо: {service_name} {date} о {time}. {master_name}',
-  },
-  en: {
-    subject: '🔔 Appointment reminder',
-    body: '{client_name}, reminder: {service_name} on {date} at {time}. {master_name}',
+    cost: 'Price',
+    address: 'Address',
+    reminder24h: 'Reminder for tomorrow:',
+    reminder2h: 'Reminder — in 2 hours:',
+    reminderGeneric: (ctx) => `Reminder (${ctx.date}):`,
+    on: 'at',
+    subject24h: '📅 Tomorrow at the salon',
+    subject2h: '⏰ In 2 hours',
+    subjectGeneric: '🔔 Appointment reminder',
   },
 };
 
 function resolveLang(raw: unknown): Lang {
   return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
+
+const CURRENCY_LABEL: Record<string, string> = {
+  UAH: 'грн',
+  USD: '$',
+  EUR: '€',
+  RUB: '₽',
+  PLN: 'zł',
+  GBP: '£',
+};
+
+function fmtPrice(price: number | null | undefined, currency: string | null | undefined): string {
+  if (price == null || price <= 0) return '';
+  const cur = currency ?? 'UAH';
+  const label = CURRENCY_LABEL[cur] ?? cur;
+  // 1350.00 → "1350"; 1350.50 → "1350.50"
+  const n = Number(price);
+  const numStr = Number.isInteger(n) ? String(n) : n.toFixed(2);
+  // ₴/$/€/zł — трактовка как символа: `1350 грн` / `1350 $`
+  return `${numStr} ${label}`;
+}
+
+function fmtAddress(address: string | null | undefined, city: string | null | undefined, workplace: string | null | undefined): string {
+  // workplace name + city + street → "AURA простір краси, Київ, вул. Європейська 27/24".
+  // Каждый компонент опционален. Пробелы — через ', '.
+  const parts = [workplace, city, address]
+    .map((s) => (s ?? '').trim())
+    .filter(Boolean);
+  return parts.join(', ');
+}
+
+function buildFallbackBody(
+  lang: Lang,
+  header: string,
+  ctx: ReminderCtx,
+): string {
+  const t = L10N[lang];
+  const lines: string[] = [header, `${ctx.service_name} ${t.on} ${ctx.time}`];
+  if (ctx.price_label) lines.push(`${t.cost}: ${ctx.price_label}`);
+  if (ctx.address_label) lines.push(`${t.address}: ${ctx.address_label}`);
+  return lines.join('\n');
 }
 
 function formatOffset(min: number): string {
@@ -135,19 +191,29 @@ export async function GET(request: Request) {
     id: string;
     starts_at: string;
     status: string;
+    price: number | null;
+    currency: string | null;
     client_id: string;
     master_id: string;
     clients: { profile_id: string | null; full_name: string } | null;
-    services: { name: string } | null;
-    masters: { profile_id: string | null; display_name: string | null; public_language: string | null } | null;
+    services: { name: string; price: number | null; currency: string | null } | null;
+    masters: {
+      profile_id: string | null;
+      display_name: string | null;
+      public_language: string | null;
+      address: string | null;
+      city: string | null;
+      workplace_name: string | null;
+    } | null;
   };
 
   const horizonEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const upcomingRes = await supabase
     .from('appointments')
     .select(
-      'id, starts_at, status, client_id, master_id, ' +
-      'clients(profile_id, full_name), services(name), masters(profile_id, display_name, public_language)',
+      'id, starts_at, status, price, currency, client_id, master_id, ' +
+      'clients(profile_id, full_name), services(name, price, currency), ' +
+      'masters(profile_id, display_name, public_language, address, city, workplace_name)',
     )
     .in('status', ['booked', 'confirmed'])
     .gte('starts_at', now.toISOString())
@@ -274,7 +340,15 @@ export async function GET(request: Request) {
     const minutesUntil = (startsAt.getTime() - now.getTime()) / 60000;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://cres-ca.com';
     const time = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const date = startsAt.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+    const langForDate = resolveLang(master?.public_language);
+    const localeMap: Record<Lang, string> = { ru: 'ru-RU', uk: 'uk-UA', en: 'en-US' };
+    const date = startsAt.toLocaleDateString(localeMap[langForDate], { weekday: 'long', day: 'numeric', month: 'long' });
+
+    // Стоимость берём с appointment.price (snapshot на момент бронирования) — fallback на service.price
+    const priceVal = apt.price && apt.price > 0 ? apt.price : (service?.price ?? null);
+    const curVal = apt.currency ?? service?.currency ?? 'UAH';
+    const priceLabel = fmtPrice(priceVal, curVal);
+    const addressLabel = fmtAddress(master?.address, master?.city, master?.workplace_name);
 
     const ctx = {
       client_name: client?.full_name ?? 'клиент',
@@ -283,6 +357,21 @@ export async function GET(request: Request) {
       date,
       master_name: master?.display_name ?? '',
       confirm_url: `${baseUrl}/confirm/${apt.id}`,
+      // дополнительные плейсхолдеры для пользовательских шаблонов
+      price: priceLabel,
+      address: addressLabel,
+      currency: CURRENCY_LABEL[curVal] ?? curVal,
+    };
+
+    const reminderCtx: ReminderCtx = {
+      service_name: ctx.service_name,
+      time,
+      date,
+      price_label: priceLabel,
+      address_label: addressLabel,
+      master_name: ctx.master_name,
+      confirm_url: ctx.confirm_url,
+      offset_label: '',
     };
 
     // Auto-release unconfirmed booking at the 2h mark
@@ -305,26 +394,31 @@ export async function GET(request: Request) {
       // Локализация fallback'ов по publicLanguage мастера —
       // мастер выбрал «uk» в settings → клиент получит укр-сообщение.
       const lang = resolveLang(master?.public_language);
-      const fb24 = FALLBACK_24H[lang];
-      const fb2 = FALLBACK_2H[lang];
-      const fbGen = FALLBACK_GENERIC[lang];
+      const t = L10N[lang];
+      // Прекомпилируем дефолтные тела (без приветствия, на ты+вы нейтрально)
+      const fbBody24 = buildFallbackBody(lang, t.reminder24h, reminderCtx);
+      const fbBody2  = buildFallbackBody(lang, t.reminder2h, reminderCtx);
+      const fbBodyGen = buildFallbackBody(lang, t.reminderGeneric(reminderCtx), reminderCtx);
+
       for (const off of offsets) {
         if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
         let title: string;
         let body: string;
         if (off === 1440) {
-          const tpl = getTemplate(apt.master_id, 'reminder_24h', fb24.subject, fb24.body);
+          const tpl = getTemplate(apt.master_id, 'reminder_24h', t.subject24h, fbBody24);
           const r = renderFullTemplate(tpl, ctx);
-          title = r.subject ?? fb24.subject;
+          title = r.subject ?? t.subject24h;
+          // Если мастер не задал свой шаблон — pickFullTemplate вернул fbBody24 как body,
+          // и render через renderTemplate просто пройдёт по нему без подстановок (там уже всё подставлено).
           body = r.body;
         } else if (off === 120) {
-          const tpl = getTemplate(apt.master_id, 'reminder_2h', fb2.subject, fb2.body);
+          const tpl = getTemplate(apt.master_id, 'reminder_2h', t.subject2h, fbBody2);
           const r = renderFullTemplate(tpl, ctx);
-          title = r.subject ?? fb2.subject;
+          title = r.subject ?? t.subject2h;
           body = r.body;
         } else {
-          title = fbGen.subject;
-          body = renderTemplate(fbGen.body, ctx);
+          title = t.subjectGeneric;
+          body = fbBodyGen;
         }
         if (await queueReminder(client.profile_id, apt.id, off, title, body)) created++;
       }

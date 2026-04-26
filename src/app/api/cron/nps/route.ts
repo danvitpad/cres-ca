@@ -15,15 +15,15 @@ type Lang = 'ru' | 'uk' | 'en';
 const FALLBACK_NPS: Record<Lang, { subject: string; body: string }> = {
   ru: {
     subject: '📊 Короткий опрос',
-    body: '{client_name}, вы были у нас уже {total} раз. Оцените от 0 до 10 — насколько вы рекомендовали бы нас друзьям? [nps:{client_id}:{total}]',
+    body: 'Уже {total}-й визит — спасибо за доверие!\nОцените от 0 до 10, насколько порекомендовали бы нас друзьям.\n[nps:{client_id}:{total}]',
   },
   uk: {
     subject: '📊 Короткий опитувальник',
-    body: '{client_name}, ви були у нас вже {total} раз. Оцініть від 0 до 10 — наскільки ви порекомендували б нас друзям? [nps:{client_id}:{total}]',
+    body: 'Вже {total}-й візит — дякуємо за довіру!\nОцініть від 0 до 10, наскільки порекомендували б нас друзям.\n[nps:{client_id}:{total}]',
   },
   en: {
     subject: '📊 Quick survey',
-    body: '{client_name}, you have visited {total} times. From 0 to 10 — how likely would you recommend us to a friend? [nps:{client_id}:{total}]',
+    body: 'Visit #{total} — thanks for the trust!\nFrom 0 to 10, how likely would you recommend us to a friend?\n[nps:{client_id}:{total}]',
   },
 };
 

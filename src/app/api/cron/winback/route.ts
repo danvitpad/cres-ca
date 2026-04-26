@@ -14,16 +14,16 @@ type Lang = 'ru' | 'uk' | 'en';
 
 const FALLBACK_WINBACK: Record<Lang, { subject: string; body: string }> = {
   ru: {
-    subject: '💜 Скучаем по вам',
-    body: '{client_name}, давно тебя не было 🙂 Хочешь вернуться? Есть свободные слоты на этой неделе. [winback:{client_id}:{tag}]',
+    subject: '💜 Давно не виделись',
+    body: 'Давно не виделись 🙂\nЕсть свободные слоты на этой неделе — записаться можно прямо в боте.\n[winback:{client_id}:{tag}]',
   },
   uk: {
-    subject: '💜 Сумуємо за вами',
-    body: '{client_name}, давно тебе не було 🙂 Хочеш повернутися? Є вільні слоти цього тижня. [winback:{client_id}:{tag}]',
+    subject: '💜 Давно не бачились',
+    body: 'Давно не бачились 🙂\nЄ вільні слоти цього тижня — записатися можна прямо в боті.\n[winback:{client_id}:{tag}]',
   },
   en: {
-    subject: '💜 We miss you',
-    body: '{client_name}, it has been a while 🙂 Want to come back? Open slots this week. [winback:{client_id}:{tag}]',
+    subject: '💜 It has been a while',
+    body: 'It has been a while 🙂\nOpen slots this week — book straight in the bot.\n[winback:{client_id}:{tag}]',
   },
 };
 

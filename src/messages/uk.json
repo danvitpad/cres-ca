@@ -1470,7 +1470,7 @@
     "guildPlaceholder": "Beauty Alliance...",
     "messagesPage": {
       "title": "Шаблони повідомлень",
-      "description": "Змінні: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}'",
+      "description": "Змінні: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}', '{price}', '{address}'",
       "addTemplate": "Додати шаблон",
       "selectType": "Обери тип…",
       "create": "Створити",

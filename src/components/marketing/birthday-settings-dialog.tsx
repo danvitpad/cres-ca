@@ -34,7 +34,8 @@ interface BirthdaySettings {
 const DEFAULT: BirthdaySettings = {
   enabled: true,
   send_tg_greeting: true,
-  greeting_message: 'С днём рождения, {client_name}! 🎉 От нашей мастерской — небольшой подарок: {discount_text}.',
+  // Без приветствия — чтобы работало и на «ты», и на «Вы».
+  greeting_message: 'С днём рождения! 🎉\nВ подарок: {discount_text}',
   offer_discount: true,
   discount_percent: 15,
   discount_visits: 1,
@@ -148,7 +149,7 @@ export function BirthdaySettingsDialog({ open, onOpenChange, masterId }: Props) 
                         rows={3}
                         value={s.greeting_message}
                         onChange={(e) => setS({ ...s, greeting_message: e.target.value })}
-                        placeholder="С днём рождения, {client_name}! 🎉"
+                        placeholder="С днём рождения! 🎉"
                       />
                       <p className="text-[11px] text-muted-foreground">
                         Доступные плейсхолдеры: <code>{'{client_name}'}</code>, <code>{'{discount_text}'}</code>

@@ -71,8 +71,8 @@ export async function GET(request: Request) {
         await supabase.from('notifications').insert({
           profile_id: client.profile_id,
           channel: 'telegram',
-          title: '💈 We miss you!',
-          body: `Hi ${client.full_name}! It's been ${daysSince} days since your last visit. Book your next appointment today!`,
+          title: '💈 Давно не виделись',
+          body: `Прошло ${daysSince} дней с последнего визита.\nЕсть свободные слоты — записаться можно прямо в боте.`,
           scheduled_for: now.toISOString(),
         });
         created++;

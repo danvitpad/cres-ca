@@ -1488,7 +1488,7 @@
     "guildPlaceholder": "Beauty Alliance...",
     "messagesPage": {
       "title": "Message Templates",
-      "description": "Variables: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}'",
+      "description": "Variables: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}', '{price}', '{address}'",
       "addTemplate": "Add template",
       "selectType": "Select type…",
       "create": "Create",

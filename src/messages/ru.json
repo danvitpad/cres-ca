@@ -1497,7 +1497,7 @@
     "guildPlaceholder": "Beauty Alliance...",
     "messagesPage": {
       "title": "Шаблоны сообщений",
-      "description": "Переменные: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}'",
+      "description": "Переменные: '{client_name}', '{service_name}', '{time}', '{date}', '{master_name}', '{days}', '{price}', '{address}'",
       "addTemplate": "Добавить шаблон",
       "selectType": "Выбери тип…",
       "create": "Создать",

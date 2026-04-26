@@ -96,7 +96,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const serviceName = row.services?.name ?? 'услугу';
-  const clientFirstName = (row.clients?.full_name ?? '').split(' ')[0] || 'Привет';
 
   // Build callback buttons. Format: rebook:<suggestionId>:<slotIndex>  (0,1,2) or rebook_no:<id>
   const slotButtons = freshSlots.slice(0, 3).map((slot, i) => ({
@@ -114,8 +113,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       chat_id: clientTg,
       parse_mode: 'HTML',
       text:
-        `💅 <b>${clientFirstName}</b>, как насчёт ${serviceName.toLowerCase()}?\n\n` +
-        `Выбери удобное время — запишу тебя одним кликом.`,
+        `💅 Как насчёт <b>${serviceName.toLowerCase()}</b>?\n\n` +
+        `Выбрать удобное время — одним кликом ниже.`,
       reply_markup: {
         inline_keyboard: [
           ...slotButtons.map((b) => [b]),

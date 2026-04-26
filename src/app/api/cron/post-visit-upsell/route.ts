@@ -13,15 +13,17 @@ type Lang = 'ru' | 'uk' | 'en';
 const FALLBACK_UPSELL: Record<Lang, { title: string; bodyFor: (clientName: string, name: string, price: number, cur: string) => string }> = {
   ru: {
     title: '💄 Рекомендация после визита',
-    bodyFor: (n, p, pr, c) => `${n}, для закрепления результата рекомендуем: ${p} (${pr} ${c}). Купить в один клик`,
+    // clientName сохраняем в сигнатуре для совместимости, но в тексте не используем —
+    // сообщение нейтрально и работает и на «ты», и на «Вы».
+    bodyFor: (_n, p, pr, c) => `Для закрепления результата рекомендую:\n${p}\nЦена: ${pr} ${c}\n\nКупить в один клик в боте.`,
   },
   uk: {
     title: '💄 Рекомендація після візиту',
-    bodyFor: (n, p, pr, c) => `${n}, для закріплення результату рекомендуємо: ${p} (${pr} ${c}). Купити в один клік`,
+    bodyFor: (_n, p, pr, c) => `Для закріплення результату рекомендую:\n${p}\nЦіна: ${pr} ${c}\n\nКупити в один клік у боті.`,
   },
   en: {
     title: '💄 Post-visit recommendation',
-    bodyFor: (n, p, pr, c) => `${n}, to keep the result we recommend: ${p} (${pr} ${c}). One-click purchase`,
+    bodyFor: (_n, p, pr, c) => `To keep the result, I recommend:\n${p}\nPrice: ${pr} ${c}\n\nOne-click purchase in the bot.`,
   },
 };
 
