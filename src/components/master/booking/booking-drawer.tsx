@@ -20,6 +20,7 @@ import { ArrowLeft, X, Clock, Check, Calendar, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { formatMoney } from '@/lib/format/money';
+import { composeAddress } from '@/lib/format/address';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import type { BookingMaster, BookingService } from './booking-context';
 
@@ -694,7 +695,7 @@ function ConfirmStep({
   const priceStr = typeof service.price === 'number' && service.price > 0
     ? formatMoney(service.price, (service.currency || 'UAH').toUpperCase())
     : null;
-  const fullAddress = [master.workplaceName, master.address, master.city].filter(Boolean).join(', ');
+  const fullAddress = composeAddress(master.workplaceName, master.address, master.city);
 
   return (
     <div className="space-y-6">
