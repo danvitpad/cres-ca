@@ -24,6 +24,15 @@ export interface MasterData {
   slug: string | null;
   is_public: boolean | null;
   is_active: boolean;
+  // Unified loyalty programme config (migration 00102).
+  loyalty_enabled: boolean | null;
+  loyalty_visit_percent: number | null;
+  loyalty_max_per_visit: number | null;
+  loyalty_expiry_months: number | null;
+  loyalty_referral_reward: number | null;
+  loyalty_birthday_enabled: boolean | null;
+  loyalty_birthday_percent: number | null;
+  loyalty_birthday_validity_days: number | null;
   tax_rate_percent: number | null;
   bonus_points: number | null;
   profile: {

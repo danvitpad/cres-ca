@@ -35,6 +35,7 @@ import {
   KeyRound,
   Briefcase,
   MessageSquareHeart,
+  Gift,
   Settings as SettingsCogIcon,
 } from 'lucide-react';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
@@ -104,6 +105,7 @@ export default function SettingsPage() {
     { key: 'subscription', icon: CreditCard, title: t('subscription'), desc: t('subscriptionDesc') || t('subscription') },
     { key: 'invite', icon: LinkIcon, title: t('inviteLink'), desc: t('inviteDesc') || t('inviteLink') },
     { key: 'policies', icon: Shield, title: t('policies'), desc: t('policiesDesc') || t('policies') },
+    { key: 'loyalty', icon: Gift, title: 'Лояльность', desc: 'Баллы за визиты, реферал, ДР-промокод' },
     { key: 'notifications', icon: BellRing, title: 'Уведомления', desc: 'Напоминания на сайте и в Telegram' },
     { key: 'feedback', icon: MessageSquareHeart, title: 'Обратная связь', desc: 'Напишите команде CRES-CA', href: `/${locale}/settings/feedback` },
   ];
@@ -119,6 +121,7 @@ export default function SettingsPage() {
         {activeSection === 'subscription' && <SubscriptionTab />}
         {activeSection === 'invite' && <InviteLinkTab master={master} />}
         {activeSection === 'policies' && <PoliciesTab master={master} onSaved={refetch} />}
+        {activeSection === 'loyalty' && <LoyaltyTab master={master} onSaved={refetch} />}
         {activeSection === 'notifications' && <NotificationsTab master={master} onSaved={refetch} />}
       </SettingsSectionShell>
     );
@@ -1252,6 +1255,159 @@ function SecurityTab() {
             disabled={deleting || deleteConfirmation !== 'УДАЛИТЬ' || !deletePassword}
           >
             {deleting ? 'Удаление...' : 'Удалить аккаунт'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ─── Loyalty: unified bonus / referral / birthday programme ─────────── */
+function LoyaltyTab({
+  master,
+  onSaved,
+}: {
+  master: NonNullable<ReturnType<typeof useMaster>['master']>;
+  onSaved: () => void;
+}) {
+  const tc = useTranslations('common');
+  const [enabled, setEnabled] = useState(master.loyalty_enabled ?? false);
+  const [percent, setPercent] = useState(master.loyalty_visit_percent ?? 5);
+  const [cap, setCap] = useState(master.loyalty_max_per_visit ?? 100);
+  const [expiry, setExpiry] = useState(master.loyalty_expiry_months ?? 6);
+  const [referralReward, setReferralReward] = useState(master.loyalty_referral_reward ?? 100);
+  const [bdayEnabled, setBdayEnabled] = useState(master.loyalty_birthday_enabled ?? false);
+  const [bdayPercent, setBdayPercent] = useState(master.loyalty_birthday_percent ?? 10);
+  const [bdayValidity, setBdayValidity] = useState(master.loyalty_birthday_validity_days ?? 30);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('masters')
+      .update({
+        loyalty_enabled: enabled,
+        loyalty_visit_percent: percent,
+        loyalty_max_per_visit: cap,
+        loyalty_expiry_months: expiry,
+        loyalty_referral_reward: referralReward,
+        loyalty_birthday_enabled: bdayEnabled,
+        loyalty_birthday_percent: bdayPercent,
+        loyalty_birthday_validity_days: bdayValidity,
+      })
+      .eq('id', master.id);
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else { toast.success('Сохранено'); onSaved(); }
+  }
+
+  return (
+    <div className="space-y-5">
+      <Card>
+        <CardHeader>
+          <CardTitle>Программа лояльности</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Один общий тумблер на 3 механики: баллы за визиты, реферальную программу и подарок на ДР.
+            Все баллы привязаны лично к тебе — клиент не может потратить их у другого мастера.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div>
+              <p className="text-sm font-semibold">Программа включена</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Когда выключено — никакие баллы не начисляются и не списываются. Уже начисленные сохраняются.
+              </p>
+            </div>
+            <Switch checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+
+          <div className={enabled ? '' : 'opacity-50 pointer-events-none'}>
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold">💎 Баллы за визиты</h4>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <Label>% от стоимости визита</Label>
+                  <Input
+                    type="number" min={0} max={20}
+                    value={percent}
+                    onChange={(e) => setPercent(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">1 балл = 1 ₴ скидки. Рекомендуем 3-5%.</p>
+                </div>
+                <div>
+                  <Label>Не больше N ₴ за визит</Label>
+                  <Input
+                    type="number" min={0}
+                    value={cap}
+                    onChange={(e) => setCap(Math.max(0, Number(e.target.value) || 0))}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Защита от больших чеков.</p>
+                </div>
+                <div>
+                  <Label>Срок жизни (мес.)</Label>
+                  <Input
+                    type="number" min={1} max={60}
+                    value={expiry}
+                    onChange={(e) => setExpiry(Math.max(1, Math.min(60, Number(e.target.value) || 6)))}
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">Через N месяцев баллы сгорают.</p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-semibold">🤝 Реферальная программа</h4>
+                <p className="text-xs text-muted-foreground mt-1 mb-3">
+                  Когда твой клиент приведёт нового и тот сделает первый оплаченный визит — ты автоматически
+                  начисляешь реферреру баллы. Поставь сумму меньше среднего чека первого визита, чтобы
+                  привлечение нового клиента было в плюс.
+                </p>
+                <div className="max-w-xs">
+                  <Label>Награда реферреру (₴)</Label>
+                  <Input
+                    type="number" min={0}
+                    value={referralReward}
+                    onChange={(e) => setReferralReward(Math.max(0, Number(e.target.value) || 0))}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold">🎂 Подарок на День Рождения</h4>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Утром в ДР клиента ты автоматически генерируешь ему персональный промокод на скидку.
+                      Это не накопительные баллы — клиент должен прийти в течение N дней или промо сгорит.
+                    </p>
+                  </div>
+                  <Switch checked={bdayEnabled} onCheckedChange={setBdayEnabled} />
+                </div>
+                <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${bdayEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                  <div>
+                    <Label>Скидка (%)</Label>
+                    <Input
+                      type="number" min={0} max={50}
+                      value={bdayPercent}
+                      onChange={(e) => setBdayPercent(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Действует (дней)</Label>
+                    <Input
+                      type="number" min={1} max={365}
+                      value={bdayValidity}
+                      onChange={(e) => setBdayValidity(Math.max(1, Math.min(365, Number(e.target.value) || 30)))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? tc('loading') : tc('save')}
           </Button>
         </CardContent>
       </Card>

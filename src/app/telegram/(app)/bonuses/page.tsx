@@ -1,7 +1,9 @@
 /** --- YAML
  * name: MiniAppBonusesPage
- * description: Mini App wallet/bonuses — balance, referral share, earn tips, invited count. Parity with Web /wallet (Phase 12).
+ * description: Mini App wallet/bonuses — total balance + per-master breakdown (unified loyalty system).
+ *              Each master is a separate balance card; client knows points are usable only at that master.
  * created: 2026-04-19
+ * updated: 2026-04-26
  * --- */
 
 'use client';
@@ -13,10 +15,18 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
+interface MasterBalance {
+  master_id: string;
+  balance: number;
+  master_name: string | null;
+  master_avatar: string | null;
+}
+
 export default function MiniAppBonusesPage() {
   const { userId } = useAuthStore();
   const { haptic } = useTelegram();
-  const [bonusPoints, setBonusPoints] = useState(0);
+  const [totalBalance, setTotalBalance] = useState(0);
+  const [perMaster, setPerMaster] = useState<MasterBalance[]>([]);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [invitedCount, setInvitedCount] = useState(0);
   const [earnedTotal, setEarnedTotal] = useState(0);
@@ -27,21 +37,45 @@ export default function MiniAppBonusesPage() {
     if (!userId) return;
     (async () => {
       const supabase = createClient();
+
+      // Per-master loyalty balances (unified system)
+      const { data: balances } = await supabase
+        .from('loyalty_balances')
+        .select('master_id, balance, masters(display_name, profile_id, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url))')
+        .eq('profile_id', userId)
+        .gt('balance', 0);
+      const list = (balances ?? []) as unknown as Array<{
+        master_id: string;
+        balance: number;
+        masters: {
+          display_name: string | null;
+          profiles: { full_name: string | null; avatar_url: string | null } | null;
+        } | null;
+      }>;
+      const masters: MasterBalance[] = list.map((b) => ({
+        master_id: b.master_id,
+        balance: Number(b.balance),
+        master_name: b.masters?.display_name ?? b.masters?.profiles?.full_name ?? null,
+        master_avatar: b.masters?.profiles?.avatar_url ?? null,
+      }));
+      setPerMaster(masters);
+      setTotalBalance(masters.reduce((s, m) => s + m.balance, 0));
+
+      // Referral code (independent flow)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('bonus_points, referral_code, public_id')
+        .select('referral_code, public_id')
         .eq('id', userId)
         .maybeSingle();
-      setBonusPoints(Number(profile?.bonus_points ?? 0));
       setReferralCode(profile?.referral_code ?? profile?.public_id ?? null);
 
       const { data: refs } = await supabase
         .from('referrals')
         .select('id, bonus_points')
         .eq('referrer_profile_id', userId);
-      const list = refs ?? [];
-      setInvitedCount(list.length);
-      setEarnedTotal(list.reduce((s, r) => s + Number(r.bonus_points ?? 0), 0));
+      const refList = refs ?? [];
+      setInvitedCount(refList.length);
+      setEarnedTotal(refList.reduce((s, r) => s + Number(r.bonus_points ?? 0), 0));
       setLoading(false);
     })();
   }, [userId]);
@@ -106,21 +140,60 @@ export default function MiniAppBonusesPage() {
         </button>
       </div>
 
-      {/* Balance */}
+      {/* Total balance */}
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Баланс бонусов</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50">Всего бонусов</p>
             <p className="mt-2 text-5xl font-bold tabular-nums">
-              {loading ? '—' : bonusPoints.toFixed(0)}
+              {loading ? '—' : totalBalance.toFixed(0)}
             </p>
-            <p className="mt-1 text-[11px] text-amber-300/80">Программа лояльности обновляется — скоро вернём возможность тратить</p>
+            <p className="mt-1 text-[11px] text-white/60">1 балл = 1 ₴ скидки у мастера, который начислил</p>
           </div>
           <div className="flex size-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
             <Sparkles className="size-6 text-amber-300" />
           </div>
         </div>
       </div>
+
+      {/* Per-master breakdown */}
+      {perMaster.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-white/50 px-1">Разбивка по мастерам</p>
+          {perMaster.map((m) => (
+            <div
+              key={m.master_id}
+              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+            >
+              <div className="flex size-10 items-center justify-center rounded-full bg-white/[0.05] text-[12px] font-semibold uppercase">
+                {m.master_avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.master_avatar} alt="" className="size-10 rounded-full object-cover" />
+                ) : (
+                  (m.master_name ?? '?').charAt(0)
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{m.master_name ?? 'Мастер'}</p>
+                <p className="text-[11px] text-white/50">баланс действует только у этого мастера</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold tabular-nums">{m.balance.toFixed(0)}</p>
+                <p className="text-[10px] text-white/40">баллов</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && totalBalance === 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center">
+          <p className="text-sm text-white/60">У тебя пока нет бонусов</p>
+          <p className="text-[11px] text-white/40 mt-1">
+            Бонусы начисляются автоматически после визита, если у мастера включена программа лояльности
+          </p>
+        </div>
+      )}
 
       {/* Referral stats (only when non-zero) */}
       {invitedCount > 0 && (
