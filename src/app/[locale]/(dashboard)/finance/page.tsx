@@ -1122,32 +1122,86 @@ function FinanceAiPanel({
           <Sparkles size={16} style={{ color: C.accent }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
               AI-помощник
             </span>
+          </div>
+          {!expanded ? (
+            // В свёрнутом виде сама подсказка кликабельна — клик по ней
+            // на месте раскрывается в строку ввода (без отдельной кнопки «Спросить»).
             <button
               type="button"
               onClick={() => {
-                setExpanded((v) => !v);
+                setExpanded(true);
                 setAnswer(null);
                 setPlan(null);
                 setTimeout(() => inputRef.current?.focus(), 50);
               }}
               style={{
-                fontSize: 12, fontWeight: 600,
-                color: expanded ? C.textSecondary : C.accent,
+                fontSize: 13, color: C.textSecondary, lineHeight: 1.55,
+                margin: 0, padding: 0, textAlign: 'left',
                 background: 'transparent', border: 'none', cursor: 'pointer',
+                width: '100%',
+                fontFamily: 'inherit',
               }}
             >
-              {expanded ? 'Свернуть' : 'Спросить AI'}
+              {loading
+                ? 'Анализирую ваши данные...'
+                : insight || 'Пока нечего прокомментировать — добавь больше записей или расходов, помощник даст рекомендации.'}
             </button>
-          </div>
-          <p style={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.55, margin: 0 }}>
-            {loading
-              ? 'Анализирую ваши данные...'
-              : insight || 'Пока нечего прокомментировать — добавь больше записей или расходов, помощник даст рекомендации.'}
-          </p>
+          ) : (
+            // Раскрытая форма ввода занимает то же место, где была подсказка.
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 10px 8px 14px', borderRadius: 999,
+              background: C.surfaceElevated, border: `1px solid ${C.border}`,
+            }}>
+              <input
+                ref={inputRef}
+                type="text"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+                }}
+                placeholder="«Сколько я заработал за апрель?» / «Удали расход 500 ₴ от 15 апреля»"
+                disabled={busy || executing}
+                style={{
+                  flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                  color: C.text, fontSize: 13,
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => { setExpanded(false); setQuestion(''); }}
+                title="Закрыть"
+                style={{
+                  width: 28, height: 28, borderRadius: 999,
+                  border: 'none', background: 'transparent', color: C.textSecondary,
+                  cursor: 'pointer', display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ×
+              </button>
+              <button
+                type="button"
+                onClick={ask}
+                disabled={busy || executing || question.trim().length < 2}
+                style={{
+                  width: 32, height: 32, borderRadius: 999,
+                  border: 'none', background: C.accent, color: '#fff',
+                  cursor: busy || question.trim().length < 2 ? 'not-allowed' : 'pointer',
+                  opacity: busy || question.trim().length < 2 ? 0.5 : 1,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}
+                aria-label="Спросить"
+              >
+                {busy ? '…' : <ArrowRight size={14} />}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1158,43 +1212,6 @@ function FinanceAiPanel({
           borderTop: `1px solid ${C.border}`,
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 10px 8px 14px', borderRadius: 999,
-            background: C.surfaceElevated, border: `1px solid ${C.border}`,
-          }}>
-            <input
-              ref={inputRef}
-              type="text"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
-              }}
-              placeholder="«Сколько я заработал за апрель?» / «Удали расход 500 ₴ от 15 апреля»"
-              disabled={busy || executing}
-              style={{
-                flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                color: C.text, fontSize: 13,
-              }}
-            />
-            <button
-              type="button"
-              onClick={ask}
-              disabled={busy || executing || question.trim().length < 2}
-              style={{
-                width: 32, height: 32, borderRadius: 999,
-                border: 'none', background: C.accent, color: '#fff',
-                cursor: busy || question.trim().length < 2 ? 'not-allowed' : 'pointer',
-                opacity: busy || question.trim().length < 2 ? 0.5 : 1,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              }}
-              aria-label="Спросить"
-            >
-              {busy ? '…' : <ArrowRight size={14} />}
-            </button>
-          </div>
-
           {/* QA-ответ или подводка к плану */}
           {answer && (
             <div style={{
@@ -1285,10 +1302,6 @@ function FinanceAiPanel({
             </div>
           )}
 
-          <p style={{ fontSize: 11, color: C.textTertiary, lineHeight: 1.5, margin: 0 }}>
-            Контекст: последние 30 дней. Enter — отправить, Esc — закрыть.
-            Удаления выполняются только после твоего подтверждения и могут быть откачены.
-          </p>
         </div>
       )}
     </div>

@@ -196,7 +196,10 @@ export default function CampaignsPage() {
           profile_id: c.profile_id,
           channel: ch,
           title: subject.trim(),
-          body: `${content.trim()} [camp:${campaignId}]`,
+          // body чистый — маркер кампании хранится в data.campaign_id (используется
+          // для аналитики), а раньше дублировался в виде «[camp:xxx]» в самом тексте
+          // и был виден клиенту в TG. Убрали.
+          body: content.trim(),
           scheduled_for: scheduledIso,
           data: {
             campaign_id: campaignId,

@@ -19,7 +19,10 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, CURRENCY } from '@/lib/dashboard-theme';
 
-type RewardType = 'percent' | 'fixed' | 'service';
+// Валидные значения определены check-constraint masters_client_referral_reward_type_check.
+// UI должен слать ровно эти строки, иначе PATCH 400. bonus_points не выводим
+// в UI — оно остаётся для Telegram-бота / голосовых команд.
+type RewardType = 'discount_percent' | 'discount_amount' | 'free_service';
 
 interface ReferralConfig {
   enabled: boolean;
@@ -29,9 +32,9 @@ interface ReferralConfig {
 }
 
 const REWARD_TYPES: { v: RewardType; label: string }[] = [
-  { v: 'percent', label: 'Скидка %' },
-  { v: 'fixed',   label: `Фикс ${CURRENCY}` },
-  { v: 'service', label: 'Бесплатная услуга' },
+  { v: 'discount_percent', label: 'Скидка %' },
+  { v: 'discount_amount',  label: `Фикс ${CURRENCY}` },
+  { v: 'free_service',     label: 'Бесплатная услуга' },
 ];
 
 export function ReferralProgramPanel() {
@@ -40,7 +43,7 @@ export function ReferralProgramPanel() {
 
   const [cfg, setCfg] = useState<ReferralConfig>({
     enabled: false,
-    reward_type: 'percent',
+    reward_type: 'discount_percent',
     reward_value: 10,
     min_visits: 1,
   });
@@ -55,9 +58,18 @@ export function ReferralProgramPanel() {
   useEffect(() => {
     if (!master) return;
     const m = master as unknown as Record<string, unknown>;
+    // Existing rows might still hold legacy short codes — normalise to the canonical 3.
+    const rawType = (m.client_referral_reward_type as string | undefined) || 'discount_percent';
+    const normalizedType: RewardType =
+      rawType === 'percent' ? 'discount_percent'
+      : rawType === 'fixed' ? 'discount_amount'
+      : rawType === 'service' ? 'free_service'
+      : (rawType === 'discount_percent' || rawType === 'discount_amount' || rawType === 'free_service')
+        ? rawType
+        : 'discount_percent';
     setCfg({
       enabled: Boolean(m.client_referral_enabled),
-      reward_type: (m.client_referral_reward_type as RewardType) || 'percent',
+      reward_type: normalizedType,
       reward_value: Number(m.client_referral_reward_value ?? 10),
       min_visits: Number(m.client_referral_min_visits ?? 1),
     });
@@ -165,7 +177,7 @@ export function ReferralProgramPanel() {
     fontVariantNumeric: 'tabular-nums' as const,
   };
 
-  const rewardUnit = cfg.reward_type === 'percent' ? '%' : cfg.reward_type === 'fixed' ? CURRENCY : '';
+  const rewardUnit = cfg.reward_type === 'discount_percent' ? '%' : cfg.reward_type === 'discount_amount' ? CURRENCY : '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -267,7 +279,7 @@ export function ReferralProgramPanel() {
 
         {/* Узкие input'ы — раньше были широкими полями для маленьких чисел */}
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          {cfg.reward_type !== 'service' && (
+          {cfg.reward_type !== 'free_service' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 11, color: C.textSecondary }}>Размер</span>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
