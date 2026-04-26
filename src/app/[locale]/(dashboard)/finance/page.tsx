@@ -465,6 +465,7 @@ export default function FinancePage() {
         insight={aiInsight}
         loading={aiLoading}
         C={C}
+        onApplied={() => loadData()}
       />
 
       {/* ↑ см. определение FinanceAiPanel в конце файла */}
@@ -976,17 +977,28 @@ export default function FinancePage() {
    раскрывает строку ввода — мастер задаёт конкретный вопрос про свои
    деньги, ответ появляется ниже. Esc / клик мимо закрывает строку. */
 
+type AiPlanCandidate = { id: string; summary: string; table: 'payments' | 'expenses' | 'manual_incomes' };
+type AiActionResponse =
+  | { intent: 'qa'; text: string }
+  | { intent: 'delete'; text: string; plan: { action: 'delete'; candidates: AiPlanCandidate[] } };
+
+interface UndoEntry { log_id: string; summary: string }
+
 function FinanceAiPanel({
-  insight, loading, C,
+  insight, loading, C, onApplied,
 }: {
   insight: string | null;
   loading: boolean;
   C: PageTheme;
+  onApplied?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState<string | null>(null);
+  const [plan, setPlan] = useState<AiActionResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -995,11 +1007,11 @@ function FinanceAiPanel({
     function onPointer(e: MouseEvent) {
       if (!wrapRef.current) return;
       if (wrapRef.current.contains(e.target as Node)) return;
-      if (busy) return;
+      if (busy || executing) return;
       setExpanded(false);
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' && !busy) setExpanded(false);
+      if (e.key === 'Escape' && !busy && !executing) setExpanded(false);
     }
     document.addEventListener('mousedown', onPointer);
     window.addEventListener('keydown', onKey);
@@ -1007,25 +1019,31 @@ function FinanceAiPanel({
       document.removeEventListener('mousedown', onPointer);
       window.removeEventListener('keydown', onKey);
     };
-  }, [expanded, busy]);
+  }, [expanded, busy, executing]);
 
   async function ask() {
     const q = question.trim();
     if (!q || busy) return;
     setBusy(true);
     setAnswer(null);
+    setPlan(null);
     try {
-      const res = await fetch('/api/finance/ai-question', {
+      const res = await fetch('/api/finance/ai-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: q }),
       });
       const data = await res.json().catch(() => ({} as Record<string, unknown>));
       if (!res.ok) {
-        toast.error((data as { error?: string }).error || 'AI не смог ответить');
+        toast.error((data as { error?: string }).error || 'AI не смог обработать');
       } else {
-        const a = (data as { answer?: string }).answer;
-        setAnswer(a ?? null);
+        const r = data as AiActionResponse;
+        if (r.intent === 'delete' && r.plan?.candidates?.length) {
+          setPlan(r);
+          setAnswer(r.text);
+        } else {
+          setAnswer(r.text || 'Ничего не нашёл.');
+        }
         setQuestion('');
         setTimeout(() => inputRef.current?.focus(), 50);
       }
@@ -1034,6 +1052,54 @@ function FinanceAiPanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function execute(c: AiPlanCandidate) {
+    if (executing) return;
+    setExecuting(true);
+    try {
+      const res = await fetch('/api/finance/ai-action/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: c.table,
+          row_id: c.id,
+          action: 'delete',
+          user_question: answer ?? null,
+          ai_response: plan?.text ?? null,
+        }),
+      });
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
+      if (!res.ok) {
+        toast.error((data as { error?: string }).error || 'Не удалось удалить');
+        return;
+      }
+      const log_id = (data as { log_id?: string }).log_id;
+      const summary = (data as { summary?: string }).summary || 'Готово';
+      if (log_id) setUndoStack((prev) => [{ log_id, summary }, ...prev].slice(0, 5));
+      toast.success(summary);
+      setPlan(null);
+      setAnswer(null);
+      onApplied?.();
+    } finally {
+      setExecuting(false);
+    }
+  }
+
+  async function undo(entry: UndoEntry) {
+    const res = await fetch('/api/finance/ai-undo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ log_id: entry.log_id }),
+    });
+    const data = await res.json().catch(() => ({} as Record<string, unknown>));
+    if (!res.ok) {
+      toast.error((data as { error?: string }).error || 'Не удалось откатить');
+      return;
+    }
+    toast.success(`Откачено: ${entry.summary}`);
+    setUndoStack((prev) => prev.filter((e) => e.log_id !== entry.log_id));
+    onApplied?.();
   }
 
   return (
@@ -1065,6 +1131,7 @@ function FinanceAiPanel({
               onClick={() => {
                 setExpanded((v) => !v);
                 setAnswer(null);
+                setPlan(null);
                 setTimeout(() => inputRef.current?.focus(), 50);
               }}
               style={{
@@ -1104,8 +1171,8 @@ function FinanceAiPanel({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
               }}
-              placeholder="Например: «Какая категория расходов самая большая?» / «Сколько я заработал за апрель?»"
-              disabled={busy}
+              placeholder="«Сколько я заработал за апрель?» / «Удали расход 500 ₴ от 15 апреля»"
+              disabled={busy || executing}
               style={{
                 flex: 1, border: 'none', outline: 'none', background: 'transparent',
                 color: C.text, fontSize: 13,
@@ -1114,7 +1181,7 @@ function FinanceAiPanel({
             <button
               type="button"
               onClick={ask}
-              disabled={busy || question.trim().length < 2}
+              disabled={busy || executing || question.trim().length < 2}
               style={{
                 width: 32, height: 32, borderRadius: 999,
                 border: 'none', background: C.accent, color: '#fff',
@@ -1127,6 +1194,8 @@ function FinanceAiPanel({
               {busy ? '…' : <ArrowRight size={14} />}
             </button>
           </div>
+
+          {/* QA-ответ или подводка к плану */}
           {answer && (
             <div style={{
               padding: '12px 14px', borderRadius: 10,
@@ -1136,8 +1205,89 @@ function FinanceAiPanel({
               {answer}
             </div>
           )}
+
+          {/* Кандидаты на удаление */}
+          {plan && plan.intent === 'delete' && plan.plan.candidates.length > 0 && (
+            <div style={{
+              padding: 12, borderRadius: 10,
+              background: C.surfaceElevated, border: `1px dashed ${C.warning}`,
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.warning, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Подтверди удаление
+              </div>
+              {plan.plan.candidates.map((c) => (
+                <div key={c.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 10px', borderRadius: 8,
+                  background: C.surface, border: `1px solid ${C.border}`,
+                  fontSize: 12, color: C.text,
+                }}>
+                  <span style={{ flex: 1 }}>{c.summary}</span>
+                  <button
+                    type="button"
+                    onClick={() => execute(c)}
+                    disabled={executing}
+                    style={{
+                      padding: '4px 10px', borderRadius: 6, border: 'none',
+                      background: C.danger, color: '#fff', fontSize: 11, fontWeight: 600,
+                      cursor: executing ? 'wait' : 'pointer', opacity: executing ? 0.5 : 1,
+                    }}
+                  >
+                    Удалить
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPlan(null)}
+                disabled={executing}
+                style={{
+                  alignSelf: 'flex-start', marginTop: 2,
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  color: C.textSecondary, fontSize: 12,
+                }}
+              >
+                Отмена
+              </button>
+            </div>
+          )}
+
+          {/* Стек последних AI-действий с кнопкой Откатить */}
+          {undoStack.length > 0 && (
+            <div style={{
+              padding: 10, borderRadius: 10,
+              background: C.surface, border: `1px solid ${C.border}`,
+              display: 'flex', flexDirection: 'column', gap: 6,
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.textTertiary, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Последние действия AI · можно откатить
+              </div>
+              {undoStack.map((e) => (
+                <div key={e.log_id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  fontSize: 12, color: C.textSecondary,
+                }}>
+                  <span style={{ flex: 1 }}>{e.summary}</span>
+                  <button
+                    type="button"
+                    onClick={() => undo(e)}
+                    style={{
+                      padding: '3px 9px', borderRadius: 6, border: `1px solid ${C.border}`,
+                      background: 'transparent', color: C.text, fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Откатить
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           <p style={{ fontSize: 11, color: C.textTertiary, lineHeight: 1.5, margin: 0 }}>
-            Контекст: последние 30 дней доходов и расходов. Enter — отправить, Esc — закрыть.
+            Контекст: последние 30 дней. Enter — отправить, Esc — закрыть.
+            Удаления выполняются только после твоего подтверждения и могут быть откачены.
           </p>
         </div>
       )}
