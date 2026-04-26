@@ -575,23 +575,44 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
 
 function SubscriptionTab() {
   const t = useTranslations('profile');
+  const { C } = usePageTheme();
   const { tier } = useAuthStore();
 
+  // Карта tier → читаемое имя по-русски. Для trial показываем именно «Триал»,
+  // даже если subscription_tier в БД содержит 'business' (наследие промо-бампа).
+  const TIER_LABEL: Record<string, string> = {
+    trial: 'Триал', free: 'Free', starter: 'Старт', pro: 'Про', business: 'Бизнес',
+  };
+  const label = tier ? (TIER_LABEL[tier] ?? tier) : 'Триал';
+
   return (
-    <Card>
-      <CardHeader><CardTitle>{t('subscription')}</CardTitle></CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">
-          {t('currentPlan')}: <span className="font-semibold text-foreground capitalize">{tier}</span>
-        </p>
-        <Button variant="outline" className="mt-4">{t('changePlan')}</Button>
-      </CardContent>
-    </Card>
+    <SettingsBlock title={t('subscription')} subtitle="Текущий тариф и тип оплаты" C={C}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+      }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '8px 14px', borderRadius: 999,
+          background: C.accentSoft, color: C.accent,
+          fontSize: 13, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase',
+        }}>
+          {label}
+        </div>
+        <span style={{ fontSize: 13, color: C.textSecondary }}>
+          {tier === 'trial' ? 'Бесплатный пробный период' : 'Действует до конца расчётного периода'}
+        </span>
+        <div style={{ flex: 1 }} />
+        <SettingsButton onClick={() => { /* TODO: open plan picker */ }} variant="secondary" C={C}>
+          {t('changePlan')}
+        </SettingsButton>
+      </div>
+    </SettingsBlock>
   );
 }
 
 function InviteLinkTab({ master }: { master: NonNullable<ReturnType<typeof useMaster>['master']> }) {
   const t = useTranslations('profile');
+  const { C } = usePageTheme();
   const [copied, setCopied] = useState<string | null>(null);
   const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME ?? 'CresCABot';
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://cres-ca.com';
@@ -605,34 +626,49 @@ function InviteLinkTab({ master }: { master: NonNullable<ReturnType<typeof useMa
     setTimeout(() => setCopied(null), 2000);
   }
 
+  const inputStyle = settingsInputStyle(C);
+  const copyButton = (key: 'web' | 'tg', text: string) => (
+    <button
+      type="button"
+      onClick={() => copyToClipboard(text, key)}
+      style={{
+        padding: '0 14px', height: 40, borderRadius: 10,
+        border: `1px solid ${C.border}`, background: C.surfaceElevated,
+        color: copied === key ? C.success : C.text,
+        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        flexShrink: 0,
+      }}
+    >
+      {copied === key ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+      {copied === key ? 'Скопировано' : 'Копировать'}
+    </button>
+  );
+
   return (
-    <Card>
-      <CardHeader><CardTitle>{t('inviteLink')}</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>{t('inviteCode')}</Label>
-          <code className="block rounded bg-muted px-3 py-2 text-sm">{master.invite_code}</code>
+    <SettingsBlock title={t('inviteLink')} subtitle="Поделись со знакомым мастером — оба получите бонус, когда он зарегистрируется" C={C}>
+      <SettingsField label={t('inviteCode')} hint="Уникальный код твоей мастерской" C={C}>
+        <code style={{
+          display: 'block', padding: '10px 12px', borderRadius: 10,
+          background: C.surfaceElevated, border: `1px solid ${C.border}`,
+          color: C.text, fontSize: 14, fontFamily: 'ui-monospace, monospace',
+        }}>
+          {master.invite_code}
+        </code>
+      </SettingsField>
+      <SettingsField label={t('inviteLink')} C={C}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={webLink} readOnly style={{ ...inputStyle, fontSize: 12, fontFamily: 'ui-monospace, monospace' }} />
+          {copyButton('web', webLink)}
         </div>
-        <div className="space-y-2">
-          <Label>{t('inviteLink')}</Label>
-          <div className="flex gap-2">
-            <Input value={webLink} readOnly className="text-xs" />
-            <Button variant="outline" size="icon" onClick={() => copyToClipboard(webLink, 'web')}>
-              {copied === 'web' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
+      </SettingsField>
+      <SettingsField label={t('telegramLink')} C={C}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input value={telegramLink} readOnly style={{ ...inputStyle, fontSize: 12, fontFamily: 'ui-monospace, monospace' }} />
+          {copyButton('tg', telegramLink)}
         </div>
-        <div className="space-y-2">
-          <Label>{t('telegramLink')}</Label>
-          <div className="flex gap-2">
-            <Input value={telegramLink} readOnly className="text-xs" />
-            <Button variant="outline" size="icon" onClick={() => copyToClipboard(telegramLink, 'tg')}>
-              {copied === 'tg' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </SettingsField>
+    </SettingsBlock>
   );
 }
 
