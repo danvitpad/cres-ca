@@ -23,6 +23,8 @@ import { MasterPageSectionTabs } from '@/components/master/section-tabs';
 import { ServicesByCategory } from '@/components/master/services-by-category';
 import { PublicHeroCard } from '@/components/master/public-hero-card';
 import { PublicServicesList } from '@/components/master/public-services-list';
+import { BookingDrawerProvider } from '@/components/master/booking/booking-provider';
+import { BookingCTA } from '@/components/master/booking/booking-cta';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
@@ -444,6 +446,26 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         </div>
       )}
 
+      <BookingDrawerProvider
+        master={{
+          id: master.id,
+          displayName,
+          specialization: master.specialization,
+          avatarUrl: master.avatar_url,
+          city: master.city,
+          address: master.address,
+          workplaceName: salon?.name ?? master.workplace_name,
+        }}
+        services={services.map((s) => ({
+          id: s.id,
+          name: s.name,
+          duration_minutes: s.duration_minutes,
+          price: s.price,
+          currency: s.currency,
+          description: s.description,
+          category: s.category,
+        }))}
+      >
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
           {/* ─── LEFT col (Hero card) — sticky on desktop, normal on mobile ─── */}
@@ -727,16 +749,12 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
       {/* Mobile sticky bottom CTA — visible while scrolling on phones */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur p-3 lg:hidden">
-        <Link
-          href={bookHref}
-          data-book-cta="true"
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 px-6 py-3 text-[15px] font-semibold text-white transition-opacity hover:opacity-95 active:scale-[0.99]"
-        >
-          <Calendar className="size-4" />
+        <BookingCTA variant="sticky">
           Записаться{hasServices && ` · от ${formatMoney(minPrice, currency)}`}
-        </Link>
+        </BookingCTA>
       </div>
       <div className="h-20 lg:hidden" />
+      </BookingDrawerProvider>
     </div>
   );
 }

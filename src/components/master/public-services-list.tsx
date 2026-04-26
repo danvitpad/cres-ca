@@ -12,9 +12,9 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Clock } from 'lucide-react';
 import { formatMoney } from '@/lib/format/money';
+import { BookingCTA } from './booking/booking-cta';
 
 interface Service {
   id: string;
@@ -122,13 +122,13 @@ export function PublicServicesList({ services, masterId, locale = 'ru' }: Props)
 }
 
 function ServiceRow({ service, masterId, locale }: { service: Service; masterId: string; locale: string }) {
+  void masterId; void locale;
   const duration = formatDuration(service.duration_minutes);
   const priceStr =
     typeof service.price === 'number' && service.price > 0
       ? formatMoney(service.price, (service.currency || 'UAH').toUpperCase())
       : null;
   const name = service.name?.trim() || 'Услуга';
-  const bookHref = `/${locale}/book?master=${masterId}&service=${service.id}`;
 
   return (
     <div className="flex items-start gap-4 px-5 py-5">
@@ -154,14 +154,7 @@ function ServiceRow({ service, masterId, locale }: { service: Service; masterId:
           <p className="pt-1 text-[15px] font-bold text-neutral-900">{priceStr}</p>
         )}
       </div>
-      <Link
-        href={bookHref}
-        data-book-cta="true"
-        data-book-service={service.id}
-        className="shrink-0 rounded-full border border-neutral-900 px-5 py-2 text-[13px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-900 hover:text-white active:scale-[0.98]"
-      >
-        Записаться
-      </Link>
+      <BookingCTA variant="service" serviceId={service.id}>Записаться</BookingCTA>
     </div>
   );
 }

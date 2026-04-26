@@ -9,10 +9,10 @@
  * created: 2026-04-26
  * --- */
 
-import Link from 'next/link';
-import { Star, MapPin, Calendar } from 'lucide-react';
+import { Star, MapPin } from 'lucide-react';
 import { MasterAvatar } from './master-avatar';
 import { ShareStoryButton } from './share-story-button';
+import { BookingCTA } from './booking/booking-cta';
 
 interface Props {
   masterId: string;
@@ -101,15 +101,8 @@ export function PublicHeroCard({
         </div>
       </div>
 
-      {/* Main CTA */}
-      <Link
-        href={bookHref}
-        data-book-cta="true"
-        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.99]"
-      >
-        <Calendar className="mr-2 size-4" />
-        Записаться
-      </Link>
+      {/* Main CTA — opens BookingDrawer via context */}
+      <BookingCTA variant="hero">Записаться</BookingCTA>
 
       {/* Divider */}
       <div className="border-t border-neutral-200" />
