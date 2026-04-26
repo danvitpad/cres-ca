@@ -10,9 +10,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Search, Check, X, Calendar, Clock } from 'lucide-react';
+import { Search, Check, X, Calendar, Clock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { useEnterSubmit } from '@/hooks/use-keyboard-shortcuts';
 
 interface ClientOption {
   id: string;
@@ -184,18 +185,12 @@ export function NewAppointmentDrawer({
     }
   }, [selectedServiceId, selectedClientIds, services, date, time, notes, masterId, createdByRole, onSaved, onClose]);
 
-  // Cmd/Ctrl+Enter — submit (Enter без модификатора оставляем для текстовых полей).
-  // Escape сам по себе — закрытие drawer'а уже обрабатывается родительским CalendarDrawer.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        if (!saving && selectedServiceId && selectedClientIds.length > 0) handleSave();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [saving, selectedServiceId, selectedClientIds, handleSave]);
+  // Cmd/Ctrl+Enter — submit. Escape — закрытие — обрабатывает родительский CalendarDrawer.
+  useEnterSubmit(
+    !saving && !!selectedServiceId && selectedClientIds.length > 0,
+    handleSave,
+    { withModifier: true },
+  );
 
   return (
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, color: C.text, display: 'flex', flexDirection: 'column', height: '100%' }}>

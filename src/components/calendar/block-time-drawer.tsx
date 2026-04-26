@@ -1,20 +1,31 @@
 /** --- YAML
  * name: BlockTimeDrawerContent
- * description: Block time drawer — type selector (custom / lunch), title, date + start/end picker. Uses site dashboard theme. Simplified per product feedback (no duration dropdown, no team-member picker, no summary footer).
+ * description: Drawer заблокированного времени со СТАРТОМ + ДЛИТЕЛЬНОСТЬЮ (не «концом»)
+ *              + сохранёнными шаблонами мастера (Обед 40 мин / Приём лекарств 5 мин / ...).
+ *              Один клик по шаблону подставляет заголовок и длительность; карандашик
+ *              рядом — инлайн-редактирование шаблона. Сохранение пишет в blocked_times
+ *              (start_at + ends_at вычисляется как start + duration).
  * created: 2026-04-13
- * updated: 2026-04-18
+ * updated: 2026-04-26
  * --- */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { Pencil, UtensilsCrossed, X } from 'lucide-react';
+import { Pencil, Plus, Trash2, X, Check } from 'lucide-react';
 import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
+import { useEnterSubmit } from '@/hooks/use-keyboard-shortcuts';
 
-type BlockType = 'custom' | 'lunch';
+interface BlockTimeTemplate {
+  id: string;
+  title: string;
+  duration_minutes: number;
+  emoji: string | null;
+  sort_order: number;
+}
 
 interface BlockTimeDrawerContentProps {
   /** Kept for API compatibility with calendar page, ignored internally. Theme is taken from usePageTheme now. */
@@ -47,6 +58,10 @@ function minutesToTime(mins: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+function durationFromBlock(b: { starts_at: string; ends_at: string }): number {
+  return Math.max(5, Math.round((new Date(b.ends_at).getTime() - new Date(b.starts_at).getTime()) / 60000));
+}
+
 export function BlockTimeDrawerContent({
   masterId,
   date,
@@ -58,54 +73,108 @@ export function BlockTimeDrawerContent({
   const t = useTranslations('calendar');
   const { C } = usePageTheme();
 
-  const [blockType, setBlockType] = useState<BlockType>(
-    editBlock?.reason === 'lunch' ? 'lunch' : 'custom'
-  );
-  const [title, setTitle] = useState(editBlock?.reason && editBlock.reason !== 'lunch' ? editBlock.reason : '');
-
+  // Active block state (что сохраним в blocked_times)
+  const [title, setTitle] = useState(editBlock?.reason ?? '');
   const initialStart = editBlock
-    ? `${String(new Date(editBlock.starts_at).getHours()).padStart(2, '0')}:${String(new Date(editBlock.starts_at).getMinutes()).padStart(2, '0')}`
+    ? minutesToTime(new Date(editBlock.starts_at).getHours() * 60 + new Date(editBlock.starts_at).getMinutes())
     : defaultTime || '12:00';
-  const initialEnd = editBlock
-    ? `${String(new Date(editBlock.ends_at).getHours()).padStart(2, '0')}:${String(new Date(editBlock.ends_at).getMinutes()).padStart(2, '0')}`
-    : minutesToTime(timeToMinutes(initialStart) + 60);
-
   const [startTime, setStartTime] = useState(initialStart);
-  const [endTime, setEndTime] = useState(initialEnd);
+  const [duration, setDuration] = useState(editBlock ? durationFromBlock(editBlock) : 30);
   const [saving, setSaving] = useState(false);
 
-  // Keep end >= start when user edits start
-  useEffect(() => {
-    if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
-      setEndTime(minutesToTime(timeToMinutes(startTime) + 30));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startTime]);
+  // Templates
+  const [templates, setTemplates] = useState<BlockTimeTemplate[]>([]);
+  const [editingTplId, setEditingTplId] = useState<string | null>(null);
+  const [tplDraftTitle, setTplDraftTitle] = useState('');
+  const [tplDraftDuration, setTplDraftDuration] = useState(30);
+  const [creatingTpl, setCreatingTpl] = useState(false);
 
-  // Lunch default — 60 min block, clear title
-  useEffect(() => {
-    if (blockType === 'lunch' && !editBlock) {
-      setTitle('');
-      setEndTime(minutesToTime(timeToMinutes(startTime) + 60));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockType]);
+  const loadTemplates = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('block_time_templates')
+      .select('id, title, duration_minutes, emoji, sort_order')
+      .eq('master_id', masterId)
+      .order('sort_order')
+      .order('created_at');
+    setTemplates((data as BlockTimeTemplate[]) ?? []);
+  }, [masterId]);
 
-  async function handleSave() {
-    if (timeToMinutes(endTime) <= timeToMinutes(startTime)) {
-      toast.error('Время конца должно быть позже начала');
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  function applyTemplate(tpl: BlockTimeTemplate) {
+    setTitle(tpl.title);
+    setDuration(tpl.duration_minutes);
+  }
+
+  async function saveTemplate() {
+    const trimmed = tplDraftTitle.trim();
+    if (!trimmed) { toast.error('Укажите название шаблона'); return; }
+    if (tplDraftDuration <= 0) { toast.error('Длительность должна быть > 0'); return; }
+    const supabase = createClient();
+    if (editingTplId) {
+      const { error } = await supabase
+        .from('block_time_templates')
+        .update({ title: trimmed, duration_minutes: tplDraftDuration })
+        .eq('id', editingTplId);
+      if (error) { toast.error(error.message); return; }
+      toast.success('Шаблон обновлён');
+    } else {
+      const { error } = await supabase
+        .from('block_time_templates')
+        .insert({ master_id: masterId, title: trimmed, duration_minutes: tplDraftDuration });
+      if (error) { toast.error(error.message); return; }
+      toast.success('Шаблон сохранён');
+    }
+    setEditingTplId(null);
+    setCreatingTpl(false);
+    setTplDraftTitle('');
+    setTplDraftDuration(30);
+    loadTemplates();
+  }
+
+  async function deleteTemplate(id: string) {
+    const supabase = createClient();
+    const { error } = await supabase.from('block_time_templates').delete().eq('id', id);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Шаблон удалён');
+    loadTemplates();
+  }
+
+  function startEditTpl(tpl: BlockTimeTemplate) {
+    setEditingTplId(tpl.id);
+    setCreatingTpl(false);
+    setTplDraftTitle(tpl.title);
+    setTplDraftDuration(tpl.duration_minutes);
+  }
+
+  function startCreateTpl() {
+    setCreatingTpl(true);
+    setEditingTplId(null);
+    setTplDraftTitle(title.trim() || '');
+    setTplDraftDuration(duration);
+  }
+
+  function cancelTplEdit() {
+    setEditingTplId(null);
+    setCreatingTpl(false);
+    setTplDraftTitle('');
+    setTplDraftDuration(30);
+  }
+
+  const handleSave = useCallback(async () => {
+    if (duration <= 0) {
+      toast.error('Длительность должна быть > 0');
       return;
     }
     setSaving(true);
     const [sh, sm] = startTime.split(':').map(Number);
-    const [eh, em] = endTime.split(':').map(Number);
     const start = new Date(date);
     start.setHours(sh, sm, 0, 0);
-    const end = new Date(date);
-    end.setHours(eh, em, 0, 0);
+    const end = new Date(start.getTime() + duration * 60 * 1000);
 
     const supabase = createClient();
-    const reason = blockType === 'lunch' ? 'lunch' : (title.trim() || null);
+    const reason = title.trim() || null;
 
     if (editBlock) {
       const { error } = await supabase.from('blocked_times')
@@ -127,7 +196,10 @@ export function BlockTimeDrawerContent({
     setSaving(false);
     onSaved();
     onClose();
-  }
+  }, [date, duration, editBlock, masterId, onSaved, onClose, startTime, t, title]);
+
+  // Cmd/Ctrl+Enter — сохранить блокировку (когда не открыт редактор шаблона)
+  useEnterSubmit(!saving && !creatingTpl && !editingTplId, handleSave, { withModifier: true });
 
   async function handleDelete() {
     if (!editBlock) return;
@@ -164,87 +236,197 @@ export function BlockTimeDrawerContent({
   };
 
   return (
-    <div style={{ padding: '0 16px 24px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES }}>
-      {/* ─── Block type selector ─── */}
-      <div style={{ marginBottom: 20, paddingTop: 16 }}>
-        <span style={labelStyle}>{t('blockTimeType') || 'Тип заблокированного времени'}</span>
-        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
-          {([
-            { key: 'custom' as BlockType, icon: Pencil, label: t('blockTypeCustom') || 'Настроить' },
-            { key: 'lunch' as BlockType, icon: UtensilsCrossed, label: t('blockTypeLunch') || 'Обед' },
-          ]).map(item => {
-            const active = blockType === item.key;
-            return (
+    <div style={{ padding: '16px 16px 24px', fontFamily: FONT, fontFeatureSettings: FONT_FEATURES }}>
+      {/* ─── Templates ─── */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={labelStyle}>Шаблоны</span>
+          {!creatingTpl && !editingTplId && (
+            <button
+              type="button"
+              onClick={startCreateTpl}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: C.accent, fontSize: 12, fontWeight: 500,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontFamily: FONT,
+              }}
+            >
+              <Plus size={14} /> Шаблон
+            </button>
+          )}
+        </div>
+
+        {/* Inline editor — create or edit existing */}
+        {(creatingTpl || editingTplId) && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 8,
+            padding: 10, marginBottom: 8,
+            border: `1px dashed ${C.accent}`, borderRadius: 10,
+            background: C.accentSoft,
+          }}>
+            <input
+              type="text"
+              value={tplDraftTitle}
+              onChange={(e) => setTplDraftTitle(e.target.value)}
+              placeholder="Название (Обед / Приём лекарств)"
+              style={{ ...inputStyle, height: 38 }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="number"
+                min={1}
+                max={24 * 60}
+                value={tplDraftDuration}
+                onChange={(e) => setTplDraftDuration(Math.max(1, Number(e.target.value) || 0))}
+                style={{ ...inputStyle, height: 38, width: 80, textAlign: 'center' }}
+              />
+              <span style={{ color: C.textSecondary, fontSize: 13 }}>мин</span>
+              <div style={{ flex: 1 }} />
               <button
-                key={item.key}
-                onClick={() => setBlockType(item.key)}
+                type="button"
+                onClick={cancelTplEdit}
                 style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '14px 8px',
-                  borderRadius: 12,
-                  border: `1.5px solid ${active ? C.accent : C.border}`,
-                  backgroundColor: active ? C.accentSoft : C.surface,
-                  color: active ? C.accent : C.text,
-                  cursor: 'pointer',
-                  transition: 'all 150ms',
-                  fontFamily: FONT,
+                  height: 32, padding: '0 12px', borderRadius: 8,
+                  background: 'transparent', border: `1px solid ${C.border}`,
+                  color: C.text, fontSize: 13, cursor: 'pointer', fontFamily: FONT,
                 }}
               >
-                <item.icon style={{ width: 20, height: 20, color: active ? C.accent : C.textSecondary }} />
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{item.label}</span>
+                Отмена
               </button>
-            );
-          })}
-        </div>
+              <button
+                type="button"
+                onClick={saveTemplate}
+                style={{
+                  height: 32, padding: '0 14px', borderRadius: 8,
+                  background: C.accent, border: 'none', color: '#fff',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <Check size={14} /> Сохранить
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Templates grid */}
+        {templates.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {templates.map((tpl) => (
+              <div
+                key={tpl.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 10px', borderRadius: 10,
+                  background: C.surface, border: `1px solid ${C.border}`,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => applyTemplate(tpl)}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: FONT, color: C.text, fontSize: 14,
+                    textAlign: 'left',
+                  }}
+                  title="Применить шаблон"
+                >
+                  <span>{tpl.title}</span>
+                  <span style={{
+                    marginLeft: 'auto', fontSize: 12, color: C.textSecondary,
+                    padding: '2px 8px', borderRadius: 999, background: C.surfaceElevated,
+                  }}>{tpl.duration_minutes} мин</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startEditTpl(tpl)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    border: 'none', background: 'transparent',
+                    color: C.textSecondary, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  title="Редактировать"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteTemplate(tpl.id)}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    border: 'none', background: 'transparent',
+                    color: C.textTertiary, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  title="Удалить"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          !creatingTpl && (
+            <p style={{
+              fontSize: 12, color: C.textTertiary, fontFamily: FONT,
+              padding: '8px 0', margin: 0,
+            }}>
+              Создай шаблон («Обед — 40 мин») — потом одним кликом будешь блокировать это время.
+            </p>
+          )
+        )}
       </div>
 
-      {/* ─── Title (custom only) ─── */}
-      {blockType === 'custom' && (
-        <div style={{ marginBottom: 20 }}>
-          <span style={labelStyle}>{t('blockTimeTitle') || 'Заголовок (необязательно)'}</span>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t('blockTimeTitlePlaceholder') || 'Например, деловой обед'}
-            style={inputStyle}
-          />
-        </div>
-      )}
+      {/* ─── Title ─── */}
+      <div style={{ marginBottom: 16 }}>
+        <span style={labelStyle}>Заголовок</span>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Например, обед / приём лекарств"
+          style={inputStyle}
+        />
+      </div>
 
       {/* ─── Date (display only) ─── */}
-      <div style={{ marginBottom: 20 }}>
-        <span style={labelStyle}>{t('blockTimeDate') || 'Дата'}</span>
+      <div style={{ marginBottom: 16 }}>
+        <span style={labelStyle}>Дата</span>
         <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', cursor: 'default' }}>
           {formatDateLabel(date)}
         </div>
       </div>
 
-      {/* ─── Start / End time — both editable ─── */}
-      <div style={{ marginBottom: 24 }}>
-        <span style={labelStyle}>{t('blockTimeRange') || 'Начало / Конец'}</span>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      {/* ─── Start time + Duration ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+        <div>
+          <span style={labelStyle}>Начало</span>
           <input
             type="time"
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
-            style={{ ...inputStyle, textAlign: 'center', flex: 1 }}
-          />
-          <span style={{ color: C.textSecondary, fontSize: 14, flexShrink: 0 }}>—</span>
-          <input
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            style={{ ...inputStyle, textAlign: 'center', flex: 1 }}
+            style={{ ...inputStyle, textAlign: 'center' }}
           />
         </div>
+        <div>
+          <span style={labelStyle}>Длительность</span>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              type="number"
+              min={1}
+              max={24 * 60}
+              value={duration}
+              onChange={(e) => setDuration(Math.max(1, Number(e.target.value) || 0))}
+              style={{ ...inputStyle, textAlign: 'center', flex: 1 }}
+            />
+            <span style={{ color: C.textSecondary, fontSize: 13 }}>мин</span>
+          </div>
+        </div>
       </div>
-
-      {/* Duration / team-member / summary blocks removed per product decision */}
 
       {/* ─── Delete button (edit mode) ─── */}
       {editBlock && (
