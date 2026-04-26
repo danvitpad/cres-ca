@@ -91,14 +91,14 @@ export default function MiniAppSalonFinancePage() {
 
   return (
     <div className="p-4 space-y-4">
-      <div className="flex items-center gap-1 p-1 rounded-full bg-white/[0.04] border border-white/10 w-fit">
+      <div className="flex items-center gap-1 p-1 rounded-full bg-white border-neutral-200 border border-neutral-200 w-fit">
         {(['week', 'month', 'year'] as Period[]).map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setPeriod(p)}
             className={`px-3 py-1 text-xs rounded-full transition-colors ${
-              period === p ? 'bg-white text-black' : 'text-white/60'
+              period === p ? 'bg-white text-black' : 'text-neutral-600'
             }`}
           >
             {p === 'week' ? 'Неделя' : p === 'month' ? 'Месяц' : 'Год'}
@@ -112,7 +112,7 @@ export default function MiniAppSalonFinancePage() {
           <div className="h-20 rounded-xl bg-white/5 animate-pulse" />
         </div>
       ) : error || !data ? (
-        <div className="text-sm text-white/60 text-center p-4">Ошибка загрузки</div>
+        <div className="text-sm text-neutral-600 text-center p-4">Ошибка загрузки</div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2">
@@ -123,16 +123,16 @@ export default function MiniAppSalonFinancePage() {
           </div>
 
           <section>
-            <h2 className="text-xs uppercase tracking-wider text-white/50 mb-2">По мастерам</h2>
+            <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-2">По мастерам</h2>
             {data.masters.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-xs text-white/40">
+              <div className="rounded-xl border border-dashed border-neutral-200 p-5 text-center text-xs text-neutral-400">
                 Нет мастеров
               </div>
             ) : (
               <ul className="space-y-2">
                 {data.masters.map((m) => (
-                  <li key={m.master_id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-center gap-3">
-                    <div className="size-9 rounded-full bg-white/10 text-white font-bold flex items-center justify-center overflow-hidden shrink-0">
+                  <li key={m.master_id} className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-center gap-3">
+                    <div className="size-9 rounded-full bg-white/10 text-neutral-900 font-bold flex items-center justify-center overflow-hidden shrink-0">
                       {m.avatar_url ? (
                         <img src={m.avatar_url} alt="" className="size-full object-cover" />
                       ) : (
@@ -141,10 +141,10 @@ export default function MiniAppSalonFinancePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate">{m.display_name ?? 'Мастер'}</div>
-                      <div className="text-[11px] text-white/50">Выручка: {formatCurrency(m.revenue)}</div>
+                      <div className="text-[11px] text-neutral-500">Выручка: {formatCurrency(m.revenue)}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-[10px] text-white/50 uppercase tracking-wider">К выплате</div>
+                      <div className="text-[10px] text-neutral-500 uppercase tracking-wider">К выплате</div>
                       <div className="text-sm font-semibold">{formatCurrency(m.net_payout)}</div>
                     </div>
                   </li>
@@ -153,7 +153,7 @@ export default function MiniAppSalonFinancePage() {
             )}
           </section>
 
-          <p className="text-[11px] text-white/40 leading-relaxed text-center">
+          <p className="text-[11px] text-neutral-400 leading-relaxed text-center">
             Подтверждение и отметка выплат — на сайте в разделе «Финансы».
           </p>
         </>
@@ -174,7 +174,7 @@ function TotalCard({
   tint: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3">
       <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider ${tint}`}>
         <Icon className="size-3" />
         {label}

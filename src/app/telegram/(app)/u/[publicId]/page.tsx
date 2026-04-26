@@ -93,7 +93,7 @@ export default function MiniAppPublicProfilePage() {
   if (loading) {
     return (
       <div className="flex min-h-[70dvh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -101,10 +101,10 @@ export default function MiniAppPublicProfilePage() {
   if (!profile) {
     return (
       <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-sm text-white/60">Профиль не найден</p>
+        <p className="text-sm text-neutral-600">Профиль не найден</p>
         <button
           onClick={() => router.back()}
-          className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-semibold"
+          className="rounded-full border border-neutral-200 bg-white/5 px-4 py-2 text-xs font-semibold"
         >
           Назад
         </button>
@@ -127,11 +127,11 @@ export default function MiniAppPublicProfilePage() {
       <div className="flex items-center gap-3 px-5 pt-5">
         <button
           onClick={() => router.back()}
-          className="flex size-9 items-center justify-center rounded-xl bg-white/5 border border-white/10 active:scale-95 transition-transform"
+          className="flex size-9 items-center justify-center rounded-xl bg-white/5 border border-neutral-200 active:scale-95 transition-transform"
         >
           <ArrowLeft className="size-4" />
         </button>
-        {profile.slug && <p className="text-sm font-semibold text-white/70">@{profile.slug}</p>}
+        {profile.slug && <p className="text-sm font-semibold text-neutral-700">@{profile.slug}</p>}
       </div>
 
       {/* Avatar + counters */}
@@ -155,13 +155,13 @@ export default function MiniAppPublicProfilePage() {
       <div className="space-y-2 px-5">
         <h1 className="text-lg font-bold">{displayName}</h1>
         {profile.public_id && (
-          <div className="flex items-center gap-1.5 text-[11px] font-mono tracking-[0.12em] text-white/55">
+          <div className="flex items-center gap-1.5 text-[11px] font-mono tracking-[0.12em] text-neutral-500">
             <IdCard className="size-3" /> {profile.public_id}
           </div>
         )}
-        {profile.bio && <p className="text-[13px] leading-relaxed text-white/75 whitespace-pre-wrap">{profile.bio}</p>}
+        {profile.bio && <p className="text-[13px] leading-relaxed text-neutral-700 whitespace-pre-wrap">{profile.bio}</p>}
         {profile.role === 'master' && (
-          <div className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold text-violet-200">
+          <div className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
             <MapPin className="size-2.5" /> Мастер CRES-CA
           </div>
         )}
@@ -172,7 +172,7 @@ export default function MiniAppPublicProfilePage() {
         {isSelf ? (
           <button
             onClick={() => router.push('/telegram/profile')}
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform"
+            className="flex-1 rounded-xl border border-neutral-200 bg-white/5 py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform"
           >
             Редактировать профиль
           </button>
@@ -183,7 +183,7 @@ export default function MiniAppPublicProfilePage() {
               disabled={followBusy}
               className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform disabled:opacity-60 ${
                 following
-                  ? 'border border-white/15 bg-white/5 text-white'
+                  ? 'border border-neutral-200 bg-white/5 text-neutral-900'
                   : 'bg-white text-black'
               }`}
             >
@@ -202,7 +202,7 @@ export default function MiniAppPublicProfilePage() {
             {profile.role === 'master' && (
               <button
                 onClick={() => router.push(`/telegram/search/${profile.id}`)}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform"
+                className="rounded-xl border border-neutral-200 bg-white/5 px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform"
               >
                 Записаться
               </button>
@@ -212,12 +212,12 @@ export default function MiniAppPublicProfilePage() {
       </div>
 
       {/* Posts grid (placeholder) */}
-      <div className="space-y-3 border-t border-white/10 pt-5">
-        <div className="flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/55">
+      <div className="space-y-3 border-t border-neutral-200 pt-5">
+        <div className="flex items-center justify-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
           <Grid3x3 className="size-3" /> Посты
         </div>
         {profile.posts_count === 0 ? (
-          <div className="px-5 py-10 text-center text-[12px] text-white/35">
+          <div className="px-5 py-10 text-center text-[12px] text-neutral-400">
             Пока нет публикаций
           </div>
         ) : (
@@ -236,7 +236,7 @@ function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="flex flex-col items-center">
       <span className="text-lg font-bold">{formatCount(value)}</span>
-      <span className="text-[10px] text-white/50">{label}</span>
+      <span className="text-[10px] text-neutral-500">{label}</span>
     </div>
   );
 }

@@ -70,25 +70,25 @@ export default function MiniAppBillingPage() {
   return (
     <SettingsShell title="Тариф и платежи">
       {loading ? (
-        <div className="h-32 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
+        <div className="h-32 w-full animate-pulse rounded-2xl bg-white border-neutral-200" />
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25 }}
-          className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br ${TIER_COLOR[tier] ?? TIER_COLOR.trial} p-5`}
+          className={`relative overflow-hidden rounded-2xl border border-neutral-200 bg-gradient-to-br ${TIER_COLOR[tier] ?? TIER_COLOR.trial} p-5`}
         >
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">Текущий тариф</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-600">Текущий тариф</p>
               <p className="mt-1 text-2xl font-bold tracking-tight">{TIER_LABEL[tier] ?? tier}</p>
             </div>
-            <div className="flex size-11 items-center justify-center rounded-xl border border-white/10 bg-white/10">
-              <Crown size={22} weight="fill" className="text-amber-300" />
+            <div className="flex size-11 items-center justify-center rounded-xl border border-neutral-200 bg-white/10">
+              <Crown size={22} weight="fill" className="text-amber-600" />
             </div>
           </div>
           {daysLeft !== null && (
-            <div className="mt-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-[11px] text-white/80 w-fit">
+            <div className="mt-4 flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-[11px] text-neutral-800 w-fit">
               <Clock size={12} weight="bold" />
               {tier === 'trial'
                 ? `Триал: осталось ${daysLeft} дн.`
@@ -99,11 +99,11 @@ export default function MiniAppBillingPage() {
       )}
 
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50 mb-2">Что входит</p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 mb-2">Что входит</p>
         <ul className="space-y-2">
           {(FEATURES[tier] ?? FEATURES.trial).map((f, i) => (
-            <li key={i} className="flex items-start gap-2 text-[13px] text-white/85">
-              <Check size={14} weight="bold" className="mt-0.5 shrink-0 text-emerald-300" />
+            <li key={i} className="flex items-start gap-2 text-[13px] text-neutral-800">
+              <Check size={14} weight="bold" className="mt-0.5 shrink-0 text-emerald-600" />
               <span>{f}</span>
             </li>
           ))}
@@ -112,12 +112,12 @@ export default function MiniAppBillingPage() {
 
       <Link
         href="/ru/settings/billing"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/15 py-3.5 text-[14px] font-semibold text-violet-100 active:bg-violet-500/25 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-100 active:bg-violet-500/25 transition-colors"
       >
         {tier === 'trial' ? 'Выбрать тариф' : 'Управление подпиской'}
         <ArrowSquareOut size={14} weight="bold" />
       </Link>
-      <p className="text-center text-[11px] text-white/40 -mt-2">
+      <p className="text-center text-[11px] text-neutral-400 -mt-2">
         Откроется веб-версия для оплаты — Telegram не поддерживает платёжные формы в Mini App.
       </p>
     </SettingsShell>

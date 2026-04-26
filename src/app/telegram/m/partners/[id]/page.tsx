@@ -106,14 +106,14 @@ export default function MasterMiniAppPartnerCard() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
   if (!partnership) {
     return (
       <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-white/60">Партнёрство не найдено</p>
+        <p className="text-sm text-neutral-600">Партнёрство не найдено</p>
       </div>
     );
   }
@@ -132,30 +132,30 @@ export default function MasterMiniAppPartnerCard() {
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5"
+        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white/5"
       >
         <ArrowLeft className="size-4" />
       </button>
 
       {/* Hero */}
-      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-3">
         <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-base font-bold">
           {initials}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <h1 className="truncate text-[15px] font-bold">{partnerName}</h1>
-            <span className="flex items-center gap-0.5 rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[9px] font-medium text-violet-200">
+            <span className="flex items-center gap-0.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-medium text-violet-700">
               {isTeam ? <Users className="size-2.5" /> : <UserIcon className="size-2.5" />}
               {isTeam ? 'Команда' : 'Соло'}
             </span>
             {partnership.status === 'active' && partnership.cross_promotion && (
-              <span className="flex items-center gap-0.5 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-medium text-emerald-300">
+              <span className="flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600">
                 <Megaphone className="size-2.5" />Реклама
               </span>
             )}
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-white/55">{partner.specialization || '—'}</p>
+          <p className="mt-0.5 truncate text-[11px] text-neutral-500">{partner.specialization || '—'}</p>
         </div>
         {partner.profile?.slug && (
           <Link
@@ -178,7 +178,7 @@ export default function MasterMiniAppPartnerCard() {
           <Field label="Telegram" value={partner.profile?.username ? `@${partner.profile.username}` : '—'} />
         </div>
         {partner.bio && (
-          <p className="mt-2 border-t border-white/10 pt-2 text-[11px] text-white/70 leading-relaxed">
+          <p className="mt-2 border-t border-neutral-200 pt-2 text-[11px] text-neutral-700 leading-relaxed">
             {partner.bio}
           </p>
         )}
@@ -201,8 +201,8 @@ export default function MasterMiniAppPartnerCard() {
           <Row icon={<TicketPercent className="size-3" />} label="Промокод нашим" value={partnership.promo_code || '—'} mono={!!partnership.promo_code} />
           <CrossPromoRow partnership={partnership} haptic={haptic} onSaved={reload} />
         </div>
-        <div className="mt-2 border-t border-white/10 pt-2">
-          <p className="mb-1 text-[10px] uppercase tracking-wide text-white/40">Договорённости</p>
+        <div className="mt-2 border-t border-neutral-200 pt-2">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-neutral-400">Договорённости</p>
           <NotesInline partnership={partnership} field="contract_terms" haptic={haptic} onSaved={reload} />
         </div>
       </Block>
@@ -211,7 +211,7 @@ export default function MasterMiniAppPartnerCard() {
       <ActivityBlock partnership={partnership} />
 
       {/* AI chat */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">
         <PartnerAiChat partnershipId={partnership.id} haptic={haptic} onApplied={reload} />
       </div>
     </motion.div>
@@ -222,12 +222,12 @@ export default function MasterMiniAppPartnerCard() {
 
 function Block({ icon, title, badge, children }: { icon: React.ReactNode; title: string; badge?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-3">
+    <section className="rounded-2xl border border-neutral-200 bg-white/5 p-3">
       <header className="mb-2 flex items-center gap-1.5">
-        <span className="text-violet-300">{icon}</span>
+        <span className="text-violet-600">{icon}</span>
         <h3 className="text-[12px] font-semibold tracking-tight">{title}</h3>
         {badge && (
-          <span className="ml-auto rounded-full bg-violet-500/15 px-2 py-0.5 text-[9px] font-medium text-violet-200">
+          <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-medium text-violet-700">
             {badge}
           </span>
         )}
@@ -240,8 +240,8 @@ function Block({ icon, title, badge, children }: { icon: React.ReactNode; title:
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[9px] uppercase tracking-wide text-white/40">{label}</p>
-      <p className="mt-0.5 break-words text-[12px] text-white/95">{value}</p>
+      <p className="text-[9px] uppercase tracking-wide text-neutral-400">{label}</p>
+      <p className="mt-0.5 break-words text-[12px] text-neutral-900/95">{value}</p>
     </div>
   );
 }
@@ -249,11 +249,11 @@ function Field({ label, value }: { label: string; value: string }) {
 function Row({ icon, label, value, mono }: { icon: React.ReactNode; label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="flex items-center gap-1.5 text-white/60">
-        <span className="text-white/40">{icon}</span>
+      <span className="flex items-center gap-1.5 text-neutral-600">
+        <span className="text-neutral-400">{icon}</span>
         {label}
       </span>
-      <span className={`font-semibold text-white ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <span className={`font-semibold text-neutral-900 ${mono ? 'font-mono' : ''}`}>{value}</span>
     </div>
   );
 }
@@ -290,8 +290,8 @@ function CrossPromoRow({
   const enabled = partnership.cross_promotion;
   return (
     <div className="flex items-center justify-between">
-      <span className="flex items-center gap-1.5 text-white/60">
-        <Megaphone className="size-3 text-white/40" />
+      <span className="flex items-center gap-1.5 text-neutral-600">
+        <Megaphone className="size-3 text-neutral-400" />
         Взаимная реклама
       </span>
       <button
@@ -356,7 +356,7 @@ function NotesBlock({
         {!adding && editingIndex === null && (
           <button
             onClick={() => { haptic('light'); setAdding(true); }}
-            className="flex items-center gap-1 rounded-md bg-violet-500/20 px-2 py-1 text-[10px] font-semibold text-violet-200 active:scale-95"
+            className="flex items-center gap-1 rounded-md bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-700 active:scale-95"
           >
             <Plus className="size-3" /> Добавить
           </button>
@@ -364,19 +364,19 @@ function NotesBlock({
       </div>
 
       {adding && (
-        <div className="mb-2 rounded-lg border border-white/10 bg-black/30 p-2">
+        <div className="mb-2 rounded-lg border border-neutral-200 bg-neutral-100 p-2">
           <textarea
             value={newDraft}
             onChange={(e) => setNewDraft(e.target.value)}
             placeholder={field === 'contract_terms' ? '«Комиссия 5%, отчёт раз в месяц»' : '«Делает скидку 10% нашим»'}
             rows={2}
             autoFocus
-            className="w-full resize-none rounded-md bg-black/40 px-2 py-1.5 text-[12px] outline-none"
+            className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1.5 text-[12px] outline-none"
           />
           <div className="mt-1.5 flex justify-end gap-1.5">
             <button
               onClick={() => { setAdding(false); setNewDraft(''); }}
-              className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-white/70"
+              className="rounded-md border border-neutral-200 px-2 py-1 text-[10px] text-neutral-700"
             >Отмена</button>
             <button
               onClick={async () => {
@@ -388,14 +388,14 @@ function NotesBlock({
                 if (ok) { setAdding(false); setNewDraft(''); }
               }}
               disabled={busy || !newDraft.trim()}
-              className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-semibold text-white disabled:opacity-40"
+              className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
             >Сохранить</button>
           </div>
         </div>
       )}
 
       {entries.length === 0 && !adding ? (
-        <p className="text-[11px] leading-relaxed text-white/50">
+        <p className="text-[11px] leading-relaxed text-neutral-500">
           Пусто. Добавь вручную или напиши в чат снизу — AI разнесёт.
         </p>
       ) : (
@@ -403,7 +403,7 @@ function NotesBlock({
           {entries.map((entry) => {
             const isEditing = editingIndex === entry.index;
             return (
-              <div key={entry.index} className="rounded-lg bg-white/[0.04] px-2.5 py-1.5">
+              <div key={entry.index} className="rounded-lg bg-white border-neutral-200 px-2.5 py-1.5">
                 {isEditing ? (
                   <>
                     <textarea
@@ -411,12 +411,12 @@ function NotesBlock({
                       onChange={(e) => setDraft(e.target.value)}
                       rows={2}
                       autoFocus
-                      className="w-full resize-none rounded-md bg-black/40 px-2 py-1.5 text-[12px] outline-none"
+                      className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1.5 text-[12px] outline-none"
                     />
                     <div className="mt-1 flex justify-end gap-1.5">
                       <button
                         onClick={() => { setEditingIndex(null); setDraft(''); }}
-                        className="flex size-6 items-center justify-center rounded-md bg-white/5 text-white/70"
+                        className="flex size-6 items-center justify-center rounded-md bg-white/5 text-neutral-700"
                       ><X className="size-3" /></button>
                       <button
                         onClick={async () => {
@@ -430,7 +430,7 @@ function NotesBlock({
                           if (ok) { setEditingIndex(null); setDraft(''); }
                         }}
                         disabled={busy || !draft.trim()}
-                        className="flex size-6 items-center justify-center rounded-md bg-violet-500 text-white disabled:opacity-40"
+                        className="flex size-6 items-center justify-center rounded-md bg-violet-500 text-neutral-900 disabled:opacity-40"
                       ><Check className="size-3" /></button>
                     </div>
                   </>
@@ -438,14 +438,14 @@ function NotesBlock({
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
                       {entry.date && (
-                        <p className="text-[9px] tracking-wide text-white/40">{entry.date}</p>
+                        <p className="text-[9px] tracking-wide text-neutral-400">{entry.date}</p>
                       )}
-                      <p className="break-words text-[12px] text-white/90 leading-relaxed">{entry.body}</p>
+                      <p className="break-words text-[12px] text-neutral-900 leading-relaxed">{entry.body}</p>
                     </div>
                     <div className="flex shrink-0 gap-0.5 opacity-70">
                       <button
                         onClick={() => { haptic('selection'); setEditingIndex(entry.index); setDraft(entry.body); }}
-                        className="flex size-6 items-center justify-center rounded-md text-white/70"
+                        className="flex size-6 items-center justify-center rounded-md text-neutral-700"
                       ><Pencil className="size-3" /></button>
                       <button
                         onClick={async () => {
@@ -508,15 +508,15 @@ function NotesInline({
   return (
     <div>
       {entries.length === 0 && !adding && (
-        <p className="text-[11px] text-white/50">Пусто. Опиши условия в AI-чате.</p>
+        <p className="text-[11px] text-neutral-500">Пусто. Опиши условия в AI-чате.</p>
       )}
       {entries.length > 0 && (
         <div className="space-y-1">
           {entries.map((entry) => (
-            <div key={entry.index} className="flex items-start gap-2 rounded-md bg-white/[0.03] px-2 py-1">
+            <div key={entry.index} className="flex items-start gap-2 rounded-md bg-white border-neutral-200 px-2 py-1">
               <div className="min-w-0 flex-1">
-                {entry.date && <p className="text-[9px] text-white/40">{entry.date}</p>}
-                <p className="text-[11px] text-white/90 leading-relaxed">{entry.body}</p>
+                {entry.date && <p className="text-[9px] text-neutral-400">{entry.date}</p>}
+                <p className="text-[11px] text-neutral-900 leading-relaxed">{entry.body}</p>
               </div>
               <button
                 onClick={async () => {
@@ -531,17 +531,17 @@ function NotesInline({
         </div>
       )}
       {adding ? (
-        <div className="mt-2 rounded-md border border-white/10 bg-black/30 p-2">
+        <div className="mt-2 rounded-md border border-neutral-200 bg-neutral-100 p-2">
           <textarea
             value={newDraft}
             onChange={(e) => setNewDraft(e.target.value)}
             placeholder="Например: «Комиссия 5%, отчёт раз в месяц»"
             rows={2}
             autoFocus
-            className="w-full resize-none rounded-md bg-black/40 px-2 py-1 text-[11px] outline-none"
+            className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1 text-[11px] outline-none"
           />
           <div className="mt-1 flex justify-end gap-1.5">
-            <button onClick={() => { setAdding(false); setNewDraft(''); }} className="rounded-md border border-white/10 px-2 py-0.5 text-[10px] text-white/70">Отмена</button>
+            <button onClick={() => { setAdding(false); setNewDraft(''); }} className="rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] text-neutral-700">Отмена</button>
             <button
               onClick={async () => {
                 const v = newDraft.trim();
@@ -552,14 +552,14 @@ function NotesInline({
                 if (ok) { setAdding(false); setNewDraft(''); }
               }}
               disabled={busy || !newDraft.trim()}
-              className="rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-semibold text-white disabled:opacity-40"
+              className="rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
             >Сохранить</button>
           </div>
         </div>
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="mt-2 flex items-center gap-1 rounded-md border border-dashed border-white/15 px-2 py-1 text-[10px] text-white/60"
+          className="mt-2 flex items-center gap-1 rounded-md border border-dashed border-neutral-200 px-2 py-1 text-[10px] text-neutral-600"
         >
           <Plus className="size-3" /> Добавить условие
         </button>
@@ -584,7 +584,7 @@ function ActivityBlock({ partnership }: { partnership: Partnership }) {
         <Tile label="Кросс-реклама" value={partnership.cross_promotion ? 'Вкл.' : 'Выкл.'} />
         <Tile label="Инициатива" value={partnership.youInitiated ? 'Я' : 'Партнёр'} />
       </div>
-      <p className="mt-2 text-[10px] text-white/40 leading-relaxed">
+      <p className="mt-2 text-[10px] text-neutral-400 leading-relaxed">
         Счётчик взаимных рекомендаций появится позже.
       </p>
     </Block>
@@ -593,9 +593,9 @@ function ActivityBlock({ partnership }: { partnership: Partnership }) {
 
 function Tile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg bg-violet-500/10 px-2.5 py-2">
-      <p className="text-[14px] font-bold leading-tight text-violet-200 [font-variant-numeric:tabular-nums]">{value}</p>
-      <p className="mt-0.5 text-[10px] text-white/60">{label}</p>
+    <div className="rounded-lg bg-violet-50 px-2.5 py-2">
+      <p className="text-[14px] font-bold leading-tight text-violet-700 [font-variant-numeric:tabular-nums]">{value}</p>
+      <p className="mt-0.5 text-[10px] text-neutral-600">{label}</p>
     </div>
   );
 }
@@ -637,21 +637,21 @@ function PartnerAiChat({
 
   return (
     <div className="flex items-end gap-2">
-      <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-        <Sparkles className="size-3.5 shrink-0 text-violet-300" />
+      <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/5 px-3 py-2">
+        <Sparkles className="size-3.5 shrink-0 text-violet-600" />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Что нового про партнёра? AI разнесёт…"
           rows={1}
           disabled={busy}
-          className="max-h-[120px] flex-1 resize-none bg-transparent text-[12px] outline-none placeholder:text-white/40"
+          className="max-h-[120px] flex-1 resize-none bg-transparent text-[12px] outline-none placeholder:text-neutral-400"
         />
       </div>
       <button
         onClick={send}
         disabled={busy || text.trim().length < 2}
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-white disabled:opacity-40"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-neutral-900 disabled:opacity-40"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
       </button>

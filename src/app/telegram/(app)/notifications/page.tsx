@@ -77,8 +77,8 @@ const NOTIF_ICONS: Record<string, typeof Bell> = {
 };
 
 const NOTIF_ICON_COLORS: Record<string, string> = {
-  new_follower: 'text-blue-300',
-  mutual_follow: 'text-emerald-300',
+  new_follower: 'text-blue-600',
+  mutual_follow: 'text-emerald-600',
 };
 
 export default function ClientMiniAppNotifications() {
@@ -167,7 +167,7 @@ export default function ClientMiniAppNotifications() {
   if (!ready) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -184,16 +184,16 @@ export default function ClientMiniAppNotifications() {
     >
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Inbox</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">Inbox</p>
           <h1 className="mt-1 text-2xl font-bold">Уведомления</h1>
           {unreadCount > 0 && (
-            <p className="mt-0.5 text-[11px] text-white/50">{unreadCount} непрочитанных</p>
+            <p className="mt-0.5 text-[11px] text-neutral-500">{unreadCount} непрочитанных</p>
           )}
         </div>
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-semibold active:bg-white/[0.06] transition-colors"
+            className="rounded-full border border-neutral-200 bg-white border-neutral-200 px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
           >
             Прочитать всё
           </button>
@@ -203,29 +203,29 @@ export default function ClientMiniAppNotifications() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white/[0.03]" />
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white border-neutral-200" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-10 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-            <Inbox className="size-6 text-white/60" />
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-10 text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200">
+            <Inbox className="size-6 text-neutral-600" />
           </div>
           <p className="mt-4 text-base font-semibold">Пусто</p>
-          <p className="mt-1 text-xs text-white/50">Новые записи и события появятся здесь</p>
+          <p className="mt-1 text-xs text-neutral-500">Новые записи и события появятся здесь</p>
         </div>
       ) : (
         <div className="space-y-5">
           {groups.map((g) => (
             <div key={g.key}>
-              <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+              <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
                 {formatDay(g.date)}
               </p>
               <ul className="space-y-2">
                 {g.items.map((n) => {
                   const notifType = n.data?.type ?? '';
                   const Icon = NOTIF_ICONS[notifType] ?? Bell;
-                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-white/40' : 'text-violet-300');
+                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-neutral-400' : 'text-violet-600');
                   const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
                   const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
                   const followState = followerProfileId ? followStates[followerProfileId] : undefined;
@@ -239,16 +239,16 @@ export default function ClientMiniAppNotifications() {
                             navigateToProfile(followerProfileId);
                           }
                         }}
-                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
+                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 pl-5 text-left active:bg-neutral-50 transition-colors"
                       >
                         {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
                           <Icon className={`size-4 ${iconColor}`} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[13px] font-semibold">{n.title}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-white/60">{n.body}</p>
-                          <p className="mt-1 text-[10px] text-white/40">
+                          <p className="mt-0.5 line-clamp-2 text-[11px] text-neutral-600">{n.body}</p>
+                          <p className="mt-1 text-[10px] text-neutral-400">
                             {new Date(n.sent_at ?? n.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
                             {' · '}
                             {n.channel}
@@ -265,7 +265,7 @@ export default function ClientMiniAppNotifications() {
                             disabled={followState === 'loading'}
                             className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
                               followState === true
-                                ? 'border border-white/10 bg-white/[0.03] text-white/70 active:bg-white/[0.06]'
+                                ? 'border border-neutral-200 bg-white border-neutral-200 text-neutral-700 active:bg-neutral-50'
                                 : 'bg-white text-black active:bg-white/80'
                             }`}
                           >
@@ -281,7 +281,7 @@ export default function ClientMiniAppNotifications() {
 
                         {/* Mutual badge */}
                         {notifType === 'mutual_follow' && (
-                          <span className="shrink-0 rounded-full border border-emerald-500/30 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
+                          <span className="shrink-0 rounded-full border border-emerald-300 px-2.5 py-1 text-[10px] font-semibold text-emerald-600">
                             Взаимно
                           </span>
                         )}

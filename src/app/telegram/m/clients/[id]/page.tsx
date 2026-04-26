@@ -135,7 +135,7 @@ export default function MasterMiniAppClientCard() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -143,7 +143,7 @@ export default function MasterMiniAppClientCard() {
   if (!client) {
     return (
       <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-white/60">Клиент не найден</p>
+        <p className="text-sm text-neutral-600">Клиент не найден</p>
       </div>
     );
   }
@@ -161,7 +161,7 @@ export default function MasterMiniAppClientCard() {
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/5"
+        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white/5"
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -169,28 +169,28 @@ export default function MasterMiniAppClientCard() {
       {/* Hero. Health-alert треугольник раньше клипался поверх аватара —
           теперь рендерится отдельным цветным бейджем рядом с именем,
           с onClick-объяснением (TG не поддерживает hover tooltip). */}
-      <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-3">
         <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-base font-bold">
           {client.full_name.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—'}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="truncate text-[15px] font-bold">{client.full_name}</h1>
-            {isVIP && <Crown className="size-3.5 text-amber-300" />}
+            {isVIP && <Crown className="size-3.5 text-amber-600" />}
             {client.has_health_alert && (
               <button
                 type="button"
                 onClick={() => haptic('light')}
                 title="Есть аллергии или противопоказания"
                 aria-label="Есть аллергии или противопоказания"
-                className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-300"
+                className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-600"
               >
                 <AlertTriangle className="size-3" />
                 Здоровье
               </button>
             )}
           </div>
-          {client.phone && <p className="mt-0.5 text-[11px] text-white/60">{client.phone}</p>}
+          {client.phone && <p className="mt-0.5 text-[11px] text-neutral-600">{client.phone}</p>}
         </div>
       </div>
 
@@ -256,28 +256,28 @@ export default function MasterMiniAppClientCard() {
             value={client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
           />
         </div>
-        <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="mt-3 border-t border-neutral-200 pt-3">
           <div className="flex items-center gap-1.5">
-            <Heart className={`size-3 ${client.has_health_alert ? 'text-rose-400' : 'text-white/40'}`} />
-            <span className="text-[10px] uppercase tracking-wide text-white/50">Здоровье</span>
+            <Heart className={`size-3 ${client.has_health_alert ? 'text-rose-400' : 'text-neutral-400'}`} />
+            <span className="text-[10px] uppercase tracking-wide text-neutral-500">Здоровье</span>
             {client.has_health_alert && (
-              <span className="ml-auto rounded-full bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-rose-300">Внимание</span>
+              <span className="ml-auto rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-semibold text-rose-600">Внимание</span>
             )}
           </div>
           {(allergies.length === 0 && contraindications.length === 0) ? (
-            <p className="mt-1.5 text-[11px] text-white/50">Нет аллергий и противопоказаний.</p>
+            <p className="mt-1.5 text-[11px] text-neutral-500">Нет аллергий и противопоказаний.</p>
           ) : (
             <div className="mt-1.5 space-y-1 text-[12px]">
               {allergies.length > 0 && (
-                <p><span className="text-white/40">Аллергии:</span> <span className="text-rose-300">{allergies.join(', ')}</span></p>
+                <p><span className="text-neutral-400">Аллергии:</span> <span className="text-rose-600">{allergies.join(', ')}</span></p>
               )}
               {contraindications.length > 0 && (
-                <p><span className="text-white/40">Противопоказания:</span> {contraindications.join(', ')}</p>
+                <p><span className="text-neutral-400">Противопоказания:</span> {contraindications.join(', ')}</p>
               )}
             </div>
           )}
         </div>
-        <p className="mt-2 border-t border-white/10 pt-2 text-[10px] text-white/40 leading-relaxed">
+        <p className="mt-2 border-t border-neutral-200 pt-2 text-[10px] text-neutral-400 leading-relaxed">
           Имя, телефон, e-mail и дата рождения — управляет клиент. Аллергии — через AI-чат снизу.
         </p>
       </Block>
@@ -293,22 +293,22 @@ export default function MasterMiniAppClientCard() {
       {/* 3. History */}
       <Block icon={<Calendar className="size-3.5" />} title="История посещений">
         {visits.length === 0 ? (
-          <p className="text-[11px] text-white/50">Пока визитов нет.</p>
+          <p className="text-[11px] text-neutral-500">Пока визитов нет.</p>
         ) : (
           <ul className="space-y-1.5">
             {visits.slice(0, 8).map((v) => (
-              <li key={v.id} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-2.5 py-1.5">
+              <li key={v.id} className="flex items-center justify-between rounded-lg bg-white border-neutral-200 px-2.5 py-1.5">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <p className="truncate text-[12px] font-semibold">{v.service_name}</p>
-                    {v.voice_transcript && <Mic className="size-2.5 text-violet-300" />}
+                    {v.voice_transcript && <Mic className="size-2.5 text-violet-600" />}
                   </div>
-                  <p className="mt-0.5 text-[10px] text-white/50">
+                  <p className="mt-0.5 text-[10px] text-neutral-500">
                     {new Date(v.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
                     {' · '}{v.status}
                   </p>
                 </div>
-                <p className="ml-2 shrink-0 text-[11px] font-bold text-white/80">{v.price.toFixed(0)} ₴</p>
+                <p className="ml-2 shrink-0 text-[11px] font-bold text-neutral-800">{v.price.toFixed(0)} ₴</p>
               </li>
             ))}
           </ul>
@@ -329,7 +329,7 @@ export default function MasterMiniAppClientCard() {
       </Block>
 
       {/* AI chat — sticky bottom */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">
         <ClientAiChat clientId={client.id} haptic={haptic} onApplied={reload} />
       </div>
     </motion.div>
@@ -340,9 +340,9 @@ export default function MasterMiniAppClientCard() {
 
 function KPI({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-center">
+    <div className="rounded-xl border border-neutral-200 bg-white/5 p-2 text-center">
       <p className="text-[14px] font-bold leading-tight">{value}</p>
-      <p className="mt-0.5 text-[9px] uppercase tracking-wide text-white/50">{label}</p>
+      <p className="mt-0.5 text-[9px] uppercase tracking-wide text-neutral-500">{label}</p>
     </div>
   );
 }
@@ -356,12 +356,12 @@ function Block({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-3">
+    <section className="rounded-2xl border border-neutral-200 bg-white/5 p-3">
       <header className="mb-2 flex items-center gap-1.5">
-        <span className="text-violet-300">{icon}</span>
+        <span className="text-violet-600">{icon}</span>
         <h3 className="text-[12px] font-semibold tracking-tight">{title}</h3>
         {badge && (
-          <span className="ml-auto rounded-full bg-violet-500/15 px-2 py-0.5 text-[9px] font-medium text-violet-200">
+          <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-medium text-violet-700">
             {badge}
           </span>
         )}
@@ -374,17 +374,17 @@ function Block({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[9px] uppercase tracking-wide text-white/40">{label}</p>
-      <p className="mt-0.5 break-words text-[12px] text-white/95">{value}</p>
+      <p className="text-[9px] uppercase tracking-wide text-neutral-400">{label}</p>
+      <p className="mt-0.5 break-words text-[12px] text-neutral-900/95">{value}</p>
     </div>
   );
 }
 
 function AnalyticTile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg bg-violet-500/10 px-2.5 py-2">
-      <p className="text-[14px] font-bold leading-tight text-violet-200 [font-variant-numeric:tabular-nums]">{value}</p>
-      <p className="mt-0.5 text-[10px] text-white/60">{label}</p>
+    <div className="rounded-lg bg-violet-50 px-2.5 py-2">
+      <p className="text-[14px] font-bold leading-tight text-violet-700 [font-variant-numeric:tabular-nums]">{value}</p>
+      <p className="mt-0.5 text-[10px] text-neutral-600">{label}</p>
     </div>
   );
 }
@@ -432,7 +432,7 @@ function NotesBlock({
         {!adding && editingIndex === null && (
           <button
             onClick={() => { haptic('light'); setAdding(true); }}
-            className="flex items-center gap-1 rounded-md bg-violet-500/20 px-2 py-1 text-[10px] font-semibold text-violet-200 active:scale-95"
+            className="flex items-center gap-1 rounded-md bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-700 active:scale-95"
           >
             <Plus className="size-3" /> Добавить
           </button>
@@ -440,19 +440,19 @@ function NotesBlock({
       </div>
 
       {adding && (
-        <div className="mb-2 rounded-lg border border-white/10 bg-black/30 p-2">
+        <div className="mb-2 rounded-lg border border-neutral-200 bg-neutral-100 p-2">
           <textarea
             value={newDraft}
             onChange={(e) => setNewDraft(e.target.value)}
             placeholder="Например: «Любит зелёный чай, не пьёт кофе»"
             rows={2}
             autoFocus
-            className="w-full resize-none rounded-md bg-black/40 px-2 py-1.5 text-[12px] outline-none"
+            className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1.5 text-[12px] outline-none"
           />
           <div className="mt-1.5 flex justify-end gap-1.5">
             <button
               onClick={() => { setAdding(false); setNewDraft(''); }}
-              className="rounded-md border border-white/10 px-2 py-1 text-[10px] text-white/70"
+              className="rounded-md border border-neutral-200 px-2 py-1 text-[10px] text-neutral-700"
             >Отмена</button>
             <button
               onClick={async () => {
@@ -464,14 +464,14 @@ function NotesBlock({
                 if (ok) { setAdding(false); setNewDraft(''); }
               }}
               disabled={busy || !newDraft.trim()}
-              className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-semibold text-white disabled:opacity-40"
+              className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
             >Сохранить</button>
           </div>
         </div>
       )}
 
       {entries.length === 0 && !adding ? (
-        <p className="text-[11px] leading-relaxed text-white/50">
+        <p className="text-[11px] leading-relaxed text-neutral-500">
           Пусто. Добавь вручную или напиши в чат снизу — AI разнесёт.
         </p>
       ) : (
@@ -479,7 +479,7 @@ function NotesBlock({
           {entries.map((entry) => {
             const isEditing = editingIndex === entry.index;
             return (
-              <div key={entry.index} className="rounded-lg bg-white/[0.04] px-2.5 py-1.5">
+              <div key={entry.index} className="rounded-lg bg-white border-neutral-200 px-2.5 py-1.5">
                 {isEditing ? (
                   <>
                     <textarea
@@ -487,12 +487,12 @@ function NotesBlock({
                       onChange={(e) => setDraft(e.target.value)}
                       rows={2}
                       autoFocus
-                      className="w-full resize-none rounded-md bg-black/40 px-2 py-1.5 text-[12px] outline-none"
+                      className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1.5 text-[12px] outline-none"
                     />
                     <div className="mt-1 flex justify-end gap-1.5">
                       <button
                         onClick={() => { setEditingIndex(null); setDraft(''); }}
-                        className="flex size-6 items-center justify-center rounded-md bg-white/5 text-white/70"
+                        className="flex size-6 items-center justify-center rounded-md bg-white/5 text-neutral-700"
                       ><X className="size-3" /></button>
                       <button
                         onClick={async () => {
@@ -506,7 +506,7 @@ function NotesBlock({
                           if (ok) { setEditingIndex(null); setDraft(''); }
                         }}
                         disabled={busy || !draft.trim()}
-                        className="flex size-6 items-center justify-center rounded-md bg-violet-500 text-white disabled:opacity-40"
+                        className="flex size-6 items-center justify-center rounded-md bg-violet-500 text-neutral-900 disabled:opacity-40"
                       ><Check className="size-3" /></button>
                     </div>
                   </>
@@ -514,14 +514,14 @@ function NotesBlock({
                   <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
                       {entry.date && (
-                        <p className="text-[9px] tracking-wide text-white/40">{entry.date}</p>
+                        <p className="text-[9px] tracking-wide text-neutral-400">{entry.date}</p>
                       )}
-                      <p className="break-words text-[12px] text-white/90 leading-relaxed">{entry.body}</p>
+                      <p className="break-words text-[12px] text-neutral-900 leading-relaxed">{entry.body}</p>
                     </div>
                     <div className="flex shrink-0 gap-0.5 opacity-70">
                       <button
                         onClick={() => { haptic('selection'); setEditingIndex(entry.index); setDraft(entry.body); }}
-                        className="flex size-6 items-center justify-center rounded-md text-white/70"
+                        className="flex size-6 items-center justify-center rounded-md text-neutral-700"
                       ><Pencil className="size-3" /></button>
                       <button
                         onClick={async () => {
@@ -588,21 +588,21 @@ function ClientAiChat({
 
   return (
     <div className="flex items-end gap-2">
-      <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-        <Sparkles className="size-3.5 shrink-0 text-violet-300" />
+      <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/5 px-3 py-2">
+        <Sparkles className="size-3.5 shrink-0 text-violet-600" />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Что нового про клиента? AI разнесёт по полям…"
           rows={1}
           disabled={busy}
-          className="max-h-[120px] flex-1 resize-none bg-transparent text-[12px] outline-none placeholder:text-white/40"
+          className="max-h-[120px] flex-1 resize-none bg-transparent text-[12px] outline-none placeholder:text-neutral-400"
         />
       </div>
       <button
         onClick={send}
         disabled={busy || text.trim().length < 2}
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-white disabled:opacity-40"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-neutral-900 disabled:opacity-40"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
       </button>

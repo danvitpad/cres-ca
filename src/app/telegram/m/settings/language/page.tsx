@@ -59,23 +59,23 @@ export default function MiniAppLanguagePage() {
 
   return (
     <SettingsShell title="Язык" subtitle="Синхронизируется с веб-дашбордом">
-      <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
+      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 divide-y divide-neutral-200">
         {LANGS.map((l) => (
           <li key={l.code}>
             <button
               type="button"
               onClick={() => pick(l.code)}
               disabled={busy}
-              className="flex w-full items-center gap-3 px-4 py-3.5 active:bg-white/[0.06] transition-colors disabled:opacity-60"
+              className="flex w-full items-center gap-3 px-4 py-3.5 active:bg-neutral-50 transition-colors disabled:opacity-60"
             >
               <span className="text-[20px]">{l.flag}</span>
               <span className="flex-1 text-left text-[14px] font-medium">{l.label}</span>
-              {current === l.code && <Check size={16} weight="bold" className="text-violet-300" />}
+              {current === l.code && <Check size={16} weight="bold" className="text-violet-600" />}
             </button>
           </li>
         ))}
       </ul>
-      <p className="px-2 text-[11px] text-white/40">
+      <p className="px-2 text-[11px] text-neutral-400">
         Влияет на язык интерфейса в Mini App и web-кабинете. Для языка уведомлений клиентам —
         отдельная настройка в «Редактировать профиль».
       </p>

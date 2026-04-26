@@ -161,7 +161,7 @@ export default function MiniAppSalonCalendar() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3"
       >
-        <div className="size-10 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-300">
+        <div className="size-10 rounded-xl bg-violet-100 border border-violet-500/25 flex items-center justify-center text-violet-600">
           <Building2 className="size-5" />
         </div>
         <div className="min-w-0">
@@ -243,10 +243,10 @@ export default function MiniAppSalonCalendar() {
                       </span>
                     )}
                     {(a.status === 'cancelled') && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600">отменено</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-50 text-rose-600">отменено</span>
                     )}
                     {(a.status === 'completed' || a.status === 'paid') && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600">завершено</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">завершено</span>
                     )}
                   </div>
                 </div>

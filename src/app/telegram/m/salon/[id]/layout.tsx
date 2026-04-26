@@ -76,7 +76,7 @@ function ContextSwitcher({
 
   if (!isSoloMaster) {
     return (
-      <div className="flex items-center gap-2 text-white/80 text-sm font-medium truncate">
+      <div className="flex items-center gap-2 text-neutral-800 text-sm font-medium truncate">
         <Building2 className="size-4 shrink-0" />
         <span className="truncate">{salonName}</span>
       </div>
@@ -88,27 +88,27 @@ function ContextSwitcher({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-white/90 text-sm font-medium rounded-lg px-2 py-1 hover:bg-white/10"
+        className="flex items-center gap-1.5 text-neutral-900 text-sm font-medium rounded-lg px-2 py-1 hover:bg-white/10"
       >
         <Building2 className="size-4" />
         <span className="truncate max-w-[160px]">{salonName}</span>
         <ChevronDown className="size-3.5 opacity-60" />
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-56 rounded-xl bg-[#2a2b2e] border border-white/10 shadow-xl z-50 overflow-hidden">
+        <div className="absolute left-0 top-full mt-1 w-56 rounded-xl bg-white border border-neutral-200 shadow-xl z-50 overflow-hidden">
           <button
             type="button"
             onClick={() => {
               setOpen(false);
               router.push('/telegram/m/home');
             }}
-            className="w-full text-left px-3 py-2.5 text-sm text-white/80 hover:bg-white/5 flex items-center gap-2"
+            className="w-full text-left px-3 py-2.5 text-sm text-neutral-800 hover:bg-white/5 flex items-center gap-2"
           >
             <User className="size-4" />
             Личный кабинет
           </button>
           <div className="h-px bg-white/10" />
-          <div className="px-3 py-2.5 text-sm text-white flex items-center gap-2 bg-white/5">
+          <div className="px-3 py-2.5 text-sm text-neutral-900 flex items-center gap-2 bg-white/5">
             <Building2 className="size-4" />
             <span className="truncate">{salonName}</span>
           </div>
@@ -165,22 +165,22 @@ function SalonShellInner({
 
   if (loading) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#0b0d17] text-white">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+      <div className="flex h-dvh items-center justify-center bg-white text-neutral-900">
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-[#0b0d17] text-white p-6 text-center">
-        <div className="text-sm text-white/60">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 bg-white text-neutral-900 p-6 text-center">
+        <div className="text-sm text-neutral-600">
           {error === '403' ? 'Нет доступа к этому салону' : 'Не удалось открыть салон'}
         </div>
         <button
           type="button"
           onClick={() => router.push('/telegram/m/home')}
-          className="rounded-lg border border-white/20 px-3 py-1.5 text-sm"
+          className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm"
         >
           В личный кабинет
         </button>
@@ -193,13 +193,13 @@ function SalonShellInner({
     data.role === 'admin' ? 'Владелец' : data.role === 'receptionist' ? 'Ресепшн' : 'Мастер';
 
   return (
-    <div className="flex h-dvh flex-col bg-[#0b0d17] text-white">
+    <div className="flex h-dvh flex-col bg-white text-neutral-900">
       <header
-        className="flex items-center justify-between px-4 py-2 border-b border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
+        className="flex items-center justify-between px-4 py-2 border-b border-neutral-200 bg-white/95 backdrop-blur-xl"
         style={{ paddingTop: 'calc(8px + var(--tg-safe-top, 0px))' }}
       >
         <ContextSwitcher salonName={data.salon.name} isSoloMaster={data.is_solo_master} />
-        <div className="text-[10px] uppercase tracking-wider text-white/40">{roleLabel}</div>
+        <div className="text-[10px] uppercase tracking-wider text-neutral-400">{roleLabel}</div>
       </header>
       <main
         className="flex-1 overflow-y-auto"

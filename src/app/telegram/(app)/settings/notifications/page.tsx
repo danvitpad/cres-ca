@@ -24,7 +24,7 @@ export default function MiniAppNotificationsPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+          className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
           aria-label="Назад"
         >
           <ChevronLeft className="size-5" />
@@ -34,7 +34,7 @@ export default function MiniAppNotificationsPage() {
             <Bell className="size-5 text-violet-400" />
             Напоминания
           </h1>
-          <p className="text-[12px] text-white/50">
+          <p className="text-[12px] text-neutral-500">
             Когда и как часто получать уведомления о визитах
           </p>
         </div>

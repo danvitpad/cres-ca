@@ -87,13 +87,13 @@ export default function MiniAppSalonDetailPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
 
   if (!salon) {
-    return <div className="px-5 pt-10 text-center"><p className="text-sm text-white/60">Салон не найден</p></div>;
+    return <div className="px-5 pt-10 text-center"><p className="text-sm text-neutral-600">Салон не найден</p></div>;
   }
 
   return (
@@ -105,13 +105,13 @@ export default function MiniAppSalonDetailPage() {
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>
 
       <div className="flex items-start gap-4">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-2xl font-bold text-white/90">
+        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 text-2xl font-bold text-neutral-900">
           {salon.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={salon.logo_url} alt={salon.name} className="size-full object-cover" />
@@ -121,9 +121,9 @@ export default function MiniAppSalonDetailPage() {
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-xl font-bold">{salon.name}</h1>
-          <p className="mt-0.5 text-[11px] uppercase tracking-wide text-white/50">Салон · команда</p>
+          <p className="mt-0.5 text-[11px] uppercase tracking-wide text-neutral-500">Салон · команда</p>
           {salon.city && (
-            <div className="mt-2 flex items-center gap-1 text-[12px] text-white/70">
+            <div className="mt-2 flex items-center gap-1 text-[12px] text-neutral-700">
               <MapPin className="size-3" />
               <span className="truncate">{salon.city}</span>
             </div>
@@ -132,14 +132,14 @@ export default function MiniAppSalonDetailPage() {
       </div>
 
       {salon.description && (
-        <p className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[13px] leading-relaxed text-white/75">
+        <p className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-[13px] leading-relaxed text-neutral-700">
           {salon.description}
         </p>
       )}
 
       {salon.address && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <p className="text-[10px] uppercase tracking-wide text-white/40">Адрес</p>
+        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+          <p className="text-[10px] uppercase tracking-wide text-neutral-400">Адрес</p>
           <p className="mt-1 text-sm">{salon.address}</p>
         </div>
       )}
@@ -148,7 +148,7 @@ export default function MiniAppSalonDetailPage() {
         <a
           href={`tel:${salon.phone}`}
           onClick={() => haptic('selection')}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] py-4 text-sm font-semibold active:bg-white/[0.06] transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-4 text-sm font-semibold active:bg-neutral-50 transition-colors"
         >
           <Phone className="size-4" /> {salon.phone}
         </a>
@@ -157,7 +157,7 @@ export default function MiniAppSalonDetailPage() {
       {team.length > 0 && (
         <div>
           <div className="mb-3 flex items-center gap-2">
-            <Users className="size-4 text-white/60" />
+            <Users className="size-4 text-neutral-600" />
             <h2 className="text-sm font-semibold">Команда</h2>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -167,9 +167,9 @@ export default function MiniAppSalonDetailPage() {
                 <button
                   key={m.id}
                   onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left active:bg-white/[0.06] transition-colors"
+                  className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3 text-left active:bg-neutral-50 transition-colors"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
+                  <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-900">
                     {m.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={m.avatar_url} alt={mname} className="size-full object-cover" />
@@ -180,7 +180,7 @@ export default function MiniAppSalonDetailPage() {
                   <div className="min-w-0">
                     <p className="truncate text-[12px] font-semibold">{mname}</p>
                     {m.specialization && (
-                      <p className="truncate text-[10px] text-white/50">{m.specialization}</p>
+                      <p className="truncate text-[10px] text-neutral-500">{m.specialization}</p>
                     )}
                   </div>
                 </button>

@@ -200,7 +200,7 @@ export default function MiniAppRegisterPage() {
   }
 
   if (!stash) {
-    return <div className="min-h-dvh bg-[#0b0d17]" />;
+    return <div className="min-h-dvh bg-white" />;
   }
 
   if (otpStage === 'otp') {
@@ -208,16 +208,16 @@ export default function MiniAppRegisterPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex min-h-dvh flex-col bg-[#0b0d17] text-white"
+        className="flex min-h-dvh flex-col bg-white text-neutral-900"
       >
         <div className="flex-1 space-y-6 px-6 pt-16">
           <div className="space-y-3 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-violet-500/20">
-              <Mail className="size-6 text-violet-200" />
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-violet-100">
+              <Mail className="size-6 text-violet-700" />
             </div>
             <h1 className="text-2xl font-bold">Подтверждение email</h1>
-            <p className="mx-auto max-w-xs text-[13px] leading-relaxed text-white/60">
-              Мы отправили 8-значный код на <span className="font-semibold text-white">{email}</span>. Введите его ниже.
+            <p className="mx-auto max-w-xs text-[13px] leading-relaxed text-neutral-600">
+              Мы отправили 8-значный код на <span className="font-semibold text-neutral-900">{email}</span>. Введите его ниже.
             </p>
           </div>
 
@@ -228,11 +228,11 @@ export default function MiniAppRegisterPage() {
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
               placeholder="• • • • • • • •"
-              className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-center font-mono text-2xl tracking-[0.3em] outline-none focus:border-white/30"
+              className="w-full rounded-2xl border border-neutral-200 bg-white/5 px-4 py-5 text-center font-mono text-2xl tracking-[0.3em] outline-none focus:border-white/30"
             />
           </div>
 
-          {otpError && <p className="text-center text-xs text-rose-300">{otpError}</p>}
+          {otpError && <p className="text-center text-xs text-rose-600">{otpError}</p>}
 
           <div className="mx-auto max-w-xs space-y-2">
             <button
@@ -245,7 +245,7 @@ export default function MiniAppRegisterPage() {
             </button>
             <button
               onClick={resendOtp}
-              className="w-full py-2 text-xs text-white/50 underline-offset-2 hover:underline"
+              className="w-full py-2 text-xs text-neutral-500 underline-offset-2 hover:underline"
             >
               Отправить код ещё раз
             </button>
@@ -262,19 +262,19 @@ export default function MiniAppRegisterPage() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex min-h-dvh flex-col bg-[#0b0d17] text-white"
+      className="flex min-h-dvh flex-col bg-white text-neutral-900"
     >
       <div className="flex-1 space-y-6 px-6 pt-10 pb-6">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">Регистрация</h1>
-          <p className="mx-auto max-w-xs text-[13px] text-white/55">
+          <p className="mx-auto max-w-xs text-[13px] text-neutral-500">
             Заполните, пожалуйста, несколько полей — это займёт меньше минуты.
           </p>
         </div>
 
         {/* Role picker — client / master / salon */}
         <div className="space-y-1">
-          <div className="px-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
+          <div className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
             Я регистрируюсь как
           </div>
           <div className="grid grid-cols-3 gap-2">
@@ -283,8 +283,8 @@ export default function MiniAppRegisterPage() {
               onClick={() => setRole('client')}
               className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
                 role === 'client'
-                  ? 'border-violet-400 bg-violet-500/20 text-white'
-                  : 'border-white/10 bg-white/5 text-white/60'
+                  ? 'border-violet-400 bg-violet-100 text-neutral-900'
+                  : 'border-neutral-200 bg-white/5 text-neutral-600'
               }`}
             >
               <UserRound className="size-4" />
@@ -295,8 +295,8 @@ export default function MiniAppRegisterPage() {
               onClick={() => setRole('master')}
               className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
                 role === 'master'
-                  ? 'border-violet-400 bg-violet-500/20 text-white'
-                  : 'border-white/10 bg-white/5 text-white/60'
+                  ? 'border-violet-400 bg-violet-100 text-neutral-900'
+                  : 'border-neutral-200 bg-white/5 text-neutral-600'
               }`}
             >
               <Briefcase className="size-4" />
@@ -307,8 +307,8 @@ export default function MiniAppRegisterPage() {
               onClick={() => setRole('salon_admin')}
               className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
                 role === 'salon_admin'
-                  ? 'border-emerald-400 bg-emerald-500/20 text-white'
-                  : 'border-white/10 bg-white/5 text-white/60'
+                  ? 'border-emerald-400 bg-emerald-100 text-neutral-900'
+                  : 'border-neutral-200 bg-white/5 text-neutral-600'
               }`}
             >
               <Building2 className="size-4" />
@@ -316,12 +316,12 @@ export default function MiniAppRegisterPage() {
             </button>
           </div>
           {role === 'master' && (
-            <p className="mt-2 px-1 text-[11px] leading-snug text-white/45">
+            <p className="mt-2 px-1 text-[11px] leading-snug text-neutral-500">
               Вы получите Mini App мастера с календарём, клиентами и финансами. Настроить услуги и график можно будет сразу после регистрации.
             </p>
           )}
           {role === 'salon_admin' && (
-            <p className="mt-2 px-1 text-[11px] leading-snug text-white/45">
+            <p className="mt-2 px-1 text-[11px] leading-snug text-neutral-500">
               Команде — мультимастерский календарь, состав, смены и отчёты. Услуги и людей добавите после регистрации. Подходит для любой сферы услуг.
             </p>
           )}
@@ -367,10 +367,10 @@ export default function MiniAppRegisterPage() {
             type="password"
           />
           <div className="space-y-1">
-            <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
-              <Calendar className="size-3" /> Дата рождения <span className="normal-case text-white/30">· необязательно</span>
+            <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+              <Calendar className="size-3" /> Дата рождения <span className="normal-case text-neutral-400">· необязательно</span>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 py-2">
+            <div className="rounded-2xl border border-neutral-200 bg-white/5 py-2">
               <DateWheelPicker
                 size="sm"
                 locale="ru-RU"
@@ -385,18 +385,18 @@ export default function MiniAppRegisterPage() {
         <button
           type="button"
           onClick={() => setLinkTelegram((v) => !v)}
-          className="flex w-full items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left active:scale-[0.99] transition-transform"
+          className="flex w-full items-start gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-4 text-left active:scale-[0.99] transition-transform"
         >
           <div
             className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-              linkTelegram ? 'border-violet-400 bg-violet-500' : 'border-white/30 bg-transparent'
+              linkTelegram ? 'border-violet-400 bg-violet-500' : 'border-neutral-300 bg-transparent'
             }`}
           >
             {linkTelegram && <Check className="size-3.5" />}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold">Привязать Telegram</p>
-            <p className="mt-1 text-[12px] leading-snug text-white/55">
+            <p className="mt-1 text-[12px] leading-snug text-neutral-500">
               Разрешаю сохранить мой Telegram ID{tgHandle ? ` и @${tgHandle}` : ''} для входа и связи с мастерами.
               Больше никакие данные из Telegram не копируются.
             </p>
@@ -404,7 +404,7 @@ export default function MiniAppRegisterPage() {
         </button>
 
         {errorMsg && (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
+          <div className="rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
             {errorMsg}
           </div>
         )}
@@ -415,7 +415,7 @@ export default function MiniAppRegisterPage() {
         style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
       >
         {done ? (
-          <div className="flex items-center justify-center gap-2 py-4 text-emerald-300">
+          <div className="flex items-center justify-center gap-2 py-4 text-emerald-600">
             <Check className="size-5" /> <span className="text-sm font-semibold">Готово — открываем CRES-CA</span>
           </div>
         ) : (
@@ -435,7 +435,7 @@ export default function MiniAppRegisterPage() {
             )}
           </button>
         )}
-        <p className="text-center text-[11px] leading-relaxed text-white/40">
+        <p className="text-center text-[11px] leading-relaxed text-neutral-400">
           Продолжая, вы принимаете{' '}
           <Link href="/telegram/terms" className="underline decoration-white/30">
             Условия использования
@@ -468,18 +468,18 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-white/50">
+      <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
         <Icon className="size-3" /> {label}
-        {optional && <span className="normal-case text-white/30">· необязательно</span>}
+        {optional && <span className="normal-case text-neutral-400">· необязательно</span>}
       </div>
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           inputMode={inputMode}
           type={type}
-          className="w-full bg-transparent text-base outline-none placeholder:text-white/25"
+          className="w-full bg-transparent text-base outline-none placeholder:text-neutral-900/25"
         />
       </div>
     </div>

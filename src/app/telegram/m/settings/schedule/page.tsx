@@ -92,7 +92,7 @@ export default function MiniAppSchedulePage() {
   if (loading) {
     return (
       <SettingsShell title="График работы">
-        <div className="h-40 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
+        <div className="h-40 w-full animate-pulse rounded-2xl bg-white border-neutral-200" />
       </SettingsShell>
     );
   }
@@ -109,7 +109,7 @@ export default function MiniAppSchedulePage() {
               className={`rounded-2xl border p-3 transition-colors ${
                 active
                   ? 'border-violet-500/25 bg-violet-500/[0.08]'
-                  : 'border-white/10 bg-white/[0.03]'
+                  : 'border-neutral-200 bg-white border-neutral-200'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -117,14 +117,14 @@ export default function MiniAppSchedulePage() {
                   onClick={() => toggleDay(d.key)}
                   className={`flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
                     active
-                      ? 'border-violet-500 bg-violet-500 text-white'
-                      : 'border-white/15 bg-white/[0.03] text-white/30'
+                      ? 'border-violet-500 bg-violet-500 text-neutral-900'
+                      : 'border-neutral-200 bg-white border-neutral-200 text-neutral-400'
                   }`}
                 >
                   {active && <Check size={14} weight="bold" />}
                 </button>
                 <span className="flex-1 text-[14px] font-medium">{d.label}</span>
-                {!active && <span className="text-[11px] text-white/30">выходной</span>}
+                {!active && <span className="text-[11px] text-neutral-400">выходной</span>}
               </div>
               {active && day && (
                 <div className="mt-3 flex items-center gap-2 pl-11">
@@ -132,14 +132,14 @@ export default function MiniAppSchedulePage() {
                     type="time"
                     value={day.start}
                     onChange={(e) => setTime(d.key, 'start', e.target.value)}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[13px] tabular-nums text-white focus:border-violet-500/40 focus:outline-none"
+                    className="flex-1 rounded-lg border border-neutral-200 bg-white border-neutral-200 px-3 py-2 text-[13px] tabular-nums text-neutral-900 focus:border-violet-400 focus:outline-none"
                   />
-                  <span className="text-[12px] text-white/40">—</span>
+                  <span className="text-[12px] text-neutral-400">—</span>
                   <input
                     type="time"
                     value={day.end}
                     onChange={(e) => setTime(d.key, 'end', e.target.value)}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-[13px] tabular-nums text-white focus:border-violet-500/40 focus:outline-none"
+                    className="flex-1 rounded-lg border border-neutral-200 bg-white border-neutral-200 px-3 py-2 text-[13px] tabular-nums text-neutral-900 focus:border-violet-400 focus:outline-none"
                   />
                 </div>
               )}
@@ -150,7 +150,7 @@ export default function MiniAppSchedulePage() {
       <button
         onClick={save}
         disabled={saving}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 py-3.5 text-[14px] font-semibold text-white active:bg-violet-600 transition-colors disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 py-3.5 text-[14px] font-semibold text-neutral-900 active:bg-violet-600 transition-colors disabled:opacity-40"
       >
         {saving ? 'Сохраняю…' : saved ? '✓ Сохранено' : 'Сохранить'}
       </button>

@@ -42,7 +42,7 @@ export function MiniBottomSheet({
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-50 bg-black/60"
+            className="fixed inset-0 z-50 bg-neutral-900/60"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -50,7 +50,7 @@ export function MiniBottomSheet({
           />
           <motion.div
             className={cn(
-              'fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-[#1a1b1e] text-white',
+              'fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-white text-neutral-900',
               'max-h-[90dvh] overflow-hidden flex flex-col',
               className,
             )}

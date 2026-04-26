@@ -17,7 +17,7 @@ export default function MiniAppMapRedirect() {
   }, [router]);
   return (
     <div className="flex min-h-[60dvh] items-center justify-center">
-      <Loader2 className="size-6 animate-spin text-white/40" />
+      <Loader2 className="size-6 animate-spin text-neutral-400" />
     </div>
   );
 }

@@ -335,7 +335,7 @@ export default function MiniAppMasterDetailPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <Loader2 className="size-8 animate-spin text-white/30" />
+          <Loader2 className="size-8 animate-spin text-neutral-400" />
         </motion.div>
       </div>
     );
@@ -350,12 +350,12 @@ export default function MiniAppMasterDetailPage() {
         className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-5"
       >
         <div className="flex size-16 items-center justify-center rounded-full bg-white/5">
-          <MapPin className="size-6 text-white/30" />
+          <MapPin className="size-6 text-neutral-400" />
         </div>
-        <p className="text-sm text-white/50">Мастер не найден</p>
+        <p className="text-sm text-neutral-500">Мастер не найден</p>
         <button
           onClick={() => router.back()}
-          className="mt-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-medium text-white/80 active:scale-95 transition-transform"
+          className="mt-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-medium text-neutral-800 active:scale-95 transition-transform"
         >
           Назад
         </button>
@@ -397,16 +397,16 @@ export default function MiniAppMasterDetailPage() {
         >
           <button
             onClick={() => { haptic('light'); router.back(); }}
-            className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-neutral-900/40 backdrop-blur-xl border border-neutral-200 active:scale-90 transition-transform"
           >
-            <ArrowLeft className="size-[18px] text-white" />
+            <ArrowLeft className="size-[18px] text-neutral-900" />
           </button>
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="flex size-10 items-center justify-center rounded-full bg-black/40 backdrop-blur-xl border border-white/10 active:scale-90 transition-transform"
+              className="flex size-10 items-center justify-center rounded-full bg-neutral-900/40 backdrop-blur-xl border border-neutral-200 active:scale-90 transition-transform"
             >
-              <Share2 className="size-[18px] text-white" />
+              <Share2 className="size-[18px] text-neutral-900" />
             </button>
           </div>
         </motion.div>
@@ -426,13 +426,13 @@ export default function MiniAppMasterDetailPage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={master.avatar_url} alt={name} className="size-full object-cover" />
             ) : (
-              <span className="text-white">{name[0]?.toUpperCase() ?? 'M'}</span>
+              <span className="text-neutral-900">{name[0]?.toUpperCase() ?? 'M'}</span>
             )}
           </div>
           <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate text-xl font-bold leading-tight text-white">{name}</h1>
+            <h1 className="truncate text-xl font-bold leading-tight text-neutral-900">{name}</h1>
             {master.specialization && (
-              <p className="mt-0.5 truncate text-[13px] text-white/60">{master.specialization}</p>
+              <p className="mt-0.5 truncate text-[13px] text-neutral-600">{master.specialization}</p>
             )}
           </div>
         </div>
@@ -440,19 +440,19 @@ export default function MiniAppMasterDetailPage() {
         {/* Meta row */}
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]">
           {master.rating > 0 && (
-            <div className="flex items-center gap-1 text-white/80">
+            <div className="flex items-center gap-1 text-neutral-800">
               <Star className="size-3.5 fill-amber-400 text-amber-400" />
               <span className="font-semibold">{master.rating.toFixed(1)}</span>
-              <span className="text-white/40">({master.total_reviews})</span>
+              <span className="text-neutral-400">({master.total_reviews})</span>
             </div>
           )}
           {master.city && (
-            <div className="flex items-center gap-1 text-white/60">
+            <div className="flex items-center gap-1 text-neutral-600">
               <MapPin className="size-3" />
               <span className="truncate">{master.city}</span>
             </div>
           )}
-          <div className={`flex items-center gap-1.5 ${openStatus.isOpen ? 'text-emerald-400' : 'text-white/40'}`}>
+          <div className={`flex items-center gap-1.5 ${openStatus.isOpen ? 'text-emerald-400' : 'text-neutral-400'}`}>
             <div className={`size-1.5 rounded-full ${openStatus.isOpen ? 'bg-emerald-400' : 'bg-white/30'}`} />
             <span className="text-[11px] font-medium">{openStatus.label}</span>
           </div>
@@ -462,7 +462,7 @@ export default function MiniAppMasterDetailPage() {
       {/* ━━━ TAB BAR (sticky) ━━━ */}
       <div
         ref={tabBarRef}
-        className="sticky top-0 z-30 mt-5 border-b border-white/[0.06] bg-[#121212]/95 backdrop-blur-xl"
+        className="sticky top-0 z-30 mt-5 border-b border-neutral-200 bg-[#121212]/95 backdrop-blur-xl"
       >
         <div className="flex gap-0 px-5">
           {TAB_ITEMS.map((tab) => {
@@ -476,7 +476,7 @@ export default function MiniAppMasterDetailPage() {
                 key={tab.key}
                 onClick={() => scrollToSection(tab.key)}
                 className={`relative px-3 py-3 text-[13px] font-medium transition-colors ${
-                  isActive ? 'text-white' : 'text-white/50'
+                  isActive ? 'text-neutral-900' : 'text-neutral-500'
                 }`}
               >
                 {tab.label}
@@ -501,10 +501,10 @@ export default function MiniAppMasterDetailPage() {
           ref={(el) => { sectionRefs.current.services = el; }}
           data-section="services"
         >
-          <h2 className="mb-3 text-[15px] font-bold text-white">
+          <h2 className="mb-3 text-[15px] font-bold text-neutral-900">
             Услуги
             {activeServicesCount > 0 && (
-              <span className="ml-2 text-[12px] font-normal text-white/40">{activeServicesCount}</span>
+              <span className="ml-2 text-[12px] font-normal text-neutral-400">{activeServicesCount}</span>
             )}
           </h2>
 
@@ -516,7 +516,7 @@ export default function MiniAppMasterDetailPage() {
                 className={`shrink-0 rounded-full px-4 py-1.5 text-[12px] font-medium transition-all ${
                   !activeCategory
                     ? 'bg-white text-black'
-                    : 'bg-white/[0.08] text-white/60'
+                    : 'bg-neutral-100 text-neutral-600'
                 }`}
               >
                 Все
@@ -528,7 +528,7 @@ export default function MiniAppMasterDetailPage() {
                   className={`shrink-0 rounded-full px-4 py-1.5 text-[12px] font-medium transition-all ${
                     activeCategory === cat.id
                       ? 'bg-white text-black'
-                      : 'bg-white/[0.08] text-white/60'
+                      : 'bg-neutral-100 text-neutral-600'
                   }`}
                 >
                   {cat.name}
@@ -539,8 +539,8 @@ export default function MiniAppMasterDetailPage() {
 
           {/* Service list */}
           {filteredServices.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-8 text-center">
-              <p className="text-[13px] text-white/40">Пока нет активных услуг</p>
+            <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-8 text-center">
+              <p className="text-[13px] text-neutral-400">Пока нет активных услуг</p>
             </div>
           ) : (
             <ul className="space-y-2">
@@ -554,7 +554,7 @@ export default function MiniAppMasterDetailPage() {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ delay: i * 0.03, duration: 0.25 }}
                   >
-                    <div className="group rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4 transition-colors hover:bg-white/[0.06]">
+                    <div className="group rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 transition-colors hover:bg-neutral-50">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           {/* Color dot + name */}
@@ -565,18 +565,18 @@ export default function MiniAppMasterDetailPage() {
                                 style={{ backgroundColor: s.color }}
                               />
                             )}
-                            <p className="truncate text-[14px] font-semibold text-white">{s.name}</p>
+                            <p className="truncate text-[14px] font-semibold text-neutral-900">{s.name}</p>
                           </div>
 
                           {/* Duration */}
-                          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-white/50">
+                          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-neutral-500">
                             <Clock className="size-3" />
                             <span>{s.duration_minutes} мин</span>
                           </div>
 
                           {/* Description */}
                           {s.description && (
-                            <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-white/40">
+                            <p className="mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-neutral-400">
                               {s.description}
                             </p>
                           )}
@@ -584,15 +584,15 @@ export default function MiniAppMasterDetailPage() {
 
                         {/* Price + book button */}
                         <div className="flex shrink-0 flex-col items-end gap-2">
-                          <p className="text-[15px] font-bold text-white">
-                            {Number(s.price).toFixed(0)}<span className="ml-0.5 text-[12px] font-normal text-white/50">{s.currency === 'UAH' ? '₴' : s.currency}</span>
+                          <p className="text-[15px] font-bold text-neutral-900">
+                            {Number(s.price).toFixed(0)}<span className="ml-0.5 text-[12px] font-normal text-neutral-500">{s.currency === 'UAH' ? '₴' : s.currency}</span>
                           </p>
                           <button
                             onClick={() => {
                               haptic('light');
                               router.push(`/telegram/book?master_id=${master.id}&service_id=${s.id}`);
                             }}
-                            className="rounded-xl border border-white/15 bg-white/[0.06] px-3.5 py-1.5 text-[11px] font-medium text-white/80 active:scale-95 transition-all hover:bg-white/10"
+                            className="rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-1.5 text-[11px] font-medium text-neutral-800 active:scale-95 transition-all hover:bg-white/10"
                           >
                             Записаться
                           </button>
@@ -612,10 +612,10 @@ export default function MiniAppMasterDetailPage() {
             ref={(el) => { sectionRefs.current.portfolio = el; }}
             data-section="portfolio"
           >
-            <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-white">
-              <Camera className="size-4 text-white/50" />
+            <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
+              <Camera className="size-4 text-neutral-500" />
               Портфолио
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
                 {master.portfolio.length}
               </span>
             </h2>
@@ -649,7 +649,7 @@ export default function MiniAppMasterDetailPage() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-lg p-4"
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/85 backdrop-blur-lg p-4"
                   onClick={() => setPortfolioOpen(null)}
                 >
                   {(() => {
@@ -668,7 +668,7 @@ export default function MiniAppMasterDetailPage() {
                         <img src={item.image_url} alt={item.caption ?? ''} className="max-h-[80vh] object-contain" />
                         {item.caption && (
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-8">
-                            <p className="text-[13px] text-white/90">{item.caption}</p>
+                            <p className="text-[13px] text-neutral-900">{item.caption}</p>
                           </div>
                         )}
                       </motion.div>
@@ -686,27 +686,27 @@ export default function MiniAppMasterDetailPage() {
             ref={(el) => { sectionRefs.current.reviews = el; }}
             data-section="reviews"
           >
-            <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-white">
-              <MessageSquare className="size-4 text-white/50" />
+            <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
+              <MessageSquare className="size-4 text-neutral-500" />
               Отзывы
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/50">
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
                 {master.total_reviews}
               </span>
             </h2>
 
             {/* Rating summary */}
-            <div className="mb-4 flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
+            <div className="mb-4 flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-white">{master.rating.toFixed(1)}</p>
+                <p className="text-3xl font-bold text-neutral-900">{master.rating.toFixed(1)}</p>
                 <div className="mt-1 flex items-center gap-0.5">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      className={`size-3 ${i < Math.round(master.rating) ? 'fill-amber-400 text-amber-400' : 'text-white/15'}`}
+                      className={`size-3 ${i < Math.round(master.rating) ? 'fill-amber-400 text-amber-400' : 'text-neutral-900/15'}`}
                     />
                   ))}
                 </div>
-                <p className="mt-1 text-[10px] text-white/40">{master.total_reviews} отзывов</p>
+                <p className="mt-1 text-[10px] text-neutral-400">{master.total_reviews} отзывов</p>
               </div>
             </div>
 
@@ -718,29 +718,29 @@ export default function MiniAppMasterDetailPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04, duration: 0.25 }}
-                  className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4"
+                  className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex size-8 items-center justify-center rounded-full bg-white/10 text-[12px] font-bold text-white/60">
+                      <div className="flex size-8 items-center justify-center rounded-full bg-white/10 text-[12px] font-bold text-neutral-600">
                         {(r.reviewer_name ?? 'К')[0]?.toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-[13px] font-semibold text-white">{r.reviewer_name ?? 'Клиент'}</p>
-                        <p className="text-[10px] text-white/30">{formatDate(r.created_at)}</p>
+                        <p className="text-[13px] font-semibold text-neutral-900">{r.reviewer_name ?? 'Клиент'}</p>
+                        <p className="text-[10px] text-neutral-400">{formatDate(r.created_at)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }).map((_, i) => (
                         <Star
                           key={i}
-                          className={`size-3 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-white/15'}`}
+                          className={`size-3 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-neutral-900/15'}`}
                         />
                       ))}
                     </div>
                   </div>
                   {r.comment && (
-                    <p className="mt-2.5 text-[12px] leading-relaxed text-white/60">{r.comment}</p>
+                    <p className="mt-2.5 text-[12px] leading-relaxed text-neutral-600">{r.comment}</p>
                   )}
                 </motion.li>
               ))}
@@ -753,19 +753,19 @@ export default function MiniAppMasterDetailPage() {
           ref={(el) => { sectionRefs.current.about = el; }}
           data-section="about"
         >
-          <h2 className="mb-3 text-[15px] font-bold text-white">О нас</h2>
+          <h2 className="mb-3 text-[15px] font-bold text-neutral-900">О нас</h2>
 
           {/* Bio */}
           {master.bio && (
-            <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
-              <p className="text-[13px] leading-relaxed text-white/70">{master.bio}</p>
+            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+              <p className="text-[13px] leading-relaxed text-neutral-700">{master.bio}</p>
             </div>
           )}
 
           {/* Working hours */}
           {master.working_hours && (
-            <div className="mb-4 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
-              <h3 className="mb-3 text-[13px] font-semibold text-white/80">Часы работы</h3>
+            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+              <h3 className="mb-3 text-[13px] font-semibold text-neutral-800">Часы работы</h3>
               <ul className="space-y-2">
                 {DAYS_ORDER.map((day) => {
                   const h = master.working_hours?.[day];
@@ -783,7 +783,7 @@ export default function MiniAppMasterDetailPage() {
                             h ? 'bg-emerald-500' : 'bg-white/20'
                           }`}
                         />
-                        <span className={isToday ? 'text-white' : 'text-white/60'}>
+                        <span className={isToday ? 'text-neutral-900' : 'text-neutral-600'}>
                           {DAY_NAMES_FULL[day]}
                         </span>
                       </div>
@@ -791,9 +791,9 @@ export default function MiniAppMasterDetailPage() {
                         className={
                           h
                             ? isToday
-                              ? 'text-white font-bold'
-                              : 'text-white/70 font-medium'
-                            : 'text-white/30'
+                              ? 'text-neutral-900 font-bold'
+                              : 'text-neutral-700 font-medium'
+                            : 'text-neutral-400'
                         }
                       >
                         {h ? `${h.start} — ${h.end}` : 'Выходной'}
@@ -807,11 +807,11 @@ export default function MiniAppMasterDetailPage() {
 
           {/* Address */}
           {(master.city || master.address) && (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.04] p-4">
+            <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
               <div className="flex items-start gap-3">
-                <MapPin className="mt-0.5 size-4 shrink-0 text-white/40" />
+                <MapPin className="mt-0.5 size-4 shrink-0 text-neutral-400" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] text-white/70">
+                  <p className="text-[13px] text-neutral-700">
                     {[master.address, master.city].filter(Boolean).join(', ')}
                   </p>
                   {(master.latitude && master.longitude) && (
@@ -819,7 +819,7 @@ export default function MiniAppMasterDetailPage() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${master.latitude},${master.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-violet-400 active:text-violet-300 transition-colors"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-violet-400 active:text-violet-600 transition-colors"
                       onClick={() => haptic('light')}
                     >
                       Проложить маршрут
@@ -841,12 +841,12 @@ export default function MiniAppMasterDetailPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-white/[0.06] bg-black/80 backdrop-blur-xl"
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur-xl"
             style={{ paddingBottom: 'calc(var(--tg-content-bottom, 0px) + 8px)' }}
           >
             <div className="flex items-center justify-between px-5 py-3">
-              <div className="text-[13px] text-white/50">
-                <span className="font-semibold text-white">{activeServicesCount}</span>{' '}
+              <div className="text-[13px] text-neutral-500">
+                <span className="font-semibold text-neutral-900">{activeServicesCount}</span>{' '}
                 {activeServicesCount === 1 ? 'услуга' : activeServicesCount < 5 ? 'услуги' : 'услуг'}
               </div>
               <button

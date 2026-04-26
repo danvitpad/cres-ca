@@ -119,7 +119,7 @@ export default function MasterMiniAppStats() {
   if (!ready) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -133,7 +133,7 @@ export default function MasterMiniAppStats() {
         className="space-y-5 px-5 pt-6 pb-10"
       >
         {/* Period tabs — Today / 7 / 30 */}
-        <div className="flex gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+        <div className="flex gap-1 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-1">
           {(['today', 'week', 'month'] as const).map((p) => (
             <button
               key={p}
@@ -142,7 +142,7 @@ export default function MasterMiniAppStats() {
                 setPeriod(p);
               }}
               className={`flex-1 rounded-xl py-2 text-[12px] font-semibold transition-colors ${
-                period === p ? 'bg-white text-black' : 'text-white/60'
+                period === p ? 'bg-white text-black' : 'text-neutral-600'
               }`}
             >
               {p === 'today' ? 'Сегодня' : p === 'week' ? '7 дней' : '30 дней'}
@@ -154,13 +154,13 @@ export default function MasterMiniAppStats() {
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => { haptic('selection'); setSheetOpen('income'); }}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-[13px] font-semibold text-emerald-200 active:bg-emerald-500/20 transition-colors"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 py-3 text-[13px] font-semibold text-emerald-700 active:bg-emerald-100 transition-colors"
           >
             <Plus className="size-4" /> Доход
           </button>
           <button
             onClick={() => { haptic('selection'); setSheetOpen('expense'); }}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-3 text-[13px] font-semibold text-rose-200 active:bg-rose-500/20 transition-colors"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 py-3 text-[13px] font-semibold text-rose-700 active:bg-rose-100 transition-colors"
           >
             <Minus className="size-4" /> Расход
           </button>
@@ -168,8 +168,8 @@ export default function MasterMiniAppStats() {
 
         {loading ? (
           <div className="space-y-3">
-            <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
-            <div className="h-24 animate-pulse rounded-2xl bg-white/[0.03]" />
+            <div className="h-24 animate-pulse rounded-2xl bg-white border-neutral-200" />
+            <div className="h-24 animate-pulse rounded-2xl bg-white border-neutral-200" />
           </div>
         ) : (
           <>
@@ -187,12 +187,12 @@ export default function MasterMiniAppStats() {
             </div>
 
             {kpi.noShow > 0 && (
-              <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5">
+              <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 pl-5">
                 <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-rose-500" />
-                <XCircle className="size-5 text-rose-300" />
+                <XCircle className="size-5 text-rose-600" />
                 <div>
                   <p className="text-[13px] font-semibold">{kpi.noShow} не пришло</p>
-                  <p className="text-[11px] text-white/50">Попробуй требовать предоплату для новых клиентов</p>
+                  <p className="text-[11px] text-neutral-500">Попробуй требовать предоплату для новых клиентов</p>
                 </div>
               </div>
             )}
@@ -205,11 +205,11 @@ export default function MasterMiniAppStats() {
                     <li key={s.name}>
                       <div className="flex items-center justify-between text-[12px]">
                         <span className="truncate font-semibold">{s.name}</span>
-                        <span className="shrink-0 text-white/60">
+                        <span className="shrink-0 text-neutral-600">
                           {s.count}× · {s.revenue.toFixed(0)}₴
                         </span>
                       </div>
-                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white/[0.03]">
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-white border-neutral-200">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: `${(s.revenue / maxRevenue) * 100}%` }}
@@ -224,9 +224,9 @@ export default function MasterMiniAppStats() {
             )}
 
             {rows.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-8 text-center">
                 <p className="text-sm font-semibold">Ещё нет данных</p>
-                <p className="mt-1 text-xs text-white/50">Начни принимать клиентов — статистика появится автоматически</p>
+                <p className="mt-1 text-xs text-neutral-500">Начни принимать клиентов — статистика появится автоматически</p>
               </div>
             )}
           </>
@@ -272,17 +272,17 @@ function StatCard({
   sub?: string;
 }) {
   const accents: Record<string, string> = {
-    violet: 'text-violet-300',
-    emerald: 'text-emerald-300',
-    amber: 'text-amber-300',
-    sky: 'text-sky-300',
+    violet: 'text-violet-600',
+    emerald: 'text-emerald-600',
+    amber: 'text-amber-600',
+    sky: 'text-sky-600',
   };
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
       <Icon className={`size-4 ${accents[accent]}`} />
-      <p className="mt-3 text-xl font-bold text-white tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-white/50">{label}</p>
-      {sub && <p className="mt-0.5 text-[10px] text-white/40">{sub}</p>}
+      <p className="mt-3 text-xl font-bold text-neutral-900 tabular-nums">{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</p>
+      {sub && <p className="mt-0.5 text-[10px] text-neutral-400">{sub}</p>}
     </div>
   );
 }
@@ -363,7 +363,7 @@ function FinanceEntryForm({
   return (
     <form onSubmit={submit} className="space-y-3 pt-2">
       <div>
-        <label className="text-[11px] uppercase tracking-wide text-white/40">Сумма, ₴</label>
+        <label className="text-[11px] uppercase tracking-wide text-neutral-400">Сумма, ₴</label>
         <input
           type="text"
           inputMode="decimal"
@@ -371,7 +371,7 @@ function FinanceEntryForm({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0"
-          className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-lg font-bold outline-none focus:border-white/20 tabular-nums"
+          className="mt-1 w-full rounded-xl border border-neutral-200 bg-white border-neutral-200 px-4 py-3 text-lg font-bold outline-none focus:border-neutral-300 tabular-nums"
         />
       </div>
 
@@ -414,14 +414,14 @@ function FinanceEntryForm({
               }))}
           />
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-white/40">Способ оплаты</label>
+            <label className="text-[11px] uppercase tracking-wide text-neutral-400">Способ оплаты</label>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {PAYMENT_METHODS.map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => setC(m)}
-                  className={`rounded-xl border py-2 text-[12px] font-semibold transition-colors ${c === m ? 'border-white/30 bg-white/[0.1] text-white' : 'border-white/10 bg-white/[0.03] text-white/60 active:bg-white/[0.06]'}`}
+                  className={`rounded-xl border py-2 text-[12px] font-semibold transition-colors ${c === m ? 'border-white/30 bg-neutral-100 text-neutral-900' : 'border-neutral-200 bg-white border-neutral-200 text-neutral-600 active:bg-neutral-50'}`}
                 >
                   {m}
                 </button>
@@ -433,14 +433,14 @@ function FinanceEntryForm({
       ) : (
         <>
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-white/40">Категория</label>
+            <label className="text-[11px] uppercase tracking-wide text-neutral-400">Категория</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {EXPENSE_CATEGORIES.map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setA(cat)}
-                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${a === cat ? 'border-white/30 bg-white/[0.1] text-white' : 'border-white/10 bg-white/[0.03] text-white/60 active:bg-white/[0.06]'}`}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${a === cat ? 'border-white/30 bg-neutral-100 text-neutral-900' : 'border-neutral-200 bg-white border-neutral-200 text-neutral-600 active:bg-neutral-50'}`}
                 >
                   {cat}
                 </button>
@@ -453,7 +453,7 @@ function FinanceEntryForm({
       )}
 
       {error && (
-        <p className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-2 text-[12px] text-rose-200">{error}</p>
+        <p className="rounded-lg border border-rose-300 bg-rose-50 p-2 text-[12px] text-rose-700">{error}</p>
       )}
 
       <button
@@ -480,13 +480,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-[11px] uppercase tracking-wide text-white/40">{label}</label>
+      <label className="text-[11px] uppercase tracking-wide text-neutral-400">{label}</label>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm outline-none focus:border-white/20"
+        className="mt-1 w-full rounded-xl border border-neutral-200 bg-white border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-300"
       />
     </div>
   );
@@ -537,7 +537,7 @@ function Autocomplete({
 
   return (
     <div ref={wrapRef} className="relative">
-      <label className="text-[11px] uppercase tracking-wide text-white/40">{label}</label>
+      <label className="text-[11px] uppercase tracking-wide text-neutral-400">{label}</label>
       <input
         type="text"
         value={value}
@@ -545,10 +545,10 @@ function Autocomplete({
         onFocus={() => setFocused(true)}
         placeholder={placeholder}
         autoComplete="off"
-        className="mt-1 w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-sm outline-none focus:border-white/20"
+        className="mt-1 w-full rounded-xl border border-neutral-200 bg-white border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-300"
       />
       {focused && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-white/10 bg-[#1c1c1c] shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-neutral-200 bg-[#1c1c1c] shadow-xl">
           {filtered.map((s) => (
             <button
               key={s.key}
@@ -557,10 +557,10 @@ function Autocomplete({
                 onChange(s.value ?? s.label, true);
                 setFocused(false);
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] active:bg-white/[0.06]"
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] active:bg-neutral-50"
             >
               <span className="truncate">{s.label}</span>
-              {s.hint && <span className="shrink-0 text-[11px] text-white/40">{s.hint}</span>}
+              {s.hint && <span className="shrink-0 text-[11px] text-neutral-400">{s.hint}</span>}
             </button>
           ))}
         </div>

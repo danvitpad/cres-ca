@@ -133,9 +133,9 @@ export default function VoiceBookPage() {
   return (
     <div className="mx-auto max-w-md space-y-6 px-5 pt-6 pb-10">
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Голос</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">Голос</p>
         <h1 className="mt-1 text-2xl font-bold">Голосовая запись</h1>
-        <p className="mt-0.5 text-[12px] text-white/50">Нажми микрофон и скажи: «Запиши Машу на завтра в 15:00 на стрижку».</p>
+        <p className="mt-0.5 text-[12px] text-neutral-500">Нажми микрофон и скажи: «Запиши Машу на завтра в 15:00 на стрижку».</p>
       </div>
 
       <div className="flex flex-col items-center gap-3">
@@ -144,30 +144,30 @@ export default function VoiceBookPage() {
           disabled={listening || busy}
           className={`flex h-24 w-24 items-center justify-center rounded-full transition-colors ${
             listening
-              ? 'animate-pulse bg-rose-500 text-white'
+              ? 'animate-pulse bg-rose-500 text-neutral-900'
               : 'bg-white text-black active:bg-white/80'
           }`}
         >
           {listening ? <Square className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
         </button>
-        {busy && <Loader2 className="h-5 w-5 animate-spin text-white/40" />}
+        {busy && <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />}
       </div>
 
       {text && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-          <div className="text-[10px] uppercase tracking-wide text-white/40">Ты сказал</div>
+        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-sm">
+          <div className="text-[10px] uppercase tracking-wide text-neutral-400">Ты сказал</div>
           <div className="mt-1">{text}</div>
         </div>
       )}
 
       {parsed && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
+        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 space-y-2">
           <div className="text-sm font-semibold">Распознано</div>
-          <div className="text-[13px] text-white/80">Клиент: <b className="text-white">{parsed.client_name ?? '—'}</b></div>
-          <div className="text-[13px] text-white/80">Дата: <b className="text-white">{parsed.date ?? '—'}</b></div>
-          <div className="text-[13px] text-white/80">Время: <b className="text-white">{parsed.time ?? '—'}</b></div>
-          <div className="text-[13px] text-white/80">Длительность: <b className="text-white">{parsed.duration_min ?? 60} мин</b></div>
-          {parsed.service_hint && <div className="text-[13px] text-white/80">Услуга: <b className="text-white">{parsed.service_hint}</b></div>}
+          <div className="text-[13px] text-neutral-800">Клиент: <b className="text-neutral-900">{parsed.client_name ?? '—'}</b></div>
+          <div className="text-[13px] text-neutral-800">Дата: <b className="text-neutral-900">{parsed.date ?? '—'}</b></div>
+          <div className="text-[13px] text-neutral-800">Время: <b className="text-neutral-900">{parsed.time ?? '—'}</b></div>
+          <div className="text-[13px] text-neutral-800">Длительность: <b className="text-neutral-900">{parsed.duration_min ?? 60} мин</b></div>
+          {parsed.service_hint && <div className="text-[13px] text-neutral-800">Услуга: <b className="text-neutral-900">{parsed.service_hint}</b></div>}
           <button
             onClick={confirm}
             disabled={saving}

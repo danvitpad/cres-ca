@@ -69,12 +69,12 @@ export default function MiniAppNotificationsPage() {
 
   return (
     <SettingsShell title="Уведомления" subtitle="Что присылать тебе в Telegram">
-      <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
+      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 divide-y divide-neutral-200">
         {ITEMS.map((item) => (
           <li key={item.key} className="flex items-start gap-3 px-4 py-3.5">
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-medium leading-tight">{item.label}</p>
-              <p className="mt-1 text-[11px] text-white/45">{item.hint}</p>
+              <p className="mt-1 text-[11px] text-neutral-500">{item.hint}</p>
             </div>
             <button
               type="button"
@@ -95,7 +95,7 @@ export default function MiniAppNotificationsPage() {
           </li>
         ))}
       </ul>
-      <p className="px-2 text-[11px] text-white/40">
+      <p className="px-2 text-[11px] text-neutral-400">
         Клиентские рассылки и автоматизации настраиваются отдельно — в «Маркетинг → Автоматика»
         в веб-кабинете.
       </p>

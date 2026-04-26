@@ -28,7 +28,7 @@ export function BottomTabs({ tabs, showLabels = false }: { tabs: readonly Bottom
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0d17]/95 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur-xl"
       style={{
         paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
       }}
@@ -45,16 +45,16 @@ export function BottomTabs({ tabs, showLabels = false }: { tabs: readonly Bottom
                 aria-label={tab.label}
                 className={cn(
                   'relative flex flex-col items-center justify-center gap-0.5 rounded-2xl py-2 transition-colors',
-                  active ? 'text-white' : 'text-white/40 hover:text-white/70',
+                  active ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-700',
                 )}
               >
                 <div className="relative flex size-9 items-center justify-center">
                   {active && (
-                    <span className="absolute inset-0 rounded-xl bg-white/[0.08]" />
+                    <span className="absolute inset-0 rounded-xl bg-neutral-100" />
                   )}
                   <span className="relative z-10">{tab.renderIcon(active)}</span>
                   {hasBadge && (
-                    <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                    <span className="absolute -right-0.5 -top-0.5 z-20 flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-neutral-900">
                       {tab.badge! > 99 ? '99+' : tab.badge}
                     </span>
                   )}

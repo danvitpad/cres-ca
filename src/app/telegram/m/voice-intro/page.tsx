@@ -56,34 +56,34 @@ export default function VoiceAssistantIntro() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.05, type: 'spring', stiffness: 220, damping: 20 }}
-          className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]"
+          className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200"
         >
-          <Mic className="size-7 text-violet-300" />
+          <Mic className="size-7 text-violet-600" />
         </motion.div>
-        <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">Новое</p>
+        <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">Новое</p>
         <h1 className="mt-1 text-2xl font-bold">Познакомься с голосом</h1>
-        <p className="mx-auto mt-2 max-w-sm text-[13px] text-white/60">
+        <p className="mx-auto mt-2 max-w-sm text-[13px] text-neutral-600">
           Управляй CRM голосом из Telegram. Запись, расход, клиент, напоминание — одна команда и готово.
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
         <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
         <div className="pl-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-violet-300" />
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-200">Как это работает</p>
+            <Sparkles className="size-4 text-violet-600" />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">Как это работает</p>
           </div>
-          <ol className="mt-2 space-y-1.5 text-[13px] text-white/75">
-            <li><span className="text-white/40">1.</span> Открой чат бота в Telegram</li>
-            <li><span className="text-white/40">2.</span> Запиши голосовое — одна фраза</li>
-            <li><span className="text-white/40">3.</span> Получи подтверждение — запись в базе</li>
+          <ol className="mt-2 space-y-1.5 text-[13px] text-neutral-700">
+            <li><span className="text-neutral-400">1.</span> Открой чат бота в Telegram</li>
+            <li><span className="text-neutral-400">2.</span> Запиши голосовое — одна фраза</li>
+            <li><span className="text-neutral-400">3.</span> Получи подтверждение — запись в базе</li>
           </ol>
         </div>
       </div>
 
       <div>
-        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
           Попробуй одну из команд
         </p>
         <ul className="space-y-2">
@@ -95,14 +95,14 @@ export default function VoiceAssistantIntro() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.04 }}
-                className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3.5"
+                className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3.5"
               >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                  <Icon className="size-4 text-white/70" />
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                  <Icon className="size-4 text-neutral-700" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[12px] font-semibold">{s.title}</p>
-                  <p className="mt-0.5 text-[12px] italic text-white/60">{s.text}</p>
+                  <p className="mt-0.5 text-[12px] italic text-neutral-600">{s.text}</p>
                 </div>
               </motion.li>
             );
@@ -119,7 +119,7 @@ export default function VoiceAssistantIntro() {
         </button>
         <button
           onClick={skip}
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-3 text-[13px] font-semibold text-white/70 transition-colors active:bg-white/[0.06]"
+          className="w-full rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-3 text-[13px] font-semibold text-neutral-700 transition-colors active:bg-neutral-50"
         >
           Позже
         </button>

@@ -116,16 +116,16 @@ export default function TelegramEntryPage() {
   }, [router, setAuth]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-[#0b0d17] text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-white text-neutral-900">
       {error ? (
         <div className="text-center space-y-2 px-6">
           <p className="text-rose-400">{error}</p>
-          <p className="text-sm text-white/50">Попробуйте перезапустить мини-приложение</p>
+          <p className="text-sm text-neutral-500">Попробуйте перезапустить мини-приложение</p>
         </div>
       ) : (
         <>
-          <Loader2 className="size-8 animate-spin text-white/70" />
-          <p className="text-sm text-white/50">Загрузка CRES-CA…</p>
+          <Loader2 className="size-8 animate-spin text-neutral-700" />
+          <p className="text-sm text-neutral-500">Загрузка CRES-CA…</p>
         </>
       )}
     </div>

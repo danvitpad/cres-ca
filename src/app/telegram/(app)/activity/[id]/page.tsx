@@ -54,13 +54,13 @@ interface DetailRow {
 }
 
 const statusLabels: Record<string, { label: string; color: string }> = {
-  booked: { label: 'Записан', color: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
-  confirmed: { label: 'Подтверждено', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  in_progress: { label: 'Идёт', color: 'bg-violet-500/15 text-violet-300 border-violet-500/30' },
-  completed: { label: 'Завершено', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  cancelled: { label: 'Отменено', color: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
-  cancelled_by_client: { label: 'Отменено', color: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
-  no_show: { label: 'Не пришёл', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+  booked: { label: 'Записан', color: 'bg-sky-500/15 text-sky-600 border-sky-500/30' },
+  confirmed: { label: 'Подтверждено', color: 'bg-emerald-500/15 text-emerald-600 border-emerald-300' },
+  in_progress: { label: 'Идёт', color: 'bg-violet-100 text-violet-600 border-violet-300' },
+  completed: { label: 'Завершено', color: 'bg-emerald-500/15 text-emerald-600 border-emerald-300' },
+  cancelled: { label: 'Отменено', color: 'bg-rose-500/15 text-rose-600 border-rose-300' },
+  cancelled_by_client: { label: 'Отменено', color: 'bg-rose-500/15 text-rose-600 border-rose-300' },
+  no_show: { label: 'Не пришёл', color: 'bg-amber-500/15 text-amber-600 border-amber-300' },
 };
 
 export default function MiniAppAppointmentDetail() {
@@ -218,11 +218,11 @@ export default function MiniAppAppointmentDetail() {
   if (notFound || !row) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
-        <AlertTriangle className="mb-4 size-12 text-white/40" />
+        <AlertTriangle className="mb-4 size-12 text-neutral-400" />
         <p className="text-base font-semibold">Запись не найдена</p>
         <button
           onClick={() => router.push('/telegram/activity')}
-          className="mt-6 rounded-full border border-white/10 px-4 py-2 text-sm"
+          className="mt-6 rounded-full border border-neutral-200 px-4 py-2 text-sm"
         >
           Назад
         </button>
@@ -256,13 +256,13 @@ export default function MiniAppAppointmentDetail() {
           haptic('selection');
           router.back();
         }}
-        className="inline-flex items-center gap-1.5 text-sm text-white/60 active:text-white"
+        className="inline-flex items-center gap-1.5 text-sm text-neutral-600 active:text-neutral-900"
       >
         <ArrowLeft className="size-4" /> Назад
       </button>
 
       {/* Hero card */}
-      <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5">
+      <div className="relative overflow-hidden rounded-[28px] border border-neutral-200 bg-gradient-to-br from-white/10 to-white/5 p-5">
         <div
           className="absolute -right-20 -top-20 size-60 rounded-full opacity-30 blur-3xl"
           style={{ background: row.service?.color ?? '#8b5cf6' }}
@@ -270,10 +270,10 @@ export default function MiniAppAppointmentDetail() {
         <div className="relative space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Услуга</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Услуга</p>
               <h1 className="mt-1 text-xl font-bold">{row.service?.name ?? '—'}</h1>
               {row.service?.description && (
-                <p className="mt-1 line-clamp-2 text-[12px] text-white/50">{row.service.description}</p>
+                <p className="mt-1 line-clamp-2 text-[12px] text-neutral-500">{row.service.description}</p>
               )}
             </div>
             <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusInfo.color}`}>
@@ -297,14 +297,14 @@ export default function MiniAppAppointmentDetail() {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{masterName}</p>
               {row.master?.specialization && (
-                <p className="truncate text-[11px] text-white/50">{row.master.specialization}</p>
+                <p className="truncate text-[11px] text-neutral-500">{row.master.specialization}</p>
               )}
             </div>
           </button>
 
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-2xl bg-white/5 p-3">
-              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-white/40">
+              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-neutral-400">
                 <CalendarDays className="size-3" /> Дата
               </p>
               <p className="mt-1 text-[13px] font-semibold">
@@ -312,7 +312,7 @@ export default function MiniAppAppointmentDetail() {
               </p>
             </div>
             <div className="rounded-2xl bg-white/5 p-3">
-              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-white/40">
+              <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-neutral-400">
                 <Clock className="size-3" /> Время
               </p>
               <p className="mt-1 text-[13px] font-semibold">
@@ -322,8 +322,8 @@ export default function MiniAppAppointmentDetail() {
             </div>
           </div>
 
-          <div className="flex items-baseline justify-between border-t border-white/10 pt-3">
-            <span className="text-xs text-white/50">Итого</span>
+          <div className="flex items-baseline justify-between border-t border-neutral-200 pt-3">
+            <span className="text-xs text-neutral-500">Итого</span>
             <span className="text-2xl font-bold tabular-nums">
               {Number(row.price).toFixed(0)} {row.currency}
             </span>
@@ -333,22 +333,22 @@ export default function MiniAppAppointmentDetail() {
 
       {/* Address */}
       {row.master?.address && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
           <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
               <MapPin className="size-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] uppercase tracking-wider text-white/40">Место</p>
+              <p className="text-[10px] uppercase tracking-wider text-neutral-400">Место</p>
               <p className="mt-0.5 text-sm font-semibold">{row.master.address}</p>
-              {row.master.city && <p className="text-[11px] text-white/50">{row.master.city}</p>}
+              {row.master.city && <p className="text-[11px] text-neutral-500">{row.master.city}</p>}
             </div>
             {row.master.latitude && row.master.longitude && (
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${row.master.latitude},${row.master.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 rounded-full border border-white/15 px-3 py-1.5 text-[11px] font-semibold"
+                className="shrink-0 rounded-full border border-neutral-200 px-3 py-1.5 text-[11px] font-semibold"
               >
                 Маршрут
               </a>
@@ -361,7 +361,7 @@ export default function MiniAppAppointmentDetail() {
       {row.master?.profile?.phone && (
         <a
           href={`tel:${row.master.profile.phone}`}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
+          className="flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
         >
           <Phone className="size-4" /> Позвонить мастеру
         </a>
@@ -369,8 +369,8 @@ export default function MiniAppAppointmentDetail() {
 
       {/* Notes */}
       {row.notes && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-[10px] uppercase tracking-wider text-white/40">Заметка</p>
+        <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
+          <p className="text-[10px] uppercase tracking-wider text-neutral-400">Заметка</p>
           <p className="mt-1 text-sm">{row.notes}</p>
         </div>
       )}
@@ -378,23 +378,23 @@ export default function MiniAppAppointmentDetail() {
       {/* Before/After photos */}
       {beforeAfterPhotos.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">До / После</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">До / После</p>
           {beforeAfterPhotos.map((photo) => (
             <div key={photo.id} className="space-y-2">
               <div className="grid grid-cols-2 gap-2 overflow-hidden rounded-2xl">
                 <div className="relative aspect-[3/4] overflow-hidden bg-white/5">
-                  <p className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-semibold">До</p>
+                  <p className="absolute left-2 top-2 z-10 rounded-full bg-neutral-900/60 px-2 py-0.5 text-[9px] font-semibold">До</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={photo.before_url} alt="До" className="size-full object-cover" />
                 </div>
                 <div className="relative aspect-[3/4] overflow-hidden bg-white/5">
-                  <p className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-semibold">После</p>
+                  <p className="absolute left-2 top-2 z-10 rounded-full bg-neutral-900/60 px-2 py-0.5 text-[9px] font-semibold">После</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={photo.after_url} alt="После" className="size-full object-cover" />
                 </div>
               </div>
               {photo.caption && (
-                <p className="text-[12px] text-white/60">{photo.caption}</p>
+                <p className="text-[12px] text-neutral-600">{photo.caption}</p>
               )}
             </div>
           ))}
@@ -417,7 +417,7 @@ export default function MiniAppAppointmentDetail() {
         {isCompleted && (
           <button
             onClick={() => router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
           >
             <RefreshCw className="size-5" /> Повторить запись
           </button>
@@ -425,7 +425,7 @@ export default function MiniAppAppointmentDetail() {
         {canReschedule && (
           <button
             onClick={() => router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
           >
             <Sparkles className="size-5" /> Перенести
           </button>
@@ -436,7 +436,7 @@ export default function MiniAppAppointmentDetail() {
               haptic('warning');
               setCancelOpen(true);
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-4 text-[15px] font-semibold text-rose-300 active:scale-[0.98] transition-transform"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 py-4 text-[15px] font-semibold text-rose-600 active:scale-[0.98] transition-transform"
           >
             <XCircle className="size-5" /> Отменить запись
           </button>
@@ -450,7 +450,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end bg-neutral-900/70 backdrop-blur-sm"
             onClick={() => !busy && setCancelOpen(false)}
           >
             <motion.div
@@ -458,13 +458,13 @@ export default function MiniAppAppointmentDetail() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full space-y-4 rounded-t-[32px] border-t border-white/10 bg-[#2f3437] p-6"
+              className="w-full space-y-4 rounded-t-[32px] border-t border-neutral-200 bg-white p-6"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-bold">Отменить запись?</h3>
-                  <p className="mt-1 text-xs text-white/50">
+                  <p className="mt-1 text-xs text-neutral-500">
                     Мастер получит уведомление об отмене
                   </p>
                 </div>
@@ -479,10 +479,10 @@ export default function MiniAppAppointmentDetail() {
                 <div
                   className={`rounded-2xl border p-4 text-sm ${
                     cancelCost.kind === 'free'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200'
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                       : cancelCost.kind === 'partial'
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                        : 'border-rose-500/30 bg-rose-500/10 text-rose-200'
+                        ? 'border-amber-300 bg-amber-50 text-amber-700'
+                        : 'border-rose-300 bg-rose-50 text-rose-700'
                   }`}
                 >
                   {cancelCost.kind === 'free' && <p className="font-semibold">Отмена бесплатна</p>}
@@ -498,14 +498,14 @@ export default function MiniAppAppointmentDetail() {
                 <button
                   onClick={() => setCancelOpen(false)}
                   disabled={busy}
-                  className="flex-1 rounded-2xl border border-white/15 py-3 text-sm font-semibold disabled:opacity-60"
+                  className="flex-1 rounded-2xl border border-neutral-200 py-3 text-sm font-semibold disabled:opacity-60"
                 >
                   Назад
                 </button>
                 <button
                   onClick={doCancel}
                   disabled={busy}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-rose-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-rose-500 py-3 text-sm font-semibold text-neutral-900 disabled:opacity-60"
                 >
                   {busy ? <Loader2 className="size-4 animate-spin" /> : 'Отменить'}
                 </button>
@@ -522,7 +522,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-end bg-neutral-900/70 backdrop-blur-sm"
             onClick={() => !busy && setRatingOpen(false)}
           >
             <motion.div
@@ -530,13 +530,13 @@ export default function MiniAppAppointmentDetail() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full space-y-4 rounded-t-[32px] border-t border-white/10 bg-[#2f3437] p-6"
+              className="w-full space-y-4 rounded-t-[32px] border-t border-neutral-200 bg-white p-6"
               style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
             >
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-lg font-bold">Оцените визит</h3>
-                  <p className="mt-1 text-xs text-white/50">
+                  <p className="mt-1 text-xs text-neutral-500">
                     {row.service?.name} · {masterName}
                   </p>
                 </div>
@@ -573,7 +573,7 @@ export default function MiniAppAppointmentDetail() {
                 onChange={(e) => setRatingComment(e.target.value)}
                 placeholder="Расскажи о визите (необязательно)"
                 rows={3}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-white/20"
+                className="w-full resize-none rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-300"
               />
               <button
                 onClick={submitRating}
@@ -594,7 +594,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-white/15 bg-[#2f3437] px-4 py-2 text-xs font-semibold shadow-2xl"
+            className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold shadow-2xl"
           >
             {toastMsg}
           </motion.div>

@@ -102,12 +102,12 @@ export default function VoiceAssistantMiniApp() {
     <div className="px-4 py-5 pb-10">
       <header className="mb-5">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full border border-white/10 bg-white/[0.03] flex items-center justify-center">
-            <Mic className="w-5 h-5 text-violet-300" />
+          <div className="w-10 h-10 rounded-full border border-neutral-200 bg-white border-neutral-200 flex items-center justify-center">
+            <Mic className="w-5 h-5 text-violet-600" />
           </div>
           <h1 className="text-xl font-semibold">Голосовой ассистент</h1>
         </div>
-        <p className="text-sm text-white/50">
+        <p className="text-sm text-neutral-500">
           Отправляй голосовые боту — я разбираю и действую.
         </p>
       </header>
@@ -121,8 +121,8 @@ export default function VoiceAssistantMiniApp() {
 
       <section className="mb-6">
         <div className="mb-2 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-violet-300" />
-          <h2 className="text-sm font-medium text-white/40 uppercase tracking-wide">Что я умею</h2>
+          <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">Что я умею</h2>
         </div>
         <div className="grid grid-cols-1 gap-2">
           {COMMANDS.map((cmd, i) => {
@@ -133,14 +133,14 @@ export default function VoiceAssistantMiniApp() {
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.04 * i, duration: 0.25 }}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3"
+                className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-start gap-3"
               >
-                <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/[0.03] flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-white/70" />
+                <div className="w-8 h-8 rounded-lg border border-neutral-200 bg-white border-neutral-200 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-neutral-700" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium">{cmd.title}</div>
-                  <div className="text-xs text-white/50 italic truncate">{cmd.example}</div>
+                  <div className="text-xs text-neutral-500 italic truncate">{cmd.example}</div>
                 </div>
               </motion.div>
             );
@@ -149,17 +149,17 @@ export default function VoiceAssistantMiniApp() {
       </section>
 
       <section>
-        <h2 className="text-sm font-medium text-white/40 uppercase tracking-wide mb-2">
+        <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide mb-2">
           Недавние действия
         </h2>
         {loading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-14 rounded-xl bg-white/[0.03] animate-pulse" />
+              <div key={i} className="h-14 rounded-xl bg-white border-neutral-200 animate-pulse" />
             ))}
           </div>
         ) : logs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-sm text-white/40 text-center">
+          <div className="rounded-xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-4 text-sm text-neutral-400 text-center">
             Пока нет голосовых команд.
           </div>
         ) : (
@@ -169,7 +169,7 @@ export default function VoiceAssistantMiniApp() {
                 key={log.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-start gap-3"
+                className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-start gap-3"
               >
                 {log.status === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
@@ -179,11 +179,11 @@ export default function VoiceAssistantMiniApp() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium">{ACTION_LABELS[log.action_type] ?? log.action_type}</div>
                   {log.input_text && (
-                    <div className="text-xs text-white/50 italic truncate">
+                    <div className="text-xs text-neutral-500 italic truncate">
                       «{log.input_text}»
                     </div>
                   )}
-                  <div className="text-[11px] text-white/30 mt-0.5">
+                  <div className="text-[11px] text-neutral-400 mt-0.5">
                     {new Date(log.created_at).toLocaleString('ru-RU', {
                       day: 'numeric',
                       month: 'short',

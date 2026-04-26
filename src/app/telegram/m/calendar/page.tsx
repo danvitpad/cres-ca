@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -89,14 +91,14 @@ function formatDayHeader(d: Date) {
   return d.toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-const STATUS_META: Record<Status, { label: string; strip: string; text: string }> = {
-  booked: { label: 'Забронировано', strip: 'bg-blue-500', text: 'text-blue-300' },
-  confirmed: { label: 'Подтверждено', strip: 'bg-violet-500', text: 'text-violet-300' },
-  in_progress: { label: 'Идёт', strip: 'bg-amber-500', text: 'text-amber-300' },
-  completed: { label: 'Выполнено', strip: 'bg-emerald-500', text: 'text-emerald-300' },
-  cancelled: { label: 'Отменено', strip: 'bg-white/20', text: 'text-white/40' },
-  cancelled_by_client: { label: 'Отменил клиент', strip: 'bg-white/20', text: 'text-white/40' },
-  no_show: { label: 'Не пришёл', strip: 'bg-rose-500', text: 'text-rose-300' },
+const STATUS_META: Record<Status, { label: string; stripBg: string; chipBg: string; chipColor: string }> = {
+  booked: { label: 'Забронировано', stripBg: '#3b82f6', chipBg: '#dbeafe', chipColor: '#1d4ed8' },
+  confirmed: { label: 'Подтверждено', stripBg: '#6c5ce7', chipBg: T.accentSoft, chipColor: T.accent },
+  in_progress: { label: 'Идёт', stripBg: '#f59e0b', chipBg: '#fef3c7', chipColor: '#b45309' },
+  completed: { label: 'Выполнено', stripBg: '#10b981', chipBg: T.successSoft, chipColor: T.success },
+  cancelled: { label: 'Отменено', stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },
+  cancelled_by_client: { label: 'Отменил клиент', stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },
+  no_show: { label: 'Не пришёл', stripBg: T.danger, chipBg: T.dangerSoft, chipColor: T.danger },
 };
 
 export default function MasterMiniAppCalendar() {
@@ -239,9 +241,11 @@ export default function MasterMiniAppCalendar() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
-      </div>
+      <MobilePage>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+          <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
+        </div>
+      </MobilePage>
     );
   }
 
@@ -271,243 +275,468 @@ export default function MasterMiniAppCalendar() {
   }
 
   return (
-    <div
-      className="space-y-4 px-5 pt-6 pb-10"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
-      {/* Day header — no page title, just the day + count + FAB */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold capitalize">{formatDayHeader(day)}</h1>
-          <p className="mt-0.5 text-[11px] text-white/40">
-            {totals.count} {plural(totals.count, ['запись', 'записи', 'записей'])} · {totals.revenue.toFixed(0)} ₴
-          </p>
-        </div>
-        <Link
-          href="/telegram/m/slot/new"
-          onClick={() => haptic('selection')}
-          className="flex size-11 items-center justify-center rounded-2xl bg-white text-black active:bg-white/90 transition-colors"
-        >
-          <Plus className="size-5" />
-        </Link>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => {
-            haptic('light');
-            setDay(addDays(day, -1));
-          }}
-          className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
-        >
-          <ChevronLeft className="size-4" />
-        </button>
-        <button
-          onClick={() => {
-            haptic('selection');
-            setDay(startOfDay(new Date()));
-          }}
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[12px] font-semibold active:bg-white/[0.06] transition-colors"
-        >
-          <CalendarDays className="size-3.5" />
-          {day.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </button>
-        <button
-          onClick={() => {
-            haptic('light');
-            setDay(addDays(day, 1));
-          }}
-          className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
-        >
-          <ChevronRight className="size-4" />
-        </button>
-      </div>
-
-      {/* Appointments list */}
-      {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-20 animate-pulse rounded-2xl bg-white/5" />
-          ))}
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-white/[0.06]">
-            <CalendarDays className="size-5 text-white/60" />
-          </div>
-          <p className="mt-3 text-base font-semibold">Записей нет</p>
-          <p className="mt-1 text-xs text-white/50">Добавь запись вручную или жди онлайн-бронирования</p>
-        </div>
-      ) : (
-        <ul className="space-y-2">
-          {rows.map((r, i) => {
-            const meta = STATUS_META[r.status];
-            return (
-              <motion.li
-                key={r.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-              >
-                <button
-                  onClick={() => onSelect(r.id)}
-                  className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left active:bg-white/[0.06] transition-colors"
-                >
-                  <span className={`absolute inset-y-3 left-0 w-1 rounded-r-full ${meta.strip}`} />
-                  <div className="flex w-14 shrink-0 flex-col items-center text-center">
-                    <span className="text-[15px] font-bold tabular-nums">
-                      {new Date(r.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-[10px] text-white/50">
-                      {r.duration_min} мин
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{r.service_name}</p>
-                    <p className="mt-0.5 truncate text-[12px] text-white/60">{r.client_name}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${meta.text}`}>
-                        {meta.label}
-                      </span>
-                      <span className="text-[11px] font-semibold text-white/80">{r.price.toFixed(0)} ₴</span>
-                    </div>
-                  </div>
-                </button>
-              </motion.li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* Drawer */}
-      <AnimatePresence>
-        {active && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={closeDrawer}
-              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[32px] border-t border-white/10 bg-[#2f3437] px-5 pt-4 pb-8"
-              style={{ paddingBottom: 'calc(2rem + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))' }}
+    <MobilePage>
+      <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <PageHeader
+          title={formatDayHeader(day)}
+          subtitle={`${totals.count} ${plural(totals.count, ['запись', 'записи', 'записей'])} · ${totals.revenue.toFixed(0)} ₴`}
+          right={
+            <Link
+              href="/telegram/m/slot/new"
+              onClick={() => haptic('selection')}
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                background: T.text,
+                color: T.bg,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+              }}
+              aria-label="Новая запись"
             >
-              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+              <Plus size={20} strokeWidth={2.4} />
+            </Link>
+          }
+        />
 
-              <div className="space-y-4">
-                <div>
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide border border-white/10 ${STATUS_META[active.status].text}`}>
-                    <span className={`inline-block size-1.5 rounded-full ${STATUS_META[active.status].strip}`} />
-                    {STATUS_META[active.status].label}
-                  </span>
-                  <h2 className="mt-2 text-xl font-bold">{active.service_name}</h2>
-                  <div className="mt-2 flex items-center gap-3 text-[13px] text-white/70">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="size-3.5" />
-                      {new Date(active.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                      {' – '}
-                      {new Date(active.ends_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                    <span className="text-white/30">·</span>
-                    <span className="font-semibold">{active.price.toFixed(0)} ₴</span>
-                  </div>
-                </div>
+        {/* Day nav */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setDay(addDays(day, -1)); }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <ChevronLeft size={18} color={T.text} />
+          </button>
+          <button
+            type="button"
+            onClick={() => { haptic('selection'); setDay(startOfDay(new Date())); }}
+            style={{
+              flex: 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '12px 14px',
+              borderRadius: R.pill,
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              color: T.text,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <CalendarDays size={14} />
+            {day.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </button>
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setDay(addDays(day, 1)); }}
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <ChevronRight size={18} color={T.text} />
+          </button>
+        </div>
 
-                {/* Client */}
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <p className="text-[10px] uppercase tracking-wide text-white/40">Клиент</p>
-                  <p className="mt-1 text-sm font-semibold">{active.client_name}</p>
-                  <div className="mt-3 flex items-center gap-2">
-                    {active.client_phone && (
-                      <a
-                        href={`tel:${active.client_phone}`}
-                        onClick={() => haptic('selection')}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2 text-[12px] font-semibold active:bg-white/[0.08] transition-colors"
-                      >
-                        <Phone className="size-3.5" /> {active.client_phone}
-                      </a>
-                    )}
-                    {active.client_id && (
-                      <Link
-                        href={`/telegram/m/clients/${active.client_id}`}
-                        onClick={() => haptic('light')}
-                        className="flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] active:bg-white/[0.08] transition-colors"
-                      >
-                        <UserIcon className="size-4" />
-                      </Link>
-                    )}
-                  </div>
-                </div>
-
-                {active.notes && (
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <p className="text-[10px] uppercase tracking-wide text-white/40">Заметки</p>
-                    <p className="mt-1 text-[13px] leading-relaxed text-white/80">{active.notes}</p>
-                  </div>
-                )}
-
-                {active.status === 'in_progress' && (
-                  <ServiceTimer startsAt={active.starts_at} endsAt={active.ends_at} />
-                )}
-
-                {/* Actions */}
-                <div className="space-y-2">
-                  {(active.status === 'booked' || active.status === 'confirmed') && (
-                    <button
-                      disabled={acting}
-                      onClick={() => updateStatus(active.id, 'in_progress')}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 py-4 text-[15px] font-semibold text-black active:bg-amber-400 transition-colors disabled:opacity-50"
-                    >
-                      <PlayCircle className="size-4" /> Начать визит
-                    </button>
-                  )}
-                  {(active.status === 'booked' || active.status === 'confirmed' || active.status === 'in_progress') && (
-                    <button
-                      disabled={acting}
-                      onClick={() => updateStatus(active.id, 'completed')}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-[15px] font-semibold text-black active:bg-emerald-400 transition-colors disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="size-4" /> Завершить
-                    </button>
-                  )}
-                  {(active.status === 'booked' || active.status === 'confirmed') && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        disabled={acting}
-                        onClick={() =>
-                          updateStatus(active.id, 'cancelled', {
-                            cancelled_at: new Date().toISOString(),
-                            cancelled_by: userId,
-                            cancellation_reason: 'master_miniapp',
-                          })
-                        }
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] py-3 text-[12px] font-semibold active:bg-white/[0.06] transition-colors disabled:opacity-50"
-                      >
-                        <XCircle className="size-3.5" /> Отменить
-                      </button>
-                      <button
-                        disabled={acting}
-                        onClick={() => updateStatus(active.id, 'no_show')}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-white/[0.03] py-3 text-[12px] font-semibold text-rose-300 active:bg-rose-500/10 transition-colors disabled:opacity-50"
-                      >
-                        <UserX className="size-3.5" /> Не пришёл
-                      </button>
-                    </div>
-                  )}
-                </div>
+        {/* Appointments list */}
+        <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} style={{ height: 80, borderRadius: R.md, background: T.bgSubtle }} />
+              ))}
+            </div>
+          ) : rows.length === 0 ? (
+            <div
+              style={{
+                padding: '40px 24px',
+                textAlign: 'center',
+                background: T.surface,
+                border: `1px dashed ${T.border}`,
+                borderRadius: R.md,
+              }}
+            >
+              <div
+                style={{
+                  margin: '0 auto',
+                  width: 56,
+                  height: 56,
+                  borderRadius: R.md,
+                  background: `linear-gradient(135deg, ${T.gradientFrom}40, ${T.gradientTo}40)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CalendarDays size={26} color={T.accent} strokeWidth={2} />
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 14 }}>Записей нет</p>
+              <p style={{ ...TYPE.caption, marginTop: 4 }}>
+                Добавь запись вручную или жди онлайн-бронирования
+              </p>
+            </div>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rows.map((r, i) => {
+                const meta = STATUS_META[r.status];
+                return (
+                  <motion.li
+                    key={r.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSelect(r.id)}
+                      style={{
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        width: '100%',
+                        padding: '14px 14px 14px 18px',
+                        borderRadius: R.md,
+                        background: T.surface,
+                        border: `1px solid ${T.borderSubtle}`,
+                        boxShadow: SHADOW.card,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      <span
+                        style={{
+                          position: 'absolute',
+                          left: 0,
+                          top: 12,
+                          bottom: 12,
+                          width: 4,
+                          borderRadius: '0 4px 4px 0',
+                          background: meta.stripBg,
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: 56,
+                          flexShrink: 0,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
+                          {new Date(r.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span style={{ fontSize: 10, color: T.textTertiary, marginTop: 2 }}>
+                          {r.duration_min} мин
+                        </span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.service_name}
+                        </p>
+                        <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.client_name}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                          <span
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background: meta.chipBg,
+                              color: meta.chipColor,
+                              fontSize: 9,
+                              fontWeight: 700,
+                              letterSpacing: '0.05em',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {meta.label}
+                          </span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>
+                            {r.price.toFixed(0)} ₴
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Drawer */}
+        <AnimatePresence>
+          {active && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={closeDrawer}
+                style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(10,10,12,0.5)', backdropFilter: 'blur(2px)' }}
+              />
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+                style={{
+                  position: 'fixed',
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  zIndex: 70,
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                  background: T.surface,
+                  borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+                  padding: `12px ${PAGE_PADDING_X}px calc(2rem + env(safe-area-inset-bottom, 0px))`,
+                  boxShadow: SHADOW.elevated,
+                }}
+              >
+                <div style={{ margin: '0 auto 16px', width: 40, height: 4, borderRadius: 999, background: T.border }} />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '4px 10px',
+                        borderRadius: 999,
+                        background: STATUS_META[active.status].chipBg,
+                        color: STATUS_META[active.status].chipColor,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_META[active.status].stripBg }} />
+                      {STATUS_META[active.status].label}
+                    </span>
+                    <h2 style={{ ...TYPE.h2, color: T.text, marginTop: 8, marginBottom: 0 }}>{active.service_name}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, ...TYPE.body, color: T.textSecondary }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Clock size={14} />
+                        {new Date(active.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                        {' – '}
+                        {new Date(active.ends_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <span style={{ color: T.textTertiary }}>·</span>
+                      <span style={{ fontWeight: 700, color: T.text }}>{active.price.toFixed(0)} ₴</span>
+                    </div>
+                  </div>
+
+                  {/* Client */}
+                  <div style={{ background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}`, borderRadius: R.md, padding: 14 }}>
+                    <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>Клиент</p>
+                    <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 4 }}>{active.client_name}</p>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      {active.client_phone && (
+                        <a
+                          href={`tel:${active.client_phone}`}
+                          onClick={() => haptic('selection')}
+                          style={{
+                            flex: 1,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            padding: '10px 14px',
+                            borderRadius: R.md,
+                            border: `1px solid ${T.border}`,
+                            background: T.surface,
+                            color: T.text,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <Phone size={14} /> {active.client_phone}
+                        </a>
+                      )}
+                      {active.client_id && (
+                        <Link
+                          href={`/telegram/m/clients/${active.client_id}`}
+                          onClick={() => haptic('light')}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: R.md,
+                            border: `1px solid ${T.border}`,
+                            background: T.surface,
+                            color: T.text,
+                            textDecoration: 'none',
+                          }}
+                        >
+                          <UserIcon size={16} />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+
+                  {active.notes && (
+                    <div style={{ background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}`, borderRadius: R.md, padding: 14 }}>
+                      <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>Заметки</p>
+                      <p style={{ ...TYPE.body, color: T.text, marginTop: 4, whiteSpace: 'pre-wrap' }}>{active.notes}</p>
+                    </div>
+                  )}
+
+                  {active.status === 'in_progress' && (
+                    <ServiceTimer startsAt={active.starts_at} endsAt={active.ends_at} />
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(active.status === 'booked' || active.status === 'confirmed') && (
+                      <button
+                        type="button"
+                        disabled={acting}
+                        onClick={() => updateStatus(active.id, 'in_progress')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          padding: '14px',
+                          borderRadius: R.md,
+                          background: '#f59e0b',
+                          color: '#000',
+                          border: 'none',
+                          fontSize: 15,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          opacity: acting ? 0.5 : 1,
+                        }}
+                      >
+                        <PlayCircle size={16} /> Начать визит
+                      </button>
+                    )}
+                    {(active.status === 'booked' || active.status === 'confirmed' || active.status === 'in_progress') && (
+                      <button
+                        type="button"
+                        disabled={acting}
+                        onClick={() => updateStatus(active.id, 'completed')}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          padding: '14px',
+                          borderRadius: R.md,
+                          background: T.success,
+                          color: '#fff',
+                          border: 'none',
+                          fontSize: 15,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          opacity: acting ? 0.5 : 1,
+                        }}
+                      >
+                        <CheckCircle2 size={16} /> Завершить
+                      </button>
+                    )}
+                    {(active.status === 'booked' || active.status === 'confirmed') && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() =>
+                            updateStatus(active.id, 'cancelled', {
+                              cancelled_at: new Date().toISOString(),
+                              cancelled_by: userId,
+                              cancellation_reason: 'master_miniapp',
+                            })
+                          }
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            padding: '12px',
+                            borderRadius: R.md,
+                            border: `1px solid ${T.border}`,
+                            background: T.surface,
+                            color: T.textSecondary,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            opacity: acting ? 0.5 : 1,
+                          }}
+                        >
+                          <XCircle size={14} /> Отменить
+                        </button>
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => updateStatus(active.id, 'no_show')}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            padding: '12px',
+                            borderRadius: R.md,
+                            border: `1px solid ${T.danger}30`,
+                            background: T.dangerSoft,
+                            color: T.danger,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                            opacity: acting ? 0.5 : 1,
+                          }}
+                        >
+                          <UserX size={14} /> Не пришёл
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
+    </MobilePage>
   );
 }
 
@@ -531,22 +760,33 @@ function ServiceTimer({ startsAt, endsAt }: { startsAt: string; endsAt: string }
     return `${mm}:${ss}`;
   }
   return (
-    <div className={`rounded-2xl border p-4 ${overdue ? 'border-red-500/40 bg-red-500/10' : 'border-amber-500/30 bg-amber-500/10'}`}>
-      <div className="flex items-center justify-between text-[11px] uppercase tracking-wide">
-        <span className={overdue ? 'text-red-300' : 'text-amber-200'}>
+    <div
+      style={{
+        padding: 14,
+        borderRadius: R.md,
+        border: `1px solid ${overdue ? `${T.danger}40` : '#f59e0b40'}`,
+        background: overdue ? T.dangerSoft : '#fef3c7',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <span style={{ color: overdue ? T.danger : '#b45309' }}>
           {overdue ? 'Превышено' : 'Идёт визит'}
         </span>
-        <span className="tabular-nums text-white/70">
+        <span style={{ fontVariantNumeric: 'tabular-nums', color: T.textSecondary }}>
           {fmt(elapsed)} / {fmt(total)}
         </span>
       </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+      <div style={{ marginTop: 8, height: 6, borderRadius: 999, background: T.bgSubtle, overflow: 'hidden' }}>
         <div
-          className={`h-full transition-all ${overdue ? 'bg-red-500' : 'bg-amber-400'}`}
-          style={{ width: `${pct}%` }}
+          style={{
+            height: '100%',
+            background: overdue ? T.danger : '#f59e0b',
+            width: `${pct}%`,
+            transition: 'width 200ms ease',
+          }}
         />
       </div>
-      <div className="mt-2 text-center text-[12px] font-semibold tabular-nums">
+      <div style={{ textAlign: 'center', marginTop: 8, fontSize: 13, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
         {overdue ? `+${fmt(-remaining)}` : fmt(remaining)}
       </div>
     </div>

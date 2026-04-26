@@ -539,7 +539,7 @@ export default function MiniAppBookPage() {
   if (!masterId) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-8 text-center">
-        <p className="text-sm text-white/60">Мастер не указан</p>
+        <p className="text-sm text-neutral-600">Мастер не указан</p>
       </div>
     );
   }
@@ -552,7 +552,7 @@ export default function MiniAppBookPage() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <Loader2 className="size-7 animate-spin text-white/30" />
+          <Loader2 className="size-7 animate-spin text-neutral-400" />
         </motion.div>
       </div>
     );
@@ -568,14 +568,14 @@ export default function MiniAppBookPage() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0a0a] px-4 pb-3 pt-4"
+          className="sticky top-0 z-30 border-b border-neutral-200 bg-white px-4 pb-3 pt-4"
         >
           <div className="flex items-center justify-between">
             <button
               onClick={goBack}
-              className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
             >
-              <ArrowLeft className="size-4 text-white/80" />
+              <ArrowLeft className="size-4 text-neutral-800" />
             </button>
 
             <h1 className="text-[15px] font-semibold">
@@ -586,9 +586,9 @@ export default function MiniAppBookPage() {
 
             <button
               onClick={handleClose}
-              className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
             >
-              <X className="size-4 text-white/80" />
+              <X className="size-4 text-neutral-800" />
             </button>
           </div>
 
@@ -636,7 +636,7 @@ export default function MiniAppBookPage() {
                       className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
                         !activeCategory
                           ? 'bg-white text-black'
-                          : 'border border-white/10 bg-white/[0.03] text-white/70 active:bg-white/[0.06]'
+                          : 'border border-neutral-200 bg-white border-neutral-200 text-neutral-700 active:bg-neutral-50'
                       }`}
                     >
                       Все
@@ -648,7 +648,7 @@ export default function MiniAppBookPage() {
                         className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
                           activeCategory === cat.id
                             ? 'bg-white text-black'
-                            : 'border border-white/10 bg-white/[0.03] text-white/70 active:bg-white/[0.06]'
+                            : 'border border-neutral-200 bg-white border-neutral-200 text-neutral-700 active:bg-neutral-50'
                         }`}
                       >
                         {cat.name}
@@ -669,7 +669,7 @@ export default function MiniAppBookPage() {
                         initial="hidden"
                         animate="visible"
                         onClick={() => toggleService(service)}
-                        className={`group relative flex w-full items-start gap-3.5 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4 pl-5 text-left transition-colors active:bg-white/[0.06]`}
+                        className={`group relative flex w-full items-start gap-3.5 overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 pl-5 text-left transition-colors active:bg-neutral-50`}
                       >
                         {isSelected && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
                         {/* Checkmark circle */}
@@ -678,30 +678,30 @@ export default function MiniAppBookPage() {
                             className={`flex size-7 items-center justify-center rounded-full border-[1.5px] transition-colors ${
                               isSelected
                                 ? 'border-violet-500 bg-violet-500'
-                                : 'border-white/20 bg-transparent'
+                                : 'border-neutral-300 bg-transparent'
                             }`}
                             animate={{ scale: isSelected ? [1, 1.15, 1] : 1 }}
                             transition={{ duration: 0.25 }}
                           >
                             {isSelected ? (
-                              <Check className="size-3.5 text-white" strokeWidth={3} />
+                              <Check className="size-3.5 text-neutral-900" strokeWidth={3} />
                             ) : (
-                              <Plus className="size-3.5 text-white/40" strokeWidth={2} />
+                              <Plus className="size-3.5 text-neutral-400" strokeWidth={2} />
                             )}
                           </motion.div>
                         </div>
 
                         {/* Service info */}
                         <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-semibold leading-tight text-white/95">
+                          <p className="text-[14px] font-semibold leading-tight text-neutral-900/95">
                             {service.name}
                           </p>
                           {service.description && (
-                            <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-white/40">
+                            <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-neutral-400">
                               {service.description}
                             </p>
                           )}
-                          <div className="mt-2 flex items-center gap-2 text-[12px] text-white/50">
+                          <div className="mt-2 flex items-center gap-2 text-[12px] text-neutral-500">
                             <Clock className="size-3.5" />
                             <span>{formatDuration(service.duration_minutes)}</span>
                           </div>
@@ -709,7 +709,7 @@ export default function MiniAppBookPage() {
 
                         {/* Price */}
                         <div className="shrink-0 pt-0.5">
-                          <p className="text-[14px] font-bold text-white/90">
+                          <p className="text-[14px] font-bold text-neutral-900">
                             {formatPrice(Number(service.price))} {service.currency}
                           </p>
                         </div>
@@ -720,8 +720,8 @@ export default function MiniAppBookPage() {
 
                 {services.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <AlertCircle className="mb-3 size-8 text-white/20" />
-                    <p className="text-sm text-white/40">У мастера пока нет активных услуг</p>
+                    <AlertCircle className="mb-3 size-8 text-neutral-900/20" />
+                    <p className="text-sm text-neutral-400">У мастера пока нет активных услуг</p>
                   </div>
                 )}
               </motion.div>
@@ -746,13 +746,13 @@ export default function MiniAppBookPage() {
                   animate="visible"
                   className="mb-4 flex items-center justify-between"
                 >
-                  <h2 className="text-[15px] font-semibold capitalize text-white/90">
+                  <h2 className="text-[15px] font-semibold capitalize text-neutral-900">
                     {MONTH_NAMES_FULL[new Date().getMonth()]} {new Date().getFullYear()} г.
                   </h2>
                   <button
                     onClick={() => { haptic('light'); setShowFullCalendar(!showFullCalendar); }}
-                    className={`flex size-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] transition-colors active:bg-white/[0.06] ${
-                      showFullCalendar ? 'text-violet-300' : 'text-white/60'
+                    className={`flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 transition-colors active:bg-neutral-50 ${
+                      showFullCalendar ? 'text-violet-600' : 'text-neutral-600'
                     }`}
                   >
                     <CalendarIcon className="size-4" />
@@ -794,18 +794,18 @@ export default function MiniAppBookPage() {
                                   : off
                                     ? 'opacity-30'
                                     : isToday
-                                      ? 'border border-white/20 bg-white/[0.03]'
-                                      : 'border border-white/10 bg-white/[0.03] active:bg-white/[0.06]'
+                                      ? 'border border-neutral-300 bg-white border-neutral-200'
+                                      : 'border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50'
                               }`}
                               style={{ minWidth: 56 }}
                             >
                               <span className={`text-[11px] font-medium ${
-                                isSelected ? 'text-white/80' : 'text-white/40'
+                                isSelected ? 'text-neutral-800' : 'text-neutral-400'
                               }`}>
                                 {dayName}
                               </span>
                               <span className={`text-[18px] font-bold leading-none ${
-                                isSelected ? 'text-white' : off ? 'text-white/30' : 'text-white/90'
+                                isSelected ? 'text-neutral-900' : off ? 'text-neutral-400' : 'text-neutral-900'
                               }`}>
                                 {date.getDate()}
                               </span>
@@ -828,7 +828,7 @@ export default function MiniAppBookPage() {
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
-                          className="flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
                         >
                           <ChevronLeft className="size-4" />
                         </button>
@@ -837,14 +837,14 @@ export default function MiniAppBookPage() {
                         </span>
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
-                          className="flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
                         >
                           <ChevronRight className="size-4" />
                         </button>
                       </div>
 
                       {/* Day names */}
-                      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-white/30">
+                      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-neutral-400">
                         {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((d) => (
                           <div key={d}>{d}</div>
                         ))}
@@ -864,12 +864,12 @@ export default function MiniAppBookPage() {
                               onClick={() => handleSelectDate(day)}
                               className={`flex size-10 items-center justify-center rounded-xl text-[13px] font-medium transition-colors ${
                                 isSelected
-                                  ? 'bg-violet-500 text-white'
+                                  ? 'bg-violet-500 text-neutral-900'
                                   : off
-                                    ? 'text-white/15'
+                                    ? 'text-neutral-900/15'
                                     : isToday
-                                      ? 'border border-white/20 text-white'
-                                      : 'text-white/70 active:bg-white/[0.06]'
+                                      ? 'border border-neutral-300 text-neutral-900'
+                                      : 'text-neutral-700 active:bg-neutral-50'
                               }`}
                             >
                               {day.getDate()}
@@ -890,26 +890,26 @@ export default function MiniAppBookPage() {
                     transition={{ duration: 0.3 }}
                     className="space-y-3"
                   >
-                    <p className="text-[13px] font-medium capitalize text-white/60">
+                    <p className="text-[13px] font-medium capitalize text-neutral-600">
                       {formatDateFull(selectedDate)}
                     </p>
 
                     {slotsLoading ? (
                       <div className="grid grid-cols-3 gap-2">
                         {Array.from({ length: 9 }).map((_, i) => (
-                          <div key={i} className="h-12 animate-pulse rounded-xl bg-white/[0.03]" />
+                          <div key={i} className="h-12 animate-pulse rounded-xl bg-white border-neutral-200" />
                         ))}
                       </div>
                     ) : slots.length === 0 ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center">
-                        <CalendarIcon className="mx-auto mb-2 size-7 text-white/20" />
-                        <p className="text-[13px] font-medium text-white/50">
+                      <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-6 text-center">
+                        <CalendarIcon className="mx-auto mb-2 size-7 text-neutral-900/20" />
+                        <p className="text-[13px] font-medium text-neutral-500">
                           Нет свободных слотов
                         </p>
                         {nextAvailableDate && (
                           <button
                             onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
-                            className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-[12px] font-semibold text-violet-300 active:bg-white/[0.06] transition-colors"
+                            className="mt-3 rounded-xl border border-neutral-200 bg-white border-neutral-200 px-4 py-2 text-[12px] font-semibold text-violet-600 active:bg-neutral-50 transition-colors"
                           >
                             Ближайшая: {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
                           </button>
@@ -929,8 +929,8 @@ export default function MiniAppBookPage() {
                               onClick={() => handleSelectTime(time)}
                               className={`flex items-center justify-center rounded-xl border py-3 text-[15px] font-semibold transition-colors ${
                                 isSelected
-                                  ? 'border-white/20 bg-white text-black'
-                                  : 'border-white/10 bg-white/[0.03] text-white active:bg-white/[0.06]'
+                                  ? 'border-neutral-300 bg-white text-black'
+                                  : 'border-neutral-200 bg-white border-neutral-200 text-neutral-900 active:bg-neutral-50'
                               }`}
                             >
                               {time}
@@ -960,11 +960,11 @@ export default function MiniAppBookPage() {
                   variants={fadeUp}
                   initial="hidden"
                   animate="visible"
-                  className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
+                  className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200"
                 >
                   {/* Master info */}
                   <div className="flex items-center gap-3.5 p-5">
-                    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06]">
+                    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50">
                       {master?.avatar_url ? (
                         <Image
                           src={master.avatar_url}
@@ -974,15 +974,15 @@ export default function MiniAppBookPage() {
                           className="size-full object-cover"
                         />
                       ) : (
-                        <span className="text-[16px] font-bold text-white/90">
+                        <span className="text-[16px] font-bold text-neutral-900">
                           {masterName.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold text-white/95">{masterName}</p>
+                      <p className="text-[15px] font-semibold text-neutral-900/95">{masterName}</p>
                       {master?.address && (
-                        <div className="mt-0.5 flex items-center gap-1 text-[12px] text-white/40">
+                        <div className="mt-0.5 flex items-center gap-1 text-[12px] text-neutral-400">
                           <MapPin className="size-3" />
                           <span className="truncate">{master.address}</span>
                         </div>
@@ -995,30 +995,30 @@ export default function MiniAppBookPage() {
                   {/* Date & Time */}
                   <div className="space-y-3 p-5">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                        <CalendarIcon className="size-4 text-violet-300" />
+                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                        <CalendarIcon className="size-4 text-violet-600" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-white/30">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
                           Дата
                         </p>
-                        <p className="text-[14px] font-semibold capitalize text-white/90">
+                        <p className="text-[14px] font-semibold capitalize text-neutral-900">
                           {formatDateFull(selectedDate)}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-                        <Clock className="size-4 text-violet-300" />
+                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                        <Clock className="size-4 text-violet-600" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-white/30">
+                        <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
                           Время
                         </p>
-                        <p className="text-[14px] font-semibold text-white/90">
+                        <p className="text-[14px] font-semibold text-neutral-900">
                           {selectedTime}–{endTime}{' '}
-                          <span className="font-normal text-white/40">
+                          <span className="font-normal text-neutral-400">
                             (длительность {formatDuration(totalDuration)})
                           </span>
                         </p>
@@ -1034,14 +1034,14 @@ export default function MiniAppBookPage() {
                       return (
                         <div key={service.id} className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="text-[14px] font-semibold text-white/90">
+                            <p className="text-[14px] font-semibold text-neutral-900">
                               {service.name}
                             </p>
-                            <p className="mt-0.5 text-[12px] text-white/35">
+                            <p className="mt-0.5 text-[12px] text-neutral-400">
                               {formatDuration(service.duration_minutes)} с {masterName}
                             </p>
                           </div>
-                          <p className="shrink-0 text-[14px] font-bold text-white/80">
+                          <p className="shrink-0 text-[14px] font-bold text-neutral-800">
                             {formatPrice(Number(service.price))} {service.currency}
                           </p>
                         </div>
@@ -1053,8 +1053,8 @@ export default function MiniAppBookPage() {
 
                   {/* Total */}
                   <div className="flex items-center justify-between p-5">
-                    <p className="text-[14px] font-medium text-white/60">Всего к оплате</p>
-                    <p className="text-[20px] font-bold text-white">
+                    <p className="text-[14px] font-medium text-neutral-600">Всего к оплате</p>
+                    <p className="text-[20px] font-bold text-neutral-900">
                       {formatPrice(totalPrice)} {currency}
                     </p>
                   </div>
@@ -1068,12 +1068,12 @@ export default function MiniAppBookPage() {
                     className="mt-4 overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-400/[0.06]"
                   >
                     <div className="flex items-start gap-3 p-5">
-                      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-amber-300">
+                      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-amber-600">
                         <Info className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-semibold text-white/90">Важная информация</p>
-                        <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-white/65">
+                        <p className="text-[14px] font-semibold text-neutral-900">Важная информация</p>
+                        <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-neutral-700">
                           {master.booking_important_info}
                         </p>
                       </div>
@@ -1094,13 +1094,13 @@ export default function MiniAppBookPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0a0a] px-4 pb-8 pt-4"
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white px-4 pb-8 pt-4"
             >
               {selectedServices.length > 0 && (
                 <motion.p
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-3 text-center text-[13px] text-white/50"
+                  className="mb-3 text-center text-[13px] text-neutral-500"
                 >
                   {formatPrice(totalPrice)} {currency} · {selectedServices.length}{' '}
                   {pluralServices(selectedServices.length)} · {formatDuration(totalDuration)}
@@ -1112,7 +1112,7 @@ export default function MiniAppBookPage() {
                 className={`flex w-full items-center justify-center rounded-2xl py-4 text-[15px] font-semibold transition-colors ${
                   selectedServices.length > 0
                     ? 'bg-white text-black active:bg-white/80'
-                    : 'bg-white/[0.03] text-white/25'
+                    : 'bg-white border-neutral-200 text-neutral-900/25'
                 }`}
               >
                 Продолжить
@@ -1127,11 +1127,11 @@ export default function MiniAppBookPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0a0a] px-4 pb-8 pt-4"
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white px-4 pb-8 pt-4"
             >
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[13px] text-white/40">К оплате в магазине</span>
-                <span className="text-[16px] font-bold text-white">
+                <span className="text-[13px] text-neutral-400">К оплате в магазине</span>
+                <span className="text-[16px] font-bold text-neutral-900">
                   {formatPrice(totalPrice)} {currency}
                 </span>
               </div>
@@ -1162,29 +1162,29 @@ export default function MiniAppBookPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setShowExitModal(false)}
-              className="fixed inset-0 z-50 bg-black/70"
+              className="fixed inset-0 z-50 bg-neutral-900/70"
             />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-white/10 bg-[#0b0d17] px-5 pb-10 pt-6"
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-neutral-200 bg-white px-5 pb-10 pt-6"
             >
               {/* Handle */}
               <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
 
-              <h3 className="text-center text-[17px] font-bold text-white">
+              <h3 className="text-center text-[17px] font-bold text-neutral-900">
                 Вы точно хотите прервать это бронирование?
               </h3>
-              <p className="mt-2 text-center text-[14px] text-white/40">
+              <p className="mt-2 text-center text-[14px] text-neutral-400">
                 Все выбранные параметры будут сброшены.
               </p>
 
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={() => { haptic('light'); setShowExitModal(false); }}
-                  className="flex-1 rounded-2xl border border-white/10 bg-white/[0.03] py-3.5 text-[14px] font-semibold text-white/70 active:bg-white/[0.06] transition-colors"
+                  className="flex-1 rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-3.5 text-[14px] font-semibold text-neutral-700 active:bg-neutral-50 transition-colors"
                 >
                   Отменить
                 </button>

@@ -33,13 +33,13 @@ export function SettingsShell({
       <Link
         href={back}
         onClick={() => haptic('light')}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[12px] text-white/70 active:bg-white/[0.06] transition-colors"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white border-neutral-200 px-3 py-1.5 text-[12px] text-neutral-700 active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft size={13} weight="bold" />
         Назад
       </Link>
       <h1 className="text-[22px] font-bold leading-tight">{title}</h1>
-      {subtitle && <p className="mt-1 text-[13px] text-white/50">{subtitle}</p>}
+      {subtitle && <p className="mt-1 text-[13px] text-neutral-500">{subtitle}</p>}
       <div className="mt-5 space-y-4">{children}</div>
     </motion.div>
   );

@@ -46,17 +46,17 @@ export default function MiniAppFeedbackPage() {
   if (sent) {
     return (
       <SettingsShell title="Обратная связь">
-        <div className="flex flex-col items-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-10 text-center">
-          <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+        <div className="flex flex-col items-center rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-10 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
             <Heart size={22} weight="fill" />
           </div>
           <p className="mt-4 text-[16px] font-semibold text-emerald-100">Команда CRES-CA благодарит вас за отзыв</p>
-          <p className="mt-2 text-[12.5px] leading-relaxed text-emerald-200/80">
+          <p className="mt-2 text-[12.5px] leading-relaxed text-emerald-700/80">
             Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.
           </p>
           <button
             onClick={() => { setText(''); setSent(false); }}
-            className="mt-6 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-[12px] font-semibold text-white/80 active:bg-white/[0.1]"
+            className="mt-6 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-[12px] font-semibold text-neutral-800 active:bg-neutral-100"
           >
             Написать ещё
           </button>
@@ -73,17 +73,17 @@ export default function MiniAppFeedbackPage() {
           onChange={(e) => setText(e.target.value.slice(0, MAX))}
           placeholder="Например: в календаре тяжело попадать пальцем по 15-минутным слотам, было бы удобнее…"
           rows={8}
-          className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[13px] leading-relaxed text-white placeholder:text-white/30 focus:border-violet-500/40 focus:outline-none"
+          className="w-full resize-none rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-4 py-3 text-[13px] leading-relaxed text-neutral-900 placeholder:text-neutral-400 focus:border-violet-400 focus:outline-none"
         />
         <div className="mt-1.5 flex items-center justify-between px-1">
-          <p className="text-[11px] text-white/40">{text.length} / {MAX}</p>
-          <p className="text-[11px] text-white/40">AI автоматически уберёт мусор</p>
+          <p className="text-[11px] text-neutral-400">{text.length} / {MAX}</p>
+          <p className="text-[11px] text-neutral-400">AI автоматически уберёт мусор</p>
         </div>
       </div>
       <button
         onClick={send}
         disabled={text.trim().length < 4 || sending}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 py-3.5 text-[14px] font-semibold text-white active:bg-violet-600 transition-colors disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 py-3.5 text-[14px] font-semibold text-neutral-900 active:bg-violet-600 transition-colors disabled:opacity-40"
       >
         {sending ? (
           'Отправка…'
@@ -94,10 +94,10 @@ export default function MiniAppFeedbackPage() {
           </>
         )}
       </button>
-      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">или голосом — в Telegram</p>
-        <p className="mt-1.5 text-[12px] leading-relaxed text-white/70">
-          Открой нашего <a href="https://t.me/cres_ca_bot" target="_blank" rel="noreferrer" className="font-semibold text-violet-300 underline">Telegram-бота</a> и отправь команду <code className="rounded bg-white/10 px-1 text-violet-200">/feedback</code> или голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
+      <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">или голосом — в Telegram</p>
+        <p className="mt-1.5 text-[12px] leading-relaxed text-neutral-700">
+          Открой нашего <a href="https://t.me/cres_ca_bot" target="_blank" rel="noreferrer" className="font-semibold text-violet-600 underline">Telegram-бота</a> и отправь команду <code className="rounded bg-white/10 px-1 text-violet-700">/feedback</code> или голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
         </p>
       </div>
     </SettingsShell>

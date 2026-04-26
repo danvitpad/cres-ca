@@ -146,13 +146,13 @@ function MasterMiniAppQuickBookingInner() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
 
   if (!masterId) {
-    return <p className="px-5 pt-10 text-center text-sm text-white/60">Профиль мастера не найден</p>;
+    return <p className="px-5 pt-10 text-center text-sm text-neutral-600">Профиль мастера не найден</p>;
   }
 
   return (
@@ -169,7 +169,7 @@ function MasterMiniAppQuickBookingInner() {
           else if (step === 'time') setStep('service');
           else router.back();
         }}
-        className="flex size-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -189,7 +189,7 @@ function MasterMiniAppQuickBookingInner() {
       </div>
 
       <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">Новая запись</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">Новая запись</p>
         <h1 className="mt-1 text-2xl font-bold">
           {step === 'client' && '1. Кто?'}
           {step === 'service' && '2. Что?'}
@@ -201,13 +201,13 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'client' && (
         <>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
             <input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск клиента…"
-              className="w-full rounded-2xl border border-white/10 bg-white/[0.03] py-3 pl-11 pr-4 text-[13px] outline-none focus:border-white/20"
+              className="w-full rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-3 pl-11 pr-4 text-[13px] outline-none focus:border-neutral-300"
             />
           </div>
           <ul className="space-y-2">
@@ -219,21 +219,21 @@ function MasterMiniAppQuickBookingInner() {
                     setSelectedClient(c);
                     setStep('service');
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left active:bg-white/[0.06] transition-colors"
+                  className="flex w-full items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3 text-left active:bg-neutral-50 transition-colors"
                 >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-[12px] font-bold text-white/90">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 text-[12px] font-bold text-neutral-900">
                     {c.full_name.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{c.full_name}</p>
-                    {c.phone && <p className="truncate text-[11px] text-white/50">{c.phone}</p>}
+                    {c.phone && <p className="truncate text-[11px] text-neutral-500">{c.phone}</p>}
                   </div>
-                  <ChevronRight className="size-4 text-white/30" />
+                  <ChevronRight className="size-4 text-neutral-400" />
                 </button>
               </li>
             ))}
             {filteredClients.length === 0 && (
-              <p className="py-6 text-center text-[12px] text-white/40">Ничего не найдено</p>
+              <p className="py-6 text-center text-[12px] text-neutral-400">Ничего не найдено</p>
             )}
           </ul>
         </>
@@ -242,9 +242,9 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'service' && (
         <>
           {selectedClient && (
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <UserIcon className="size-3.5 text-white/50" />
-              <p className="truncate text-[12px] text-white/70">{selectedClient.full_name}</p>
+            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3">
+              <UserIcon className="size-3.5 text-neutral-500" />
+              <p className="truncate text-[12px] text-neutral-700">{selectedClient.full_name}</p>
             </div>
           )}
           <ul className="space-y-2">
@@ -256,11 +256,11 @@ function MasterMiniAppQuickBookingInner() {
                     setSelectedService(s);
                     setStep('time');
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left active:bg-white/[0.06] transition-colors"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-left active:bg-neutral-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{s.name}</p>
-                    <p className="mt-0.5 text-[11px] text-white/50">
+                    <p className="mt-0.5 text-[11px] text-neutral-500">
                       <Clock className="mr-1 inline size-3" />
                       {s.duration_minutes} мин
                     </p>
@@ -270,7 +270,7 @@ function MasterMiniAppQuickBookingInner() {
               </li>
             ))}
             {services.length === 0 && (
-              <p className="py-6 text-center text-[12px] text-white/40">Нет активных услуг. Добавь в dashboard.</p>
+              <p className="py-6 text-center text-[12px] text-neutral-400">Нет активных услуг. Добавь в dashboard.</p>
             )}
           </ul>
         </>
@@ -279,16 +279,16 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'time' && selectedService && selectedClient && (
         <>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <UserIcon className="size-3.5 text-white/50" />
-              <p className="truncate text-[12px] text-white/70">{selectedClient.full_name}</p>
-              <span className="text-white/30">·</span>
-              <p className="truncate text-[12px] text-white/70">{selectedService.name}</p>
+            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3">
+              <UserIcon className="size-3.5 text-neutral-500" />
+              <p className="truncate text-[12px] text-neutral-700">{selectedClient.full_name}</p>
+              <span className="text-neutral-400">·</span>
+              <p className="truncate text-[12px] text-neutral-700">{selectedService.name}</p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-[10px] uppercase tracking-wide text-white/40">Дата</p>
+          <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400">Дата</p>
             <input
               type="date"
               value={`${day.getFullYear()}-${pad2(day.getMonth() + 1)}-${pad2(day.getDate())}`}
@@ -296,19 +296,19 @@ function MasterMiniAppQuickBookingInner() {
                 const [y, m, d] = e.target.value.split('-').map(Number);
                 setDay(new Date(y, m - 1, d));
               }}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-[14px] outline-none focus:border-white/20 [color-scheme:dark]"
+              className="mt-2 w-full rounded-xl border border-neutral-200 bg-neutral-900/40 px-3 py-2.5 text-[14px] outline-none focus:border-neutral-300 [color-scheme:dark]"
             />
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <p className="text-[10px] uppercase tracking-wide text-white/40">Время начала</p>
+          <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+            <p className="text-[10px] uppercase tracking-wide text-neutral-400">Время начала</p>
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-[14px] outline-none focus:border-white/20 [color-scheme:dark]"
+              className="mt-2 w-full rounded-xl border border-neutral-200 bg-neutral-900/40 px-3 py-2.5 text-[14px] outline-none focus:border-neutral-300 [color-scheme:dark]"
             />
-            <p className="mt-2 text-[11px] text-white/50">
+            <p className="mt-2 text-[11px] text-neutral-500">
               Закончится в {(() => {
                 const [h, m] = time.split(':').map(Number);
                 const end = new Date(0, 0, 0, h, m + selectedService.duration_minutes);
@@ -318,7 +318,7 @@ function MasterMiniAppQuickBookingInner() {
           </div>
 
           {error && (
-            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-3 pl-5 text-[12px] text-rose-300">
+            <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3 pl-5 text-[12px] text-rose-600">
               <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
               {error}
             </div>
@@ -335,7 +335,7 @@ function MasterMiniAppQuickBookingInner() {
 
       {step === 'saving' && (
         <div className="flex items-center justify-center py-10">
-          <Loader2 className="size-6 animate-spin text-white/40" />
+          <Loader2 className="size-6 animate-spin text-neutral-400" />
         </div>
       )}
     </motion.div>
@@ -344,7 +344,7 @@ function MasterMiniAppQuickBookingInner() {
 
 export default function MasterMiniAppQuickBooking() {
   return (
-    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="size-6 animate-spin text-white/40" /></div>}>
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="size-6 animate-spin text-neutral-400" /></div>}>
       <MasterMiniAppQuickBookingInner />
     </Suspense>
   );

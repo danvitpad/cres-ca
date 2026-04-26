@@ -75,7 +75,7 @@ export default function MasterMiniAppPartnersList() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-white/40" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -88,11 +88,11 @@ export default function MasterMiniAppPartnersList() {
       className="space-y-4 px-4 pt-4 pb-24"
     >
       {/* Tabs */}
-      <div className="flex gap-1.5 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      <div className="flex gap-1.5 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-1">
         <Link
           href="/telegram/m/clients"
           onClick={() => haptic('light')}
-          className="flex-1 rounded-xl py-1.5 text-center text-[12px] font-semibold text-white/50"
+          className="flex-1 rounded-xl py-1.5 text-center text-[12px] font-semibold text-neutral-500"
         >
           Клиенты
         </Link>
@@ -105,14 +105,14 @@ export default function MasterMiniAppPartnersList() {
       </div>
 
       <header className="flex items-center gap-2">
-        <Handshake className="size-5 text-violet-300" />
+        <Handshake className="size-5 text-violet-600" />
         <h1 className="text-base font-bold tracking-tight">Партнёрство</h1>
       </header>
 
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-          <p className="text-[13px] text-white/70">У тебя пока нет партнёрств.</p>
-          <p className="mt-1.5 text-[11px] text-white/50 leading-relaxed">
+        <div className="rounded-2xl border border-neutral-200 bg-white/5 p-6 text-center">
+          <p className="text-[13px] text-neutral-700">У тебя пока нет партнёрств.</p>
+          <p className="mt-1.5 text-[11px] text-neutral-500 leading-relaxed">
             Партнёр — другой мастер или команда (салон, клиника) для бесплатной взаимной рекламы.
             Найди коллег в веб-кабинете и отправь приглашение.
           </p>
@@ -138,7 +138,7 @@ export default function MasterMiniAppPartnersList() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/50">{title}</h3>
+      <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-500">{title}</h3>
       <div className="space-y-2">{children}</div>
     </div>
   );
@@ -152,7 +152,7 @@ function Card({ item, haptic, dim }: { item: PartnershipItem; haptic: (k: 'light
     <Link
       href={`/telegram/m/partners/${item.id}`}
       onClick={() => haptic('light')}
-      className={`flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 ${dim ? 'opacity-70' : ''}`}
+      className={`flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-3 ${dim ? 'opacity-70' : ''}`}
     >
       <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-[13px] font-bold">
         {initials}
@@ -160,17 +160,17 @@ function Card({ item, haptic, dim }: { item: PartnershipItem; haptic: (k: 'light
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <p className="truncate text-[13px] font-semibold">{name}</p>
-          <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-medium text-white/70">
+          <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-medium text-neutral-700">
             {item.partner.is_team ? <Users className="size-2.5" /> : <UserIcon className="size-2.5" />}
             {item.partner.is_team ? 'Команда' : 'Соло'}
           </span>
         </div>
-        <p className="mt-0.5 truncate text-[11px] text-white/55">
+        <p className="mt-0.5 truncate text-[11px] text-neutral-500">
           {item.partner.specialization || (item.status === 'pending' ? 'Ждём подтверждения' : 'Мастер')}
         </p>
       </div>
       {item.status === 'active' && item.cross_promotion && (
-        <Megaphone className="size-3.5 shrink-0 text-emerald-300" />
+        <Megaphone className="size-3.5 shrink-0 text-emerald-600" />
       )}
     </Link>
   );

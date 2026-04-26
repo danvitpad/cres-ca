@@ -136,10 +136,10 @@ export default function MiniAppContactsPage() {
       className="px-5 pt-6 pb-6"
     >
       <h1 className="text-[24px] font-bold leading-tight">Контакты</h1>
-      <p className="mt-1 text-[13px] text-white/50">Твои мастера, салоны и друзья</p>
+      <p className="mt-1 text-[13px] text-neutral-500">Твои мастера, салоны и друзья</p>
 
       {/* Tabs */}
-      <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-1">
+      <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-1">
         <TabBtn active={tab === 'masters'} onClick={() => { setTab('masters'); haptic('light'); }} icon={User} label="Мастера" count={counts.masters} />
         <TabBtn active={tab === 'salons'} onClick={() => { setTab('salons'); haptic('light'); }} icon={Building2} label="Салоны" count={counts.salons} />
         <TabBtn active={tab === 'friends'} onClick={() => { setTab('friends'); haptic('light'); }} icon={Users} label="Друзья" count={counts.friends} />
@@ -148,7 +148,7 @@ export default function MiniAppContactsPage() {
       <div className="mt-4">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="size-5 animate-spin text-white/40" />
+            <Loader2 className="size-5 animate-spin text-neutral-400" />
           </div>
         ) : tab === 'masters' ? (
           masters.length === 0 ? (
@@ -163,10 +163,10 @@ export default function MiniAppContactsPage() {
             <>
               {/* Nearest free slots among followed masters */}
               {!slotsLoading && nextSlots.length > 0 && (
-                <div className="mb-4 rounded-2xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 p-3">
+                <div className="mb-4 rounded-2xl border border-neutral-200 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 p-3">
                   <div className="mb-2 flex items-center gap-1.5 px-1">
-                    <Sparkles className="size-3.5 text-violet-300" />
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-200/80">
+                    <Sparkles className="size-3.5 text-violet-600" />
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-700/80">
                       Ближайшие окна
                     </p>
                   </div>
@@ -176,13 +176,13 @@ export default function MiniAppContactsPage() {
                         key={s.masterId + s.iso}
                         href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
                         onClick={() => haptic('light')}
-                        className="flex min-w-[140px] snap-start flex-col items-start gap-1.5 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 active:bg-white/[0.08] transition-colors"
+                        className="flex min-w-[140px] snap-start flex-col items-start gap-1.5 rounded-xl border border-neutral-200 bg-white/[0.05] px-3 py-2.5 active:bg-neutral-100 transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           <Avatar src={s.avatar} name={s.name} />
                           <p className="truncate text-[12px] font-semibold">{s.name ?? 'Мастер'}</p>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] text-white/70">
+                        <div className="flex items-center gap-1 text-[11px] text-neutral-700">
                           <Clock className="size-3" />
                           {formatSlotDate(s.date, s.time)}
                         </div>
@@ -197,12 +197,12 @@ export default function MiniAppContactsPage() {
                   <Link
                     href={`/telegram/m/${m.id}`}
                     onClick={() => haptic('light')}
-                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 active:bg-white/[0.06] transition-colors"
+                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-3 py-3 active:bg-neutral-50 transition-colors"
                   >
                     <Avatar src={m.avatar} name={m.name} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{m.name ?? 'Мастер'}</p>
-                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-white/45">
+                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
                         {m.specialization && <span className="truncate">{m.specialization}</span>}
                         {m.salonName && (
                           <span className="inline-flex items-center gap-0.5 truncate">
@@ -215,18 +215,18 @@ export default function MiniAppContactsPage() {
                         {m.rating != null && (
                           <span className="inline-flex items-center gap-0.5">
                             <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                            <span className="text-white/70">{m.rating.toFixed(1)}</span>
+                            <span className="text-neutral-700">{m.rating.toFixed(1)}</span>
                           </span>
                         )}
                         {m.city && (
-                          <span className="inline-flex items-center gap-0.5 text-white/45">
+                          <span className="inline-flex items-center gap-0.5 text-neutral-500">
                             <MapPin className="size-3" />
                             {m.city}
                           </span>
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-white/30" />
+                    <ChevronRight className="size-4 shrink-0 text-neutral-400" />
                   </Link>
                 </li>
               ))}
@@ -249,12 +249,12 @@ export default function MiniAppContactsPage() {
                   <Link
                     href={`/telegram/salon/${s.id}`}
                     onClick={() => haptic('light')}
-                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 active:bg-white/[0.06] transition-colors"
+                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-3 py-3 active:bg-neutral-50 transition-colors"
                   >
                     <Avatar src={s.logo} name={s.name} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{s.name}</p>
-                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-white/45">
+                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
                         {s.city && (
                           <span className="inline-flex items-center gap-0.5">
                             <MapPin className="size-3" />
@@ -264,12 +264,12 @@ export default function MiniAppContactsPage() {
                         {s.rating != null && (
                           <span className="inline-flex items-center gap-0.5">
                             <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                            <span className="text-white/70">{s.rating.toFixed(1)}</span>
+                            <span className="text-neutral-700">{s.rating.toFixed(1)}</span>
                           </span>
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-white/30" />
+                    <ChevronRight className="size-4 shrink-0 text-neutral-400" />
                   </Link>
                 </li>
               ))}
@@ -292,16 +292,16 @@ export default function MiniAppContactsPage() {
                   <Link
                     href={f.publicId ? `/telegram/u/${f.publicId}` : '#'}
                     onClick={() => haptic('light')}
-                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 active:bg-white/[0.06] transition-colors"
+                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-3 py-3 active:bg-neutral-50 transition-colors"
                   >
                     <Avatar src={f.avatar} name={f.name} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[14px] font-semibold">{f.name ?? 'Пользователь'}</p>
-                      <p className="truncate text-[11px] text-white/45">
+                      <p className="truncate text-[11px] text-neutral-500">
                         {f.slug ? `@${f.slug}` : f.publicId ?? ''}
                       </p>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-white/30" />
+                    <ChevronRight className="size-4 shrink-0 text-neutral-400" />
                   </Link>
                 </li>
               ))}
@@ -330,12 +330,12 @@ function TabBtn({
     <button
       onClick={onClick}
       className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-semibold transition-colors ${
-        active ? 'bg-white/10 text-white' : 'text-white/50 active:bg-white/[0.04]'
+        active ? 'bg-white/10 text-neutral-900' : 'text-neutral-500 active:bg-white border-neutral-200'
       }`}
     >
       <Icon className="size-4" />
       <span>{label}</span>
-      <span className={`text-[10px] ${active ? 'text-white/70' : 'text-white/35'}`}>{count}</span>
+      <span className={`text-[10px] ${active ? 'text-neutral-700' : 'text-neutral-400'}`}>{count}</span>
     </button>
   );
 }
@@ -352,7 +352,7 @@ function formatSlotDate(dateStr: string, time: string): string {
 
 function Avatar({ src, name }: { src: string | null; name: string | null }) {
   return (
-    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.06] text-sm font-bold text-white/90">
+    <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-900">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="size-full object-cover" />
@@ -377,12 +377,12 @@ function EmptyState({
   ctaHref: string;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-10 text-center">
-      <div className="flex size-14 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
-        <Icon className="size-6 text-white/60" />
+    <div className="flex flex-col items-center rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-6 py-10 text-center">
+      <div className="flex size-14 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200">
+        <Icon className="size-6 text-neutral-600" />
       </div>
       <p className="mt-4 text-[15px] font-semibold">{title}</p>
-      <p className="mt-1.5 max-w-[280px] text-[12px] leading-relaxed text-white/50">{desc}</p>
+      <p className="mt-1.5 max-w-[280px] text-[12px] leading-relaxed text-neutral-500">{desc}</p>
       <Link
         href={ctaHref}
         className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-black active:bg-white/80 transition-colors"

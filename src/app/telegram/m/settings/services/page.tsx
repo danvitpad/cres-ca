@@ -56,16 +56,16 @@ export default function MiniAppServicesPage() {
       {loading ? (
         <div className="space-y-2">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
+            <div key={i} className="h-16 w-full animate-pulse rounded-2xl bg-white border-neutral-200" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
-          <div className="mx-auto flex size-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
-            <Scissors size={18} className="text-white/40" />
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-8 text-center">
+          <div className="mx-auto flex size-10 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+            <Scissors size={18} className="text-neutral-400" />
           </div>
-          <p className="mt-3 text-[13px] text-white/60">Пока нет услуг</p>
-          <p className="mt-1 text-[11px] text-white/40">Создай услугу в веб-дашборде</p>
+          <p className="mt-3 text-[13px] text-neutral-600">Пока нет услуг</p>
+          <p className="mt-1 text-[11px] text-neutral-400">Создай услугу в веб-дашборде</p>
         </div>
       ) : (
         <ul className="space-y-2">
@@ -77,7 +77,7 @@ export default function MiniAppServicesPage() {
               transition={{ delay: i * 0.02 }}
               className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
                 s.is_active
-                  ? 'border-white/10 bg-white/[0.03]'
+                  ? 'border-neutral-200 bg-white border-neutral-200'
                   : 'border-white/5 bg-white/[0.015] opacity-60'
               }`}
             >
@@ -87,13 +87,13 @@ export default function MiniAppServicesPage() {
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-semibold">{s.name}</p>
-                <p className="mt-0.5 flex items-center gap-2 text-[11px] text-white/50">
+                <p className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
                   <Clock size={10} weight="bold" />
                   {s.duration_minutes} мин
                 </p>
               </div>
-              <p className="shrink-0 text-[13px] font-bold tabular-nums text-white/90">
-                {Number(s.price).toFixed(0)} <span className="text-[11px] font-normal text-white/50">{s.currency}</span>
+              <p className="shrink-0 text-[13px] font-bold tabular-nums text-neutral-900">
+                {Number(s.price).toFixed(0)} <span className="text-[11px] font-normal text-neutral-500">{s.currency}</span>
               </p>
             </motion.li>
           ))}
@@ -102,13 +102,13 @@ export default function MiniAppServicesPage() {
 
       <Link
         href="/ru/services"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/15 py-3.5 text-[14px] font-semibold text-violet-100 active:bg-violet-500/25 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-100 active:bg-violet-500/25 transition-colors"
       >
         <Plus size={15} weight="bold" />
         Добавить / редактировать
         <ArrowSquareOut size={13} weight="bold" />
       </Link>
-      <p className="text-center text-[11px] text-white/40 -mt-2">
+      <p className="text-center text-[11px] text-neutral-400 -mt-2">
         Редактирование цен и услуг — в веб-дашборде.
       </p>
     </SettingsShell>

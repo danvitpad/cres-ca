@@ -103,7 +103,7 @@ export default function MiniAppSalonTeamPage() {
   }
 
   if (error || !data) {
-    return <div className="p-6 text-center text-sm text-white/60">Нет доступа или ошибка загрузки</div>;
+    return <div className="p-6 text-center text-sm text-neutral-600">Нет доступа или ошибка загрузки</div>;
   }
 
   const masters = data.members.filter((m) => m.role === 'master');
@@ -114,9 +114,9 @@ export default function MiniAppSalonTeamPage() {
     <div className="p-4 space-y-5">
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1.5">
+          <h2 className="text-xs uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
             <Users2 className="size-3.5" /> Мастера
-            <span className="text-white/40">({masters.length})</span>
+            <span className="text-neutral-400">({masters.length})</span>
           </h2>
         </div>
         {masters.length === 0 ? (
@@ -132,9 +132,9 @@ export default function MiniAppSalonTeamPage() {
 
       {staff.length > 0 && (
         <section>
-          <h2 className="text-xs uppercase tracking-wider text-white/50 flex items-center gap-1.5 mb-2">
+          <h2 className="text-xs uppercase tracking-wider text-neutral-500 flex items-center gap-1.5 mb-2">
             <Crown className="size-3.5" /> Админы / ресепшн
-            <span className="text-white/40">({staff.length})</span>
+            <span className="text-neutral-400">({staff.length})</span>
           </h2>
           <ul className="space-y-2">
             {staff.map((m) => (
@@ -144,7 +144,7 @@ export default function MiniAppSalonTeamPage() {
         </section>
       )}
 
-      <p className="text-[11px] text-white/40 leading-relaxed text-center pt-2">
+      <p className="text-[11px] text-neutral-400 leading-relaxed text-center pt-2">
         Изменения ставок и приглашения — на сайте в разделе «Команда».
       </p>
     </div>
@@ -153,19 +153,19 @@ export default function MiniAppSalonTeamPage() {
 
 function MemberRow({ m, isUnified }: { m: Member; isUnified: boolean }) {
   return (
-    <li className="rounded-xl border border-white/10 bg-white/[0.03] p-3 flex items-center gap-3">
+    <li className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-center gap-3">
       <Avatar name={m.display_name} url={m.avatar_url} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium truncate">{m.display_name ?? 'Без имени'}</span>
           {m.is_owner && <Crown className="size-3.5 text-amber-400 shrink-0" />}
-          {m.status === 'suspended' && <Pause className="size-3.5 text-white/40 shrink-0" />}
+          {m.status === 'suspended' && <Pause className="size-3.5 text-neutral-400 shrink-0" />}
           {m.status === 'pending' && <Clock3 className="size-3.5 text-indigo-400 shrink-0" />}
           {m.status === 'active' && m.role !== 'master' && (
             <UserCheck className="size-3.5 text-emerald-400 shrink-0" />
           )}
         </div>
-        <div className="text-[11px] text-white/50 truncate">
+        <div className="text-[11px] text-neutral-500 truncate">
           {m.role === 'master'
             ? m.specialization ?? 'Мастер'
             : m.role === 'receptionist'
@@ -176,12 +176,12 @@ function MemberRow({ m, isUnified }: { m: Member; isUnified: boolean }) {
       {m.role === 'master' && (
         <div className="text-right shrink-0">
           <div className="text-xs font-semibold">{m.appointments_week}</div>
-          <div className="text-[10px] text-white/40">нед.</div>
+          <div className="text-[10px] text-neutral-400">нед.</div>
           {m.commission_percent !== null && isUnified && (
-            <div className="text-[10px] text-white/50 mt-0.5">{m.commission_percent}%</div>
+            <div className="text-[10px] text-neutral-500 mt-0.5">{m.commission_percent}%</div>
           )}
           {m.rent_amount !== null && !isUnified && (
-            <div className="text-[10px] text-white/50 mt-0.5">
+            <div className="text-[10px] text-neutral-500 mt-0.5">
               {new Intl.NumberFormat('ru-RU').format(m.rent_amount)} ₴
             </div>
           )}
@@ -193,7 +193,7 @@ function MemberRow({ m, isUnified }: { m: Member; isUnified: boolean }) {
 
 function EmptyBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-white/10 p-5 text-center text-xs text-white/40">
+    <div className="rounded-xl border border-dashed border-neutral-200 p-5 text-center text-xs text-neutral-400">
       {text}
     </div>
   );
