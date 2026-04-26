@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, MapPin, Sparkles, ChevronRight, Loader2, Search } from 'lucide-react';
+import { FeaturedMastersStrip } from '@/components/client/featured-masters-strip';
 
 interface SalonEmbed {
   id: string;
@@ -49,8 +50,13 @@ export default function ClientFeedPage() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [city, setCity] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    try {
+      const c = typeof window !== 'undefined' ? localStorage.getItem('cres-ca-city') : null;
+      if (c) setCity(c);
+    } catch {}
     (async () => {
       try {
         const res = await fetch('/api/feed');
@@ -97,6 +103,7 @@ export default function ClientFeedPage() {
             ctaHref="/search"
             ctaLabel="Найти мастеров"
           />
+          <FeaturedMastersStrip city={city} />
           <CategoriesBlock />
         </>
       ) : (
@@ -175,7 +182,7 @@ function SlotCard({ item }: { item: FeedItem }) {
               )}
               {price !== null && (
                 <span className="text-[13px] font-semibold text-neutral-900">
-                  {Math.round(price).toLocaleString('ru-RU')} ₴
+                  {Math.round(price).toLocaleString('ru-RU')} грн
                 </span>
               )}
             </div>

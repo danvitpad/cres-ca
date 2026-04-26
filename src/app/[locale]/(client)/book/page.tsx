@@ -1057,6 +1057,44 @@ export default function BookPage() {
           )}
         </div>
       )}
+
+      {/* Sticky bottom summary bar — Fresha-style. Visible only after a service is selected
+          and not on the confirm step (which has its own full-width primary CTA). */}
+      {selectedService && step !== 'confirm' && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:left-[72px]">
+          <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs text-muted-foreground">
+                {selectedService.name}
+                {totalDuration ? ` · ${totalDuration} ${t('min')}` : ''}
+              </div>
+              <div className="text-base font-semibold tabular-nums">
+                {t('totalLabel')}: {formatMoney(totalPrice, selectedService.currency)}
+              </div>
+            </div>
+            <Button
+              size="lg"
+              className="shrink-0 rounded-full px-6"
+              disabled={
+                (step === 'service' && !selectedService) ||
+                (step === 'date' && !selectedDate) ||
+                (step === 'time' && !selectedTime)
+              }
+              onClick={() => {
+                if (step === 'service') setStep('date');
+                else if (step === 'date' && selectedDate) setStep('time');
+                else if (step === 'time' && selectedTime) {
+                  if (consentRequired) setStep('consent');
+                  else setStep('confirm');
+                }
+                else if (step === 'consent') setStep('confirm');
+              }}
+            >
+              {tc('next')}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
