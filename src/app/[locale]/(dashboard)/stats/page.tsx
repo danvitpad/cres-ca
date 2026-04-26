@@ -174,14 +174,14 @@ export default function StatsPage() {
                 {weeklyLoad.reduce((s, d) => s + d.value, 0)} записей
               </span>
             </div>
-            <div className="flex items-end gap-2 h-28">
+            <div className="flex items-end gap-2 h-36">
               {weeklyLoad.map((d) => (
-                <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
+                <div key={d.label} className="flex flex-1 flex-col items-center gap-1 h-full justify-end">
                   <div
                     className="w-full rounded-md transition-all"
                     style={{
                       background: C.accent,
-                      height: `${Math.max(6, d.ratio * 96)}px`,
+                      height: `${Math.max(6, d.ratio * 88)}px`,
                       opacity: d.value === 0 ? 0.15 : 0.45 + d.ratio * 0.55,
                     }}
                     title={`${d.value}`}

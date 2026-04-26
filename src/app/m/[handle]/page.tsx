@@ -114,11 +114,26 @@ function admin() {
 }
 
 async function loadMaster(handle: string): Promise<MasterRow | null> {
+  // phone / email / date_of_birth live on `profiles` (PII), not `masters`.
+  // Embed them via FK so the public page can render contacts gated by
+  // phone_public / email_public / dob_public flags.
   const cols =
     'id, profile_id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
     'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
-    'theme_primary_color, theme_background_color, banner_position_y, phone, email, date_of_birth, ' +
-    'phone_public, email_public, dob_public, interests, social_links, page_type';
+    'theme_primary_color, theme_background_color, banner_position_y, ' +
+    'phone_public, email_public, dob_public, interests, social_links, page_type, ' +
+    'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth)';
+
+  const flatten = (row: Record<string, unknown> | null): MasterRow | null => {
+    if (!row) return null;
+    const profile = (row.profile ?? null) as { phone: string | null; email: string | null; date_of_birth: string | null } | null;
+    return {
+      ...(row as unknown as Omit<MasterRow, 'phone' | 'email' | 'date_of_birth'>),
+      phone: profile?.phone ?? null,
+      email: profile?.email ?? null,
+      date_of_birth: profile?.date_of_birth ?? null,
+    } as MasterRow;
+  };
 
   // Try slug first (preferred, SEO-friendly). Require is_public for slug-based visits.
   const bySlug = await admin()
@@ -128,7 +143,7 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     .eq('is_active', true)
     .eq('is_public', true)
     .maybeSingle();
-  if (bySlug.data) return (bySlug.data as unknown) as MasterRow;
+  if (bySlug.data) return flatten(bySlug.data as unknown as Record<string, unknown>);
 
   // Fallback: invite_code (direct link from master, works even without public opt-in)
   const byCode = await admin()
@@ -137,7 +152,7 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     .eq('invite_code', handle)
     .eq('is_active', true)
     .maybeSingle();
-  return ((byCode.data as unknown) as MasterRow | null) ?? null;
+  return flatten((byCode.data as unknown) as Record<string, unknown> | null);
 }
 
 async function loadServices(masterId: string): Promise<ServiceRow[]> {
