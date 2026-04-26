@@ -13,12 +13,6 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { useAuthStore } from '@/stores/auth-store';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 import {
@@ -1098,6 +1092,7 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
 
 /* ─── Security: email / password / phone / 2FA / delete account ─── */
 function SecurityTab() {
+  const { C } = usePageTheme();
   const { master, refetch } = useMaster();
   const [newEmail, setNewEmail] = useState('');
   const [newPhone, setNewPhone] = useState('');
@@ -1232,156 +1227,183 @@ function SecurityTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Изменить email</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            На новый email придёт письмо с подтверждением. Пока не подтвердите — старый email остаётся активным.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>Новый email</Label>
-            <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="new@example.com" />
-          </div>
-          <Button onClick={changeEmail} disabled={emailSaving || !newEmail}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <SettingsBlock
+        title="Изменить email"
+        subtitle="На новый email придёт письмо с подтверждением. Пока не подтвердите — старый email остаётся активным."
+        C={C}
+      >
+        <SettingsField label="Новый email" C={C}>
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="new@example.com"
+            style={settingsInputStyle(C)}
+          />
+        </SettingsField>
+        <div>
+          <SettingsButton onClick={changeEmail} disabled={emailSaving || !newEmail} C={C}>
             {emailSaving ? 'Отправка...' : 'Отправить подтверждение'}
-          </Button>
-        </CardContent>
-      </Card>
+          </SettingsButton>
+        </div>
+      </SettingsBlock>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Изменить пароль</CardTitle>
-          <p className="text-sm text-muted-foreground">Минимум 8 символов.</p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>Текущий пароль (для подтверждения)</Label>
-            <Input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Новый пароль</Label>
-              <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Повторите новый пароль</Label>
-              <Input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
-            </div>
-          </div>
-          <Button onClick={changePassword} disabled={passSaving || !currentPassword || !newPassword || newPassword !== confirmPassword}>
+      <SettingsBlock title="Изменить пароль" subtitle="Минимум 8 символов." C={C}>
+        <SettingsField label="Текущий пароль (для подтверждения)" C={C}>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            style={settingsInputStyle(C)}
+          />
+        </SettingsField>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          <SettingsField label="Новый пароль" C={C}>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={settingsInputStyle(C)}
+            />
+          </SettingsField>
+          <SettingsField label="Повторите новый пароль" C={C}>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              style={settingsInputStyle(C)}
+            />
+          </SettingsField>
+        </div>
+        <div>
+          <SettingsButton
+            onClick={changePassword}
+            disabled={passSaving || !currentPassword || !newPassword || newPassword !== confirmPassword}
+            C={C}
+          >
             {passSaving ? 'Сохранение...' : 'Сменить пароль'}
-          </Button>
-        </CardContent>
-      </Card>
+          </SettingsButton>
+        </div>
+      </SettingsBlock>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Изменить телефон</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Текущий: {master?.profile?.phone || '—'}. Формат: международный (+380...).
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>Новый телефон</Label>
-            <Input type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="+380..." />
-          </div>
-          <Button onClick={changePhone} disabled={phoneSaving || !newPhone}>
+      <SettingsBlock
+        title="Изменить телефон"
+        subtitle={`Текущий: ${master?.profile?.phone || '—'}. Формат: международный (+380...).`}
+        C={C}
+      >
+        <SettingsField label="Новый телефон" C={C}>
+          <input
+            type="tel"
+            value={newPhone}
+            onChange={(e) => setNewPhone(e.target.value)}
+            placeholder="+380..."
+            style={settingsInputStyle(C)}
+          />
+        </SettingsField>
+        <div>
+          <SettingsButton onClick={changePhone} disabled={phoneSaving || !newPhone} C={C}>
             {phoneSaving ? 'Сохранение...' : 'Сохранить'}
-          </Button>
-        </CardContent>
-      </Card>
+          </SettingsButton>
+        </div>
+      </SettingsBlock>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Двухфакторная аутентификация (Telegram)</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {hasTelegramLinked
-              ? 'При входе бот пришлёт 6-значный код в Telegram.'
-              : 'Привяжите Telegram в профиле через @crescacom_bot, чтобы включить 2FA.'}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {!hasTelegramLinked ? (
-            <p className="text-sm text-muted-foreground">Telegram не привязан.</p>
-          ) : tg2faEnabled ? (
-            <Button
-              variant="outline"
-              onClick={() => confirm2faToggle(false)}
-              disabled={twoFaStep === 'busy'}
-            >
+      <SettingsBlock
+        title="Двухфакторная аутентификация (Telegram)"
+        subtitle={
+          hasTelegramLinked
+            ? 'При входе бот пришлёт 6-значный код в Telegram.'
+            : 'Привяжите Telegram в профиле через @crescacom_bot, чтобы включить 2FA.'
+        }
+        C={C}
+      >
+        {!hasTelegramLinked ? (
+          <p style={{ fontSize: 13, color: C.textSecondary, margin: 0 }}>Telegram не привязан.</p>
+        ) : tg2faEnabled ? (
+          <div>
+            <SettingsButton variant="secondary" onClick={() => confirm2faToggle(false)} disabled={twoFaStep === 'busy'} C={C}>
               {twoFaStep === 'busy' ? 'Выключение...' : 'Выключить 2FA'}
-            </Button>
-          ) : twoFaStep === 'idle' || twoFaStep === 'busy' ? (
-            <Button onClick={send2faCode} disabled={twoFaStep === 'busy'}>
+            </SettingsButton>
+          </div>
+        ) : twoFaStep === 'idle' || twoFaStep === 'busy' ? (
+          <div>
+            <SettingsButton onClick={send2faCode} disabled={twoFaStep === 'busy'} C={C}>
               {twoFaStep === 'busy' ? 'Отправка...' : 'Включить 2FA'}
-            </Button>
-          ) : (
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <Label>Код из Telegram (6 цифр)</Label>
-                <Input
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={twoFaCode}
-                  onChange={e => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="123456"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => confirm2faToggle(true)}
-                  disabled={twoFaCode.length !== 6}
-                >
-                  Подтвердить
-                </Button>
-                <Button variant="outline" onClick={() => { setTwoFaStep('idle'); setTwoFaCode(''); }}>
-                  Отмена
-                </Button>
-              </div>
+            </SettingsButton>
+          </div>
+        ) : (
+          <>
+            <SettingsField label="Код из Telegram (6 цифр)" C={C}>
+              <input
+                inputMode="numeric"
+                maxLength={6}
+                value={twoFaCode}
+                onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="123456"
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <SettingsButton onClick={() => confirm2faToggle(true)} disabled={twoFaCode.length !== 6} C={C}>
+                Подтвердить
+              </SettingsButton>
+              <SettingsButton variant="secondary" onClick={() => { setTwoFaStep('idle'); setTwoFaCode(''); }} C={C}>
+                Отмена
+              </SettingsButton>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </>
+        )}
+      </SettingsBlock>
 
       {/* Danger zone — delete account */}
-      <Card className="border-destructive/40">
-        <CardHeader>
-          <CardTitle className="text-destructive">Опасная зона</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Аккаунт будет помечен на удаление. У вас есть 30 дней на восстановление — просто войдите снова. После 30 дней все данные (клиенты, записи, услуги, расходы) удаляются безвозвратно.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>Введите <span className="font-mono font-semibold">УДАЛИТЬ</span> для подтверждения</Label>
-            <Input
-              value={deleteConfirmation}
-              onChange={e => setDeleteConfirmation(e.target.value)}
-              placeholder="УДАЛИТЬ"
-            />
+      <section
+        style={{
+          background: C.surface,
+          border: `1px solid ${C.danger}55`,
+          borderRadius: 14,
+          padding: 0,
+          fontFamily: FONT,
+        }}
+      >
+        <header style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.danger, lineHeight: 1.2 }}>Опасная зона</div>
+          <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.45 }}>
+            Аккаунт будет помечен на удаление. У вас есть 30 дней на восстановление — просто войдите снова.
+            После 30 дней все данные (клиенты, записи, услуги, расходы) удаляются безвозвратно.
           </div>
-          <div className="space-y-2">
-            <Label>Текущий пароль</Label>
-            <Input
+        </header>
+        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <SettingsField
+            label="Введите УДАЛИТЬ для подтверждения"
+            C={C}
+          >
+            <input
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              placeholder="УДАЛИТЬ"
+              style={settingsInputStyle(C)}
+            />
+          </SettingsField>
+          <SettingsField label="Текущий пароль" C={C}>
+            <input
               type="password"
               value={deletePassword}
-              onChange={e => setDeletePassword(e.target.value)}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              style={settingsInputStyle(C)}
             />
+          </SettingsField>
+          <div>
+            <SettingsButton
+              variant="danger"
+              onClick={deleteAccount}
+              disabled={deleting || deleteConfirmation !== 'УДАЛИТЬ' || !deletePassword}
+              C={C}
+            >
+              {deleting ? 'Удаление...' : 'Удалить аккаунт'}
+            </SettingsButton>
           </div>
-          <Button
-            variant="outline"
-            className="border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            onClick={deleteAccount}
-            disabled={deleting || deleteConfirmation !== 'УДАЛИТЬ' || !deletePassword}
-          >
-            {deleting ? 'Удаление...' : 'Удалить аккаунт'}
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }
