@@ -19,8 +19,9 @@ import {
   Question,
   SignOut,
   CaretRight,
-  ChartLineUp,
+  ArrowLeft,
 } from '@phosphor-icons/react';
+import { useRouter } from 'next/navigation';
 import type { IconWeight } from '@phosphor-icons/react';
 import type { ComponentType } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -34,13 +35,15 @@ interface SettingsItem {
   label: string;
   icon: ComponentType<{ size?: number; weight?: IconWeight; className?: string }>;
 }
+// «Финансы» убраны — это дублирование вкладки «Финансы» в навбаре.
+// «Уведомления» теперь ведут на собственную мини-страницу настройки push'ей мастеру
+// (про ДР, напоминания о визитах, опросы), а не на список входящих уведомлений.
 const ITEMS: SettingsItem[] = [
   { key: 'profile', href: '/telegram/m/profile', label: 'Профиль и портфолио', icon: UserCircle },
   { key: 'services', href: '/telegram/m/settings/services', label: 'Услуги и цены', icon: Scissors },
   { key: 'schedule', href: '/telegram/m/settings/schedule', label: 'График работы', icon: CalendarCheck },
-  { key: 'finance', href: '/telegram/m/stats', label: 'Финансы', icon: ChartLineUp },
   { key: 'billing', href: '/telegram/m/settings/billing', label: 'Тариф и платежи', icon: CreditCard },
-  { key: 'notifications', href: '/telegram/notifications', label: 'Уведомления', icon: Bell },
+  { key: 'notifications', href: '/telegram/m/settings/notifications', label: 'Уведомления', icon: Bell },
   { key: 'language', href: '/telegram/m/settings/language', label: 'Язык', icon: Globe },
   { key: 'voice', href: '/telegram/m/voice-assistant', label: 'Голосовой помощник', icon: Microphone },
   { key: 'help', href: '/telegram/m/settings/help', label: 'Помощь', icon: Question },
@@ -50,6 +53,7 @@ const ITEMS: SettingsItem[] = [
 export default function MasterMiniAppSettings() {
   const { haptic } = useTelegram();
   const { clearAuth } = useAuthStore();
+  const router = useRouter();
 
   async function logout() {
     haptic('warning');
@@ -60,7 +64,17 @@ export default function MasterMiniAppSettings() {
   }
 
   return (
-    <div className="space-y-6 px-5 pt-6 pb-10">
+    <div className="space-y-4 px-5 pt-6 pb-10">
+      {/* Back button — иначе из настроек невозможно вернуться без перезахода в TG */}
+      <button
+        type="button"
+        onClick={() => { haptic('light'); router.back(); }}
+        className="flex size-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-white/80 active:bg-white/[0.06] transition-colors"
+        aria-label="Назад"
+      >
+        <ArrowLeft size={18} weight="bold" />
+      </button>
+
       <ul className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
         {ITEMS.map((item) => {
           const Icon = item.icon;
