@@ -9,13 +9,14 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, MapPin, Sparkles, Calendar, Clock, Phone } from 'lucide-react';
+import { Star, MapPin, Sparkles, Calendar, Clock, Phone, Mail, Cake } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PortfolioGrid } from '@/components/master/portfolio-grid';
 import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
+import { OwnerEditButton } from '@/components/master/owner-edit-button';
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -23,6 +24,7 @@ interface PageProps {
 
 interface MasterRow {
   id: string;
+  profile_id: string | null;
   display_name: string | null;
   specialization: string | null;
   bio: string | null;
@@ -43,6 +45,19 @@ interface MasterRow {
   level: number | null;
   working_hours: Record<string, { start: string; end: string; closed?: boolean } | null> | null;
   booking_important_info: string | null;
+  // Customization (migration 00104)
+  theme_primary_color: string | null;
+  theme_background_color: string | null;
+  banner_position_y: number | null;
+  phone: string | null;
+  email: string | null;
+  date_of_birth: string | null;
+  phone_public: boolean | null;
+  email_public: boolean | null;
+  dob_public: boolean | null;
+  interests: string[] | null;
+  social_links: Record<string, string> | null;
+  page_type: string | null;
 }
 
 interface ServiceRow {
@@ -100,8 +115,10 @@ function admin() {
 
 async function loadMaster(handle: string): Promise<MasterRow | null> {
   const cols =
-    'id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
-    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info';
+    'id, profile_id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, ' +
+    'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
+    'theme_primary_color, theme_background_color, banner_position_y, phone, email, date_of_birth, ' +
+    'phone_public, email_public, dob_public, interests, social_links, page_type';
 
   // Try slug first (preferred, SEO-friendly). Require is_public for slug-based visits.
   const bySlug = await admin()
@@ -214,12 +231,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     (master.specialization
       ? `${name} — ${master.specialization} · CRES-CA`
       : `${name} · CRES-CA`);
+  // Page-type-aware default copy. Lets us index a clinic page as «Записаться в
+  // клинику» rather than the master-only phrasing.
+  const ptVerb: Record<string, string> = {
+    master:        'Записаться к',
+    salon:         'Записаться в',
+    clinic:        'Записаться в',
+    workshop:      'Заказать в',
+    auto_service:  'Записаться в автосервис',
+    fitness:       'Записаться в студию',
+    other:         'Записаться к',
+  };
+  const verb = ptVerb[master.page_type ?? 'master'] ?? 'Записаться к';
   const description =
     master.meta_description ??
     master.headline ??
     (master.bio
       ? master.bio.slice(0, 160)
-      : `Записаться к ${name}${master.city ? ` в городе ${master.city}` : ''} онлайн · CRES-CA`);
+      : `${verb} ${name}${master.city ? ` в городе ${master.city}` : ''} онлайн · CRES-CA`);
   const ogImage = master.og_image_url ?? master.cover_url ?? master.avatar_url ?? undefined;
   const canonicalPath = master.slug ? `/m/${master.slug}` : undefined;
   return {
@@ -283,15 +312,30 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     })),
   };
 
+  const accent = master.theme_primary_color ?? '#7c3aed';
+  const pageBg = master.theme_background_color ?? '#ffffff';
+  const bannerY = master.banner_position_y ?? 50;
+
   return (
-    <div className="min-h-screen bg-white text-neutral-900">
+    <div
+      className="min-h-screen text-neutral-900"
+      style={{
+        backgroundColor: pageBg,
+        // Page-level CSS var any descendant can read for buttons/badges/links.
+        ['--page-accent' as string]: accent,
+      }}
+    >
+      <OwnerEditButton masterProfileId={master.profile_id} />
       <RefCapture />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="relative h-52 w-full overflow-hidden bg-gradient-to-br from-violet-500 to-indigo-600 sm:h-72">
+      <div
+        className="relative h-52 w-full overflow-hidden sm:h-72"
+        style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}
+      >
         {master.cover_url && (
           <Image
             src={master.cover_url}
@@ -299,6 +343,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             fill
             priority
             className="object-cover"
+            style={{ objectPosition: `center ${bannerY}%` }}
           />
         )}
       </div>
@@ -367,12 +412,85 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         <div className="mt-8 flex justify-center sm:justify-start">
           <Link
             href={`/ru/book?master=${master.id}`}
-            className="inline-flex items-center gap-2 rounded-full bg-violet-600 px-8 py-3 text-sm font-semibold text-white transition-colors hover:bg-violet-700"
+            className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: accent }}
           >
             <Calendar className="size-4" />
             Записаться
           </Link>
         </div>
+
+        {/* Contacts + socials + interests — all gated on per-field public flags */}
+        {(((master.phone && master.phone_public) ||
+           (master.email && master.email_public) ||
+           (master.date_of_birth && master.dob_public) ||
+           Object.keys(master.social_links ?? {}).length > 0 ||
+           (master.interests?.length ?? 0) > 0)) && (
+          <div className="mt-8 space-y-3">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-700">
+              {master.phone && master.phone_public && (
+                <a href={`tel:${master.phone}`} className="inline-flex items-center gap-1.5 hover:underline" style={{ color: accent }}>
+                  <Phone className="size-4" />
+                  {master.phone}
+                </a>
+              )}
+              {master.email && master.email_public && (
+                <a href={`mailto:${master.email}`} className="inline-flex items-center gap-1.5 hover:underline" style={{ color: accent }}>
+                  <Mail className="size-4" />
+                  {master.email}
+                </a>
+              )}
+              {master.date_of_birth && master.dob_public && (
+                <span className="inline-flex items-center gap-1.5 text-neutral-600">
+                  <Cake className="size-4" />
+                  {new Date(master.date_of_birth).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long' })}
+                </span>
+              )}
+            </div>
+
+            {Object.keys(master.social_links ?? {}).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(master.social_links ?? {}).map(([key, value]) => {
+                  if (!value) return null;
+                  let href = value;
+                  if (key === 'telegram' && !href.startsWith('http')) href = `https://t.me/${href.replace(/^@/, '')}`;
+                  else if (key === 'instagram' && !href.startsWith('http')) href = `https://instagram.com/${href.replace(/^@/, '')}`;
+                  else if (key === 'tiktok' && !href.startsWith('http')) href = `https://tiktok.com/@${href.replace(/^@/, '')}`;
+                  else if (key === 'whatsapp' && !href.startsWith('http')) href = `https://wa.me/${href.replace(/[^\d]/g, '')}`;
+                  else if (key === 'viber' && !href.startsWith('http')) href = `viber://chat?number=${encodeURIComponent(href)}`;
+                  return (
+                    <a
+                      key={key}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
+                    >
+                      {key === 'telegram' && '💬'}
+                      {key === 'instagram' && '📸'}
+                      {key === 'whatsapp' && '🟢'}
+                      {key === 'viber' && '🟣'}
+                      {key === 'tiktok' && '🎵'}
+                      {key === 'youtube' && '📺'}
+                      {key === 'website' && '🌐'}
+                      <span className="capitalize">{key}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+
+            {(master.interests?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {master.interests!.map((tag) => (
+                  <span key={tag} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] text-neutral-700">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {services.length > 0 && (
           <div className="mt-12">

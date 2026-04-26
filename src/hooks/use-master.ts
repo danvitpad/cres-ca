@@ -24,6 +24,17 @@ export interface MasterData {
   slug: string | null;
   is_public: boolean | null;
   is_active: boolean;
+  // Public-page customization (migration 00104).
+  cover_url: string | null;
+  theme_primary_color: string | null;
+  theme_background_color: string | null;
+  banner_position_y: number | null;
+  phone_public: boolean | null;
+  email_public: boolean | null;
+  dob_public: boolean | null;
+  interests: string[] | null;
+  social_links: Record<string, string> | null;
+  page_type: 'master' | 'salon' | 'clinic' | 'workshop' | 'auto_service' | 'fitness' | 'other' | null;
   // Unified loyalty programme config (migration 00102).
   loyalty_enabled: boolean | null;
   loyalty_visit_percent: number | null;
