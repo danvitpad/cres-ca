@@ -166,16 +166,29 @@ export default function MasterMiniAppClientCard() {
         <ArrowLeft className="size-4" />
       </button>
 
-      {/* Hero */}
+      {/* Hero. Health-alert треугольник раньше клипался поверх аватара —
+          теперь рендерится отдельным цветным бейджем рядом с именем,
+          с onClick-объяснением (TG не поддерживает hover tooltip). */}
       <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
         <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-base font-bold">
           {client.full_name.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—'}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <h1 className="truncate text-[15px] font-bold">{client.full_name}</h1>
             {isVIP && <Crown className="size-3.5 text-amber-300" />}
-            {client.has_health_alert && <AlertTriangle className="size-3.5 text-rose-300" />}
+            {client.has_health_alert && (
+              <button
+                type="button"
+                onClick={() => haptic('light')}
+                title="Есть аллергии или противопоказания"
+                aria-label="Есть аллергии или противопоказания"
+                className="inline-flex items-center gap-1 rounded-full border border-rose-500/30 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-300"
+              >
+                <AlertTriangle className="size-3" />
+                Здоровье
+              </button>
+            )}
           </div>
           {client.phone && <p className="mt-0.5 text-[11px] text-white/60">{client.phone}</p>}
         </div>
@@ -188,16 +201,40 @@ export default function MasterMiniAppClientCard() {
         <KPI value={`${Number(client.avg_check).toFixed(0)}₴`} label="Чек" />
       </div>
 
-      {/* Quick actions */}
+      {/* Quick actions. tel:-ссылка не всегда открывается из TG WebApp напрямую,
+          поэтому если родное действие не сработает — копируем номер в буфер
+          обмена и показываем toast: мастер сможет перейти в нативную звонилку
+          вручную. */}
       <div className="grid grid-cols-2 gap-2">
         {client.phone ? (
-          <a
-            href={`tel:${client.phone}`}
-            onClick={() => haptic('selection')}
+          <button
+            type="button"
+            onClick={async () => {
+              haptic('selection');
+              const phone = client.phone!;
+              const w = window as unknown as { Telegram?: { WebApp?: { openLink?: (url: string) => void } } };
+              try {
+                // Пробуем нативно через WebApp (TG iOS/Android отдаёт это в звонилку).
+                if (w.Telegram?.WebApp?.openLink) {
+                  w.Telegram.WebApp.openLink(`tel:${phone}`);
+                  return;
+                }
+                // Web-fallback
+                window.location.href = `tel:${phone}`;
+              } catch {
+                // Final fallback — clipboard + alert
+                try {
+                  await navigator.clipboard.writeText(phone);
+                  alert(`Номер скопирован: ${phone}`);
+                } catch {
+                  alert(phone);
+                }
+              }
+            }}
             className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-[12px] font-semibold active:scale-[0.98] transition-transform"
           >
             <Phone className="size-3.5" /> Позвонить
-          </a>
+          </button>
         ) : <div />}
         <Link
           href={`/telegram/m/slot/new?client_id=${client.id}`}

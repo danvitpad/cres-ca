@@ -45,9 +45,6 @@ export default function MasterMiniAppHome() {
   const [weekRevenue, setWeekRevenue] = useState(0);
   const [weekCompleted, setWeekCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [brief, setBrief] = useState<string | null>(null);
-  const [briefLoading, setBriefLoading] = useState(true);
-
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -94,15 +91,7 @@ export default function MasterMiniAppHome() {
         })
         .catch(() => { /* ignore */ });
 
-      fetch('/api/telegram/m/brief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      })
-        .then((r) => r.json())
-        .then((j) => setBrief(j.brief ?? null))
-        .catch(() => setBrief(null))
-        .finally(() => setBriefLoading(false));
+      // /brief endpoint больше не вызываем — секция «Бриф от AI» удалена.
     })();
   }, [userId]);
 
@@ -172,27 +161,14 @@ export default function MasterMiniAppHome() {
       className="space-y-6 px-5 pt-6"
     >
       <div>
-        <h1 className="text-2xl font-bold">Привет, {profileName ?? user?.first_name ?? 'мастер'} 💼</h1>
+        <h1 className="text-2xl font-bold">Привет, {profileName ?? user?.first_name ?? 'мастер'}</h1>
         <p className="mt-0.5 text-[12px] text-white/50">
           {new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
       </div>
 
-      {briefLoading ? (
-        <div className="h-20 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
-      ) : brief ? (
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10">
-              <Robot size={18} weight="fill" className="text-violet-300" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Бриф от AI</p>
-              <p className="mt-1.5 text-[13px] leading-snug text-white/85">{brief}</p>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {/* «Бриф от AI» удалён — оказался бесполезной декорацией. Полезные
+          подсказки теперь живут только в /finance AI-помощнике. */}
 
       {/* Finance first — quick status glance */}
       <Link
@@ -235,7 +211,8 @@ export default function MasterMiniAppHome() {
 
         {chat.length === 0 && !sending ? (
           <div className="px-1 pb-1 text-[12px] leading-snug text-white/50">
-            Спроси или продиктуй — ассистент запишет расход, создаст напоминание, ответит про выручку или клиентов.
+            Спроси — ассистент запишет расход, создаст напоминание, ответит про выручку или клиентов.
+            Голосом — продиктуй в основном чате с Telegram-ботом.
           </div>
         ) : (
           <div className="max-h-[55vh] min-h-[240px] space-y-2 overflow-y-auto px-1 pb-1">
