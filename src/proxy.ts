@@ -34,7 +34,7 @@ function isProtectedPath(pathname: string): boolean {
   return protectedPatterns.some((pat) => p === pat || p.startsWith(pat + '/'));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Run intl middleware first (sets locale cookie, rewrites)
   const response = intlMiddleware(request);
 
