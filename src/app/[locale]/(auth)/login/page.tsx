@@ -907,9 +907,9 @@ function DobInput({ value, onChange }: { value: string; onChange: (isoOrEmpty: s
     return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
   };
   const [text, setText] = useState<string>(isoToDmy(value));
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Sync when parent changes ISO externally
     setText(isoToDmy(value));
   }, [value]);
 
@@ -920,30 +920,75 @@ function DobInput({ value, onChange }: { value: string; onChange: (isoOrEmpty: s
     else if (digits.length > 2) formatted = `${digits.slice(0, 2)}.${digits.slice(2)}`;
     setText(formatted);
 
-    const full = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-    if (full) {
-      const [, d, m, y] = full;
-      const day = +d, month = +m, year = +y;
-      const valid =
-        month >= 1 && month <= 12 &&
-        day >= 1 && day <= 31 &&
-        year >= 1900 && year <= new Date().getFullYear();
-      onChange(valid ? `${y}-${m}-${d}` : '');
-    } else {
+    if (digits.length === 0) {
+      setError(null);
       onChange('');
+      return;
     }
+
+    const full = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!full) {
+      // partial input — clear error, but parent stays empty
+      setError(null);
+      onChange('');
+      return;
+    }
+
+    const [, d, m, y] = full;
+    const day = +d, month = +m, year = +y;
+    const currentYear = new Date().getFullYear();
+
+    // Per-field range checks first (more useful errors)
+    if (month < 1 || month > 12) {
+      setError('Месяц должен быть от 01 до 12');
+      onChange('');
+      return;
+    }
+    if (year < 1900 || year > currentYear) {
+      setError(`Год должен быть от 1900 до ${currentYear}`);
+      onChange('');
+      return;
+    }
+    // Calendar-aware day check (handles 31 Feb / 31 Apr / etc).
+    const candidate = new Date(year, month - 1, day);
+    const valid =
+      candidate.getFullYear() === year &&
+      candidate.getMonth() === month - 1 &&
+      candidate.getDate() === day;
+    if (!valid) {
+      setError(`В ${month.toString().padStart(2, '0')}.${year} нет ${day}-го числа`);
+      onChange('');
+      return;
+    }
+    // Sanity: can't be born in the future or younger than 5 years old
+    if (candidate.getTime() > Date.now()) {
+      setError('Дата в будущем — проверь');
+      onChange('');
+      return;
+    }
+    setError(null);
+    onChange(`${y}-${m}-${d}`);
   }
 
   return (
-    <input
-      className="glass-input"
-      type="text"
-      inputMode="numeric"
-      autoComplete="bday"
-      placeholder="ДД.ММ.ГГГГ"
-      value={text}
-      onChange={(e) => handleChange(e.target.value)}
-    />
+    <div>
+      <input
+        className="glass-input"
+        type="text"
+        inputMode="numeric"
+        autoComplete="bday"
+        placeholder="ДД.ММ.ГГГГ"
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        style={error ? { borderColor: '#ef4444' } : undefined}
+        aria-invalid={!!error}
+      />
+      {error && (
+        <p style={{ fontSize: 11, color: '#ef4444', marginTop: 4, lineHeight: 1.3 }}>
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 

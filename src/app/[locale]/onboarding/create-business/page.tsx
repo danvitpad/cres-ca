@@ -51,27 +51,51 @@ import TeamModePicker, { type TeamMode } from '@/components/onboarding/TeamModeP
 
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });
 
-const CATEGORIES = [
-  { key: 'categoryHairdressing', icon: Scissors },
-  { key: 'categoryNails', icon: Sparkles },
-  { key: 'categoryBrowsLashes', icon: Eye },
-  { key: 'categoryBeautySalon', icon: Star },
-  { key: 'categoryMedspa', icon: Stethoscope },
-  { key: 'categoryBarber', icon: UserRound },
-  { key: 'categoryMassage', icon: HandHelping },
-  { key: 'categorySpa', icon: Droplets },
-  { key: 'categoryWaxing', icon: Flame },
-  { key: 'categoryTattoo', icon: Sparkles },
-  { key: 'categoryTanning', icon: Star },
-  { key: 'categoryFitness', icon: Dumbbell },
-  { key: 'categoryPhysio', icon: Activity },
-  { key: 'categoryMedical', icon: Heart },
-  { key: 'categoryPets', icon: PawPrint },
-  { key: 'categoryTutoring', icon: GraduationCap },
-  { key: 'categoryPlumbing', icon: Wrench },
-  { key: 'categoryCleaning', icon: SprayCan },
-  { key: 'categoryOther', icon: MoreHorizontal },
-] as const;
+/**
+ * Категории, привязанные к одной или нескольким вертикалям. На шаге выбора
+ * категорий показываем только те, чья vertical совпадает с выбранной на
+ * предыдущем шаге (или содержит '*' для «универсальных»).
+ */
+type CategoryDef = {
+  key: string;
+  icon: React.ComponentType<{ className?: string }>;
+  verticals: readonly string[];
+};
+
+const CATEGORIES: readonly CategoryDef[] = [
+  // Beauty
+  { key: 'categoryHairdressing', icon: Scissors, verticals: ['beauty'] },
+  { key: 'categoryNails', icon: Sparkles, verticals: ['beauty'] },
+  { key: 'categoryBrowsLashes', icon: Eye, verticals: ['beauty'] },
+  { key: 'categoryBeautySalon', icon: Star, verticals: ['beauty'] },
+  { key: 'categoryBarber', icon: UserRound, verticals: ['beauty'] },
+  { key: 'categoryWaxing', icon: Flame, verticals: ['beauty'] },
+  { key: 'categorySpa', icon: Droplets, verticals: ['beauty'] },
+  { key: 'categoryTanning', icon: Star, verticals: ['beauty'] },
+  // Health (overlap with beauty for medspa/massage)
+  { key: 'categoryMedspa', icon: Stethoscope, verticals: ['beauty', 'health'] },
+  { key: 'categoryMassage', icon: HandHelping, verticals: ['beauty', 'health'] },
+  { key: 'categoryPhysio', icon: Activity, verticals: ['health'] },
+  { key: 'categoryMedical', icon: Heart, verticals: ['health'] },
+  // Tattoo
+  { key: 'categoryTattoo', icon: Sparkles, verticals: ['tattoo'] },
+  // Fitness
+  { key: 'categoryFitness', icon: Dumbbell, verticals: ['fitness'] },
+  // Pets
+  { key: 'categoryPets', icon: PawPrint, verticals: ['pets'] },
+  // Education
+  { key: 'categoryTutoring', icon: GraduationCap, verticals: ['education'] },
+  // Craft / repair
+  { key: 'categoryPlumbing', icon: Wrench, verticals: ['craft'] },
+  { key: 'categoryCleaning', icon: SprayCan, verticals: ['craft'] },
+  // Universal escape hatch
+  { key: 'categoryOther', icon: MoreHorizontal, verticals: ['*'] },
+];
+
+function categoriesForVertical(vertical: string | null): readonly CategoryDef[] {
+  if (!vertical) return CATEGORIES;
+  return CATEGORIES.filter((c) => c.verticals.includes(vertical) || c.verticals.includes('*'));
+}
 
 const LOCATION_OPTIONS = [
   { key: 'locationPhysical', icon: Building2 },
@@ -111,20 +135,36 @@ function CreateBusinessWizard() {
   const searchParams = useSearchParams();
   const vertical = searchParams.get('vertical');
 
-  // Detect user role from Supabase metadata to skip solo/team step
+  // Detect user role from Supabase metadata to skip solo/team step.
+  // For solo masters we also auto-fill the «business name» from their full name
+  // and skip the cover/avatar step — they'll add those in the dashboard later.
   const [userRole, setUserRole] = useState<string | null>(null);
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       const role = data.user?.user_metadata?.role as string | undefined;
       if (role) setUserRole(role);
+      // Pre-fill businessName with the user's full_name for solo flows so the
+      // create-business endpoint always has something even if step 1 is skipped.
+      const fullName = (data.user?.user_metadata?.full_name as string | undefined)
+        ?? data.user?.email
+        ?? '';
+      if (fullName) setBusinessName((prev) => (prev ? prev : fullName));
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const skipTeamStep = userRole === 'master' || userRole === 'salon_admin';
   const inferredTeamType = userRole === 'salon_admin' ? 'team' : 'solo';
+  // Solo master = name + photos step is unnecessary (their public name is just
+  // their personal name; cover/avatar upload happens in dashboard later).
+  const isSoloMaster = userRole === 'master';
 
   const [step, setStep] = useState(1);
+  // When userRole resolves to 'master' (solo), skip step 1 and start at categories.
+  useEffect(() => {
+    if (isSoloMaster && step === 1) setStep(2);
+  }, [isSoloMaster, step]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -152,11 +192,19 @@ function CreateBusinessWizard() {
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Specializations derived from selected categories
+  // Specializations derived from selected categories. Multi-select with one
+  // primary (the first picked) — saved as comma-joined string in masters.specialization
+  // and the full list in masters.specializations[] (when the column exists).
   const specializationOptions = selectedCategories.length > 0
     ? getSpecializationsForCategories(selectedCategories)
     : getSpecializations(vertical);
-  const [specialization, setSpecialization] = useState<string | null>(null);
+  const [specializations, setSpecializations] = useState<string[]>([]);
+  const specialization = specializations[0] ?? null;
+  function toggleSpec(s: string) {
+    setSpecializations((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+    );
+  }
 
   // Services derived from selected categories
   const categoryServices = selectedCategories.length > 0
@@ -175,27 +223,30 @@ function CreateBusinessWizard() {
         ? getServicesForCategories(selectedCategories)
         : getDefaultServices(vertical);
       setSelectedServiceKeys(new Set(newServices.map((s) => s.name)));
-      // Reset specialization when categories change
+      // Trim specialization picks that no longer match the new category set.
       const newSpecs = selectedCategories.length > 0
         ? getSpecializationsForCategories(selectedCategories)
         : getSpecializations(vertical);
-      if (newSpecs.length > 0 && (!specialization || !newSpecs.includes(specialization))) {
-        setSpecialization(newSpecs[0]);
-      }
+      const allowed = new Set(newSpecs);
+      setSpecializations((prev) => prev.filter((s) => allowed.has(s)));
     }
-  }, [selectedCategories, vertical, specialization]);
+  }, [selectedCategories, vertical]);
 
-  // Build the ordered list of visible steps (skipping where needed)
+  // Build the ordered list of visible steps (skipping where needed).
+  // Solo masters skip step 1 (name + photos) — name auto-fills from user metadata,
+  // photos uploaded later in dashboard. They start straight at category selection.
   const buildStepSequence = useCallback(() => {
-    const steps: number[] = [1, 2, 3]; // name, categories, specialization
+    const steps: number[] = [];
+    if (!isSoloMaster) steps.push(1); // name + photos (только для команд / салонов)
+    steps.push(2, 3); // categories, specialization
     if (!skipTeamStep) steps.push(4); // solo/team
     const effectiveTeamType = skipTeamStep ? inferredTeamType : teamType;
-    if (effectiveTeamType === 'team') steps.push(45); // team mode (unified/marketplace) + commission
+    if (effectiveTeamType === 'team') steps.push(45); // team mode + commission
     steps.push(5); // location type
     if (locationType === 'locationPhysical') steps.push(6); // address
     steps.push(7); // services
     return steps;
-  }, [skipTeamStep, inferredTeamType, teamType, locationType]);
+  }, [isSoloMaster, skipTeamStep, inferredTeamType, teamType, locationType]);
 
   const stepSequence = buildStepSequence();
   const totalVisibleSteps = stepSequence.length;
@@ -336,6 +387,7 @@ function CreateBusinessWizard() {
           avatarUrl,
           coverUrl,
           specialization,
+          specializations,
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -581,7 +633,7 @@ function CreateBusinessWizard() {
                 <p className="mt-2 text-muted-foreground">{t('categoriesDesc')}</p>
 
                 <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                  {CATEGORIES.map(({ key, icon: Icon }) => {
+                  {categoriesForVertical(vertical).map(({ key, icon: Icon }) => {
                     const selIndex = selectedCategories.indexOf(key);
                     const isSelected = selIndex !== -1;
                     const isPrimary = selIndex === 0;
@@ -628,22 +680,33 @@ function CreateBusinessWizard() {
                 <p className="mt-2 text-muted-foreground">{t('specializationDesc')}</p>
 
                 {specializationOptions.length > 0 && (
-                  <div className="mt-8 flex flex-wrap gap-2">
-                    {specializationOptions.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setSpecialization(s)}
-                        className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${
-                          specialization === s
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Можно выбрать несколько — первый выбранный будет основной (для индексации поиска).
+                    </p>
+                    <div className="mt-6 flex flex-wrap gap-2">
+                      {specializationOptions.map((s) => {
+                        const idx = specializations.indexOf(s);
+                        const isPrimary = idx === 0;
+                        const isSelected = idx !== -1;
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => toggleSpec(s)}
+                            className={`rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${
+                              isSelected
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                            }`}
+                          >
+                            {isPrimary && <span className="mr-1.5 text-[10px] uppercase opacity-70">Осн.</span>}
+                            {s}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </StepWrapper>
             )}
