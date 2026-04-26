@@ -21,9 +21,12 @@ import { OwnerCompletenessPrompt } from '@/components/master/owner-completeness-
 import { FollowMasterButton } from '@/components/master/follow-master-button';
 import { MasterPageSectionTabs } from '@/components/master/section-tabs';
 import { ServicesByCategory } from '@/components/master/services-by-category';
+import { PublicHeroCard } from '@/components/master/public-hero-card';
+import { PublicServicesList } from '@/components/master/public-services-list';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
+void ServicesByCategory; // legacy import retained while Fresha rewrite settles
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -369,16 +372,53 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     })),
   };
 
-  const accent = master.theme_primary_color ?? '#7c3aed';
+  const accent = master.theme_primary_color ?? '#0a0a0a';
   const pageBg = master.theme_background_color ?? '#ffffff';
   const bannerY = master.banner_position_y ?? 50;
+
+  // ─── Pre-compute display data ──────────────────────────────────────────
+  const hasBio = !!master.bio && master.bio.trim().length > 0;
+  const hasServices = services.length > 0;
+  const hasPortfolio = portfolio.length > 0 || beforeAfter.length > 0;
+  const hasReviews = reviewsList.length > 0;
+  const hasPartners = partners.length > 0;
+  const hasWorkplace = !!salon || !!master.workplace_name || !!master.workplace_photo_url;
+
+  const workingHoursDays: Array<[string, string]> = [
+    ['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'],
+    ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс'],
+  ];
+  const hasWorkingHours = !!master.working_hours && workingHoursDays.some(([k]) => {
+    const wh = master.working_hours?.[k];
+    return wh && !wh.closed && wh.start && wh.end;
+  });
+  const hasAddress = !!(master.city || master.address || salon?.address);
+
+  const queryStr = (() => {
+    const cleanedStreet = cleanAddress(salon?.address ?? master.address);
+    return [cleanedStreet, master.city].filter(Boolean).join(', ') || master.city || '';
+  })();
+  const fullAddress = composeAddress(null, salon?.address ?? master.address, master.city);
+
+  const minPrice = hasServices
+    ? Math.min(...services.filter((s) => s.price != null).map((s) => s.price as number))
+    : 0;
+  const currency = services[0]?.currency ?? 'UAH';
+
+  const bookHref = `/ru/book?master=${master.id}`;
+
+  // Sticky tab nav — show only when there's >1 section to jump to
+  const navSections: { id: string; label: string }[] = [];
+  if (hasServices) navSections.push({ id: 'services', label: 'Услуги' });
+  if (hasPortfolio) navSections.push({ id: 'portfolio', label: 'Работы' });
+  if (hasReviews) navSections.push({ id: 'reviews', label: 'Отзывы' });
+  if (hasAddress) navSections.push({ id: 'address', label: 'Адрес' });
 
   return (
     <div
       className="min-h-screen text-neutral-900"
       style={{
         backgroundColor: pageBg,
-        // Page-level CSS var any descendant can read for buttons/badges/links.
         ['--page-accent' as string]: accent,
       }}
     >
@@ -389,15 +429,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div
-        className="relative h-56 w-full overflow-hidden sm:h-80 lg:h-[420px]"
-        style={
-          master.cover_url
-            ? undefined
-            : { background: `linear-gradient(135deg, ${accent}, ${accent}99)` }
-        }
-      >
-        {master.cover_url && (
+      {/* Optional thin cover banner — shown ONLY when master uploaded one.
+          Не overlap'ится с hero card; hero card стоит ниже самостоятельной секцией. */}
+      {master.cover_url && (
+        <div className="relative h-40 w-full overflow-hidden bg-neutral-100 sm:h-52 lg:h-64">
           <Image
             src={master.cover_url}
             alt=""
@@ -406,513 +441,296 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             className="object-cover"
             style={{ objectPosition: `center ${bannerY}%` }}
           />
-        )}
-        {/* Subtle vignette so light text remains readable on bright covers */}
-        {master.cover_url && (
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
-        )}
-      </div>
-
-      <div className="mx-auto -mt-16 max-w-6xl px-4 sm:-mt-20 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:gap-6">
-          <div className="relative size-28 shrink-0 overflow-hidden rounded-full border-4 border-white bg-neutral-100 shadow-xl sm:size-36">
-            <MasterAvatar url={master.avatar_url} name={displayName} />
-          </div>
-          <div className="min-w-0 flex-1 text-center sm:pb-2 sm:text-left">
-            <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{displayName}</h1>
-            {master.specialization && (
-              <p className="mt-1 text-sm text-neutral-600 sm:text-base">{master.specialization}</p>
-            )}
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-3 text-sm text-neutral-600 sm:justify-start">
-              {reviews > 0 && (
-                <span className="inline-flex items-center gap-1">
-                  <Star className="size-4 fill-amber-400 text-amber-400" />
-                  <strong>{rating.toFixed(1)}</strong>
-                  <span className="text-neutral-400">({reviews})</span>
-                </span>
-              )}
-              {master.city && (
-                <span className="inline-flex items-center gap-1">
-                  <MapPin className="size-4" /> {master.city}
-                </span>
-              )}
-            </div>
-
-            {/* Public stats — completed visits + served clients (cached counters
-                from migration 00114). Hidden when both are zero (new master). */}
-            {(master.completed_appointments_count > 0 || master.served_clients_count > 0) && (
-              <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-neutral-600 sm:justify-start">
-                <span>
-                  Завершённые записи{' '}
-                  <strong className="tabular-nums text-neutral-900">{master.completed_appointments_count.toLocaleString('ru-RU')}</strong>
-                </span>
-                <span>
-                  Обслужено клиентов{' '}
-                  <strong className="tabular-nums text-neutral-900">{master.served_clients_count.toLocaleString('ru-RU')}</strong>
-                </span>
-              </div>
-            )}
-
-            {/* Languages */}
-            {(master.languages?.length ?? 0) > 0 && (
-              <div className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start">
-                {master.languages!.map((lang) => (
-                  <span key={lang} className="rounded-full border border-neutral-200 bg-white px-2 py-0.5 text-[11px] text-neutral-700">
-                    {lang}
-                  </span>
-                ))}
-              </div>
-            )}
-            {(master.badges?.length ?? 0) > 0 && (
-              <div className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start">
-                {master.badges!.map((b) => {
-                  const labels: Record<string, { emoji: string; text: string; cls: string }> = {
-                    verified: { emoji: '✅', text: 'Verified', cls: 'bg-emerald-100 text-emerald-800' },
-                    'top-rated': { emoji: '⭐', text: 'Top rated', cls: 'bg-amber-100 text-amber-800' },
-                    'top-week': { emoji: '🔥', text: 'Top недели', cls: 'bg-rose-100 text-rose-800' },
-                    trending: { emoji: '📈', text: 'Trending', cls: 'bg-violet-100 text-violet-800' },
-                    'fast-responder': { emoji: '⚡', text: 'Fast', cls: 'bg-sky-100 text-sky-800' },
-                  };
-                  const info = labels[b] ?? { emoji: '🏷️', text: b, cls: 'bg-neutral-100 text-neutral-800' };
-                  return (
-                    <span key={b} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${info.cls}`}>
-                      <span>{info.emoji}</span>
-                      {info.text}
-                    </span>
-                  );
-                })}
-                {(master.level ?? 0) > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-800">
-                    Lv {master.level}
-                  </span>
-                )}
-              </div>
-            )}
-            <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
-              <ShareStoryButton masterId={master.id} masterName={displayName} />
-            </div>
-          </div>
         </div>
+      )}
 
-        {master.bio && (
-          <p className="mt-6 text-center text-sm leading-relaxed text-neutral-700 sm:text-left sm:text-base">
-            {master.bio}
-          </p>
-        )}
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
+          {/* ─── LEFT col (Hero card) — sticky on desktop, normal on mobile ─── */}
+          <div className="lg:col-span-4">
+            <PublicHeroCard
+              masterId={master.id}
+              displayName={displayName}
+              specialization={master.specialization}
+              rating={rating}
+              reviewsCount={reviews}
+              city={master.city}
+              avatarUrl={master.avatar_url}
+              completedAppointmentsCount={master.completed_appointments_count}
+              servedClientsCount={master.served_clients_count}
+              languages={master.languages}
+              workplaceName={salon?.name ?? master.workplace_name}
+              workplaceAddress={fullAddress}
+              joinedAt={null}
+              bookHref={bookHref}
+              accent={accent}
+            />
+          </div>
 
-        {/* Owner-only completeness checklist — shows what's missing on the page,
-            with deep-links to fill each gap. Hides automatically when 100% complete. */}
-        <OwnerCompletenessPrompt masterProfileId={master.profile_id} />
-
-        {/* Mobile-only CTA right under hero. Desktop has its own sticky CTA in the right column. */}
-        <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start lg:hidden">
-          <Link
-            href={`/ru/book?master=${master.id}`}
-            className="inline-flex items-center gap-2 rounded-full px-8 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ backgroundColor: accent }}
-          >
-            <Calendar className="size-4" />
-            Записаться
-          </Link>
-          <FollowMasterButton masterId={master.id} accent={accent} />
-        </div>
-
-        {/* Sticky section nav — Fresha-style. Только показываем если есть хоть один таб контента. */}
-        {(() => {
-          const navSections: { id: string; label: string }[] = [];
-          if (services.length > 0) navSections.push({ id: 'services', label: 'Услуги' });
-          if (portfolio.length > 0 || beforeAfter.length > 0) navSections.push({ id: 'portfolio', label: 'Работы' });
-          if (reviewsList.length > 0) navSections.push({ id: 'reviews', label: 'Отзывы' });
-          if (partners.length > 0) navSections.push({ id: 'partners', label: 'Рекомендую' });
-          if (master.city || master.address || salon || master.workplace_name) {
-            navSections.push({ id: 'contacts', label: 'Контакты' });
-          }
-          return navSections.length > 1 ? (
-            <MasterPageSectionTabs sections={navSections} accent={accent} />
-          ) : null;
-        })()}
-
-        {/* Two-column layout — Fresha-style: full content on left, sticky booking summary on right */}
-        <div className="mt-6 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
-          <div className="min-w-0 space-y-12">
-
-        {/* Contacts + socials + interests — all gated on per-field public flags */}
-        {(((master.phone && master.phone_public) ||
-           (master.email && master.email_public) ||
-           (master.date_of_birth && master.dob_public) ||
-           Object.keys(master.social_links ?? {}).length > 0 ||
-           (master.interests?.length ?? 0) > 0)) && (
-          <div className="mt-8 space-y-3">
-            <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-700">
-              {master.phone && master.phone_public && (
-                <a href={`tel:${master.phone}`} className="inline-flex items-center gap-1.5 hover:underline" style={{ color: accent }}>
-                  <Phone className="size-4" />
-                  {master.phone}
-                </a>
-              )}
-              {master.email && master.email_public && (
-                <a href={`mailto:${master.email}`} className="inline-flex items-center gap-1.5 hover:underline" style={{ color: accent }}>
-                  <Mail className="size-4" />
-                  {master.email}
-                </a>
-              )}
-              {master.date_of_birth && master.dob_public && (
-                <span className="inline-flex items-center gap-1.5 text-neutral-600">
-                  <Cake className="size-4" />
-                  {new Date(master.date_of_birth).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long' })}
-                </span>
-              )}
-            </div>
-
-            {Object.keys(master.social_links ?? {}).length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(master.social_links ?? {}).map(([key, value]) => {
-                  if (!value) return null;
-                  let href = value;
-                  if (key === 'telegram' && !href.startsWith('http')) href = `https://t.me/${href.replace(/^@/, '')}`;
-                  else if (key === 'instagram' && !href.startsWith('http')) href = `https://instagram.com/${href.replace(/^@/, '')}`;
-                  else if (key === 'tiktok' && !href.startsWith('http')) href = `https://tiktok.com/@${href.replace(/^@/, '')}`;
-                  else if (key === 'whatsapp' && !href.startsWith('http')) href = `https://wa.me/${href.replace(/[^\d]/g, '')}`;
-                  else if (key === 'viber' && !href.startsWith('http')) href = `viber://chat?number=${encodeURIComponent(href)}`;
-                  return (
+          {/* ─── RIGHT col (scroll content) ─── */}
+          <div className="space-y-10 lg:col-span-8">
+            {/* Sticky tab nav — only when there's something to navigate to */}
+            {navSections.length > 1 && (
+              <div className="sticky top-0 z-30 -mx-4 border-b border-neutral-200 bg-white/95 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                <nav className="flex gap-2 overflow-x-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {navSections.map((s) => (
                     <a
-                      key={key}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
+                      key={s.id}
+                      href={`#${s.id}`}
+                      className="whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-semibold text-neutral-700 hover:bg-neutral-100"
                     >
-                      {key === 'telegram' && '💬'}
-                      {key === 'instagram' && '📸'}
-                      {key === 'whatsapp' && '🟢'}
-                      {key === 'viber' && '🟣'}
-                      {key === 'tiktok' && '🎵'}
-                      {key === 'youtube' && '📺'}
-                      {key === 'website' && '🌐'}
-                      <span className="capitalize">{key}</span>
+                      {s.label}
                     </a>
-                  );
-                })}
+                  ))}
+                </nav>
               </div>
             )}
 
-            {(master.interests?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {master.interests!.map((tag) => (
-                  <span key={tag} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-[11px] text-neutral-700">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
+            {/* Bio */}
+            {hasBio && (
+              <section id="bio">
+                <h2 className="mb-3 text-[22px] font-bold text-neutral-900">О мастере</h2>
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-neutral-700">
+                  {master.bio}
+                </p>
+              </section>
             )}
-          </div>
-        )}
 
-        {services.length > 0 && (
-          <div id="services" className="scroll-mt-20">
-            <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
-              <Sparkles className="size-5" style={{ color: accent }} />
-              Услуги
-            </h2>
-            <ServicesByCategory services={services} masterId={master.id} accent={accent} locale="ru" />
-          </div>
-        )}
+            {/* Services */}
+            {hasServices && (
+              <section id="services" className="scroll-mt-24">
+                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Услуги</h2>
+                <PublicServicesList services={services} masterId={master.id} locale="ru" />
+              </section>
+            )}
 
-        {(portfolio.length > 0 || beforeAfter.length > 0) && (
-          <div id="portfolio" className="scroll-mt-20">
-            <PortfolioGrid items={portfolio} />
-          </div>
-        )}
-
-        {/* ─── До / После — интерактивные слайдеры ─── */}
-        {beforeAfter.length > 0 && (
-          <div className="mt-12">
-            <h2 className="mb-1 text-xl font-semibold">До и после</h2>
-            <p className="mb-4 text-sm text-neutral-500">Перетащите разделитель, чтобы сравнить результат.</p>
-            <div className="grid gap-5 sm:grid-cols-2">
-              {beforeAfter.map((pair) => (
-                <div key={pair.id}>
-                  <BeforeAfterSlider
-                    beforeUrl={pair.before_url}
-                    afterUrl={pair.after_url}
-                    caption={pair.caption}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ─── Рекомендую — partners ─── */}
-        {partners.length > 0 && (
-          <div id="partners" className="mt-12 scroll-mt-20">
-            <h2 className="mb-4 text-xl font-semibold">Рекомендую</h2>
-            <p className="mb-4 text-sm text-neutral-500">Мастера, с которыми я работаю и доверяю.</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {partners.map(p => (
-                <Link
-                  key={p.id}
-                  href={p.invite_code ? `/m/${p.invite_code}` : '#'}
-                  className="group flex flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-center transition hover:border-violet-400 hover:shadow"
-                >
-                  {p.avatar_url ? (
-                    <img
-                      src={p.avatar_url}
-                      alt={p.display_name || ''}
-                      className="size-16 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-pink-400 text-lg font-semibold text-white">
-                      {(p.display_name || '?').charAt(0).toUpperCase()}
+            {/* Portfolio */}
+            {hasPortfolio && (
+              <section id="portfolio" className="scroll-mt-24">
+                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Работы</h2>
+                {portfolio.length > 0 && <PortfolioGrid items={portfolio} />}
+                {beforeAfter.length > 0 && (
+                  <div className={portfolio.length > 0 ? 'mt-6' : ''}>
+                    <p className="mb-3 text-sm text-neutral-500">
+                      Перетащите разделитель, чтобы сравнить «до» и «после».
+                    </p>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {beforeAfter.map((pair) => (
+                        <BeforeAfterSlider
+                          key={pair.id}
+                          beforeUrl={pair.before_url}
+                          afterUrl={pair.after_url}
+                          caption={pair.caption}
+                        />
+                      ))}
                     </div>
-                  )}
-                  <div className="text-sm font-semibold leading-tight text-neutral-800 group-hover:text-violet-700">
-                    {p.display_name || 'Мастер'}
                   </div>
-                  {p.specialization && (
-                    <div className="text-xs text-neutral-500">{p.specialization}</div>
-                  )}
-                  {p.city && (
-                    <div className="text-xs text-neutral-400">{p.city}</div>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+                )}
+              </section>
+            )}
 
-        {reviewsList.length > 0 && (
-          <div id="reviews" className="mt-12 scroll-mt-20">
-            <h2 className="mb-4 text-xl font-semibold">Отзывы</h2>
-            <div className="space-y-4">
-              {reviewsList.map(r => (
-                <div key={r.id} className="rounded-2xl border border-neutral-200 bg-white p-4">
-                  <div className="mb-1 flex items-center gap-1">
+            {/* Reviews */}
+            {hasReviews && (
+              <section id="reviews" className="scroll-mt-24">
+                <div className="mb-4 flex items-baseline gap-2">
+                  <h2 className="text-[22px] font-bold text-neutral-900">Отзывы</h2>
+                  <span className="text-[14px] text-neutral-500">{reviews}</span>
+                </div>
+                {reviews > 0 && (
+                  <div className="mb-5 flex items-center gap-2">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star
                         key={i}
-                        className={`size-4 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-neutral-200'}`}
+                        className={`size-5 ${i < Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'text-neutral-200'}`}
+                        strokeWidth={0}
                       />
                     ))}
-                    <span className="ml-2 text-xs text-neutral-400">
-                      {new Date(r.created_at).toLocaleDateString('ru-RU')}
-                    </span>
+                    <span className="ml-2 text-[15px] font-bold text-neutral-900">{rating.toFixed(1)}</span>
+                    <span className="text-[14px] text-neutral-500">({reviews})</span>
                   </div>
-                  {r.comment && (
-                    <p className="mt-1 whitespace-pre-line text-sm text-neutral-700">{r.comment}</p>
-                  )}
-                  {r.photos && r.photos.length > 0 && (
-                    <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {r.photos.map((url, i) => (
-                        <div
-                          key={`${r.id}-${i}`}
-                          className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"
-                        >
-                          <Image src={url} alt="" fill className="object-cover" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* «Работает в» — салон или собственный кабинет */}
-        {(salon || master.workplace_name || master.workplace_photo_url) && (
-          <div id="workplace" className="mt-12 scroll-mt-20">
-            <h2 className="mb-4 text-xl font-semibold">Где принимаю</h2>
-            <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-              {(salon?.cover_url || master.workplace_photo_url) && (
-                <div className="relative h-40 w-full overflow-hidden bg-neutral-100 sm:h-56">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={(salon?.cover_url ?? master.workplace_photo_url) as string}
-                    alt=""
-                    className="size-full object-cover"
-                  />
-                </div>
-              )}
-              <div className="flex items-start gap-3 p-5">
-                {salon?.logo_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={salon.logo_url}
-                    alt=""
-                    className="size-12 rounded-full border border-neutral-200 object-cover"
-                  />
                 )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-neutral-900">
-                    {salon?.name ?? master.workplace_name ?? 'Собственный кабинет'}
-                  </p>
-                  {(() => {
-                    const addr = composeAddress(null, salon?.address ?? master.address, master.city);
-                    return addr ? <p className="mt-0.5 text-sm text-neutral-600">{addr}</p> : null;
-                  })()}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+                <ul className="grid gap-4 sm:grid-cols-2">
+                  {reviewsList.slice(0, 6).map((r) => (
+                    <li
+                      key={r.id}
+                      className="rounded-2xl border border-neutral-200 bg-white p-5"
+                    >
+                      <div className="mb-1 flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`size-4 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-neutral-200'}`}
+                            strokeWidth={0}
+                          />
+                        ))}
+                        <span className="ml-2 text-[12px] text-neutral-500">
+                          {new Date(r.created_at).toLocaleDateString('ru-RU')}
+                        </span>
+                      </div>
+                      {r.comment && (
+                        <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-800">
+                          {r.comment}
+                        </p>
+                      )}
+                      {r.photos && r.photos.length > 0 && (
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {r.photos.map((url, i) => (
+                            <div
+                              key={`${r.id}-${i}`}
+                              className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"
+                            >
+                              <Image src={url} alt="" fill className="object-cover" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
-        {(master.city || master.working_hours) && (
-          <div id="contacts" className="mt-12 mb-16 scroll-mt-20">
-            <h2 className="mb-4 text-xl font-semibold">Контакты и часы работы</h2>
-            <div className="grid gap-5 sm:grid-cols-2">
-              {(master.city || master.address || salon?.address) && (
-                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-                  {/* OpenStreetMap iframe — бесплатный embed, без API-ключей.
-                      Bbox считается из города; если есть точный адрес — используем его. */}
-                  {(() => {
-                    const cleanedStreet = cleanAddress(salon?.address ?? master.address);
-                    const fullDisplay = composeAddress(null, salon?.address ?? master.address, master.city);
-                    const queryStr = [cleanedStreet, master.city].filter(Boolean).join(', ') || master.city || '';
-                    const q = encodeURIComponent(queryStr);
-                    if (!queryStr && !fullDisplay) return null;
-                    return (
-                      <>
-                        {queryStr && (
-                          <AddressMiniMap query={queryStr} className="h-48 w-full" />
-                        )}
-                        <div className="flex items-start gap-3 p-5">
-                          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                            <MapPin className="size-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold">Адрес</p>
-                            {fullDisplay && (
-                              <p className="mt-0.5 text-sm text-neutral-600">{fullDisplay}</p>
-                            )}
+            {/* Address + Hours */}
+            {(hasAddress || hasWorkingHours) && (
+              <section id="address" className="scroll-mt-24">
+                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Адрес и часы работы</h2>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {hasAddress && (
+                    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                      {queryStr && <AddressMiniMap query={queryStr} className="h-48 w-full" />}
+                      <div className="flex items-start gap-3 p-5">
+                        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                          <MapPin className="size-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] font-semibold text-neutral-900">
+                            {salon?.name ?? master.workplace_name ?? 'Адрес'}
+                          </p>
+                          {fullAddress && (
+                            <p className="mt-0.5 text-[14px] text-neutral-600">{fullAddress}</p>
+                          )}
+                          {queryStr && (
                             <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${q || encodeURIComponent(master.city || '')}`}
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryStr)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:underline"
+                              className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-neutral-900 hover:underline"
                             >
-                              Открыть в Google Maps →
+                              Проложить маршрут →
                             </a>
-                          </div>
+                          )}
                         </div>
-                      </>
-                    );
-                  })()}
+                      </div>
+                    </div>
+                  )}
+                  {hasWorkingHours && (
+                    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
+                          <Clock className="size-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[14px] font-semibold text-neutral-900">Часы работы</p>
+                          <ul className="mt-2 space-y-1.5 text-[13px]">
+                            {workingHoursDays.map(([key, label]) => {
+                              const wh = master.working_hours?.[key];
+                              const isOpen = wh && !wh.closed && wh.start && wh.end;
+                              return (
+                                <li key={key} className="flex items-center justify-between">
+                                  <span className="text-neutral-500">{label}</span>
+                                  <span className={isOpen ? 'font-medium text-neutral-900' : 'text-neutral-400'}>
+                                    {isOpen ? `${wh.start} – ${wh.end}` : 'Выходной'}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              {master.working_hours && (() => {
-                const days: Array<[string, string]> = [
-                  ['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'],
-                  ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс'],
-                ];
-                const anyOpen = days.some(([k]) => {
-                  const wh = master.working_hours?.[k];
-                  return wh && !wh.closed && wh.start && wh.end;
-                });
-                if (!anyOpen) return null;
-                return (
-                  <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
+                  <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                        <Clock className="size-4" />
+                      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                        <Phone className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold">Часы работы</p>
-                        <ul className="mt-2 space-y-1 text-xs text-neutral-600">
-                          {days.map(([key, label]) => {
-                            const wh = master.working_hours?.[key];
-                            const isOpen = wh && !wh.closed && wh.start && wh.end;
-                            return (
-                              <li key={key} className="flex justify-between gap-3">
-                                <span className="text-neutral-500">{label}</span>
-                                <span className={isOpen ? 'font-medium text-neutral-800' : 'text-neutral-400'}>
-                                  {isOpen ? `${wh.start}–${wh.end}` : 'Выходной'}
-                                </span>
-                              </li>
-                            );
-                          })}
-                        </ul>
+                        <p className="text-[14px] font-semibold text-amber-900">Важная информация</p>
+                        <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-amber-900/80">
+                          {master.booking_important_info}
+                        </p>
                       </div>
                     </div>
                   </div>
-                );
-              })()}
-            </div>
-            {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
-              <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                    <Phone className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-amber-900">Важная информация</p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-amber-900/80">
-                      {master.booking_important_info}
-                    </p>
+                )}
+              </section>
+            )}
+
+            {/* Workplace photos (только если есть отдельные фото — иначе уже в карте) */}
+            {hasWorkplace && (salon?.cover_url || master.workplace_photo_url) && (
+              <section id="workplace">
+                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Где принимаю</h2>
+                <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+                  <div className="relative h-48 w-full bg-neutral-100 sm:h-64">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={(salon?.cover_url ?? master.workplace_photo_url) as string}
+                      alt=""
+                      className="size-full object-cover"
+                    />
                   </div>
                 </div>
-              </div>
+              </section>
+            )}
+
+            {/* Partners */}
+            {hasPartners && (
+              <section id="partners">
+                <h2 className="mb-2 text-[22px] font-bold text-neutral-900">Рекомендую</h2>
+                <p className="mb-4 text-[14px] text-neutral-500">Мастера, с которыми я работаю и доверяю.</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {partners.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={p.invite_code ? `/m/${p.invite_code}` : '#'}
+                      className="group flex flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-center transition hover:border-neutral-300 hover:shadow-sm"
+                    >
+                      {p.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.avatar_url} alt={p.display_name || ''} className="size-16 rounded-full object-cover" />
+                      ) : (
+                        <div className="flex size-16 items-center justify-center rounded-full bg-neutral-100 text-lg font-semibold text-neutral-600">
+                          {(p.display_name || '?').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="text-[14px] font-semibold leading-tight text-neutral-900">
+                        {p.display_name || 'Мастер'}
+                      </div>
+                      {p.specialization && (
+                        <div className="text-[12px] text-neutral-500">{p.specialization}</div>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
-        )}
-          </div>
-          {/* ─── Right column: sticky booking summary — desktop only ─── */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                Запись онлайн
-              </div>
-              {services.length > 0 && (() => {
-                const minPrice = Math.min(...services.filter(s => s.price != null).map(s => s.price as number));
-                const cur = services[0]?.currency ?? 'UAH';
-                return (
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-xs text-neutral-500">от</span>
-                    <span className="text-2xl font-bold text-neutral-900">{formatMoney(minPrice, cur)}</span>
-                  </div>
-                );
-              })()}
-              {reviews > 0 && (
-                <div className="mt-3 flex items-center gap-2 text-sm text-neutral-600">
-                  <Star className="size-4 fill-amber-400 text-amber-400" />
-                  <strong className="text-neutral-900">{rating.toFixed(1)}</strong>
-                  <span className="text-neutral-400">· {reviews} отзывов</span>
-                </div>
-              )}
-              <Link
-                href={`/ru/book?master=${master.id}`}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                style={{ backgroundColor: accent }}
-              >
-                <Calendar className="size-4" />
-                Записаться
-              </Link>
-              <div className="mt-2">
-                <FollowMasterButton masterId={master.id} accent={accent} />
-              </div>
-              {master.city && (
-                <div className="mt-4 flex items-center gap-2 border-t border-neutral-100 pt-4 text-xs text-neutral-500">
-                  <MapPin className="size-3.5" />
-                  {master.city}
-                </div>
-              )}
-            </div>
-          </aside>
         </div>
       </div>
 
       {/* Mobile sticky bottom CTA — visible while scrolling on phones */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur p-3 lg:hidden">
         <Link
-          href={`/ru/book?master=${master.id}`}
-          className="flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: accent }}
+          href={bookHref}
+          data-book-cta="true"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 px-6 py-3 text-[15px] font-semibold text-white transition-opacity hover:opacity-95 active:scale-[0.99]"
         >
           <Calendar className="size-4" />
-          Записаться
+          Записаться{hasServices && ` · от ${formatMoney(minPrice, currency)}`}
         </Link>
       </div>
-      {/* spacer so content above isn't covered by the mobile sticky bar */}
       <div className="h-20 lg:hidden" />
     </div>
   );

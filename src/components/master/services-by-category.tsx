@@ -101,7 +101,7 @@ export function ServicesByCategory({ services, masterId, accent = '#7c3aed', loc
                 {g.name}
               </h3>
             )}
-            <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
+            <div className="divide-y divide-neutral-100 rounded-2xl border border-neutral-200 bg-white">
               {g.items.map((s) => (
                 <ServiceRow key={s.id} service={s} masterId={masterId} accent={accent} locale={locale} />
               ))}
@@ -129,9 +129,11 @@ function ServiceRow({ service, masterId, accent, locale }: {
           href={`/${locale}/book?master=${masterId}&service=${service.id}`}
           className="block transition-colors hover:opacity-80"
         >
-          <div className="text-[15px] font-medium leading-snug">{service.name}</div>
+          <div className="text-[15px] font-medium leading-snug">
+            {service.name?.trim() || <span className="text-neutral-400">Услуга без названия</span>}
+          </div>
           {service.description && (
-            <div className="mt-1 text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
+            <div className="mt-1 text-sm leading-relaxed text-neutral-500">
               {service.description}
             </div>
           )}
@@ -153,7 +155,7 @@ function ServiceRow({ service, masterId, accent, locale }: {
         )}
         {open && hasExtra && (
           <div
-            className="mt-3 space-y-3 rounded-lg border-l-2 pl-3 text-xs text-neutral-700 dark:text-neutral-300"
+            className="mt-3 space-y-3 rounded-lg border-l-2 pl-3 text-xs text-neutral-700"
             style={{ borderColor: accent }}
           >
             {service.preparation && (

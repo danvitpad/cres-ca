@@ -72,7 +72,7 @@ export function MasterPageSectionTabs({ sections, accent = '#7c3aed', topOffset 
 
   return (
     <div
-      className="sticky top-0 z-30 -mx-4 mt-8 border-b border-neutral-200 bg-white/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 dark:border-neutral-800 dark:bg-neutral-950/85"
+      className="sticky top-0 z-30 -mx-4 mt-8 border-b border-neutral-200 bg-white/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
       style={{ ['--page-accent' as string]: accent }}
     >
       <div
