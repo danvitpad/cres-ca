@@ -10,11 +10,12 @@
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { SalonHeroCard } from '@/components/salon/salon-hero-card';
 import { SalonTeamGrid } from '@/components/salon/salon-team-grid';
 import { SalonJoinRequestCard } from '@/components/salon/salon-join-request-card';
+import { SalonInlineCoverBanner } from '@/components/salon/inline/salon-cover-banner';
+import { SalonInlineBioBlock } from '@/components/salon/inline/salon-bio-block';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -191,12 +192,12 @@ export default async function PublicSalonPage({ params }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Optional cover banner — shown only when uploaded. Без overlap'a. */}
-      {salon.cover_url && (
-        <div className="relative h-40 w-full overflow-hidden bg-neutral-100 sm:h-52 lg:h-64">
-          <Image src={salon.cover_url} alt="" fill priority className="object-cover" sizes="100vw" />
-        </div>
-      )}
+      {/* Cover banner — owner sees dashed CTA when empty. */}
+      <SalonInlineCoverBanner
+        salonId={salon.id}
+        salonOwnerId={salon.owner_id}
+        initialCoverUrl={salon.cover_url}
+      />
 
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
@@ -204,6 +205,7 @@ export default async function PublicSalonPage({ params }: PageProps) {
           <div className="lg:col-span-4">
             <SalonHeroCard
               salonId={salon.id}
+              salonOwnerId={salon.owner_id}
               name={salon.name}
               logoUrl={salon.logo_url}
               city={salon.city}
@@ -220,6 +222,13 @@ export default async function PublicSalonPage({ params }: PageProps) {
 
           {/* RIGHT: team + content */}
           <div className="space-y-10 lg:col-span-8">
+            {/* О салоне (для владельца — inline edit, для клиента — read-only / hidden если пусто) */}
+            <SalonInlineBioBlock
+              salonId={salon.id}
+              salonOwnerId={salon.owner_id}
+              initialBio={salon.bio}
+            />
+
             {/* Master-only: запрос на вступление в команду */}
             <SalonJoinRequestCard
               salonId={salon.id}

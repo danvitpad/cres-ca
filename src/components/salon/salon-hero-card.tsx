@@ -10,9 +10,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Star, Calendar, Phone, Mail } from 'lucide-react';
+import { SalonInlineLogoEdit } from './inline/salon-logo-edit';
 
 interface Props {
   salonId: string;
+  salonOwnerId: string;
   name: string;
   logoUrl: string | null;
   city: string | null;
@@ -28,6 +30,7 @@ interface Props {
 
 export function SalonHeroCard({
   salonId,
+  salonOwnerId,
   name,
   logoUrl,
   city,
@@ -40,26 +43,31 @@ export function SalonHeroCard({
   servicesCount,
   bookHref,
 }: Props) {
-  void salonId;
   const initial = name.trim()[0]?.toUpperCase() ?? 'S';
 
   return (
     <aside className="relative flex flex-col gap-5 rounded-[20px] border border-neutral-200 bg-[#f7f7f7] p-6 lg:sticky lg:top-6">
       {/* Logo (square with border) */}
-      <div className="mx-auto mt-2 size-32 overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
-        {logoUrl ? (
-          <Image
-            src={logoUrl}
-            alt={name}
-            width={128}
-            height={128}
-            className="size-full object-cover"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center text-4xl font-bold text-neutral-400">
-            {initial}
-          </div>
-        )}
+      <div className="mx-auto mt-2">
+        <SalonInlineLogoEdit salonId={salonId} salonOwnerId={salonOwnerId} initialLogoUrl={logoUrl}>
+          {(currentLogo) => (
+            <div className="size-32 overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
+              {currentLogo ? (
+                <Image
+                  src={currentLogo}
+                  alt={name}
+                  width={128}
+                  height={128}
+                  className="size-full object-cover"
+                />
+              ) : (
+                <div className="flex size-full items-center justify-center text-4xl font-bold text-neutral-400">
+                  {initial}
+                </div>
+              )}
+            </div>
+          )}
+        </SalonInlineLogoEdit>
       </div>
 
       {/* Identity */}
