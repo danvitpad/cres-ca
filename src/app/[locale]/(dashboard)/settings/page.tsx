@@ -43,6 +43,7 @@ import {
   SettingsBlock,
   SettingsField,
   SettingsSegmented,
+  SettingsSwitch,
   SettingsButton,
   settingsInputStyle,
 } from '@/components/settings/settings-block';
@@ -638,6 +639,7 @@ function InviteLinkTab({ master }: { master: NonNullable<ReturnType<typeof useMa
 function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; onSaved: () => void }) {
   const t = useTranslations('profile');
   const tc = useTranslations('common');
+  const { C } = usePageTheme();
   const [saving, setSaving] = useState(false);
 
   const policy = (master as unknown as Record<string, unknown>).cancellation_policy as { free_hours: number; partial_hours: number; partial_percent: number } | null;
@@ -651,8 +653,6 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   const [importantInfo, setImportantInfo] = useState(
     ((master as unknown as Record<string, unknown>).booking_important_info as string) ?? '',
   );
-
-  // public_language редактируется в табе «Редактировать профиль» — здесь его не трогаем.
 
   async function handleSave() {
     setSaving(true);
@@ -671,67 +671,54 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
     else { toast.success(t('profileSaved')); onSaved(); }
   }
 
+  const inputStyle = settingsInputStyle(C);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('policies')}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold">{t('cancellationPolicy')}</h4>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <Label>{t('freeCancelHours')}</Label>
-              <Input type="number" min={0} max={168} value={freeHours} onChange={(e) => setFreeHours(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label>{t('partialHours')}</Label>
-              <Input type="number" min={0} max={freeHours} value={partialHours} onChange={(e) => setPartialHours(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label>{t('partialPercent')}</Label>
-              <Input type="number" min={0} max={100} value={partialPercent} onChange={(e) => setPartialPercent(Number(e.target.value))} />
-            </div>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <SettingsBlock title={t('cancellationPolicy')} subtitle="Когда клиент может отменить визит без оплаты, частично, и сколько берёт штраф" C={C}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <SettingsField label={t('freeCancelHours')} hint="часов до визита" C={C}>
+            <input type="number" min={0} max={168} style={{ ...inputStyle, textAlign: 'center' }} value={freeHours} onChange={(e) => setFreeHours(Number(e.target.value))} />
+          </SettingsField>
+          <SettingsField label={t('partialHours')} hint="часов до визита" C={C}>
+            <input type="number" min={0} max={freeHours} style={{ ...inputStyle, textAlign: 'center' }} value={partialHours} onChange={(e) => setPartialHours(Number(e.target.value))} />
+          </SettingsField>
+          <SettingsField label={t('partialPercent')} hint="% от стоимости" C={C}>
+            <input type="number" min={0} max={100} style={{ ...inputStyle, textAlign: 'center' }} value={partialPercent} onChange={(e) => setPartialPercent(Number(e.target.value))} />
+          </SettingsField>
         </div>
+      </SettingsBlock>
 
-        {/* «Язык исходящих уведомлений» переехал в раздел «Редактировать профиль» —
-            он логически относится к мастеру, а не к политике отмены. */}
-
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold">{t('birthdaySettings')}</h4>
-          <div className="flex items-center gap-3">
-            <Switch checked={birthdayGreet} onCheckedChange={setBirthdayGreet} />
-            <Label>{t('autoGreet')}</Label>
-          </div>
-          {birthdayGreet && (
-            <div className="max-w-xs">
-              <Label>{t('birthdayDiscount')}</Label>
-              <Input type="number" min={0} max={50} value={birthdayDiscount} onChange={(e) => setBirthdayDiscount(Number(e.target.value))} />
-            </div>
-          )}
+      <SettingsBlock title={t('birthdaySettings')} subtitle="Автоматическое поздравление клиенту в день рождения" C={C}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <SettingsSwitch checked={birthdayGreet} onChange={setBirthdayGreet} C={C} />
+          <span style={{ fontSize: 14, color: C.text }}>{t('autoGreet')}</span>
         </div>
+        {birthdayGreet && (
+          <SettingsField label={t('birthdayDiscount')} hint="скидка на следующий визит, %" C={C}>
+            <input type="number" min={0} max={50} style={{ ...inputStyle, maxWidth: 200, textAlign: 'center' }} value={birthdayDiscount} onChange={(e) => setBirthdayDiscount(Number(e.target.value))} />
+          </SettingsField>
+        )}
+      </SettingsBlock>
 
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold">Важная информация для клиента</h4>
-          <p className="text-xs text-muted-foreground">
-            Показывается на странице подтверждения записи. Например: адрес, телефон, что взять с собой, условия оплаты.
-          </p>
-          <Textarea
-            value={importantInfo}
-            onChange={(e) => setImportantInfo(e.target.value)}
-            placeholder={'Виникло питання?\nТелефонуй: 0670113860\n\nАдрес: вул. Європейська 27/24, вхід з вулиці 1100-річчя.'}
-            rows={6}
-            maxLength={2000}
-          />
-          <p className="text-[11px] text-muted-foreground text-right">{importantInfo.length}/2000</p>
-        </div>
+      <SettingsBlock title="Важная информация для клиента" subtitle="Показывается на странице подтверждения записи: адрес, как добраться, что взять с собой" C={C}>
+        <textarea
+          style={{ ...inputStyle, resize: 'vertical', minHeight: 120 }}
+          value={importantInfo}
+          onChange={(e) => setImportantInfo(e.target.value)}
+          placeholder={'Виникло питання?\nТелефонуй: 0670113860\n\nАдрес: вул. Європейська 27/24, вхід з вулиці 1100-річчя.'}
+          rows={6}
+          maxLength={2000}
+        />
+        <div style={{ fontSize: 11, color: C.textTertiary, textAlign: 'right' }}>{importantInfo.length}/2000</div>
+      </SettingsBlock>
 
-        <Button onClick={handleSave} disabled={saving}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <SettingsButton onClick={handleSave} disabled={saving} C={C}>
           {saving ? tc('loading') : tc('save')}
-        </Button>
-      </CardContent>
-    </Card>
+        </SettingsButton>
+      </div>
+    </div>
   );
 }
 
