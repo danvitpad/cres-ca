@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
-import { Plus, MoreVertical, Search, SlidersHorizontal, ArrowUpDown, Briefcase, Sparkles } from 'lucide-react';
+import { Plus, MoreVertical, Search, Briefcase, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 

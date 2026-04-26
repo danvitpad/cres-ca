@@ -433,16 +433,16 @@ export default function InventoryPage({
                         {item.name}
                       </h3>
 
-                      <div className="mt-2 flex items-baseline gap-1.5">
+                      <div className="mt-2 flex items-baseline gap-2">
                         <span className={cn(
-                          'text-3xl font-bold tabular-nums leading-none',
+                          'text-4xl font-bold tabular-nums leading-none',
                           isLow ? 'text-amber-500' : 'text-foreground',
                         )}>
                           {item.quantity}
                         </span>
-                        <span className="text-base font-medium text-muted-foreground">{item.unit}</span>
+                        <span className="text-lg font-semibold text-muted-foreground">{item.unit}</span>
                         {item.cost_per_unit > 0 && (
-                          <span className="ml-auto text-sm font-semibold text-muted-foreground tabular-nums">
+                          <span className="ml-auto text-base font-bold text-foreground tabular-nums">
                             {item.cost_per_unit} ₴/{item.unit}
                           </span>
                         )}

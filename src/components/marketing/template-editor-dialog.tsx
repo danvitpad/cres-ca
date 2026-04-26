@@ -74,7 +74,7 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
   },
   cadence: {
     kind: 'cadence',
-    title: 'Smart rebooking',
+    title: 'Умное возвращение',
     description: 'Уходит клиенту, который перестал приходить по своей привычке',
     defaultSubject: '⏰ Пора записаться?',
     defaultContent: 'Обычно интервал между визитами ~{avg} дней.\nПрошло уже {days} — пора записаться?',
@@ -88,7 +88,7 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
   },
   win_back: {
     kind: 'win_back',
-    title: 'Win-back',
+    title: 'Возврат «спящих»',
     description: 'Уходит клиенту, который не был 60+ дней',
     defaultSubject: '💜 Давно не виделись',
     defaultContent: 'Давно не виделись 🙂\nЕсть свободные слоты на этой неделе — записаться можно прямо в боте.',
