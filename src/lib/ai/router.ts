@@ -11,14 +11,9 @@
 
 const GEMINI_KEY = () => (process.env.GOOGLE_AI_STUDIO_KEY || process.env.GEMINI_API_KEY || '').trim();
 const OPENROUTER_KEY = () => (process.env.OPENROUTER_API_KEY || '').trim();
-const ANTHROPIC_KEY = () => (process.env.ANTHROPIC_API_KEY || '').trim();
-/** AI_PRIMARY=claude → Claude становится primary, остальные fallback. По умолчанию Gemini primary. */
-const AI_PRIMARY = () => (process.env.AI_PRIMARY || 'gemini').trim().toLowerCase();
 
 const GOOGLE_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
-const ANTHROPIC_BASE = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_MODELS = ['claude-sonnet-4-5', 'claude-haiku-4-5'];
 
 // Voice audio → JSON intent (Gemini can eat audio directly)
 const VOICE_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
@@ -32,7 +27,7 @@ const TEXT_OPENROUTER_MODELS = [
 ];
 
 export interface AICallLog {
-  provider: 'gemini' | 'openrouter' | 'anthropic';
+  provider: 'gemini' | 'openrouter';
   model: string;
   attempt: number;
   ms: number;
@@ -173,99 +168,41 @@ export async function chatCompletion(params: {
 }): Promise<AICallResult> {
   const log: AICallLog[] = [];
 
-  // Build provider chain. Default order: Gemini → Anthropic → OpenRouter.
-  // env AI_PRIMARY=claude → Anthropic первым (если есть ключ).
-  const order = AI_PRIMARY() === 'claude' ? ['anthropic', 'gemini', 'openrouter'] : ['gemini', 'anthropic', 'openrouter'];
-
-  for (const provider of order) {
-    if (provider === 'gemini') {
-      for (let i = 0; i < TEXT_GEMINI_MODELS.length; i++) {
-        const model = TEXT_GEMINI_MODELS[i];
-        const t0 = Date.now();
-        try {
-          const text = await callGeminiText(model, params.systemPrompt, params.history, params.maxTokens);
-          if (text) {
-            log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-            return { data: text, model: `gemini/${model}`, log };
-          }
-          log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
-        } catch (e) {
-          log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
-        }
+  // Free-only chain: Gemini (primary) → OpenRouter free models (fallback).
+  // Никаких платных провайдеров — продукт остаётся zero-cost для пользователя.
+  for (let i = 0; i < TEXT_GEMINI_MODELS.length; i++) {
+    const model = TEXT_GEMINI_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callGeminiText(model, params.systemPrompt, params.history, params.maxTokens);
+      if (text) {
+        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `gemini/${model}`, log };
       }
-    }
-
-    if (provider === 'anthropic' && ANTHROPIC_KEY()) {
-      for (let i = 0; i < ANTHROPIC_MODELS.length; i++) {
-        const model = ANTHROPIC_MODELS[i];
-        const t0 = Date.now();
-        try {
-          const text = await callAnthropicText(model, params.systemPrompt, params.history, params.maxTokens);
-          if (text) {
-            log.push({ provider: 'anthropic', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-            return { data: text, model: `anthropic/${model}`, log };
-          }
-          log.push({ provider: 'anthropic', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
-        } catch (e) {
-          log.push({ provider: 'anthropic', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
-        }
-      }
-    }
-
-    if (provider === 'openrouter' && OPENROUTER_KEY()) {
-      for (let i = 0; i < TEXT_OPENROUTER_MODELS.length; i++) {
-        const model = TEXT_OPENROUTER_MODELS[i];
-        const t0 = Date.now();
-        try {
-          const text = await callOpenRouter(model, params.systemPrompt, params.history, params.maxTokens);
-          if (text) {
-            log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-            return { data: text, model: `openrouter/${model}`, log };
-          }
-          log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
-        } catch (e) {
-          log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
-        }
-      }
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
     }
   }
 
-  throw new AIUnavailableError('All providers failed', log);
-}
+  if (!OPENROUTER_KEY()) throw new AIUnavailableError('All Gemini failed', log);
 
-/** Anthropic Claude API call (Messages API). */
-async function callAnthropicText(
-  model: string,
-  systemPrompt: string,
-  history: ChatMessage[],
-  maxTokens?: number,
-): Promise<string> {
-  const key = ANTHROPIC_KEY();
-  if (!key) throw new Error('ANTHROPIC_API_KEY not set');
-  // Convert ChatMessage[] → Anthropic messages (drop 'system' role; system goes in top-level).
-  const messages = history
-    .filter((m) => m.role !== 'system')
-    .map((m) => ({ role: m.role, content: m.content }));
-  const res = await fetch(ANTHROPIC_BASE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      system: systemPrompt,
-      messages,
-      max_tokens: maxTokens ?? 600,
-    }),
-  });
-  if (!res.ok) {
-    const err = await res.text().catch(() => '');
-    throw new Error(`anthropic ${res.status}: ${err.slice(0, 200)}`);
+  for (let i = 0; i < TEXT_OPENROUTER_MODELS.length; i++) {
+    const model = TEXT_OPENROUTER_MODELS[i];
+    const t0 = Date.now();
+    try {
+      const text = await callOpenRouter(model, params.systemPrompt, params.history, params.maxTokens);
+      if (text) {
+        log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `openrouter/${model}`, log };
+      }
+      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+    } catch (e) {
+      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+    }
   }
-  const j = (await res.json()) as { content?: Array<{ type: string; text?: string }> };
-  return j.content?.find((c) => c.type === 'text')?.text ?? '';
+
+  throw new AIUnavailableError('All free providers failed', log);
 }
 
 /* ═══════════════ Internals ═══════════════ */
