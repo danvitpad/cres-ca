@@ -28,12 +28,59 @@ interface TemplateRow {
 const DEFAULT_OFFSETS = [1440, 120]; // 24h + 2h
 const WINDOW_MINUTES = 10;            // ±10 min tolerance
 
-const DEFAULT_24H_SUBJECT = '📅 Завтра у вас запись';
-const DEFAULT_24H_BODY = '{client_name}, завтра в {time} у вас {service_name}. Подтвердите приход: {confirm_url} — {master_name}';
-const DEFAULT_2H_SUBJECT = '⏰ Через 2 часа — {service_name}';
-const DEFAULT_2H_BODY = '{client_name}, через 2 часа в {time} — {service_name}. Не опаздывайте!';
-const DEFAULT_GENERIC_SUBJECT = '🔔 Напоминание о визите';
-const DEFAULT_GENERIC_BODY = '{client_name}, напоминаем: {service_name} {date} в {time}. {master_name}';
+/* Локализованные fallback-шаблоны напоминаний. Применяются когда мастер не задал
+   свой message_template — выбираются по masters.public_language. */
+
+type Lang = 'ru' | 'uk' | 'en';
+
+const FALLBACK_24H: Record<Lang, { subject: string; body: string }> = {
+  ru: {
+    subject: '📅 Завтра у вас запись',
+    body: '{client_name}, завтра в {time} у вас {service_name}. Подтвердите приход: {confirm_url} — {master_name}',
+  },
+  uk: {
+    subject: '📅 Завтра у вас запис',
+    body: '{client_name}, завтра о {time} у вас {service_name}. Підтвердіть прихід: {confirm_url} — {master_name}',
+  },
+  en: {
+    subject: '📅 Your appointment is tomorrow',
+    body: '{client_name}, tomorrow at {time} you have {service_name}. Confirm: {confirm_url} — {master_name}',
+  },
+};
+
+const FALLBACK_2H: Record<Lang, { subject: string; body: string }> = {
+  ru: {
+    subject: '⏰ Через 2 часа — {service_name}',
+    body: '{client_name}, через 2 часа в {time} — {service_name}. Не опаздывайте!',
+  },
+  uk: {
+    subject: '⏰ Через 2 години — {service_name}',
+    body: '{client_name}, через 2 години о {time} — {service_name}. Не запізнюйтесь!',
+  },
+  en: {
+    subject: '⏰ In 2 hours — {service_name}',
+    body: '{client_name}, in 2 hours at {time} — {service_name}. Please be on time!',
+  },
+};
+
+const FALLBACK_GENERIC: Record<Lang, { subject: string; body: string }> = {
+  ru: {
+    subject: '🔔 Напоминание о визите',
+    body: '{client_name}, напоминаем: {service_name} {date} в {time}. {master_name}',
+  },
+  uk: {
+    subject: '🔔 Нагадування про візит',
+    body: '{client_name}, нагадуємо: {service_name} {date} о {time}. {master_name}',
+  },
+  en: {
+    subject: '🔔 Appointment reminder',
+    body: '{client_name}, reminder: {service_name} on {date} at {time}. {master_name}',
+  },
+};
+
+function resolveLang(raw: unknown): Lang {
+  return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
 
 function formatOffset(min: number): string {
   if (min >= 1440) {
@@ -92,7 +139,7 @@ export async function GET(request: Request) {
     master_id: string;
     clients: { profile_id: string | null; full_name: string } | null;
     services: { name: string } | null;
-    masters: { profile_id: string | null; display_name: string | null } | null;
+    masters: { profile_id: string | null; display_name: string | null; public_language: string | null } | null;
   };
 
   const horizonEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -100,7 +147,7 @@ export async function GET(request: Request) {
     .from('appointments')
     .select(
       'id, starts_at, status, client_id, master_id, ' +
-      'clients(profile_id, full_name), services(name), masters(profile_id, display_name)',
+      'clients(profile_id, full_name), services(name), masters(profile_id, display_name, public_language)',
     )
     .in('status', ['booked', 'confirmed'])
     .gte('starts_at', now.toISOString())
@@ -255,23 +302,29 @@ export async function GET(request: Request) {
     // CLIENT REMINDERS — derived offsets (client prefs explicit OR master fallback)
     if (client?.profile_id) {
       const { offsets } = getClientOffsets(client.profile_id, apt.master_id);
+      // Локализация fallback'ов по publicLanguage мастера —
+      // мастер выбрал «uk» в settings → клиент получит укр-сообщение.
+      const lang = resolveLang(master?.public_language);
+      const fb24 = FALLBACK_24H[lang];
+      const fb2 = FALLBACK_2H[lang];
+      const fbGen = FALLBACK_GENERIC[lang];
       for (const off of offsets) {
         if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
         let title: string;
         let body: string;
         if (off === 1440) {
-          const tpl = getTemplate(apt.master_id, 'reminder_24h', DEFAULT_24H_SUBJECT, DEFAULT_24H_BODY);
+          const tpl = getTemplate(apt.master_id, 'reminder_24h', fb24.subject, fb24.body);
           const r = renderFullTemplate(tpl, ctx);
-          title = r.subject ?? DEFAULT_24H_SUBJECT;
+          title = r.subject ?? fb24.subject;
           body = r.body;
         } else if (off === 120) {
-          const tpl = getTemplate(apt.master_id, 'reminder_2h', DEFAULT_2H_SUBJECT, DEFAULT_2H_BODY);
+          const tpl = getTemplate(apt.master_id, 'reminder_2h', fb2.subject, fb2.body);
           const r = renderFullTemplate(tpl, ctx);
-          title = r.subject ?? DEFAULT_2H_SUBJECT;
+          title = r.subject ?? fb2.subject;
           body = r.body;
         } else {
-          title = `🔔 Напоминание за ${formatOffset(off)}`;
-          body = renderTemplate(DEFAULT_GENERIC_BODY, ctx).replace('Напоминаем:', `Напоминаем (за ${formatOffset(off)}):`);
+          title = fbGen.subject;
+          body = renderTemplate(fbGen.body, ctx);
         }
         if (await queueReminder(client.profile_id, apt.id, off, title, body)) created++;
       }

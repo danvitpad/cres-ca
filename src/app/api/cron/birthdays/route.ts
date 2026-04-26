@@ -51,6 +51,11 @@ export async function GET(request: Request) {
     return dob.getMonth() + 1 === month && dob.getDate() === day;
   });
 
+  // Локализованный «возраст» + строки — должны быть объявлены ДО первого использования
+  // (выше в сборе masters читаем public_language через resolveLang).
+  type Lang = 'ru' | 'uk' | 'en';
+  const resolveLang = (raw: unknown): Lang => (raw === 'uk' || raw === 'en' ? raw : 'ru');
+
   interface BirthdayCfg {
     enabled: boolean;
     send_tg_greeting: boolean;
@@ -64,20 +69,24 @@ export async function GET(request: Request) {
   const masterIds = [...new Set(clientHits.map((c) => c.master_id))];
   const masterMap = new Map<
     string,
-    { profile_id: string | null; cfg: BirthdayCfg | null; birthday_auto_greet: boolean | null }
+    { profile_id: string | null; cfg: BirthdayCfg | null; birthday_auto_greet: boolean | null; public_language: Lang }
   >();
   if (masterIds.length) {
     const { data: masters } = await supabase
       .from('masters')
-      .select('id, profile_id, birthday_auto_greet, birthday_settings')
+      .select('id, profile_id, birthday_auto_greet, birthday_settings, public_language')
       .in('id', masterIds);
     for (const m of masters ?? []) {
-      const r = m as unknown as { id: string; profile_id: string | null; birthday_auto_greet: boolean | null; birthday_settings: BirthdayCfg | null };
-      masterMap.set(r.id, { profile_id: r.profile_id, cfg: r.birthday_settings, birthday_auto_greet: r.birthday_auto_greet });
+      const r = m as unknown as { id: string; profile_id: string | null; birthday_auto_greet: boolean | null; birthday_settings: BirthdayCfg | null; public_language: string | null };
+      masterMap.set(r.id, {
+        profile_id: r.profile_id,
+        cfg: r.birthday_settings,
+        birthday_auto_greet: r.birthday_auto_greet,
+        public_language: resolveLang(r.public_language),
+      });
     }
   }
 
-  // Helper: «39 лет» / «41 год» / «42 года» по правилам русского склонения.
   const ruYears = (n: number) => {
     const mod10 = n % 10;
     const mod100 = n % 100;
@@ -85,26 +94,58 @@ export async function GET(request: Request) {
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} года`;
     return `${n} лет`;
   };
-  const RU_MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  const fmtBirthday = (dob: string) => {
+  const ukYears = (n: number) => {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return `${n} рік`;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return `${n} роки`;
+    return `${n} років`;
+  };
+  const enYears = (n: number) => `${n} ${n === 1 ? 'year' : 'years'}`;
+  const yearsBy: Record<Lang, (n: number) => string> = { ru: ruYears, uk: ukYears, en: enYears };
+  const MONTHS: Record<Lang, string[]> = {
+    ru: ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'],
+    uk: ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'],
+    en: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  };
+  const fmtBirthday = (dob: string, lang: Lang) => {
     const d = new Date(dob);
     const age = today.getFullYear() - d.getFullYear();
-    return { dateLabel: `${d.getDate()} ${RU_MONTHS[d.getMonth()]}`, ageLabel: ruYears(age) };
+    return { dateLabel: `${d.getDate()} ${MONTHS[lang][d.getMonth()]}`, ageLabel: yearsBy[lang](age) };
+  };
+
+  const MASTER_TITLE: Record<Lang, string> = {
+    ru: '🎂 День рождения сегодня',
+    uk: '🎂 День народження сьогодні',
+    en: '🎂 Birthday today',
+  };
+  const MASTER_BODY: Record<Lang, (date: string, name: string, age: string, marker: string) => string> = {
+    ru: (date, name, age, marker) => `Сегодня (${date}) у клиента ${name} день рождения — исполняется ${age}! ${marker}`,
+    uk: (date, name, age, marker) => `Сьогодні (${date}) у клієнта ${name} день народження — виповнюється ${age}! ${marker}`,
+    en: (date, name, age, marker) => `Today (${date}) is ${name}'s birthday — they turn ${age}! ${marker}`,
+  };
+  const ANNI_TITLE: Record<Lang, string> = { ru: '🎉 Годовщина!', uk: '🎉 Річниця!', en: '🎉 Anniversary!' };
+  const PARTNER_TITLE: Record<Lang, string> = { ru: '🎂 ДР партнёра', uk: '🎂 ДН партнера', en: '🎂 Partner birthday' };
+  const PARTNER_BODY: Record<Lang, (date: string, name: string, age: string, marker: string) => string> = {
+    ru: (date, name, age, marker) => `Сегодня (${date}) у партнёра ${name} день рождения — исполняется ${age}! ${marker}`,
+    uk: (date, name, age, marker) => `Сьогодні (${date}) у партнера ${name} день народження — виповнюється ${age}! ${marker}`,
+    en: (date, name, age, marker) => `Today (${date}) is partner ${name}'s birthday — they turn ${age}! ${marker}`,
   };
 
   for (const client of clientHits) {
     const master = masterMap.get(client.master_id);
     if (!master?.profile_id) continue;
+    const lang = master.public_language;
 
     // Always notify the master themselves — с конкретной датой и возрастом
     const masterMarker = `[bday:master:${client.id}:${dayKey}]`;
     if (!sentMarkers.has(masterMarker)) {
-      const { dateLabel, ageLabel } = fmtBirthday(client.date_of_birth!);
+      const { dateLabel, ageLabel } = fmtBirthday(client.date_of_birth!, lang);
       inserts.push({
         profile_id: master.profile_id,
         channel: 'telegram',
-        title: '🎂 День рождения сегодня',
-        body: `Сегодня (${dateLabel}) у клиента ${client.full_name} день рождения — исполняется ${ageLabel}! ${masterMarker}`,
+        title: MASTER_TITLE[lang],
+        body: MASTER_BODY[lang](dateLabel, client.full_name || 'Клиент', ageLabel, masterMarker),
         scheduled_for: new Date().toISOString(),
       });
     }
@@ -149,32 +190,40 @@ export async function GET(request: Request) {
     const extraMasterIds = [...new Set(anniHits.map((c) => c.master_id))];
     const { data: masters2 } = await supabase
       .from('masters')
-      .select('id, profile_id, birthday_auto_greet, birthday_settings')
+      .select('id, profile_id, birthday_auto_greet, birthday_settings, public_language')
       .in('id', extraMasterIds);
     for (const m of masters2 ?? []) {
       if (!masterMap.has(m.id)) {
-        const r = m as unknown as { id: string; profile_id: string | null; birthday_auto_greet: boolean | null; birthday_settings: BirthdayCfg | null };
+        const r = m as unknown as { id: string; profile_id: string | null; birthday_auto_greet: boolean | null; birthday_settings: BirthdayCfg | null; public_language: string | null };
         masterMap.set(r.id, {
           profile_id: r.profile_id,
           cfg: r.birthday_settings,
           birthday_auto_greet: r.birthday_auto_greet,
+          public_language: resolveLang(r.public_language),
         });
       }
     }
   }
 
+  const ANNI_BODY: Record<Lang, (name: string, years: string, marker: string) => string> = {
+    ru: (name, years, marker) => `${name}, уже ${years} вместе! Спасибо за доверие. ${marker}`,
+    uk: (name, years, marker) => `${name}, вже ${years} разом! Дякую за довіру. ${marker}`,
+    en: (name, years, marker) => `${name}, ${years} together already! Thank you for your trust. ${marker}`,
+  };
+
   for (const c of anniHits) {
     const master = masterMap.get(c.master_id);
     // Anniversaries fire only when birthday automation enabled
     if (!master?.cfg?.enabled || !master.cfg.send_tg_greeting || !c.profile_id) continue;
+    const lang = master.public_language;
     const years = today.getFullYear() - new Date(c.created_at!).getFullYear();
     const marker = `[bday:anni:${c.id}:${dayKey}]`;
     if (sentMarkers.has(marker)) continue;
     inserts.push({
       profile_id: c.profile_id,
       channel: 'telegram',
-      title: '🎉 Годовщина!',
-      body: `${c.full_name}, уже ${years} ${years === 1 ? 'год' : 'года'} вместе! Спасибо за доверие. ${marker}`,
+      title: ANNI_TITLE[lang],
+      body: ANNI_BODY[lang](c.full_name || 'Клиент', yearsBy[lang](years), marker),
       scheduled_for: new Date().toISOString(),
     });
   }
@@ -202,9 +251,11 @@ export async function GET(request: Request) {
     } | null;
   };
 
-  // Map: master_id -> profile_id, чтобы знать кому слать (используем уже собранный + добираем недостающих)
-  const masterOwnerProfileIds = new Map<string, string | null>();
-  for (const [mid, info] of masterMap.entries()) masterOwnerProfileIds.set(mid, info.profile_id);
+  // Map: master_id -> { profile_id, language }, чтобы знать кому слать и на каком языке
+  const masterOwnerInfo = new Map<string, { profile_id: string | null; lang: Lang }>();
+  for (const [mid, info] of masterMap.entries()) {
+    masterOwnerInfo.set(mid, { profile_id: info.profile_id, lang: info.public_language });
+  }
   const partnerHits: Array<{ ownerMasterId: string; partnerName: string; dob: string; partnerMasterId: string }> = [];
 
   for (const row of (partnerships ?? []) as unknown as PartnerRow[]) {
@@ -223,31 +274,34 @@ export async function GET(request: Request) {
     });
   }
 
-  // Дозабираем profile_id для мастеров-владельцев, которых ещё не было в map'е (только у клиентских попаданий)
+  // Дозабираем profile_id + public_language для мастеров-владельцев,
+  // которых ещё не было в map'е (только у клиентских попаданий).
   const missingOwnerIds = partnerHits
     .map((h) => h.ownerMasterId)
-    .filter((id) => !masterOwnerProfileIds.has(id));
+    .filter((id) => !masterOwnerInfo.has(id));
   if (missingOwnerIds.length) {
     const { data: extraOwners } = await supabase
       .from('masters')
-      .select('id, profile_id')
+      .select('id, profile_id, public_language')
       .in('id', missingOwnerIds);
     for (const m of extraOwners ?? []) {
-      masterOwnerProfileIds.set(m.id, (m as { profile_id: string | null }).profile_id);
+      const r = m as { id: string; profile_id: string | null; public_language: string | null };
+      masterOwnerInfo.set(r.id, { profile_id: r.profile_id, lang: resolveLang(r.public_language) });
     }
   }
 
   for (const hit of partnerHits) {
-    const ownerProfileId = masterOwnerProfileIds.get(hit.ownerMasterId);
-    if (!ownerProfileId) continue;
+    const owner = masterOwnerInfo.get(hit.ownerMasterId);
+    if (!owner?.profile_id) continue;
+    const lang = owner.lang;
     const marker = `[bday:partner:${hit.partnerMasterId}:${hit.ownerMasterId}:${dayKey}]`;
     if (sentMarkers.has(marker)) continue;
-    const { dateLabel, ageLabel } = fmtBirthday(hit.dob);
+    const { dateLabel, ageLabel } = fmtBirthday(hit.dob, lang);
     inserts.push({
-      profile_id: ownerProfileId,
+      profile_id: owner.profile_id,
       channel: 'telegram',
-      title: '🎂 ДР партнёра',
-      body: `Сегодня (${dateLabel}) у партнёра ${hit.partnerName} день рождения — исполняется ${ageLabel}! ${marker}`,
+      title: PARTNER_TITLE[lang],
+      body: PARTNER_BODY[lang](dateLabel, hit.partnerName, ageLabel, marker),
       scheduled_for: new Date().toISOString(),
     });
   }

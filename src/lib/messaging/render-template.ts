@@ -1,9 +1,11 @@
 /** --- YAML
  * name: renderTemplate
- * description: Простой рендер шаблонов сообщений — подставляет {переменные} из контекста. Используется cron-джобами для reminders/thanks/win_back. Поддерживает раздельные subject + body (gmail-style).
+ * description: Простой рендер шаблонов сообщений — подставляет {переменные} из контекста. Используется cron-джобами для reminders/thanks/win_back. Поддерживает раздельные subject + body (gmail-style) и локализованные fallback'и по publicLanguage мастера.
  * created: 2026-04-13
- * updated: 2026-04-25
+ * updated: 2026-04-26
  * --- */
+
+export type PublicLanguage = 'ru' | 'uk' | 'en';
 
 export type TemplateContext = Record<string, string | number | null | undefined>;
 
@@ -48,4 +50,26 @@ export function renderFullTemplate(
     subject: tpl.subject ? renderTemplate(tpl.subject, ctx) : null,
     body: renderTemplate(tpl.body, ctx),
   };
+}
+
+/** Локализованный fallback для cron'ов. Если мастер не задал свой шаблон —
+ *  cron берёт строку на его publicLanguage. UK/EN опциональны: если нет —
+ *  возвращаем RU как универсальный дефолт.
+ */
+export function pickLocalizedFallback(
+  lang: PublicLanguage | string | null | undefined,
+  fallbacks: Partial<Record<PublicLanguage, string>>,
+): string {
+  const safe: PublicLanguage = (lang === 'uk' || lang === 'en') ? lang : 'ru';
+  return fallbacks[safe] ?? fallbacks.ru ?? Object.values(fallbacks)[0] ?? '';
+}
+
+/** Same idea для full-template (subject + body) fallback. */
+export function pickLocalizedFullFallback(
+  lang: PublicLanguage | string | null | undefined,
+  fallbacks: Partial<Record<PublicLanguage, { subject?: string | null; body: string }>>,
+): { subject: string | null; body: string } {
+  const safe: PublicLanguage = (lang === 'uk' || lang === 'en') ? lang : 'ru';
+  const f = fallbacks[safe] ?? fallbacks.ru ?? Object.values(fallbacks)[0]!;
+  return { subject: f.subject ?? null, body: f.body };
 }
