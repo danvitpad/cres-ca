@@ -9,42 +9,46 @@
 
 import type { CSSProperties } from 'react';
 
-/** Базовая палитра. Тёмная тема — отдельный набор; в первой итерации — светлая. */
+/** Палитра — токены через CSS-переменные. Light/dark переключаются ОДНОВРЕМЕННО
+ *  для всех Mini App ролей (клиент / мастер / админ салона) через `data-theme=dark`
+ *  на корневом контейнере (см. ThemeBoundary в miniapp/theme.tsx). Категории остаются
+ *  hardcoded — их акценты в обеих темах одинаковы, потому что они UI-«тэги», а не
+ *  цвета фона. */
 export const T = {
   // Surfaces
-  bg: '#ffffff',
-  bgSubtle: '#f5f6f8',
-  surface: '#ffffff',
-  surfaceElevated: '#fafafa',
-  border: '#e5e7ea',
-  borderSubtle: '#eef0f2',
+  bg: 'var(--m-bg)',
+  bgSubtle: 'var(--m-bg-subtle)',
+  surface: 'var(--m-surface)',
+  surfaceElevated: 'var(--m-surface-elevated)',
+  border: 'var(--m-border)',
+  borderSubtle: 'var(--m-border-subtle)',
 
   // Text
-  text: '#0a0a0c',
-  textSecondary: '#4b5260',
-  textTertiary: '#8a91a0',
-  textDisabled: '#bdc2cc',
+  text: 'var(--m-text)',
+  textSecondary: 'var(--m-text-secondary)',
+  textTertiary: 'var(--m-text-tertiary)',
+  textDisabled: 'var(--m-text-disabled)',
 
   // Accent (Fresha purple-ish)
-  accent: '#6c5ce7',
-  accentHover: '#5847d4',
-  accentSoft: '#efedfd',
-  accentText: '#ffffff',
+  accent: 'var(--m-accent)',
+  accentHover: 'var(--m-accent-hover)',
+  accentSoft: 'var(--m-accent-soft)',
+  accentText: 'var(--m-accent-text)',
 
-  // Hero gradient (purple → pink)
+  // Hero gradient (purple → pink) — фиксированные цвета, фоны hero одинаковые в обеих темах
   gradientFrom: '#6c5ce7',
   gradientVia: '#8b6cf2',
   gradientTo: '#e879f9',
 
   // Status
-  success: '#10b981',
-  successSoft: '#dcfce7',
-  warning: '#f59e0b',
-  warningSoft: '#fef3c7',
-  danger: '#ef4444',
-  dangerSoft: '#fee2e2',
+  success: 'var(--m-success)',
+  successSoft: 'var(--m-success-soft)',
+  warning: 'var(--m-warning)',
+  warningSoft: 'var(--m-warning-soft)',
+  danger: 'var(--m-danger)',
+  dangerSoft: 'var(--m-danger-soft)',
 
-  // Category accents (для tile-cards на home)
+  // Category accents — hardcoded (одинаковые в обеих темах)
   categoryYellow: '#f4b740',
   categoryBlue: '#3b82f6',
   categoryPink: '#ec4899',

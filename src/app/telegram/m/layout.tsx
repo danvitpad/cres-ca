@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
+import { MiniAppThemeProvider } from '@/components/miniapp/theme';
 import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
@@ -108,7 +109,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
 
   if (checking) {
     return (
-      <div
+      <MiniAppThemeProvider
         style={{
           ...FONT_BASE,
           minHeight: '100dvh',
@@ -120,7 +121,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         }}
       >
         <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
-      </div>
+      </MiniAppThemeProvider>
     );
   }
 
@@ -144,7 +145,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
 
   return (
     <TelegramProvider>
-      <div
+      <MiniAppThemeProvider
         style={{
           ...FONT_BASE,
           minHeight: '100dvh',
@@ -169,7 +170,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         )}
         {/* Notification badge — render absolutely positioned over the nav bar */}
         {!isFullscreen && unreadCount > 0 && <NotificationBadge count={unreadCount} />}
-      </div>
+      </MiniAppThemeProvider>
     </TelegramProvider>
   );
 }

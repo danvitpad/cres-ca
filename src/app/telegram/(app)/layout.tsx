@@ -14,6 +14,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Home, Search, CalendarDays, User } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
+import { MiniAppThemeProvider } from '@/components/miniapp/theme';
 import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -40,7 +41,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
 
   return (
     <TelegramProvider>
-      <div
+      <MiniAppThemeProvider
         style={{
           ...FONT_BASE,
           minHeight: '100dvh',
@@ -59,7 +60,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
           {children}
         </main>
         <MiniAppBottomNav tabs={tabs} hidden={isFullscreen} />
-      </div>
+      </MiniAppThemeProvider>
     </TelegramProvider>
   );
 }

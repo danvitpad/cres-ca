@@ -224,6 +224,55 @@
   --shadow-overlay: 0 8px 30px rgba(0,0,0,0.5);
 }
 
+/* Mini App tokens — единая палитра для client/master/team Mini App. Light по
+   умолчанию, dark подключается через [data-theme="dark"] на корневом контейнере
+   (см. components/miniapp/theme.tsx). T.* объекты в design.ts читают эти
+   переменные, поэтому все 42+ страницы Mini App переключаются автоматически. */
+[data-theme] {
+  --m-bg: #ffffff;
+  --m-bg-subtle: #f5f6f8;
+  --m-surface: #ffffff;
+  --m-surface-elevated: #fafafa;
+  --m-border: #e5e7ea;
+  --m-border-subtle: #eef0f2;
+  --m-text: #0a0a0c;
+  --m-text-secondary: #4b5260;
+  --m-text-tertiary: #8a91a0;
+  --m-text-disabled: #bdc2cc;
+  --m-accent: #6c5ce7;
+  --m-accent-hover: #5847d4;
+  --m-accent-soft: #efedfd;
+  --m-accent-text: #ffffff;
+  --m-success: #10b981;
+  --m-success-soft: #dcfce7;
+  --m-warning: #f59e0b;
+  --m-warning-soft: #fef3c7;
+  --m-danger: #ef4444;
+  --m-danger-soft: #fee2e2;
+}
+[data-theme="dark"] {
+  --m-bg: #0d0e10;
+  --m-bg-subtle: #131418;
+  --m-surface: #16181c;
+  --m-surface-elevated: #1c1f24;
+  --m-border: #2a2d34;
+  --m-border-subtle: #1f2228;
+  --m-text: #f3f4f6;
+  --m-text-secondary: #c1c5cd;
+  --m-text-tertiary: #828791;
+  --m-text-disabled: #4b5260;
+  --m-accent: #8b7cf6;
+  --m-accent-hover: #a18ef9;
+  --m-accent-soft: rgba(139, 124, 246, 0.18);
+  --m-accent-text: #ffffff;
+  --m-success: #34d399;
+  --m-success-soft: rgba(52, 211, 153, 0.16);
+  --m-warning: #fbbf24;
+  --m-warning-soft: rgba(251, 191, 36, 0.16);
+  --m-danger: #f87171;
+  --m-danger-soft: rgba(248, 113, 113, 0.16);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
