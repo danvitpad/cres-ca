@@ -13,6 +13,7 @@ import { TrendingUp, Calendar, Target, Loader2, Award, XCircle, Plus, Minus } fr
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -526,6 +527,8 @@ function Autocomplete({
     document.addEventListener('mousedown', onPointer);
     return () => document.removeEventListener('mousedown', onPointer);
   }, [focused]);
+
+  useEscapeKey(focused, () => setFocused(false));
 
   const filtered = useMemo(() => {
     const q = value.trim().toLowerCase();

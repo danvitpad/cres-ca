@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Globe, Copy, ExternalLink, Check, ChevronDown, AlertTriangle, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 
 interface State {
   kind: 'not_master' | 'master';
@@ -41,6 +42,8 @@ export function PublicPageDropdown() {
     document.addEventListener('mousedown', onDoc);
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
+
+  useEscapeKey(open, () => setOpen(false));
 
   if (!state || state.kind !== 'master') return null;
 

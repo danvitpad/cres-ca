@@ -9,6 +9,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Download, FileText, FileSpreadsheet, FileDown } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 
 interface Props {
   from: string;
@@ -27,6 +28,8 @@ export function ExportMenu({ from, to, C }: Props) {
     if (open) document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
+
+  useEscapeKey(open, () => setOpen(false));
 
   function go(format: 'pdf' | 'excel' | 'csv') {
     window.open(`/api/reports/export?format=${format}&from=${from}&to=${to}`, '_blank');

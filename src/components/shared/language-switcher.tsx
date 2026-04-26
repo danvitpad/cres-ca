@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 
 const LOCALES = [
   { code: 'uk', label: 'Українська' },
@@ -33,6 +34,8 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEscapeKey(open, () => setOpen(false));
 
   function switchLocale(newLocale: string) {
     const newSegments = [...segments];

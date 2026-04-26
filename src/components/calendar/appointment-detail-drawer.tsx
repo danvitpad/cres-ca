@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
 import type { AppointmentStatus } from '@/types';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 
 type AppointmentDetailDrawerProps = {
   appointment: AppointmentData | null;
@@ -141,6 +142,13 @@ export function AppointmentDetailDrawer({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  // Close dropdowns on Escape (the parent drawer handles its own close)
+  useEscapeKey(statusOpen || actionsOpen || optionsOpen, () => {
+    setStatusOpen(false);
+    setActionsOpen(false);
+    setOptionsOpen(false);
+  });
 
   // Reset dropdowns when appointment changes
   useEffect(() => {

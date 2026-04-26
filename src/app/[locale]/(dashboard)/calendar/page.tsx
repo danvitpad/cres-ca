@@ -48,6 +48,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { FONT } from '@/lib/dashboard-theme';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import type { AppointmentData } from '@/hooks/use-appointments';
 
 type ViewMode = 'day' | '3day' | 'week' | 'month' | 'list';
@@ -251,6 +252,13 @@ export default function CalendarPage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
+  /* Close dropdowns on Escape */
+  useEscapeKey(viewDropdownOpen || teamDropdownOpen || addDropdownOpen, () => {
+    setViewDropdownOpen(false);
+    setTeamDropdownOpen(false);
+    setAddDropdownOpen(false);
+  });
 
   /* Repeat-booking deep link from client card: /calendar?repeat=<apptId>&client=<id>&service=<id> */
   const searchParams = useSearchParams();

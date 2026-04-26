@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, User, Scissors, Building2, UserPlus, UserCheck, Loader2 } from 'lucide-react';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 
 type EntityType = 'client' | 'master' | 'salon';
 type FilterType = 'all' | 'client' | 'master' | 'salon';
@@ -86,6 +87,8 @@ export function GlobalSearchBar() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  useEscapeKey(open, () => setOpen(false));
 
   const toggleFollow = async (profileId: string) => {
     await fetch('/api/follow', {

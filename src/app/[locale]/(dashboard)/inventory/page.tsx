@@ -25,6 +25,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { useSubscription } from '@/hooks/use-subscription';
+import { useEnterSubmit } from '@/hooks/use-keyboard-shortcuts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -263,6 +264,10 @@ export default function InventoryPage({
     setSupplierDialogOpen(false);
     loadSuppliers();
   }
+
+  // Enter (без модификатора) submits активный диалог
+  useEnterSubmit(dialogOpen, saveItem, { withModifier: false });
+  useEnterSubmit(supplierDialogOpen, saveSupplier, { withModifier: false });
 
   async function deleteSupplier(id: string) {
     const supabase = createClient();
