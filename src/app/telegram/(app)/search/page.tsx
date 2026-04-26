@@ -34,6 +34,17 @@ import {
   type MasterRef,
   type SalonRef,
 } from '@/lib/client/display-mode';
+import { Sparkles, ArrowDown } from 'lucide-react';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
+import { AvatarCircle } from '@/components/miniapp/shells';
+import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
+
+const AI_PROMPTS = [
+  'Запиши на маникюр на завтра',
+  'Найди мастера в Печерском',
+  'Напомни о коррекции бровей',
+  'Что взять с собой?',
+] as const;
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
@@ -169,6 +180,10 @@ export default function MiniAppSearchPage() {
   const [salons, setSalons] = useState<ApiSalonRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<NormMaster | null>(null);
+
+  // AI consierge state
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
   const centerRef = useRef(center);
   centerRef.current = center;
@@ -322,89 +337,259 @@ export default function MiniAppSearchPage() {
   const total = filteredMasters.length + filteredSalons.length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Top controls */}
-      <div className="flex flex-col gap-2 px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2">
-          <div className="flex flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5">
-            <Search className="size-4 shrink-0 text-white/50" />
+    <div
+      style={{
+        ...FONT_BASE,
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100dvh',
+        background: T.bg,
+        color: T.text,
+      }}
+    >
+      {/* Top controls — Fresha pill + AI prompts row */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: `20px ${PAGE_PADDING_X}px 8px` }}>
+        {/* Search pill — premium Fresha-style */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              background: T.surface,
+              borderRadius: R.pill,
+              boxShadow: SHADOW.pill,
+              border: `1px solid ${T.borderSubtle}`,
+            }}
+          >
+            <Search size={20} color={T.textSecondary} strokeWidth={2.2} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Мастер, услуга, салон…"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-white/35"
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                ...TYPE.body,
+                color: T.text,
+                fontFamily: 'inherit',
+                minWidth: 0,
+              }}
             />
-            {query && (
-              <button onClick={() => setQuery('')} className="text-white/50">
-                <X className="size-4" />
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                style={{ background: 'transparent', border: 'none', color: T.textTertiary, cursor: 'pointer', padding: 0 }}
+              >
+                <X size={18} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light');
+                  setAiPrompt(null);
+                  setAiOpen(true);
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: T.accentSoft,
+                  color: T.accent,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+                aria-label="AI-консьерж"
+              >
+                <Sparkles size={16} strokeWidth={2.4} />
               </button>
             )}
           </div>
           <button
-            onClick={() => { haptic('light'); setFiltersOpen(true); }}
-            className="relative flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+            type="button"
+            onClick={() => {
+              haptic('light');
+              setFiltersOpen(true);
+            }}
+            style={{
+              position: 'relative',
+              width: 48,
+              height: 48,
+              borderRadius: '50%',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+            aria-label="Фильтры"
           >
-            <SlidersHorizontal className="size-4" />
+            <SlidersHorizontal size={20} color={T.text} strokeWidth={2} />
             {activeFilters > 0 && (
-              <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-violet-500 text-[9px] font-bold">
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  width: 18,
+                  height: 18,
+                  borderRadius: '50%',
+                  background: T.accent,
+                  color: '#fff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
                 {activeFilters}
               </span>
             )}
           </button>
+        </div>
+
+        {/* AI prompt chips — нативное общение с консьержем */}
+        {!query && (
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', margin: `0 -${PAGE_PADDING_X}px`, padding: `0 ${PAGE_PADDING_X}px` }}>
+            <style>{`.ai-prompts::-webkit-scrollbar { display: none; }`}</style>
+            <div className="ai-prompts" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              {AI_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => {
+                    haptic('light');
+                    setAiPrompt(prompt);
+                    setAiOpen(true);
+                  }}
+                  style={{
+                    flexShrink: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    borderRadius: R.pill,
+                    background: T.accentSoft,
+                    border: 'none',
+                    color: T.accent,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <Sparkles size={13} />
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* List/Map switcher — текстовый pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              padding: 3,
+              borderRadius: R.pill,
+              background: T.bgSubtle,
+              border: `1px solid ${T.borderSubtle}`,
+            }}
+          >
+            {(['list', 'map'] as const).map((mode) => {
+              const Icon = mode === 'list' ? List : MapIcon;
+              const active = view === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    haptic('selection');
+                    setView(mode);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '6px 14px',
+                    borderRadius: R.pill,
+                    border: 'none',
+                    background: active ? T.text : 'transparent',
+                    color: active ? T.bg : T.textSecondary,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <Icon size={13} />
+                  {mode === 'list' ? 'Список' : 'Карта'}
+                </button>
+              );
+            })}
+          </div>
+          {!loading && (
+            <span style={{ ...TYPE.caption, fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+          )}
+          <div style={{ flex: 1 }} />
           <button
+            type="button"
             onClick={() => locate(true)}
             disabled={geoBusy}
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] active:bg-white/[0.06] transition-colors disabled:opacity-60"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: geoBusy ? 'wait' : 'pointer',
+              opacity: geoBusy ? 0.6 : 1,
+            }}
+            aria-label="Моя геолокация"
           >
-            {geoBusy ? <Loader2 className="size-4 animate-spin" /> : <Navigation className="size-4" />}
+            {geoBusy ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} color={T.text} />}
           </button>
         </div>
 
-        <div className="inline-flex self-start rounded-full border border-white/10 bg-white/[0.03] p-0.5">
-          {(['list', 'map'] as const).map((mode) => {
-            const Icon = mode === 'list' ? List : MapIcon;
-            return (
-              <button
-                key={mode}
-                onClick={() => { haptic('selection'); setView(mode); }}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
-                  view === mode ? 'bg-white text-[#0b0d17]' : 'text-white/60'
-                }`}
-              >
-                <Icon className="size-3" />
-                {mode === 'list' ? 'Список' : 'Карта'}
-              </button>
-            );
-          })}
-          {!loading && (
-            <span className="ml-2 flex items-center pr-3 text-[10px] text-white/40 tabular-nums">
-              {total}
-            </span>
-          )}
-        </div>
-
         {geoDenied && !geoBusy && (
-          <p className="flex items-center gap-1 text-[10px] text-white/50">
-            <Navigation className="size-3" /> Включите геолокацию, чтобы видеть мастеров рядом
+          <p style={{ ...TYPE.micro, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <ArrowDown size={11} /> Включите геолокацию, чтобы видеть мастеров рядом
           </p>
         )}
       </div>
 
       {/* Results body */}
       {view === 'list' ? (
-        <div className="flex-1 overflow-y-auto px-4 pt-2 pb-6">
+        <div style={{ flex: 1, overflowY: 'auto', padding: `8px ${PAGE_PADDING_X}px 24px` }}>
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="size-6 animate-spin text-white/50" />
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+              <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
             </div>
           ) : total === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-white/50">
-              <Search className="size-9 mb-2 opacity-40" />
-              <p className="text-sm font-medium text-white/70">Ничего не найдено</p>
-              <p className="mt-1 text-[11px]">Попробуйте изменить запрос или фильтры</p>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '64px 0' }}>
+              <Search size={36} color={T.textTertiary} style={{ opacity: 0.4 }} />
+              <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 12 }}>Ничего не найдено</p>
+              <p style={{ ...TYPE.caption, marginTop: 4 }}>Попробуйте изменить запрос или фильтры</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <AnimatePresence mode="popLayout">
                 {filteredMasters.map((m, i) => (
                   <motion.div
@@ -447,10 +632,25 @@ export default function MiniAppSearchPage() {
           )}
         </div>
       ) : (
-        <div className="relative mx-4 mb-4 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10">
+        <div
+          style={{
+            position: 'relative',
+            margin: `0 ${PAGE_PADDING_X}px 16px`,
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            borderRadius: R.lg,
+            border: `1px solid ${T.borderSubtle}`,
+            boxShadow: SHADOW.card,
+          }}
+        >
           {loading && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
-              <Loader2 className="size-7 animate-spin text-white/80" />
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(2px)',
+            }}>
+              <Loader2 size={28} className="animate-spin" color={T.accent} />
             </div>
           )}
           <MapView
@@ -468,7 +668,23 @@ export default function MiniAppSearchPage() {
           />
 
           {!loading && (
-            <div className="absolute left-3 top-3 z-[500] rounded-full border border-white/10 bg-[#0b0d17]/90 px-3 py-1.5 text-[11px] font-semibold tabular-nums">
+            <div
+              style={{
+                position: 'absolute',
+                left: 12,
+                top: 12,
+                zIndex: 500,
+                padding: '6px 12px',
+                borderRadius: R.pill,
+                background: 'rgba(255,255,255,0.95)',
+                backdropFilter: 'blur(8px)',
+                border: `1px solid ${T.borderSubtle}`,
+                fontSize: 12,
+                fontWeight: 700,
+                color: T.text,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
               {markers.length} · {salonMarkers.length}
             </div>
           )}
@@ -476,41 +692,57 @@ export default function MiniAppSearchPage() {
           <AnimatePresence>
             {selected && (
               <motion.button
+                type="button"
                 initial={{ y: 80, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 80, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 onClick={() => router.push(`/telegram/search/${selected.id}`)}
-                className="absolute bottom-3 left-3 right-3 z-[600] flex items-center gap-3 rounded-2xl border border-white/10 bg-[#26272b]/95 backdrop-blur-xl p-3 text-left active:bg-white/[0.06] transition-colors"
+                style={{
+                  position: 'absolute',
+                  bottom: 12,
+                  left: 12,
+                  right: 12,
+                  zIndex: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: 12,
+                  background: T.surface,
+                  border: `1px solid ${T.borderSubtle}`,
+                  borderRadius: R.md,
+                  boxShadow: SHADOW.elevated,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                }}
               >
                 {(() => {
                   const d = resolveCardDisplay(toMasterRef(selected), toSalonRef(selected.salon), MINIAPP_CARD_LABELS);
                   const Icon = d.mode === 'solo' ? UserIcon : Building2;
                   return (
                     <>
-                      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-base font-bold text-white/90">
-                        {d.avatarSrc ? (
-                          <Image src={d.avatarSrc} alt="" width={48} height={48} className="size-full object-cover" />
-                        ) : (
-                          d.avatarName[0]?.toUpperCase() ?? 'M'
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <Icon className="size-3 shrink-0 text-white/50" />
-                          <p className="truncate text-sm font-semibold">{d.primary}</p>
+                      <AvatarCircle url={d.avatarSrc} name={d.avatarName} size={56} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Icon size={13} color={T.textTertiary} />
+                          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {d.primary}
+                          </p>
                         </div>
                         {d.secondary && (
-                          <p className="truncate text-[11px] text-white/60">{d.secondary}</p>
+                          <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {d.secondary}
+                          </p>
                         )}
                         {d.rating != null && (
-                          <div className="mt-0.5 flex items-center gap-0.5 text-[10px] text-amber-300">
-                            <Star className="size-2.5 fill-amber-400" />
-                            {d.rating.toFixed(1)}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 4, fontSize: 12, fontWeight: 600 }}>
+                            <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                            <span style={{ color: T.text }}>{d.rating.toFixed(1)}</span>
                           </div>
                         )}
                       </div>
-                      <ChevronRight className="size-5 text-white/50" />
+                      <ChevronRight size={20} color={T.textTertiary} />
                     </>
                   );
                 })()}
@@ -520,68 +752,124 @@ export default function MiniAppSearchPage() {
         </div>
       )}
 
-      <BottomSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        className="!bg-[#26272b] text-white"
-      >
-        <div className="space-y-5 pb-6 pt-1 text-white">
-          <h3 className="text-base font-semibold">Фильтры</h3>
+      <BottomSheet open={filtersOpen} onClose={() => setFiltersOpen(false)}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '4px 0 24px', color: T.text }}>
+          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Фильтры</h3>
+
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/50">Категория</p>
-            <div className="flex flex-wrap gap-1.5">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={() => setCategory(c.key)}
-                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                    category === c.key
-                      ? 'border-white bg-white text-[#0b0d17]'
-                      : 'border-white/15 text-white/70 active:bg-white/[0.06]'
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
+            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>Категория</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {CATEGORIES.map((c) => {
+                const active = category === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setCategory(c.key)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: R.pill,
+                      border: `1px solid ${active ? T.text : T.border}`,
+                      background: active ? T.text : 'transparent',
+                      color: active ? T.bg : T.textSecondary,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/50">Рейтинг</p>
-            <div className="flex gap-2">
-              {RATING_OPTS.map((opt) => (
-                <button
-                  key={opt.v}
-                  onClick={() => setMinRating(opt.v)}
-                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors ${
-                    minRating === opt.v
-                      ? 'border-amber-400 bg-amber-400/15 text-amber-300'
-                      : 'border-white/15 text-white/70 active:bg-white/[0.06]'
-                  }`}
-                >
-                  {opt.v > 0 && <Star className="size-3 fill-amber-400 text-amber-400" />}
-                  {opt.label}
-                </button>
-              ))}
+            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>Рейтинг</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {RATING_OPTS.map((opt) => {
+                const active = minRating === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setMinRating(opt.v)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '8px 14px',
+                      borderRadius: R.pill,
+                      border: `1px solid ${active ? '#f59e0b' : T.border}`,
+                      background: active ? '#fef3c7' : 'transparent',
+                      color: active ? '#b45309' : T.textSecondary,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {opt.v > 0 && <Star size={12} fill="#f59e0b" color="#f59e0b" />}
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
             <button
-              onClick={() => { setCategory('all'); setMinRating(0); }}
-              className="flex-1 rounded-xl border border-white/15 bg-transparent py-3 text-sm font-medium text-white/70 active:bg-white/[0.06]"
+              type="button"
+              onClick={() => {
+                setCategory('all');
+                setMinRating(0);
+              }}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: R.md,
+                border: `1px solid ${T.border}`,
+                background: 'transparent',
+                color: T.textSecondary,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
             >
               Сбросить
             </button>
             <button
-              onClick={() => { haptic('light'); setFiltersOpen(false); }}
-              className="flex-1 rounded-xl bg-white py-3 text-sm font-semibold text-[#0b0d17] active:opacity-90"
+              type="button"
+              onClick={() => {
+                haptic('light');
+                setFiltersOpen(false);
+              }}
+              style={{
+                flex: 1,
+                padding: '14px',
+                borderRadius: R.md,
+                border: 'none',
+                background: T.text,
+                color: T.bg,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
             >
               Показать ({total})
             </button>
           </div>
         </div>
       </BottomSheet>
+
+      <AIChatSheet
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt={aiPrompt}
+      />
     </div>
   );
 }
@@ -597,30 +885,44 @@ function MiniResultCard({ master, salon, onClick }: MiniResultCardProps) {
   const Icon = d.mode === 'solo' ? UserIcon : Building2;
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-left active:bg-white/[0.06] transition-colors"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        background: T.surface,
+        border: `1px solid ${T.borderSubtle}`,
+        borderRadius: R.md,
+        textAlign: 'left',
+        width: '100%',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        boxShadow: SHADOW.card,
+      }}
     >
-      <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] text-base font-bold text-white/90">
-        {d.avatarSrc ? (
-          <Image src={d.avatarSrc} alt="" width={48} height={48} className="size-full object-cover" />
-        ) : (
-          d.avatarName[0]?.toUpperCase() ?? '?'
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          <Icon className="size-3 shrink-0 text-white/50" />
-          <p className="truncate text-sm font-semibold">{d.primary}</p>
+      <AvatarCircle url={d.avatarSrc} name={d.avatarName} size={56} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Icon size={13} color={T.textTertiary} />
+          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {d.primary}
+          </p>
         </div>
-        {d.secondary && <p className="truncate text-[11px] text-white/60">{d.secondary}</p>}
+        {d.secondary && (
+          <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {d.secondary}
+          </p>
+        )}
         {d.rating != null && (
-          <div className="mt-0.5 flex items-center gap-0.5 text-[10px] text-amber-300">
-            <Star className="size-2.5 fill-amber-400" />
-            {d.rating.toFixed(1)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 4, fontSize: 12, fontWeight: 600 }}>
+            <Star size={12} fill="#f59e0b" color="#f59e0b" />
+            <span style={{ color: T.text }}>{d.rating.toFixed(1)}</span>
           </div>
         )}
       </div>
-      <ChevronRight className="size-4 shrink-0 text-white/40" />
+      <ChevronRight size={18} color={T.textTertiary} />
     </button>
   );
 }

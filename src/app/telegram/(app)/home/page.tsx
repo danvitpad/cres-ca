@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, Search, Clock, Star, ChevronRight } from 'lucide-react';
+import { Calendar, Sparkles, Clock, Star, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
@@ -24,6 +24,7 @@ import {
   AvatarCircle,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
+import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
 
 interface SalonRef {
   id: string;
@@ -89,6 +90,7 @@ export default function MiniAppHomePage() {
   const [slots, setSlots] = useState<SlotItem[]>([]);
   const [featured, setFeatured] = useState<FeaturedMaster[]>([]);
   const [, setLoading] = useState(true);
+  const [aiOpen, setAiOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -207,21 +209,25 @@ export default function MiniAppHomePage() {
           right={
             <button
               type="button"
-              onClick={() => router.push('/telegram/search')}
+              onClick={() => {
+                haptic('light');
+                setAiOpen(true);
+              }}
               style={{
                 width: 44,
                 height: 44,
                 borderRadius: '50%',
-                border: `1px solid ${T.border}`,
-                background: T.surface,
+                border: 'none',
+                background: T.accentSoft,
+                color: T.accent,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
               }}
-              aria-label="Поиск"
+              aria-label="AI-консьерж"
             >
-              <Search size={20} color={T.text} strokeWidth={2.2} />
+              <Sparkles size={20} strokeWidth={2.2} />
             </button>
           }
         />
@@ -557,6 +563,8 @@ export default function MiniAppHomePage() {
 
         <div style={{ height: 8 }} />
       </motion.div>
+
+      <AIChatSheet open={aiOpen} onClose={() => setAiOpen(false)} />
     </MobilePage>
   );
 }
