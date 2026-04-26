@@ -335,9 +335,8 @@ export default function MasterMiniAppProfile() {
           </button>
           {master.invite_code ? (
             <Link
-              href={`/m/${master.invite_code}#portfolio`}
+              href={`/m/${master.invite_code}?owner=1#portfolio`}
               onClick={() => haptic('light')}
-              target="_blank"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -386,7 +385,7 @@ export default function MasterMiniAppProfile() {
 
         {master.invite_code && (
           <Link
-            href={`/m/${master.invite_code}`}
+            href={`/m/${master.invite_code}?owner=1`}
             onClick={() => haptic('light')}
             style={{
               margin: `0 ${PAGE_PADDING_X}px`,

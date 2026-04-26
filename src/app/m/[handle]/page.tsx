@@ -16,10 +16,12 @@ import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
-import { OwnerEditButton } from '@/components/master/owner-edit-button';
+import { OwnerToolbar } from '@/components/master/owner-toolbar';
+import { OwnerCompletenessPrompt } from '@/components/master/owner-completeness-prompt';
 import { FollowMasterButton } from '@/components/master/follow-master-button';
 import { MasterPageSectionTabs } from '@/components/master/section-tabs';
 import { ServicesByCategory } from '@/components/master/services-by-category';
+import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
 
@@ -380,7 +382,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         ['--page-accent' as string]: accent,
       }}
     >
-      <OwnerEditButton masterProfileId={master.profile_id} />
+      <OwnerToolbar masterProfileId={master.profile_id} />
       <RefCapture />
       <script
         type="application/ld+json"
@@ -497,6 +499,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {master.bio}
           </p>
         )}
+
+        {/* Owner-only completeness checklist — shows what's missing on the page,
+            with deep-links to fill each gap. Hides automatically when 100% complete. */}
+        <OwnerCompletenessPrompt masterProfileId={master.profile_id} />
 
         {/* Mobile-only CTA right under hero. Desktop has its own sticky CTA in the right column. */}
         <div className="mt-6 flex flex-wrap justify-center gap-3 sm:justify-start lg:hidden">
@@ -762,17 +768,13 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   {(() => {
                     const cleanedStreet = cleanAddress(salon?.address ?? master.address);
                     const fullDisplay = composeAddress(null, salon?.address ?? master.address, master.city);
-                    const q = encodeURIComponent([cleanedStreet, master.city].filter(Boolean).join(', ') || master.city || '');
-                    if (!q && !fullDisplay) return null;
+                    const queryStr = [cleanedStreet, master.city].filter(Boolean).join(', ') || master.city || '';
+                    const q = encodeURIComponent(queryStr);
+                    if (!queryStr && !fullDisplay) return null;
                     return (
                       <>
-                        {q && (
-                          <iframe
-                            title="Карта"
-                            src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&query=${q}`}
-                            className="h-48 w-full"
-                            loading="lazy"
-                          />
+                        {queryStr && (
+                          <AddressMiniMap query={queryStr} className="h-48 w-full" />
                         )}
                         <div className="flex items-start gap-3 p-5">
                           <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
