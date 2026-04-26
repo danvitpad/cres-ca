@@ -78,12 +78,7 @@ export default function TodayPage() {
   const [showHelp, setShowHelp] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Booking stats widget
-  type StatsPeriod = 'day' | 'week' | 'month';
-  const [statsPeriod, setStatsPeriod] = useState<StatsPeriod>('week');
-  const [bookingStats, setBookingStats] = useState({
-    total: 0, completed: 0, cancelled: 0, no_show: 0, rescheduled: 0, upcoming: 0,
-  });
+  // Booking lifecycle / weekly load / top services moved to /stats.
 
   const fetchToday = useCallback(async () => {
     if (!master?.id) return;
@@ -129,52 +124,6 @@ export default function TodayPage() {
     if (!master?.id) { setLoading(false); return; }
     fetchToday();
   }, [master?.id, masterLoading, fetchToday]);
-
-  // Booking stats — separate fetch per selected period
-  useEffect(() => {
-    if (!master?.id) return;
-    const supabase = createClient();
-    const now = new Date();
-    const start = new Date(now);
-    if (statsPeriod === 'day') start.setHours(0, 0, 0, 0);
-    else if (statsPeriod === 'week') {
-      start.setDate(now.getDate() - 6);
-      start.setHours(0, 0, 0, 0);
-    } else {
-      start.setDate(now.getDate() - 29);
-      start.setHours(0, 0, 0, 0);
-    }
-    const end = new Date(now);
-    end.setHours(23, 59, 59, 999);
-
-    (async () => {
-      const [apptRes, reschedRes] = await Promise.all([
-        supabase.from('appointments')
-          .select('id, status, starts_at')
-          .eq('master_id', master.id)
-          .gte('starts_at', start.toISOString())
-          .lte('starts_at', end.toISOString()),
-        supabase.from('notifications')
-          .select('id', { count: 'exact', head: true })
-          .eq('data->>kind', 'booking_rescheduled')
-          .gte('created_at', start.toISOString()),
-      ]);
-      const list = (apptRes.data ?? []) as Array<{ id: string; status: string; starts_at: string }>;
-      const total = list.length;
-      const completed = list.filter((a) => a.status === 'completed').length;
-      const cancelled = list.filter((a) => a.status === 'cancelled' || a.status === 'cancelled_by_client').length;
-      const no_show = list.filter((a) => a.status === 'no_show').length;
-      const upcoming = list.filter((a) => (a.status === 'booked' || a.status === 'confirmed') && new Date(a.starts_at) >= now).length;
-      setBookingStats({
-        total,
-        completed,
-        cancelled,
-        no_show,
-        rescheduled: reschedRes.count ?? 0,
-        upcoming,
-      });
-    })();
-  }, [master?.id, statsPeriod]);
 
   useEffect(() => {
     if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -227,35 +176,7 @@ export default function TodayPage() {
 
   const activeReminders = useMemo(() => reminders.slice(0, 5), [reminders]);
 
-  // Weekly load — Mon..Sun count of non-cancelled appointments
-  const weeklyLoad = useMemo(() => {
-    const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    const counts = new Array(7).fill(0);
-    for (const a of appointments) {
-      if (a.status === 'cancelled' || a.status === 'cancelled_by_client' || a.status === 'cancelled_by_master') continue;
-      const d = new Date(a.starts_at);
-      const dayIdx = (d.getDay() + 6) % 7; // Mon=0
-      counts[dayIdx] += 1;
-    }
-    const max = Math.max(1, ...counts);
-    return labels.map((label, i) => ({ label, value: counts[i], ratio: counts[i] / max }));
-  }, [appointments]);
-
-  // Top services of the week — count + color
-  const topServices = useMemo(() => {
-    const byId = new Map<string, { id: string; name: string; color: string; count: number }>();
-    for (const a of appointments) {
-      const svc = Array.isArray(a.service) ? a.service[0] : a.service;
-      if (!svc) continue;
-      const key = svc.id;
-      const e = byId.get(key);
-      if (e) e.count += 1;
-      else byId.set(key, { id: svc.id, name: svc.name, color: svc.color ?? '#8b5cf6', count: 1 });
-    }
-    const arr = Array.from(byId.values()).sort((a, b) => b.count - a.count).slice(0, 4);
-    const total = arr.reduce((s, x) => s + x.count, 0);
-    return { items: arr, total };
-  }, [appointments]);
+  // Weekly load + top services live on /stats now.
 
   const newClientsThisWeek = useMemo(() => {
     const ids = new Set<string>();
@@ -350,86 +271,9 @@ export default function TodayPage() {
         />
       </motion.div>
 
-      {/* Weekly load + Top services — promised on landing, now real */}
-      <motion.div {...stagger(2)} className="shrink-0 grid grid-cols-1 md:grid-cols-5 gap-3">
-        {/* Weekly load bars */}
-        <div className="md:col-span-3 rounded-xl border bg-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Загрузка по дням</h2>
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {weeklyLoad.reduce((s, d) => s + d.value, 0)} записей
-            </span>
-          </div>
-          <div className="flex items-end gap-2 h-20">
-            {weeklyLoad.map((d) => (
-              <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full rounded-md bg-[var(--ds-accent)] transition-all"
-                  style={{
-                    height: `${Math.max(6, d.ratio * 64)}px`,
-                    opacity: d.value === 0 ? 0.15 : 0.45 + d.ratio * 0.55,
-                  }}
-                  title={`${d.value}`}
-                />
-                <span className="text-[10px] font-medium text-muted-foreground">{d.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        {/* Top services donut-ish */}
-        <div className="md:col-span-2 rounded-xl border bg-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Топ услуги</h2>
-            <span className="text-xs text-muted-foreground tabular-nums">{topServices.total}</span>
-          </div>
-          {topServices.items.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2">Нет услуг за неделю</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {topServices.items.map((s) => {
-                const pct = topServices.total > 0 ? Math.round((s.count / topServices.total) * 100) : 0;
-                return (
-                  <li key={s.id} className="flex items-center gap-2 text-xs">
-                    <span className="size-2 shrink-0 rounded-full" style={{ background: s.color }} />
-                    <span className="flex-1 truncate">{s.name}</span>
-                    <span className="shrink-0 tabular-nums text-muted-foreground">{pct}%</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      </motion.div>
-
-      {/* Booking lifecycle stats */}
-      <motion.div {...stagger(3)} className="shrink-0 rounded-xl border bg-card p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Статистика записей</h2>
-          <div className="flex gap-1 rounded-lg bg-muted/40 p-0.5">
-            {(['day', 'week', 'month'] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setStatsPeriod(p)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                  statsPeriod === p
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {p === 'day' ? 'Сегодня' : p === 'week' ? '7 дней' : '30 дней'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          <BookingStatTile icon={<CalendarIcon className="w-4 h-4" />} label="Всего" value={bookingStats.total} accent="violet" />
-          <BookingStatTile icon={<Bell className="w-4 h-4" />} label="Предстоит" value={bookingStats.upcoming} accent="blue" />
-          <BookingStatTile icon={<CheckCircle2 className="w-4 h-4" />} label="Завершено" value={bookingStats.completed} accent="emerald" />
-          <BookingStatTile icon={<XCircle className="w-4 h-4" />} label="Отменено" value={bookingStats.cancelled} accent="rose" />
-          <BookingStatTile icon={<UserX className="w-4 h-4" />} label="Не пришли" value={bookingStats.no_show} accent="amber" />
-          <BookingStatTile icon={<RotateCcw className="w-4 h-4" />} label="Перенесено" value={bookingStats.rescheduled} accent="sky" />
-        </div>
-      </motion.div>
+      {/* Weekly load / top services / booking lifecycle moved to /stats —
+          /today was over-stuffed and the user wanted these on a dedicated page.
+          Sidebar now has a «Статистика» entry pointing there. */}
 
       {/* Rebook suggestions — show only when there are any */}
       {rebookItems.length > 0 && (
@@ -722,30 +566,4 @@ function VoiceCommandsHelp() {
   );
 }
 
-const ACCENT_BG: Record<string, string> = {
-  violet: 'bg-violet-500/10 text-violet-500',
-  blue: 'bg-blue-500/10 text-blue-500',
-  emerald: 'bg-emerald-500/10 text-emerald-600',
-  rose: 'bg-rose-500/10 text-rose-500',
-  amber: 'bg-amber-500/10 text-amber-600',
-  sky: 'bg-sky-500/10 text-sky-500',
-};
-
-function BookingStatTile({
-  icon, label, value, accent,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  accent: 'violet' | 'blue' | 'emerald' | 'rose' | 'amber' | 'sky';
-}) {
-  return (
-    <div className="rounded-lg border bg-background/40 p-2.5">
-      <div className={`inline-flex items-center justify-center size-7 rounded-md ${ACCENT_BG[accent]}`}>
-        {icon}
-      </div>
-      <div className="mt-1.5 text-xl font-semibold tabular-nums leading-none">{value}</div>
-      <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground leading-none">{label}</div>
-    </div>
-  );
-}
+// BookingStatTile + ACCENT_BG moved alongside the lifecycle stats block to /stats.

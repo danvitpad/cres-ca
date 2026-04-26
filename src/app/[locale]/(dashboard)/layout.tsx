@@ -29,7 +29,7 @@ import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { ConfirmProvider } from '@/hooks/use-confirm';
-import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun } from 'lucide-react';
+import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, BarChart3 } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
@@ -82,6 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'contacts', icon: FreshaPerson, href: '/clients', label: t('nav.contacts') },
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
+      { key: 'stats', icon: BarChart3, href: '/stats', label: 'Статистика' },
       // {key:'integrations'} hidden — раздел в разработке (см. CLAUDE.md → Stubs / deferred → Integrations).
       // Когда будет готов конкретный набор интеграций (Google Cal sync, IG, etc.) — раскомментировать.
     ],
