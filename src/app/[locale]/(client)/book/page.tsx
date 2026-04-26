@@ -5,9 +5,9 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -23,6 +23,8 @@ import { WaitlistButton } from '@/components/booking/waitlist-button';
 import { LiqPayButton } from '@/components/booking/liqpay-button';
 import { ConsentForm, getConsentFormText } from '@/components/shared/consent-form';
 import { format } from 'date-fns';
+import { ru, uk, enUS } from 'date-fns/locale';
+import { formatMoney } from '@/lib/format/money';
 import { ArrowLeft, Clock, Check, Plus, User, Users, Info } from 'lucide-react';
 
 type Step = 'service' | 'date' | 'time' | 'consent' | 'confirm';
@@ -69,6 +71,12 @@ export default function BookPage() {
   const router = useRouter();
   const t = useTranslations('booking');
   const tc = useTranslations('common');
+  const locale = useLocale();
+  const dateFnsLocale = useMemo(() => {
+    if (locale === 'uk') return uk;
+    if (locale === 'en') return enUS;
+    return ru;
+  }, [locale]);
   const { userId } = useAuthStore();
   const { canUse } = useSubscription();
 
@@ -796,7 +804,7 @@ export default function BookPage() {
                       {service.duration_minutes} {t('min')}
                     </span>
                     <span className="font-medium text-foreground">
-                      {Number(service.price).toFixed(0)} {service.currency}
+                      {formatMoney(service.price, service.currency)}
                     </span>
                   </div>
                 </div>
@@ -828,7 +836,7 @@ export default function BookPage() {
                       <div>
                         <span className="text-sm font-medium">{upsell.name}</span>
                         <span className="text-xs text-muted-foreground ml-2">
-                          +{upsell.duration_minutes} {t('min')} · +{Number(upsell.price).toFixed(0)} {upsell.currency}
+                          +{upsell.duration_minutes} {t('min')} · +{formatMoney(upsell.price, upsell.currency)}
                         </span>
                       </div>
                       {isSelected ? <Check className="size-4 text-primary" /> : <Plus className="size-4 text-muted-foreground" />}
@@ -844,6 +852,8 @@ export default function BookPage() {
             selected={selectedDate}
             onSelect={handleSelectDate}
             disabled={disabledDays}
+            locale={dateFnsLocale}
+            weekStartsOn={1}
           />
         </div>
       )}
@@ -853,7 +863,9 @@ export default function BookPage() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">{t('selectTime')}</h2>
           <p className="text-sm text-muted-foreground">
-            {selectedDate?.toLocaleDateString()}
+            {selectedDate
+              ? format(selectedDate, 'EEEE, d MMMM', { locale: dateFnsLocale })
+              : ''}
           </p>
           {slotsLoading ? (
             <div className="grid grid-cols-4 gap-2">
@@ -921,7 +933,7 @@ export default function BookPage() {
               {selectedUpsells.map((u) => (
                 <div key={u.id} className="flex justify-between">
                   <span className="text-sm text-muted-foreground">+ {u.name}</span>
-                  <span className="text-sm">+{Number(u.price).toFixed(0)} {u.currency}</span>
+                  <span className="text-sm">+{formatMoney(u.price, u.currency)}</span>
                 </div>
               ))}
               <div className="flex justify-between">
@@ -945,14 +957,14 @@ export default function BookPage() {
                     className="size-4 rounded border-input accent-primary"
                   />
                   <span className="flex-1 text-sm">
-                    Использовать {Math.min(bonusPoints, Math.floor(basePrice))} {selectedService.currency} бонусов у этого мастера
+                    Использовать {formatMoney(Math.min(bonusPoints, Math.floor(basePrice)), selectedService.currency)} бонусов у этого мастера
                   </span>
                 </label>
               )}
               {bonusPreview > 0 && (
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Скидка бонусами</span>
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{bonusPreview} {selectedService.currency}</span>
+                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{formatMoney(bonusPreview, selectedService.currency)}</span>
                 </div>
               )}
 
@@ -962,7 +974,7 @@ export default function BookPage() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="text-sm">
                       <span className="font-medium text-emerald-700 dark:text-emerald-300">{appliedPromo.code}</span>
-                      <span className="ml-2 text-muted-foreground">−{appliedPromo.discount_amount} {selectedService.currency}</span>
+                      <span className="ml-2 text-muted-foreground">−{formatMoney(appliedPromo.discount_amount, selectedService.currency)}</span>
                     </div>
                     <button
                       type="button"
@@ -1002,10 +1014,10 @@ export default function BookPage() {
 
               <div className="border-t pt-2 flex justify-between">
                 <span className="font-medium">{t('totalLabel')}</span>
-                <span className="font-bold">{totalPrice.toFixed(0)} {selectedService.currency}</span>
+                <span className="font-bold">{formatMoney(totalPrice, selectedService.currency)}</span>
               </div>
               {selectedService.requires_prepayment && (
-                <Badge variant="secondary">{t('prepaymentRequired')}: {Number(selectedService.prepayment_amount).toFixed(0)} {selectedService.currency}</Badge>
+                <Badge variant="secondary">{t('prepaymentRequired')}: {formatMoney(selectedService.prepayment_amount, selectedService.currency)}</Badge>
               )}
             </CardContent>
           </Card>
@@ -1030,7 +1042,7 @@ export default function BookPage() {
             <LiqPayButton
               data={paymentData.data}
               signature={paymentData.signature}
-              label={`${t('prepaymentRequired')} — ${Number(selectedService.prepayment_amount).toFixed(0)} ${selectedService.currency}`}
+              label={`${t('prepaymentRequired')} — ${formatMoney(selectedService.prepayment_amount, selectedService.currency)}`}
               className="w-full"
             />
           ) : (

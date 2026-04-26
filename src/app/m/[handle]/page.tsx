@@ -18,6 +18,8 @@ import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
 import { OwnerEditButton } from '@/components/master/owner-edit-button';
 import { FollowMasterButton } from '@/components/master/follow-master-button';
+import { formatMoney } from '@/lib/format/money';
+import { cleanAddress, composeAddress } from '@/lib/format/address';
 
 interface PageProps {
   params: Promise<{ handle: string }>;
@@ -639,7 +641,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {s.price != null && (
                       <div className="font-semibold">
-                        {s.price} {s.currency ?? 'UAH'}
+                        {formatMoney(s.price, s.currency)}
                       </div>
                     )}
                     <Link
@@ -780,12 +782,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   <p className="font-semibold text-neutral-900">
                     {salon?.name ?? master.workplace_name ?? 'Собственный кабинет'}
                   </p>
-                  {(salon?.address || master.address) && (
-                    <p className="mt-0.5 text-sm text-neutral-600">
-                      {salon?.address ?? master.address}
-                      {master.city ? `, ${master.city}` : ''}
-                    </p>
-                  )}
+                  {(() => {
+                    const addr = composeAddress(null, salon?.address ?? master.address, master.city);
+                    return addr ? <p className="mt-0.5 text-sm text-neutral-600">{addr}</p> : null;
+                  })()}
                 </div>
               </div>
             </div>
@@ -801,73 +801,81 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   {/* OpenStreetMap iframe — бесплатный embed, без API-ключей.
                       Bbox считается из города; если есть точный адрес — используем его. */}
                   {(() => {
-                    const q = encodeURIComponent(
-                      [salon?.address ?? master.address, master.city].filter(Boolean).join(', ') || master.city || '',
-                    );
-                    if (!q) return null;
+                    const cleanedStreet = cleanAddress(salon?.address ?? master.address);
+                    const fullDisplay = composeAddress(null, salon?.address ?? master.address, master.city);
+                    const q = encodeURIComponent([cleanedStreet, master.city].filter(Boolean).join(', ') || master.city || '');
+                    if (!q && !fullDisplay) return null;
                     return (
-                      <iframe
-                        title="Карта"
-                        src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&query=${q}`}
-                        className="h-48 w-full"
-                        loading="lazy"
-                      />
+                      <>
+                        {q && (
+                          <iframe
+                            title="Карта"
+                            src={`https://www.openstreetmap.org/export/embed.html?layer=mapnik&query=${q}`}
+                            className="h-48 w-full"
+                            loading="lazy"
+                          />
+                        )}
+                        <div className="flex items-start gap-3 p-5">
+                          <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                            <MapPin className="size-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold">Адрес</p>
+                            {fullDisplay && (
+                              <p className="mt-0.5 text-sm text-neutral-600">{fullDisplay}</p>
+                            )}
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${q || encodeURIComponent(master.city || '')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:underline"
+                            >
+                              Открыть в Google Maps →
+                            </a>
+                          </div>
+                        </div>
+                      </>
                     );
                   })()}
-                  <div className="flex items-start gap-3 p-5">
-                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                      <MapPin className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">Адрес</p>
-                      <p className="mt-0.5 text-sm text-neutral-600">
-                        {[salon?.address ?? master.address, master.city].filter(Boolean).join(', ')}
-                      </p>
-                      <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                          [salon?.address ?? master.address, master.city].filter(Boolean).join(', ') || master.city || '',
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-violet-600 hover:underline"
-                      >
-                        Открыть в Google Maps →
-                      </a>
-                    </div>
-                  </div>
                 </div>
               )}
-              {master.working_hours && (
-                <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-                      <Clock className="size-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">Часы работы</p>
-                      <ul className="mt-2 space-y-1 text-xs text-neutral-600">
-                        {(() => {
-                          const days: Array<[string, string]> = [
-                            ['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'],
-                            ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс'],
-                          ];
-                          return days.map(([key, label]) => {
+              {master.working_hours && (() => {
+                const days: Array<[string, string]> = [
+                  ['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'],
+                  ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс'],
+                ];
+                const anyOpen = days.some(([k]) => {
+                  const wh = master.working_hours?.[k];
+                  return wh && !wh.closed && wh.start && wh.end;
+                });
+                if (!anyOpen) return null;
+                return (
+                  <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                        <Clock className="size-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">Часы работы</p>
+                        <ul className="mt-2 space-y-1 text-xs text-neutral-600">
+                          {days.map(([key, label]) => {
                             const wh = master.working_hours?.[key];
+                            const isOpen = wh && !wh.closed && wh.start && wh.end;
                             return (
                               <li key={key} className="flex justify-between gap-3">
                                 <span className="text-neutral-500">{label}</span>
-                                <span className="font-medium text-neutral-800">
-                                  {wh && !wh.closed && wh.start && wh.end ? `${wh.start}–${wh.end}` : 'Выходной'}
+                                <span className={isOpen ? 'font-medium text-neutral-800' : 'text-neutral-400'}>
+                                  {isOpen ? `${wh.start}–${wh.end}` : 'Выходной'}
                                 </span>
                               </li>
                             );
-                          });
-                        })()}
-                      </ul>
+                          })}
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
             {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
               <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
@@ -899,8 +907,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 return (
                   <div className="mt-1 flex items-baseline gap-2">
                     <span className="text-xs text-neutral-500">от</span>
-                    <span className="text-2xl font-bold text-neutral-900">{minPrice}</span>
-                    <span className="text-sm text-neutral-500">{cur}</span>
+                    <span className="text-2xl font-bold text-neutral-900">{formatMoney(minPrice, cur)}</span>
                   </div>
                 );
               })()}
