@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendingUp, ChevronRight, Sparkles, Send, Trash2 } from 'lucide-react';
+import { TrendingUp, ChevronRight, Sparkles, Send, Trash2, MailOpen } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
@@ -51,7 +51,21 @@ export default function MasterMiniAppHome() {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    fetch('/api/master-invites')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { invites?: Array<{ status: string }> } | null) => {
+        if (!j?.invites || cancelled) return;
+        setPendingInvites(j.invites.filter((i) => i.status === 'pending').length);
+      })
+      .catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, [ready]);
 
   useEffect(() => {
     if (!ready) return;
@@ -170,6 +184,51 @@ export default function MasterMiniAppHome() {
         style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
       >
         <PageHeader title={`Привет, ${greetingName}`} subtitle={dateLabel} />
+
+        {pendingInvites > 0 && (
+          <Link
+            href="/telegram/m/invites"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              margin: `0 ${PAGE_PADDING_X}px`,
+              padding: 16,
+              background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+              border: `1px solid #ddd6fe`,
+              borderRadius: R.md,
+              textDecoration: 'none',
+              color: T.text,
+              boxShadow: SHADOW.card,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  flexShrink: 0,
+                  borderRadius: 12,
+                  background: '#ede9fe',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MailOpen size={20} color="#6d28d9" strokeWidth={2.4} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6d28d9', margin: 0 }}>
+                  Приглашение в команду
+                </p>
+                <p style={{ ...TYPE.h3, color: T.text, marginTop: 4 }}>
+                  {pendingInvites} {pluralize(pendingInvites, ['приглашение', 'приглашения', 'приглашений'])} ждут ответа
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} color="#6d28d9" />
+          </Link>
+        )}
 
         {/* Finance quick link — premium card */}
         <Link

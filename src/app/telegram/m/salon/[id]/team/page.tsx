@@ -1,11 +1,11 @@
 /** --- YAML
  * name: Mini App Salon Team Page
- * description: Admin tabbed dashboard. 3 таба:
+ * description: Admin tabbed dashboard. 4 таба:
  *              - Команда: текущие мастера + админы (read-only summary)
  *              - Заявки: pending join requests с Approve / Reject
+ *              - Приглашения: outgoing invites с CTA «Пригласить» + cancel pending
  *              - Настройки: recruitment toggle + recruitment_message
- *              Все 3 таба требуют admin/owner. Редактирование recruitment_open
- *              мгновенное (toggle), recruitment_message — textarea с автосейвом.
+ *              Все табы требуют admin/owner.
  * created: 2026-04-19
  * updated: 2026-04-26
  * --- */
@@ -16,7 +16,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Crown, Users2, Pause, UserCheck, Clock3, Inbox, Settings as SettingsIcon,
-  Check, X, Loader2, Lock, Unlock, ExternalLink,
+  Check, X, Loader2, Lock, Unlock, ExternalLink, Send, Search, UserPlus, MailX,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -59,6 +59,33 @@ interface JoinRequest {
   } | null;
 }
 
+interface MasterInvite {
+  id: string;
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
+  message: string | null;
+  created_at: string;
+  decided_at: string | null;
+  master: {
+    id: string;
+    display_name: string | null;
+    specialization: string | null;
+    avatar_url: string | null;
+    invite_code: string | null;
+    rating: number | null;
+    total_reviews: number | null;
+    profile?: { full_name: string | null; avatar_url: string | null } | { full_name: string | null; avatar_url: string | null }[] | null;
+  } | null;
+}
+
+interface MasterCandidate {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  specialization: string | null;
+}
+
 interface SalonSettings {
   recruitment_open: boolean;
   recruitment_message: string | null;
@@ -79,7 +106,7 @@ function getInitData(): string | null {
   return null;
 }
 
-type Tab = 'team' | 'requests' | 'settings';
+type Tab = 'team' | 'requests' | 'invites' | 'settings';
 
 export default function MiniAppSalonTeamPage() {
   const params = useParams();
@@ -88,10 +115,12 @@ export default function MiniAppSalonTeamPage() {
   const [tab, setTab] = useState<Tab>('team');
   const [team, setTeam] = useState<TeamData | null>(null);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [invites, setInvites] = useState<MasterInvite[]>([]);
   const [settings, setSettings] = useState<SalonSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingReqCount, setPendingReqCount] = useState(0);
+  const [pendingInvCount, setPendingInvCount] = useState(0);
 
   const fetchTeam = useCallback(async () => {
     const initData = getInitData();
@@ -117,7 +146,16 @@ export default function MiniAppSalonTeamPage() {
     if (r.ok) {
       const j = (await r.json()) as { requests: JoinRequest[] };
       setRequests(j.requests);
-      setPendingCount(j.requests.filter((x) => x.status === 'pending').length);
+      setPendingReqCount(j.requests.filter((x) => x.status === 'pending').length);
+    }
+  }, [salonId]);
+
+  const fetchInvites = useCallback(async () => {
+    const r = await fetch(`/api/salon/${salonId}/master-invites`);
+    if (r.ok) {
+      const j = (await r.json()) as { invites: MasterInvite[] };
+      setInvites(j.invites);
+      setPendingInvCount(j.invites.filter((x) => x.status === 'pending').length);
     }
   }, [salonId]);
 
@@ -134,8 +172,9 @@ export default function MiniAppSalonTeamPage() {
   useEffect(() => {
     if (!ready) return;
     setLoading(true);
-    Promise.all([fetchTeam(), fetchRequests(), fetchSettings()]).finally(() => setLoading(false));
-  }, [ready, fetchTeam, fetchRequests, fetchSettings]);
+    Promise.all([fetchTeam(), fetchRequests(), fetchInvites(), fetchSettings()])
+      .finally(() => setLoading(false));
+  }, [ready, fetchTeam, fetchRequests, fetchInvites, fetchSettings]);
 
   if (loading) {
     return (
@@ -164,8 +203,14 @@ export default function MiniAppSalonTeamPage() {
         </TabButton>
         <TabButton active={tab === 'requests'} onClick={() => setTab('requests')}>
           <Inbox className="size-3.5" /> Заявки
-          {pendingCount > 0 && (
-            <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">{pendingCount}</span>
+          {pendingReqCount > 0 && (
+            <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">{pendingReqCount}</span>
+          )}
+        </TabButton>
+        <TabButton active={tab === 'invites'} onClick={() => setTab('invites')}>
+          <Send className="size-3.5" /> Приглашения
+          {pendingInvCount > 0 && (
+            <span className="rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{pendingInvCount}</span>
           )}
         </TabButton>
         <TabButton active={tab === 'settings'} onClick={() => setTab('settings')}>
@@ -180,6 +225,16 @@ export default function MiniAppSalonTeamPage() {
           requests={requests}
           onChanged={() => {
             fetchRequests();
+            fetchTeam();
+          }}
+        />
+      )}
+      {tab === 'invites' && (
+        <InvitesTab
+          salonId={salonId}
+          invites={invites}
+          onChanged={() => {
+            fetchInvites();
             fetchTeam();
           }}
         />
@@ -458,6 +513,321 @@ function RequestRow({
         </div>
       )}
     </li>
+  );
+}
+
+/* ───────── Invites tab (admin → master) ───────── */
+
+function InvitesTab({
+  salonId,
+  invites,
+  onChanged,
+}: {
+  salonId: string;
+  invites: MasterInvite[];
+  onChanged: () => void;
+}) {
+  const [showSearch, setShowSearch] = useState(false);
+  const pending = invites.filter((i) => i.status === 'pending');
+  const decided = invites.filter((i) => i.status !== 'pending').slice(0, 10);
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={() => setShowSearch(true)}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-white p-4 text-[14px] font-semibold text-neutral-700 hover:border-neutral-900 hover:bg-neutral-50"
+      >
+        <UserPlus className="size-4" />
+        Пригласить мастера в команду
+      </button>
+
+      {showSearch && (
+        <InviteSearchSheet
+          salonId={salonId}
+          onClose={() => setShowSearch(false)}
+          onInvited={() => {
+            setShowSearch(false);
+            onChanged();
+          }}
+        />
+      )}
+
+      {pending.length > 0 && (
+        <section>
+          <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-700">
+            <Send className="size-3.5" /> Ждут ответа мастера
+            <span className="text-indigo-600">({pending.length})</span>
+          </h2>
+          <ul className="space-y-2">
+            {pending.map((i) => (
+              <InviteRow key={i.id} i={i} salonId={salonId} onChanged={onChanged} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {decided.length > 0 && (
+        <section>
+          <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+            История приглашений
+          </h2>
+          <ul className="space-y-2">
+            {decided.map((i) => (
+              <InviteRow key={i.id} i={i} salonId={salonId} onChanged={onChanged} readonly />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {invites.length === 0 && !showSearch && (
+        <EmptyBlock text="Пока никого не приглашал. Найди существующих мастеров CRES-CA по имени или контакту и предложи присоединиться." />
+      )}
+    </div>
+  );
+}
+
+function InviteRow({
+  i, salonId, onChanged, readonly,
+}: {
+  i: MasterInvite;
+  salonId: string;
+  onChanged: () => void;
+  readonly?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const profile = Array.isArray(i.master?.profile) ? i.master?.profile[0] : i.master?.profile;
+  const name = (i.master?.display_name || profile?.full_name || 'Мастер').trim();
+
+  async function cancel() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/salon/${salonId}/master-invites/${i.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error((json as { error?: string }).error || 'Не удалось отменить');
+        return;
+      }
+      toast.success('Приглашение отозвано');
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const statusBadge =
+    i.status === 'accepted' ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+        <Check className="size-3" /> Принято
+      </span>
+    ) : i.status === 'declined' ? (
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+        <X className="size-3" /> Отклонено
+      </span>
+    ) : i.status === 'cancelled' ? (
+      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-500">
+        Отозвано
+      </span>
+    ) : i.status === 'expired' ? (
+      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-500">
+        Истекло
+      </span>
+    ) : null;
+
+  return (
+    <li className="rounded-xl border border-neutral-200 bg-white p-3">
+      <div className="flex items-start gap-3">
+        <Avatar name={i.master?.display_name ?? null} url={i.master?.avatar_url ?? null} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-sm font-semibold text-neutral-900">{name}</p>
+            {statusBadge}
+          </div>
+          {i.master?.specialization && (
+            <p className="text-[12px] text-neutral-500">{i.master.specialization}</p>
+          )}
+          {i.message && (
+            <p className="mt-2 rounded-lg bg-neutral-50 p-2 text-[12px] text-neutral-700">«{i.message}»</p>
+          )}
+        </div>
+      </div>
+
+      {!readonly && i.status === 'pending' && (
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="size-3 animate-spin" /> : <MailX className="size-3" />}
+            Отозвать
+          </button>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function InviteSearchSheet({
+  salonId, onClose, onInvited,
+}: {
+  salonId: string;
+  onClose: () => void;
+  onInvited: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<MasterCandidate[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<MasterCandidate | null>(null);
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (q.length < 2) {
+      setResults([]);
+      return;
+    }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const r = await fetch(`/api/salon/${salonId}/invites/search-masters?q=${encodeURIComponent(q)}`)
+        .then((res) => res.json())
+        .catch(() => null);
+      if (!cancelled && r?.masters) setResults(r.masters as MasterCandidate[]);
+      if (!cancelled) setSearching(false);
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [q, salonId]);
+
+  async function send() {
+    if (!selected) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/salon/${salonId}/master-invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ master_id: selected.id, message: message.trim() || undefined }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = (json as { error?: string }).error;
+        const msg =
+          err === 'already_member' ? 'Этот мастер уже в команде' :
+          err === 'already_invited' ? 'Этому мастеру уже отправлено приглашение' :
+          'Не удалось отправить';
+        toast.error(msg);
+        return;
+      }
+      toast.success(`${selected.full_name || 'Мастер'} получит приглашение`);
+      onInvited();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl sm:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {!selected ? (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[16px] font-semibold text-neutral-900">Найти мастера</h3>
+              <button type="button" onClick={onClose} className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                autoFocus
+                placeholder="Имя, email или телефон"
+                className="block w-full rounded-2xl border border-neutral-200 bg-white py-2.5 pl-9 pr-3 text-[14px] text-neutral-900 outline-none focus:border-neutral-400"
+              />
+            </div>
+            <div className="mt-3 max-h-80 overflow-y-auto">
+              {q.length < 2 ? (
+                <p className="py-6 text-center text-[12px] text-neutral-400">Введи минимум 2 символа</p>
+              ) : searching ? (
+                <p className="py-6 text-center text-[12px] text-neutral-400">Ищу…</p>
+              ) : results.length === 0 ? (
+                <p className="py-6 text-center text-[12px] text-neutral-400">Никого не найдено</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {results.map((m) => (
+                    <li key={m.id}>
+                      <button
+                        type="button"
+                        onClick={() => setSelected(m)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 bg-white p-2.5 text-left hover:bg-neutral-50"
+                      >
+                        <Avatar name={m.full_name} url={m.avatar_url} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-semibold text-neutral-900">
+                            {m.full_name || 'Без имени'}
+                          </p>
+                          <p className="truncate text-[11px] text-neutral-500">
+                            {m.specialization || m.email || m.phone || '—'}
+                          </p>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-[16px] font-semibold text-neutral-900">Текст приглашения</h3>
+              <button type="button" onClick={() => setSelected(null)} className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100">
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mb-3 flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+              <Avatar name={selected.full_name} url={selected.avatar_url} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-semibold text-neutral-900">{selected.full_name || 'Без имени'}</p>
+                <p className="truncate text-[11px] text-neutral-500">
+                  {selected.specialization || selected.email || selected.phone || '—'}
+                </p>
+              </div>
+            </div>
+
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value.slice(0, 500))}
+              rows={4}
+              placeholder="Напр.: «Команда из 5 мастеров, ищем человека на маникюр. Свободные слоты по 4 раза в неделю.»"
+              className="block w-full resize-none rounded-2xl border border-neutral-200 bg-white p-3 text-[13px] text-neutral-900 outline-none focus:border-neutral-400"
+            />
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-[11px] text-neutral-400">{message.length} / 500</p>
+              <button
+                type="button"
+                onClick={send}
+                disabled={submitting}
+                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
+                Отправить приглашение
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
