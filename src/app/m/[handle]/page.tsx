@@ -27,6 +27,8 @@ import { BookingDrawerProvider } from '@/components/master/booking/booking-provi
 import { BookingCTA } from '@/components/master/booking/booking-cta';
 import { InlineCoverBanner } from '@/components/master/inline/cover-banner';
 import { InlineBioBlock } from '@/components/master/inline/bio-block';
+import { InlineHoursBlock } from '@/components/master/inline/hours-block';
+import { InlineAddressBlock } from '@/components/master/inline/address-block';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
@@ -614,83 +616,40 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               </section>
             )}
 
-            {/* Address + Hours */}
-            {(hasAddress || hasWorkingHours) && (
-              <section id="address" className="scroll-mt-24">
-                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Адрес и часы работы</h2>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  {hasAddress && (
-                    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-                      {queryStr && <AddressMiniMap query={queryStr} className="h-48 w-full" />}
-                      <div className="flex items-start gap-3 p-5">
-                        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-                          <MapPin className="size-4" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-semibold text-neutral-900">
-                            {salon?.name ?? master.workplace_name ?? 'Адрес'}
-                          </p>
-                          {fullAddress && (
-                            <p className="mt-0.5 text-[14px] text-neutral-600">{fullAddress}</p>
-                          )}
-                          {queryStr && (
-                            <a
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryStr)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-neutral-900 hover:underline"
-                            >
-                              Проложить маршрут →
-                            </a>
-                          )}
-                        </div>
-                      </div>
+            {/* Address + Hours — inline-editable. Каждый блок сам решает скрыться
+                для клиента когда пусто и показать dashed-CTA для владельца. */}
+            <section id="address" className="scroll-mt-24">
+              <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Адрес и часы работы</h2>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <InlineAddressBlock
+                  masterId={master.id}
+                  masterProfileId={master.profile_id}
+                  initialCity={master.city}
+                  initialAddress={master.address}
+                  workplaceName={salon?.name ?? master.workplace_name ?? null}
+                />
+                <InlineHoursBlock
+                  masterId={master.id}
+                  masterProfileId={master.profile_id}
+                  initialHours={master.working_hours}
+                />
+              </div>
+              {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
+                <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                      <Phone className="size-4" />
                     </div>
-                  )}
-                  {hasWorkingHours && (
-                    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
-                          <Clock className="size-4" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-semibold text-neutral-900">Часы работы</p>
-                          <ul className="mt-2 space-y-1.5 text-[13px]">
-                            {workingHoursDays.map(([key, label]) => {
-                              const wh = master.working_hours?.[key];
-                              const isOpen = wh && !wh.closed && wh.start && wh.end;
-                              return (
-                                <li key={key} className="flex items-center justify-between">
-                                  <span className="text-neutral-500">{label}</span>
-                                  <span className={isOpen ? 'font-medium text-neutral-900' : 'text-neutral-400'}>
-                                    {isOpen ? `${wh.start} – ${wh.end}` : 'Выходной'}
-                                  </span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
-                  <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                        <Phone className="size-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-semibold text-amber-900">Важная информация</p>
-                        <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-amber-900/80">
-                          {master.booking_important_info}
-                        </p>
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[14px] font-semibold text-amber-900">Важная информация</p>
+                      <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-amber-900/80">
+                        {master.booking_important_info}
+                      </p>
                     </div>
                   </div>
-                )}
-              </section>
-            )}
+                </div>
+              )}
+            </section>
 
             {/* Workplace photos (только если есть отдельные фото — иначе уже в карте) */}
             {hasWorkplace && (salon?.cover_url || master.workplace_photo_url) && (
