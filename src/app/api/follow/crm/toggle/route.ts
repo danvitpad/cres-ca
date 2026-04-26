@@ -6,6 +6,19 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+
+// Service-role client used after auth validation to bypass RLS for the
+// auto-create-client + notification side-effects. The primary follow toggle
+// (client_master_links) runs as the user via cookies, so RLS still enforces
+// that they can only toggle their own row.
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -40,25 +53,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
   }
 
-  // Auto-create clients record so master can select this person in calendar/appointments
+  // Auto-create clients record so master can select this person in calendar/appointments.
+  // RLS on `clients` only allows the master to insert — a client following their own
+  // future master can't insert their own clients row directly. Use admin (post auth-check)
+  // to mirror the link into the master's CRM.
+  const adm = admin();
   const [{ data: profile }, { data: master }] = await Promise.all([
-    supabase.from('profiles').select('full_name, phone, email').eq('id', user.id).maybeSingle(),
-    supabase.from('masters').select('id, profile_id').eq('id', masterId).maybeSingle(),
+    adm.from('profiles').select('full_name, phone, email, date_of_birth').eq('id', user.id).maybeSingle(),
+    adm.from('masters').select('id, profile_id').eq('id', masterId).maybeSingle(),
   ]);
 
   if (profile) {
-    await supabase.from('clients').upsert({
+    await adm.from('clients').upsert({
       profile_id: user.id,
       master_id: masterId,
       full_name: profile.full_name || 'Клиент',
       phone: profile.phone || null,
       email: profile.email || null,
+      date_of_birth: profile.date_of_birth || null,
     }, { onConflict: 'profile_id,master_id', ignoreDuplicates: true });
   }
 
   if (master?.profile_id) {
     const clientName = profile?.full_name || 'Клиент';
-    await supabase.from('notifications').insert({
+    await adm.from('notifications').insert({
       profile_id: master.profile_id,
       channel: 'push',
       title: 'Новый подписчик',
