@@ -10,9 +10,26 @@ import { createClient } from '@/lib/supabase/server';
 import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-const DEFAULT_WINBACK_SUBJECT = '💜 Скучаем по вам';
-const DEFAULT_WINBACK_BODY =
-  '{client_name}, давно тебя не было 🙂 Хочешь вернуться? Есть свободные слоты на этой неделе. [winback:{client_id}:{tag}]';
+type Lang = 'ru' | 'uk' | 'en';
+
+const FALLBACK_WINBACK: Record<Lang, { subject: string; body: string }> = {
+  ru: {
+    subject: '💜 Скучаем по вам',
+    body: '{client_name}, давно тебя не было 🙂 Хочешь вернуться? Есть свободные слоты на этой неделе. [winback:{client_id}:{tag}]',
+  },
+  uk: {
+    subject: '💜 Сумуємо за вами',
+    body: '{client_name}, давно тебе не було 🙂 Хочеш повернутися? Є вільні слоти цього тижня. [winback:{client_id}:{tag}]',
+  },
+  en: {
+    subject: '💜 We miss you',
+    body: '{client_name}, it has been a while 🙂 Want to come back? Open slots this week. [winback:{client_id}:{tag}]',
+  },
+};
+
+function resolveLang(raw: unknown): Lang {
+  return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
 
 const WINBACK_DAYS = 60;
 const MAX_DAYS = 365;
@@ -67,9 +84,14 @@ export async function GET(request: Request) {
 
   const { data: masterRows } = await supabase
     .from('masters')
-    .select('id, display_name')
+    .select('id, display_name, public_language')
     .in('id', masterIds);
-  const masterNameById = new Map((masterRows ?? []).map((m) => [m.id, m.display_name ?? '']));
+  const masterInfo = new Map<string, { name: string; lang: Lang }>();
+  for (const m of (masterRows ?? []) as Array<{ id: string; display_name: string | null; public_language: string | null }>) {
+    masterInfo.set(m.id, { name: m.display_name ?? '', lang: resolveLang(m.public_language) });
+  }
+  const masterNameById = new Map<string, string>();
+  for (const [id, info] of masterInfo) masterNameById.set(id, info.name);
 
   let sent = 0;
   for (const c of clients) {
@@ -80,7 +102,9 @@ export async function GET(request: Request) {
     const daysSince = Math.round(
       (now.getTime() - new Date(c.last_visit_at!).getTime()) / (24 * 60 * 60 * 1000),
     );
-    const tpl = pickFullTemplate(tplMap.get(c.master_id), DEFAULT_WINBACK_BODY, DEFAULT_WINBACK_SUBJECT);
+    const lang = masterInfo.get(c.master_id)?.lang ?? 'ru';
+    const fb = FALLBACK_WINBACK[lang];
+    const tpl = pickFullTemplate(tplMap.get(c.master_id), fb.body, fb.subject);
     const rendered = renderFullTemplate(tpl, {
       client_name: c.full_name ?? 'клиент',
       master_name: masterNameById.get(c.master_id) ?? '',
@@ -96,7 +120,7 @@ export async function GET(request: Request) {
     await supabase.from('notifications').insert({
       profile_id: c.profile_id,
       channel: 'telegram',
-      title: rendered.subject ?? DEFAULT_WINBACK_SUBJECT,
+      title: rendered.subject ?? fb.subject,
       body,
       scheduled_for: now.toISOString(),
     });

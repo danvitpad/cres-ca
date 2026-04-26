@@ -10,9 +10,26 @@ import { createClient } from '@/lib/supabase/server';
 import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-const DEFAULT_NPS_SUBJECT = '📊 Короткий опрос';
-const DEFAULT_NPS_BODY =
-  '{client_name}, вы были у нас уже {total} раз. Оцените от 0 до 10 — насколько вы рекомендовали бы нас друзьям? [nps:{client_id}:{total}]';
+type Lang = 'ru' | 'uk' | 'en';
+
+const FALLBACK_NPS: Record<Lang, { subject: string; body: string }> = {
+  ru: {
+    subject: '📊 Короткий опрос',
+    body: '{client_name}, вы были у нас уже {total} раз. Оцените от 0 до 10 — насколько вы рекомендовали бы нас друзьям? [nps:{client_id}:{total}]',
+  },
+  uk: {
+    subject: '📊 Короткий опитувальник',
+    body: '{client_name}, ви були у нас вже {total} раз. Оцініть від 0 до 10 — наскільки ви порекомендували б нас друзям? [nps:{client_id}:{total}]',
+  },
+  en: {
+    subject: '📊 Quick survey',
+    body: '{client_name}, you have visited {total} times. From 0 to 10 — how likely would you recommend us to a friend? [nps:{client_id}:{total}]',
+  },
+};
+
+function resolveLang(raw: unknown): Lang {
+  return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
 
 const NPS_TRIGGER_VISITS = [3, 10, 20, 50];
 
@@ -35,6 +52,14 @@ export async function GET(request: Request) {
 
   const masterIds = Array.from(new Set(clients.map((c) => c.master_id)));
   const automationSettings = await loadAutomationSettings(supabase, masterIds);
+  const { data: mastersLangRows } = await supabase
+    .from('masters')
+    .select('id, public_language')
+    .in('id', masterIds);
+  const langByMaster = new Map<string, Lang>();
+  for (const m of (mastersLangRows ?? []) as Array<{ id: string; public_language: string | null }>) {
+    langByMaster.set(m.id, resolveLang(m.public_language));
+  }
   const { data: tplRows } = await supabase
     .from('message_templates')
     .select('master_id, subject, content, is_active')
@@ -64,7 +89,9 @@ export async function GET(request: Request) {
     const marker = `${c.id}:${c.total_visits}`;
     if (alreadySent.has(marker)) continue;
 
-    const tpl = pickFullTemplate(tplMap.get(c.master_id), DEFAULT_NPS_BODY, DEFAULT_NPS_SUBJECT);
+    const lang = langByMaster.get(c.master_id) ?? 'ru';
+    const fb = FALLBACK_NPS[lang];
+    const tpl = pickFullTemplate(tplMap.get(c.master_id), fb.body, fb.subject);
     const rendered = renderFullTemplate(tpl, {
       client_name: c.full_name ?? 'клиент',
       total: c.total_visits,
@@ -78,7 +105,7 @@ export async function GET(request: Request) {
     await supabase.from('notifications').insert({
       profile_id: c.profile_id,
       channel: 'telegram',
-      title: rendered.subject ?? DEFAULT_NPS_SUBJECT,
+      title: rendered.subject ?? fb.subject,
       body,
       scheduled_for: now.toISOString(),
     });

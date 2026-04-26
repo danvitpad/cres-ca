@@ -8,6 +8,27 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+type Lang = 'ru' | 'uk' | 'en';
+
+const FALLBACK_UPSELL: Record<Lang, { title: string; bodyFor: (clientName: string, name: string, price: number, cur: string) => string }> = {
+  ru: {
+    title: '💄 Рекомендация после визита',
+    bodyFor: (n, p, pr, c) => `${n}, для закрепления результата рекомендуем: ${p} (${pr} ${c}). Купить в один клик`,
+  },
+  uk: {
+    title: '💄 Рекомендація після візиту',
+    bodyFor: (n, p, pr, c) => `${n}, для закріплення результату рекомендуємо: ${p} (${pr} ${c}). Купити в один клік`,
+  },
+  en: {
+    title: '💄 Post-visit recommendation',
+    bodyFor: (n, p, pr, c) => `${n}, to keep the result we recommend: ${p} (${pr} ${c}). One-click purchase`,
+  },
+};
+
+function resolveLang(raw: unknown): Lang {
+  return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
@@ -47,9 +68,19 @@ export async function GET(request: Request) {
     if (m) sentSet.add(m[1]);
   }
 
-  /* ── 3. Load product recommendations for relevant services ── */
+  /* ── 3. Load product recommendations for relevant services + master langs ── */
   const serviceIds = Array.from(new Set(appointments.map((a) => a.service_id).filter(Boolean)));
   if (serviceIds.length === 0) return NextResponse.json({ ok: true, sent: 0 });
+
+  const masterIds = Array.from(new Set(appointments.map((a) => a.master_id).filter(Boolean)));
+  const { data: mastersLangRows } = await supabase
+    .from('masters')
+    .select('id, public_language')
+    .in('id', masterIds);
+  const langByMaster = new Map<string, Lang>();
+  for (const m of (mastersLangRows ?? []) as Array<{ id: string; public_language: string | null }>) {
+    langByMaster.set(m.id, resolveLang(m.public_language));
+  }
 
   const { data: recs } = await supabase
     .from('product_recommendations')
@@ -91,20 +122,22 @@ export async function GET(request: Request) {
       const product = rec.products!;
       const clientName = client.full_name?.split(' ')[0] ?? 'клиент';
 
+      const lang = langByMaster.get(apt.master_id as string) ?? 'ru';
+      const fb = FALLBACK_UPSELL[lang];
       const body = rec.message_template
         ? rec.message_template
             .replace('{client_name}', clientName)
             .replace('{product_name}', product.name)
             .replace('{price}', `${product.price}`)
             .replace('{currency}', product.currency)
-        : `${clientName}, для закрепления результата рекомендуем: ${product.name} (${product.price} ${product.currency}). Купить в один клик`;
+        : fb.bodyFor(clientName, product.name, product.price, product.currency);
 
       const finalBody = `${body} [upsell:${apt.id}]`;
 
       await supabase.from('notifications').insert({
         profile_id: client.profile_id,
         channel: 'telegram',
-        title: '💄 Рекомендация после визита',
+        title: fb.title,
         body: finalBody,
         scheduled_for: now.toISOString(),
         metadata: { appointment_id: apt.id, product_id: product.id },

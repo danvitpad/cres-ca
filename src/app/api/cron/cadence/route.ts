@@ -10,16 +10,36 @@ import { createClient } from '@/lib/supabase/server';
 import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-/* ─── Default smart template ─── */
-const DEFAULT_CADENCE =
-  '{client_name}, ваше любимое окно в {day_name} в {usual_time} скоро займут. Забронировать?';
+/* ─── Локализованные шаблоны cadence (smart rebooking) ─── */
+type Lang = 'ru' | 'uk' | 'en';
 
-/* ─── Fallback (old-style, if no service/day/time pattern found) ─── */
-const FALLBACK_CADENCE =
-  '{client_name}, обычно ты приходишь раз в ~{avg} дней. Прошло уже {days} — пора записаться?';
+const SMART_CADENCE: Record<Lang, string> = {
+  ru: '{client_name}, ваше любимое окно в {day_name} в {usual_time} скоро займут. Забронировать?',
+  uk: '{client_name}, ваше улюблене вікно у {day_name} о {usual_time} скоро займуть. Забронювати?',
+  en: '{client_name}, your usual slot on {day_name} at {usual_time} will be taken soon. Want to book?',
+};
 
-/* ─── Day names for RU locale ─── */
-const DAY_NAMES_RU = ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'];
+const FALLBACK_CADENCE_BY_LANG: Record<Lang, string> = {
+  ru: '{client_name}, обычно ты приходишь раз в ~{avg} дней. Прошло уже {days} — пора записаться?',
+  uk: '{client_name}, зазвичай ти приходиш раз на ~{avg} днів. Минуло вже {days} — час записатися?',
+  en: '{client_name}, you usually visit every ~{avg} days. It has been {days} — time to book?',
+};
+
+const SUBJECT_BY_LANG: Record<Lang, string> = {
+  ru: '⏰ Пора записаться',
+  uk: '⏰ Час записатися',
+  en: '⏰ Time to book',
+};
+
+const DAY_NAMES: Record<Lang, string[]> = {
+  ru: ['воскресенье', 'понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу'],
+  uk: ['неділю', 'понеділок', 'вівторок', 'середу', 'четвер', "п'ятницю", 'суботу'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+};
+
+function resolveLang(raw: unknown): Lang {
+  return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
 
 /* ─── Helpers ─── */
 
@@ -97,8 +117,16 @@ export async function GET(request: Request) {
   const masterIds = Array.from(new Set(clients.map((c) => c.master_id)));
   const profileIds = clients.map((c) => c.profile_id!).filter(Boolean);
 
-  /* ── 2. Load automation settings (master-level cadence toggle) ── */
+  /* ── 2. Load automation settings (master-level cadence toggle) + public_language ── */
   const automationSettings = await loadAutomationSettings(supabase, masterIds);
+  const { data: mastersLangRows } = await supabase
+    .from('masters')
+    .select('id, public_language')
+    .in('id', masterIds);
+  const langByMaster = new Map<string, Lang>();
+  for (const m of (mastersLangRows ?? []) as Array<{ id: string; public_language: string | null }>) {
+    langByMaster.set(m.id, resolveLang(m.public_language));
+  }
 
   /* ── 3. Load message templates ── */
   const { data: tplRows } = await supabase
@@ -203,10 +231,11 @@ export async function GET(request: Request) {
     const serviceIds = dates.map((d) => d.service_id).filter(Boolean);
     const topServiceId = mode(serviceIds);
 
-    // Most common day of week
+    // Most common day of week (locale-aware below)
     const daysOfWeek = timestamps.map((d) => d.getDay());
     const topDay = mode(daysOfWeek);
-    const dayName = topDay !== undefined ? DAY_NAMES_RU[topDay] : undefined;
+    const lang = langByMaster.get(c.master_id) ?? 'ru';
+    const dayName = topDay !== undefined ? DAY_NAMES[lang][topDay] : undefined;
 
     // Most common time (snapped to 30-min)
     const timeMinutes = timestamps.map((d) => snap30(d.getHours() * 60 + d.getMinutes()));
@@ -217,8 +246,9 @@ export async function GET(request: Request) {
 
     /* ── Build message ── */
     const hasSmart = dayName && usualTime;
-    const defaultTpl = hasSmart ? DEFAULT_CADENCE : FALLBACK_CADENCE;
-    const tpl = pickFullTemplate(tplMap.get(c.master_id), defaultTpl, '⏰ Пора записаться');
+    const defaultTpl = hasSmart ? SMART_CADENCE[lang] : FALLBACK_CADENCE_BY_LANG[lang];
+    const fallbackSubject = SUBJECT_BY_LANG[lang];
+    const tpl = pickFullTemplate(tplMap.get(c.master_id), defaultTpl, fallbackSubject);
 
     const ctxVars = {
       client_name: c.full_name ?? 'клиент',
@@ -235,7 +265,7 @@ export async function GET(request: Request) {
     notifyRows.push({
       profile_id: c.profile_id!,
       channel: 'telegram',
-      title: rendered.subject ?? '⏰ Пора записаться',
+      title: rendered.subject ?? fallbackSubject,
       body: `${rendered.body} ${marker}`,
       scheduled_for: now.toISOString(),
     });

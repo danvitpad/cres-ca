@@ -10,9 +10,26 @@ import { createClient } from '@/lib/supabase/server';
 import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
-const DEFAULT_REVIEW_SUBJECT = '⭐ Оцените визит';
-const DEFAULT_REVIEW_BODY =
-  '{client_name}, как прошёл визит «{service_name}» у {master_name}? Оцените визит: https://cres.ca/review/{apt_id} [review:{apt_id}]';
+type Lang = 'ru' | 'uk' | 'en';
+
+const FALLBACK_REVIEW: Record<Lang, { subject: string; body: string }> = {
+  ru: {
+    subject: '⭐ Оцените визит',
+    body: '{client_name}, как прошёл визит «{service_name}» у {master_name}? Оцените: https://cres.ca/review/{apt_id} [review:{apt_id}]',
+  },
+  uk: {
+    subject: '⭐ Оцініть візит',
+    body: '{client_name}, як пройшов візит «{service_name}» у {master_name}? Оцініть: https://cres.ca/review/{apt_id} [review:{apt_id}]',
+  },
+  en: {
+    subject: '⭐ Rate your visit',
+    body: '{client_name}, how was «{service_name}» with {master_name}? Rate: https://cres.ca/review/{apt_id} [review:{apt_id}]',
+  },
+};
+
+function resolveLang(raw: unknown): Lang {
+  return raw === 'uk' || raw === 'en' ? raw : 'ru';
+}
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -28,7 +45,7 @@ export async function GET(request: Request) {
   const { data: appointments } = await supabase
     .from('appointments')
     .select(
-      'id, master_id, ends_at, clients(profile_id, full_name), services(name), masters(display_name, profiles:profiles!masters_profile_id_fkey(full_name))',
+      'id, master_id, ends_at, clients(profile_id, full_name), services(name), masters(display_name, public_language, profiles:profiles!masters_profile_id_fkey(full_name))',
     )
     .eq('status', 'completed')
     .gte('ends_at', from.toISOString())
@@ -89,11 +106,13 @@ export async function GET(request: Request) {
     if (prefMap.get(client.profile_id) === false) continue;
 
     const service = apt.services as unknown as { name: string } | null;
-    const master = apt.masters as unknown as { display_name: string | null; profiles: { full_name: string | null } | null } | null;
+    const master = apt.masters as unknown as { display_name: string | null; public_language: string | null; profiles: { full_name: string | null } | null } | null;
     const masterName = master?.display_name ?? master?.profiles?.full_name ?? 'мастер';
     const serviceName = service?.name ?? 'визит';
+    const lang = resolveLang(master?.public_language);
+    const fb = FALLBACK_REVIEW[lang];
 
-    const tpl = pickFullTemplate(tplMap.get(apt.master_id), DEFAULT_REVIEW_BODY, DEFAULT_REVIEW_SUBJECT);
+    const tpl = pickFullTemplate(tplMap.get(apt.master_id), fb.body, fb.subject);
     const rendered = renderFullTemplate(tpl, {
       client_name: client.full_name ?? 'клиент',
       service_name: serviceName,
@@ -115,7 +134,7 @@ export async function GET(request: Request) {
     await supabase.from('notifications').insert({
       profile_id: client.profile_id,
       channel: 'telegram',
-      title: rendered.subject ?? DEFAULT_REVIEW_SUBJECT,
+      title: rendered.subject ?? fb.subject,
       body: finalBody,
       scheduled_for: now.toISOString(),
       data: {
