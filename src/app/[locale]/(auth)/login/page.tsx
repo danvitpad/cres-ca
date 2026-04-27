@@ -82,6 +82,25 @@ html.dark .auth-glass {
 .auth-label { font-size: 12px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; letter-spacing: .01em; }
 input[type="checkbox"].auth-cb { accent-color: var(--aviolet); width: 14px; height: 14px; cursor: pointer; }
 @keyframes auth-glow { 0%,100%{opacity:.45} 50%{opacity:.85} }
+
+/* Role tabs — стили через CSS-селектор по data-active. Раньше использовали
+   инлайн-стили, но в React 19 + framer-motion AnimatePresence обнаружился
+   баг: реконсиляция ставила правильные props, но не флашила inline style
+   в DOM. CSS-селектор автоматически реагирует на смену data-active. */
+.role-tab {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 6px; border-radius: 10px; border: none; cursor: pointer;
+  background: transparent; color: var(--afg2);
+  font-size: 13px; font-weight: 600;
+  box-shadow: none;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+  outline: none;
+}
+.role-tab[data-active="true"] {
+  background: var(--aviolet);
+  color: #fff;
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--aviolet) 35%, transparent);
+}
 `;
 
 const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
@@ -551,10 +570,10 @@ export default function AuthPage() {
             }}
           >
               <div style={{ width: '100%', maxWidth: 400 }}>
-                {/* Role toggle. key={role} форсирует remount всей группы при
-                    смене роли — без этого framer-motion layout (выше у section)
-                    интерферировал с инлайн-стилями детей и DOM не обновлялся. */}
-                <div key={`role-toggle-${role}`} style={{
+                {/* Role toggle. Стили активной кнопки идут через CSS-селектор
+                    [data-active="true"] (см. AUTH_CSS) — инлайн-стили реконсилировались
+                    некорректно в React 19. */}
+                <div style={{
                   display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
                   padding: 4, borderRadius: 14,
                   border: '1px solid var(--acb)',
@@ -568,22 +587,9 @@ export default function AuthPage() {
                       <button
                         key={r.value}
                         type="button"
-                        onClick={(e) => {
-                          setRole(r.value); setSub('form');
-                          // Сбрасываем :focus чтобы предыдущая кнопка не оставалась
-                          // в «активном на вид» состоянии после переключения.
-                          e.currentTarget.blur();
-                        }}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                          padding: '9px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                          background: active ? 'var(--aviolet)' : 'transparent',
-                          color: active ? '#fff' : 'var(--afg2)',
-                          fontSize: 13, fontWeight: 600,
-                          boxShadow: active ? '0 4px 14px color-mix(in oklab, var(--aviolet) 35%, transparent)' : 'none',
-                          transition: 'all .18s ease',
-                          outline: 'none',
-                        }}
+                        className="role-tab"
+                        data-active={active ? 'true' : 'false'}
+                        onClick={() => { setRole(r.value); setSub('form'); }}
                       >
                         <Icon size={14} />
                         {r.label}
