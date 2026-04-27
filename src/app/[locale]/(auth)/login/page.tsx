@@ -695,7 +695,7 @@ export default function AuthPage() {
                       </h1>
                       <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 4px' }}>{email}</p>
                       <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '8px 0 22px' }}>
-                        Мы отправили 6-значный код. Введите его на следующем шаге.
+                        Мы отправили 8-значный код. Введите его на следующем шаге.
                       </p>
                       <PrimaryButton onClick={() => setSub('reset-otp')} type="button">
                         Ввести код
