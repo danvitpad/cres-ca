@@ -9,10 +9,21 @@
  * created: 2026-04-26
  * --- */
 
-import { Star, MapPin } from 'lucide-react';
+import { Star, MapPin, Building2, Users, Phone, Mail } from 'lucide-react';
 import { ShareStoryButton } from './share-story-button';
 import { BookingCTA } from './booking/booking-cta';
 import { InlineAvatarEdit } from './inline/avatar-edit';
+import { getVerticalCopy } from '@/lib/verticals/copy';
+
+/** Если эта публичка — на самом деле страница КОМАНДЫ (мастер сам владеет
+ *  салоном), показываем бейджик «Салон / СТО / Клиника / ...» под аватаром,
+ *  специализацию заменяем на «Команда из X мастеров», и ниже добавляем блок
+ *  «Менеджер: ФИО · телефон · email». */
+export interface SalonContext {
+  vertical: string | null;
+  membersCount: number;
+  manager: { full_name: string | null; phone: string | null; email: string | null };
+}
 
 interface Props {
   masterId: string;
@@ -31,6 +42,7 @@ interface Props {
   joinedAt: string | null;
   bookHref: string;
   accent?: string;
+  salonContext?: SalonContext | null;
 }
 
 export function PublicHeroCard({
@@ -50,10 +62,15 @@ export function PublicHeroCard({
   joinedAt,
   bookHref,
   accent = '#0a0a0a',
+  salonContext = null,
 }: Props) {
   void masterId;
   void bookHref;
   void accent;
+
+  // Vertical+role-aware подпись бизнеса: «Салон» / «Клиника» / «СТО» / ...
+  const teamCopy = salonContext ? getVerticalCopy(salonContext.vertical, 'admin') : null;
+  const teamLabel = teamCopy ? teamCopy.business.charAt(0).toUpperCase() + teamCopy.business.slice(1) : null;
 
   const joinedLabel = (() => {
     if (!joinedAt) return null;
@@ -82,12 +99,26 @@ export function PublicHeroCard({
 
       {/* Identity */}
       <div className="text-center">
+        {/* Бейдж салона/команды — только когда это публичка владельца салона */}
+        {salonContext && teamLabel && (
+          <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
+            <Building2 className="size-3" />
+            {teamLabel}
+          </div>
+        )}
         <h1 className="text-[26px] font-bold leading-tight tracking-tight text-neutral-900">
           {displayName}
         </h1>
-        {specialization && (
+        {salonContext ? (
+          <p className="mt-1.5 inline-flex items-center justify-center gap-1.5 text-[15px] text-neutral-600">
+            <Users className="size-4" />
+            {salonContext.membersCount > 0
+              ? `Команда из ${salonContext.membersCount + 1} ${pluralizeMaster(salonContext.membersCount + 1)}`
+              : 'Команда формируется'}
+          </p>
+        ) : specialization ? (
           <p className="mt-1.5 text-[15px] text-neutral-600">{specialization}</p>
-        )}
+        ) : null}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[14px] text-neutral-700">
           {reviewsCount > 0 && (
             <span className="inline-flex items-center gap-1">
@@ -166,9 +197,45 @@ export function PublicHeroCard({
         </div>
       )}
 
+      {/* Менеджер салона — контактная информация владельца команды.
+          Показываем только когда публичка ИМЕННО салонная и есть хоть один контакт. */}
+      {salonContext && (salonContext.manager.full_name || salonContext.manager.phone || salonContext.manager.email) && (
+        <div>
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
+            Менеджер
+          </p>
+          <div className="mt-1.5 space-y-1.5">
+            {salonContext.manager.full_name && (
+              <p className="text-[15px] font-semibold text-neutral-900">{salonContext.manager.full_name}</p>
+            )}
+            {salonContext.manager.phone && (
+              <a href={`tel:${salonContext.manager.phone}`} className="inline-flex items-center gap-1.5 text-[14px] text-neutral-700 hover:underline">
+                <Phone className="size-3.5" /> {salonContext.manager.phone}
+              </a>
+            )}
+            {salonContext.manager.email && (
+              <a href={`mailto:${salonContext.manager.email}`} className="block truncate text-[14px] text-neutral-700 hover:underline">
+                <Mail className="mr-1 inline size-3.5" />
+                {salonContext.manager.email}
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {joinedLabel && (
         <p className="text-center text-[12px] text-neutral-500">{joinedLabel}</p>
       )}
     </aside>
   );
+}
+
+/** Склонение «мастеров» для русской множественной формы. */
+function pluralizeMaster(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return 'мастеров';
+  if (mod10 === 1) return 'мастера';
+  if (mod10 >= 2 && mod10 <= 4) return 'мастеров';
+  return 'мастеров';
 }

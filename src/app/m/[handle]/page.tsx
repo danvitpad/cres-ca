@@ -286,6 +286,42 @@ async function loadSalon(salonId: string | null): Promise<SalonInfo | null> {
   return (data as SalonInfo | null) ?? null;
 }
 
+/** Если открытый мастер сам ВЛАДЕЕТ салоном — этот мастер представляет
+ *  команду. Подтягиваем salon, vertical, имя/тел/email менеджера-владельца
+ *  + список других мастеров команды для блока «Команда салона».
+ */
+interface OwnedSalonContext {
+  salon: { id: string; name: string | null; vertical: string | null; phone: string | null; email: string | null };
+  manager: { full_name: string | null; phone: string | null; email: string | null };
+  members: Array<{ id: string; slug: string | null; display_name: string | null; specialization: string | null; avatar_url: string | null }>;
+}
+async function loadOwnedSalonContext(profileId: string | null): Promise<OwnedSalonContext | null> {
+  if (!profileId) return null;
+  const db = admin();
+  const { data: salon } = await db
+    .from('salons')
+    .select('id, name, vertical, phone, email, owner_id')
+    .eq('owner_id', profileId)
+    .maybeSingle();
+  if (!salon) return null;
+
+  const [{ data: manager }, { data: masters }] = await Promise.all([
+    db.from('profiles').select('full_name, phone, email').eq('id', profileId).maybeSingle(),
+    db.from('masters')
+      .select('id, slug, display_name, specialization, avatar_url, profile_id')
+      .eq('salon_id', salon.id)
+      .eq('is_active', true)
+      .neq('profile_id', profileId)
+      .limit(20),
+  ]);
+
+  return {
+    salon: { id: salon.id, name: salon.name, vertical: salon.vertical, phone: salon.phone, email: salon.email },
+    manager: { full_name: manager?.full_name ?? null, phone: manager?.phone ?? null, email: manager?.email ?? null },
+    members: ((masters ?? []) as Array<{ id: string; slug: string | null; display_name: string | null; specialization: string | null; avatar_url: string | null }>),
+  };
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { handle } = await params;
   const master = await loadMaster(handle);
@@ -342,13 +378,14 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const [services, portfolio, beforeAfter, reviewsList, partners, salon] = await Promise.all([
+  const [services, portfolio, beforeAfter, reviewsList, partners, salon, ownedSalon] = await Promise.all([
     loadServices(master.id),
     loadPortfolio(master.id),
     loadBeforeAfter(master.id),
     loadReviews(master.id),
     loadPartners(master.id),
     loadSalon(master.salon_id),
+    loadOwnedSalonContext(master.profile_id),
   ]);
   const displayName = master.display_name ?? 'Master';
   const rating = Number(master.rating ?? 0);
@@ -472,7 +509,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             <PublicHeroCard
               masterId={master.id}
               masterProfileId={master.profile_id}
-              displayName={displayName}
+              displayName={ownedSalon ? (ownedSalon.salon.name ?? displayName) : displayName}
               specialization={master.specialization}
               rating={rating}
               reviewsCount={reviews}
@@ -486,6 +523,11 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               joinedAt={null}
               bookHref={bookHref}
               accent={accent}
+              salonContext={ownedSalon ? {
+                vertical: ownedSalon.salon.vertical,
+                membersCount: ownedSalon.members.length,
+                manager: ownedSalon.manager,
+              } : null}
             />
           </div>
 
