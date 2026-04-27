@@ -61,10 +61,10 @@ export async function GET(
     .limit(500);
 
   if (isMaster) {
-    if (!ownMaster) return NextResponse.json({ clients: [], role, salon });
+    if (!ownMaster) return NextResponse.json({ clients: [], role, salon, masters: masterList });
     query = query.eq('master_id', ownMaster.id);
   } else if (masterIds.length === 0) {
-    return NextResponse.json({ clients: [], role, salon });
+    return NextResponse.json({ clients: [], role, salon, masters: masterList });
   } else {
     query = query.in('master_id', masterIds);
   }

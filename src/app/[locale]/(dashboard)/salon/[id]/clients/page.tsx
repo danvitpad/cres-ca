@@ -64,7 +64,7 @@ export default function SalonClientsPage() {
   }, [salonId]);
 
   const filtered = useMemo(() => {
-    if (!data) return [];
+    if (!data?.clients) return [];
     const q = search.trim().toLowerCase();
     return data.clients.filter((c) => {
       if (masterFilter !== 'all' && c.master_id !== masterFilter) return false;
@@ -135,14 +135,14 @@ export default function SalonClientsPage() {
             className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
           />
         </div>
-        {showMasterFilter && data.masters.length > 0 && (
+        {showMasterFilter && (data.masters?.length ?? 0) > 0 && (
           <select
             value={masterFilter}
             onChange={(e) => setMasterFilter(e.target.value)}
             className="h-10 px-3 rounded-lg border border-border bg-background text-sm"
           >
             <option value="all">Все мастера</option>
-            {data.masters.map((m) => (
+            {(data.masters ?? []).map((m) => (
               <option key={m.id} value={m.id}>{m.display_name || 'Мастер'}</option>
             ))}
           </select>
