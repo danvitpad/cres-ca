@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 
 import TeamModePicker, { type TeamMode } from '@/components/onboarding/TeamModePicker';
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });
 
@@ -179,6 +180,9 @@ function CreateBusinessWizard() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  // Cropper state — какой kind кадрируем + raw URL выбранной картинки
+  const [cropKind, setCropKind] = useState<'avatar' | 'cover' | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [teamType, setTeamType] = useState<'solo' | 'team' | null>(null);
   const [teamMode, setTeamMode] = useState<TeamMode | null>(null);
@@ -310,6 +314,9 @@ function CreateBusinessWizard() {
     }
   };
 
+  // Когда пользователь выбрал файл — открываем кроппер (вместо мгновенной
+  // подстановки сырой картинки). Вырезание + зум + позиционирование делаются
+  // в общем диалоге ImageCropDialog → onCropApplied получает уже готовый Blob.
   const handleFileSelect = (kind: 'avatar' | 'cover', file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
@@ -318,13 +325,28 @@ function CreateBusinessWizard() {
       return;
     }
     const url = URL.createObjectURL(file);
-    if (kind === 'avatar') {
+    setCropKind(kind);
+    setCropSrc(url);
+  };
+
+  const onCropApplied = (blob: Blob) => {
+    if (!cropKind) return;
+    const ext = blob.type.includes('webp') ? 'webp' : blob.type.includes('png') ? 'png' : 'jpg';
+    const file = new File([blob], `${cropKind}-${Date.now()}.${ext}`, { type: blob.type });
+    const url = URL.createObjectURL(blob);
+    if (cropKind === 'avatar') {
       setAvatarFile(file);
       setAvatarPreview(url);
     } else {
       setCoverFile(file);
       setCoverPreview(url);
     }
+  };
+
+  const closeCropper = () => {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropKind(null);
+    setCropSrc(null);
   };
 
   const uploadMedia = async (): Promise<{ avatarUrl: string | null; coverUrl: string | null }> => {
@@ -1003,6 +1025,20 @@ function CreateBusinessWizard() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Универсальный кроппер для аватара и баннера. Реальные границы:
+          круг для аватара, прямоугольник 3:1 для баннера. Поддерживает зум
+          (slider + колёсико), drag-to-pan, отдаёт Blob нужного размера. */}
+      <ImageCropDialog
+        open={!!cropSrc}
+        src={cropSrc}
+        onClose={closeCropper}
+        onCropped={onCropApplied}
+        title={cropKind === 'avatar' ? 'Аватар компании' : 'Обложка'}
+        aspect={cropKind === 'avatar' ? 1 : 3}
+        shape={cropKind === 'avatar' ? 'round' : 'rect'}
+        outputSize={cropKind === 'avatar' ? 512 : 1600}
+      />
     </div>
   );
 }

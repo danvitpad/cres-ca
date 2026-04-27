@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useIsSalonOwner } from './use-is-salon-owner';
 import { humanizeError } from '@/lib/format/error';
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 
 interface Props {
   salonId: string;
@@ -27,22 +28,25 @@ export function SalonInlineLogoEdit({ salonId, salonOwnerId, initialLogoUrl, chi
   const isOwner = useIsSalonOwner(salonOwnerId);
   const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function onFile(file: File | null) {
+  function onFilePicked(file: File | null) {
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error('Файл больше 4 MB');
-      return;
-    }
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 8 * 1024 * 1024) { toast.error('Файл больше 8 MB'); return; }
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  async function onCropped(blob: Blob) {
     setUploading(true);
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${user.id}/salon-logo-${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('avatars').upload(path, file, {
+      const path = `${user.id}/salon-logo-${Date.now()}.webp`;
+      const { error } = await supabase.storage.from('avatars').upload(path, blob, {
+        contentType: blob.type,
         cacheControl: '3600',
         upsert: false,
       });
@@ -76,7 +80,17 @@ export function SalonInlineLogoEdit({ salonId, salonOwnerId, initialLogoUrl, chi
             type="file"
             accept="image/*"
             hidden
-            onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => { onFilePicked(e.target.files?.[0] ?? null); e.target.value = ''; }}
+          />
+          <ImageCropDialog
+            open={!!cropSrc}
+            src={cropSrc}
+            onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+            onCropped={onCropped}
+            title="Логотип салона"
+            aspect={1}
+            shape="round"
+            outputSize={512}
           />
           <button
             type="button"

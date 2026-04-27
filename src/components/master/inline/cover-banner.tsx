@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useIsOwner } from './use-is-owner';
 import { InlineEditSheet } from './inline-edit-sheet';
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 
 interface Props {
   masterId: string;
@@ -33,6 +34,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
   const [draftUrl, setDraftUrl] = useState<string | null>(coverUrl);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function startEdit() {
@@ -41,18 +43,13 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     setOpen(true);
   }
 
-  async function uploadCover(file: File): Promise<string | null> {
-    if (!file) return null;
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Файл больше 8 MB');
-      return null;
-    }
+  async function uploadBlob(blob: Blob): Promise<string | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `${user.id}/cover-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('avatars').upload(path, file, {
+    const path = `${user.id}/cover-${Date.now()}.webp`;
+    const { error } = await supabase.storage.from('avatars').upload(path, blob, {
+      contentType: blob.type,
       cacheControl: '3600',
       upsert: false,
     });
@@ -63,12 +60,21 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
   }
 
-  async function onFile(file: File | null) {
+  function onFilePicked(file: File | null) {
     if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 8 * 1024 * 1024) { toast.error('Файл больше 8 MB'); return; }
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  async function onCropApplied(blob: Blob) {
     setUploading(true);
-    const url = await uploadCover(file);
+    const url = await uploadBlob(blob);
     setUploading(false);
-    if (url) setDraftUrl(url);
+    if (url) {
+      setDraftUrl(url);
+      setDraftY(50); // после кропа фото уже идеально кадрировано — обнуляем slider
+    }
   }
 
   async function save() {
@@ -134,7 +140,17 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         type="file"
         accept="image/*"
         hidden
-        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+        onChange={(e) => { onFilePicked(e.target.files?.[0] ?? null); e.target.value = ''; }}
+      />
+      <ImageCropDialog
+        open={!!cropSrc}
+        src={cropSrc}
+        onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+        onCropped={onCropApplied}
+        title="Обложка профиля"
+        aspect={16 / 9}
+        shape="rect"
+        outputSize={1600}
       />
 
       {/* Preview */}
