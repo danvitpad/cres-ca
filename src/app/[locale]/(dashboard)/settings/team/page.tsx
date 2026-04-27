@@ -517,33 +517,7 @@ export default function TeamPage() {
               <>
                 <p className="text-sm text-muted-foreground">{t('inviteDescription')}</p>
 
-                <div className="space-y-2">
-                  <Label>Роль</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setInviteRole('master')}
-                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
-                    inviteRole === 'master'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card border-border hover:bg-muted'
-                  }`}
-                >
-                  Мастер
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInviteRole('receptionist')}
-                  className={`h-10 rounded-lg border text-sm font-medium transition-colors ${
-                    inviteRole === 'receptionist'
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card border-border hover:bg-muted'
-                  }`}
-                >
-                  Ресепшен
-                </button>
-              </div>
-            </div>
+                {/* Роль «Ресепшн» убрана из MVP — добавим когда понадобится отдельной задачей. */}
 
             <div className="space-y-2">
               <Label>Email (необязательно)</Label>

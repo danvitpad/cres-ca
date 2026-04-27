@@ -110,7 +110,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { key: 'salon-calendar', icon: FreshaCalendar, href: `${base}/calendar`, label: 'Календарь команды' },
         { key: 'salon-finance', icon: FreshaWallet, href: `${base}/finance`, label: 'Финансы' },
         { key: 'salon-clients', icon: FreshaPerson, href: `${base}/clients`, label: 'Клиенты' },
-        { key: 'salon-team', icon: UsersIcon, href: `${base}/team`, label: 'Команда' },
+        { key: 'salon-team', icon: UsersIcon, href: '/settings/team', label: 'Команда' },
         { key: 'salon-catalogue', icon: FreshaBook, href: '/services', label: 'Каталог' },
         { key: 'salon-marketing', icon: FreshaMegaphone, href: '/marketing', label: 'Маркетинг' },
         { key: 'salon-stats', icon: BarChart3, href: '/stats', label: 'Статистика' },

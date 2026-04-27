@@ -596,9 +596,14 @@ export default function CalendarPage() {
                   </div>
                 </div>
 
-                {/* Items */}
+                {/* Items.
+                    Чистая структура: одна быстрая кнопка-фильтр сверху («Команда
+                    смены» = автоматом мастера у которых есть записи на сегодня)
+                    + чек-боксы по каждому мастеру + чек-бокс «Все мастера».
+                    Раньше было 5 пунктов с дублями («Вся команда» / «У Стеллы (Вы)»
+                    / «Все участники команды» / «У Стеллы») — почистил. */}
                 <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {/* Shift team item (active) */}
+                  {/* Quick preset: только мастера со сменой сегодня */}
                   <button
                     style={popoverItemStyle(F,true)}
                     onMouseEnter={() => setHoveredItem('shift')}
@@ -608,38 +613,9 @@ export default function CalendarPage() {
                     <span>{t('teamShift') || 'Команда смены'}</span>
                   </button>
 
-                  <div style={{ height: 1, backgroundColor: F.toolbarBorder, margin: '4px 0' }} />
+                  <div style={{ height: 1, backgroundColor: F.toolbarBorder, margin: '6px 0' }} />
 
-                  {/* All team */}
-                  <button
-                    style={popoverItemStyle(F,false, hoveredItem === 'all')}
-                    onMouseEnter={() => setHoveredItem('all')}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <Users style={{ width: 20, height: 20, color: F.textMuted }} />
-                    <span>{t('allTeam') || 'Вся команда'}</span>
-                  </button>
-
-                  {/* Current master */}
-                  <button
-                    style={popoverItemStyle(F,false, hoveredItem === 'me')}
-                    onMouseEnter={() => setHoveredItem('me')}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 999,
-                      backgroundColor: '#ebf8fe', display: 'flex',
-                      alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 600, color: F.text, flexShrink: 0,
-                    }}>
-                      {masterName ? masterName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?'}
-                    </div>
-                    <span>{masterName} ({t('you') || 'Вы'})</span>
-                  </button>
-
-                  <div style={{ height: 1, backgroundColor: F.toolbarBorder, margin: '4px 0' }} />
-
-                  {/* Checkboxes section */}
+                  {/* All masters checkbox */}
                   <button
                     style={popoverItemStyle(F,false, hoveredItem === 'checkAll')}
                     onMouseEnter={() => setHoveredItem('checkAll')}
@@ -652,9 +628,10 @@ export default function CalendarPage() {
                     }}>
                       <Check style={{ width: 16, height: 16, color: '#fff' }} />
                     </div>
-                    <span style={{ fontWeight: 600 }}>{t('allTeamMembers') || 'Все участники команды'}</span>
+                    <span style={{ fontWeight: 600 }}>{t('allTeamMembers') || 'Все мастера'}</span>
                   </button>
 
+                  {/* Per-master row (own profile shown without (Вы) дубля) */}
                   <button
                     style={popoverItemStyle(F,false, hoveredItem === 'checkMe')}
                     onMouseEnter={() => setHoveredItem('checkMe')}

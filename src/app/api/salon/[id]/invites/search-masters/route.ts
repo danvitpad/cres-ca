@@ -8,7 +8,6 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { getCurrentUserRole } from '@/lib/team/roles';
 
 export async function GET(
@@ -20,52 +19,39 @@ export async function GET(
   if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-
   const url = new URL(req.url);
   const q = (url.searchParams.get('q') ?? '').trim();
   if (q.length < 2) return NextResponse.json({ masters: [] });
 
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
+  // SQL-функция search_unaffiliated_masters делает ILIKE по profiles.full_name /
+  // email / phone (с очисткой пробелов и нецифр в телефоне). Старая JS-фильтрация
+  // ломалась из-за тонкостей PostgREST-embed.
+  const { data, error } = await supabase.rpc('search_unaffiliated_masters', {
+    p_query: q,
+    p_limit: 10,
+  });
 
-  const { data, error } = await admin
-    .from('masters')
-    .select('id, profile_id, specialization, is_active, salon_id, profile:profiles!masters_profile_id_fkey(full_name, email, phone, avatar_url)')
-    .is('salon_id', null)
-    .eq('is_active', true)
-    .limit(50);
+  if (error) return NextResponse.json({ error: error.message, masters: [] }, { status: 500 });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  type ProfileRow = { full_name: string | null; email: string | null; phone: string | null; avatar_url: string | null };
-  type MasterRow = { id: string; profile_id: string; specialization: string | null; profile: ProfileRow | ProfileRow[] | null };
-
-  const needle = q.toLowerCase();
-  const rows = ((data as unknown) as MasterRow[] | null) ?? [];
-  const normalized = rows.map((m) => {
-    const p = Array.isArray(m.profile) ? (m.profile[0] ?? null) : m.profile;
-    return { ...m, profile: p };
-  }).filter((m) => {
-    const p = m.profile;
-    if (!p) return false;
-    const haystack = [p.full_name, p.email, p.phone].filter(Boolean).join(' ').toLowerCase();
-    return haystack.includes(needle);
-  }).slice(0, 10);
-
+  type Row = {
+    master_id: string;
+    profile_id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    avatar_url: string | null;
+    specialization: string | null;
+  };
+  const rows = ((data as unknown) as Row[] | null) ?? [];
   return NextResponse.json({
-    masters: normalized.map((m) => ({
-      id: m.id,
-      profile_id: m.profile_id,
-      full_name: m.profile?.full_name ?? null,
-      email: m.profile?.email ?? null,
-      phone: m.profile?.phone ?? null,
-      avatar_url: m.profile?.avatar_url ?? null,
-      specialization: m.specialization,
+    masters: rows.map((r) => ({
+      id: r.master_id,
+      profile_id: r.profile_id,
+      full_name: r.full_name,
+      email: r.email,
+      phone: r.phone,
+      avatar_url: r.avatar_url,
+      specialization: r.specialization,
     })),
   });
 }
