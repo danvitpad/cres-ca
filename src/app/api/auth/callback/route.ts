@@ -41,7 +41,10 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const next = searchParams.get('next');
   const oauthRole = readRole(searchParams);
-  const mode = searchParams.get('mode') === 'signin' ? 'signin' : 'signup';
+  // Дефолт = signin (строгий): если в URL не приходит явное mode=signup, считаем
+  // что это вход. Защищает от старого кеша JS, который не передавал параметр —
+  // пользователь не должен молча зарегистрироваться при попытке логина.
+  const mode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=auth`);
