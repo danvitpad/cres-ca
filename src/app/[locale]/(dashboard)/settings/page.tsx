@@ -1134,10 +1134,10 @@ function SecurityTab() {
     setDeleting(false);
     if (!res.ok) {
       const { error } = await res.json().catch(() => ({ error: 'Не удалось удалить' }));
-      toast.error(error || 'Ошибка удаления');
+      toast.error(humanizeError(error) || 'Ошибка удаления');
       return;
     }
-    toast.success('Аккаунт помечен на удаление. У вас есть 30 дней на восстановление — просто войдите снова.');
+    toast.success('Аккаунт помечен на удаление. У тебя есть 30 дней на восстановление — просто войди снова под этим email.');
     window.location.href = '/login';
   }
 

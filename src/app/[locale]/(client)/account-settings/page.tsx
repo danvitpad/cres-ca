@@ -43,6 +43,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { humanizeError } from '@/lib/format/error';
 
 export default function ClientSettingsPage() {
@@ -67,6 +77,12 @@ export default function ClientSettingsPage() {
   const DEFAULT_REMINDERS: ReminderPref[] = [{ value: 1, unit: 'days' }, { value: 2, unit: 'hours' }];
   const [reminders, setReminders] = useState<ReminderPref[]>(DEFAULT_REMINDERS);
   const [remindersSaving, setRemindersSaving] = useState(false);
+
+  // Удаление аккаунта — кастомный диалог (без window.prompt)
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -244,31 +260,31 @@ export default function ClientSettingsPage() {
     toast.success('2FA включена');
   }
 
-  async function deleteAccount() {
-    const ok = await confirm({
-      title: t('deleteConfirmTitle'),
-      description: t('deleteConfirm'),
-      confirmLabel: t('deleteAccount'),
-      destructive: true,
-    });
-    if (!ok) return;
-    const confirmText = window.prompt('Введите "УДАЛИТЬ" для подтверждения', '');
-    if (confirmText !== 'УДАЛИТЬ') { toast.error('Отменено'); return; }
-    const password = window.prompt('Введите текущий пароль', '');
-    if (!password) return;
+  // Открыть кастомный диалог удаления (без браузерного prompt)
+  function openDeleteDialog() {
+    setDeleteConfirmation('');
+    setDeletePassword('');
+    setDeleteOpen(true);
+  }
+
+  async function confirmDelete() {
+    if (deleteConfirmation !== 'УДАЛИТЬ' || !deletePassword || deleting) return;
+    setDeleting(true);
     const res = await fetch('/api/account/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confirmation: confirmText, password }),
+      body: JSON.stringify({ confirmation: deleteConfirmation, password: deletePassword }),
     });
     const json = await res.json().catch(() => ({}));
+    setDeleting(false);
     if (!res.ok) {
-      toast.error(json.error || tc('error'));
+      toast.error(humanizeError(json.error) || tc('error'));
       return;
     }
     const supabase = createClient();
     await supabase.auth.signOut();
     clearAuth();
+    setDeleteOpen(false);
     router.push('/');
   }
 
@@ -458,12 +474,63 @@ export default function ClientSettingsPage() {
       <Section title={t('data')}>
         <LinkRow icon={Download} label={t('dataExport')} onClick={exportData} />
         <div className="px-6 py-4">
-          <Button variant="destructive" onClick={deleteAccount}>
+          <Button variant="destructive" onClick={openDeleteDialog}>
             <Trash2 className="mr-2 size-4" />
             {t('deleteAccount')}
           </Button>
         </div>
       </Section>
+
+      {/* Кастомный диалог удаления аккаунта (вместо нативного window.prompt).
+          Soft-delete: API ставит deleted_at = now(), у клиента есть 30 дней
+          на восстановление — простой логин в течение этого срока возвращает
+          аккаунт. После 30 дней cron account-purge удаляет данные навсегда. */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Удалить аккаунт</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
+              Аккаунт будет помечен на удаление. У тебя есть <strong>30 дней на восстановление</strong> — просто войди снова под этим email и пароль.
+              <br /><br />
+              После 30 дней все данные (записи, история, бонусы, заметки) удаляются безвозвратно.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="del-confirm">Введи слово «УДАЛИТЬ» для подтверждения</Label>
+              <Input
+                id="del-confirm"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                placeholder="УДАЛИТЬ"
+                autoComplete="off"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="del-pwd">Текущий пароль</Label>
+              <Input
+                id="del-pwd"
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting || deleteConfirmation !== 'УДАЛИТЬ' || !deletePassword}
+            >
+              {deleting ? 'Удаляем…' : 'Удалить аккаунт'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
