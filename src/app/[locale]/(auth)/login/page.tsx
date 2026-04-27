@@ -542,18 +542,19 @@ export default function AuthPage() {
               сверху (центровка прятала role-toggle за viewport). Снизу — внятный
               отступ чтобы последняя кнопка не липла к краю экрана. Скролл —
               на уровне страницы. */}
-          <motion.section
-            layout
-            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
+          <section
             style={{
               flex: 1, order: isSignUp ? 2 : 1,
               display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
               padding: 'clamp(20px, 3vw, 40px) clamp(12px, 2.5vw, 32px) clamp(40px, 5vw, 64px)',
+              transition: 'order .25s ease',
             }}
           >
               <div style={{ width: '100%', maxWidth: 400 }}>
-                {/* Role toggle */}
-                <div style={{
+                {/* Role toggle. key={role} форсирует remount всей группы при
+                    смене роли — без этого framer-motion layout (выше у section)
+                    интерферировал с инлайн-стилями детей и DOM не обновлялся. */}
+                <div key={`role-toggle-${role}`} style={{
                   display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
                   padding: 4, borderRadius: 14,
                   border: '1px solid var(--acb)',
@@ -973,12 +974,10 @@ export default function AuthPage() {
                   )}
                 </AnimatePresence>
               </div>
-          </motion.section>
+          </section>
 
           {/* Hero image column — hidden on mobile */}
-          <motion.section
-            layout
-            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
+          <section
             className="auth-hero"
             style={{
               flex: 1, order: isSignUp ? 1 : 2,
@@ -986,6 +985,7 @@ export default function AuthPage() {
               borderRadius: 28,
               overflow: 'hidden',
               minHeight: 400,
+              transition: 'order .25s ease',
             }}
           >
               <div style={{
@@ -1004,7 +1004,7 @@ export default function AuthPage() {
                 .auth-hero { display: none !important; }
               }
             `}</style>
-          </motion.section>
+          </section>
         </div>
       </div>
     </>
