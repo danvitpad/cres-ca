@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 
 interface MasterSelf {
   id: string;
@@ -61,7 +62,28 @@ export default function MasterMiniAppProfile() {
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function uploadCroppedAvatar(blob: Blob) {
+    setAvatarBusy(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const path = `${user.id}/avatar-${Date.now()}.webp`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, blob, {
+        contentType: blob.type, cacheControl: '3600', upsert: false,
+      });
+      if (upErr) { alert(`Ошибка загрузки: ${upErr.message}`); return; }
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
+      setProfileAvatar(pub.publicUrl);
+      haptic('success');
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!userId) return;
@@ -184,29 +206,24 @@ export default function MasterMiniAppProfile() {
             type="file"
             accept="image/*"
             hidden
-            onChange={async (e) => {
+            onChange={(e) => {
               const f = e.target.files?.[0];
               if (!f) return;
-              setAvatarBusy(true);
-              try {
-                const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) return;
-                if (f.size > 5 * 1024 * 1024) { alert('Файл больше 5 MB'); return; }
-                const ext = f.name.split('.').pop() || 'jpg';
-                const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-                const { error: upErr } = await supabase.storage.from('avatars').upload(path, f, {
-                  cacheControl: '3600', upsert: false,
-                });
-                if (upErr) { alert(`Ошибка загрузки: ${upErr.message}`); return; }
-                const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-                await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
-                setProfileAvatar(pub.publicUrl);
-                haptic('success');
-              } finally {
-                setAvatarBusy(false);
-              }
+              if (!f.type.startsWith('image/')) return;
+              if (f.size > 8 * 1024 * 1024) { alert('Файл больше 8 MB'); return; }
+              setCropSrc(URL.createObjectURL(f));
+              e.target.value = '';
             }}
+          />
+          <ImageCropDialog
+            open={!!cropSrc}
+            src={cropSrc}
+            onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+            onCropped={uploadCroppedAvatar}
+            title="Аватар"
+            aspect={1}
+            shape="round"
+            outputSize={512}
           />
           <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
             <h1

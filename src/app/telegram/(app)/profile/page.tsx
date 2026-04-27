@@ -28,6 +28,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 import { mapError } from '@/lib/errors';
 import {
   MobilePage,
@@ -71,6 +72,7 @@ export default function MiniAppProfilePage() {
   // Avatar upload
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   // Edit profile modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -183,16 +185,21 @@ export default function MiniAppProfilePage() {
     }
   }
 
-  async function onAvatarFile(file: File) {
+  function onAvatarFile(file: File) {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 8 * 1024 * 1024) { haptic('error'); return; }
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  async function onAvatarCropped(blob: Blob) {
     if (!userId || avatarBusy) return;
     setAvatarBusy(true);
     try {
       const supabase = createClient();
-      const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase();
-      const path = `${userId}/${Date.now()}.${ext}`;
+      const path = `${userId}/${Date.now()}.webp`;
       const { error: upErr } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { cacheControl: '3600', upsert: true });
+        .upload(path, blob, { contentType: blob.type, cacheControl: '3600', upsert: true });
       if (upErr) {
         haptic('error');
         return;
@@ -356,6 +363,16 @@ export default function MiniAppProfilePage() {
             if (f) onAvatarFile(f);
             e.target.value = '';
           }}
+        />
+        <ImageCropDialog
+          open={!!cropSrc}
+          src={cropSrc}
+          onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+          onCropped={onAvatarCropped}
+          title="Аватар"
+          aspect={1}
+          shape="round"
+          outputSize={512}
         />
 
         <GradientHeroCard
