@@ -155,7 +155,16 @@ export async function GET(request: Request) {
     });
   }
 
-  // Маршрутизация по роли
+  // Маршрутизация по роли.
+  // Для свежесозданных аккаунтов через Google (justCreated=true) ВСЕГДА шлём
+  // на /onboarding/account-type — мы пропускаем подтверждение почты (email
+  // верифицирован Google'ом), но онбординг (выбор ниши, заведение бизнеса,
+  // расписание) пройти надо. Без этого мастер падал на пустой /calendar
+  // с попапом «Выбери сферу» — UX-провал.
+  if (justCreated && role !== 'client') {
+    return redirectAndClear(`${origin}/onboarding/account-type`);
+  }
+
   if (role === 'client') {
     return redirectAndClear(`${origin}/feed`);
   }
@@ -169,7 +178,7 @@ export async function GET(request: Request) {
     if (salon?.id) return redirectAndClear(`${origin}/salon/${salon.id}/dashboard`);
     return redirectAndClear(`${origin}/onboarding/account-type`);
   }
-  // master
+  // master — существующий аккаунт (не justCreated) с уже заведённым master row
   const { data: master } = await supabase
     .from('masters')
     .select('id')
