@@ -118,16 +118,32 @@ export default function AuthPage() {
   const [sub, setSub] = useState<Sub>('form');
   const [loading, setLoading] = useState(false);
 
-  // Если callback вернул ?error=no_account — показываем тост и подсвечиваем
-  // что нужно зарегистрироваться (mode уже придёт как 'signup' из URL).
+  // Если callback вернул ?error=no_account — показываем тост и переключаемся
+  // на регистрацию. Зависим от значений URL чтобы корректно сработать когда
+  // useSearchParams отдаёт null на первом рендере (Suspense) и хydрirues позже.
   useEffect(() => {
     if (urlError === 'no_account') {
-      toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.');
+      toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.', { duration: 6000 });
     } else if (urlError === 'auth') {
-      toast.error('Не удалось войти. Попробуй ещё раз.');
+      toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 6000 });
+    }
+  }, [urlError]);
+
+  // Синхронизируем role с URL — иначе первый рендер с null'овым urlRole кэширует
+  // 'client' в useState, а потом приходит ?role=master но state не меняется.
+  useEffect(() => {
+    if (urlRole && ['client', 'master', 'salon_admin'].includes(urlRole) && urlRole !== role) {
+      setRole(urlRole);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [urlRole]);
+
+  // То же для mode
+  useEffect(() => {
+    if (urlMode === 'signup' && mode !== 'signup') setMode('signup');
+    if (urlMode === 'signin' && mode !== 'signin') setMode('signin');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlMode]);
 
   const [email, setEmail] = useState(() => urlEmail || readRemembered().email || '');
   const [rememberMe, setRememberMe] = useState(true);
@@ -513,14 +529,17 @@ export default function AuthPage() {
           flex: 1, display: 'flex', flexDirection: 'row', gap: 0,
           padding: 'clamp(6px, 1.2vw, 12px)',
         }}>
-          {/* Form column — natural height, no internal scroll */}
+          {/* Form column — top-align так чтобы длинная форма signup не обрезалась
+              сверху (центровка прятала role-toggle за viewport). Снизу — внятный
+              отступ чтобы последняя кнопка не липла к краю экрана. Скролл —
+              на уровне страницы. */}
           <motion.section
             layout
             transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             style={{
               flex: 1, order: isSignUp ? 2 : 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 'clamp(16px, 2.5vw, 32px) clamp(12px, 2.5vw, 32px)',
+              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+              padding: 'clamp(20px, 3vw, 40px) clamp(12px, 2.5vw, 32px) clamp(40px, 5vw, 64px)',
             }}
           >
               <div style={{ width: '100%', maxWidth: 400 }}>
