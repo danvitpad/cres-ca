@@ -16,6 +16,7 @@ import { SalonTeamGrid } from '@/components/salon/salon-team-grid';
 import { SalonJoinRequestCard } from '@/components/salon/salon-join-request-card';
 import { SalonInlineCoverBanner } from '@/components/salon/inline/salon-cover-banner';
 import { SalonInlineBioBlock } from '@/components/salon/inline/salon-bio-block';
+import { SalonInlineAddressBlock } from '@/components/salon/inline/salon-address-block';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -240,6 +241,15 @@ export default async function PublicSalonPage({ params }: PageProps) {
               salonOwnerId={salon.owner_id}
               recruitmentOpen={salon.recruitment_open}
               recruitmentMessage={salon.recruitment_message}
+            />
+
+            {/* Адрес салона + карта (inline-edit для admin/owner) */}
+            <SalonInlineAddressBlock
+              salonId={salon.id}
+              salonOwnerId={salon.owner_id}
+              salonName={salon.name}
+              initialCity={salon.city}
+              initialAddress={salon.address}
             />
 
             {masters.length > 0 ? (

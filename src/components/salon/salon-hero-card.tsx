@@ -9,8 +9,9 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Star, Calendar, Phone, Mail } from 'lucide-react';
+import { MapPin, Star, Calendar } from 'lucide-react';
 import { SalonInlineLogoEdit } from './inline/salon-logo-edit';
+import { SalonInlineContactsBlock } from './inline/salon-contacts-block';
 
 interface Props {
   salonId: string;
@@ -122,34 +123,13 @@ export function SalonHeroCard({
         )}
       </dl>
 
-      {/* Contacts */}
-      {(phone || email) && (
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
-            Связаться
-          </p>
-          <div className="mt-2 space-y-1.5">
-            {phone && (
-              <a
-                href={`tel:${phone}`}
-                className="inline-flex items-center gap-2 text-[14px] text-neutral-900 hover:underline"
-              >
-                <Phone className="size-3.5 text-neutral-500" />
-                {phone}
-              </a>
-            )}
-            {email && (
-              <a
-                href={`mailto:${email}`}
-                className="block truncate text-[14px] text-neutral-900 hover:underline"
-              >
-                <Mail className="mr-2 inline size-3.5 text-neutral-500" />
-                {email}
-              </a>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Contacts — inline-editable for owner */}
+      <SalonInlineContactsBlock
+        salonId={salonId}
+        salonOwnerId={salonOwnerId}
+        initialPhone={phone}
+        initialEmail={email}
+      />
     </aside>
   );
 }
