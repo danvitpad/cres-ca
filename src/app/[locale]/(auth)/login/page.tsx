@@ -162,7 +162,6 @@ export default function AuthPage() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [teamName, setTeamName] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [terms, setTerms] = useState(false);
@@ -358,8 +357,9 @@ export default function AuthPage() {
 
     setLoading(true);
     const supabase = createClient();
-    const isTeam = role === 'salon_admin';
-    const fullName = isTeam ? teamName.trim() : `${firstName} ${lastName}`.trim();
+    // ФИО админа команды собираем тут же как для мастера/клиента — название
+    // салона спросим на онбординге шага «Расскажи о бизнесе».
+    const fullName = `${firstName} ${lastName}`.trim();
 
     const locale = (typeof window !== 'undefined' && window.location.pathname.match(/^\/(ru|en|uk)\b/)?.[1]) || 'ru';
     const { data, error } = await supabase.auth.signUp({
@@ -620,26 +620,21 @@ export default function AuthPage() {
                       <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: isSignUp ? 8 : 12 }}>
                         {mode === 'signup' && (
                           <>
-                            {role === 'salon_admin' ? (
-                              <Field label="Название команды / салона">
+                            {/* Имя+Фамилия для всех ролей включая Команду — админ
+                                команды это конкретный человек. Название салона
+                                собирается на следующем шаге онбординга, тут не нужно. */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                              <Field label="Имя">
                                 <GlassWrap>
-                                  <input className="glass-input" value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="Beauty Studio" required autoFocus />
+                                  <input className="glass-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
                                 </GlassWrap>
                               </Field>
-                            ) : (
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                <Field label="Имя">
-                                  <GlassWrap>
-                                    <input className="glass-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
-                                  </GlassWrap>
-                                </Field>
-                                <Field label="Фамилия">
-                                  <GlassWrap>
-                                    <input className="glass-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
-                                  </GlassWrap>
-                                </Field>
-                              </div>
-                            )}
+                              <Field label="Фамилия">
+                                <GlassWrap>
+                                  <input className="glass-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
+                                </GlassWrap>
+                              </Field>
+                            </div>
 
                             <Field label="Телефон">
                               <GlassWrap>
