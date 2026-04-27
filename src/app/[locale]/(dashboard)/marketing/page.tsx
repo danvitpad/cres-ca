@@ -7,6 +7,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
@@ -18,11 +19,13 @@ import ReviewsPage from './reviews/page';
 import BroadcastsPage from './broadcasts/page';
 import { ReferralProgramPanel } from '@/components/marketing/referral-program-panel';
 
-type TopTab = 'campaigns' | 'broadcasts' | 'automation' | 'deals' | 'reviews' | 'referrals';
+// Объединил «Рассылки» (по своей CRM-базе) и «Подписчикам» (публичные подписки)
+// под один таб «Рассылки» с внутренним переключателем аудитории. Снаружи —
+// одно понятное место «куда пойти чтобы кому-то что-то разослать».
+type TopTab = 'campaigns' | 'automation' | 'deals' | 'reviews' | 'referrals';
 
 const TABS = [
   { value: 'campaigns',  label: 'Рассылки' },
-  { value: 'broadcasts', label: 'Подписчикам' },
   { value: 'automation', label: 'Автоматика' },
   { value: 'deals',      label: 'Акции' },
   { value: 'reviews',    label: 'Отзывы' },
@@ -108,13 +111,53 @@ export default function MarketingPage() {
         transition={{ duration: 0.2 }}
         style={activeTab === 'referrals' ? undefined : { margin: '0 -36px' /* cancel outer pageContainer horizontal padding */ }}
       >
-        {activeTab === 'campaigns' && <CampaignsPage />}
-        {activeTab === 'broadcasts' && <BroadcastsPage />}
+        {activeTab === 'campaigns' && <CampaignsWithAudienceSwitcher />}
         {activeTab === 'automation' && <AutomationPage />}
         {activeTab === 'deals' && <DealsPage />}
         {activeTab === 'reviews' && <ReviewsPage />}
         {activeTab === 'referrals' && <ReferralProgramPanel />}
       </motion.div>
+    </div>
+  );
+}
+
+/* ─── Inner sub-switch: Клиенты CRM / Публичные подписчики.
+   Раньше это были 2 отдельных верхних таба, что путало (рассылка-есть-рассылка
+   независимо от того кому шлёшь). Теперь — один таб «Рассылки» c подвыбором
+   аудитории внутри. Под капотом два разных composer-а: CampaignsPage умеет
+   слать по сегментам своих клиентов; BroadcastsPage — по публичным followers. */
+function CampaignsWithAudienceSwitcher() {
+  const { C } = usePageTheme();
+  const [audience, setAudience] = useState<'clients' | 'subscribers'>('clients');
+  return (
+    <div>
+      <div style={{ padding: '0 36px 0', display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => setAudience('clients')}
+          style={{
+            padding: '8px 14px', borderRadius: 999, border: '1px solid',
+            borderColor: audience === 'clients' ? C.text : C.border,
+            background: audience === 'clients' ? C.text : 'transparent',
+            color: audience === 'clients' ? C.bg : C.textSecondary,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          Клиентам из CRM
+        </button>
+        <button
+          onClick={() => setAudience('subscribers')}
+          style={{
+            padding: '8px 14px', borderRadius: 999, border: '1px solid',
+            borderColor: audience === 'subscribers' ? C.text : C.border,
+            background: audience === 'subscribers' ? C.text : 'transparent',
+            color: audience === 'subscribers' ? C.bg : C.textSecondary,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          Публичным подписчикам
+        </button>
+      </div>
+      {audience === 'clients' ? <CampaignsPage /> : <BroadcastsPage />}
     </div>
   );
 }

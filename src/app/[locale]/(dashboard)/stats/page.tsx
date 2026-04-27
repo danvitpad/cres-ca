@@ -40,6 +40,11 @@ const ACCENT_BG: Record<string, string> = {
   sky: 'bg-sky-500/10 text-sky-500',
 };
 
+interface TeamMember {
+  id: string;
+  display_name: string | null;
+}
+
 export default function StatsPage() {
   const { master, loading: masterLoading } = useMaster();
   const { C, mounted } = usePageTheme();
@@ -48,6 +53,39 @@ export default function StatsPage() {
   const [bookingStats, setBookingStats] = useState({
     total: 0, completed: 0, cancelled: 0, no_show: 0, rescheduled: 0, upcoming: 0,
   });
+
+  // Если открыто админом команды — даём выбрать «Вся команда» (агрегат по salon_id)
+  // или конкретного мастера. Соло-мастер этого свитчера вообще не видит.
+  const [ownedSalonId, setOwnedSalonId] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [scopeMasterId, setScopeMasterId] = useState<string | 'team'>('team');
+
+  useEffect(() => {
+    if (!master?.profile_id) { setOwnedSalonId(null); return; }
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: salon } = await supabase
+        .from('salons')
+        .select('id')
+        .eq('owner_id', master.profile_id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!salon?.id) { setOwnedSalonId(null); setScopeMasterId(master.id); return; }
+      setOwnedSalonId(salon.id);
+      const { data: ms } = await supabase
+        .from('masters')
+        .select('id, display_name')
+        .eq('salon_id', salon.id)
+        .eq('is_active', true);
+      if (cancelled) return;
+      setTeamMembers((ms ?? []) as TeamMember[]);
+    })();
+    return () => { cancelled = true; };
+  }, [master?.profile_id, master?.id]);
+
+  // Когда выбираем конкретного мастера → его id; «team» → null (агрегат по salon_id)
+  const targetMasterId = scopeMasterId === 'team' ? null : scopeMasterId;
   const [loading, setLoading] = useState(true);
 
   // Weekly load + top services pull from the current week, not the period
@@ -58,15 +96,17 @@ export default function StatsPage() {
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
     const weekEnd = endOfDay(now);
-    const { data } = await supabase.from('appointments')
+    let q = supabase.from('appointments')
       .select('id, starts_at, status, client_id, service:services(id, name, color)')
-      .eq('master_id', master.id)
       .gte('starts_at', weekStart.toISOString())
-      .lte('starts_at', weekEnd.toISOString())
-      .order('starts_at', { ascending: true });
+      .lte('starts_at', weekEnd.toISOString());
+    if (targetMasterId) q = q.eq('master_id', targetMasterId);
+    else if (ownedSalonId) q = q.eq('salon_id', ownedSalonId);
+    else q = q.eq('master_id', master.id);
+    const { data } = await q.order('starts_at', { ascending: true });
     setAppointments((data as unknown as Appointment[]) ?? []);
     setLoading(false);
-  }, [master?.id]);
+  }, [master?.id, targetMasterId, ownedSalonId]);
 
   useEffect(() => { if (!masterLoading && master?.id) fetchWeek(); }, [masterLoading, master?.id, fetchWeek]);
 
@@ -82,12 +122,16 @@ export default function StatsPage() {
     const end = new Date(now); end.setHours(23, 59, 59, 999);
 
     (async () => {
+      let apptQ = supabase.from('appointments')
+        .select('id, status, starts_at')
+        .gte('starts_at', start.toISOString())
+        .lte('starts_at', end.toISOString());
+      if (targetMasterId) apptQ = apptQ.eq('master_id', targetMasterId);
+      else if (ownedSalonId) apptQ = apptQ.eq('salon_id', ownedSalonId);
+      else apptQ = apptQ.eq('master_id', master.id);
+
       const [apptRes, reschedRes] = await Promise.all([
-        supabase.from('appointments')
-          .select('id, status, starts_at')
-          .eq('master_id', master.id)
-          .gte('starts_at', start.toISOString())
-          .lte('starts_at', end.toISOString()),
+        apptQ,
         supabase.from('notifications')
           .select('id', { count: 'exact', head: true })
           .eq('data->>kind', 'booking_rescheduled')
@@ -103,7 +147,7 @@ export default function StatsPage() {
         rescheduled: reschedRes.count ?? 0,
       });
     })();
-  }, [master?.id, statsPeriod]);
+  }, [master?.id, statsPeriod, targetMasterId, ownedSalonId]);
 
   // Weekly load bars (Mon..Sun, ignores cancellations)
   const weeklyLoad = useMemo(() => {
@@ -162,6 +206,43 @@ export default function StatsPage() {
         <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.5 }}>
           Загрузка по дням, топ услуг за неделю и жизненный цикл записей с переключателем периода.
         </p>
+
+        {/* Переключатель «Вся команда / per-master» — только для админа салона */}
+        {ownedSalonId && (
+          <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button
+              onClick={() => setScopeMasterId('team')}
+              style={{
+                padding: '7px 14px',
+                borderRadius: 999,
+                border: '1px solid',
+                borderColor: scopeMasterId === 'team' ? C.text : C.border,
+                background: scopeMasterId === 'team' ? C.text : 'transparent',
+                color: scopeMasterId === 'team' ? C.bg : C.textSecondary,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Вся команда
+            </button>
+            {teamMembers.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setScopeMasterId(m.id)}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: 999,
+                  border: '1px solid',
+                  borderColor: scopeMasterId === m.id ? C.text : C.border,
+                  background: scopeMasterId === m.id ? C.text : 'transparent',
+                  color: scopeMasterId === m.id ? C.bg : C.textSecondary,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                {m.display_name || 'Мастер'}
+              </button>
+            ))}
+          </div>
+        )}
       </motion.div>
 
       <div className="space-y-3">
