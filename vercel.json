@@ -4,7 +4,7 @@
     { "path": "/api/cron/notifications",         "schedule": "15 0 * * *"   },
     { "path": "/api/cron/reminders",             "schedule": "0 14 * * *"   },
     { "path": "/api/cron/reviews",               "schedule": "0 16 * * *"   },
-    { "path": "/api/cron/appointment-close",     "schedule": "0 15 * * *"   },
+    { "path": "/api/cron/appointment-close",     "schedule": "*/30 * * * *" },
     { "path": "/api/cron/burning-slots",         "schedule": "0 17 * * *"   },
     { "path": "/api/cron/payments-auto-release", "schedule": "0 23 * * *"   },
     { "path": "/api/cron/cadence",               "schedule": "0 9 * * *"    },

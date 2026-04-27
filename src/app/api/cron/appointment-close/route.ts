@@ -1,11 +1,11 @@
 /** --- YAML
  * name: Appointment Close Cron
- * description: Runs every minute. For each confirmed appointment that has ended (ends_at <= now):
- *   - If master.appointment_close_mode = "auto" → mark as completed immediately
+ * description: Runs every 30 min. For each ACTIVE appointment that has ended (booked/confirmed/in_progress, ends_at + grace <= now):
+ *   - If master.appointment_close_mode = "auto" (default) → mark as completed immediately
  *   - If master.appointment_close_mode = "confirm" → send TG prompt "Подтвердить окончание" / "Не подтверждать"
- *   - If grace period (auto_close_hours) passed without response → auto-close
+ *   - If grace period (auto_close_hours, default 1h) passed without response → auto-close
  * created: 2026-04-17
- * updated: 2026-04-17
+ * updated: 2026-04-27
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
   const nowIso = new Date().toISOString();
 
-  // Fetch confirmed appointments whose end time has passed
+  // Fetch all active appointments whose end time has passed
   const { data: appts, error } = await supabase
     .from('appointments')
     .select(`
@@ -70,9 +70,9 @@ export async function GET(request: Request) {
       client:clients(full_name),
       master:masters!inner(profile_id, appointment_close_mode, appointment_auto_close_hours)
     `)
-    .in('status', ['confirmed'])
+    .in('status', ['booked', 'confirmed', 'in_progress'])
     .lte('ends_at', nowIso)
-    .limit(100);
+    .limit(200);
 
   if (error || !appts?.length) {
     return NextResponse.json({ ok: true, closed: 0, prompted: 0 });
@@ -85,11 +85,14 @@ export async function GET(request: Request) {
     const endMs = new Date(row.ends_at).getTime();
     const nowMs = Date.now();
     const hoursSinceEnd = (nowMs - endMs) / (1000 * 60 * 60);
-    const mode = row.master.appointment_close_mode;
-    const graceHours = row.master.appointment_auto_close_hours || 2;
+    const mode = row.master.appointment_close_mode || 'auto';
+    const graceHours = row.master.appointment_auto_close_hours || 1;
 
-    // Case 1: auto mode — mark completed immediately
+    // Case 1: auto mode — close after grace window expired (default 1h after ends_at).
+    // Грейс нужен чтобы мастер успел поставить «Не пришёл» если клиент действительно
+    // не появился. По умолчанию 1 час после конца.
     if (mode === 'auto') {
+      if (hoursSinceEnd < graceHours) continue;
       await supabase.from('appointments')
         .update({
           status: 'completed',

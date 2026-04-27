@@ -781,7 +781,7 @@ function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<
   const [notifyWeb, setNotifyWeb] = useState((master as unknown as Record<string, unknown>).notify_web !== false);
   const [notifyTelegram, setNotifyTelegram] = useState((master as unknown as Record<string, unknown>).notify_telegram !== false);
   const [closeMode, setCloseMode] = useState<'confirm' | 'auto'>(
-    (((master as unknown as Record<string, unknown>).appointment_close_mode as string) || 'confirm') as 'confirm' | 'auto',
+    (((master as unknown as Record<string, unknown>).appointment_close_mode as string) || 'auto') as 'confirm' | 'auto',
   );
   const [saving, setSaving] = useState(false);
 
@@ -904,12 +904,20 @@ function NotificationsTab({ master, onSaved }: { master: NonNullable<ReturnType<
 
       <SettingsBlock
         title="Закрытие записей"
-        subtitle="Когда время записи прошло — как засчитывать доход?"
+        subtitle="Когда время записи прошло — как засчитывать её и доход?"
         C={C}
       >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
-          <ModeCard value="confirm" title="С подтверждением" desc="Бот напишет «Состоялась?» после записи — подтверждаю сам." />
-          <ModeCard value="auto" title="Автоматически" desc="Как только время записи прошло — засчитываю доход без вопросов." />
+          <ModeCard
+            value="auto"
+            title="Автоматически"
+            desc="Через 1 час после конца запись сама становится «Завершено», доход и бонусы начисляются. Если клиент не пришёл — успеваешь поставить «Не пришёл» через «Варианты»."
+          />
+          <ModeCard
+            value="confirm"
+            title="С подтверждением"
+            desc="Бот напишет «Состоялась?» сразу после записи — подтверждаю сам. Если не отвечаю час — закрывается автоматом."
+          />
         </div>
       </SettingsBlock>
     </div>
