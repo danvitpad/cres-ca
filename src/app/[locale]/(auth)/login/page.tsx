@@ -119,15 +119,26 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   // Если callback вернул ?error=no_account — показываем тост и переключаемся
-  // на регистрацию. Зависим от значений URL чтобы корректно сработать когда
-  // useSearchParams отдаёт null на первом рендере (Suspense) и хydрirues позже.
+  // на регистрацию. Читаем через window.location напрямую (надёжно после маунта)
+  // и откладываем toast.error в setTimeout — Sonner Toaster может ещё не успеть
+  // подписаться на global state в момент первого useEffect.
   useEffect(() => {
-    if (urlError === 'no_account') {
-      toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.', { duration: 6000 });
-    } else if (urlError === 'auth') {
-      toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 6000 });
-    }
-  }, [urlError]);
+    const params = new URLSearchParams(window.location.search);
+    const e = params.get('error');
+    console.log('[auth] mount, error param =', e);
+    if (!e) return;
+    const fire = () => {
+      console.log('[auth] firing toast for', e);
+      if (e === 'no_account') {
+        toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.', { duration: 7000 });
+      } else if (e === 'auth') {
+        toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 7000 });
+      }
+    };
+    // 100ms — гарантия что Toaster уже подключился к global toast queue.
+    const id = window.setTimeout(fire, 100);
+    return () => window.clearTimeout(id);
+  }, []);
 
   // Синхронизируем role с URL — иначе первый рендер с null'овым urlRole кэширует
   // 'client' в useState, а потом приходит ?role=master но state не меняется.
