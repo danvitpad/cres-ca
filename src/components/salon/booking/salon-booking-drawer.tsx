@@ -1,0 +1,1047 @@
+/** --- YAML
+ * name: SalonBookingDrawer
+ * description: Полноэкранный drawer на странице салона. 4 шага:
+ *              1. Услуги — агрегированный каталог салона (одна карточка
+ *                 на каждое уникальное имя услуги, диапазон цен/длительности).
+ *              2. Мастер — список мастеров, которые делают выбранную услугу.
+ *                 Если только один — авто-скип на шаг 3.
+ *              3. Время — слот на дату, через /api/slots (master_id + service_id).
+ *              4. Подтверждение → запись создана.
+ *
+ *              Поддерживает pre-select: если на CTA-карточке мастера нажата
+ *              «Записаться» — масткр уже выбран, шаг «мастер» пропускается;
+ *              если карточка услуги — услуга уже выбрана.
+ * created: 2026-04-27
+ * --- */
+
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, X, Clock, Check, Calendar, Loader2, Star } from 'lucide-react';
+import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
+import { formatMoney } from '@/lib/format/money';
+import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
+import { groupKeyOf, type SalonMasterMini, type SalonServiceItem } from './salon-booking-context';
+
+interface Props {
+  salonName: string;
+  salonCity: string | null;
+  masters: SalonMasterMini[];
+  services: SalonServiceItem[];
+  open: boolean;
+  onClose: () => void;
+  /** Pre-selected master (e.g. clicked his card directly). */
+  defaultMasterId?: string | null;
+  /** Pre-selected service group key. */
+  defaultGroupKey?: string | null;
+}
+
+type Step = 'service' | 'master' | 'time' | 'confirm' | 'done';
+
+interface ServiceGroup {
+  key: string;
+  name: string;
+  category: string | null;
+  variants: SalonServiceItem[];
+  minDuration: number | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  currency: string;
+}
+
+function formatDuration(min: number | null | undefined): string {
+  if (!min || min <= 0) return '';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h} ч ${m} мин`;
+  if (h) return `${h} ч`;
+  return `${m} мин`;
+}
+
+function dateLabel(d: Date): string {
+  const months = ['янв.', 'февр.', 'марта', 'апр.', 'мая', 'июня', 'июля', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
+  const days = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function startOfDay(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function addDays(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function toISODate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+const DAY_LABELS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+export function SalonBookingDrawer({
+  salonName,
+  salonCity,
+  masters,
+  services,
+  open,
+  onClose,
+  defaultMasterId,
+  defaultGroupKey,
+}: Props) {
+  const [step, setStep] = useState<Step>('service');
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(defaultGroupKey ?? null);
+  const [selectedMasterId, setSelectedMasterId] = useState<string | null>(defaultMasterId ?? null);
+  const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [slots, setSlots] = useState<string[] | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const groups = useMemo<ServiceGroup[]>(() => {
+    const map = new Map<string, ServiceGroup>();
+    for (const s of services) {
+      const k = groupKeyOf(s.name);
+      if (!k) continue;
+      const cur = map.get(k);
+      const price = typeof s.price === 'number' && s.price > 0 ? s.price : null;
+      if (!cur) {
+        map.set(k, {
+          key: k,
+          name: s.name.trim(),
+          category: s.category_name?.trim() || null,
+          variants: [s],
+          minDuration: s.duration_minutes ?? null,
+          minPrice: price,
+          maxPrice: price,
+          currency: (s.currency || 'UAH').toUpperCase(),
+        });
+      } else {
+        cur.variants.push(s);
+        if (s.duration_minutes != null && (cur.minDuration == null || s.duration_minutes < cur.minDuration)) {
+          cur.minDuration = s.duration_minutes;
+        }
+        if (price != null) {
+          cur.minPrice = cur.minPrice == null ? price : Math.min(cur.minPrice, price);
+          cur.maxPrice = cur.maxPrice == null ? price : Math.max(cur.maxPrice, price);
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  }, [services]);
+
+  const selectedGroup = useMemo(
+    () => groups.find((g) => g.key === selectedGroupKey) ?? null,
+    [groups, selectedGroupKey],
+  );
+
+  /** Masters who offer the selected service group. */
+  const eligibleMasters = useMemo(() => {
+    if (!selectedGroup) return [] as Array<{ master: SalonMasterMini; service: SalonServiceItem }>;
+    const result: Array<{ master: SalonMasterMini; service: SalonServiceItem }> = [];
+    const seen = new Set<string>();
+    for (const v of selectedGroup.variants) {
+      if (seen.has(v.master_id)) continue;
+      const m = masters.find((mm) => mm.id === v.master_id);
+      if (!m) continue;
+      seen.add(v.master_id);
+      result.push({ master: m, service: v });
+    }
+    return result;
+  }, [selectedGroup, masters]);
+
+  const selectedMaster = useMemo(
+    () => masters.find((m) => m.id === selectedMasterId) ?? null,
+    [masters, selectedMasterId],
+  );
+
+  /** The variant (master_id + service_id pair) actually being booked. */
+  const selectedVariant = useMemo(() => {
+    if (!selectedGroup || !selectedMasterId) return null;
+    return selectedGroup.variants.find((v) => v.master_id === selectedMasterId) ?? null;
+  }, [selectedGroup, selectedMasterId]);
+
+  // Reset on open
+  useEffect(() => {
+    if (open) {
+      setSelectedGroupKey(defaultGroupKey ?? null);
+      setSelectedMasterId(defaultMasterId ?? null);
+      setSelectedDate(startOfDay(new Date()));
+      setSelectedTime(null);
+      setSlots(null);
+      setNotes('');
+      setDone(false);
+      // Initial step depends on what's pre-selected
+      if (defaultGroupKey && defaultMasterId) setStep('time');
+      else if (defaultMasterId) setStep('service'); // master picked but no service — pick from his services
+      else if (defaultGroupKey) setStep('master');
+      else setStep('service');
+    }
+  }, [open, defaultGroupKey, defaultMasterId]);
+
+  // Body scroll lock
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  useEscapeKey(open, onClose);
+
+  // Fetch slots when entering time step
+  useEffect(() => {
+    if (step !== 'time' || !selectedVariant || !selectedMasterId) return;
+    let cancelled = false;
+    setSlotsLoading(true);
+    setSlots(null);
+    const params = new URLSearchParams({
+      master_id: selectedMasterId,
+      date: toISODate(selectedDate),
+      service_id: selectedVariant.id,
+    });
+    fetch(`/api/slots?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : { slots: [] }))
+      .then((d: { slots?: string[] }) => { if (!cancelled) setSlots(d.slots ?? []); })
+      .catch(() => { if (!cancelled) setSlots([]); })
+      .finally(() => { if (!cancelled) setSlotsLoading(false); });
+    return () => { cancelled = true; };
+  }, [step, selectedMasterId, selectedDate, selectedVariant]);
+
+  const weekStrip = useMemo(() => {
+    const today = startOfDay(new Date());
+    return Array.from({ length: 7 }).map((_, i) => addDays(today, i));
+  }, []);
+
+  // Step navigation helpers
+  function nextStep() {
+    if (step === 'service' && selectedGroup) {
+      // Auto-skip master step if only 1 master offers this service
+      if (eligibleMasters.length === 1) {
+        setSelectedMasterId(eligibleMasters[0].master.id);
+        setStep('time');
+      } else {
+        setStep('master');
+      }
+    } else if (step === 'master' && selectedMaster) {
+      setStep('time');
+    } else if (step === 'time' && selectedTime) {
+      setStep('confirm');
+    } else if (step === 'confirm') {
+      submit();
+    }
+  }
+
+  function prevStep() {
+    if (step === 'master') setStep('service');
+    else if (step === 'time') {
+      // If service was clicked from master card, go straight back to service step
+      setStep(eligibleMasters.length === 1 && !defaultMasterId ? 'service' : 'master');
+    } else if (step === 'confirm') setStep('time');
+  }
+
+  async function submit() {
+    if (!selectedVariant || !selectedMasterId || !selectedTime) return;
+    setSubmitting(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        const params = new URLSearchParams({
+          master: selectedMasterId,
+          service: selectedVariant.id,
+          date: toISODate(selectedDate),
+          time: selectedTime,
+        });
+        if (notes.trim()) params.set('notes', notes.trim());
+        window.location.href = `/ru/book?${params.toString()}`;
+        return;
+      }
+
+      // Find or create client row for this master
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('master_id', selectedMasterId)
+        .eq('profile_id', user.id)
+        .maybeSingle();
+      let clientId = (existing as { id: string } | null)?.id ?? null;
+      if (!clientId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, phone, email')
+          .eq('id', user.id)
+          .maybeSingle();
+        const fullName = (profile as { full_name?: string | null } | null)?.full_name || 'Клиент';
+        const phone = (profile as { phone?: string | null } | null)?.phone ?? null;
+        const email = (profile as { email?: string | null } | null)?.email ?? null;
+        const { data: newClient, error: clientErr } = await supabase
+          .from('clients')
+          .insert({ master_id: selectedMasterId, profile_id: user.id, full_name: fullName, phone, email })
+          .select('id')
+          .single();
+        if (clientErr) {
+          toast.error(clientErr.message || 'Не удалось создать клиента');
+          return;
+        }
+        clientId = (newClient as { id: string }).id;
+      }
+
+      const [hh, mm] = selectedTime.split(':').map(Number);
+      const startsAt = new Date(selectedDate);
+      startsAt.setHours(hh, mm, 0, 0);
+      const duration = selectedVariant.duration_minutes ?? 60;
+      const endsAt = new Date(startsAt.getTime() + duration * 60 * 1000);
+
+      const { error } = await supabase
+        .from('appointments')
+        .insert({
+          master_id: selectedMasterId,
+          client_id: clientId,
+          service_id: selectedVariant.id,
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt.toISOString(),
+          price: selectedVariant.price ?? 0,
+          currency: (selectedVariant.currency || 'UAH').toUpperCase(),
+          notes: notes.trim() || null,
+          status: 'booked',
+          booked_via: 'public_page',
+        });
+
+      if (error) {
+        toast.error(error.message || 'Не удалось создать запись');
+        return;
+      }
+      setDone(true);
+      setStep('done');
+      toast.success('Запись создана');
+    } catch (e) {
+      toast.error((e as Error).message || 'Ошибка');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const stepLabels: Record<Step, string> = {
+    service: 'Услуга',
+    master: 'Мастер',
+    time: 'Время',
+    confirm: 'Подтверждение',
+    done: 'Готово',
+  };
+  const stepsOrder: Step[] = ['service', 'master', 'time', 'confirm'];
+  const visibleSteps = stepsOrder.filter((s) => {
+    if (s === 'master' && eligibleMasters.length === 1 && !defaultMasterId) return false;
+    return true;
+  });
+  const currentIdx = visibleSteps.indexOf(step);
+  const canGoBack = step !== 'service' && step !== 'done' && !done;
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm"
+            onClick={onClose}
+            aria-hidden
+          />
+          <motion.div
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Запись в салон"
+            className="fixed inset-x-0 bottom-0 top-4 z-[101] flex flex-col overflow-hidden rounded-t-[24px] bg-white shadow-2xl sm:inset-y-4 sm:right-4 sm:left-auto sm:top-4 sm:bottom-4 sm:w-[min(960px,calc(100vw-32px))] sm:rounded-[24px]"
+          >
+            {/* Top bar */}
+            <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">
+              <div className="flex items-center gap-3">
+                {canGoBack ? (
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    className="flex size-9 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                    aria-label="Назад"
+                  >
+                    <ArrowLeft className="size-4" />
+                  </button>
+                ) : (
+                  <div className="size-9" />
+                )}
+                {step !== 'done' && (
+                  <nav className="hidden gap-2 text-[14px] sm:flex">
+                    {visibleSteps.map((s, i) => (
+                      <span
+                        key={s}
+                        className={
+                          i === currentIdx
+                            ? 'font-bold text-neutral-900'
+                            : i < currentIdx
+                            ? 'text-neutral-700'
+                            : 'text-neutral-400'
+                        }
+                      >
+                        {stepLabels[s]}
+                        {i < visibleSteps.length - 1 && <span className="ml-2 text-neutral-300">›</span>}
+                      </span>
+                    ))}
+                  </nav>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex size-9 items-center justify-center rounded-full border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                aria-label="Закрыть"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Mobile breadcrumb */}
+            {step !== 'done' && (
+              <div className="flex gap-2 border-b border-neutral-100 px-4 pb-2 pt-1 text-[12px] sm:hidden">
+                {visibleSteps.map((s, i) => (
+                  <span
+                    key={s}
+                    className={
+                      i === currentIdx
+                        ? 'font-bold text-neutral-900'
+                        : i < currentIdx
+                        ? 'text-neutral-700'
+                        : 'text-neutral-400'
+                    }
+                  >
+                    {stepLabels[s]}
+                    {i < visibleSteps.length - 1 && <span className="ml-1 text-neutral-300">›</span>}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Body */}
+            <div className="flex flex-1 flex-col overflow-hidden sm:flex-row">
+              <div className="flex-1 overflow-y-auto px-4 py-5 sm:px-8 sm:py-8">
+                {step === 'service' && (
+                  <ServiceStep
+                    salonName={salonName}
+                    salonCity={salonCity}
+                    groups={groups}
+                    masterFilter={defaultMasterId ?? null}
+                    masters={masters}
+                    services={services}
+                    selectedKey={selectedGroupKey}
+                    onSelect={(k) => setSelectedGroupKey(k)}
+                  />
+                )}
+                {step === 'master' && selectedGroup && (
+                  <MasterStep
+                    group={selectedGroup}
+                    candidates={eligibleMasters}
+                    selectedId={selectedMasterId}
+                    onSelect={setSelectedMasterId}
+                  />
+                )}
+                {step === 'time' && selectedVariant && selectedMaster && (
+                  <TimeStep
+                    weekStrip={weekStrip}
+                    selectedDate={selectedDate}
+                    onDateChange={(d) => { setSelectedDate(d); setSelectedTime(null); }}
+                    slots={slots}
+                    slotsLoading={slotsLoading}
+                    selectedTime={selectedTime}
+                    onTimeSelect={setSelectedTime}
+                  />
+                )}
+                {step === 'confirm' && selectedVariant && selectedMaster && selectedTime && (
+                  <ConfirmStep
+                    master={selectedMaster}
+                    service={selectedVariant}
+                    date={selectedDate}
+                    time={selectedTime}
+                    notes={notes}
+                    onNotesChange={setNotes}
+                  />
+                )}
+                {step === 'done' && selectedVariant && selectedMaster && selectedTime && (
+                  <DoneStep
+                    master={selectedMaster}
+                    service={selectedVariant}
+                    date={selectedDate}
+                    time={selectedTime}
+                    onClose={onClose}
+                  />
+                )}
+              </div>
+
+              {/* Desktop cart panel */}
+              {step !== 'done' && (
+                <aside className="hidden w-[320px] shrink-0 border-l border-neutral-100 p-6 sm:flex sm:flex-col">
+                  <CartPanel
+                    salonName={salonName}
+                    master={selectedMaster}
+                    group={selectedGroup}
+                    variant={selectedVariant}
+                    date={step === 'service' || step === 'master' ? null : selectedDate}
+                    time={step !== 'confirm' ? null : selectedTime}
+                    canContinue={
+                      step === 'service'
+                        ? !!selectedGroup
+                        : step === 'master'
+                        ? !!selectedMaster
+                        : step === 'time'
+                        ? !!selectedTime
+                        : true
+                    }
+                    onContinue={nextStep}
+                    submitting={submitting}
+                    isFinal={step === 'confirm'}
+                  />
+                </aside>
+              )}
+            </div>
+
+            {/* Mobile sticky CTA */}
+            {step !== 'done' && (
+              <div className="border-t border-neutral-100 bg-white p-3 sm:hidden">
+                <button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={
+                    submitting ||
+                    (step === 'service' && !selectedGroup) ||
+                    (step === 'master' && !selectedMaster) ||
+                    (step === 'time' && !selectedTime)
+                  }
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
+                >
+                  {submitting ? (
+                    <><Loader2 className="size-4 animate-spin" /> Сохранение…</>
+                  ) : step === 'confirm' ? (
+                    'Подтвердить запись'
+                  ) : (
+                    'Продолжить'
+                  )}
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ───────── STEP COMPONENTS ───────── */
+
+function ServiceStep({
+  salonName,
+  salonCity,
+  groups,
+  masterFilter,
+  masters,
+  services,
+  selectedKey,
+  onSelect,
+}: {
+  salonName: string;
+  salonCity: string | null;
+  groups: ServiceGroup[];
+  masterFilter: string | null;
+  masters: SalonMasterMini[];
+  services: SalonServiceItem[];
+  selectedKey: string | null;
+  onSelect: (k: string) => void;
+}) {
+  // If a master was pre-selected (came from master card), only show his services
+  const effectiveGroups = useMemo(() => {
+    if (!masterFilter) return groups;
+    const filtered: ServiceGroup[] = [];
+    for (const g of groups) {
+      const v = g.variants.filter((vv) => vv.master_id === masterFilter);
+      if (v.length === 0) continue;
+      filtered.push({
+        ...g,
+        variants: v,
+        minPrice: v[0].price,
+        maxPrice: v[0].price,
+        minDuration: v[0].duration_minutes,
+      });
+    }
+    return filtered;
+  }, [groups, masterFilter]);
+
+  const filterMaster = masterFilter ? masters.find((m) => m.id === masterFilter) : null;
+
+  // Categories for pill nav
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of effectiveGroups) {
+      if (g.category) set.add(g.category);
+    }
+    return Array.from(set);
+  }, [effectiveGroups]);
+  const [activeCat, setActiveCat] = useState<string>('all');
+  const visible = activeCat === 'all'
+    ? effectiveGroups
+    : effectiveGroups.filter((g) => g.category === activeCat);
+
+  void services; // services already aggregated into groups
+
+  if (effectiveGroups.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-[28px] font-bold tracking-tight text-neutral-900 sm:text-[32px]">Услуги</h1>
+        <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-8 text-center">
+          <p className="text-[15px] font-semibold text-neutral-900">Услуг пока нет</p>
+          <p className="mt-1 text-[13px] text-neutral-500">
+            {filterMaster
+              ? 'У этого мастера ещё не настроены услуги.'
+              : 'Команда салона ещё не добавила услуги в каталог.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-[28px] font-bold tracking-tight text-neutral-900 sm:text-[32px]">
+          {filterMaster ? 'Услуги мастера' : 'Услуги салона'}
+        </h1>
+        <p className="mt-1 text-[14px] text-neutral-500">
+          {filterMaster
+            ? `${filterMaster.display_name?.trim() || 'Мастер'}${filterMaster.specialization ? ` · ${filterMaster.specialization}` : ''}`
+            : `${salonName}${salonCity ? ` · ${salonCity}` : ''}`}
+        </p>
+      </div>
+
+      {categories.length > 1 && (
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveCat('all')}
+            className={
+              'whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-semibold transition-colors ' +
+              (activeCat === 'all'
+                ? 'border-neutral-900 bg-neutral-900 text-white'
+                : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
+            }
+          >
+            Все
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCat(cat)}
+              className={
+                'whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-semibold transition-colors ' +
+                (activeCat === cat
+                  ? 'border-neutral-900 bg-neutral-900 text-white'
+                  : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
+              }
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <ul className="space-y-3">
+        {visible.map((g) => {
+          const isSelected = selectedKey === g.key;
+          const duration = formatDuration(g.minDuration);
+          const priceLabel = priceRangeLabel(g);
+          const masterCount = g.variants.length;
+
+          return (
+            <li key={g.key}>
+              <button
+                type="button"
+                onClick={() => onSelect(g.key)}
+                className={
+                  'block w-full rounded-2xl border bg-white p-5 text-left transition-all ' +
+                  (isSelected
+                    ? 'border-neutral-900 ring-2 ring-neutral-900/20'
+                    : 'border-neutral-200 hover:border-neutral-300')
+                }
+              >
+                <div className="flex items-start gap-4">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-[15px] font-semibold leading-snug text-neutral-900">{g.name}</p>
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-neutral-500">
+                      {duration && (
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="size-3.5" /> {duration}
+                        </span>
+                      )}
+                      {!filterMaster && masterCount > 1 && (
+                        <span className="text-neutral-700">· {masterCount} мастера</span>
+                      )}
+                    </p>
+                    {priceLabel && (
+                      <p className="pt-1 text-[15px] font-bold text-neutral-900">{priceLabel}</p>
+                    )}
+                  </div>
+                  <div
+                    className={
+                      'flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors ' +
+                      (isSelected ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-400')
+                    }
+                  >
+                    {isSelected ? <Check className="size-4" /> : <span className="text-[16px] leading-none">+</span>}
+                  </div>
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function priceRangeLabel(g: ServiceGroup): string | null {
+  if (g.minPrice == null) return null;
+  if (g.maxPrice == null || g.maxPrice === g.minPrice) {
+    return formatMoney(g.minPrice, g.currency);
+  }
+  return `от ${formatMoney(g.minPrice, g.currency)} · до ${formatMoney(g.maxPrice, g.currency)}`;
+}
+
+function MasterStep({
+  group,
+  candidates,
+  selectedId,
+  onSelect,
+}: {
+  group: ServiceGroup;
+  candidates: Array<{ master: SalonMasterMini; service: SalonServiceItem }>;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-[28px] font-bold tracking-tight text-neutral-900 sm:text-[32px]">Кто из мастеров?</h1>
+        <p className="mt-1 text-[14px] text-neutral-500">{group.name}</p>
+      </div>
+
+      <ul className="space-y-3">
+        {candidates.map(({ master, service }) => {
+          const isSelected = selectedId === master.id;
+          const name = master.display_name?.trim() || 'Мастер';
+          const initial = name[0]?.toUpperCase() ?? 'M';
+          const priceStr = service.price && service.price > 0
+            ? formatMoney(service.price, (service.currency || 'UAH').toUpperCase())
+            : null;
+          const duration = formatDuration(service.duration_minutes);
+          return (
+            <li key={master.id}>
+              <button
+                type="button"
+                onClick={() => onSelect(master.id)}
+                className={
+                  'flex w-full items-center gap-4 rounded-2xl border bg-white p-4 text-left transition-all ' +
+                  (isSelected
+                    ? 'border-neutral-900 ring-2 ring-neutral-900/20'
+                    : 'border-neutral-200 hover:border-neutral-300')
+                }
+              >
+                <div className="size-14 shrink-0 overflow-hidden rounded-full bg-neutral-100">
+                  {master.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={master.avatar_url} alt="" className="size-full object-cover" />
+                  ) : (
+                    <div className="flex size-full items-center justify-center text-[20px] font-bold text-neutral-400">
+                      {initial}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-semibold text-neutral-900">{name}</p>
+                  {master.specialization && (
+                    <p className="truncate text-[13px] text-neutral-500">{master.specialization}</p>
+                  )}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-neutral-500">
+                    {(master.rating ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 text-neutral-900">
+                        <Star className="size-3 fill-amber-400 text-amber-400" strokeWidth={0} />
+                        <span className="font-semibold">{(master.rating ?? 0).toFixed(1)}</span>
+                      </span>
+                    )}
+                    {duration && <span>{duration}</span>}
+                    {priceStr && <span className="font-semibold text-neutral-900">{priceStr}</span>}
+                  </div>
+                </div>
+                <div
+                  className={
+                    'flex size-7 shrink-0 items-center justify-center rounded-full border transition-colors ' +
+                    (isSelected ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-300 bg-white text-neutral-400')
+                  }
+                >
+                  {isSelected ? <Check className="size-4" /> : <span className="text-[16px] leading-none">+</span>}
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function TimeStep({
+  weekStrip, selectedDate, onDateChange, slots, slotsLoading, selectedTime, onTimeSelect,
+}: {
+  weekStrip: Date[];
+  selectedDate: Date;
+  onDateChange: (d: Date) => void;
+  slots: string[] | null;
+  slotsLoading: boolean;
+  selectedTime: string | null;
+  onTimeSelect: (t: string) => void;
+}) {
+  const monthLabel = selectedDate.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  return (
+    <div className="space-y-6">
+      <h1 className="text-[28px] font-bold tracking-tight text-neutral-900 sm:text-[32px]">Выберите время</h1>
+      <div>
+        <p className="text-[14px] font-semibold capitalize text-neutral-700">{monthLabel}</p>
+        <div className="mt-3 -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {weekStrip.map((d) => {
+            const isActive = toISODate(d) === toISODate(selectedDate);
+            return (
+              <button
+                key={d.toISOString()}
+                type="button"
+                onClick={() => onDateChange(d)}
+                className={
+                  'flex size-14 shrink-0 flex-col items-center justify-center rounded-full transition-colors ' +
+                  (isActive ? 'bg-violet-600 text-white' : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
+                }
+              >
+                <span className="text-[16px] font-bold leading-none tabular-nums">{d.getDate()}</span>
+                <span className={'mt-1 text-[10px] ' + (isActive ? 'text-white/90' : 'text-neutral-500')}>
+                  {DAY_LABELS[d.getDay()]}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        {slotsLoading ? (
+          <div className="flex h-40 items-center justify-center"><Loader2 className="size-5 animate-spin text-neutral-400" /></div>
+        ) : !slots || slots.length === 0 ? (
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-8 text-center">
+            <p className="text-[15px] font-semibold text-neutral-900">Нет свободных слотов</p>
+            <p className="mt-1 text-[13px] text-neutral-500">Выбери другой день — свободное время появится.</p>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {slots.map((t) => {
+              const isSelected = selectedTime === t;
+              return (
+                <li key={t}>
+                  <button
+                    type="button"
+                    onClick={() => onTimeSelect(t)}
+                    className={
+                      'block w-full rounded-2xl border px-5 py-4 text-left transition-all ' +
+                      (isSelected
+                        ? 'border-violet-600 bg-violet-50 ring-2 ring-violet-200'
+                        : 'border-neutral-200 bg-white hover:border-neutral-300')
+                    }
+                  >
+                    <span className="text-[15px] font-semibold tabular-nums text-neutral-900">{t}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConfirmStep({
+  master, service, date, time, notes, onNotesChange,
+}: {
+  master: SalonMasterMini;
+  service: SalonServiceItem;
+  date: Date;
+  time: string;
+  notes: string;
+  onNotesChange: (s: string) => void;
+}) {
+  const duration = formatDuration(service.duration_minutes);
+  const priceStr = service.price && service.price > 0
+    ? formatMoney(service.price, (service.currency || 'UAH').toUpperCase())
+    : null;
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-[28px] font-bold tracking-tight text-neutral-900 sm:text-[32px]">Проверьте детали</h1>
+      <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-5">
+        <div>
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">Услуга</p>
+          <p className="mt-1 text-[15px] font-semibold text-neutral-900">{service.name?.trim() || 'Услуга'}</p>
+          {duration && <p className="text-[13px] text-neutral-500">{duration}</p>}
+        </div>
+        <div className="border-t border-neutral-100 pt-4">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">Когда</p>
+          <p className="mt-1 text-[15px] font-semibold text-neutral-900">{dateLabel(date)} в {time}</p>
+        </div>
+        <div className="border-t border-neutral-100 pt-4">
+          <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">Мастер</p>
+          <p className="mt-1 text-[15px] font-semibold text-neutral-900">{master.display_name?.trim() || 'Мастер'}</p>
+          {master.specialization && <p className="text-[13px] text-neutral-500">{master.specialization}</p>}
+        </div>
+        {priceStr && (
+          <div className="border-t border-neutral-100 pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[15px] font-semibold text-neutral-900">К оплате</p>
+              <p className="text-[20px] font-bold text-neutral-900">{priceStr}</p>
+            </div>
+          </div>
+        )}
+      </div>
+      <div>
+        <label className="mb-2 block text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
+          Комментарий мастеру (необязательно)
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          rows={3}
+          placeholder="Особые пожелания, аллергии, удобный способ связи…"
+          className="block w-full resize-none rounded-2xl border border-neutral-200 bg-white p-4 text-[14px] text-neutral-900 outline-none focus:border-neutral-400"
+        />
+      </div>
+    </div>
+  );
+}
+
+function DoneStep({
+  master, service, date, time, onClose,
+}: {
+  master: SalonMasterMini;
+  service: SalonServiceItem;
+  date: Date;
+  time: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="mx-auto max-w-md py-8 text-center sm:py-16">
+      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+        <Check className="size-8" />
+      </div>
+      <h1 className="mt-6 text-[28px] font-bold tracking-tight text-neutral-900">Запись создана!</h1>
+      <p className="mt-3 text-[15px] leading-relaxed text-neutral-600">
+        {service.name?.trim() || 'Услуга'} у {master.display_name?.trim() || 'мастера'}<br />
+        {dateLabel(date)} в {time}
+      </p>
+      <p className="mt-5 text-[13px] text-neutral-500">
+        Подтверждение придёт в Telegram. Если планы изменятся — отмени за сутки в разделе «Мои записи».
+      </p>
+      <button
+        type="button"
+        onClick={onClose}
+        className="mt-8 inline-flex h-12 min-w-[200px] items-center justify-center rounded-full bg-neutral-900 px-6 text-[15px] font-semibold text-white"
+      >
+        Готово
+      </button>
+    </div>
+  );
+}
+
+function CartPanel({
+  salonName,
+  master,
+  group,
+  variant,
+  date,
+  time,
+  canContinue,
+  onContinue,
+  submitting,
+  isFinal,
+}: {
+  salonName: string;
+  master: SalonMasterMini | null;
+  group: ServiceGroup | null;
+  variant: SalonServiceItem | null;
+  date: Date | null;
+  time: string | null;
+  canContinue: boolean;
+  onContinue: () => void;
+  submitting: boolean;
+  isFinal: boolean;
+}) {
+  const priceStr = variant && variant.price && variant.price > 0
+    ? formatMoney(variant.price, (variant.currency || 'UAH').toUpperCase())
+    : group ? priceRangeLabel(group) : null;
+  const duration = formatDuration(variant?.duration_minutes ?? group?.minDuration ?? null);
+
+  return (
+    <div className="flex h-full flex-col">
+      <div>
+        <p className="text-[14px] font-semibold text-neutral-900">{salonName}</p>
+        {master && (
+          <p className="text-[12px] text-neutral-500">
+            Мастер · {master.display_name?.trim() || 'Мастер'}
+          </p>
+        )}
+      </div>
+      <div className="my-5 border-t border-neutral-100" />
+      {group ? (
+        <div className="space-y-3">
+          {date && time && (
+            <p className="inline-flex items-center gap-1 text-[13px] text-neutral-700">
+              <Calendar className="size-3.5 text-neutral-500" />
+              {dateLabel(date)} в {time}
+            </p>
+          )}
+          <div>
+            <p className="text-[14px] font-semibold text-neutral-900">{group.name}</p>
+            <p className="text-[12px] text-neutral-500">
+              {duration}
+              {priceStr && <span className="float-right font-semibold text-neutral-900">{priceStr}</span>}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-[13px] text-neutral-500">Услуга не выбрана</p>
+      )}
+      <div className="mt-auto pt-6">
+        {priceStr && (
+          <div className="mb-4 flex items-baseline justify-between">
+            <p className="text-[14px] text-neutral-700">К оплате</p>
+            <p className="text-[18px] font-bold text-neutral-900">{priceStr}</p>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={!canContinue || submitting}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
+        >
+          {submitting ? (
+            <><Loader2 className="size-4 animate-spin" /> Сохранение…</>
+          ) : isFinal ? 'Подтвердить запись' : 'Продолжить'}
+        </button>
+      </div>
+    </div>
+  );
+}

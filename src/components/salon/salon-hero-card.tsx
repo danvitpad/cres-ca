@@ -7,11 +7,11 @@
  * created: 2026-04-26
  * --- */
 
-import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Star, Calendar } from 'lucide-react';
+import { MapPin, Star } from 'lucide-react';
 import { SalonInlineLogoEdit } from './inline/salon-logo-edit';
 import { SalonInlineContactsBlock } from './inline/salon-contacts-block';
+import { SalonBookingCTA } from './booking/salon-booking-cta';
 
 interface Props {
   salonId: string;
@@ -26,7 +26,6 @@ interface Props {
   reviewsCount: number;
   teamSize: number;
   servicesCount: number;
-  bookHref: string;
 }
 
 export function SalonHeroCard({
@@ -42,7 +41,6 @@ export function SalonHeroCard({
   reviewsCount,
   teamSize,
   servicesCount,
-  bookHref,
 }: Props) {
   const initial = name.trim()[0]?.toUpperCase() ?? 'S';
 
@@ -96,14 +94,8 @@ export function SalonHeroCard({
         <p className="text-center text-[14px] leading-relaxed text-neutral-700">{bio}</p>
       )}
 
-      {/* Main CTA */}
-      <Link
-        href={bookHref}
-        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50"
-      >
-        <Calendar className="mr-2 size-4" />
-        Записаться
-      </Link>
+      {/* Main CTA — opens salon booking drawer */}
+      <SalonBookingCTA variant="hero" />
 
       <div className="border-t border-neutral-200" />
 

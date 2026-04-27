@@ -17,6 +17,9 @@ import { SalonJoinRequestCard } from '@/components/salon/salon-join-request-card
 import { SalonInlineCoverBanner } from '@/components/salon/inline/salon-cover-banner';
 import { SalonInlineBioBlock } from '@/components/salon/inline/salon-bio-block';
 import { SalonInlineAddressBlock } from '@/components/salon/inline/salon-address-block';
+import { SalonBookingProvider } from '@/components/salon/booking/salon-booking-provider';
+import { SalonBookingCTA } from '@/components/salon/booking/salon-booking-cta';
+import type { SalonMasterMini, SalonServiceItem } from '@/components/salon/booking/salon-booking-context';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -63,9 +66,13 @@ function admin() {
   );
 }
 
+interface BookingMasterRich extends SalonMasterMini {}
+
 async function loadSalon(slug: string): Promise<{
   salon: SalonRow;
   masters: Master[];
+  bookingMasters: BookingMasterRich[];
+  bookingServices: SalonServiceItem[];
   servicesCount: number;
   rating: number;
   reviewsCount: number;
@@ -81,14 +88,14 @@ async function loadSalon(slug: string): Promise<{
 
   const { data: soloMasters } = await a
     .from('masters')
-    .select('id, display_name, specialization, avatar_url, invite_code, rating, is_active')
+    .select('id, display_name, specialization, avatar_url, invite_code, rating, is_active, city, address, workplace_name')
     .eq('salon_id', salon.id)
     .eq('is_active', true)
     .limit(50);
 
   const { data: members } = await a
     .from('salon_members')
-    .select('master_id, role, status, master:masters!salon_members_master_id_fkey(id, display_name, specialization, avatar_url, invite_code, rating, is_active)')
+    .select('master_id, role, status, master:masters!salon_members_master_id_fkey(id, display_name, specialization, avatar_url, invite_code, rating, is_active, city, address, workplace_name)')
     .eq('salon_id', salon.id)
     .eq('status', 'active');
 
@@ -123,18 +130,63 @@ async function loadSalon(slug: string): Promise<{
   }
 
   let servicesCount = 0;
+  let bookingServices: SalonServiceItem[] = [];
   if (masterIds.length > 0) {
-    const { count: sc } = await a
+    const { data: svcRows } = await a
       .from('services')
-      .select('id', { count: 'exact', head: true })
+      .select('id, master_id, name, duration_minutes, price, currency, description, category:service_categories(name)')
       .in('master_id', masterIds)
       .eq('is_active', true);
-    servicesCount = sc ?? 0;
+    type SvcRow = {
+      id: string;
+      master_id: string;
+      name: string;
+      duration_minutes: number | null;
+      price: number | null;
+      currency: string | null;
+      description: string | null;
+      category: { name: string } | { name: string }[] | null;
+    };
+    bookingServices = ((svcRows as unknown as SvcRow[] | null) ?? []).map((r) => {
+      const cat = Array.isArray(r.category) ? r.category[0] : r.category;
+      return {
+        id: r.id,
+        master_id: r.master_id,
+        name: r.name ?? 'Услуга',
+        duration_minutes: r.duration_minutes,
+        price: r.price,
+        currency: r.currency,
+        description: r.description,
+        category_name: cat?.name ?? null,
+      };
+    });
+    servicesCount = bookingServices.length;
   }
+
+  const bookingMasters: BookingMasterRich[] = masters.map((m) => {
+    const ext = m as Master & {
+      city?: string | null;
+      address?: string | null;
+      workplace_name?: string | null;
+    };
+    return {
+      id: m.id,
+      display_name: m.display_name,
+      specialization: m.specialization,
+      avatar_url: m.avatar_url,
+      invite_code: m.invite_code,
+      rating: m.rating,
+      city: ext.city ?? null,
+      address: ext.address ?? null,
+      workplace_name: ext.workplace_name ?? null,
+    };
+  });
 
   return {
     salon: salon as SalonRow,
     masters,
+    bookingMasters,
+    bookingServices,
     servicesCount,
     rating,
     reviewsCount,
@@ -166,7 +218,7 @@ export default async function PublicSalonPage({ params }: PageProps) {
   const { slug } = await params;
   const data = await loadSalon(slug);
   if (!data) notFound();
-  const { salon, masters, servicesCount, rating, reviewsCount } = data;
+  const { salon, masters, bookingMasters, bookingServices, servicesCount, rating, reviewsCount } = data;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -184,14 +236,13 @@ export default async function PublicSalonPage({ params }: PageProps) {
       : undefined,
   };
 
-  // If solo salon (1 master) — direct deep-link to that master's page.
-  // Otherwise scroll to team section so client picks the master first.
-  const soloMaster = masters.length === 1 ? masters[0] : null;
-  const bookHref = soloMaster?.invite_code
-    ? `/m/${soloMaster.invite_code}`
-    : '#salon-team';
-
   return (
+    <SalonBookingProvider
+      salonName={salon.name}
+      salonCity={salon.city}
+      masters={bookingMasters}
+      services={bookingServices}
+    >
     <div className="min-h-screen bg-white text-neutral-900">
       <script
         type="application/ld+json"
@@ -222,7 +273,6 @@ export default async function PublicSalonPage({ params }: PageProps) {
               reviewsCount={reviewsCount}
               teamSize={masters.length}
               servicesCount={servicesCount}
-              bookHref={bookHref}
             />
           </div>
 
@@ -279,14 +329,10 @@ export default async function PublicSalonPage({ params }: PageProps) {
 
       {/* Mobile sticky bottom CTA */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 p-3 backdrop-blur lg:hidden">
-        <a
-          href={bookHref}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 px-6 py-3 text-[15px] font-semibold text-white"
-        >
-          Записаться
-        </a>
+        <SalonBookingCTA variant="sticky" />
       </div>
       <div className="h-20 lg:hidden" />
     </div>
+    </SalonBookingProvider>
   );
 }
