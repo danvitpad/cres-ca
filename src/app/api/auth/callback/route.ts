@@ -18,14 +18,13 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 type Role = 'client' | 'master' | 'salon_admin';
 
-function readRole(searchParams: URLSearchParams): Role | null {
-  const r = searchParams.get('role');
-  if (r === 'client' || r === 'master' || r === 'salon_admin') return r;
-  return null;
+function isRole(r: string | null | undefined): r is Role {
+  return r === 'client' || r === 'master' || r === 'salon_admin';
 }
 
 function adminDb() {
@@ -40,24 +39,47 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next');
-  const oauthRole = readRole(searchParams);
-  // Дефолт = signin (строгий): если в URL не приходит явное mode=signup, считаем
-  // что это вход. Защищает от старого кеша JS, который не передавал параметр —
-  // пользователь не должен молча зарегистрироваться при попытке логина.
-  const mode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
+
+  // Сначала читаем намерение пользователя из cookie (надёжно — куки идут через
+  // весь OAuth-цикл независимо от URL-параметров, которые могут потеряться).
+  // Fallback на URL-параметры если кука не выставлена (старая версия JS).
+  const cookieStore = await cookies();
+  const intentCookie = cookieStore.get('cres_oauth_intent')?.value;
+  let cookieRole: Role | null = null;
+  let cookieMode: 'signin' | 'signup' | null = null;
+  if (intentCookie) {
+    try {
+      const parsed = JSON.parse(intentCookie) as { role?: string; mode?: string };
+      if (isRole(parsed.role)) cookieRole = parsed.role;
+      if (parsed.mode === 'signin' || parsed.mode === 'signup') cookieMode = parsed.mode;
+    } catch { /* malformed cookie — ignore */ }
+  }
+  const oauthRole: Role | null = cookieRole ?? (isRole(searchParams.get('role')) ? (searchParams.get('role') as Role) : null);
+  // Дефолт = signin (строгий): если ни кука, ни URL не указали — считаем что
+  // это вход (нельзя молча регистрировать при ошибке).
+  const mode: 'signin' | 'signup' =
+    cookieMode ?? (searchParams.get('mode') === 'signup' ? 'signup' : 'signin');
+
+  // Хелпер: всегда чистим cres_oauth_intent чтобы при следующем входе
+  // не сработала старая кука. Возвращает редирект с set-cookie.
+  function redirectAndClear(url: string) {
+    const res = NextResponse.redirect(url);
+    res.cookies.set('cres_oauth_intent', '', { path: '/', maxAge: 0 });
+    return res;
+  }
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/login?error=auth`);
+    return redirectAndClear(`${origin}/login?error=auth`);
   }
 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) return NextResponse.redirect(`${origin}/login?error=auth`);
+  if (error) return redirectAndClear(`${origin}/login?error=auth`);
 
-  if (next) return NextResponse.redirect(`${origin}${next}`);
+  if (next) return redirectAndClear(`${origin}${next}`);
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(`${origin}/login?error=auth`);
+  if (!user) return redirectAndClear(`${origin}/login?error=auth`);
 
   // Считаем что аккаунт «только что создан» если ему меньше 60 секунд.
   // Это значит trigger handle_new_user сработал прямо сейчас.
@@ -75,7 +97,7 @@ export async function GET(request: Request) {
     } catch {/* noop — даже если не получилось, сессию мы уже погасили */}
     const params = new URLSearchParams({ error: 'no_account', mode: 'signup' });
     if (oauthRole) params.set('role', oauthRole);
-    return NextResponse.redirect(`${origin}/login?${params.toString()}`);
+    return redirectAndClear(`${origin}/login?${params.toString()}`);
   }
 
   // Найдём профиль. Если он есть и при этом помечен на удаление — восстановим.
@@ -135,7 +157,7 @@ export async function GET(request: Request) {
 
   // Маршрутизация по роли
   if (role === 'client') {
-    return NextResponse.redirect(`${origin}/feed`);
+    return redirectAndClear(`${origin}/feed`);
   }
   if (role === 'salon_admin') {
     const { data: salon } = await supabase
@@ -144,8 +166,8 @@ export async function GET(request: Request) {
       .eq('owner_id', user.id)
       .limit(1)
       .maybeSingle();
-    if (salon?.id) return NextResponse.redirect(`${origin}/salon/${salon.id}/dashboard`);
-    return NextResponse.redirect(`${origin}/onboarding/account-type`);
+    if (salon?.id) return redirectAndClear(`${origin}/salon/${salon.id}/dashboard`);
+    return redirectAndClear(`${origin}/onboarding/account-type`);
   }
   // master
   const { data: master } = await supabase
@@ -154,6 +176,6 @@ export async function GET(request: Request) {
     .eq('profile_id', user.id)
     .limit(1)
     .maybeSingle();
-  if (master?.id) return NextResponse.redirect(`${origin}/calendar`);
-  return NextResponse.redirect(`${origin}/onboarding/account-type`);
+  if (master?.id) return redirectAndClear(`${origin}/calendar`);
+  return redirectAndClear(`${origin}/onboarding/account-type`);
 }

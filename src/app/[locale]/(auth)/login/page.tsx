@@ -446,12 +446,15 @@ export default function AuthPage() {
 
   /* ───── OAuth (только Google).
      Email через Google уже верифицирован провайдером — на сервере при создании
-     профиля считаем что подтверждение пройдено и не шлём OTP. Роль (master/
-     salon_admin/client) и mode (signin/signup) пробрасываем в URL чтобы
-     /api/auth/callback корректно отличил «нет такого аккаунта» при signin от
-     обычного создания при signup. */
+     профиля считаем что подтверждение пройдено и не шлём OTP. Роль и mode
+     передаём через cookie cres_oauth_intent (надёжно — куки идут через весь
+     OAuth-цикл независимо от URL). Дублируем в URL как fallback. */
   async function handleOAuth(provider: 'google') {
     const supabase = createClient();
+    const intent = JSON.stringify({ role, mode });
+    // Кука на 5 минут, на корне сайта, secure если на проде
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    document.cookie = `cres_oauth_intent=${encodeURIComponent(intent)}; Path=/; Max-Age=300; SameSite=Lax${isHttps ? '; Secure' : ''}`;
     const params = new URLSearchParams({ role, mode });
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
