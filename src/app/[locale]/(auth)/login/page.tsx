@@ -108,6 +108,7 @@ export default function AuthPage() {
   const urlMode = sp.get('mode');
   const urlRole = sp.get('role') as Role | null;
   const urlEmail = sp.get('email') || '';
+  const urlError = sp.get('error');
 
   const [role, setRole] = useState<Role>(() => {
     if (urlRole && ['client','master','salon_admin'].includes(urlRole)) return urlRole;
@@ -116,6 +117,17 @@ export default function AuthPage() {
   const [mode, setMode] = useState<Mode>(urlMode === 'signup' ? 'signup' : 'signin');
   const [sub, setSub] = useState<Sub>('form');
   const [loading, setLoading] = useState(false);
+
+  // Если callback вернул ?error=no_account — показываем тост и подсвечиваем
+  // что нужно зарегистрироваться (mode уже придёт как 'signup' из URL).
+  useEffect(() => {
+    if (urlError === 'no_account') {
+      toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.');
+    } else if (urlError === 'auth') {
+      toast.error('Не удалось войти. Попробуй ещё раз.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [email, setEmail] = useState(() => urlEmail || readRemembered().email || '');
   const [rememberMe, setRememberMe] = useState(true);
@@ -435,14 +447,16 @@ export default function AuthPage() {
   /* ───── OAuth (только Google).
      Email через Google уже верифицирован провайдером — на сервере при создании
      профиля считаем что подтверждение пройдено и не шлём OTP. Роль (master/
-     salon_admin/client) пробрасываем в state-параметре чтобы /api/auth/callback
-     корректно завершил онбординг для нужного типа. */
+     salon_admin/client) и mode (signin/signup) пробрасываем в URL чтобы
+     /api/auth/callback корректно отличил «нет такого аккаунта» при signin от
+     обычного создания при signup. */
   async function handleOAuth(provider: 'google') {
     const supabase = createClient();
+    const params = new URLSearchParams({ role, mode });
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?role=${role}`,
+        redirectTo: `${window.location.origin}/api/auth/callback?${params.toString()}`,
       },
     });
     if (error) toast.error(humanizeError(error));
