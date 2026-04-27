@@ -84,6 +84,11 @@ export default function ClientFeedPage() {
         </p>
       </header>
 
+      {/* Рекомендации показываем ВСЕГДА — без фильтра по подписке клиента,
+          чтобы новый пользователь сразу видел кого можно записать. Будем
+          монетизировать когда поток подключится. */}
+      <FeaturedMastersStrip city={city} />
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-5 animate-spin text-neutral-400" />
@@ -98,12 +103,11 @@ export default function ClientFeedPage() {
       ) : items.length === 0 ? (
         <>
           <EmptyCard
-            title="Пока тишина"
+            title="Пока нет твоих контактов"
             desc="Добавь в контакты любимых мастеров и салоны — здесь будут их ближайшие свободные окна и акции."
             ctaHref="/search"
             ctaLabel="Найти мастеров"
           />
-          <FeaturedMastersStrip city={city} />
           <CategoriesBlock />
         </>
       ) : (

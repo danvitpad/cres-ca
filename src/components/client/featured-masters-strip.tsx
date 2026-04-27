@@ -68,10 +68,10 @@ export function FeaturedMastersStrip({ city }: { city?: string }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mt-8">
+    <div className="mt-2 mb-6">
       <div className="flex items-end justify-between">
         <h2 className="text-lg font-semibold">
-          Топ мастеров{city ? ` · ${city}` : ''}
+          Рекомендуем{city ? ` · ${city}` : ''}
         </h2>
         <Link href="/search" className="text-xs font-semibold text-violet-600 hover:underline">
           Смотреть все →
