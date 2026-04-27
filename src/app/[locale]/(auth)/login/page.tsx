@@ -125,10 +125,8 @@ export default function AuthPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const e = params.get('error');
-    console.log('[auth] mount, error param =', e);
     if (!e) return;
     const fire = () => {
-      console.log('[auth] firing toast for', e);
       if (e === 'no_account') {
         toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.', { duration: 7000 });
       } else if (e === 'auth') {
