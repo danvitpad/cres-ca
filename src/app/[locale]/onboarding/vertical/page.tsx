@@ -63,23 +63,24 @@ export default function OnboardingVerticalPage() {
           'radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,0.10), transparent 60%), #0b0d17',
       }}
     >
-      <div className="mx-auto max-w-3xl px-6 py-10 md:py-16">
-        {/* Back button — clean ghost icon */}
-        <button
-          onClick={() => router.back()}
-          aria-label="Назад"
-          className="mb-8 flex size-10 items-center justify-center rounded-xl transition-colors"
-          style={{
-            border: '1px solid rgba(139,92,246,0.16)',
-            background: '#111425',
-            color: '#eae8f4',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#1a1d30'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = '#111425'; }}
-        >
-          <ArrowLeft className="size-4" />
-        </button>
+      {/* Back button — absolutely positioned в верхнем-левом углу страницы,
+          чтобы не добавлять собственную высоту над заголовком. */}
+      <button
+        onClick={() => router.back()}
+        aria-label="Назад"
+        className="fixed left-4 top-4 z-10 flex size-10 items-center justify-center rounded-xl transition-colors md:left-8 md:top-8"
+        style={{
+          border: '1px solid rgba(139,92,246,0.16)',
+          background: '#111425',
+          color: '#eae8f4',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = '#1a1d30'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = '#111425'; }}
+      >
+        <ArrowLeft className="size-4" />
+      </button>
 
+      <div className="mx-auto max-w-3xl px-6 py-10 md:py-16">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}

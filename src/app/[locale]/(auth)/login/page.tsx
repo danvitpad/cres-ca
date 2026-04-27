@@ -567,7 +567,12 @@ export default function AuthPage() {
                       <button
                         key={r.value}
                         type="button"
-                        onClick={() => { setRole(r.value); setSub('form'); }}
+                        onClick={(e) => {
+                          setRole(r.value); setSub('form');
+                          // Сбрасываем :focus чтобы предыдущая кнопка не оставалась
+                          // в «активном на вид» состоянии после переключения.
+                          e.currentTarget.blur();
+                        }}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                           padding: '9px 6px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -576,6 +581,7 @@ export default function AuthPage() {
                           fontSize: 13, fontWeight: 600,
                           boxShadow: active ? '0 4px 14px color-mix(in oklab, var(--aviolet) 35%, transparent)' : 'none',
                           transition: 'all .18s ease',
+                          outline: 'none',
                         }}
                       >
                         <Icon size={14} />
