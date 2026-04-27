@@ -317,21 +317,31 @@ export default function AuthPage() {
     setLoading(false);
 
     if (error) { toast.error(humanizeError(error)); return; }
-    if (data.user && data.user.identities?.length === 0) {
-      toast.error('Этот email уже зарегистрирован');
-      setMode('signin');
-      return;
-    }
+    // Не выбрасываем на signin при «возможно email существует» (новый Supabase
+    // намеренно возвращает identities=[] для всех чтобы блокировать enumeration —
+    // эта проверка давала false-positive и кидала пользователя на «Войти»).
+    // Если email реально занят — verifyOtp вернёт ошибку и покажет нормальный
+    // тост, а до этого пользователь видит экран ввода кода как и должен.
+    void data;
     setSub('signup-otp');
   }
 
   async function handleVerifySignupOTP() {
-    if (otp.length !== 8) return;
+    if (otp.length !== 8 || loading) return;
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
     setLoading(false);
-    if (error) { toast.error('Неверный код'); setOtp(''); return; }
+    if (error) {
+      const msg = /already registered|already.*confirmed|registered/i.test(error.message)
+        ? 'Этот email уже подтверждён. Войди под своим паролем.'
+        : /expired/i.test(error.message)
+        ? 'Код истёк. Запроси новый ниже.'
+        : 'Неверный код. Если запрашивал несколько раз — введи последний.';
+      toast.error(msg);
+      setOtp('');
+      return;
+    }
     toast.success('Аккаунт подтверждён');
     if (role === 'client') router.push('/feed');
     else router.push('/onboarding/account-type');
