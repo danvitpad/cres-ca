@@ -22,23 +22,23 @@ type CalendarDrawerProps = {
 // drawer выглядел как продолжение календаря, а не «инородный» black/white блок.
 // Тонкие border'ы / hover'ы остаются как контраст.
 const LIGHT = {
-  bg: 'var(--color-bg, #fafafa)',
-  border: 'var(--color-border, #e5e5e5)',
-  text: 'var(--color-text, #0a0a0a)',
-  textMuted: 'var(--color-text-secondary, #737373)',
-  headerBg: 'var(--color-bg, #fafafa)',
-  controlBg: 'var(--color-surface-elevated, #f5f5f5)',
-  controlHover: 'var(--color-surface, #ebebeb)',
+  bg: '#ffffff',
+  border: 'rgba(124,58,237,0.13)',
+  text: '#1a1530',
+  textMuted: '#64607a',
+  headerBg: '#ffffff',
+  controlBg: '#f5f3fb',
+  controlHover: '#ebe7f6',
 };
 
 const DARK = {
-  bg: 'var(--color-bg, #0a0a0a)',
-  border: 'var(--color-border, #1f1f23)',
-  text: 'var(--color-text, #e5e5e5)',
-  textMuted: 'var(--color-text-secondary, #b3b3b3)',
-  headerBg: 'var(--color-bg, #0a0a0a)',
-  controlBg: 'var(--color-surface-elevated, #18181b)',
-  controlHover: 'var(--color-surface, #1f1f23)',
+  bg: '#111425',
+  border: 'rgba(139,92,246,0.16)',
+  text: '#eae8f4',
+  textMuted: '#a8a3be',
+  headerBg: '#111425',
+  controlBg: '#1a1d30',
+  controlHover: '#1f2240',
 };
 
 export function CalendarDrawer({ open, onClose, title, width = 380, children, theme }: CalendarDrawerProps) {
