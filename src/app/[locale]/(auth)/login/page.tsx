@@ -367,7 +367,16 @@ export default function AuthPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'recovery' });
     setLoading(false);
-    if (error) { toast.error(humanizeError(error, 'Неверный или истёкший код')); setOtp(''); return; }
+    if (error) {
+      // Для OTP-флоу не пускаем humanizeError — её паттерны мапят 403/«token expired»
+      // на «Сессия истекла. Войди заново», что неверно по контексту.
+      const msg = /expired/i.test(error.message)
+        ? 'Код истёк. Запроси новый ниже.'
+        : 'Неверный код. Если запрашивал несколько раз — введи последний.';
+      toast.error(msg);
+      setOtp('');
+      return;
+    }
     setSub('new-password');
   }
 
@@ -726,8 +735,24 @@ export default function AuthPage() {
                       <PrimaryButton disabled={otp.length !== 8 || loading} onClick={handleResetOtpVerify} type="button">
                         {loading ? 'Проверяем…' : 'Далее'}
                       </PrimaryButton>
+                      <button
+                        type="button"
+                        disabled={loading}
+                        onClick={async () => {
+                          if (loading || !email) return;
+                          setLoading(true);
+                          const supabase = createClient();
+                          const { error } = await supabase.auth.resetPasswordForEmail(email);
+                          setLoading(false);
+                          setOtp('');
+                          if (error) toast.error(humanizeError(error));
+                          else toast.success('Новый код отправлен');
+                        }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--aviolet)', fontSize: 13, marginTop: 12, fontWeight: 600 }}>
+                        Отправить новый код
+                      </button>
                       <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>
+                        style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12 }}>
                         Назад
                       </button>
                     </motion.div>
