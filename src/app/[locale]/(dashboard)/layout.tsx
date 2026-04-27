@@ -24,6 +24,7 @@ import {
   FreshaSearch,
   FreshaBell,
 } from '@/components/shared/fresha-icons';
+import { Users as UsersIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
@@ -79,8 +80,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { items: notifItems, unreadCount, loading: notifLoading, followStates, markRead, markAllRead, dismiss: dismissNotif, dismissAll: dismissAllNotifs, toggleFollow } = useNotifications(userId);
   const { announcements, dismiss: dismissAnnouncement } = useAnnouncements();
 
-  const navItems: SidebarNavItem[] = useMemo(
-    () => [
+  // Проверяем — мастер сам владелец салона? Если да, перестраиваем сайдбар
+  // под админ-флоу: разделы ведут на /salon/{id}/..., добавляется «Команда».
+  const [ownedSalonId, setOwnedSalonId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!userId) { setOwnedSalonId(null); return; }
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('salons')
+        .select('id')
+        .eq('owner_id', userId)
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setOwnedSalonId(data?.id ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const navItems: SidebarNavItem[] = useMemo(() => {
+    if (ownedSalonId) {
+      // Админ команды/салона — все разделы переходят на /salon/{id}/...
+      // Команда — отдельный пункт. Каталог пока ведёт на общий /services
+      // (страница умеет работать в режиме salon_services через ?salonId=).
+      const base = `/salon/${ownedSalonId}`;
+      return [
+        { key: 'salon-dashboard', icon: FreshaHome, href: `${base}/dashboard`, label: 'Дашборд' },
+        { key: 'salon-calendar', icon: FreshaCalendar, href: `${base}/calendar`, label: 'Календарь команды' },
+        { key: 'salon-finance', icon: FreshaWallet, href: `${base}/finance`, label: 'Финансы' },
+        { key: 'salon-clients', icon: FreshaPerson, href: `${base}/clients`, label: 'Клиенты' },
+        { key: 'salon-team', icon: UsersIcon, href: `${base}/team`, label: 'Команда' },
+        { key: 'salon-catalogue', icon: FreshaBook, href: '/services', label: 'Каталог' },
+        { key: 'salon-marketing', icon: FreshaMegaphone, href: '/marketing', label: 'Маркетинг' },
+        { key: 'salon-stats', icon: BarChart3, href: '/stats', label: 'Статистика' },
+      ];
+    }
+    return [
       { key: 'today', icon: FreshaHome, href: '/today', label: t('nav.dashboard') },
       { key: 'calendar', icon: FreshaCalendar, href: '/calendar', label: t('nav.calendar') },
       { key: 'finance', icon: FreshaWallet, href: '/finance', label: t('nav.finance') },
@@ -88,11 +124,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
       { key: 'stats', icon: BarChart3, href: '/stats', label: 'Статистика' },
-      // {key:'integrations'} hidden — раздел в разработке (см. CLAUDE.md → Stubs / deferred → Integrations).
-      // Когда будет готов конкретный набор интеграций (Google Cal sync, IG, etc.) — раскомментировать.
-    ],
-    [t],
-  );
+    ];
+  }, [t, ownedSalonId]);
 
   const bottomItems: SidebarNavItem[] = useMemo(
     () => [
@@ -119,7 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         >
           {/* Left: logo + setup CTA + trial */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-            <Link href="/calendar" style={{ display: 'block', height: 22 }}>
+            <Link href={ownedSalonId ? `/salon/${ownedSalonId}/dashboard` : '/calendar'} style={{ display: 'block', height: 22 }}>
               <span
                 style={{
                   fontSize: 18,

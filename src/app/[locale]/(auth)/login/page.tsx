@@ -144,9 +144,28 @@ export default function AuthPage() {
         if (body.master_id) { router.push(`/masters/${body.master_id}`); return; }
       } catch {}
       router.push('/feed');
-    } else {
-      router.push('/calendar');
+      return;
     }
+    // Админ команды → сразу на свой /salon/{id}/dashboard, иначе обычный мастер → /calendar
+    if (actualRole === 'salon_admin') {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: salon } = await supabase
+            .from('salons')
+            .select('id')
+            .eq('owner_id', user.id)
+            .limit(1)
+            .maybeSingle();
+          if (salon?.id) { router.push(`/salon/${salon.id}/dashboard`); return; }
+        }
+      } catch {}
+      // Если салон ещё не создан — вернёмся к онбордингу
+      router.push('/onboarding/account-type');
+      return;
+    }
+    router.push('/calendar');
   }
 
   /* ───── sign-in ───── */
