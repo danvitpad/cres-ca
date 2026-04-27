@@ -152,9 +152,13 @@ export default function SalonClientsPage() {
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-10 text-center">
           <Users className="size-10 mx-auto text-muted-foreground mb-3" />
-          <h2 className="text-base font-semibold">Пока нет клиентов</h2>
+          <h2 className="text-base font-semibold">
+            {search.trim() ? 'По запросу ничего не нашли' : 'Пока нет клиентов'}
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Клиенты появляются сюда при первой записи или через импорт.
+            {search.trim()
+              ? 'Попробуй ввести часть имени, телефона или email.'
+              : 'Клиенты появляются сюда при первой записи или через импорт.'}
           </p>
         </div>
       ) : (
