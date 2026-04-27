@@ -49,6 +49,7 @@ import {
 
 import TeamModePicker, { type TeamMode } from '@/components/onboarding/TeamModePicker';
 import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
+import { getVerticalCopy } from '@/lib/verticals/copy';
 
 const AddressMap = dynamic(() => import('./address-map'), { ssr: false });
 
@@ -98,6 +99,11 @@ function categoriesForVertical(vertical: string | null): readonly CategoryDef[] 
   return CATEGORIES.filter((c) => c.verticals.includes(vertical) || c.verticals.includes('*'));
 }
 
+// LOCATION_OPTIONS перенесены inline в step 5 — лейблы теперь приходят из
+// getVerticalCopy() и зависят от выбранной ниши + роли. Оставлен константный
+// набор ключей чтобы остальной код не сломался (используются как `locationType`).
+const _LOCATION_KEYS = ['locationPhysical', 'locationMobile', 'locationOnline'] as const;
+void _LOCATION_KEYS;
 const LOCATION_OPTIONS = [
   { key: 'locationPhysical', icon: Building2 },
   { key: 'locationMobile', icon: Car },
@@ -184,10 +190,16 @@ function CreateBusinessWizard() {
   const [cropKind, setCropKind] = useState<'avatar' | 'cover' | null>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  // Свободный ввод когда выбран categoryOther — пишем в БД и показываем на публичке
+  const [customCategoryText, setCustomCategoryText] = useState('');
+  const [customSpecText, setCustomSpecText] = useState('');
   const [teamType, setTeamType] = useState<'solo' | 'team' | null>(null);
   const [teamMode, setTeamMode] = useState<TeamMode | null>(null);
-  const [defaultCommission, setDefaultCommission] = useState<number>(50);
-  const [ownerRent, setOwnerRent] = useState<number>(0);
+  // Комиссия/аренда теперь опциональны — null значит «не указано», админ
+  // настроит позже. Дефолты ниже применяются только если админ явно тапнул
+  // соответствующий тумблер.
+  const [defaultCommission, setDefaultCommission] = useState<number | null>(null);
+  const [ownerRent, setOwnerRent] = useState<number | null>(null);
   const [locationType, setLocationType] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [addressResults, setAddressResults] = useState<GeoResult[]>([]);
@@ -239,6 +251,14 @@ function CreateBusinessWizard() {
   // Build the ordered list of visible steps (skipping where needed).
   // Solo masters skip step 1 (name + photos) — name auto-fills from user metadata,
   // photos uploaded later in dashboard. They start straight at category selection.
+  // Админ салона НЕ предоставляет услуги — шаг 5 (где принимаешь клиентов) для
+  // него скрыт. Адрес салона он указывает через шаг 6 если включил «физическое
+  // помещение» (locationType пропускается, locationPhysical считается дефолтом
+  // для admin-флоу).
+  const isAdminFlow = userRole === 'salon_admin';
+  // Vertical+role-aware копирайт: «салон» / «СТО» / «клиника» / «студия» вместо
+  // абстрактного «бизнес», тренировки / приёмы / сеансы вместо «услуги», и т.д.
+  const copy = getVerticalCopy(vertical, isAdminFlow ? 'admin' : 'solo');
   const buildStepSequence = useCallback(() => {
     const steps: number[] = [];
     if (!isSoloMaster) steps.push(1); // name + photos (только для команд / салонов)
@@ -246,11 +266,11 @@ function CreateBusinessWizard() {
     if (!skipTeamStep) steps.push(4); // solo/team
     const effectiveTeamType = skipTeamStep ? inferredTeamType : teamType;
     if (effectiveTeamType === 'team') steps.push(45); // team mode + commission
-    steps.push(5); // location type
-    if (locationType === 'locationPhysical') steps.push(6); // address
+    if (!isAdminFlow) steps.push(5); // location type — только для мастера
+    if (isAdminFlow || locationType === 'locationPhysical') steps.push(6); // address
     steps.push(7); // services
     return steps;
-  }, [isSoloMaster, skipTeamStep, inferredTeamType, teamType, locationType]);
+  }, [isSoloMaster, skipTeamStep, inferredTeamType, teamType, locationType, isAdminFlow]);
 
   const stepSequence = buildStepSequence();
   const totalVisibleSteps = stepSequence.length;
@@ -261,12 +281,17 @@ function CreateBusinessWizard() {
   const canContinue = () => {
     switch (step) {
       case 1: return businessName.trim().length > 0;
-      case 2: return selectedCategories.length > 0;
-      case 3: return specialization !== null;
+      case 2: {
+        if (selectedCategories.length === 0) return false;
+        // Если выбрано «Другое» — требуем заполнить своё описание
+        if (selectedCategories.includes('categoryOther') && customCategoryText.trim().length < 2) return false;
+        return true;
+      }
+      case 3: return specialization !== null || customSpecText.trim().length >= 2;
       case 4: return teamType !== null;
-      case 45: return teamMode !== null;
+      case 45: return teamMode !== null; // комиссия/аренда теперь опциональны
       case 5: return locationType !== null;
-      case 6: return selectedAddress !== null;
+      case 6: return isAdminFlow ? true : selectedAddress !== null;
       case 7: return true;
       default: return false;
     }
@@ -398,9 +423,11 @@ function CreateBusinessWizard() {
           vertical,
           teamType: effectiveTeamType,
           teamMode: effectiveTeamMode,
-          defaultMasterCommission: effectiveTeamMode === 'unified' ? defaultCommission : undefined,
-          ownerRentPerMaster: effectiveTeamMode === 'marketplace' ? ownerRent : undefined,
+          defaultMasterCommission: effectiveTeamMode === 'unified' && defaultCommission !== null ? defaultCommission : undefined,
+          ownerRentPerMaster: effectiveTeamMode === 'marketplace' && ownerRent !== null ? ownerRent : undefined,
           categories: selectedCategories,
+          customCategoryText: selectedCategories.includes('categoryOther') ? customCategoryText.trim() || null : null,
+          customSpecText: customSpecText.trim() || null,
           address: selectedAddress?.display_name ?? null,
           latitude: selectedAddress ? parseFloat(selectedAddress.lat) : null,
           longitude: selectedAddress ? parseFloat(selectedAddress.lon) : null,
@@ -408,8 +435,11 @@ function CreateBusinessWizard() {
           services,
           avatarUrl,
           coverUrl,
-          specialization,
-          specializations,
+          specialization: customSpecText.trim() || specialization,
+          specializations: [
+            ...(customSpecText.trim() ? [customSpecText.trim()] : []),
+            ...specializations,
+          ],
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -543,7 +573,7 @@ function CreateBusinessWizard() {
               <StepWrapper key="step1">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                  {t('businessNameTitle')}
+                  {`Как называется ${copy.businessNomPossessive}?`}
                 </h1>
                 <p className="mt-2 text-muted-foreground">{t('businessNameDesc')}</p>
 
@@ -689,6 +719,30 @@ function CreateBusinessWizard() {
                     );
                   })}
                 </div>
+
+                {/* Поле «своё» когда выбрано «Другое» — текст пишется на публичную страницу */}
+                {selectedCategories.includes('categoryOther') && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-6 space-y-2"
+                  >
+                    <label className="block text-sm font-medium">
+                      Опишите свою нишу одной строкой
+                    </label>
+                    <input
+                      type="text"
+                      value={customCategoryText}
+                      onChange={(e) => setCustomCategoryText(e.target.value)}
+                      placeholder="Например: Подбор парфюмерии, IT-репетитор, винотека"
+                      maxLength={80}
+                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Будет показано на вашей публичной странице, чтобы клиенты понимали что вы делаете.
+                    </p>
+                  </motion.div>
+                )}
               </StepWrapper>
             )}
 
@@ -730,6 +784,31 @@ function CreateBusinessWizard() {
                     </div>
                   </>
                 )}
+
+                {/* Свой вариант — текстовое поле, идёт первой строкой при сохранении.
+                    Видно когда нет вариантов или когда мастер хочет дописать своё. */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={specializationOptions.length > 0 ? 'mt-6 space-y-2' : 'mt-4 space-y-2'}
+                >
+                  <label className="block text-sm font-medium">
+                    {specializationOptions.length > 0 ? 'Своя специализация (опционально)' : 'Опишите свою специализацию'}
+                  </label>
+                  <input
+                    type="text"
+                    value={customSpecText}
+                    onChange={(e) => setCustomSpecText(e.target.value)}
+                    placeholder="Например: лечебный массаж, AI-инструктор, реставрация мебели"
+                    maxLength={80}
+                    className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {specializationOptions.length > 0
+                      ? 'Если в списке выше нет подходящего — допиши своё. Будет показано первой строкой на твоей публичной странице.'
+                      : 'Будет показано на твоей публичной странице, чтобы клиенты сразу понимали что ты делаешь.'}
+                  </p>
+                </motion.div>
               </StepWrapper>
             )}
 
@@ -789,23 +868,45 @@ function CreateBusinessWizard() {
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 space-y-3"
+                    className="mt-6 rounded-2xl border border-border bg-card p-4 space-y-3"
                   >
-                    <label className="block text-sm font-medium">
-                      Комиссия мастера по умолчанию: <span className="text-primary">{defaultCommission}%</span>
-                    </label>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={5}
-                      value={defaultCommission}
-                      onChange={(e) => setDefaultCommission(parseInt(e.target.value, 10))}
-                      className="w-full accent-primary"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Процент от выручки, который получает мастер. Можно настроить индивидуально для каждого.
-                    </p>
+                    <div className="flex items-start gap-3">
+                      <input
+                        id="commission-toggle"
+                        type="checkbox"
+                        checked={defaultCommission !== null}
+                        onChange={(e) => setDefaultCommission(e.target.checked ? 50 : null)}
+                        className="mt-1 size-4 accent-primary"
+                      />
+                      <label htmlFor="commission-toggle" className="cursor-pointer">
+                        <div className="text-sm font-medium">Указать стандартную комиссию мастеров</div>
+                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          Нужно только для финансовой аналитики и автоматического расчёта зарплаты.
+                          Можно оставить выключенным сейчас и настроить позже в Настройки → Команда —
+                          до этого момента в финансовом разделе доход просто не будет делиться по мастерам.
+                        </p>
+                      </label>
+                    </div>
+                    {defaultCommission !== null && (
+                      <div className="space-y-2 pl-7">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm">Комиссия мастера</span>
+                          <span className="text-sm font-semibold text-primary">{defaultCommission}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={defaultCommission}
+                          onChange={(e) => setDefaultCommission(parseInt(e.target.value, 10))}
+                          className="w-full accent-primary"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Можно потом настроить индивидуально для каждого мастера.
+                        </p>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 
@@ -813,20 +914,41 @@ function CreateBusinessWizard() {
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 space-y-3"
+                    className="mt-6 rounded-2xl border border-border bg-card p-4 space-y-3"
                   >
-                    <label className="block text-sm font-medium">Аренда с мастера в месяц (₴)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={100}
-                      value={ownerRent}
-                      onChange={(e) => setOwnerRent(Math.max(0, parseInt(e.target.value || '0', 10)))}
-                      className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Фиксированная сумма аренды. Можно оставить 0 и настроить индивидуально для каждого мастера.
-                    </p>
+                    <div className="flex items-start gap-3">
+                      <input
+                        id="rent-toggle"
+                        type="checkbox"
+                        checked={ownerRent !== null}
+                        onChange={(e) => setOwnerRent(e.target.checked ? 0 : null)}
+                        className="mt-1 size-4 accent-primary"
+                      />
+                      <label htmlFor="rent-toggle" className="cursor-pointer">
+                        <div className="text-sm font-medium">Указать арендную плату с мастера</div>
+                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                          Нужно только для финансовой аналитики (доходы коворкинга). Если оставить выключенным —
+                          в финансовом разделе арендный поток просто не считается, можно включить и заполнить
+                          позже в Настройки → Команда.
+                        </p>
+                      </label>
+                    </div>
+                    {ownerRent !== null && (
+                      <div className="space-y-2 pl-7">
+                        <label className="block text-sm">Аренда с мастера в месяц (₴)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={100}
+                          value={ownerRent}
+                          onChange={(e) => setOwnerRent(Math.max(0, parseInt(e.target.value || '0', 10)))}
+                          className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Можно настроить индивидуально для каждого мастера.
+                        </p>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </StepWrapper>
@@ -837,11 +959,15 @@ function CreateBusinessWizard() {
               <StepWrapper key="step5">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                  {t('locationTitle')}
+                  {copy.locationStepTitle}
                 </h1>
 
                 <div className="mt-8 flex flex-col gap-3">
-                  {LOCATION_OPTIONS.map(({ key, icon: Icon }) => (
+                  {([
+                    { key: 'locationPhysical', icon: Building2, label: copy.locationOptions.physical },
+                    { key: 'locationMobile',   icon: Car,       label: copy.locationOptions.mobile },
+                    { key: 'locationOnline',   icon: Monitor,   label: copy.locationOptions.online },
+                  ] as const).map(({ key, icon: Icon, label }) => (
                     <button
                       key={key}
                       onClick={() => setLocationType(key)}
@@ -858,7 +984,8 @@ function CreateBusinessWizard() {
                       ) : (
                         <div className="size-5 rounded-full border-2 border-muted-foreground/30" />
                       )}
-                      <span className="font-medium">{t(key)}</span>
+                      <Icon className="size-5 shrink-0 text-muted-foreground" />
+                      <span className="font-medium">{label}</span>
                     </button>
                   ))}
                 </div>

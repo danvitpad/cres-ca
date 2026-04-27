@@ -15,12 +15,17 @@ interface Payload {
   vertical: string | null;
   teamType: 'solo' | 'team';
   teamMode?: 'unified' | 'marketplace';
+  /** undefined = админ не захотел указывать в онбординге, не пишем в БД (NULL) */
   defaultMasterCommission?: number;
   ownerCommissionPercent?: number;
   ownerRentPerMaster?: number;
   allowMasterOwnClients?: boolean;
   allowMasterOwnPricing?: boolean;
   categories: string[];
+  /** Своё описание ниши когда выбрана categoryOther */
+  customCategoryText?: string | null;
+  /** Своя специализация — пишется первой строкой в masters.specialization/specializations */
+  customSpecText?: string | null;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -29,6 +34,7 @@ interface Payload {
   avatarUrl: string | null;
   coverUrl: string | null;
   specialization: string | null;
+  specializations?: string[];
 }
 
 export async function POST(req: Request) {
@@ -46,23 +52,27 @@ export async function POST(req: Request) {
 
   if (body.teamType === 'team') {
     const teamMode = body.teamMode === 'marketplace' ? 'marketplace' : 'unified';
+    // Если админ не указал комиссию/аренду в онбординге — пишем NULL
+    // (админ настроит позже в Настройки → Команда). Если указал — сохраняем.
+    const salonRow: Record<string, unknown> = {
+      owner_id: user.id,
+      name: body.name,
+      address: body.address,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      city: body.city,
+      vertical: body.vertical,
+      team_mode: teamMode,
+      allow_master_own_clients: body.allowMasterOwnClients ?? teamMode === 'marketplace',
+      allow_master_own_pricing: body.allowMasterOwnPricing ?? teamMode === 'marketplace',
+    };
+    if (typeof body.defaultMasterCommission === 'number') salonRow.default_master_commission = body.defaultMasterCommission;
+    if (typeof body.ownerCommissionPercent === 'number')  salonRow.owner_commission_percent = body.ownerCommissionPercent;
+    if (typeof body.ownerRentPerMaster === 'number')      salonRow.owner_rent_per_master = body.ownerRentPerMaster;
+
     const { data: salon, error: salonErr } = await supabase
       .from('salons')
-      .insert({
-        owner_id: user.id,
-        name: body.name,
-        address: body.address,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        city: body.city,
-        vertical: body.vertical,
-        team_mode: teamMode,
-        default_master_commission: body.defaultMasterCommission ?? 50,
-        owner_commission_percent: body.ownerCommissionPercent ?? 0,
-        owner_rent_per_master: body.ownerRentPerMaster ?? 0,
-        allow_master_own_clients: body.allowMasterOwnClients ?? teamMode === 'marketplace',
-        allow_master_own_pricing: body.allowMasterOwnPricing ?? teamMode === 'marketplace',
-      })
+      .insert(salonRow)
       .select('id')
       .single();
 
@@ -76,7 +86,13 @@ export async function POST(req: Request) {
     await supabase.from('profiles').update({ avatar_url: body.avatarUrl }).eq('id', user.id);
   }
 
-  const masterPayload = {
+  // Своё описание ниши («Другое») и/или своя специализация — кладём в bio
+  // как стартовое описание мастера. Если позже мастер допишет bio руками —
+  // эти строки заменятся.
+  const bioParts = [body.customCategoryText, body.customSpecText].filter((s): s is string => !!s && s.trim().length > 0);
+  const initialBio = bioParts.length > 0 ? bioParts.join('. ') : null;
+
+  const masterPayload: Record<string, unknown> = {
     profile_id: user.id,
     salon_id: salonId,
     display_name: body.name,
@@ -90,6 +106,7 @@ export async function POST(req: Request) {
     cover_url: body.coverUrl,
     is_active: true,
   };
+  if (initialBio) masterPayload.bio = initialBio;
 
   const { data: existing } = await supabase
     .from('masters')
