@@ -95,26 +95,6 @@ const DARK = {
   statusCancelled: 'rgba(239,68,68,0.22)',
 };
 
-const STATUS_LIST: { value: AppointmentStatus; labelKey: string; color: 'booked' | 'confirmed' | 'arrived' | 'started' | 'noShow' | 'cancelled' }[] = [
-  { value: 'booked', labelKey: 'status.booked', color: 'booked' },
-  { value: 'confirmed', labelKey: 'status.confirmed', color: 'confirmed' },
-  { value: 'in_progress', labelKey: 'status.in_progress', color: 'started' },
-  { value: 'completed', labelKey: 'status.completed', color: 'arrived' },
-];
-
-function getStatusBg(status: AppointmentStatus, C: typeof LIGHT) {
-  switch (status) {
-    case 'booked': return C.statusBooked;
-    case 'confirmed': return C.statusConfirmed;
-    case 'in_progress': return C.statusStarted;
-    case 'completed': return C.statusArrived;
-    case 'no_show': return C.statusNoShow;
-    case 'cancelled': return C.statusCancelled;
-    case 'cancelled_by_client': return C.statusCancelled;
-    default: return C.statusBooked;
-  }
-}
-
 export function AppointmentDetailDrawer({
   appointment,
   open,
@@ -128,19 +108,16 @@ export function AppointmentDetailDrawer({
   const router = useRouter();
   const C = theme === 'dark' ? DARK : LIGHT;
 
-  const [statusOpen, setStatusOpen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
 
-  const statusRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const optionsRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
       if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) setActionsOpen(false);
       if (optionsRef.current && !optionsRef.current.contains(e.target as Node)) setOptionsOpen(false);
     };
@@ -148,16 +125,12 @@ export function AppointmentDetailDrawer({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Close dropdowns on Escape (the parent drawer handles its own close)
-  useEscapeKey(statusOpen || actionsOpen || optionsOpen, () => {
-    setStatusOpen(false);
+  useEscapeKey(actionsOpen || optionsOpen, () => {
     setActionsOpen(false);
     setOptionsOpen(false);
   });
 
-  // Reset dropdowns when appointment changes
   useEffect(() => {
-    setStatusOpen(false);
     setActionsOpen(false);
     setOptionsOpen(false);
   }, [appointment?.id]);
@@ -258,7 +231,6 @@ export function AppointmentDetailDrawer({
     }
 
     setUpdating(false);
-    setStatusOpen(false);
     toast.success(tc('success'));
     onUpdated();
   }
@@ -286,7 +258,6 @@ export function AppointmentDetailDrawer({
 
     setUpdating(false);
     setOptionsOpen(false);
-    setStatusOpen(false);
     toast.success(initiator === 'client' ? 'Отменено клиентом' : 'Отменено мастером');
     onUpdated();
   }
@@ -398,135 +369,8 @@ export function AppointmentDetailDrawer({
               </button>
             </div>
 
-            {/* Row 2: status + time */}
+            {/* Row 2: time only (status pill removed) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* Status dropdown */}
-              <div ref={statusRef} style={{ position: 'relative', flex: 1 }}>
-                <button
-                  type="button"
-                  onClick={() => setStatusOpen(!statusOpen)}
-                  disabled={updating}
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: C.text,
-                    padding: '4px 10px',
-                    borderRadius: 999,
-                    border: `0.8px solid ${C.border}`,
-                    backgroundColor: getStatusBg(appointment.status, C),
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {t(`status.${appointment.status}`)}
-                  <ChevronDown style={{ width: 14, height: 14 }} />
-                </button>
-
-                {statusOpen && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: 4,
-                    zIndex: 100,
-                    backgroundColor: C.popoverBg,
-                    border: `0.8px solid ${C.popoverBorder}`,
-                    borderRadius: 12,
-                    boxShadow: C.popoverShadow,
-                    padding: 4,
-                    minWidth: 180,
-                  }}>
-                    {STATUS_LIST.map((s) => (
-                      <button
-                        key={s.value}
-                        type="button"
-                        onClick={() => updateStatus(s.value)}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          borderRadius: 8,
-                          border: 'none',
-                          backgroundColor: appointment.status === s.value ? C.accentSoft : 'transparent',
-                          color: C.text,
-                          fontSize: 14,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (appointment.status !== s.value) e.currentTarget.style.backgroundColor = C.controlBg;
-                        }}
-                        onMouseLeave={(e) => {
-                          if (appointment.status !== s.value) e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <div style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 999,
-                          backgroundColor: getStatusBg(s.value, C),
-                          border: `1px solid ${C.border}`,
-                        }} />
-                        {t(s.labelKey)}
-                      </button>
-                    ))}
-                    <div style={{ height: 1, backgroundColor: C.border, margin: '4px 0' }} />
-                    <button
-                      type="button"
-                      onClick={() => updateStatus('no_show')}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        borderRadius: 8,
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        color: C.danger,
-                        fontSize: 14,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.dangerSoft; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <Ban style={{ width: 14, height: 14 }} />
-                      {t('status.no_show')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateStatus('cancelled')}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        borderRadius: 8,
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        color: C.danger,
-                        fontSize: 14,
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.dangerSoft; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                    >
-                      <X style={{ width: 14, height: 14 }} />
-                      {t('status.cancelled')}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Time chip */}
               <span style={{
                 fontSize: 13,
                 fontWeight: 500,
