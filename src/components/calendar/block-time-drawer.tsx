@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Pencil, Plus, Trash2, X, Check } from 'lucide-react';
 import { usePageTheme, FONT, FONT_FEATURES } from '@/lib/dashboard-theme';
 import { useEnterSubmit } from '@/hooks/use-keyboard-shortcuts';
+import { humanizeError } from '@/lib/format/error';
 
 interface BlockTimeTemplate {
   id: string;
@@ -117,13 +118,13 @@ export function BlockTimeDrawerContent({
         .from('block_time_templates')
         .update({ title: trimmed, duration_minutes: tplDraftDuration })
         .eq('id', editingTplId);
-      if (error) { toast.error(error.message); return; }
+      if (error) { toast.error(humanizeError(error)); return; }
       toast.success('Шаблон обновлён');
     } else {
       const { error } = await supabase
         .from('block_time_templates')
         .insert({ master_id: masterId, title: trimmed, duration_minutes: tplDraftDuration });
-      if (error) { toast.error(error.message); return; }
+      if (error) { toast.error(humanizeError(error)); return; }
       toast.success('Шаблон сохранён');
     }
     setEditingTplId(null);
@@ -136,7 +137,7 @@ export function BlockTimeDrawerContent({
   async function deleteTemplate(id: string) {
     const supabase = createClient();
     const { error } = await supabase.from('block_time_templates').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Шаблон удалён');
     loadTemplates();
   }
@@ -180,7 +181,7 @@ export function BlockTimeDrawerContent({
       const { error } = await supabase.from('blocked_times')
         .update({ starts_at: start.toISOString(), ends_at: end.toISOString(), reason })
         .eq('id', editBlock.id);
-      if (error) { toast.error(error.message); setSaving(false); return; }
+      if (error) { toast.error(humanizeError(error)); setSaving(false); return; }
       toast.success(t('timeBlockUpdated') || 'Блокировка обновлена');
     } else {
       const { error } = await supabase.from('blocked_times').insert({
@@ -189,7 +190,7 @@ export function BlockTimeDrawerContent({
         ends_at: end.toISOString(),
         reason,
       });
-      if (error) { toast.error(error.message); setSaving(false); return; }
+      if (error) { toast.error(humanizeError(error)); setSaving(false); return; }
       toast.success(t('timeBlocked') || 'Время заблокировано');
     }
 
@@ -206,7 +207,7 @@ export function BlockTimeDrawerContent({
     setSaving(true);
     const supabase = createClient();
     const { error } = await supabase.from('blocked_times').delete().eq('id', editBlock.id);
-    if (error) { toast.error(error.message); setSaving(false); return; }
+    if (error) { toast.error(humanizeError(error)); setSaving(false); return; }
     toast.success(t('timeUnblocked') || 'Время разблокировано');
     setSaving(false);
     onSaved();

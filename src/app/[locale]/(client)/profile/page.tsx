@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { humanizeError } from '@/lib/format/error';
 
 interface ProfileData {
   id: string;
@@ -145,7 +146,7 @@ export default function ProfilePage() {
       .from('avatars')
       .upload(path, file, { cacheControl: '3600', upsert: false });
     if (uploadErr) {
-      toast.error(uploadErr.message);
+      toast.error(humanizeError(uploadErr));
       setAvatarBusy(false);
       return;
     }
@@ -156,7 +157,7 @@ export default function ProfilePage() {
       .update({ avatar_url: newUrl })
       .eq('id', userId);
     if (updErr) {
-      toast.error(updErr.message);
+      toast.error(humanizeError(updErr));
     } else {
       setAvatarUrl(newUrl);
       setProfile((p) => (p ? { ...p, avatar_url: newUrl } : p));

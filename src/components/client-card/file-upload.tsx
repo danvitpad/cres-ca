@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useSubscription } from '@/hooks/use-subscription';
 import { UploadCloud, FileText, Image, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { humanizeError } from '@/lib/format/error';
 
 interface ClientFile {
   id: string;
@@ -94,7 +95,7 @@ export function FileUpload({ clientId }: { clientId: string }) {
       .from('client-files')
       .upload(path, file);
 
-    if (error) { toast.error(error.message); setUploading(false); return; }
+    if (error) { toast.error(humanizeError(error)); setUploading(false); return; }
 
     const { data: urlData } = supabase.storage.from('client-files').getPublicUrl(data.path);
 

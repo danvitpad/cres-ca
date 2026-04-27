@@ -17,6 +17,7 @@ import {
   type PageTheme,
 } from '@/lib/dashboard-theme';
 import { Table } from '@/components/ui/table';
+import { humanizeError } from '@/lib/format/error';
 
 type FieldKey = 'full_name' | 'phone' | 'email' | 'date_of_birth' | 'notes' | 'ignore';
 
@@ -150,7 +151,7 @@ export default function ClientsImportPage() {
       .insert(inserts, { count: 'exact' });
     setImporting(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setDone(count ?? inserts.length);

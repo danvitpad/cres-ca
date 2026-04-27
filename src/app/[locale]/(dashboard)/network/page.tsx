@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { humanizeError } from '@/lib/format/error';
 
 type PeerMaster = {
   id: string;
@@ -100,7 +101,7 @@ export default function NetworkPage() {
         .eq('from_master_id', master.id)
         .eq('to_master_id', peerId);
       if (error) {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
         return;
       }
       setFollowing((prev) => {
@@ -113,7 +114,7 @@ export default function NetworkPage() {
         .from('master_follows')
         .insert({ from_master_id: master.id, to_master_id: peerId });
       if (error) {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
         return;
       }
       setFollowing((prev) => new Set(prev).add(peerId));

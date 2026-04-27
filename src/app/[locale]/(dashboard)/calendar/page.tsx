@@ -50,6 +50,7 @@ import {
 import { FONT } from '@/lib/dashboard-theme';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import type { AppointmentData } from '@/hooks/use-appointments';
+import { humanizeError } from '@/lib/format/error';
 
 type ViewMode = 'day' | '3day' | 'week' | 'month' | 'list';
 
@@ -409,7 +410,7 @@ export default function CalendarPage() {
       booked_via: 'manual',
     }).select('id').single();
     setSidePanelSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(t('appointmentCreated'));
 
     // Notify client if they have a profile

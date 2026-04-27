@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { humanizeError } from '@/lib/format/error';
 
 export default function ClientSettingsPage() {
   const t = useTranslations('clientSettings');
@@ -97,7 +98,7 @@ export default function ClientSettingsPage() {
     const supabase = createClient();
     const { error } = await supabase.from('profiles').update({ appointment_reminders_prefs: next }).eq('id', profileId);
     setRemindersSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     setReminders(next);
   }
 
@@ -151,7 +152,7 @@ export default function ClientSettingsPage() {
     const { error } = await createClient().auth.resetPasswordForEmail(user.email, {
       redirectTo: `${window.location.origin}/login`,
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else toast.success(t('passwordResetSent'));
   }
 
@@ -175,7 +176,7 @@ export default function ClientSettingsPage() {
     const email = window.prompt(t('changeEmail'), '');
     if (!email || !email.includes('@')) return;
     const { error } = await createClient().auth.updateUser({ email: email.trim() });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(t('changeEmailSent') || 'Проверьте почту для подтверждения');
   }
 

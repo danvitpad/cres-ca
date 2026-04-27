@@ -31,6 +31,7 @@ import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/compo
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
 import { ExportMenu } from '@/components/finance/export-menu';
 import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
+import { humanizeError } from '@/lib/format/error';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
@@ -270,7 +271,7 @@ export default function FinancePage() {
       })
       .select('id, date, amount, currency, category, description, vendor, payment_method')
       .single();
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     setExpenses(prev => [data as ExpenseRow, ...prev]);
     setExpAmount('');
     setExpVendor('');
@@ -305,7 +306,7 @@ export default function FinancePage() {
       })
       .select('id, amount, currency, date, client_name, service_name, payment_method, category, note, created_at')
       .single();
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     setManualIncomes(prev => [data as ManualIncomeRow, ...prev]);
     setIncAmount('');
     setIncNote('');

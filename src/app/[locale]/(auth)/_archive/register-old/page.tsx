@@ -30,6 +30,7 @@ import {
   SelectTrigger,
 } from '@/components/ui/select';
 import { ArrowLeft, Mail, Shield, Eye, EyeOff } from 'lucide-react';
+import { humanizeError } from '@/lib/format/error';
 
 type Step = 'form' | 'otp';
 
@@ -88,7 +89,7 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
 
@@ -134,7 +135,7 @@ export default function RegisterPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setLoading(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else toast.success(t('otpResent'));
   }
 

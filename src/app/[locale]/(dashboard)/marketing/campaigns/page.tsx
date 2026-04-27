@@ -19,6 +19,7 @@ import { useMaster } from '@/hooks/use-master';
 import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { humanizeError } from '@/lib/format/error';
 
 type Mode = 'segment' | 'manual';
 type Segment = 'all' | 'vip' | 'regular' | 'new' | 'inactive';
@@ -213,7 +214,7 @@ export default function CampaignsPage() {
     const { error } = await supabase.from('notifications').insert(rows);
     setSending(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     if (master?.id) {

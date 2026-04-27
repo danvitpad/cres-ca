@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { humanizeError } from '@/lib/format/error';
 
 interface Appointment {
   id: string;
@@ -92,7 +93,7 @@ export default function SplitPaymentsPage({ params }: { params: Promise<{ apt_id
       .select('id, amount, type, status, payment_method, created_at')
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setPayments((prev) => [...prev, data as Payment]);

@@ -28,6 +28,7 @@ import {
   usePageTheme, pageContainer,
   type PageTheme,
 } from '@/lib/dashboard-theme';
+import { humanizeError } from '@/lib/format/error';
 
 /* ────────────────────── Types ────────────────────── */
 
@@ -423,7 +424,7 @@ function NotesBlock({
       .eq('id', partnership.id);
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return false;
     }
     onSaved();
@@ -700,7 +701,7 @@ function CrossPromotionToggle({
       .update({ cross_promotion: !partnership.cross_promotion })
       .eq('id', partnership.id);
     setBusy(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else { toast.success(partnership.cross_promotion ? 'Кросс-реклама выключена' : 'Кросс-реклама включена'); onSaved(); }
   }
 
@@ -759,7 +760,7 @@ function ContractTermsInline({
       .update({ contract_terms: next.length ? next : null })
       .eq('id', partnership.id);
     setBusy(false);
-    if (error) { toast.error(error.message); return false; }
+    if (error) { toast.error(humanizeError(error)); return false; }
     onSaved();
     return true;
   }

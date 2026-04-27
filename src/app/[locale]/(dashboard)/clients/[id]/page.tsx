@@ -38,6 +38,7 @@ import {
   type PageTheme,
 } from '@/lib/dashboard-theme';
 import type { BehaviorIndicator, AppointmentStatus } from '@/types';
+import { humanizeError } from '@/lib/format/error';
 
 /* ────────────────────── Types ────────────────────── */
 
@@ -687,7 +688,7 @@ function NotesBlock({
       .eq('id', clientId);
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return false;
     }
     onSaved();
@@ -1300,7 +1301,7 @@ function ManualTierPicker({
       manual_tier_set_at: next ? new Date().toISOString() : null,
     }).eq('id', clientId);
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(next ? `Tier: ${TIER_LABELS[next]}` : 'Авто-tier');
     onSaved();
   }
@@ -1358,7 +1359,7 @@ function HeaderBlacklistButton({ clientId, onDone, C }: { clientId: string; onDo
       blacklist_reason: reason.trim(),
     }).eq('id', clientId);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(tc('success'));
     setOpen(false);
     setReason('');

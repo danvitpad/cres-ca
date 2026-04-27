@@ -17,6 +17,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { humanizeError } from '@/lib/format/error';
 
 type Item = {
   id: string;
@@ -110,7 +111,7 @@ export default function PortfolioPage() {
     if (!(await confirm({ title: 'Удалить работу?', confirmLabel: 'Удалить', destructive: true }))) return;
     const { error } = await supabase.from('master_portfolio').delete().eq('id', id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setItems((prev) => prev.filter((i) => i.id !== id));

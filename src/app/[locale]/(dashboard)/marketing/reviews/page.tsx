@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
+import { humanizeError } from '@/lib/format/error';
 
 interface ReviewRow {
   id: string;
@@ -71,7 +72,7 @@ export default function ReviewsPage() {
       .update({ is_published: !r.is_published })
       .eq('id', r.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success(r.is_published ? 'Скрыт' : 'Опубликован');

@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, CURRENCY } from '@/lib/dashboard-theme';
+import { humanizeError } from '@/lib/format/error';
 
 // Валидные значения определены check-constraint masters_client_referral_reward_type_check.
 // UI должен слать ровно эти строки, иначе PATCH 400. bonus_points не выводим
@@ -114,7 +115,7 @@ export function ReferralProgramPanel() {
       .eq('id', (master as { id: string }).id);
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success('Сохранено');
@@ -144,7 +145,7 @@ export function ReferralProgramPanel() {
       .update({ slug: candidate, is_public: true })
       .eq('id', (master as { id: string }).id);
     setCreatingSlug(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     setSlug(candidate);
     toast.success('Публичный адрес создан');
   }

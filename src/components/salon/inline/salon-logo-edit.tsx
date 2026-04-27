@@ -13,6 +13,7 @@ import { Loader2, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useIsSalonOwner } from './use-is-salon-owner';
+import { humanizeError } from '@/lib/format/error';
 
 interface Props {
   salonId: string;
@@ -55,7 +56,7 @@ export function SalonInlineLogoEdit({ salonId, salonOwnerId, initialLogoUrl, chi
         .update({ logo_url: url })
         .eq('id', salonId);
       if (dbError) {
-        toast.error(dbError.message);
+        toast.error(humanizeError(dbError));
         return;
       }
       setLogoUrl(url);

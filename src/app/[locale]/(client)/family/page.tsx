@@ -19,6 +19,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { ShimmerSkeleton } from '@/components/shared/primitives/shimmer-skeleton';
+import { humanizeError } from '@/lib/format/error';
 
 interface FamilyMember {
   id: string;
@@ -86,7 +87,7 @@ export default function ClientFamilyPage() {
       relationship,
     });
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
     } else {
       toast.success(t('added'));
       setName('');
@@ -107,7 +108,7 @@ export default function ClientFamilyPage() {
     const supabase = createClient();
     const { error } = await supabase.from('family_links').delete().eq('id', member.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success(t('removed'));

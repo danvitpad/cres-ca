@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { ArrowLeft, Landmark, ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { humanizeError } from '@/lib/format/error';
 
 export default function PaymentsSettingsPage() {
   const [loading, setLoading] = useState(true);
@@ -59,7 +60,7 @@ export default function PaymentsSettingsPage() {
         })
         .eq('profile_id', user.id);
       if (error) {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
       } else {
         toast.success('Сохранено');
       }

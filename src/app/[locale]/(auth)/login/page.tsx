@@ -22,6 +22,7 @@ import {
   ArrowLeft, Eye, EyeOff, Mail, Shield,
   CalendarCheck, User as UserIcon, Building2,
 } from 'lucide-react';
+import { humanizeError } from '@/lib/format/error';
 
 type Role = 'client' | 'master' | 'salon_admin';
 type Mode = 'signin' | 'signup';
@@ -158,7 +159,7 @@ export default function AuthPage() {
     } catch {}
     const supabase = createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setLoading(false); toast.error(error.message); return; }
+    if (error) { setLoading(false); toast.error(humanizeError(error)); return; }
     const user = data.user;
     if (!user) { setLoading(false); toast.error('Ошибка входа'); return; }
 
@@ -315,7 +316,7 @@ export default function AuthPage() {
     });
     setLoading(false);
 
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     if (data.user && data.user.identities?.length === 0) {
       toast.error('Этот email уже зарегистрирован');
       setMode('signin');
@@ -341,7 +342,7 @@ export default function AuthPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setLoading(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else toast.success('Код отправлен повторно');
   }
 
@@ -354,8 +355,20 @@ export default function AuthPage() {
     // Locale comes from user_metadata set at signup — template reads {{ .Data.locale }}.
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     setSub('reset-sent');
+  }
+
+  // Проверка OTP происходит сразу при «Далее» на экране ввода кода — чтобы
+  // не выбрасывать пользователя обратно после ввода нового пароля.
+  async function handleResetOtpVerify() {
+    if (otp.length !== 6 || loading) return;
+    setLoading(true);
+    const supabase = createClient();
+    const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'recovery' });
+    setLoading(false);
+    if (error) { toast.error(humanizeError(error, 'Неверный или истёкший код')); setOtp(''); return; }
+    setSub('new-password');
   }
 
   async function handleSetNewPwd(e: React.FormEvent) {
@@ -363,11 +376,9 @@ export default function AuthPage() {
     if (newPwd.length < 6) return;
     setLoading(true);
     const supabase = createClient();
-    const { error: verifyErr } = await supabase.auth.verifyOtp({ email, token: otp, type: 'recovery' });
-    if (verifyErr) { toast.error('Неверный код'); setLoading(false); setSub('reset-otp'); setOtp(''); return; }
     const { error } = await supabase.auth.updateUser({ password: newPwd });
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Пароль обновлён');
     setSub('form');
     setMode('signin');
@@ -381,7 +392,7 @@ export default function AuthPage() {
       provider,
       options: { redirectTo: `${window.location.origin}/api/auth/callback` },
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
   }
 
   const isSignUp = mode === 'signup';
@@ -702,7 +713,7 @@ export default function AuthPage() {
                       </p>
                       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
                         <InputOTP maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
-                          onComplete={() => otp.length === 6 && setSub('new-password')}>
+                          onComplete={handleResetOtpVerify}>
                           <InputOTPGroup>
                             <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
                           </InputOTPGroup>
@@ -712,8 +723,8 @@ export default function AuthPage() {
                           </InputOTPGroup>
                         </InputOTP>
                       </div>
-                      <PrimaryButton disabled={otp.length !== 6} onClick={() => setSub('new-password')} type="button">
-                        Далее
+                      <PrimaryButton disabled={otp.length !== 6 || loading} onClick={handleResetOtpVerify} type="button">
+                        {loading ? 'Проверяем…' : 'Далее'}
                       </PrimaryButton>
                       <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12, marginTop: 12 }}>

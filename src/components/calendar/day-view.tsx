@@ -14,6 +14,7 @@ import { AlertTriangle, X, CalendarPlus, Users, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AppointmentData } from '@/hooks/use-appointments';
 import { FONT } from '@/lib/dashboard-theme';
+import { humanizeError } from '@/lib/format/error';
 
 /* ─── Layout constants ─── */
 const HOUR_HEIGHT = 96;
@@ -347,7 +348,7 @@ export function DayView({
     const supabase = createClient();
     const { error } = await supabase.from('appointments')
       .update({ starts_at: ns.toISOString(), ends_at: ne.toISOString() }).eq('id', appt.id);
-    if (error) toast.error(error.message); else onRefetch();
+    if (error) toast.error(humanizeError(error)); else onRefetch();
     setDragId(null);
   }
 

@@ -23,6 +23,7 @@ import {
 import { User, Phone, RefreshCw, XCircle, AlertTriangle, CheckCircle2, Clock, DollarSign, Briefcase } from 'lucide-react';
 import type { AppointmentData } from '@/hooks/use-appointments';
 import type { AppointmentStatus } from '@/types';
+import { humanizeError } from '@/lib/format/error';
 
 interface Props {
   appointment: AppointmentData | null;
@@ -49,7 +50,7 @@ export function AppointmentActions({ appointment, open, onOpenChange, onUpdated,
 
     const { error } = await supabase.from('appointments').update({ status: newStatus }).eq('id', appointment.id);
 
-    if (error) { toast.error(error.message); setUpdating(false); return; }
+    if (error) { toast.error(humanizeError(error)); setUpdating(false); return; }
 
     // On completion: update client stats + auto-deduct inventory
     if (newStatus === 'completed') {

@@ -38,6 +38,7 @@ import {
 import {
   differenceInDays, differenceInYears, startOfDay, setYear, getYear,
 } from 'date-fns';
+import { humanizeError } from '@/lib/format/error';
 
 const PAGE_SIZE = 40;
 
@@ -382,7 +383,7 @@ export default function ClientsPage() {
       date_of_birth: formData.date_of_birth || null,
       notes: formData.notes || null,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(tc('success'));
     setDialogOpen(false);
     loadClients();

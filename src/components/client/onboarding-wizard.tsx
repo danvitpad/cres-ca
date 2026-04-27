@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
+import { humanizeError } from '@/lib/format/error';
 
 interface Props {
   open: boolean;
@@ -64,7 +65,7 @@ function WizardBody({ onClose, initial }: Omit<Props, 'open'>) {
     const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success(t('finishedToast'));

@@ -16,6 +16,7 @@ import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { humanizeError } from '@/lib/format/error';
 
 type Pair = {
   id: string;
@@ -114,7 +115,7 @@ export default function BeforeAfterPage() {
     if (!(await confirm({ title: 'Удалить эту пару?', confirmLabel: 'Удалить', destructive: true }))) return;
     const { error } = await supabase.from('before_after_photos').delete().eq('id', id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setPairs((prev) => prev.filter((p) => p.id !== id));

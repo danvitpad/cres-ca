@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { humanizeError } from '@/lib/format/error';
 
 interface Event {
   summary: string;
@@ -118,7 +119,7 @@ export default function ImportIcsPage() {
       .insert(rows, { count: 'exact' });
     setImporting(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setDone(count ?? rows.length);

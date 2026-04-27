@@ -32,6 +32,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
+import { humanizeError } from '@/lib/format/error';
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -221,7 +222,7 @@ export default function DealsPage() {
 
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success(editingId ? 'Промокод обновлён' : 'Промокод создан');
@@ -233,7 +234,7 @@ export default function DealsPage() {
     const supabase = createClient();
     const { error } = await supabase.from('promo_codes').update({ is_active: !p.is_active }).eq('id', p.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setCodes((prev) => prev.map((x) => (x.id === p.id ? { ...x, is_active: !p.is_active } : x)));
@@ -243,7 +244,7 @@ export default function DealsPage() {
     const supabase = createClient();
     const { error } = await supabase.from('promo_codes').delete().eq('id', id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setCodes((p) => p.filter((x) => x.id !== id));

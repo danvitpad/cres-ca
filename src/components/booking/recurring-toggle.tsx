@@ -11,6 +11,7 @@ import { Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { humanizeError } from '@/lib/format/error';
 
 interface RecurringToggleProps {
   appointmentId: string;
@@ -60,7 +61,7 @@ export function RecurringToggle({
 
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
     } else {
       toast.success(t('created'));
       setDone(true);

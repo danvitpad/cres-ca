@@ -52,6 +52,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import type { VerticalKey } from '@/lib/verticals/default-services';
 import { useFeatures } from '@/hooks/use-features';
 import { motion } from 'framer-motion';
+import { humanizeError } from '@/lib/format/error';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -489,7 +490,7 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
       })
       .eq('id', master.id);
     setSaving(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else { toast.success(t('hoursSaved')); onSaved(); }
   }
 
@@ -721,7 +722,7 @@ function PoliciesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
       })
       .eq('id', master.id);
     setSaving(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else { toast.success(t('profileSaved')); onSaved(); }
   }
 
@@ -949,7 +950,7 @@ function VerticalTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
     const supabase = createClient();
     const { error } = await supabase.from('masters').update({ vertical: v }).eq('id', master.id);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Сфера обновлена. Обновите страницу для применения шаблонов.');
     onSaved();
   }
@@ -1036,7 +1037,7 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
     const supabase = createClient();
     const { error } = await supabase.from('masters').update({ feature_overrides: overrides }).eq('id', master.id);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     onSaved();
   }
 
@@ -1147,7 +1148,7 @@ function SecurityTab() {
     const locale = (typeof window !== 'undefined' && window.location.pathname.match(/^\/(ru|en|uk)\b/)?.[1]) || 'ru';
     const { error } = await supabase.auth.updateUser({ email: newEmail, data: { locale } });
     setEmailSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('На новый email отправлено письмо с подтверждением. Email обновится после перехода по ссылке.');
     setNewEmail('');
   }
@@ -1190,7 +1191,7 @@ function SecurityTab() {
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setPassSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Пароль изменён');
     setCurrentPassword('');
     setNewPassword('');
@@ -1453,7 +1454,7 @@ function LoyaltyTab({
       })
       .eq('id', master.id);
     setSaving(false);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else { toast.success('Сохранено'); onSaved(); }
   }
 

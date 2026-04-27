@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
 import { BirthdaySettingsDialog } from '@/components/marketing/birthday-settings-dialog';
 import { TemplateEditorDialog, AUTOMATION_KIND_SPECS } from '@/components/marketing/template-editor-dialog';
+import { humanizeError } from '@/lib/format/error';
 
 type AutomationKey =
   | 'reminder_24h'
@@ -145,7 +146,7 @@ export default function AutomationPage() {
       .from('master_automation_settings')
       .upsert({ master_id: master.id, ...next, updated_at: new Date().toISOString() });
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       setSettings(settings);
     } else {
       toast.success(value ? 'Включено' : 'Выключено');

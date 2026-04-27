@@ -31,6 +31,7 @@ import {
 import type { AppointmentData } from '@/hooks/use-appointments';
 import type { AppointmentStatus } from '@/types';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
+import { humanizeError } from '@/lib/format/error';
 
 type AppointmentDetailDrawerProps = {
   appointment: AppointmentData | null;
@@ -208,7 +209,7 @@ export function AppointmentDetailDrawer({
     const supabase = createClient();
     const { error } = await supabase.from('appointments').update({ status: newStatus }).eq('id', appointment.id);
 
-    if (error) { toast.error(error.message); setUpdating(false); return; }
+    if (error) { toast.error(humanizeError(error)); setUpdating(false); return; }
 
     if (newStatus === 'cancelled') await notifyWaitlistOnFreedSlot();
 
@@ -251,7 +252,7 @@ export function AppointmentDetailDrawer({
       })
       .eq('id', appointment.id);
 
-    if (error) { toast.error(error.message); setUpdating(false); return; }
+    if (error) { toast.error(humanizeError(error)); setUpdating(false); return; }
 
     if (initiator === 'client') await applyClientLatePenalty('late_cancel');
     await notifyWaitlistOnFreedSlot();
@@ -276,7 +277,7 @@ export function AppointmentDetailDrawer({
       })
       .eq('id', appointment.id);
 
-    if (error) { toast.error(error.message); setUpdating(false); return; }
+    if (error) { toast.error(humanizeError(error)); setUpdating(false); return; }
 
     if (initiator === 'client') await applyClientLatePenalty('late_reschedule');
 

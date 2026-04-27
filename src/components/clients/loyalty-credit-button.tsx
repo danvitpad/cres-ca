@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Sparkles, Plus, Minus, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { humanizeError } from '@/lib/format/error';
 
 interface Props {
   masterId: string;
@@ -66,7 +67,7 @@ export function LoyaltyCreditButton({ masterId, profileId, onChanged }: Props) {
     });
     setBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     const applied = Number(data ?? 0);

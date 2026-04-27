@@ -17,6 +17,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { humanizeError } from '@/lib/format/error';
 // (Select removed — category is now a free-text Input with datalist; frequency uses a native <select>.)
 
 type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -90,7 +91,7 @@ export function RecurringExpensesTab() {
       active: true,
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Постоянный расход добавлен');
     setName(''); setAmount(''); setCategory(''); setFrequency('monthly'); setDay('1');
     setShowForm(false);
@@ -101,7 +102,7 @@ export function RecurringExpensesTab() {
     if (!(await confirm({ title: `Удалить "${name}"?`, description: 'Больше не будет автоматически списываться ежемесячно.', confirmLabel: 'Удалить', destructive: true }))) return;
     const supabase = createClient();
     const { error } = await supabase.from('recurring_expenses').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Удалено');
     load();
   }
@@ -109,7 +110,7 @@ export function RecurringExpensesTab() {
   async function toggleActive(id: string, current: boolean) {
     const supabase = createClient();
     const { error } = await supabase.from('recurring_expenses').update({ active: !current }).eq('id', id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     load();
   }
 

@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { humanizeError } from '@/lib/format/error';
 
 interface DetailRow {
   id: string;
@@ -171,7 +172,7 @@ export default function AppointmentDetailPage() {
       .update({ status: 'cancelled_by_client' })
       .eq('id', row.id);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       setBusy(false);
       return;
     }

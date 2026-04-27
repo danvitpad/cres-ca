@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { humanizeError } from '@/lib/format/error';
 
 interface HealthProfile {
   allergies: string[];
@@ -93,7 +94,7 @@ export default function ClientIntakeFormPage() {
     });
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success(t('saved'));

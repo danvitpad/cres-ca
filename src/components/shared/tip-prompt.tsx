@@ -12,6 +12,7 @@ import { Heart } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { humanizeError } from '@/lib/format/error';
 
 interface TipPromptProps {
   appointmentId: string;
@@ -56,7 +57,7 @@ export function TipPrompt({
     });
 
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
     } else {
       toast.success(t('thankYou'));
       onClose();

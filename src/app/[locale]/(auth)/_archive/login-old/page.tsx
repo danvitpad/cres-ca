@@ -23,6 +23,7 @@ import {
   InputOTPSeparator,
 } from '@/components/ui/input-otp';
 import { ArrowLeft, Eye, EyeOff, Mail } from 'lucide-react';
+import { humanizeError } from '@/lib/format/error';
 
 type Step = 'email' | 'password' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password';
 
@@ -92,7 +93,7 @@ export default function LoginPage() {
 
     if (error) {
       setLoading(false);
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
 
@@ -131,7 +132,7 @@ export default function LoginPage() {
       provider,
       options: { redirectTo: `${window.location.origin}/api/auth/callback` },
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
   }
 
   async function handleForgotPassword(e: React.FormEvent) {
@@ -141,7 +142,7 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     setStep('reset-sent');
   }
 
@@ -169,7 +170,7 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(t('passwordUpdated'));
     setStep('email');
     setPassword('');

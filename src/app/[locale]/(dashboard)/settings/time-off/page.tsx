@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { humanizeError } from '@/lib/format/error';
 
 interface BlockRow {
   id: string;
@@ -61,7 +62,7 @@ export default function TimeOffPage() {
     });
     setSaving(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success('Период добавлен');

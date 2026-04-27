@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { humanizeError } from '@/lib/format/error';
 
 interface BirthdaySettings {
   enabled: boolean;
@@ -88,7 +89,7 @@ export function BirthdaySettingsDialog({ open, onOpenChange, masterId }: Props) 
       .update({ birthday_settings: s })
       .eq('id', masterId);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Настройки сохранены');
     onOpenChange(false);
   }

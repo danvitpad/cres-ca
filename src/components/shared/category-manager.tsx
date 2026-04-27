@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
+import { humanizeError } from '@/lib/format/error';
 
 export interface Category {
   id: string;
@@ -70,7 +71,7 @@ export function CategoryManager({ masterId, onCategoriesChange }: CategoryManage
       name: newName.trim(),
       color: newColor,
     });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Категория создана');
     setNewName('');
     setNewColor(COLOR_SWATCHES[0]);
@@ -81,7 +82,7 @@ export function CategoryManager({ masterId, onCategoriesChange }: CategoryManage
   async function deleteCategory(id: string) {
     const supabase = createClient();
     const { error } = await supabase.from('service_categories').delete().eq('id', id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     loadCategories();
   }
 

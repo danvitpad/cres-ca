@@ -165,7 +165,7 @@ function ServicesCatalogueView() {
     if (!ok) return;
     const supabase = createClient();
     const { error } = await supabase.from('services').delete().eq('id', id);
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else loadServices();
   }
 
@@ -624,7 +624,7 @@ function ServiceForm({
       : await supabase.from('services').insert(payload);
 
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
 
     // Sync service_recipes
     const serviceId = editing?.id ??
@@ -1106,7 +1106,7 @@ function CategoryDialog({
       .select('id')
       .single();
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Категория создана');
     setName('');
     setColor('#7c3aed');
@@ -1170,6 +1170,7 @@ function CategoryDialog({
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import InventoryPage from '../inventory/page';
 import { SupplierOrdersTab } from '@/components/catalogue/supplier-orders-tab';
+import { humanizeError } from '@/lib/format/error';
 
 type CatalogueTab = 'services' | 'inventory' | 'suppliers';
 

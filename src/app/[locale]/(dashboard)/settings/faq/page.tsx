@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { humanizeError } from '@/lib/format/error';
 
 interface Faq {
   id: string;
@@ -61,7 +62,7 @@ export default function FaqTemplatesPage() {
       .select('id, question, answer, position')
       .single();
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setItems((prev) => [...prev, data as Faq]);
@@ -80,7 +81,7 @@ export default function FaqTemplatesPage() {
     const rows = DEFAULTS.map((d, i) => ({ master_id: master.id, question: d.question, answer: d.answer, position: i }));
     const { data, error } = await supabase.from('faq_templates').insert(rows).select('id, question, answer, position');
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setItems((prev) => [...prev, ...((data ?? []) as Faq[])]);

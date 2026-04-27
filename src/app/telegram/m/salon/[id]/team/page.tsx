@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { createClient } from '@/lib/supabase/client';
 import { SalonCatalogTab } from '@/components/salon/admin/catalog-tab';
+import { humanizeError } from '@/lib/format/error';
 
 interface Member {
   id: string;
@@ -866,7 +867,7 @@ function SettingsTab({
         .update({ recruitment_open: next })
         .eq('id', salonId);
       if (error) {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
         return;
       }
       setOpen(next);
@@ -889,7 +890,7 @@ function SettingsTab({
       const supabase = createClient();
       const { error } = await supabase.from('salons').update({ team_mode: next }).eq('id', salonId);
       if (error) {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
         return;
       }
       setMode(next);
@@ -910,7 +911,7 @@ function SettingsTab({
         .update({ recruitment_message: next || null })
         .eq('id', salonId);
       if (error) {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
         return;
       }
       toast.success('Сообщение мастерам сохранено');

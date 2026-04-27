@@ -39,6 +39,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AvatarRing } from '@/components/shared/primitives/avatar-ring';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
+import { humanizeError } from '@/lib/format/error';
 
 type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null } | null;
 
@@ -294,7 +295,7 @@ export default function AppointmentsPage() {
       .eq('id', cancelTarget.id);
 
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       setCancelBusy(false);
       return;
     }
@@ -351,7 +352,7 @@ export default function AppointmentsPage() {
     });
     setRatingBusy(false);
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     toast.success(tr('thanks'));

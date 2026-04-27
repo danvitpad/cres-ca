@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { X, Send, Save, RotateCcw, Mail } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { humanizeError } from '@/lib/format/error';
 
 export interface AutomationKindSpec {
   kind: string;
@@ -212,7 +213,7 @@ export function TemplateEditorDialog({
         .update({ subject, content })
         .eq('id', tplId);
       setSaving(false);
-      if (error) { toast.error(error.message); return; }
+      if (error) { toast.error(humanizeError(error)); return; }
       toast.success('Сохранено');
     } else {
       const { data, error } = await supabase
@@ -228,7 +229,7 @@ export function TemplateEditorDialog({
         .select('id')
         .single();
       setSaving(false);
-      if (error) { toast.error(error.message); return; }
+      if (error) { toast.error(humanizeError(error)); return; }
       if (data) setTplId((data as { id: string }).id);
       toast.success('Сохранено');
     }

@@ -30,6 +30,7 @@ import { useMaster } from '@/hooks/use-master';
 import {
   DEFAULT_SERVICES, type VerticalKey, type DefaultService,
 } from '@/lib/verticals/default-services';
+import { humanizeError } from '@/lib/format/error';
 
 type StepId = 'vertical' | 'services' | 'hours' | 'invite' | 'done';
 const STEPS: StepId[] = ['vertical', 'services', 'hours', 'invite', 'done'];
@@ -140,7 +141,7 @@ export function OnboardingDialog() {
       .update({ vertical })
       .eq('id', master.id);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     goNext();
   }
 
@@ -160,7 +161,7 @@ export function OnboardingDialog() {
     }));
     const { error } = await supabase.from('services').insert(rows);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     toast.success(`Добавлено услуг: ${toInsert.length}`);
     goNext();
   }
@@ -176,7 +177,7 @@ export function OnboardingDialog() {
       .update({ working_hours: preset.hours })
       .eq('id', master.id);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(humanizeError(error)); return; }
     goNext();
   }
 

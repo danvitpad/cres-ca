@@ -13,6 +13,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Bell } from 'lucide-react';
+import { humanizeError } from '@/lib/format/error';
 
 interface WaitlistButtonProps {
   masterId: string;
@@ -55,7 +56,7 @@ export function WaitlistButton({ masterId, desiredDate }: WaitlistButtonProps) {
       if (error.code === '23505') {
         toast.info(t('alreadyOnWaitlist'));
       } else {
-        toast.error(error.message);
+        toast.error(humanizeError(error));
       }
     } else {
       setJoined(true);

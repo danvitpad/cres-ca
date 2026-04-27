@@ -11,6 +11,7 @@ import { use, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Star, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { humanizeError } from '@/lib/format/error';
 
 interface PageProps {
   params: Promise<{ apt_id: string }>;
@@ -70,7 +71,7 @@ export default function PublicReviewPage({ params }: PageProps) {
       is_anonymous: anonymous,
     });
     if (error) {
-      toast.error(error.message);
+      toast.error(humanizeError(error));
       return;
     }
     setDone(true);

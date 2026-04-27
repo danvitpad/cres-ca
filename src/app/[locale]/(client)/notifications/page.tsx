@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { humanizeError } from '@/lib/format/error';
 
 interface NotifData {
   type?: string;
@@ -160,7 +161,7 @@ export default function NotificationsPage() {
       ...prefs,
       updated_at: new Date().toISOString(),
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error(humanizeError(error));
     else {
       toast.success('✓');
       setDirty(false);
