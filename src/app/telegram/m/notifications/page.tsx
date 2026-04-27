@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users, X } from 'lucide-react';
+import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users, X, MailOpen, CheckCircle2, XCircle, Send } from 'lucide-react';
 import { MobilePage, PageHeader, EmptyState } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
@@ -76,11 +76,23 @@ function formatDay(d: Date) {
 const NOTIF_ICONS: Record<string, typeof Bell> = {
   new_follower: UserPlus,
   mutual_follow: Users,
+  salon_invite: MailOpen,
+  salon_invite_accepted: CheckCircle2,
+  salon_invite_declined: XCircle,
+  salon_join_request: Send,
+  salon_join_approved: CheckCircle2,
+  salon_join_rejected: XCircle,
 };
 
 const NOTIF_ICON_BG: Record<string, { bg: string; color: string }> = {
   new_follower: { bg: '#dbeafe', color: '#1d4ed8' },
   mutual_follow: { bg: '#dcfce7', color: '#15803d' },
+  salon_invite: { bg: '#ede9fe', color: '#6d28d9' },
+  salon_invite_accepted: { bg: '#dcfce7', color: '#15803d' },
+  salon_invite_declined: { bg: '#fee2e2', color: '#b91c1c' },
+  salon_join_request: { bg: '#fef3c7', color: '#b45309' },
+  salon_join_approved: { bg: '#dcfce7', color: '#15803d' },
+  salon_join_rejected: { bg: '#fee2e2', color: '#b91c1c' },
 };
 
 export default function MasterMiniAppNotifications() {
@@ -321,12 +333,29 @@ export default function MasterMiniAppNotifications() {
                         (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
                       const followState = followerProfileId ? followStates[followerProfileId] : undefined;
 
+                      const salonId = (n.data as { salon_id?: string } | null)?.salon_id;
+                      const navTarget =
+                        notifType === 'salon_invite'
+                          ? '/telegram/m/invites'
+                          : (notifType === 'salon_join_approved' && salonId)
+                            ? `/telegram/m/salon/${salonId}/dashboard`
+                            : (notifType === 'salon_join_request' && salonId)
+                              ? `/telegram/m/salon/${salonId}/team`
+                              : (notifType === 'salon_invite_accepted' || notifType === 'salon_invite_declined') && salonId
+                                ? `/telegram/m/salon/${salonId}/team`
+                                : null;
+
                       return (
                         <li key={n.id}>
                           <button
                             type="button"
                             onClick={() => {
                               markRead(n.id);
+                              if (navTarget) {
+                                haptic('light');
+                                router.push(navTarget);
+                                return;
+                              }
                               if (isFollowNotif && followerProfileId) {
                                 navigateToProfile(followerProfileId);
                               }

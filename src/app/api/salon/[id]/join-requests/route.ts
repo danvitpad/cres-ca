@@ -129,15 +129,22 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const salonName = (salon as { name: string } | null)?.name ?? 'команда';
     try {
       await supabase.from('notifications').insert({
-        recipient_id: masterProfile.profile_id,
-        kind: body.action === 'approve' ? 'salon_join_approved' : 'salon_join_rejected',
+        profile_id: masterProfile.profile_id,
+        channel: 'in_app',
+        status: 'pending',
+        scheduled_for: new Date().toISOString(),
         title: body.action === 'approve'
           ? `Тебя приняли в ${salonName}`
           : `Заявка в ${salonName} отклонена`,
         body: body.action === 'approve'
-          ? `Теперь ты в команде. Открой /telegram/m/salon/${salonId}/dashboard.`
+          ? `Теперь ты в команде. Открой кабинет команды.`
           : (body.reason || 'Админ отклонил твою заявку.'),
-        meta: { salon_id: salonId, request_id: body.request_id, action: body.action },
+        data: {
+          type: body.action === 'approve' ? 'salon_join_approved' : 'salon_join_rejected',
+          salon_id: salonId,
+          request_id: body.request_id,
+          action: body.action,
+        },
       });
     } catch { /* ignore */ }
   }

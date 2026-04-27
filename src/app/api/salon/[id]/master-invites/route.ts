@@ -110,11 +110,13 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .maybeSingle();
     const salonName = (salon as { name: string } | null)?.name ?? 'команда';
     await supabase.from('notifications').insert({
-      recipient_id: masterRow.profile_id,
-      kind: 'salon_invite',
+      profile_id: masterRow.profile_id,
+      channel: 'in_app',
+      status: 'pending',
+      scheduled_for: new Date().toISOString(),
       title: `Тебя приглашают в ${salonName}`,
       body: body.message?.trim() || 'Открой приложение чтобы принять или отклонить.',
-      meta: { salon_id: salonId, invite_id: inviteRow.id, master_id: masterRow.id },
+      data: { type: 'salon_invite', salon_id: salonId, invite_id: inviteRow.id, master_id: masterRow.id },
     });
   } catch { /* ignore */ }
 

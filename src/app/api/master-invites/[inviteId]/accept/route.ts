@@ -49,11 +49,13 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
     if (salonObj?.owner_id) {
       try {
         await supabase.from('notifications').insert({
-          recipient_id: salonObj.owner_id,
-          kind: 'salon_invite_accepted',
+          profile_id: salonObj.owner_id,
+          channel: 'in_app',
+          status: 'pending',
+          scheduled_for: new Date().toISOString(),
           title: `${masterObj?.display_name || 'Мастер'} принял приглашение`,
           body: `Теперь в команде «${salonObj.name ?? 'салон'}».`,
-          meta: { salon_id: inviteRow.salon_id, invite_id: inviteId, master_id: inviteRow as unknown },
+          data: { type: 'salon_invite_accepted', salon_id: inviteRow.salon_id, invite_id: inviteId },
         });
       } catch { /* ignore */ }
     }

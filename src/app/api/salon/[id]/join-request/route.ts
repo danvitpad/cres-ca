@@ -126,11 +126,13 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     await supabase
       .from('notifications')
       .insert({
-        recipient_id: salon.owner_id,
-        kind: 'salon_join_request',
+        profile_id: salon.owner_id,
+        channel: 'in_app',
+        status: 'pending',
+        scheduled_for: new Date().toISOString(),
         title: 'Новая заявка в команду',
         body: `Мастер хочет присоединиться к ${salon.name}.${message ? `\n\n«${message}»` : ''}`,
-        meta: { salon_id: salonId, request_id: created.id },
+        data: { type: 'salon_join_request', salon_id: salonId, request_id: created.id },
       });
   } catch { /* ignore */ }
 
