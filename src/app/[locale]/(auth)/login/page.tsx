@@ -23,6 +23,7 @@ import {
   CalendarCheck, User as UserIcon, Building2,
 } from 'lucide-react';
 import { humanizeError } from '@/lib/format/error';
+import { isDisposableEmail } from '@/lib/format/email-validator';
 
 type Role = 'client' | 'master' | 'salon_admin';
 type Mode = 'signin' | 'signup';
@@ -294,6 +295,10 @@ export default function AuthPage() {
     e.preventDefault();
     if (password.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
     if (!terms) { toast.error('Примите условия использования'); return; }
+    if (isDisposableEmail(email)) {
+      toast.error('Используй обычную почту (Gmail, Outlook и т.п.). На одноразовые адреса наш отправитель письма не доставляет.');
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
@@ -360,6 +365,10 @@ export default function AuthPage() {
   async function handleForgotSend(e: React.FormEvent) {
     e.preventDefault();
     if (!email) { toast.error('Введите email'); return; }
+    if (isDisposableEmail(email)) {
+      toast.error('На одноразовые почты письмо не дойдёт. Введи реальный email.');
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
     // Locale comes from user_metadata set at signup — template reads {{ .Data.locale }}.
