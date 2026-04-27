@@ -362,7 +362,7 @@ export default function AuthPage() {
   // Проверка OTP происходит сразу при «Далее» на экране ввода кода — чтобы
   // не выбрасывать пользователя обратно после ввода нового пароля.
   async function handleResetOtpVerify() {
-    if (otp.length !== 6 || loading) return;
+    if (otp.length !== 8 || loading) return;
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'recovery' });
@@ -712,18 +712,18 @@ export default function AuthPage() {
                         Отправлен на <strong style={{ color: 'var(--afg)' }}>{email}</strong>
                       </p>
                       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-                        <InputOTP maxLength={6} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
+                        <InputOTP maxLength={8} pattern={REGEXP_ONLY_DIGITS} value={otp} onChange={setOtp}
                           onComplete={handleResetOtpVerify}>
                           <InputOTPGroup>
-                            <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} />
+                            <InputOTPSlot index={0} /><InputOTPSlot index={1} /><InputOTPSlot index={2} /><InputOTPSlot index={3} />
                           </InputOTPGroup>
                           <InputOTPSeparator />
                           <InputOTPGroup>
-                            <InputOTPSlot index={3} /><InputOTPSlot index={4} /><InputOTPSlot index={5} />
+                            <InputOTPSlot index={4} /><InputOTPSlot index={5} /><InputOTPSlot index={6} /><InputOTPSlot index={7} />
                           </InputOTPGroup>
                         </InputOTP>
                       </div>
-                      <PrimaryButton disabled={otp.length !== 6 || loading} onClick={handleResetOtpVerify} type="button">
+                      <PrimaryButton disabled={otp.length !== 8 || loading} onClick={handleResetOtpVerify} type="button">
                         {loading ? 'Проверяем…' : 'Далее'}
                       </PrimaryButton>
                       <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
