@@ -720,7 +720,8 @@ function CreateBusinessWizard() {
                   })}
                 </div>
 
-                {/* Поле «своё» когда выбрано «Другое» — текст пишется на публичную страницу */}
+                {/* Поле «своё» когда выбрано «Другое» — текст пишется на публичную страницу.
+                    Placeholder подсказывает примеры из выбранной ниши, не общая каша. */}
                 {selectedCategories.includes('categoryOther') && (
                   <motion.div
                     initial={{ opacity: 0, y: 8 }}
@@ -734,7 +735,7 @@ function CreateBusinessWizard() {
                       type="text"
                       value={customCategoryText}
                       onChange={(e) => setCustomCategoryText(e.target.value)}
-                      placeholder="Например: Подбор парфюмерии, IT-репетитор, винотека"
+                      placeholder={copy.customCategoryPlaceholder}
                       maxLength={80}
                       className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
                     />
@@ -799,7 +800,7 @@ function CreateBusinessWizard() {
                     type="text"
                     value={customSpecText}
                     onChange={(e) => setCustomSpecText(e.target.value)}
-                    placeholder="Например: лечебный массаж, AI-инструктор, реставрация мебели"
+                    placeholder={copy.customSpecPlaceholder}
                     maxLength={80}
                     className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
                   />

@@ -32,6 +32,10 @@ export interface VerticalCopy {
   businessGenitive: string;
   /** Локатив — «в салоне», «на СТО», «в клинике» */
   businessLocative: string;
+  /** Примеры ниши для placeholder поля «Опишите свою нишу» в шаге 2 */
+  customCategoryPlaceholder: string;
+  /** Примеры специализации для placeholder поля «Своя специализация» в шаге 3 */
+  customSpecPlaceholder: string;
   /** Кто такой соло-человек этой ниши: парикмахер / врач / автомастер / тренер */
   soloRole: string;
   /** Что делает мастер: услуга / процедура / тренировка / приём */
@@ -60,6 +64,8 @@ const DEFAULT_COPY: VerticalCopy = {
   businessNomPossessive: 'ваш бизнес',
   businessGenitive: 'вашего бизнеса',
   businessLocative: 'в бизнесе',
+  customCategoryPlaceholder: 'Например: подбор парфюмерии, IT-репетитор, винотека',
+  customSpecPlaceholder: 'Например: лечебный массаж, реставрация мебели',
   soloRole: 'мастер',
   service: 'услуга',
   servicePlural: 'услуги',
@@ -87,6 +93,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваш кабинет',
     businessGenitive: 'вашего кабинета',
     businessLocative: 'в кабинете',
+    customCategoryPlaceholder: 'Например: уход за бородой, наращивание ресниц, парикмахер-колорист',
+    customSpecPlaceholder: 'Например: детский парикмахер, бровист, дизайнер ногтей',
     soloRole: 'мастер красоты',
     service: 'услуга',
     servicePlural: 'услуги',
@@ -106,6 +114,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваш кабинет',
     businessGenitive: 'вашего кабинета',
     businessLocative: 'в кабинете',
+    customCategoryPlaceholder: 'Например: лечебный массаж, реабилитация, остеопатия',
+    customSpecPlaceholder: 'Например: детский остеопат, диетолог, спортивная медицина',
     soloRole: 'специалист',
     service: 'приём',
     servicePlural: 'приёмы',
@@ -125,6 +135,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваша мастерская',
     businessGenitive: 'вашей мастерской',
     businessLocative: 'в мастерской',
+    customCategoryPlaceholder: 'Например: детейлинг, тонировка, ремонт электрики',
+    customSpecPlaceholder: 'Например: автоэлектрик, мастер по покраске, диагност',
     soloRole: 'автомастер',
     service: 'работа',
     servicePlural: 'работы',
@@ -144,6 +156,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваша студия',
     businessGenitive: 'вашей студии',
     businessLocative: 'в студии',
+    customCategoryPlaceholder: 'Например: перманентный макияж, художественные татуировки, шрамирование',
+    customSpecPlaceholder: 'Например: реалистичные татуировки, минимализм, перманент бровей',
     soloRole: 'тату-мастер',
     service: 'сеанс',
     servicePlural: 'сеансы',
@@ -163,6 +177,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваш кабинет',
     businessGenitive: 'вашего кабинета',
     businessLocative: 'в кабинете',
+    customCategoryPlaceholder: 'Например: дрессировка, ветеринарная стоматология, экзотические животные',
+    customSpecPlaceholder: 'Например: грумер крупных собак, кинолог, фелинолог',
     soloRole: 'специалист по питомцам',
     service: 'визит',
     servicePlural: 'визиты',
@@ -182,6 +198,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваша мастерская',
     businessGenitive: 'вашей мастерской',
     businessLocative: 'в мастерской',
+    customCategoryPlaceholder: 'Например: реставрация мебели, пошив одежды, ремонт обуви',
+    customSpecPlaceholder: 'Например: реставратор антиквариата, портной, ювелир',
     soloRole: 'мастер',
     service: 'работа',
     servicePlural: 'работы',
@@ -201,6 +219,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваша студия',
     businessGenitive: 'вашей студии',
     businessLocative: 'в студии',
+    customCategoryPlaceholder: 'Например: кроссфит, реабилитация, йога-терапия, пилатес',
+    customSpecPlaceholder: 'Например: тренер по силовым, инструктор по йоге, фитнес-нутрициолог',
     soloRole: 'тренер',
     service: 'тренировка',
     servicePlural: 'тренировки',
@@ -220,6 +240,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваша студия',
     businessGenitive: 'вашей студии',
     businessLocative: 'в студии',
+    customCategoryPlaceholder: 'Например: свадебная фотография, видеосъёмка, аэросъёмка',
+    customSpecPlaceholder: 'Например: свадебный фотограф, видеограф, ведущий мероприятий',
     soloRole: 'специалист',
     service: 'съёмка / выступление',
     servicePlural: 'съёмки / выступления',
@@ -239,6 +261,8 @@ const SOLO: Record<VerticalKey, VerticalCopy> = {
     businessNomPossessive: 'ваш кабинет',
     businessGenitive: 'вашего кабинета',
     businessLocative: 'в кабинете',
+    customCategoryPlaceholder: 'Например: репетитор по физике, IT-курсы, языковая школа',
+    customSpecPlaceholder: 'Например: репетитор по математике, тренер по ораторскому, коуч',
     soloRole: 'преподаватель',
     service: 'занятие',
     servicePlural: 'занятия',
