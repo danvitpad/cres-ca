@@ -296,7 +296,7 @@ export default function AuthPage() {
     if (password.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
     if (!terms) { toast.error('Примите условия использования'); return; }
     if (isDisposableEmail(email)) {
-      toast.error('Используй обычную почту (Gmail, Outlook и т.п.). На одноразовые адреса наш отправитель письма не доставляет.');
+      toast.error('Используйте проверенную почту (Gmail, Outlook и т.п.). Регистрация с временной почтой нарушает наши условия использования.');
       return;
     }
 
@@ -366,7 +366,7 @@ export default function AuthPage() {
     e.preventDefault();
     if (!email) { toast.error('Введите email'); return; }
     if (isDisposableEmail(email)) {
-      toast.error('На одноразовые почты письмо не дойдёт. Введи реальный email.');
+      toast.error('Используйте проверенную почту (Gmail, Outlook и т.п.). Временные почты нарушают наши условия использования.');
       return;
     }
     setLoading(true);
