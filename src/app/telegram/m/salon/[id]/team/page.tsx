@@ -16,12 +16,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   Crown, Users2, Pause, UserCheck, Clock3, Inbox, Settings as SettingsIcon,
-  Check, X, Loader2, Lock, Unlock, ExternalLink, Send, Search, UserPlus, MailX,
+  Check, X, Loader2, Lock, Unlock, ExternalLink, Send, Search, UserPlus, MailX, BookOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { createClient } from '@/lib/supabase/client';
+import { SalonCatalogTab } from '@/components/salon/admin/catalog-tab';
 
 interface Member {
   id: string;
@@ -89,6 +90,7 @@ interface MasterCandidate {
 interface SalonSettings {
   recruitment_open: boolean;
   recruitment_message: string | null;
+  team_mode: 'unified' | 'marketplace';
 }
 
 function getInitData(): string | null {
@@ -106,7 +108,7 @@ function getInitData(): string | null {
   return null;
 }
 
-type Tab = 'team' | 'requests' | 'invites' | 'settings';
+type Tab = 'team' | 'requests' | 'invites' | 'catalog' | 'settings';
 
 export default function MiniAppSalonTeamPage() {
   const params = useParams();
@@ -163,7 +165,7 @@ export default function MiniAppSalonTeamPage() {
     const supabase = createClient();
     const { data } = await supabase
       .from('salons')
-      .select('recruitment_open, recruitment_message')
+      .select('recruitment_open, recruitment_message, team_mode')
       .eq('id', salonId)
       .maybeSingle();
     if (data) setSettings(data as SalonSettings);
@@ -213,6 +215,11 @@ export default function MiniAppSalonTeamPage() {
             <span className="rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{pendingInvCount}</span>
           )}
         </TabButton>
+        {settings?.team_mode === 'unified' && (
+          <TabButton active={tab === 'catalog'} onClick={() => setTab('catalog')}>
+            <BookOpen className="size-3.5" /> Каталог
+          </TabButton>
+        )}
         <TabButton active={tab === 'settings'} onClick={() => setTab('settings')}>
           <SettingsIcon className="size-3.5" /> Настройки
         </TabButton>
@@ -238,6 +245,9 @@ export default function MiniAppSalonTeamPage() {
             fetchTeam();
           }}
         />
+      )}
+      {tab === 'catalog' && settings?.team_mode === 'unified' && (
+        <SalonCatalogTab salonId={salonId} />
       )}
       {tab === 'settings' && settings && (
         <SettingsTab
@@ -842,8 +852,10 @@ function SettingsTab({
 }) {
   const [open, setOpen] = useState(initial.recruitment_open);
   const [msg, setMsg] = useState(initial.recruitment_message ?? '');
+  const [mode, setMode] = useState<'unified' | 'marketplace'>(initial.team_mode ?? 'marketplace');
   const [busy, setBusy] = useState(false);
   const [savingMsg, setSavingMsg] = useState(false);
+  const [savingMode, setSavingMode] = useState(false);
 
   async function toggleRecruitment(next: boolean) {
     setBusy(true);
@@ -862,6 +874,29 @@ function SettingsTab({
       onChanged();
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function changeMode(next: 'unified' | 'marketplace') {
+    if (next === mode) return;
+    if (next === 'marketplace' && mode === 'unified') {
+      if (!confirm('Перейти на свободный режим? Каталог салона останется в архиве — каждый мастер вернётся к своему прайсу.')) {
+        return;
+      }
+    }
+    setSavingMode(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('salons').update({ team_mode: next }).eq('id', salonId);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      setMode(next);
+      toast.success(next === 'unified' ? 'Включен единый каталог' : 'Включен свободный режим');
+      onChanged();
+    } finally {
+      setSavingMode(false);
     }
   }
 
@@ -887,6 +922,52 @@ function SettingsTab({
 
   return (
     <div className="space-y-5">
+      <section className="space-y-3">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+          Тип команды
+        </h2>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => changeMode('marketplace')}
+            disabled={savingMode}
+            className={
+              'rounded-2xl border p-4 text-left transition-colors disabled:opacity-50 ' +
+              (mode === 'marketplace'
+                ? 'border-neutral-900 bg-neutral-900 text-white'
+                : 'border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50')
+            }
+          >
+            <p className="text-[13px] font-bold">Свободный режим</p>
+            <p className={'mt-1 text-[12px] ' + (mode === 'marketplace' ? 'text-white/80' : 'text-neutral-500')}>
+              У каждого мастера свой прайс, своё расписание, своя карточка клиентов.
+              Салон — общая обложка для команды.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => changeMode('unified')}
+            disabled={savingMode}
+            className={
+              'rounded-2xl border p-4 text-left transition-colors disabled:opacity-50 ' +
+              (mode === 'unified'
+                ? 'border-neutral-900 bg-neutral-900 text-white'
+                : 'border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50')
+            }
+          >
+            <p className="text-[13px] font-bold">Единый каталог</p>
+            <p className={'mt-1 text-[12px] ' + (mode === 'unified' ? 'text-white/80' : 'text-neutral-500')}>
+              Услуги создаёт админ. Любой мастер команды может их выполнять.
+              Клиент сначала выбирает услугу, потом мастера.
+            </p>
+          </button>
+        </div>
+        <p className="text-[11px] text-neutral-400">
+          Можно переключать в любой момент. На переключении ничего не теряется — старые услуги
+          у мастеров остаются, единый каталог сохраняется в архиве.
+        </p>
+      </section>
+
       <section className="rounded-2xl border border-neutral-200 bg-white p-4">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700">
