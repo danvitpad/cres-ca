@@ -14,6 +14,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { notifyUser } from '@/lib/notifications/notify';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -122,19 +123,14 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   }
 
   // Notify salon owner (best-effort, не валит запрос если notification fails)
-  try {
-    await supabase
-      .from('notifications')
-      .insert({
-        profile_id: salon.owner_id,
-        channel: 'in_app',
-        status: 'pending',
-        scheduled_for: new Date().toISOString(),
-        title: 'Новая заявка в команду',
-        body: `Мастер хочет присоединиться к ${salon.name}.${message ? `\n\n«${message}»` : ''}`,
-        data: { type: 'salon_join_request', salon_id: salonId, request_id: created.id },
-      });
-  } catch { /* ignore */ }
+  await notifyUser(supabase, {
+    profileId: salon.owner_id,
+    title: 'Новая заявка в команду',
+    body: `Мастер хочет присоединиться к ${salon.name}.${message ? `\n\n«${message}»` : ''}`,
+    data: { type: 'salon_join_request', salon_id: salonId, request_id: created.id },
+    deepLinkPath: `/telegram/m/salon/${salonId}/team`,
+    deepLinkLabel: 'Посмотреть заявку',
+  });
 
   return NextResponse.json({ ok: true, request_id: created.id, created_at: created.created_at });
 }

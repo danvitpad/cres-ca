@@ -7,6 +7,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { notifyUser } from '@/lib/notifications/notify';
 
 interface RouteContext {
   params: Promise<{ inviteId: string }>;
@@ -42,17 +43,14 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
     const masterObj = Array.isArray(inviteRow.master) ? inviteRow.master[0] : inviteRow.master;
     const salonObj = Array.isArray(inviteRow.salon) ? inviteRow.salon[0] : inviteRow.salon;
     if (salonObj?.owner_id) {
-      try {
-        await supabase.from('notifications').insert({
-          profile_id: salonObj.owner_id,
-          channel: 'in_app',
-          status: 'pending',
-          scheduled_for: new Date().toISOString(),
-          title: `${masterObj?.display_name || 'Мастер'} отклонил приглашение`,
-          body: `Приглашение в «${salonObj.name ?? 'салон'}».`,
-          data: { type: 'salon_invite_declined', salon_id: inviteRow.salon_id, invite_id: inviteId },
-        });
-      } catch { /* ignore */ }
+      await notifyUser(supabase, {
+        profileId: salonObj.owner_id,
+        title: `${masterObj?.display_name || 'Мастер'} отклонил приглашение`,
+        body: `Приглашение в «${salonObj.name ?? 'салон'}».`,
+        data: { type: 'salon_invite_declined', salon_id: inviteRow.salon_id, invite_id: inviteId },
+        deepLinkPath: `/telegram/m/salon/${inviteRow.salon_id}/team`,
+        deepLinkLabel: 'Открыть команду',
+      });
     }
   }
 

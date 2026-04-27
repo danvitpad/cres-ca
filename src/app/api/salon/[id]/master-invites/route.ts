@@ -11,6 +11,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUserRole } from '@/lib/team/roles';
+import { notifyUser } from '@/lib/notifications/notify';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -109,14 +110,13 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .eq('id', salonId)
       .maybeSingle();
     const salonName = (salon as { name: string } | null)?.name ?? 'команда';
-    await supabase.from('notifications').insert({
-      profile_id: masterRow.profile_id,
-      channel: 'in_app',
-      status: 'pending',
-      scheduled_for: new Date().toISOString(),
+    await notifyUser(supabase, {
+      profileId: masterRow.profile_id,
       title: `Тебя приглашают в ${salonName}`,
       body: body.message?.trim() || 'Открой приложение чтобы принять или отклонить.',
       data: { type: 'salon_invite', salon_id: salonId, invite_id: inviteRow.id, master_id: masterRow.id },
+      deepLinkPath: '/telegram/m/invites',
+      deepLinkLabel: 'Открыть приглашение',
     });
   } catch { /* ignore */ }
 

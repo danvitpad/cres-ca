@@ -11,6 +11,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { notifyUser } from '@/lib/notifications/notify';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -127,26 +128,25 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .eq('id', salonId)
       .maybeSingle();
     const salonName = (salon as { name: string } | null)?.name ?? 'команда';
-    try {
-      await supabase.from('notifications').insert({
-        profile_id: masterProfile.profile_id,
-        channel: 'in_app',
-        status: 'pending',
-        scheduled_for: new Date().toISOString(),
-        title: body.action === 'approve'
-          ? `Тебя приняли в ${salonName}`
-          : `Заявка в ${salonName} отклонена`,
-        body: body.action === 'approve'
-          ? `Теперь ты в команде. Открой кабинет команды.`
-          : (body.reason || 'Админ отклонил твою заявку.'),
-        data: {
-          type: body.action === 'approve' ? 'salon_join_approved' : 'salon_join_rejected',
-          salon_id: salonId,
-          request_id: body.request_id,
-          action: body.action,
-        },
-      });
-    } catch { /* ignore */ }
+    await notifyUser(supabase, {
+      profileId: masterProfile.profile_id,
+      title: body.action === 'approve'
+        ? `Тебя приняли в ${salonName}`
+        : `Заявка в ${salonName} отклонена`,
+      body: body.action === 'approve'
+        ? 'Теперь ты в команде. Открой кабинет команды.'
+        : (body.reason || 'Админ отклонил твою заявку.'),
+      data: {
+        type: body.action === 'approve' ? 'salon_join_approved' : 'salon_join_rejected',
+        salon_id: salonId,
+        request_id: body.request_id,
+        action: body.action,
+      },
+      deepLinkPath: body.action === 'approve'
+        ? `/telegram/m/salon/${salonId}/dashboard`
+        : '/telegram/m/home',
+      deepLinkLabel: body.action === 'approve' ? 'Открыть кабинет' : 'В личный кабинет',
+    });
   }
 
   return NextResponse.json({ ok: true });
