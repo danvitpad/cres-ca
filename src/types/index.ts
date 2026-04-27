@@ -106,6 +106,7 @@ export type AppointmentStatus =
   | 'in_progress'
   | 'completed'
   | 'cancelled'
+  | 'cancelled_by_client'
   | 'no_show';
 
 // ============ Client Behavior Indicators ============

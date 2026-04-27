@@ -93,10 +93,9 @@ interface ClientDetailDrawerProps {
   open: boolean;
   onClose: () => void;
   theme?: 'light' | 'dark';
-  onBookAppointment?: (clientId: string) => void;
 }
 
-export function ClientDetailDrawer({ clientId, open, onClose, theme = 'light', onBookAppointment }: ClientDetailDrawerProps) {
+export function ClientDetailDrawer({ clientId, open, onClose, theme = 'light' }: ClientDetailDrawerProps) {
   const C = theme === 'dark' ? DARK : LIGHT;
   const [client, setClient] = useState<ClientData | null>(null);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
@@ -211,18 +210,6 @@ export function ClientDetailDrawer({ clientId, open, onClose, theme = 'light', o
                       </div>
                     )}
                   </div>
-                  {onBookAppointment && (
-                    <button
-                      onClick={() => onBookAppointment(client.id)}
-                      style={{
-                        padding: '8px 16px', borderRadius: 8, border: 'none',
-                        backgroundColor: C.btnBg, color: C.btnText,
-                        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: FONT,
-                      }}
-                    >
-                      Забронировать
-                    </button>
-                  )}
                 </div>
 
                 {/* Tabs */}

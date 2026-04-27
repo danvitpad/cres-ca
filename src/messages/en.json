@@ -518,7 +518,8 @@
       "confirmed": "Confirmed",
       "inProgress": "In Progress",
       "completed": "Completed",
-      "cancelled": "Cancelled",
+      "cancelled": "Cancelled by master",
+      "cancelled_by_client": "Cancelled by client",
       "noShow": "No Show",
       "in_progress": "In progress",
       "no_show": "No show"

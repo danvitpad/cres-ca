@@ -518,7 +518,8 @@
       "confirmed": "Подтверждено",
       "inProgress": "В процессе",
       "completed": "Завершено",
-      "cancelled": "Отменено",
+      "cancelled": "Отменено мастером",
+      "cancelled_by_client": "Отменено клиентом",
       "noShow": "Не пришёл",
       "in_progress": "В процессе",
       "no_show": "Не пришёл"

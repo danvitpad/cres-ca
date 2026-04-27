@@ -500,7 +500,8 @@
       "confirmed": "Підтверджено",
       "inProgress": "В процесі",
       "completed": "Завершено",
-      "cancelled": "Скасовано",
+      "cancelled": "Скасовано майстром",
+      "cancelled_by_client": "Скасовано клієнтом",
       "noShow": "Не прийшов",
       "in_progress": "У процесі",
       "no_show": "Не прийшов"
