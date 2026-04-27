@@ -157,5 +157,18 @@ export async function POST(req: Request) {
     }
   }
 
+  // Самообучение: если мастер ввёл свою специализацию или своё описание ниши,
+  // копим их в vertical_specializations. Когда другой мастер той же ниши пишет
+  // то же — счётчик растёт; начиная со 2 ввода вариант появляется как чип.
+  if (body.vertical) {
+    const candidates = [
+      body.customSpecText,
+      body.customCategoryText,
+    ].filter((s): s is string => !!s && s.trim().length >= 2);
+    for (const text of candidates) {
+      await supabase.rpc('bump_specialization_suggestion', { p_vertical: body.vertical, p_text: text }).then(() => {}, () => {});
+    }
+  }
+
   return NextResponse.json({ ok: true, masterId, salonId, inviteCode });
 }

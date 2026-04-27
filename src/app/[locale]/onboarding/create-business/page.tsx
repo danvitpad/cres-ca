@@ -211,9 +211,35 @@ function CreateBusinessWizard() {
   // Specializations derived from selected categories. Multi-select with one
   // primary (the first picked) — saved as comma-joined string in masters.specialization
   // and the full list in masters.specializations[] (when the column exists).
-  const specializationOptions = selectedCategories.length > 0
+  const builtInSpecOptions = selectedCategories.length > 0
     ? getSpecializationsForCategories(selectedCategories)
     : getSpecializations(vertical);
+  // Самообучение: подгружаем варианты, которые ввели руками другие мастера той
+  // же ниши (vertical). Если те же варианты есть среди built-in — не дублируем.
+  const [popularSpecs, setPopularSpecs] = useState<string[]>([]);
+  useEffect(() => {
+    if (!vertical) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/verticals/popular-specs?vertical=${encodeURIComponent(vertical)}`);
+        const json = (await res.json()) as { items?: { text: string; count: number }[] };
+        if (cancelled) return;
+        const list = (json.items ?? []).map((i) => i.text);
+        setPopularSpecs(list);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, [vertical]);
+  const specializationOptions = (() => {
+    const seen = new Set<string>(builtInSpecOptions.map((s) => s.toLowerCase()));
+    const merged = [...builtInSpecOptions];
+    for (const s of popularSpecs) {
+      const k = s.toLowerCase();
+      if (!seen.has(k)) { merged.push(s); seen.add(k); }
+    }
+    return merged;
+  })();
   const [specializations, setSpecializations] = useState<string[]>([]);
   const specialization = specializations[0] ?? null;
   function toggleSpec(s: string) {
@@ -747,19 +773,19 @@ function CreateBusinessWizard() {
               </StepWrapper>
             )}
 
-            {/* Step 3: Specialization (derived from selected categories) */}
+            {/* Step 3: Specialization. Если есть варианты — pill-список + опц. инпут.
+                Если вариантов нет — только инпут (без бесполезной таблетки «свой»). */}
             {step === 3 && (
               <StepWrapper key="step3">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                  {t('specializationLabel')}
+                  {specializationOptions.length > 0 ? 'Специализация' : 'Чем занимаетесь?'}
                 </h1>
-                <p className="mt-2 text-muted-foreground">{t('specializationDesc')}</p>
 
-                {specializationOptions.length > 0 && (
+                {specializationOptions.length > 0 ? (
                   <>
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Можно выбрать несколько — первый выбранный будет основной (для индексации поиска).
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Можно несколько. Первая — основная для поиска.
                     </p>
                     <div className="mt-6 flex flex-wrap gap-2">
                       {specializationOptions.map((s) => {
@@ -783,33 +809,37 @@ function CreateBusinessWizard() {
                         );
                       })}
                     </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-6"
+                    >
+                      <input
+                        type="text"
+                        value={customSpecText}
+                        onChange={(e) => setCustomSpecText(e.target.value)}
+                        placeholder={`Своя — например, ${copy.customSpecPlaceholder.replace('Например: ', '')}`}
+                        maxLength={80}
+                        className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
+                      />
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Чтобы клиенты понимали что вы делаете.
+                    </p>
+                    <input
+                      type="text"
+                      value={customSpecText}
+                      onChange={(e) => setCustomSpecText(e.target.value)}
+                      placeholder={copy.customSpecPlaceholder.replace('Например: ', '')}
+                      maxLength={80}
+                      autoFocus
+                      className="mt-6 w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
+                    />
                   </>
                 )}
-
-                {/* Свой вариант — текстовое поле, идёт первой строкой при сохранении.
-                    Видно когда нет вариантов или когда мастер хочет дописать своё. */}
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={specializationOptions.length > 0 ? 'mt-6 space-y-2' : 'mt-4 space-y-2'}
-                >
-                  <label className="block text-sm font-medium">
-                    {specializationOptions.length > 0 ? 'Своя специализация (опционально)' : 'Опишите свою специализацию'}
-                  </label>
-                  <input
-                    type="text"
-                    value={customSpecText}
-                    onChange={(e) => setCustomSpecText(e.target.value)}
-                    placeholder={copy.customSpecPlaceholder}
-                    maxLength={80}
-                    className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground outline-none focus:border-primary"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {specializationOptions.length > 0
-                      ? 'Если в списке выше нет подходящего — допиши своё. Будет показано первой строкой на твоей публичной странице.'
-                      : 'Будет показано на твоей публичной странице, чтобы клиенты сразу понимали что ты делаешь.'}
-                  </p>
-                </motion.div>
               </StepWrapper>
             )}
 
