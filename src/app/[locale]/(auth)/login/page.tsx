@@ -463,7 +463,7 @@ export default function AuthPage() {
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{ __html: AUTH_CSS }} />
 
-      <div className="auth-glass" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+      <div className="auth-glass" style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
         {/* Top bar — slim */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -489,22 +489,21 @@ export default function AuthPage() {
           </Link>
         </div>
 
-        {/* Split layout — fills remaining viewport, no page scroll */}
+        {/* Split layout — естественная высота, страница скроллится если форма длинная.
+            Раньше height:100dvh + overflow:hidden обрезали форму signup на узких
+            экранах (нижние поля выходили за viewport, role-toggle уезжал наверх). */}
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'row', gap: 0,
           padding: 'clamp(6px, 1.2vw, 12px)',
-          minHeight: 0,
         }}>
-          {/* Form column — scrolls internally only if form is truly too tall */}
+          {/* Form column — natural height, no internal scroll */}
           <motion.section
             layout
             transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             style={{
               flex: 1, order: isSignUp ? 2 : 1,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 'clamp(8px, 1.5vw, 20px) clamp(12px, 2.5vw, 32px)',
-              overflowY: 'auto',
-              minHeight: 0,
+              padding: 'clamp(16px, 2.5vw, 32px) clamp(12px, 2.5vw, 32px)',
             }}
           >
               <div style={{ width: '100%', maxWidth: 400 }}>
