@@ -103,7 +103,7 @@ export default function CompleteProfilePage() {
       className="fixed inset-0 overflow-y-auto"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,0.10), transparent 60%), #0b0d17',
+          'radial-gradient(120% 80% at 50% -10%, rgba(45,212,191,0.10), transparent 60%), #141417',
       }}
     >
       <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-12 md:py-16">
@@ -112,11 +112,11 @@ export default function CompleteProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto mb-6 flex size-14 items-center justify-center rounded-2xl"
           style={{
-            background: 'rgba(139,92,246,0.14)',
-            border: '1px solid rgba(139,92,246,0.3)',
+            background: 'rgba(45,212,191,0.14)',
+            border: '1px solid rgba(45,212,191,0.3)',
           }}
         >
-          <span className="text-xl font-bold" style={{ color: '#a78bfa', letterSpacing: '-0.02em' }}>
+          <span className="text-xl font-bold" style={{ color: '#2dd4bf', letterSpacing: '-0.02em' }}>
             C
           </span>
         </motion.div>
@@ -126,7 +126,7 @@ export default function CompleteProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35 }}
           className="text-center text-3xl font-semibold leading-tight tracking-tight md:text-4xl"
-          style={{ color: '#eae8f4', letterSpacing: '-0.02em' }}
+          style={{ color: '#fafafa', letterSpacing: '-0.02em' }}
         >
           Расскажи о себе
         </motion.h1>
@@ -135,15 +135,15 @@ export default function CompleteProfilePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
           className="mt-3 text-center text-sm md:text-[15px]"
-          style={{ color: '#a8a3be' }}
+          style={{ color: '#a1a1aa' }}
         >
-          {email ? <>Почта <strong style={{ color: '#eae8f4' }}>{email}</strong> подтверждена через Google.</> : null}
+          {email ? <>Почта <strong style={{ color: '#fafafa' }}>{email}</strong> подтверждена через Google.</> : null}
           <br />
           Ещё пара полей, и приступим.
         </motion.p>
 
         {!loaded ? (
-          <div className="mt-10 h-64 animate-pulse rounded-2xl" style={{ background: '#111425' }} />
+          <div className="mt-10 h-64 animate-pulse rounded-2xl" style={{ background: '#1a1a1d' }} />
         ) : (
           <motion.form
             onSubmit={handleSubmit}
@@ -198,12 +198,12 @@ export default function CompleteProfilePage() {
               disabled={saving}
               className="mt-2 h-12 rounded-2xl font-semibold transition-all"
               style={{
-                background: '#a78bfa',
-                color: '#0b0d17',
+                background: '#2dd4bf',
+                color: '#0a0a0a',
                 opacity: saving ? 0.55 : 1,
                 cursor: saving ? 'not-allowed' : 'pointer',
                 fontSize: 14,
-                boxShadow: '0 8px 24px rgba(167,139,250,0.25)',
+                boxShadow: '0 8px 24px rgba(45,212,191,0.25)',
               }}
             >
               {saving ? 'Сохраняю…' : 'Продолжить'}
@@ -216,35 +216,35 @@ export default function CompleteProfilePage() {
         .cp-input {
           width: 100%; height: 46px; padding: 0 14px;
           border-radius: 14px;
-          border: 1px solid rgba(139,92,246,0.16);
-          background: #111425;
-          color: #eae8f4;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: #1a1a1d;
+          color: #fafafa;
           font-size: 14px;
           outline: none;
           transition: border-color .15s ease, background .15s ease;
         }
-        .cp-input::placeholder { color: rgba(234,232,244,0.35); }
+        .cp-input::placeholder { color: rgba(250,250,250,0.35); }
         .cp-input:focus {
-          border-color: rgba(167,139,250,0.7);
-          background: #14172a;
+          border-color: rgba(45,212,191,0.7);
+          background: #1f1f22;
         }
         .cp-phone-wrap {
           display: flex; align-items: stretch; height: 46px;
           border-radius: 14px;
-          border: 1px solid rgba(139,92,246,0.16);
-          background: #111425;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: #1a1a1d;
           overflow: hidden;
           transition: border-color .15s ease, background .15s ease;
         }
         .cp-phone-wrap:focus-within {
-          border-color: rgba(167,139,250,0.7);
-          background: #14172a;
+          border-color: rgba(45,212,191,0.7);
+          background: #1f1f22;
         }
         .cp-phone-prefix {
           padding: 0 12px;
           display: flex; align-items: center;
-          font-size: 13px; color: #a8a3be;
-          border-right: 1px solid rgba(139,92,246,0.16);
+          font-size: 13px; color: #a1a1aa;
+          border-right: 1px solid rgba(255,255,255,0.08);
         }
         .cp-phone-input {
           border: none !important; border-radius: 0 !important;
@@ -253,7 +253,7 @@ export default function CompleteProfilePage() {
         }
         .cp-phone-input:focus { background: transparent !important; }
         .cp-label {
-          font-size: 12px; font-weight: 600; color: #a8a3be;
+          font-size: 12px; font-weight: 600; color: #a1a1aa;
           display: block; margin-bottom: 6px; letter-spacing: 0.01em;
         }
       `}</style>
