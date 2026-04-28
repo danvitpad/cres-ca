@@ -686,7 +686,9 @@ export default function AuthPage() {
                         <Field label="Email">
                           <GlassWrap>
                             <input className="glass-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                              autoFocus={mode === 'signin'} placeholder="you@example.com" />
+                              autoFocus={mode === 'signin'}
+                              autoComplete={mode === 'signup' ? 'email' : 'username'}
+                              placeholder="you@example.com" />
                           </GlassWrap>
                         </Field>
 
@@ -709,6 +711,10 @@ export default function AuthPage() {
                                 minLength={mode === 'signup' ? 6 : undefined}
                                 style={{ paddingRight: 44 }}
                                 placeholder={mode === 'signup' ? 'Минимум 6 символов' : undefined}
+                                /* autoComplete='new-password' — Chrome не должен
+                                   автозаполнять сохранённый старый пароль при
+                                   регистрации. Для входа — current-password. */
+                                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                               />
                               <button type="button" onClick={() => setShowPwd(v => !v)} tabIndex={-1}
                                 style={{
@@ -883,6 +889,7 @@ export default function AuthPage() {
                                 type={showNewPwd ? 'text' : 'password'}
                                 value={newPwd} onChange={e => setNewPwd(e.target.value)}
                                 required minLength={6} autoFocus
+                                autoComplete="new-password"
                                 style={{ paddingRight: 44 }}
                               />
                               <button type="button" onClick={() => setShowNewPwd(v => !v)} tabIndex={-1}
