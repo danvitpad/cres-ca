@@ -107,14 +107,10 @@ export function OnboardingDialog() {
   const [hoursPreset, setHoursPreset] = useState<HoursPreset>('weekdays');
   const [saving, setSaving] = useState(false);
 
-  /* ─── Auto-open when master has no vertical yet ─── */
-  useEffect(() => {
-    if (!master) return;
-    if (!master.vertical) {
-      const t = setTimeout(() => setOpen(true), 600);
-      return () => clearTimeout(t);
-    }
-  }, [master]);
+  /* ─── Авто-открытие отключено: онбординг живёт на отдельных страницах
+       (/onboarding/account-type → /vertical → /create-business). Попап на
+       /calendar дублировал и раздражал. Диалог остаётся в коде для случаев
+       когда его явно открывают через setOpen(true). ─── */
 
   /* ─── Auto-select all template services when vertical changes ─── */
   const templateServices: DefaultService[] = useMemo(

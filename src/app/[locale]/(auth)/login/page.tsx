@@ -492,10 +492,21 @@ export default function AuthPage() {
      Email через Google уже верифицирован провайдером — на сервере при создании
      профиля считаем что подтверждение пройдено и не шлём OTP. Роль и mode
      передаём через cookie cres_oauth_intent (надёжно — куки идут через весь
-     OAuth-цикл независимо от URL). Дублируем в URL как fallback. */
+     OAuth-цикл независимо от URL). Также пакуем то что юзер успел ввести в
+     форму регистрации — если поля заполнены, callback использует их и пропустит
+     /onboarding/complete-profile. */
   async function handleOAuth(provider: 'google') {
     const supabase = createClient();
-    const intent = JSON.stringify({ role, mode });
+    const intent = JSON.stringify({
+      role,
+      mode,
+      // Pre-filled данные из формы — если юзер ввёл и нажал Google,
+      // используем их и не показываем доп. экран profile-completion.
+      first_name: firstName.trim() || null,
+      last_name: lastName.trim() || null,
+      phone: phone || null,
+      date_of_birth: dob || null,
+    });
     // Кука на 5 минут, на корне сайта, secure если на проде
     const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
     document.cookie = `cres_oauth_intent=${encodeURIComponent(intent)}; Path=/; Max-Age=300; SameSite=Lax${isHttps ? '; Secure' : ''}`;

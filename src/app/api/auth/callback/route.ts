@@ -47,11 +47,23 @@ export async function GET(request: Request) {
   const intentCookie = cookieStore.get('cres_oauth_intent')?.value;
   let cookieRole: Role | null = null;
   let cookieMode: 'signin' | 'signup' | null = null;
+  let prefilledFirstName: string | null = null;
+  let prefilledLastName: string | null = null;
+  let prefilledPhone: string | null = null;
+  let prefilledDob: string | null = null;
   if (intentCookie) {
     try {
-      const parsed = JSON.parse(intentCookie) as { role?: string; mode?: string };
+      const parsed = JSON.parse(intentCookie) as {
+        role?: string; mode?: string;
+        first_name?: string | null; last_name?: string | null;
+        phone?: string | null; date_of_birth?: string | null;
+      };
       if (isRole(parsed.role)) cookieRole = parsed.role;
       if (parsed.mode === 'signin' || parsed.mode === 'signup') cookieMode = parsed.mode;
+      if (parsed.first_name) prefilledFirstName = parsed.first_name.trim();
+      if (parsed.last_name) prefilledLastName = parsed.last_name.trim();
+      if (parsed.phone) prefilledPhone = parsed.phone;
+      if (parsed.date_of_birth) prefilledDob = parsed.date_of_birth;
     } catch { /* malformed cookie — ignore */ }
   }
   const oauthRole: Role | null = cookieRole ?? (isRole(searchParams.get('role')) ? (searchParams.get('role') as Role) : null);
@@ -156,12 +168,32 @@ export async function GET(request: Request) {
   }
 
   // Маршрутизация по роли.
-  // Свежесозданный Google-аккаунт (justCreated) — отправляем на complete-profile
-  // чтобы добрать имя/фамилию/телефон/ДР (Google всё это не отдаёт). После
-  // этого экрана юзер уже идёт на свой следующий шаг (клиент — /feed,
-  // мастер/команда — /onboarding/account-type → vertical → create-business).
+  // Свежесозданный Google-аккаунт (justCreated):
+  //   а) Если юзер ввёл данные в форму перед кликом Google (имя+фамилия+телефон) —
+  //      сохраняем их и пропускаем /onboarding/complete-profile.
+  //   б) Если форма пустая — отправляем на /onboarding/complete-profile добрать.
   if (justCreated) {
-    return redirectAndClear(`${origin}/onboarding/complete-profile`);
+    const hasAllFields = !!(prefilledFirstName && prefilledLastName && prefilledPhone);
+    if (hasAllFields) {
+      const fullName = `${prefilledFirstName} ${prefilledLastName}`.trim();
+      const phoneDigitsOnly = prefilledPhone!.replace(/\D/g, '');
+      const phoneFinal = phoneDigitsOnly.startsWith('380')
+        ? `+${phoneDigitsOnly}`
+        : `+380${phoneDigitsOnly}`;
+      await supabase.from('profiles').update({
+        full_name: fullName,
+        phone: phoneFinal,
+        date_of_birth: prefilledDob || null,
+      }).eq('id', user.id);
+      // далее по обычной маршрутизации ниже (client → /feed, master/admin → onboarding)
+    } else {
+      return redirectAndClear(`${origin}/onboarding/complete-profile`);
+    }
+  }
+
+  // После complete-profile мастер/команда продолжают онбординг.
+  if (justCreated && role !== 'client') {
+    return redirectAndClear(`${origin}/onboarding/account-type`);
   }
 
   if (role === 'client') {
