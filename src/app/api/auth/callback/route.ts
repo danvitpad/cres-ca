@@ -156,13 +156,12 @@ export async function GET(request: Request) {
   }
 
   // Маршрутизация по роли.
-  // Для свежесозданных аккаунтов через Google (justCreated=true) ВСЕГДА шлём
-  // на /onboarding/account-type — мы пропускаем подтверждение почты (email
-  // верифицирован Google'ом), но онбординг (выбор ниши, заведение бизнеса,
-  // расписание) пройти надо. Без этого мастер падал на пустой /calendar
-  // с попапом «Выбери сферу» — UX-провал.
-  if (justCreated && role !== 'client') {
-    return redirectAndClear(`${origin}/onboarding/account-type`);
+  // Свежесозданный Google-аккаунт (justCreated) — отправляем на complete-profile
+  // чтобы добрать имя/фамилию/телефон/ДР (Google всё это не отдаёт). После
+  // этого экрана юзер уже идёт на свой следующий шаг (клиент — /feed,
+  // мастер/команда — /onboarding/account-type → vertical → create-business).
+  if (justCreated) {
+    return redirectAndClear(`${origin}/onboarding/complete-profile`);
   }
 
   if (role === 'client') {
