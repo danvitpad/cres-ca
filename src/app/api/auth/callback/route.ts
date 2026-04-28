@@ -202,20 +202,24 @@ export async function GET(request: Request) {
   if (role === 'salon_admin') {
     const { data: salon } = await supabase
       .from('salons')
-      .select('id')
+      .select('id, vertical')
       .eq('owner_id', user.id)
       .limit(1)
       .maybeSingle();
-    if (salon?.id) return redirectAndClear(`${origin}/salon/${salon.id}/dashboard`);
+    // Если салон не настроен (нет ниши) — гоним заканчивать онбординг,
+    // даже при повторном входе. Иначе попадёт в кабинет на пол-готового.
+    if (salon?.id && salon.vertical) return redirectAndClear(`${origin}/salon/${salon.id}/dashboard`);
     return redirectAndClear(`${origin}/onboarding/account-type`);
   }
-  // master — существующий аккаунт (не justCreated) с уже заведённым master row
+  // master — существующий аккаунт. Проверяем что онбординг завершён (vertical
+  // задан). Если нет — отправляем доделывать вместо пустого календаря.
   const { data: master } = await supabase
     .from('masters')
-    .select('id')
+    .select('id, vertical')
     .eq('profile_id', user.id)
     .limit(1)
     .maybeSingle();
-  if (master?.id) return redirectAndClear(`${origin}/calendar`);
+  if (master?.id && master.vertical) return redirectAndClear(`${origin}/calendar`);
+  if (master?.id) return redirectAndClear(`${origin}/onboarding/vertical`);
   return redirectAndClear(`${origin}/onboarding/account-type`);
 }
