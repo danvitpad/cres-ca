@@ -177,59 +177,41 @@ export async function GET(request: Request) {
     });
   }
 
-  // Маршрутизация по роли.
-  // Свежесозданный Google-аккаунт (justCreated):
-  //   а) Если юзер ввёл данные в форму перед кликом Google (имя+фамилия+телефон) —
-  //      сохраняем их и пропускаем /onboarding/complete-profile.
-  //   б) Если форма пустая — отправляем на /onboarding/complete-profile добрать.
-  if (justCreated) {
-    const hasAllFields = !!(prefilledFirstName && prefilledLastName && prefilledPhone);
-    if (hasAllFields) {
-      const fullName = `${prefilledFirstName} ${prefilledLastName}`.trim();
-      const phoneDigitsOnly = prefilledPhone!.replace(/\D/g, '');
-      const phoneFinal = phoneDigitsOnly.startsWith('380')
-        ? `+${phoneDigitsOnly}`
-        : `+380${phoneDigitsOnly}`;
-      await supabase.from('profiles').update({
-        full_name: fullName,
-        phone: phoneFinal,
-        date_of_birth: prefilledDob || null,
-      }).eq('id', user.id);
-      // далее по обычной маршрутизации ниже (client → /feed, master/admin → onboarding)
-    } else {
-      return redirectAndClear(`${origin}/onboarding/complete-profile`);
-    }
+  // Если в куке прилетели prefilled данные — сразу сохраняем (можно скипнуть
+  // /onboarding/complete-profile, если юзер всё заполнил перед кликом Google).
+  if (justCreated && prefilledFirstName && prefilledLastName && prefilledPhone) {
+    const fullName = `${prefilledFirstName} ${prefilledLastName}`.trim();
+    const phoneDigitsOnly = prefilledPhone.replace(/\D/g, '');
+    const phoneFinal = phoneDigitsOnly.startsWith('380')
+      ? `+${phoneDigitsOnly}`
+      : `+380${phoneDigitsOnly}`;
+    await supabase.from('profiles').update({
+      full_name: fullName,
+      phone: phoneFinal,
+      date_of_birth: prefilledDob || null,
+    }).eq('id', user.id);
   }
 
-  // После complete-profile мастер/команда продолжают онбординг.
-  if (justCreated && role !== 'client') {
-    return redirectAndClear(`${origin}/onboarding/account-type`);
+  // Дальше — единая логика через RPC. Она знает текущее состояние и вернёт
+  // нужный следующий шаг (или NULL если онбординг полностью пройден).
+  const { data: nextStep } = await supabase.rpc('get_next_onboarding_step', { p_user_id: user.id });
+  if (typeof nextStep === 'string' && nextStep) {
+    return redirectAndClear(`${origin}${nextStep}`);
   }
 
+  // Онбординг пройден — финальный редирект по роли. Middleware при первом
+  // попадании на дашборд проставит onboarding_completed_at=now().
   if (role === 'client') {
     return redirectAndClear(`${origin}/feed`);
   }
   if (role === 'salon_admin') {
     const { data: salon } = await supabase
       .from('salons')
-      .select('id, vertical')
+      .select('id')
       .eq('owner_id', user.id)
       .limit(1)
       .maybeSingle();
-    // Если салон не настроен (нет ниши) — гоним заканчивать онбординг,
-    // даже при повторном входе. Иначе попадёт в кабинет на пол-готового.
-    if (salon?.id && salon.vertical) return redirectAndClear(`${origin}/salon/${salon.id}/dashboard`);
-    return redirectAndClear(`${origin}/onboarding/account-type`);
+    return redirectAndClear(salon?.id ? `${origin}/salon/${salon.id}/dashboard` : `${origin}/onboarding/account-type`);
   }
-  // master — существующий аккаунт. Проверяем что онбординг завершён (vertical
-  // задан). Если нет — отправляем доделывать вместо пустого календаря.
-  const { data: master } = await supabase
-    .from('masters')
-    .select('id, vertical')
-    .eq('profile_id', user.id)
-    .limit(1)
-    .maybeSingle();
-  if (master?.id && master.vertical) return redirectAndClear(`${origin}/calendar`);
-  if (master?.id) return redirectAndClear(`${origin}/onboarding/vertical`);
-  return redirectAndClear(`${origin}/onboarding/account-type`);
+  return redirectAndClear(`${origin}/calendar`);
 }

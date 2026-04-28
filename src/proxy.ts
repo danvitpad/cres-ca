@@ -22,6 +22,12 @@ const protectedPatterns = [
   '/map',
 ];
 
+// Финальные дашборды по ролям — попадание сюда впервые завершает онбординг
+const dashboardPaths = ['/feed', '/calendar', '/today'];
+
+// Onboarding-страницы (защищены, но без onboarding-guard'а — иначе будет цикл)
+const onboardingPaths = ['/onboarding'];
+
 function stripLocale(pathname: string): string {
   const segments = pathname.split('/').filter(Boolean);
   return locales.includes(segments[0] as (typeof locales)[number])
@@ -105,6 +111,27 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Onboarding gate: если юзер не дошёл до конца онбординга — гоним на нужный шаг.
+  // Пропускаем сами /onboarding/* (иначе цикл) и /salon/*/dashboard (там salon_admin
+  // финиширует через create-business → редирект напрямую).
+  const isOnboardingPath = onboardingPaths.some((p) => strippedPath.startsWith(p));
+  const isSalonDashboard = /^\/salon\/[^/]+\/dashboard/.test(strippedPath);
+  if (!isOnboardingPath) {
+    const { data: nextStep } = await supabase.rpc('get_next_onboarding_step', { p_user_id: user.id });
+    if (typeof nextStep === 'string' && nextStep && !pathname.endsWith(nextStep)) {
+      return NextResponse.redirect(new URL(nextStep, request.url));
+    }
+    // Юзер впервые пришёл на дашборд (онбординг пройден целиком, но completed_at = NULL).
+    // Помечаем — это и есть момент «регистрация завершена».
+    if (!nextStep && (dashboardPaths.includes(strippedPath) || isSalonDashboard)) {
+      await supabase
+        .from('profiles')
+        .update({ onboarding_completed_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .is('onboarding_completed_at', null);
+    }
   }
 
   return response;
