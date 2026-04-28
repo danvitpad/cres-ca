@@ -31,7 +31,7 @@ export function BannedClient() {
   }, []);
 
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-[#0b0d17] px-6">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#141417] px-6">
       <div className="w-full max-w-md rounded-2xl border border-rose-400/20 bg-rose-500/[0.04] p-8 text-center">
         <div className="mx-auto mb-4 grid size-14 place-items-center rounded-full bg-rose-500/15 text-rose-300">
           <Ban className="size-7" />

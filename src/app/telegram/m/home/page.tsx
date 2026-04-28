@@ -194,7 +194,7 @@ export default function MasterMiniAppHome() {
               justifyContent: 'space-between',
               margin: `0 ${PAGE_PADDING_X}px`,
               padding: 16,
-              background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+              background: 'linear-gradient(135deg, #f5f3ff 0%, #f0fdfa 100%)',
               border: `1px solid #ddd6fe`,
               borderRadius: R.md,
               textDecoration: 'none',
@@ -209,16 +209,16 @@ export default function MasterMiniAppHome() {
                   height: 44,
                   flexShrink: 0,
                   borderRadius: 12,
-                  background: '#ede9fe',
+                  background: '#f0fdfa',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <MailOpen size={20} color="#6d28d9" strokeWidth={2.4} />
+                <MailOpen size={20} color="#0f766e" strokeWidth={2.4} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6d28d9', margin: 0 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0f766e', margin: 0 }}>
                   Приглашение в команду
                 </p>
                 <p style={{ ...TYPE.h3, color: T.text, marginTop: 4 }}>
@@ -226,7 +226,7 @@ export default function MasterMiniAppHome() {
                 </p>
               </div>
             </div>
-            <ChevronRight size={18} color="#6d28d9" />
+            <ChevronRight size={18} color="#0f766e" />
           </Link>
         )}
 

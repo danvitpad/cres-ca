@@ -124,7 +124,7 @@ export function HeaderNotificationsDropdown({
               <button
                 onClick={markAllRead}
                 style={{
-                  fontSize: 13, color: '#6950f3', backgroundColor: 'transparent',
+                  fontSize: 13, color: '#0d9488', backgroundColor: 'transparent',
                   border: 'none', cursor: 'pointer', padding: 0, fontWeight: 500,
                 }}
               >
@@ -187,9 +187,9 @@ export function HeaderNotificationsDropdown({
                         style={{
                           display: 'flex', alignItems: 'flex-start', gap: 10,
                           padding: '10px 16px', cursor: 'pointer',
-                          backgroundColor: isUnread ? (isDark ? 'rgba(105,80,243,0.06)' : 'rgba(105,80,243,0.04)') : 'transparent',
+                          backgroundColor: isUnread ? (isDark ? 'rgba(13,148,136,0.06)' : 'rgba(13,148,136,0.04)') : 'transparent',
                           transition: 'background-color 100ms',
-                          borderLeft: isUnread ? '3px solid #6950f3' : '3px solid transparent',
+                          borderLeft: isUnread ? '3px solid #0d9488' : '3px solid transparent',
                         }}
                         onMouseEnter={e => { if (!isUnread) e.currentTarget.style.backgroundColor = F.hoverBg; }}
                         onMouseLeave={e => { if (!isUnread) e.currentTarget.style.backgroundColor = 'transparent'; }}
@@ -235,7 +235,7 @@ export function HeaderNotificationsDropdown({
                               padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
                               cursor: 'pointer', transition: 'all 100ms', alignSelf: 'center',
                               border: followState === true ? `1px solid ${F.headerBorder}` : 'none',
-                              backgroundColor: followState === true ? 'transparent' : '#6950f3',
+                              backgroundColor: followState === true ? 'transparent' : '#0d9488',
                               color: followState === true ? F.textSecondary : '#ffffff',
                               opacity: followState === 'loading' ? 0.6 : 1,
                             }}

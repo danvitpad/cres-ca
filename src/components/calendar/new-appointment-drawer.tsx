@@ -51,7 +51,7 @@ function clientInitials(name: string): string {
   return (parts[0]![0] + parts[1]![0]).toUpperCase();
 }
 
-const AVATAR_COLORS = ['#7c3aed', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#3b82f6', '#f43f5e', '#8b5cf6'];
+const AVATAR_COLORS = ['#0d9488', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#3b82f6', '#f43f5e', '#2dd4bf'];
 function avatarColor(id: string): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;

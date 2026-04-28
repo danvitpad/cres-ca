@@ -32,7 +32,7 @@ const ENTITY_ICON: Record<EntityType, typeof User> = {
 
 const ENTITY_COLOR: Record<EntityType, string> = {
   client: '#3b82f6',
-  master: '#8b5cf6',
+  master: '#2dd4bf',
   salon: '#10b981',
 };
 
@@ -43,7 +43,7 @@ function getInitials(name: string) {
 function hashColor(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'];
+  const colors = ['#3b82f6', '#2dd4bf', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'];
   return colors[Math.abs(hash) % colors.length];
 }
 

@@ -15,37 +15,37 @@ export const FONT_FEATURES = '"cv01", "ss03"';
 export const F_LIGHT = {
   headerBg: '#ffffff',
   headerBorder: '#ece8f4',
-  sidebarBg: '#0b0d17',
-  sidebarBorder: '#1a1d30',
-  sidebarActiveBg: '#7c3aed',
+  sidebarBg: '#141417',
+  sidebarBorder: '#1f1f22',
+  sidebarActiveBg: '#0d9488',
   sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#a8a3be',
-  textPrimary: '#1a1530',
+  sidebarInactiveIconColor: '#a1a1aa',
+  textPrimary: '#0a0a0a',
   textSecondary: '#64607a',
   avatarBg: '#f0ecfa',
   avatarBorder: '#ffffff',
   badgeBg: '#ef4444',
   badgeText: '#ffffff',
-  contentBg: '#f4f2fa',
+  contentBg: '#ffffff',
   hoverBg: '#f0ecfa',
 } as const;
 
 export const F_DARK = {
   headerBg: '#0e1020',
-  headerBorder: '#1a1d30',
-  sidebarBg: '#080a12',
-  sidebarBorder: '#141730',
-  sidebarActiveBg: '#8b5cf6',
+  headerBorder: '#1f1f22',
+  sidebarBg: '#0f0f12',
+  sidebarBorder: '#27272a',
+  sidebarActiveBg: '#2dd4bf',
   sidebarActiveIconColor: '#ffffff',
-  sidebarInactiveIconColor: '#706c87',
-  textPrimary: '#eae8f4',
-  textSecondary: '#a8a3be',
-  avatarBg: '#1a1d30',
+  sidebarInactiveIconColor: '#a1a1aa',
+  textPrimary: '#fafafa',
+  textSecondary: '#a1a1aa',
+  avatarBg: '#1f1f22',
   avatarBorder: '#252840',
   badgeBg: '#ef4444',
   badgeText: '#ffffff',
-  contentBg: '#0b0d17',
-  hoverBg: '#141730',
+  contentBg: '#141417',
+  hoverBg: '#27272a',
 } as const;
 
 export type FTheme = { [K in keyof typeof F_LIGHT]: string };
@@ -55,20 +55,20 @@ export type FTheme = { [K in keyof typeof F_LIGHT]: string };
 
 export const PAGE_LIGHT = {
   // Surfaces
-  bg: '#f4f2fa',
+  bg: '#ffffff',
   surface: '#ffffff',
-  surfaceElevated: '#ede9f7',
+  surfaceElevated: '#f4f4f5',
   // Borders
-  border: 'rgba(124,58,237,0.07)',
-  borderStrong: 'rgba(124,58,237,0.13)',
+  border: 'rgba(13,148,136,0.07)',
+  borderStrong: 'rgba(13,148,136,0.13)',
   // Text
-  text: '#1a1530',
+  text: '#0a0a0a',
   textSecondary: '#64607a',
   textTertiary: '#9994ad',
   // Accent (vivid purple)
-  accent: '#7c3aed',
-  accentHover: '#6d28d9',
-  accentSoft: 'rgba(124,58,237,0.08)',
+  accent: '#0d9488',
+  accentHover: '#0f766e',
+  accentSoft: 'rgba(13,148,136,0.08)',
   // Status
   success: '#10b981',
   successSoft: 'rgba(16,185,129,0.08)',
@@ -77,31 +77,31 @@ export const PAGE_LIGHT = {
   warning: '#f59e0b',
   warningSoft: 'rgba(245,158,11,0.08)',
   // Tables & lists
-  rowHover: '#f8f6fd',
+  rowHover: '#fafafa',
   // AI surfaces
-  aiGradient: 'linear-gradient(135deg, rgba(124,58,237,0.07) 0%, rgba(168,85,247,0.04) 100%)',
-  aiBorder: 'rgba(124,58,237,0.15)',
+  aiGradient: 'linear-gradient(135deg, rgba(13,148,136,0.07) 0%, rgba(168,85,247,0.04) 100%)',
+  aiBorder: 'rgba(13,148,136,0.15)',
   // Badges
-  badgeBg: 'rgba(124,58,237,0.08)',
-  badgeText: '#7c3aed',
+  badgeBg: 'rgba(13,148,136,0.08)',
+  badgeText: '#0d9488',
 } as const;
 
 export const PAGE_DARK = {
   // Surfaces — navy, not gray
-  bg: '#0b0d17',
-  surface: '#111425',
-  surfaceElevated: '#1a1d30',
+  bg: '#141417',
+  surface: '#1a1a1d',
+  surfaceElevated: '#1f1f22',
   // Borders — purple-tinted
-  border: 'rgba(139,92,246,0.08)',
-  borderStrong: 'rgba(139,92,246,0.16)',
+  border: 'rgba(45,212,191,0.08)',
+  borderStrong: 'rgba(45,212,191,0.16)',
   // Text — slightly warm
-  text: '#eae8f4',
-  textSecondary: '#a8a3be',
+  text: '#fafafa',
+  textSecondary: '#a1a1aa',
   textTertiary: '#5c5876',
   // Accent (bright purple)
-  accent: '#8b5cf6',
-  accentHover: '#a78bfa',
-  accentSoft: 'rgba(139,92,246,0.12)',
+  accent: '#2dd4bf',
+  accentHover: '#5eead4',
+  accentSoft: 'rgba(45,212,191,0.12)',
   // Status
   success: '#34d399',
   successSoft: 'rgba(52,211,153,0.12)',
@@ -112,11 +112,11 @@ export const PAGE_DARK = {
   // Tables & lists
   rowHover: '#151830',
   // AI surfaces
-  aiGradient: 'linear-gradient(135deg, rgba(139,92,246,0.1) 0%, rgba(124,58,237,0.05) 100%)',
-  aiBorder: 'rgba(139,92,246,0.2)',
+  aiGradient: 'linear-gradient(135deg, rgba(45,212,191,0.1) 0%, rgba(13,148,136,0.05) 100%)',
+  aiBorder: 'rgba(45,212,191,0.2)',
   // Badges
-  badgeBg: 'rgba(139,92,246,0.12)',
-  badgeText: '#8b5cf6',
+  badgeBg: 'rgba(45,212,191,0.12)',
+  badgeText: '#2dd4bf',
 } as const;
 
 export type PageTheme = { [K in keyof typeof PAGE_LIGHT]: string };

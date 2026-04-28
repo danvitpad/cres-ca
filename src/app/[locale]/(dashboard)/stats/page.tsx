@@ -170,7 +170,7 @@ export default function StatsPage() {
       if (!svc) continue;
       const e = byId.get(svc.id);
       if (e) e.count += 1;
-      else byId.set(svc.id, { id: svc.id, name: svc.name, color: svc.color ?? '#8b5cf6', count: 1 });
+      else byId.set(svc.id, { id: svc.id, name: svc.name, color: svc.color ?? '#2dd4bf', count: 1 });
     }
     const arr = Array.from(byId.values()).sort((a, b) => b.count - a.count).slice(0, 8);
     const total = arr.reduce((s, x) => s + x.count, 0);

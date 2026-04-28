@@ -90,8 +90,8 @@ const MONTH_NAMES_FULL = [
   'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь',
 ];
 
-const VIOLET = '#8b5cf6';
-const _VIOLET_DARK = '#7c3aed';
+const VIOLET = '#2dd4bf';
+const _VIOLET_DARK = '#0d9488';
 
 const DEFAULT_WORKING_HOURS: NonNullable<MasterInfo['working_hours']> = {
   sunday: null,

@@ -36,9 +36,9 @@ export default function TelegramEntryPage() {
       webapp.expand();
       try { webapp.disableVerticalSwipes(); } catch {}
       try {
-        webapp.setHeaderColor('#0b0d17');
-        webapp.setBackgroundColor('#0b0d17');
-        webapp.setBottomBarColor('#0b0d17');
+        webapp.setHeaderColor('#141417');
+        webapp.setBackgroundColor('#141417');
+        webapp.setBottomBarColor('#141417');
       } catch {}
 
       const initData = webapp.initData;

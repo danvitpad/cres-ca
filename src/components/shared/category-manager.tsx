@@ -28,9 +28,9 @@ interface CategoryManagerProps {
 }
 
 const COLOR_SWATCHES = [
-  '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+  '#0d9488', '#ec4899', '#ef4444', '#f59e0b',
   '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
-  '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+  '#2dd4bf', '#f43f5e', '#64748b', '#0f172a',
 ];
 
 export function CategoryManager({ masterId, onCategoriesChange }: CategoryManagerProps) {

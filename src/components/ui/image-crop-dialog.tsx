@@ -131,7 +131,7 @@ export function ImageCropDialog({
             step={0.01}
             value={zoom}
             onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="flex-1 accent-[var(--primary,_#8b5cf6)]"
+            className="flex-1 accent-[var(--primary,_#2dd4bf)]"
             aria-label="Зум"
           />
           <button

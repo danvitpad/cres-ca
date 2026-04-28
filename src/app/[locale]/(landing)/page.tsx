@@ -22,7 +22,7 @@ const LANDING_CSS = `
   --lfg: #0a0a0a; --lfg2: #555555; --lfg3: #888888; --lfg4: #bbbbbb;
   --lcard: #ffffff; --lcb: rgba(0,0,0,.07);
   --lglass: rgba(255,255,255,.72);
-  --lviolet: #7c3aed; --lviolet-l: #ede9fe; --lviolet-d: #5b21b6;
+  --lviolet: #0d9488; --lviolet-l: #f0fdfa; --lviolet-d: #115e59;
   --lgreen: #10b981; --lblue: #3b82f6; --lorange: #f59e0b; --lpink: #ec4899;
   font-family: var(--lf);
   background: var(--lbg);
@@ -35,7 +35,7 @@ html.dark .landing-v6 {
   --lfg: #fafafa; --lfg2: #a1a1aa; --lfg3: #71717a; --lfg4: #3f3f46;
   --lcard: #18181b; --lcb: rgba(255,255,255,.06);
   --lglass: rgba(9,9,11,.72);
-  --lviolet: #a78bfa; --lviolet-l: rgba(167,139,250,.1); --lviolet-d: #c4b5fd;
+  --lviolet: #5eead4; --lviolet-l: rgba(94,234,212,.1); --lviolet-d: #5eead4;
 }
 .landing-v6 * { box-sizing: border-box; }
 .landing-v6 a { color: inherit; text-decoration: none; }
@@ -204,7 +204,7 @@ function DashboardMock() {
     { l: 'Рейтинг',       v: '4.9',  t: '★★★★★',   c: 'var(--lorange)' },
   ];
   const services = [
-    { n: 'Стрижка',    p: 65, c: '#7c3aed' },
+    { n: 'Стрижка',    p: 65, c: '#0d9488' },
     { n: 'Маникюр',    p: 48, c: '#ec4899' },
     { n: 'Массаж',     p: 38, c: '#06b6d4' },
     { n: 'Окрашивание', p: 28, c: '#10b981' },
@@ -388,7 +388,7 @@ export default function LandingPage() {
                 background: 'var(--lviolet)', color: '#fff',
                 fontSize: 13, fontWeight: 600,
                 marginLeft: 4,
-                boxShadow: '0 2px 12px rgba(124,58,237,.25)',
+                boxShadow: '0 2px 12px rgba(13,148,136,.25)',
               }}>
                 Начать бесплатно
               </Link>
@@ -438,7 +438,7 @@ export default function LandingPage() {
                   padding: '14px 32px', borderRadius: 99,
                   background: 'var(--lviolet)', color: '#fff',
                   fontSize: 16, fontWeight: 600, transition: 'all .3s',
-                  boxShadow: '0 4px 20px rgba(124,58,237,.25)',
+                  boxShadow: '0 4px 20px rgba(13,148,136,.25)',
                 }}>
                   Попробовать бесплатно
                 </Link>
@@ -619,7 +619,7 @@ export default function LandingPage() {
                   padding: '16px 36px', borderRadius: 99,
                   background: 'var(--lviolet)', color: '#fff',
                   fontSize: 17, fontWeight: 600, transition: 'all .3s',
-                  boxShadow: '0 4px 24px rgba(124,58,237,.3)',
+                  boxShadow: '0 4px 24px rgba(13,148,136,.3)',
                 }}>
                   Попробовать бесплатно
                 </Link>

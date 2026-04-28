@@ -93,7 +93,7 @@ function formatDayHeader(d: Date) {
 
 const STATUS_META: Record<Status, { label: string; stripBg: string; chipBg: string; chipColor: string }> = {
   booked: { label: 'Забронировано', stripBg: '#3b82f6', chipBg: '#dbeafe', chipColor: '#1d4ed8' },
-  confirmed: { label: 'Подтверждено', stripBg: '#6c5ce7', chipBg: T.accentSoft, chipColor: T.accent },
+  confirmed: { label: 'Подтверждено', stripBg: '#0d9488', chipBg: T.accentSoft, chipColor: T.accent },
   in_progress: { label: 'Идёт', stripBg: '#f59e0b', chipBg: '#fef3c7', chipColor: '#b45309' },
   completed: { label: 'Выполнено', stripBg: '#10b981', chipBg: T.successSoft, chipColor: T.success },
   cancelled: { label: 'Отменено', stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },

@@ -23,8 +23,8 @@ type CalendarDrawerProps = {
 // Тонкие border'ы / hover'ы остаются как контраст.
 const LIGHT = {
   bg: '#ffffff',
-  border: 'rgba(124,58,237,0.13)',
-  text: '#1a1530',
+  border: 'rgba(13,148,136,0.13)',
+  text: '#0a0a0a',
   textMuted: '#64607a',
   headerBg: '#ffffff',
   controlBg: '#f5f3fb',
@@ -32,12 +32,12 @@ const LIGHT = {
 };
 
 const DARK = {
-  bg: '#111425',
-  border: 'rgba(139,92,246,0.16)',
-  text: '#eae8f4',
-  textMuted: '#a8a3be',
-  headerBg: '#111425',
-  controlBg: '#1a1d30',
+  bg: '#1a1a1d',
+  border: 'rgba(45,212,191,0.16)',
+  text: '#fafafa',
+  textMuted: '#a1a1aa',
+  headerBg: '#1a1a1d',
+  controlBg: '#1f1f22',
   controlHover: '#1f2240',
 };
 

@@ -72,7 +72,7 @@ export default function MiniAppWelcomePage() {
   }
 
   if (!stash) {
-    return <div className="min-h-dvh bg-[#0b0d17]" />;
+    return <div className="min-h-dvh bg-[#141417]" />;
   }
 
   const firstName = stash.tgData?.first_name ?? '';
@@ -82,7 +82,7 @@ export default function MiniAppWelcomePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="flex min-h-dvh flex-col bg-[#0b0d17] text-white"
+      className="flex min-h-dvh flex-col bg-[#141417] text-white"
     >
       <div className="flex-1 space-y-10 px-6 pt-14 pb-[260px]">
         {/* Brand hero */}
@@ -142,7 +142,7 @@ export default function MiniAppWelcomePage() {
 
       {/* Bottom actions */}
       <div
-        className="fixed inset-x-0 bottom-0 space-y-3 bg-gradient-to-t from-[#0b0d17] via-[#0b0d17]/95 to-transparent px-6 pb-6 pt-10"
+        className="fixed inset-x-0 bottom-0 space-y-3 bg-gradient-to-t from-[#141417] via-[#141417]/95 to-transparent px-6 pb-6 pt-10"
         style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
       >
         <motion.p
@@ -194,7 +194,7 @@ export default function MiniAppWelcomePage() {
               exit={{ y: '100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full rounded-t-3xl bg-[#0b0d17] px-6 pb-8 pt-5 text-white"
+              className="w-full rounded-t-3xl bg-[#141417] px-6 pb-8 pt-5 text-white"
               style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}
             >
               <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />

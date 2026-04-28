@@ -114,7 +114,7 @@ function WizardBody({ onClose, initial }: Omit<Props, 'open'>) {
               className="pointer-events-none absolute -inset-[40%] opacity-70"
               style={{
                 background:
-                  'conic-gradient(from 90deg at 50% 50%, #6d28d9 0%, #db2777 25%, #f59e0b 50%, #6d28d9 75%, #6d28d9 100%)',
+                  'conic-gradient(from 90deg at 50% 50%, #0f766e 0%, #db2777 25%, #f59e0b 50%, #0f766e 75%, #0f766e 100%)',
                 filter: 'blur(80px)',
               }}
             />

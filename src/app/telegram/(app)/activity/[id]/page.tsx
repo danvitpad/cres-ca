@@ -265,7 +265,7 @@ export default function MiniAppAppointmentDetail() {
       <div className="relative overflow-hidden rounded-[28px] border border-neutral-200 bg-gradient-to-br from-white/10 to-white/5 p-5">
         <div
           className="absolute -right-20 -top-20 size-60 rounded-full opacity-30 blur-3xl"
-          style={{ background: row.service?.color ?? '#8b5cf6' }}
+          style={{ background: row.service?.color ?? '#2dd4bf' }}
         />
         <div className="relative space-y-4">
           <div className="flex items-start justify-between gap-3">

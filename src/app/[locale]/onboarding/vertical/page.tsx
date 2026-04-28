@@ -60,7 +60,7 @@ export default function OnboardingVerticalPage() {
       className="fixed inset-0 overflow-y-auto"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% -10%, rgba(139,92,246,0.10), transparent 60%), #0b0d17',
+          'radial-gradient(120% 80% at 50% -10%, rgba(45,212,191,0.10), transparent 60%), #141417',
       }}
     >
       {/* Back button — absolutely positioned в верхнем-левом углу страницы,
@@ -70,12 +70,12 @@ export default function OnboardingVerticalPage() {
         aria-label="Назад"
         className="fixed left-4 top-4 z-10 flex size-10 items-center justify-center rounded-xl transition-colors md:left-8 md:top-8"
         style={{
-          border: '1px solid rgba(139,92,246,0.16)',
-          background: '#111425',
-          color: '#eae8f4',
+          border: '1px solid rgba(45,212,191,0.16)',
+          background: '#1a1a1d',
+          color: '#fafafa',
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = '#1a1d30'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = '#111425'; }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = '#1f1f22'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = '#1a1a1d'; }}
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -88,13 +88,13 @@ export default function OnboardingVerticalPage() {
         >
           <h1
             className="text-3xl font-semibold leading-tight tracking-tight md:text-4xl"
-            style={{ color: '#eae8f4', letterSpacing: '-0.02em' }}
+            style={{ color: '#fafafa', letterSpacing: '-0.02em' }}
           >
             Какой у тебя профиль?
           </h1>
           <p
             className="mt-3 text-sm md:text-[15px]"
-            style={{ color: '#a8a3be' }}
+            style={{ color: '#a1a1aa' }}
           >
             Подберём популярные услуги, поля анамнеза и шаблоны под твою нишу
           </p>
@@ -116,31 +116,31 @@ export default function OnboardingVerticalPage() {
                 disabled={!!selected}
                 className="group relative flex items-center gap-4 overflow-hidden rounded-2xl p-5 text-left transition-all"
                 style={{
-                  background: isSelected ? 'rgba(139,92,246,0.14)' : '#111425',
-                  border: `1px solid ${isSelected ? '#8b5cf6' : 'rgba(139,92,246,0.16)'}`,
+                  background: isSelected ? 'rgba(45,212,191,0.14)' : '#1a1a1d',
+                  border: `1px solid ${isSelected ? '#2dd4bf' : 'rgba(45,212,191,0.16)'}`,
                   boxShadow: isSelected
-                    ? '0 0 0 4px rgba(139,92,246,0.15), 0 8px 24px rgba(139,92,246,0.18)'
+                    ? '0 0 0 4px rgba(45,212,191,0.15), 0 8px 24px rgba(45,212,191,0.18)'
                     : 'none',
                   cursor: selected && !isSelected ? 'default' : 'pointer',
                   opacity: selected && !isSelected ? 0.5 : 1,
                 }}
                 onMouseEnter={(e) => {
                   if (selected) return;
-                  e.currentTarget.style.background = '#1a1d30';
-                  e.currentTarget.style.borderColor = 'rgba(139,92,246,0.35)';
+                  e.currentTarget.style.background = '#1f1f22';
+                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.35)';
                 }}
                 onMouseLeave={(e) => {
                   if (selected) return;
-                  e.currentTarget.style.background = '#111425';
-                  e.currentTarget.style.borderColor = 'rgba(139,92,246,0.16)';
+                  e.currentTarget.style.background = '#1a1a1d';
+                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.16)';
                 }}
               >
                 {/* Icon bubble — soft purple */}
                 <div
                   className="flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors"
                   style={{
-                    background: isSelected ? 'rgba(139,92,246,0.22)' : 'rgba(139,92,246,0.10)',
-                    color: isSelected ? '#c4b5fd' : '#a78bfa',
+                    background: isSelected ? 'rgba(45,212,191,0.22)' : 'rgba(45,212,191,0.10)',
+                    color: isSelected ? '#5eead4' : '#5eead4',
                   }}
                 >
                   <Icon className="size-5" />
@@ -148,10 +148,10 @@ export default function OnboardingVerticalPage() {
 
                 {/* Text */}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[15px] font-semibold" style={{ color: '#eae8f4' }}>
+                  <p className="text-[15px] font-semibold" style={{ color: '#fafafa' }}>
                     {v.title}
                   </p>
-                  <p className="mt-1 truncate text-xs" style={{ color: '#a8a3be' }}>
+                  <p className="mt-1 truncate text-xs" style={{ color: '#a1a1aa' }}>
                     {v.sub}
                   </p>
                 </div>
@@ -163,7 +163,7 @@ export default function OnboardingVerticalPage() {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     className="flex size-7 shrink-0 items-center justify-center rounded-full"
-                    style={{ background: '#8b5cf6', color: '#ffffff' }}
+                    style={{ background: '#2dd4bf', color: '#ffffff' }}
                   >
                     <Check className="size-4" />
                   </motion.div>

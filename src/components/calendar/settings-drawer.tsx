@@ -19,23 +19,23 @@ type SettingsDrawerProps = {
 };
 
 const LIGHT = {
-  text: '#1a1530',
+  text: '#0a0a0a',
   textMuted: '#64607a',
-  border: 'rgba(124,58,237,0.13)',
+  border: 'rgba(13,148,136,0.13)',
   surface: '#ffffff',
-  surfaceElevated: '#f8f6fd',
-  accent: '#7c3aed',
-  accentSoft: 'rgba(124,58,237,0.08)',
+  surfaceElevated: '#fafafa',
+  accent: '#0d9488',
+  accentSoft: 'rgba(13,148,136,0.08)',
 };
 
 const DARK = {
-  text: '#eae8f4',
-  textMuted: '#a8a3be',
-  border: 'rgba(139,92,246,0.16)',
-  surface: '#111425',
-  surfaceElevated: '#1a1d30',
-  accent: '#8b5cf6',
-  accentSoft: 'rgba(139,92,246,0.12)',
+  text: '#fafafa',
+  textMuted: '#a1a1aa',
+  border: 'rgba(45,212,191,0.16)',
+  surface: '#1a1a1d',
+  surfaceElevated: '#1f1f22',
+  accent: '#2dd4bf',
+  accentSoft: 'rgba(45,212,191,0.12)',
 };
 
 const SCALE_OPTIONS = [

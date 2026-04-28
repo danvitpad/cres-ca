@@ -411,7 +411,7 @@ export default function MiniAppRegisterPage() {
       </div>
 
       <div
-        className="sticky bottom-0 space-y-2 bg-gradient-to-t from-[#0b0d17] via-[#0b0d17] to-transparent px-6 pb-6 pt-8"
+        className="sticky bottom-0 space-y-2 bg-gradient-to-t from-[#141417] via-[#141417] to-transparent px-6 pb-6 pt-8"
         style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
       >
         {done ? (

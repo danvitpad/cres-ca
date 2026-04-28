@@ -52,9 +52,9 @@ export function TrialBadge() {
         fontSize: 13,
         fontWeight: 600,
         textDecoration: 'none',
-        backgroundColor: urgent ? '#fef3c7' : '#ede9fe',
-        color: urgent ? '#b45309' : '#5b21b6',
-        border: `1px solid ${urgent ? '#fcd34d' : '#c4b5fd'}`,
+        backgroundColor: urgent ? '#fef3c7' : '#f0fdfa',
+        color: urgent ? '#b45309' : '#115e59',
+        border: `1px solid ${urgent ? '#fcd34d' : '#5eead4'}`,
         whiteSpace: 'nowrap',
       }}
     >

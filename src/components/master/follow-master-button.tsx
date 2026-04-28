@@ -18,7 +18,7 @@ interface Props {
   accent?: string;
 }
 
-export function FollowMasterButton({ masterId, accent = 'var(--ds-accent, #7c3aed)' }: Props) {
+export function FollowMasterButton({ masterId, accent = 'var(--ds-accent, #0d9488)' }: Props) {
   const router = useRouter();
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
   const [pending, startTransition] = useTransition();

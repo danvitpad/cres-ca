@@ -34,7 +34,7 @@ export function MrrLineChart({ data }: { data: Array<{ label: string; value: num
           labelStyle={{ color: '#ffffffb3' }}
           formatter={(v) => [`${Number(v).toLocaleString('ru-RU')} ₴`, 'MRR']}
         />
-        <Line type="monotone" dataKey="value" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3, fill: '#a78bfa' }} activeDot={{ r: 5 }} />
+        <Line type="monotone" dataKey="value" stroke="#5eead4" strokeWidth={2} dot={{ r: 3, fill: '#5eead4' }} activeDot={{ r: 5 }} />
       </LineChart>
     </ResponsiveContainer>
   );
@@ -54,7 +54,7 @@ export function RegistrationsChart({ data }: { data: Array<{ date: string; clien
         />
         <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} iconType="circle" />
         <Bar dataKey="clients" stackId="a" fill="#60a5fa" name="Клиенты" />
-        <Bar dataKey="masters" stackId="a" fill="#a78bfa" name="Мастера" />
+        <Bar dataKey="masters" stackId="a" fill="#5eead4" name="Мастера" />
         <Bar dataKey="salons" stackId="a" fill="#f472b6" name="Салоны" />
       </BarChart>
     </ResponsiveContainer>

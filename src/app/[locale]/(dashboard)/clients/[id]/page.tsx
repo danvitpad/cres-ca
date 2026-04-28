@@ -194,7 +194,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     let hash = 0;
     for (let i = 0; i < client.full_name.length; i++) hash = client.full_name.charCodeAt(i) + ((hash << 5) - hash);
     const grads = [
-      'linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%)',
+      'linear-gradient(135deg, #0d9488 0%, #5eead4 100%)',
       'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
       'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
       'linear-gradient(135deg, #10b981 0%, #34d399 100%)',

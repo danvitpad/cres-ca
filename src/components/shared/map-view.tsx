@@ -69,11 +69,11 @@ function createIcon(rating: number) {
 
 const salonIcon = L.divIcon({
   html: `<div style="
-    background:#8b5cf6;
+    background:#2dd4bf;
     width:36px;height:36px;
     border-radius:10px;
     border:3px solid white;
-    box-shadow:0 2px 10px rgba(139,92,246,0.45);
+    box-shadow:0 2px 10px rgba(45,212,191,0.45);
     display:flex;align-items:center;justify-content:center;
     color:white;font-size:16px;font-weight:800;
     transform:rotate(0deg);
@@ -163,7 +163,7 @@ export default function MapView({
         <div style="min-width:160px;font-family:system-ui">
           <strong style="font-size:14px">${s.name}</strong>
           ${s.address ? `<br/><span style="color:#666;font-size:12px">${s.address}</span>` : ''}
-          <br/><span style="color:#8b5cf6;font-weight:600;font-size:11px">Салон · команда</span>
+          <br/><span style="color:#2dd4bf;font-weight:600;font-size:11px">Салон · команда</span>
         </div>
       `);
       if (onSalonClick) {

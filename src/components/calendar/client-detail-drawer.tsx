@@ -17,7 +17,7 @@ const LIGHT = {
   text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
-  accent: '#6950f3',
+  accent: '#0d9488',
   accentSoft: '#f0eefe',
   success: '#22c55e',
   danger: '#d4163a',
@@ -36,7 +36,7 @@ const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
   border: '#1a1a1a',
-  accent: '#8b7cf6',
+  accent: '#2dd4bf',
   accentSoft: '#2a2545',
   success: '#22c55e',
   danger: '#ef4444',
@@ -46,7 +46,7 @@ const DARK = {
   overlay: 'rgba(0,0,0,0.6)',
   tabActive: '#e5e5e5',
   tabInactive: '#555555',
-  btnBg: '#6950f3',
+  btnBg: '#0d9488',
   btnText: '#ffffff',
 };
 

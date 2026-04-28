@@ -124,6 +124,16 @@ export async function GET(request: Request) {
     if (existingProfile.deleted_at) {
       await supabase.from('profiles').update({ deleted_at: null }).eq('id', user.id);
     }
+    // Если режим = signup но профиль уже есть И аккаунт НЕ только что создан —
+    // юзер пытается «зарегистрироваться» с уже существующим Google. Не молчим:
+    // выходим из сессии и кидаем на login с понятным тостом — иначе он залипает
+    // в старой роли (которую возможно даже не помнит).
+    if (mode === 'signup' && !justCreated) {
+      try { await supabase.auth.signOut(); } catch { /* noop */ }
+      const params = new URLSearchParams({ error: 'already_registered', mode: 'signin' });
+      if (oauthRole) params.set('role', oauthRole);
+      return redirectAndClear(`${origin}/login?${params.toString()}`);
+    }
     // Если запрос пришёл с явной ролью И аккаунт только что создан — это
     // первый Google-signup, перезаписываем дефолт client → нужная роль.
     if (justCreated && oauthRole && existingProfile.role !== oauthRole) {

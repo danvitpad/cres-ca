@@ -110,7 +110,7 @@ export function DashboardKpiStrip({ masterId, workingHours, theme }: Props) {
   const cardBorder = isDark ? '0.8px solid #333' : '0.8px solid #e5e5e5';
   const textPrimary = isDark ? '#f5f5f5' : '#0d0d0d';
   const textMuted = isDark ? '#a3a3a3' : '#737373';
-  const accent = '#6950f3';
+  const accent = '#0d9488';
 
   function fmtMoney(n: number) {
     return new Intl.NumberFormat(locale, { style: 'decimal', maximumFractionDigits: 0 }).format(n) + ' ₴';

@@ -15,16 +15,16 @@ const LIGHT = {
   text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
-  accent: '#6950f3',
+  accent: '#0d9488',
   accentSoft: '#f0eefe',
   success: '#22c55e',
   successSoft: '#f0fdf4',
   danger: '#d4163a',
   dangerSoft: '#fef2f2',
   cardBg: '#f9f9f9',
-  chartBar: '#6950f3',
+  chartBar: '#0d9488',
   chartBarMuted: '#e5e5e5',
-  purpleCard: '#6950f3',
+  purpleCard: '#0d9488',
   purpleCardText: '#ffffff',
 };
 
@@ -33,16 +33,16 @@ const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
   border: '#1a1a1a',
-  accent: '#8b7cf6',
+  accent: '#2dd4bf',
   accentSoft: '#2a2545',
   success: '#22c55e',
   successSoft: '#052e16',
   danger: '#ef4444',
   dangerSoft: '#450a0a',
   cardBg: '#000000',
-  chartBar: '#8b7cf6',
+  chartBar: '#2dd4bf',
   chartBarMuted: '#1a1a1a',
-  purpleCard: '#6950f3',
+  purpleCard: '#0d9488',
   purpleCardText: '#ffffff',
 };
 
@@ -54,10 +54,10 @@ const TIME_TABS = [
 ] as const;
 
 const CHANNELS = [
-  { key: 'online', label: 'Онлайн запись', color: '#6950f3' },
+  { key: 'online', label: 'Онлайн запись', color: '#0d9488' },
   { key: 'manual', label: 'Ручная запись', color: '#f59e0b' },
   { key: 'telegram', label: 'Telegram', color: '#0ea5e9' },
-  { key: 'walk_in', label: 'Без записи', color: '#8b5cf6' },
+  { key: 'walk_in', label: 'Без записи', color: '#2dd4bf' },
 ];
 
 interface AnalyticsDrawerContentProps {

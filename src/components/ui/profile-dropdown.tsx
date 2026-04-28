@@ -68,7 +68,7 @@ function ItemBody({ item }: { item: ProfileDropdownItem }) {
             'ml-auto rounded-md border px-2 py-0.5 text-xs font-medium tracking-tight',
             item.valueTone === 'muted'
               ? 'border-border/50 bg-muted text-muted-foreground'
-              : 'border-[#6950f3]/20 bg-[#6950f3]/10 text-[#6950f3] dark:text-[#8b6cf7]',
+              : 'border-[#0d9488]/20 bg-[#0d9488]/10 text-[#0d9488] dark:text-[#8b6cf7]',
           )}
         >
           {item.value}
@@ -104,7 +104,7 @@ export function ProfileDropdown({
       >
         {/* Header: avatar with brand gradient ring + name (+ optional handle) */}
         <div className="flex items-center gap-3 px-2 py-2">
-          <div className="rounded-full bg-gradient-to-br from-[#6950f3] via-[#8b6cf7] to-[#b892ff] p-[2px]">
+          <div className="rounded-full bg-gradient-to-br from-[#0d9488] via-[#8b6cf7] to-[#b892ff] p-[2px]">
             <Avatar className="size-10 border-2 border-popover">
               {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
               <AvatarFallback className="bg-popover text-[13px]">{initialsText}</AvatarFallback>

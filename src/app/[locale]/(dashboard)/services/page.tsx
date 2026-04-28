@@ -824,9 +824,9 @@ function ServiceForm({
         </Label>
         <div className="flex flex-wrap gap-2">
           {[
-            '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+            '#0d9488', '#ec4899', '#ef4444', '#f59e0b',
             '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
-            '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+            '#2dd4bf', '#f43f5e', '#64748b', '#0f172a',
           ].map((c) => (
             <button
               key={c}
@@ -1087,13 +1087,13 @@ function CategoryDialog({
   onCreated: (id: string) => void;
 }) {
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#7c3aed');
+  const [color, setColor] = useState('#0d9488');
   const [saving, setSaving] = useState(false);
 
   const SWATCHES = [
-    '#7c3aed', '#ec4899', '#ef4444', '#f59e0b',
+    '#0d9488', '#ec4899', '#ef4444', '#f59e0b',
     '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
-    '#8b5cf6', '#f43f5e', '#64748b', '#0f172a',
+    '#2dd4bf', '#f43f5e', '#64748b', '#0f172a',
   ];
 
   async function save() {
@@ -1109,7 +1109,7 @@ function CategoryDialog({
     if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Категория создана');
     setName('');
-    setColor('#7c3aed');
+    setColor('#0d9488');
     if (data?.id) onCreated(data.id);
   }
 

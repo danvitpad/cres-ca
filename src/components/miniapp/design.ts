@@ -36,7 +36,7 @@ export const T = {
   accentText: 'var(--m-accent-text)',
 
   // Hero gradient (purple → pink) — фиксированные цвета, фоны hero одинаковые в обеих темах
-  gradientFrom: '#6c5ce7',
+  gradientFrom: '#0d9488',
   gradientVia: '#8b6cf2',
   gradientTo: '#e879f9',
 

@@ -68,7 +68,7 @@ const RULES: {
     description: 'TG-пуш клиенту за 2 часа до визита',
     trigger: 'За 2 часа до визита',
     icon: Bell,
-    accent: '#8b5cf6',
+    accent: '#2dd4bf',
   },
   {
     key: 'pre_visit_master',

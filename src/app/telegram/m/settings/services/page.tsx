@@ -83,7 +83,7 @@ export default function MiniAppServicesPage() {
             >
               <span
                 className="size-2.5 shrink-0 rounded-full"
-                style={{ background: s.color || '#8b5cf6' }}
+                style={{ background: s.color || '#2dd4bf' }}
               />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[13px] font-semibold">{s.name}</p>

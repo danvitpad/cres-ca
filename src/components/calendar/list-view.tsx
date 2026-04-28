@@ -55,16 +55,16 @@ export function ListView({ appointments, onAppointmentClick, onDayClick }: ListV
 
   const C = isDark
     ? {
-      bg: '#0a0b0f', surface: '#111425', border: 'rgba(139,92,246,0.12)',
+      bg: '#0a0b0f', surface: '#1a1a1d', border: 'rgba(45,212,191,0.12)',
       text: '#f5f3ff', textSecondary: '#c9c2e6', textTertiary: '#8781a5',
-      hover: '#151830', accent: '#8b5cf6', success: '#10b981', danger: '#ef4444',
-      warning: '#f59e0b', sectionBg: 'rgba(139,92,246,0.04)',
+      hover: '#151830', accent: '#2dd4bf', success: '#10b981', danger: '#ef4444',
+      warning: '#f59e0b', sectionBg: 'rgba(45,212,191,0.04)',
     }
     : {
-      bg: '#faf8ff', surface: '#ffffff', border: 'rgba(124,58,237,0.10)',
-      text: '#1a1530', textSecondary: '#4a4666', textTertiary: '#8781a5',
-      hover: '#f8f6fd', accent: '#7c3aed', success: '#16a34a', danger: '#dc2626',
-      warning: '#d97706', sectionBg: 'rgba(124,58,237,0.03)',
+      bg: '#faf8ff', surface: '#ffffff', border: 'rgba(13,148,136,0.10)',
+      text: '#0a0a0a', textSecondary: '#4a4666', textTertiary: '#8781a5',
+      hover: '#fafafa', accent: '#0d9488', success: '#16a34a', danger: '#dc2626',
+      warning: '#d97706', sectionBg: 'rgba(13,148,136,0.03)',
     };
 
   if (appointments.length === 0) {

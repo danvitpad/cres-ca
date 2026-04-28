@@ -149,6 +149,8 @@ export default function AuthPage() {
     const fire = () => {
       if (e === 'no_account') {
         toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.', { duration: 7000 });
+      } else if (e === 'already_registered') {
+        toast.info('Этот Google-аккаунт уже зарегистрирован. Просто войди — твоя текущая роль сохранится.', { duration: 8000 });
       } else if (e === 'auth') {
         toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 7000 });
       }

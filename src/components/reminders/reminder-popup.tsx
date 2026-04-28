@@ -98,7 +98,7 @@ export function ReminderPopup() {
           {/* Accent top bar */}
           <div style={{
             height: 3,
-            background: 'linear-gradient(90deg, #5e6ad2, #8b5cf6)',
+            background: 'linear-gradient(90deg, #5e6ad2, #2dd4bf)',
           }} />
 
           <div style={{
@@ -113,7 +113,7 @@ export function ReminderPopup() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
                   width: 28, height: 28, borderRadius: 8,
-                  background: 'linear-gradient(135deg, rgba(94,106,210,0.2), rgba(139,92,246,0.15))',
+                  background: 'linear-gradient(135deg, rgba(94,106,210,0.2), rgba(45,212,191,0.15))',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <Bell style={{ width: 14, height: 14, color: '#5e6ad2' }} />
