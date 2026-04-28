@@ -51,12 +51,14 @@ export async function GET(request: Request) {
   let prefilledLastName: string | null = null;
   let prefilledPhone: string | null = null;
   let prefilledDob: string | null = null;
+  let prefilledPassword: string | null = null;
   if (intentCookie) {
     try {
       const parsed = JSON.parse(intentCookie) as {
         role?: string; mode?: string;
         first_name?: string | null; last_name?: string | null;
         phone?: string | null; date_of_birth?: string | null;
+        password?: string | null;
       };
       if (isRole(parsed.role)) cookieRole = parsed.role;
       if (parsed.mode === 'signin' || parsed.mode === 'signup') cookieMode = parsed.mode;
@@ -64,6 +66,7 @@ export async function GET(request: Request) {
       if (parsed.last_name) prefilledLastName = parsed.last_name.trim();
       if (parsed.phone) prefilledPhone = parsed.phone;
       if (parsed.date_of_birth) prefilledDob = parsed.date_of_birth;
+      if (parsed.password && parsed.password.length >= 6) prefilledPassword = parsed.password;
     } catch { /* malformed cookie — ignore */ }
   }
   const oauthRole: Role | null = cookieRole ?? (isRole(searchParams.get('role')) ? (searchParams.get('role') as Role) : null);

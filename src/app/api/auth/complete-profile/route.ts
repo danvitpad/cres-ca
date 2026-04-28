@@ -28,12 +28,14 @@ export async function POST(request: Request) {
     last_name?: string;
     phone?: string;
     date_of_birth?: string;
+    password_set?: boolean;
   };
 
   const firstName = (body.first_name || '').trim();
   const lastName = (body.last_name || '').trim();
   const phone = (body.phone || '').trim();
   const dob = (body.date_of_birth || '').trim();
+  const passwordSet = body.password_set === true;
 
   if (!firstName) {
     return NextResponse.json({ error: 'first_name_required' }, { status: 400 });
@@ -41,13 +43,16 @@ export async function POST(request: Request) {
 
   const fullName = `${firstName} ${lastName}`.trim();
 
+  const update: Record<string, unknown> = {
+    full_name: fullName,
+    phone: phone || null,
+    date_of_birth: dob || null,
+  };
+  if (passwordSet) update.password_set = true;
+
   const { error: profErr } = await supabase
     .from('profiles')
-    .update({
-      full_name: fullName,
-      phone: phone || null,
-      date_of_birth: dob || null,
-    })
+    .update(update)
     .eq('id', user.id);
   if (profErr) {
     return NextResponse.json({ error: profErr.message }, { status: 500 });

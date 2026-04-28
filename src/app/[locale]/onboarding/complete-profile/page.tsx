@@ -1,18 +1,24 @@
 /** --- YAML
  * name: OnboardingCompleteProfile
- * description: Промежуточный экран после Google OAuth — добираем имя/фамилию/
- *              телефон/ДР. Google не передаёт ничего кроме email + (опц.) name.
- *              Подтверждение email пропускаем — Google уже верифицировал.
- *              После сохранения: client → /feed, master/salon_admin → /onboarding/account-type.
+ * description: После Google OAuth — полная форма регистрации. Email приходит
+ *              из Google и отображается read-only. Юзер заполняет: имя, фамилия,
+ *              телефон, дата рождения (кроме команды), пароль (для будущих
+ *              входов без Google), чекбокс terms. После submit вызывается
+ *              auth.updateUser({password}) — официальный Supabase pattern для
+ *              добавления пароля к OAuth-аккаунту.
  * created: 2026-04-28
+ * updated: 2026-04-28
  * --- */
 
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { humanizeError } from '@/lib/format/error';
 
@@ -20,12 +26,17 @@ type Role = 'client' | 'master' | 'salon_admin';
 
 export default function CompleteProfilePage() {
   const router = useRouter();
+  const locale = useLocale();
   const [loaded, setLoaded] = useState(false);
   const [role, setRole] = useState<Role>('client');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [terms, setTerms] = useState(false);
+  const [needsPassword, setNeedsPassword] = useState(true);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState('');
 
@@ -50,7 +61,7 @@ export default function CompleteProfilePage() {
                   (typeof md.name === 'string' && md.name.split(' ').slice(1).join(' '))) || '';
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, phone, date_of_birth, full_name')
+        .select('role, phone, date_of_birth, full_name, password_set')
         .eq('id', user.id)
         .single();
       if (cancelled) return;
@@ -62,6 +73,9 @@ export default function CompleteProfilePage() {
       const existingPhone = (profile?.phone || '').replace(/^\+?380/, '');
       setPhone(existingPhone);
       setDob(profile?.date_of_birth || '');
+      // Если пароль уже установлен (например, юзер вернулся доделать профиль) —
+      // не просим его задавать заново.
+      setNeedsPassword(!profile?.password_set);
       setLoaded(true);
     })();
     return () => { cancelled = true; };
@@ -73,7 +87,23 @@ export default function CompleteProfilePage() {
     if (!lastName.trim()) { toast.error('Введи фамилию'); return; }
     if (!phone.trim() || phone.length < 9) { toast.error('Введи телефон'); return; }
     if (role !== 'salon_admin' && !dob) { toast.error('Введи дату рождения'); return; }
+    if (needsPassword && password.length < 6) { toast.error('Придумай пароль (минимум 6 символов)'); return; }
+    if (needsPassword && !terms) { toast.error('Прими условия использования'); return; }
     setSaving(true);
+
+    // Шаг 1: установить пароль через Supabase auth (если ещё не задан).
+    // updateUser({password}) — официальный pattern Supabase для добавления
+    // пароля OAuth-юзеру (см. auth-identity-linking docs).
+    if (needsPassword) {
+      const supabase = createClient();
+      const { error: pwdErr } = await supabase.auth.updateUser({ password });
+      if (pwdErr) {
+        setSaving(false);
+        toast.error(humanizeError(pwdErr));
+        return;
+      }
+    }
+
     try {
       const res = await fetch('/api/auth/complete-profile', {
         method: 'POST',
@@ -83,6 +113,7 @@ export default function CompleteProfilePage() {
           last_name: lastName.trim(),
           phone: phone ? `+380${phone}` : '',
           date_of_birth: dob || null,
+          password_set: needsPassword,
         }),
       });
       const j = (await res.json().catch(() => ({}))) as { next?: string; error?: string };
@@ -193,6 +224,71 @@ export default function CompleteProfilePage() {
               </Field>
             )}
 
+            {/* Email read-only — приехал из Google */}
+            <Field label="Email (от Google)">
+              <input className="cp-input" value={email} disabled
+                style={{ opacity: 0.7, cursor: 'not-allowed' }} />
+            </Field>
+
+            {needsPassword && (
+              <Field label="Пароль">
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="cp-input"
+                    type={showPwd ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    placeholder="Минимум 6 символов"
+                    style={{ paddingRight: 44 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((v) => !v)}
+                    tabIndex={-1}
+                    style={{
+                      position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', color: '#a1a1aa',
+                      display: 'flex', alignItems: 'center',
+                    }}
+                  >
+                    {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </Field>
+            )}
+
+            {needsPassword && (
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: 8,
+                fontSize: 12, color: '#a1a1aa', cursor: 'pointer', lineHeight: 1.45,
+                marginTop: 4,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={terms}
+                  onChange={(e) => setTerms(e.target.checked)}
+                  style={{ marginTop: 2, accentColor: '#2dd4bf', width: 14, height: 14, cursor: 'pointer' }}
+                />
+                <span>
+                  Я принимаю{' '}
+                  <Link href={`/${locale}/terms`} target="_blank" style={{ textDecoration: 'underline', color: '#fafafa' }}>
+                    условия использования
+                  </Link>
+                  {', '}
+                  <Link href={`/${locale}/privacy`} target="_blank" style={{ textDecoration: 'underline', color: '#fafafa' }}>
+                    политику конфиденциальности
+                  </Link>
+                  {' и '}
+                  <Link href={`/${locale}/cookies`} target="_blank" style={{ textDecoration: 'underline', color: '#fafafa' }}>
+                    политику cookie
+                  </Link>
+                </span>
+              </label>
+            )}
+
             <button
               type="submit"
               disabled={saving}
@@ -206,7 +302,7 @@ export default function CompleteProfilePage() {
                 boxShadow: '0 8px 24px rgba(45,212,191,0.25)',
               }}
             >
-              {saving ? 'Сохраняю…' : 'Продолжить'}
+              {saving ? 'Сохраняю…' : needsPassword ? 'Создать аккаунт' : 'Продолжить'}
             </button>
           </motion.form>
         )}
