@@ -572,12 +572,13 @@ export default function AuthPage() {
               сверху (центровка прятала role-toggle за viewport). Снизу — внятный
               отступ чтобы последняя кнопка не липла к краю экрана. Скролл —
               на уровне страницы. */}
-          <section
+          <motion.section
+            layout
+            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             style={{
               flex: 1, order: isSignUp ? 2 : 1,
               display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
               padding: 'clamp(20px, 3vw, 40px) clamp(12px, 2.5vw, 32px) clamp(40px, 5vw, 64px)',
-              transition: 'order .25s ease',
             }}
           >
               <div style={{ width: '100%', maxWidth: 400 }}>
@@ -993,10 +994,12 @@ export default function AuthPage() {
                   )}
                 </AnimatePresence>
               </div>
-          </section>
+          </motion.section>
 
           {/* Hero image column — hidden on mobile */}
-          <section
+          <motion.section
+            layout
+            transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
             className="auth-hero"
             style={{
               flex: 1, order: isSignUp ? 1 : 2,
@@ -1004,7 +1007,6 @@ export default function AuthPage() {
               borderRadius: 28,
               overflow: 'hidden',
               minHeight: 400,
-              transition: 'order .25s ease',
             }}
           >
               <div style={{
@@ -1023,7 +1025,7 @@ export default function AuthPage() {
                 .auth-hero { display: none !important; }
               }
             `}</style>
-          </section>
+          </motion.section>
         </div>
       </div>
     </>
