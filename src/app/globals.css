@@ -11,13 +11,13 @@
  * ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* Brand accent */
-  --color-accent:          #7c3aed;
-  --color-accent-hover:    #6d28d9;
-  --color-accent-active:   #5b21b6;
-  --color-accent-soft:     rgba(124, 58, 237, 0.1);
-  --color-accent-border:   rgba(124, 58, 237, 0.3);
-  --color-accent-text:     #c4b5fd;
+  /* Brand accent — deep teal (m0038 rebrand) */
+  --color-accent:          #0d9488;
+  --color-accent-hover:    #0f766e;
+  --color-accent-active:   #115e59;
+  --color-accent-soft:     rgba(13, 148, 136, 0.1);
+  --color-accent-border:   rgba(13, 148, 136, 0.3);
+  --color-accent-text:     #5eead4;
 
   /* Semantic */
   --color-success:         #10b981;
@@ -55,19 +55,19 @@
   --font-heading: var(--font-sans);
 
   /* Phase 1.5: brand accent unification Web ↔ Mini App.
-     Overrides Tailwind's default violet palette so bg-violet-500 / text-violet-300 in
-     Mini App renders as the same #6950f3 the Web dashboard uses via hardcoded hex. */
-  --color-violet-200: #d0c8fb;
-  --color-violet-300: #a8a0f7;
-  --color-violet-400: #8d7df4;
-  --color-violet-500: #6950f3;
-  --color-violet-600: #5840e0;
-  --color-violet-700: #4632bd;
+     Tailwind's default violet palette is overridden so bg-violet-* / text-violet-*
+     in legacy Mini App code renders the new teal accent (rebrand m0038). */
+  --color-violet-200: #99f6e4;
+  --color-violet-300: #5eead4;
+  --color-violet-400: #2dd4bf;
+  --color-violet-500: #14b8a6;
+  --color-violet-600: #0d9488;
+  --color-violet-700: #0f766e;
 
-  /* Canonical brand token — prefer var(--cres-accent) over hardcoded #6950f3 in new code. */
-  --cres-accent: #6950f3;
-  --cres-accent-soft: rgba(105, 80, 243, 0.12);
-  --cres-accent-hover: #5840e0;
+  /* Canonical brand token — deep teal #0d9488. */
+  --cres-accent: #0d9488;
+  --cres-accent-soft: rgba(13, 148, 136, 0.12);
+  --cres-accent-hover: #0f766e;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -107,54 +107,55 @@
 }
 
 :root {
-  --background: #f4f2fa;
-  --foreground: #1a1530;
+  --background: #ffffff;
+  --foreground: #0a0a0a;
   --card: #ffffff;
-  --card-foreground: #1a1530;
+  --card-foreground: #0a0a0a;
   --popover: #ffffff;
-  --popover-foreground: #1a1530;
-  --primary: #7c3aed;
+  --popover-foreground: #0a0a0a;
+  --primary: #0d9488;
   --primary-foreground: #ffffff;
-  --secondary: #ede9f7;
-  --secondary-foreground: #1a1530;
-  --muted: #ede9f7;
-  --muted-foreground: #64607a;
-  --accent: #ede9f7;
-  --accent-foreground: #1a1530;
-  --destructive: #ef4444;
-  --border: rgba(124,58,237,0.07);
-  --input: rgba(124,58,237,0.07);
-  --ring: #7c3aed;
-  --chart-1: #7c3aed;
-  --chart-2: #a78bfa;
-  --chart-3: #c4b5fd;
-  --chart-4: #8b5cf6;
-  --chart-5: #6d28d9;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #0a0a0a;
+  --destructive: #b91c1c;
+  --border: rgba(10,10,10,0.07);
+  --input: rgba(10,10,10,0.07);
+  --ring: #0d9488;
+  /* Multicolour categorical palette — no purple/pink (matches design-system) */
+  --chart-1: #0d9488;
+  --chart-2: #d97706;
+  --chart-3: #2563eb;
+  --chart-4: #ea580c;
+  --chart-5: #16a34a;
   --radius: 0.625rem;
-  --sidebar: #0b0d17;
-  --sidebar-foreground: #a8a3be;
-  --sidebar-primary: #7c3aed;
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-primary: #0d9488;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(124,58,237,0.12);
+  --sidebar-accent: rgba(13,148,136,0.12);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1a1d30;
-  --sidebar-ring: #7c3aed;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #0d9488;
 
   /* Design system — Surfaces */
   --surface-primary: #ffffff;
-  --surface-secondary: #f8f6fd;
+  --surface-secondary: #fafafa;
   --surface-elevated: #ffffff;
   --surface-overlay: rgba(255, 255, 255, 0.85);
 
   /* Design system — Accent */
-  --ds-accent: #7c3aed;
-  --ds-accent-soft: rgba(124,58,237,0.08);
-  --ds-accent-hover: #6d28d9;
+  --ds-accent: #0d9488;
+  --ds-accent-soft: rgba(13,148,136,0.08);
+  --ds-accent-hover: #0f766e;
 
   /* Design system — Semantic */
-  --ds-success: #10b981;
-  --ds-warning: #f59e0b;
-  --ds-danger: #ef4444;
+  --ds-success: #15803d;
+  --ds-warning: #b45309;
+  --ds-danger: #b91c1c;
 
   /* Design system — Spacing */
   --space-page: 1.5rem;
@@ -166,57 +167,58 @@
   --radius-button: 0.625rem;
   --radius-avatar: 9999px;
 
-  /* Design system — Shadows */
-  --shadow-card: 0 1px 3px rgba(124,58,237,0.04), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-elevated: 0 4px 12px rgba(124,58,237,0.06);
-  --shadow-overlay: 0 8px 30px rgba(124,58,237,0.1);
+  /* Design system — Shadows (neutral ink, no tint) */
+  --shadow-card: 0 1px 3px rgba(10,10,10,0.04), 0 1px 2px rgba(10,10,10,0.04);
+  --shadow-elevated: 0 4px 12px rgba(10,10,10,0.06);
+  --shadow-overlay: 0 8px 30px rgba(10,10,10,0.1);
 }
 
 .dark {
-  /* Navy-purple dark theme — deep, rich, not gray */
-  --background: #0b0d17;
-  --foreground: #eae8f4;
-  --card: #111425;
-  --card-foreground: #eae8f4;
-  --popover: #1a1d30;
-  --popover-foreground: #eae8f4;
-  --primary: #8b5cf6;
-  --primary-foreground: #ffffff;
-  --secondary: #1a1d30;
-  --secondary-foreground: #eae8f4;
-  --muted: #1a1d30;
-  --muted-foreground: #706c87;
-  --accent: #1a1d30;
-  --accent-foreground: #eae8f4;
+  /* Ink dark theme — soft black (one tone above pure black), teal accent */
+  --background: #141417;
+  --foreground: #fafafa;
+  --card: #1a1a1d;
+  --card-foreground: #fafafa;
+  --popover: #1f1f22;
+  --popover-foreground: #fafafa;
+  --primary: #2dd4bf;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1f1f22;
+  --secondary-foreground: #fafafa;
+  --muted: #1f1f22;
+  --muted-foreground: #a1a1aa;
+  --accent: #1f1f22;
+  --accent-foreground: #fafafa;
   --destructive: #f87171;
-  --border: rgba(139,92,246,0.12);
+  --border: rgba(255,255,255,0.08);
   /* Input must stand off the popover/card bg so fields are actually visible inside dialogs */
-  --input: #272a44;
-  --ring: #8b5cf6;
-  --chart-1: #8b5cf6;
-  --chart-2: #a78bfa;
-  --chart-3: #c4b5fd;
-  --chart-4: #7c3aed;
-  --chart-5: #6d28d9;
-  --sidebar: #080a12;
-  --sidebar-foreground: #706c87;
-  --sidebar-primary: #8b5cf6;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(139,92,246,0.12);
-  --sidebar-accent-foreground: #eae8f4;
-  --sidebar-border: #141730;
-  --sidebar-ring: #8b5cf6;
+  --input: #2a2a2e;
+  --ring: #2dd4bf;
+  /* Multicolour categorical palette (dark variants) */
+  --chart-1: #2dd4bf;
+  --chart-2: #fbbf24;
+  --chart-3: #60a5fa;
+  --chart-4: #fb923c;
+  --chart-5: #4ade80;
+  --sidebar: #0f0f12;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: rgba(45,212,191,0.12);
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #2dd4bf;
 
   /* Design system — Surfaces (dark) */
-  --surface-primary: #111425;
-  --surface-secondary: #1a1d30;
-  --surface-elevated: #1a1d30;
-  --surface-overlay: rgba(11, 13, 23, 0.9);
+  --surface-primary: #1a1a1d;
+  --surface-secondary: #1f1f22;
+  --surface-elevated: #1f1f22;
+  --surface-overlay: rgba(20, 20, 23, 0.9);
 
   /* Design system — Accent (dark) */
-  --ds-accent: #8b5cf6;
-  --ds-accent-soft: rgba(139,92,246,0.12);
-  --ds-accent-hover: #a78bfa;
+  --ds-accent: #2dd4bf;
+  --ds-accent-soft: rgba(45,212,191,0.12);
+  --ds-accent-hover: #5eead4;
 
   /* Design system — Shadows (dark) */
   --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
@@ -230,41 +232,41 @@
    переменные, поэтому все 42+ страницы Mini App переключаются автоматически. */
 [data-theme] {
   --m-bg: #ffffff;
-  --m-bg-subtle: #f5f6f8;
+  --m-bg-subtle: #fafafa;
   --m-surface: #ffffff;
   --m-surface-elevated: #fafafa;
-  --m-border: #e5e7ea;
-  --m-border-subtle: #eef0f2;
-  --m-text: #0a0a0c;
-  --m-text-secondary: #4b5260;
-  --m-text-tertiary: #8a91a0;
-  --m-text-disabled: #bdc2cc;
-  --m-accent: #6c5ce7;
-  --m-accent-hover: #5847d4;
-  --m-accent-soft: #efedfd;
+  --m-border: #e4e4e7;
+  --m-border-subtle: #f4f4f5;
+  --m-text: #0a0a0a;
+  --m-text-secondary: #52525b;
+  --m-text-tertiary: #71717a;
+  --m-text-disabled: #d4d4d8;
+  --m-accent: #0d9488;
+  --m-accent-hover: #0f766e;
+  --m-accent-soft: #f0fdfa;
   --m-accent-text: #ffffff;
-  --m-success: #10b981;
+  --m-success: #15803d;
   --m-success-soft: #dcfce7;
-  --m-warning: #f59e0b;
+  --m-warning: #b45309;
   --m-warning-soft: #fef3c7;
-  --m-danger: #ef4444;
+  --m-danger: #b91c1c;
   --m-danger-soft: #fee2e2;
 }
 [data-theme="dark"] {
-  --m-bg: #0d0e10;
-  --m-bg-subtle: #131418;
-  --m-surface: #16181c;
-  --m-surface-elevated: #1c1f24;
-  --m-border: #2a2d34;
-  --m-border-subtle: #1f2228;
-  --m-text: #f3f4f6;
+  --m-bg: #141417;
+  --m-bg-subtle: #18181b;
+  --m-surface: #1a1a1d;
+  --m-surface-elevated: #1f1f22;
+  --m-border: #2a2a2e;
+  --m-border-subtle: #1f1f22;
+  --m-text: #fafafa;
   --m-text-secondary: #c1c5cd;
   --m-text-tertiary: #828791;
   --m-text-disabled: #4b5260;
-  --m-accent: #8b7cf6;
-  --m-accent-hover: #a18ef9;
-  --m-accent-soft: rgba(139, 124, 246, 0.18);
-  --m-accent-text: #ffffff;
+  --m-accent: #2dd4bf;
+  --m-accent-hover: #5eead4;
+  --m-accent-soft: rgba(45, 212, 191, 0.18);
+  --m-accent-text: #0a0a0a;
   --m-success: #34d399;
   --m-success-soft: rgba(52, 211, 153, 0.16);
   --m-warning: #fbbf24;

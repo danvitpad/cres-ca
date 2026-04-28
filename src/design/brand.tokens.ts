@@ -18,52 +18,53 @@
 
 export const colors = {
   accent: {
-    DEFAULT: '#7c3aed',
-    hover:   '#6d28d9',
-    active:  '#5b21b6',
-    soft:    'rgba(124, 58, 237, 0.1)',
-    border:  'rgba(124, 58, 237, 0.3)',
-    text:    '#c4b5fd',  // for use on dark bg
+    DEFAULT: '#0d9488',
+    hover:   '#0f766e',
+    active:  '#115e59',
+    soft:    'rgba(13, 148, 136, 0.1)',
+    border:  'rgba(13, 148, 136, 0.3)',
+    text:    '#5eead4',  // for use on dark bg
   },
 
   dark: {
-    bg:          '#0b0d17',
-    surface:     '#1a1b20',
+    bg:          '#141417',
+    surface:     '#1a1a1d',
     surface2:    'rgba(255, 255, 255, 0.03)',
     surface3:    'rgba(255, 255, 255, 0.06)',
-    border:      'rgba(255, 255, 255, 0.1)',
-    borderHover: 'rgba(255, 255, 255, 0.2)',
-    text:        '#ffffff',
+    border:      'rgba(255, 255, 255, 0.08)',
+    borderHover: 'rgba(255, 255, 255, 0.16)',
+    text:        '#fafafa',
     text2:       'rgba(255, 255, 255, 0.7)',
     text3:       'rgba(255, 255, 255, 0.4)',
     text4:       'rgba(255, 255, 255, 0.25)', // placeholder
   },
 
   light: {
-    bg:          '#f8f9fc',
+    bg:          '#ffffff',
     surface:     '#ffffff',
-    surface2:    '#f4f4f6',
-    surface3:    '#e9ebef',
-    border:      '#e5e7eb',
-    borderHover: '#d1d5db',
-    text:        '#0b0d17',
-    text2:       '#4a5568',
-    text3:       '#9ca3af',
-    text4:       '#d1d5db',
+    surface2:    '#fafafa',
+    surface3:    '#f4f4f5',
+    border:      '#e4e4e7',
+    borderHover: '#d4d4d8',
+    text:        '#0a0a0a',
+    text2:       '#52525b',
+    text3:       '#71717a',
+    text4:       '#d4d4d8',
   },
 
-  success: { DEFAULT: '#10b981', soft: 'rgba(16, 185, 129, 0.1)',  border: 'rgba(16, 185, 129, 0.3)', text: '#6ee7b7' },
-  warning: { DEFAULT: '#f59e0b', soft: 'rgba(245, 158, 11, 0.1)',  border: 'rgba(245, 158, 11, 0.3)', text: '#fcd34d' },
-  danger:  { DEFAULT: '#ef4444', soft: 'rgba(239, 68, 68, 0.1)',   border: 'rgba(239, 68, 68, 0.3)',  text: '#fca5a5' },
-  info:    { DEFAULT: '#3b82f6', soft: 'rgba(59, 130, 246, 0.1)',  border: 'rgba(59, 130, 246, 0.3)', text: '#93c5fd' },
+  success: { DEFAULT: '#15803d', soft: 'rgba(21, 128, 61, 0.1)',   border: 'rgba(21, 128, 61, 0.3)',  text: '#86efac' },
+  warning: { DEFAULT: '#b45309', soft: 'rgba(180, 83, 9, 0.1)',    border: 'rgba(180, 83, 9, 0.3)',   text: '#fcd34d' },
+  danger:  { DEFAULT: '#b91c1c', soft: 'rgba(185, 28, 28, 0.1)',   border: 'rgba(185, 28, 28, 0.3)',  text: '#fca5a5' },
+  info:    { DEFAULT: '#1d4ed8', soft: 'rgba(29, 78, 216, 0.1)',   border: 'rgba(29, 78, 216, 0.3)',  text: '#93c5fd' },
 } as const;
 
 // ══════════════════════ 2. TYPOGRAPHY ══════════════════════
 
 export const typography = {
   fontFamily: {
-    sans: 'Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    mono: 'JetBrains Mono, Menlo, monospace',
+    sans: 'Geist, "Geist Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    display: 'Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    mono: '"Geist Mono", "Geist Mono Fallback", ui-monospace, "JetBrains Mono", Menlo, monospace',
     pdf:  'PT Sans', // cyrillic-capable for PDF generation
   },
   fontFeatureSettings: '"ss01", "cv11", "cv02"',
@@ -132,11 +133,11 @@ export const radius = {
 
 export const shadow = {
   none: 'none',
-  sm:   '0 1px 2px rgba(0, 0, 0, 0.05)',
-  md:   '0 4px 8px rgba(0, 0, 0, 0.1)',
-  lg:   '0 8px 24px rgba(0, 0, 0, 0.15)',
-  xl:   '0 16px 48px rgba(0, 0, 0, 0.5)',
-  glow: '0 0 0 3px rgba(124, 58, 237, 0.2)', // focus ring, brand-coloured
+  sm:   '0 1px 2px rgba(10, 10, 10, 0.05)',
+  md:   '0 4px 8px rgba(10, 10, 10, 0.08)',
+  lg:   '0 8px 24px rgba(10, 10, 10, 0.10)',
+  xl:   '0 16px 48px rgba(10, 10, 10, 0.18)',
+  glow: '0 0 0 3px rgba(13, 148, 136, 0.20)', // focus ring, teal
 } as const;
 
 // ══════════════════════ 6. MOTION ══════════════════════
