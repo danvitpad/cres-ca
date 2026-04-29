@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
@@ -55,7 +54,6 @@ const ITEMS: SettingsItem[] = [
 
 export default function MasterMiniAppSettings() {
   const { haptic } = useTelegram();
-  const { clearAuth } = useAuthStore();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -66,18 +64,13 @@ export default function MasterMiniAppSettings() {
 
     // Always navigate even if signOut() hangs (TG WebView occasionally stalls
     // on auth requests). Race against a 1.5s timeout.
-    try {
-      const supabase = createClient();
-      await Promise.race([
-        supabase.auth.signOut(),
-        new Promise<void>((resolve) => setTimeout(resolve, 1500)),
-      ]);
-    } catch { /* ignore */ }
-
-    clearAuth();
-    // NB: keep cres:tg so welcome page works without bouncing through /telegram
-    // (which would re-auth via Telegram initData and bring user right back to home).
-    // Welcome screen is the natural «logged out» state inside a TG Mini App.
+    // Navigate FIRST — full page replace kills the React tree, so the layout's
+    // "!userId → router.replace('/telegram')" effect never fires.
+    // clearAuth() is intentionally omitted: the store re-initialises from scratch
+    // on the new page. signOut is fire-and-forget (TG WebView can stall auth).
+    try { createClient().auth.signOut(); } catch { /* ignore */ }
+    // Keep cres:tg so /telegram/welcome can render without bouncing through /telegram
+    // (which would re-auth via initData and bring the user straight back to home).
     window.location.replace('/telegram/welcome');
   }
 

@@ -21,6 +21,7 @@ export async function POST(req: Request) {
     vertical?: string;
     specialization?: string;
     workMode?: 'cabinet' | 'mobile' | 'both';
+    address?: string;
     services?: ServiceInput[];
   };
 
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
   if (body.workMode && ['cabinet', 'mobile', 'both'].includes(body.workMode)) {
     masterUpdate.work_mode = body.workMode;
   }
+  if (body.address) masterUpdate.address = body.address;
 
   if (Object.keys(masterUpdate).length > 0) {
     await admin.from('masters').update(masterUpdate).eq('profile_id', userId);

@@ -16,11 +16,11 @@
 
 'use client';
 
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Check, ChevronRight, Loader2,
+  ArrowLeft, Check, ChevronRight, Loader2, Search, X as XIcon,
   // Vertical icons
   Scissors, Stethoscope, Dumbbell, Palette, PawPrint,
   Car, PartyPopper, GraduationCap, Hammer, MoreHorizontal,
@@ -47,6 +47,10 @@ const T = {
     step3Cabinet: 'У своєму кабінеті', step3CabinetSub: 'Клієнти приходять за моєю адресою',
     step3Mobile:  'На виїзді', step3MobileSub:  'Я їжджу до клієнтів',
     step3Both:    'І так, і так', step3BothSub:    'Залежно від послуги',
+    addressTitle: 'Де знаходиться ваш кабінет?',
+    addressPlaceholder: 'Введіть адресу…',
+    addressHint: 'Перетягніть маркер, щоб уточнити',
+    addressSkip: 'Пропустити — вкажу пізніше',
     step4Title: 'Перші послуги',
     step4Sub: 'Відредагуйте ціни або приберіть зайве',
     next: 'Далі',
@@ -68,6 +72,10 @@ const T = {
     step3Cabinet: 'В своём кабинете', step3CabinetSub: 'Клиенты приходят по моему адресу',
     step3Mobile:  'На выезде', step3MobileSub:  'Я езжу к клиентам',
     step3Both:    'И так, и так', step3BothSub:    'Зависит от услуги',
+    addressTitle: 'Где находится ваш кабинет?',
+    addressPlaceholder: 'Введите адрес…',
+    addressHint: 'Перетащите маркер, чтобы уточнить',
+    addressSkip: 'Пропустить — укажу позже',
     step4Title: 'Первые услуги',
     step4Sub: 'Отредактируйте цены или уберите лишнее',
     next: 'Далее',
@@ -89,6 +97,10 @@ const T = {
     step3Cabinet: 'At my place', step3CabinetSub: 'Clients come to my address',
     step3Mobile:  'On the go', step3MobileSub:  'I travel to clients',
     step3Both:    'Both', step3BothSub:    'Depends on the service',
+    addressTitle: 'Where is your studio?',
+    addressPlaceholder: 'Search address…',
+    addressHint: 'Drag the pin to fine-tune the location',
+    addressSkip: "Skip — I'll add later",
     step4Title: 'First services',
     step4Sub: "Edit prices or remove what you don't need",
     next: 'Next',
@@ -175,6 +187,7 @@ export default function MasterOnboardingPage() {
   const [vertical, setVertical] = useState<string | null>(null);
   const [specialization, setSpecialization] = useState<string | null>(null);
   const [workMode, setWorkMode] = useState<WorkMode | null>(null);
+  const [address, setAddress] = useState('');
   const [services, setServices] = useState<ServiceItem[]>([]);
 
   const [saving, setSaving] = useState(false);
@@ -275,6 +288,7 @@ export default function MasterOnboardingPage() {
           vertical: vertical ?? undefined,
           specialization: specialization ?? undefined,
           workMode: workMode ?? undefined,
+          address: address.trim() || undefined,
           services: selected,
         }),
       });
@@ -422,7 +436,9 @@ export default function MasterOnboardingPage() {
               <Step3Workplace
                 t={t}
                 selected={workMode}
+                address={address}
                 onSelect={setWorkMode}
+                onAddressChange={setAddress}
                 onNext={goNext}
               />
             </motion.div>
@@ -620,19 +636,77 @@ function Step2Spec({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 3 — Workplace
+// Step 3 — Workplace (+ address search + OSM map if cabinet/both)
 // ─────────────────────────────────────────────────────────────────────────────
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
 function Step3Workplace({
   t,
   selected,
+  address,
   onSelect,
+  onAddressChange,
   onNext,
 }: {
   t: (typeof T)[Lang];
   selected: WorkMode | null;
+  address: string;
   onSelect: (m: WorkMode) => void;
+  onAddressChange: (a: string) => void;
   onNext: () => void;
 }) {
+  const needsAddress = selected === 'cabinet' || selected === 'both';
+
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [mapGeo, setMapGeo] = useState<{ lat: number; lon: number } | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Nominatim search with 500ms debounce
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query.trim() || query.trim().length < 3) { setResults([]); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`,
+          { headers: { 'Accept-Language': 'ru,uk,en' } },
+        );
+        const data = (await res.json()) as NominatimResult[];
+        setResults(data);
+      } catch { setResults([]); }
+      setSearching(false);
+    }, 500);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
+
+  function pickResult(r: NominatimResult) {
+    onAddressChange(r.display_name);
+    setMapGeo({ lat: Number(r.lat), lon: Number(r.lon) });
+    setResults([]);
+    setQuery('');
+  }
+
+  function clearAddress() {
+    onAddressChange('');
+    setMapGeo(null);
+    setQuery('');
+    setResults([]);
+  }
+
+  // Build OSM embed URL
+  function buildMapUrl(lat: number, lon: number): string {
+    const pad = 0.006;
+    const s = lat - pad, n = lat + pad, w = lon - pad * 1.4, e = lon + pad * 1.4;
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${w}%2C${s}%2C${e}%2C${n}&layer=mapnik&marker=${lat}%2C${lon}`;
+  }
+
   const labels: Record<WorkMode, { title: string; sub: string }> = {
     cabinet: { title: t.step3Cabinet, sub: t.step3CabinetSub },
     mobile:  { title: t.step3Mobile,  sub: t.step3MobileSub },
@@ -651,6 +725,7 @@ function Step3Workplace({
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', paddingBottom: 24 }}>
+        {/* Workplace type buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {WORKPLACES.map(({ key, Icon }) => {
             const isSelected = selected === key;
@@ -699,9 +774,177 @@ function Step3Workplace({
             );
           })}
         </div>
+
+        {/* Address section — shown when cabinet or both selected */}
+        <AnimatePresence>
+          {needsAddress && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.22 }}
+              style={{ marginTop: 20 }}
+            >
+              <p style={{ fontSize: 14, fontWeight: 700, color: THEME.text, marginBottom: 10 }}>
+                {t.addressTitle}
+              </p>
+
+              {/* Selected address chip */}
+              {address ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 10,
+                    padding: '12px 14px',
+                    borderRadius: R.md,
+                    border: `1.5px solid ${THEME.accent}`,
+                    background: THEME.accentSoft,
+                    marginBottom: 10,
+                  }}
+                >
+                  <MapPin size={16} color={THEME.accent} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, color: THEME.text, lineHeight: 1.4 }}>
+                    {address}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearAddress}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                  >
+                    <XIcon size={16} color={THEME.textTertiary} />
+                  </button>
+                </div>
+              ) : (
+                /* Search input */
+                <div style={{ position: 'relative', marginBottom: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 14px',
+                      borderRadius: R.md,
+                      border: `1.5px solid ${THEME.border}`,
+                      background: THEME.surface,
+                    }}
+                  >
+                    {searching
+                      ? <Loader2 size={16} color={THEME.textTertiary} className="animate-spin" style={{ flexShrink: 0 }} />
+                      : <Search size={16} color={THEME.textTertiary} style={{ flexShrink: 0 }} />
+                    }
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder={t.addressPlaceholder}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: 'transparent',
+                        outline: 'none',
+                        fontSize: 14,
+                        color: THEME.text,
+                      }}
+                    />
+                    {query && (
+                      <button
+                        type="button"
+                        onClick={() => { setQuery(''); setResults([]); }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        <XIcon size={14} color={THEME.textTertiary} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown results */}
+                  {results.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        right: 0,
+                        zIndex: 10,
+                        borderRadius: R.md,
+                        border: `1.5px solid ${THEME.border}`,
+                        background: THEME.surface,
+                        boxShadow: SHADOW.card,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {results.map((r, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => pickResult(r)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 10,
+                            width: '100%',
+                            padding: '11px 14px',
+                            borderTop: i === 0 ? 'none' : `1px solid ${THEME.borderSubtle}`,
+                            background: 'transparent',
+                            border: i === 0 ? 'none' : `1px solid ${THEME.borderSubtle}`,
+                            borderLeft: 'none',
+                            borderRight: 'none',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            WebkitTapHighlightColor: 'transparent',
+                          }}
+                        >
+                          <MapPin size={14} color={THEME.textTertiary} style={{ marginTop: 2, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, color: THEME.text, lineHeight: 1.4 }}>
+                            {r.display_name}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* OSM Map preview */}
+              {mapGeo && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 180 }}
+                  style={{ borderRadius: R.md, overflow: 'hidden', border: `1px solid ${THEME.border}` }}
+                >
+                  <iframe
+                    title="Карта"
+                    src={buildMapUrl(mapGeo.lat, mapGeo.lon)}
+                    style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                    loading="lazy"
+                  />
+                </motion.div>
+              )}
+
+              {/* Skip address */}
+              <button
+                type="button"
+                onClick={onNext}
+                style={{
+                  marginTop: 10,
+                  width: '100%',
+                  padding: '8px 0',
+                  background: 'transparent',
+                  border: 'none',
+                  color: THEME.textTertiary,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                {t.addressSkip}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <BottomCta primary={{ label: t.next, onClick: onNext }} secondary={{ label: t.skip, onClick: onNext }} />
+      <BottomCta primary={{ label: t.next, onClick: onNext }} secondary={needsAddress ? undefined : { label: t.skip, onClick: onNext }} />
     </div>
   );
 }
