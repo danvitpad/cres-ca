@@ -1,107 +1,213 @@
 /** --- YAML
  * name: MasterMiniAppSettings
- * description: Mini App master settings — Apple-style list of sections (profile edit, services, schedule, tariff & payments, notifications, language, voice AI, help, logout). Opens from gear icon on /telegram/m/profile.
+ * description: Mini App master settings — theme-aware (light/dark via miniapp
+ *   design tokens), Apple-style list of sections + bottom logout. Fixed:
+ *   was using raw bg-white that broke in dark mode; logout now has timeout
+ *   fallback so it never hangs the UI even if auth.signOut stalls.
  * created: 2026-04-19
- * updated: 2026-04-19
+ * updated: 2026-04-29
  * --- */
 
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
-  UserCircle,
+  User as UserIcon,
   Scissors,
   CalendarCheck,
   CreditCard,
   Bell,
   Globe,
-  Microphone,
-  Question,
-  SignOut,
-  CaretRight,
+  Mic,
+  HelpCircle,
+  MessageCircle,
+  LogOut,
+  ChevronRight,
   ArrowLeft,
-} from '@phosphor-icons/react';
-import { useRouter } from 'next/navigation';
-import type { IconWeight } from '@phosphor-icons/react';
-import type { ComponentType } from 'react';
+  Loader2,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 
-// All paths are mobile-adapted /telegram/m/* — no more web redirects.
 interface SettingsItem {
   key: string;
   href: string;
   label: string;
-  icon: ComponentType<{ size?: number; weight?: IconWeight; className?: string }>;
+  Icon: LucideIcon;
 }
-// «Финансы» убраны — это дублирование вкладки «Финансы» в навбаре.
-// «Уведомления» теперь ведут на собственную мини-страницу настройки push'ей мастеру
-// (про ДР, напоминания о визитах, опросы), а не на список входящих уведомлений.
+
 const ITEMS: SettingsItem[] = [
-  { key: 'profile', href: '/telegram/m/profile', label: 'Профиль и портфолио', icon: UserCircle },
-  { key: 'services', href: '/telegram/m/settings/services', label: 'Услуги и цены', icon: Scissors },
-  { key: 'schedule', href: '/telegram/m/settings/schedule', label: 'График работы', icon: CalendarCheck },
-  { key: 'billing', href: '/telegram/m/settings/billing', label: 'Тариф и платежи', icon: CreditCard },
-  { key: 'notifications', href: '/telegram/m/settings/notifications', label: 'Уведомления', icon: Bell },
-  { key: 'language', href: '/telegram/m/settings/language', label: 'Язык', icon: Globe },
-  { key: 'voice', href: '/telegram/m/voice-assistant', label: 'Голосовой помощник', icon: Microphone },
-  { key: 'help', href: '/telegram/m/settings/help', label: 'Помощь', icon: Question },
-  { key: 'feedback', href: '/telegram/m/settings/feedback', label: 'Обратная связь', icon: Question },
+  { key: 'profile',       href: '/telegram/m/profile',                 label: 'Профиль и портфолио',  Icon: UserIcon },
+  { key: 'services',      href: '/telegram/m/settings/services',       label: 'Услуги и цены',         Icon: Scissors },
+  { key: 'schedule',      href: '/telegram/m/settings/schedule',       label: 'График работы',        Icon: CalendarCheck },
+  { key: 'billing',       href: '/telegram/m/settings/billing',        label: 'Тариф и платежи',      Icon: CreditCard },
+  { key: 'notifications', href: '/telegram/m/settings/notifications',  label: 'Уведомления',           Icon: Bell },
+  { key: 'language',      href: '/telegram/m/settings/language',       label: 'Язык',                  Icon: Globe },
+  { key: 'voice',         href: '/telegram/m/voice-assistant',         label: 'Голосовой помощник',    Icon: Mic },
+  { key: 'help',          href: '/telegram/m/settings/help',           label: 'Помощь',                Icon: HelpCircle },
+  { key: 'feedback',      href: '/telegram/m/settings/feedback',       label: 'Обратная связь',        Icon: MessageCircle },
 ];
 
 export default function MasterMiniAppSettings() {
   const { haptic } = useTelegram();
   const { clearAuth } = useAuthStore();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
+    if (loggingOut) return;
+    setLoggingOut(true);
     haptic('warning');
-    const supabase = createClient();
-    await supabase.auth.signOut();
+
+    // Always navigate even if signOut() hangs (TG WebView occasionally stalls
+    // on auth requests). Race against a 1.5s timeout.
+    try {
+      const supabase = createClient();
+      await Promise.race([
+        supabase.auth.signOut(),
+        new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+      ]);
+    } catch { /* ignore */ }
+
     clearAuth();
-    window.location.href = '/telegram';
+    try {
+      sessionStorage.removeItem('cres:tg');
+    } catch { /* ignore */ }
+
+    // Hard reload to /telegram (clean session, fresh auth check)
+    window.location.replace('/telegram');
   }
 
   return (
-    <div className="space-y-4 px-5 pt-6 pb-10">
-      {/* Back button — иначе из настроек невозможно вернуться без перезахода в TG */}
-      <button
-        type="button"
-        onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-10 items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200 text-neutral-800 active:bg-neutral-50 transition-colors"
-        aria-label="Назад"
-      >
-        <ArrowLeft size={18} weight="bold" />
-      </button>
+    <div
+      style={{
+        ...FONT_BASE,
+        minHeight: '100dvh',
+        background: T.bg,
+        color: T.text,
+      }}
+    >
+      <div style={{ padding: `16px ${PAGE_PADDING_X}px 32px`, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={() => { haptic('light'); router.back(); }}
+          aria-label="Назад"
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            border: `1px solid ${T.border}`,
+            background: T.surface,
+            color: T.text,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: SHADOW.card,
+          }}
+        >
+          <ArrowLeft size={18} strokeWidth={2.4} />
+        </button>
 
-      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 divide-y divide-neutral-200">
-        {ITEMS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <li key={item.key}>
+        {/* Settings list */}
+        <div
+          style={{
+            background: T.surface,
+            borderRadius: R.lg,
+            border: `1px solid ${T.borderSubtle}`,
+            boxShadow: SHADOW.card,
+            overflow: 'hidden',
+          }}
+        >
+          {ITEMS.map((item, idx) => {
+            const Icon = item.Icon;
+            return (
               <Link
+                key={item.key}
                 href={item.href}
                 onClick={() => haptic('light')}
-                className="flex items-center gap-3 px-4 py-3.5 active:bg-neutral-50 transition-colors"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '14px 16px',
+                  borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
+                  textDecoration: 'none',
+                  color: T.text,
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'background 0.12s',
+                }}
+                onPointerDown={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = T.bgSubtle;
+                }}
+                onPointerUp={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                }}
+                onPointerLeave={(e) => {
+                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
+                }}
               >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200 text-neutral-700">
-                  <Icon size={18} weight="regular" />
-                </div>
-                <span className="flex-1 text-[14px] font-medium">{item.label}</span>
-                <CaretRight size={14} className="text-neutral-400" />
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: T.accentSoft,
+                    color: T.accent,
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon size={18} strokeWidth={2} />
+                </span>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: T.text }}>
+                  {item.label}
+                </span>
+                <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} />
               </Link>
-            </li>
-          );
-        })}
-      </ul>
+            );
+          })}
+        </div>
 
-      <button
-        onClick={logout}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 py-3.5 text-[14px] font-semibold text-rose-600 active:bg-rose-100 transition-colors"
-      >
-        <SignOut size={16} weight="bold" /> Выйти
-      </button>
+        {/* Logout */}
+        <button
+          type="button"
+          onClick={logout}
+          disabled={loggingOut}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: R.lg,
+            border: `1px solid ${T.dangerSoft}`,
+            background: T.dangerSoft,
+            color: T.danger,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: loggingOut ? 'wait' : 'pointer',
+            fontFamily: 'inherit',
+            opacity: loggingOut ? 0.6 : 1,
+            transition: 'opacity 0.15s',
+          }}
+        >
+          {loggingOut
+            ? <Loader2 size={16} className="animate-spin" />
+            : <LogOut size={16} strokeWidth={2.4} />
+          }
+          {loggingOut ? 'Выходим…' : 'Выйти'}
+        </button>
+      </div>
     </div>
   );
 }
