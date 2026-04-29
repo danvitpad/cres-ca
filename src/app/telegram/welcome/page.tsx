@@ -426,6 +426,22 @@ export default function MiniAppWelcomePage() {
                   {busy && <Loader2 className="size-4 animate-spin" />}
                   {t.enter}
                 </button>
+
+                {/* Ссылка на регистрацию — для тех у кого нет аккаунта */}
+                <p
+                  className="text-center text-[13px] pt-1"
+                  style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+                >
+                  {lang === 'en' ? "Don't have an account?" : lang === 'uk' ? 'Немає акаунту?' : 'Нет аккаунта?'}{' '}
+                  <button
+                    type="button"
+                    onClick={() => router.push('/telegram/register')}
+                    className="font-semibold underline underline-offset-2"
+                    style={{ color: 'var(--foreground)' }}
+                  >
+                    {lang === 'en' ? 'Register' : lang === 'uk' ? 'Зареєструватися' : 'Зарегистрироваться'}
+                  </button>
+                </p>
               </div>
             </motion.div>
           </motion.div>

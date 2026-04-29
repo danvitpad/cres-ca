@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Building2, Lock } from 'lucide-react';
+import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Building2, Lock, ArrowLeft } from 'lucide-react';
 import { mapError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -305,7 +305,27 @@ export default function MiniAppRegisterPage() {
       className="flex min-h-dvh flex-col"
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
-      <div className="flex-1 space-y-6 px-6 pt-10 pb-[140px]">
+      {/* Кнопка «назад» — в верхнем левом углу */}
+      <div
+        className="flex items-center px-4 pt-4"
+        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+      >
+        <button
+          type="button"
+          onClick={() => router.replace('/telegram/welcome')}
+          aria-label="Назад"
+          className="flex size-9 items-center justify-center rounded-full border active:scale-95 transition-transform"
+          style={{
+            borderColor: 'color-mix(in oklab, var(--foreground) 14%, transparent)',
+            color: 'var(--foreground)',
+            background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
+          }}
+        >
+          <ArrowLeft className="size-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 space-y-6 px-6 pt-6 pb-[140px]">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">Регистрация</h1>
           <p
@@ -437,6 +457,22 @@ export default function MiniAppRegisterPage() {
             {errorMsg}
           </div>
         )}
+
+        {/* Ссылка на вход — для тех у кого аккаунт уже есть */}
+        <p
+          className="text-center text-[13px] pb-2"
+          style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+        >
+          Уже есть аккаунт?{' '}
+          <button
+            type="button"
+            onClick={() => router.replace('/telegram/welcome')}
+            className="font-semibold underline underline-offset-2"
+            style={{ color: 'var(--foreground)' }}
+          >
+            Войти
+          </button>
+        </p>
       </div>
 
       {/* Sticky bottom — прячется когда юзер фокусится на инпуте */}
