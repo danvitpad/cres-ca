@@ -14,7 +14,6 @@ import { motion } from 'framer-motion';
 import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Building2, Lock } from 'lucide-react';
 import { mapError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/auth-store';
-import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
 
 interface TgData {
   id: number;
@@ -359,18 +358,19 @@ export default function MiniAppRegisterPage() {
           )}
           <Field
             icon={User}
-            label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'}
-            value={lastName}
-            onChange={setLastName}
-            placeholder="Иванов"
-          />
-          <Field
-            icon={User}
             label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'}
             value={firstName}
             onChange={setFirstName}
             placeholder="Иван"
           />
+          <Field
+            icon={User}
+            label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'}
+            value={lastName}
+            onChange={setLastName}
+            placeholder="Иванов"
+          />
+          <DobField value={dob} onChange={setDob} />
           <Field
             icon={Phone}
             label="Телефон"
@@ -397,34 +397,6 @@ export default function MiniAppRegisterPage() {
             placeholder="минимум 8 символов"
             type="password"
           />
-          <div className="space-y-1">
-            <div
-              className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide"
-              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-            >
-              <Calendar className="size-3" /> Дата рождения{' '}
-              <span
-                className="normal-case"
-                style={{ color: 'color-mix(in oklab, var(--foreground) 40%, transparent)' }}
-              >
-                · необязательно
-              </span>
-            </div>
-            <div
-              className="rounded-2xl border py-2"
-              style={{
-                borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
-                background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
-              }}
-            >
-              <DateWheelPicker
-                size="sm"
-                locale="ru-RU"
-                value={fromISODay(dob)}
-                onChange={(d) => setDob(toISODay(d))}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Telegram — констатация факта, не выбор */}
@@ -553,6 +525,98 @@ function RoleTile({
       <Icon className="size-4" />
       {label}
     </button>
+  );
+}
+
+function DobField({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
+  // ДР как обычный текстовый инпут «ДД.ММ.ГГГГ» — без колеса, надёжно работает
+  // на любой теме. На лету собирает точки между цифрами и валидирует диапазон.
+  const isoToDmy = (iso: string) => {
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
+  };
+  const [text, setText] = useState<string>(isoToDmy(value));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setText(isoToDmy(value));
+  }, [value]);
+
+  function handleChange(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) formatted = `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+    else if (digits.length > 2) formatted = `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    setText(formatted);
+
+    if (digits.length === 0) {
+      setError(null);
+      onChange('');
+      return;
+    }
+    const full = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (!full) {
+      setError(null);
+      onChange('');
+      return;
+    }
+    const [, d, m, y] = full;
+    const day = +d, month = +m, year = +y;
+    const currentYear = new Date().getFullYear();
+    if (month < 1 || month > 12) { setError('Месяц от 01 до 12'); onChange(''); return; }
+    if (year < 1900 || year > currentYear) { setError(`Год от 1900 до ${currentYear}`); onChange(''); return; }
+    const candidate = new Date(year, month - 1, day);
+    const valid =
+      candidate.getFullYear() === year &&
+      candidate.getMonth() === month - 1 &&
+      candidate.getDate() === day;
+    if (!valid) { setError(`В ${m}.${y} нет ${day}-го числа`); onChange(''); return; }
+    if (candidate.getTime() > Date.now()) { setError('Дата в будущем'); onChange(''); return; }
+    setError(null);
+    onChange(`${y}-${m}-${d}`);
+  }
+
+  return (
+    <div className="space-y-1">
+      <div
+        className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide"
+        style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+      >
+        <Calendar className="size-3" /> Дата рождения{' '}
+        <span
+          className="normal-case"
+          style={{ color: 'color-mix(in oklab, var(--foreground) 40%, transparent)' }}
+        >
+          · необязательно
+        </span>
+      </div>
+      <div
+        className="rounded-2xl border p-4"
+        style={{
+          borderColor: error
+            ? 'rgba(244,63,94,0.5)'
+            : 'color-mix(in oklab, var(--foreground) 12%, transparent)',
+          background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
+        }}
+      >
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="bday"
+          placeholder="ДД.ММ.ГГГГ"
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          className="w-full bg-transparent text-base outline-none"
+          style={{
+            color: 'var(--foreground)',
+            caretColor: 'var(--color-accent)',
+          }}
+        />
+      </div>
+      {error && (
+        <p className="px-1 text-[11px]" style={{ color: '#f43f5e' }}>{error}</p>
+      )}
+    </div>
   );
 }
 
