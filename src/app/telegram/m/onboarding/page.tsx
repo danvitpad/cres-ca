@@ -150,10 +150,11 @@ interface ServiceItem extends DefaultService {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const STEP_COUNT = 3;
 
-function StepDots({ current }: { current: 1 | 2 | 3 }) {
+function StepDots({ current, total }: { current: number; total: number }) {
+  const steps = Array.from({ length: total }, (_, i) => i + 1);
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
-      {([1, 2, 3] as const).map((n) => (
+      {steps.map((n) => (
         <motion.div
           key={n}
           animate={{ width: n === current ? 24 : 8, opacity: n === current ? 1 : 0.3 }}
@@ -173,6 +174,7 @@ function StepDots({ current }: { current: 1 | 2 | 3 }) {
 export default function MasterOnboardingPage() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
+  const role   = useAuthStore((s) => s.role);
 
   const [lang, setLang] = useState<Lang>('ru');
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -184,6 +186,7 @@ export default function MasterOnboardingPage() {
 
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [pendingSalonRoute, setPendingSalonRoute] = useState<string | null>(null);
 
   // Load saved language
   useEffect(() => {
@@ -193,11 +196,52 @@ export default function MasterOnboardingPage() {
     } catch {}
   }, []);
 
+  // After done=true: wait 500ms then navigate to the right destination.
+  // salon_admin → pendingSalonRoute (set by finishSalonAdmin)
+  // master      → /telegram/m/home
+  useEffect(() => {
+    if (!done) return;
+    const target = pendingSalonRoute ?? '/telegram/m/home';
+    const id = setTimeout(() => router.replace(target), 500);
+    return () => clearTimeout(id);
+  }, [done, pendingSalonRoute, router]);
+
   const t = T[lang];
+
+  // ── salon_admin: vertical tap → immediate save → salon dashboard ──────────
+  const finishSalonAdmin = useCallback(
+    async (selectedVertical: string) => {
+      if (!userId) return;
+      setSaving(true);
+      try {
+        const res = await fetch('/api/telegram/master-setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, vertical: selectedVertical }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { salonId?: string };
+        const target = data.salonId
+          ? `/telegram/m/salon/${data.salonId}/dashboard`
+          : '/telegram/m/home';
+        setPendingSalonRoute(target);
+      } catch {
+        setPendingSalonRoute('/telegram/m/home');
+      }
+      setDone(true);
+    },
+    [userId],
+  );
 
   // ── Step 1 handler ─────────────────────────────────────────────────────────
   const handleVerticalSelect = useCallback(
     (key: string) => {
+      // salon_admin: single step — save vertical + go to salon dashboard
+      if (role === 'salon_admin') {
+        setVertical(key);
+        finishSalonAdmin(key);
+        return;
+      }
+      // master: load default services, continue to step 2
       setVertical(key);
       const defaults = getDefaultServices(key);
       setServices(
@@ -207,7 +251,7 @@ export default function MasterOnboardingPage() {
       setDirection(1);
       setStep(2);
     },
-    [],
+    [role, finishSalonAdmin],
   );
 
   // ── Step 2 handlers ────────────────────────────────────────────────────────
@@ -255,7 +299,7 @@ export default function MasterOnboardingPage() {
     }
 
     setDone(true);
-    setTimeout(() => router.replace('/telegram/m/home'), 500);
+    // Redirect handled by the done-watcher useEffect below
   }
 
   // ── Slide animation variants ───────────────────────────────────────────────
@@ -340,13 +384,16 @@ export default function MasterOnboardingPage() {
           )}
         </div>
 
-        {/* Step dots */}
-        <StepDots current={step as 1 | 2 | 3} />
+        {/* Step dots — salon_admin has only 1 step */}
+        {role === 'salon_admin'
+          ? <StepDots current={1} total={1} />
+          : <StepDots current={step as 1 | 2 | 3} total={STEP_COUNT} />
+        }
 
         {/* Step counter */}
         <div style={{ width: 36, textAlign: 'right' }}>
           <span style={{ fontSize: 12, color: THEME.textTertiary, fontWeight: 500 }}>
-            {step}/{STEP_COUNT}
+            {step}/{role === 'salon_admin' ? 1 : STEP_COUNT}
           </span>
         </div>
       </div>

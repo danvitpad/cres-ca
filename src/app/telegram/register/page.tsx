@@ -251,16 +251,15 @@ export default function MiniAppRegisterPage() {
       setAuth(data.userId, data.role, null);
       sessionStorage.removeItem('cres:tg');
 
-      // Masters → onboarding (choose vertical + specialization + first services)
-      // Salon admins already have team context, skip onboarding
+      // Masters → full 3-step onboarding (vertical → specialization → services)
+      // Salon admins → 1-step onboarding (vertical only) → then salon dashboard
+      // Clients → home feed
       const target =
-        data.role === 'master'
+        data.role === 'master' || data.role === 'salon_admin'
           ? '/telegram/m/onboarding'
-          : data.role === 'salon_admin'
-            ? '/telegram/m/home'
-            : stash.startParam?.startsWith('master_')
-              ? `/telegram/home?master=${stash.startParam.replace('master_', '')}`
-              : '/telegram/home';
+          : stash.startParam?.startsWith('master_')
+            ? `/telegram/home?master=${stash.startParam.replace('master_', '')}`
+            : '/telegram/home';
       setPendingRoute(target);
 
       const otpRes = await fetch('/api/telegram/email-otp/send', {

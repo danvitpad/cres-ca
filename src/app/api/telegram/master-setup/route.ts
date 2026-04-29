@@ -80,5 +80,32 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  // For salon_admin — also update salons.vertical and return salonId so the
+  // onboarding page can redirect to the correct salon dashboard.
+  const { data: profileRow } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  let salonId: string | null = null;
+  if (profileRow?.role === 'salon_admin' && body.vertical) {
+    const { data: salonRow } = await admin
+      .from('salons')
+      .update({ vertical: body.vertical })
+      .eq('owner_id', userId)
+      .select('id')
+      .maybeSingle();
+    salonId = salonRow?.id ?? null;
+  } else if (profileRow?.role === 'salon_admin') {
+    // No vertical provided but still need the salonId for redirect
+    const { data: salonRow } = await admin
+      .from('salons')
+      .select('id')
+      .eq('owner_id', userId)
+      .maybeSingle();
+    salonId = salonRow?.id ?? null;
+  }
+
+  return NextResponse.json({ ok: true, salonId });
 }
