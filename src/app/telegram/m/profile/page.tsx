@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
-import { Settings, Star, Share2, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Settings, Star, Share2, Image as ImageIcon, Loader2, Users, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
@@ -44,6 +44,15 @@ interface ProfileStats {
   clients: number;
 }
 
+interface TeamMembership {
+  in_team: boolean;
+  salon_id?: string;
+  salon_name?: string | null;
+  salon_logo_url?: string | null;
+  role?: string;
+  is_owner?: boolean;
+}
+
 const TIER_LABEL: Record<string, string> = {
   trial: 'Триал',
   starter: 'Старт',
@@ -64,6 +73,63 @@ export default function MasterMiniAppProfile() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [team, setTeam] = useState<TeamMembership | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveConfirm, setLeaveConfirm] = useState(false);
+
+  function getInitData(): string | null {
+    if (typeof window === 'undefined') return null;
+    const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+    const live = w.Telegram?.WebApp?.initData;
+    if (live) return live;
+    try {
+      const stash = sessionStorage.getItem('cres:tg');
+      if (stash) {
+        const parsed = JSON.parse(stash) as { initData?: string };
+        if (parsed.initData) return parsed.initData;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  async function loadTeam() {
+    const initData = getInitData();
+    if (!initData) return;
+    try {
+      const res = await fetch('/api/telegram/m/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, action: 'status' }),
+      });
+      if (!res.ok) return;
+      const json = (await res.json()) as TeamMembership;
+      setTeam(json);
+    } catch { /* ignore */ }
+  }
+
+  async function leaveTeam() {
+    if (!team?.salon_id) return;
+    const initData = getInitData();
+    if (!initData) return;
+    setLeaving(true);
+    try {
+      const res = await fetch('/api/telegram/m/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData, action: 'leave', salonId: team.salon_id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert((json as { message?: string }).message ?? 'Не удалось выйти из команды.');
+        return;
+      }
+      haptic('success');
+      setTeam({ in_team: false });
+      setLeaveConfirm(false);
+    } finally {
+      setLeaving(false);
+    }
+  }
 
   async function uploadCroppedAvatar(blob: Blob) {
     setAvatarBusy(true);
@@ -117,7 +183,10 @@ export default function MasterMiniAppProfile() {
       if (json.subscription) setSub(json.subscription as SubInfo);
       if (json.stats) setStats(json.stats as ProfileStats);
       setLoading(false);
+      // Загружаем статус членства параллельно — не блокирует первый рендер.
+      loadTeam();
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   if (loading) {
@@ -322,6 +391,128 @@ export default function MasterMiniAppProfile() {
             <p style={{ ...TYPE.body, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>
               {master.bio}
             </p>
+          </div>
+        )}
+
+        {/* Команда — членство в салоне (если есть) */}
+        {team?.in_team && team.salon_id && (
+          <div
+            style={{
+              margin: `0 ${PAGE_PADDING_X}px`,
+              padding: 14,
+              background: T.surface,
+              border: `1px solid ${T.borderSubtle}`,
+              borderRadius: R.md,
+              boxShadow: SHADOW.card,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: T.accentSoft,
+                  color: T.accent,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  overflow: 'hidden',
+                }}
+              >
+                {team.salon_logo_url ? (
+                  <img src={team.salon_logo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <Users size={20} strokeWidth={2.2} />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...TYPE.micro, color: T.textTertiary }}>В КОМАНДЕ</div>
+                <div style={{ ...TYPE.body, color: T.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {team.salon_name ?? 'Команда'}
+                </div>
+              </div>
+            </div>
+            {!team.is_owner && team.role !== 'admin' ? (
+              leaveConfirm ? (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setLeaveConfirm(false)}
+                    disabled={leaving}
+                    style={{
+                      flex: 1,
+                      padding: '12px 14px',
+                      borderRadius: R.md,
+                      border: `1px solid ${T.border}`,
+                      background: T.surface,
+                      color: T.text,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    Остаться
+                  </button>
+                  <button
+                    type="button"
+                    onClick={leaveTeam}
+                    disabled={leaving}
+                    style={{
+                      flex: 1,
+                      padding: '12px 14px',
+                      borderRadius: R.md,
+                      border: 'none',
+                      background: '#dc2626',
+                      color: '#fff',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {leaving ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
+                    Выйти
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { haptic('light'); setLeaveConfirm(true); }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: R.md,
+                    border: `1px solid ${T.border}`,
+                    background: 'transparent',
+                    color: T.textSecondary,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <LogOut size={14} strokeWidth={2.2} />
+                  Покинуть команду
+                </button>
+              )
+            ) : (
+              <p style={{ ...TYPE.micro, margin: 0 }}>
+                Вы {team.is_owner ? 'владелец' : 'админ'} команды. Чтобы выйти — передайте роль другому или закройте команду.
+              </p>
+            )}
           </div>
         )}
 
