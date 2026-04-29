@@ -222,7 +222,7 @@ export default function MiniAppAppointmentDetail() {
         <p className="text-base font-semibold">Запись не найдена</p>
         <button
           onClick={() => router.push('/telegram/activity')}
-          className="mt-6 rounded-full border border-neutral-200 px-4 py-2 text-sm"
+          className="mt-6 rounded-[var(--brand-radius-lg)] border border-neutral-200 px-4 py-2 text-sm"
         >
           Назад
         </button>
@@ -594,7 +594,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 20, opacity: 0 }}
-            className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold shadow-2xl"
+            className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold shadow-2xl"
           >
             {toastMsg}
           </motion.div>

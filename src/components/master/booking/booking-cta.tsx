@@ -26,10 +26,10 @@ export function BookingCTA({ variant = 'hero', serviceId, children, className }:
 
   const cls =
     variant === 'hero'
-      ? 'inline-flex h-12 w-full items-center justify-center rounded-full border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.99]'
+      ? 'inline-flex h-12 w-full items-center justify-center rounded-[var(--brand-radius-lg)] border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.99]'
       : variant === 'service'
-      ? 'shrink-0 rounded-full border border-neutral-900 px-5 py-2 text-[13px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-900 hover:text-white active:scale-[0.98]'
-      : 'flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-900 text-[15px] font-semibold text-white transition-opacity hover:opacity-95 active:scale-[0.99]';
+      ? 'shrink-0 rounded-[var(--brand-radius-lg)] border border-neutral-900 px-5 py-2 text-[13px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-900 hover:text-white active:scale-[0.98]'
+      : 'flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 text-[15px] font-semibold text-white transition-opacity hover:opacity-95 active:scale-[0.99]';
 
   return (
     <button

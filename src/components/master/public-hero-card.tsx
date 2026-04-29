@@ -101,7 +101,7 @@ export function PublicHeroCard({
       <div className="text-center">
         {/* Бейдж салона/команды — только когда это публичка владельца салона */}
         {salonContext && teamLabel && (
-          <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
+          <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-white">
             <Building2 className="size-3" />
             {teamLabel}
           </div>

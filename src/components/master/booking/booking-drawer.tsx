@@ -430,7 +430,7 @@ export function BookingDrawer({ master, services, open, onClose, defaultServiceI
                     (step === 'services' && !selectedService) ||
                     (step === 'time' && !selectedTime)
                   }
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
                 >
                   {submitting ? (
                     <>
@@ -773,7 +773,7 @@ function DoneStep({
       <button
         type="button"
         onClick={onClose}
-        className="mt-8 inline-flex h-12 min-w-[200px] items-center justify-center rounded-full bg-neutral-900 px-6 text-[15px] font-semibold text-white"
+        className="mt-8 inline-flex h-12 min-w-[200px] items-center justify-center rounded-[var(--brand-radius-lg)] bg-neutral-900 px-6 text-[15px] font-semibold text-white"
       >
         Готово
       </button>
@@ -857,7 +857,7 @@ function CartPanel({
           type="button"
           onClick={onContinue}
           disabled={!canContinue || submitting}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 text-[15px] font-semibold text-white disabled:opacity-40"
         >
           {submitting ? (
             <>

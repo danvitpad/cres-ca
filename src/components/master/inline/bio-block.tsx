@@ -157,7 +157,7 @@ function BioSheet({
               type="button"
               onClick={onSave}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Сохранить

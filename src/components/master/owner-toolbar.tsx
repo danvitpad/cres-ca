@@ -94,7 +94,7 @@ export function OwnerToolbar({ masterProfileId }: { masterProfileId: string | nu
         <button
           type="button"
           onClick={goBack}
-          className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur transition-all hover:bg-white ring-1 ring-black/5"
+          className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-white/95 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur transition-all hover:bg-white ring-1 ring-black/5"
           style={{ pointerEvents: 'auto' }}
           title="Вернуться в кабинет"
         >
@@ -104,7 +104,7 @@ export function OwnerToolbar({ masterProfileId }: { masterProfileId: string | nu
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-foreground/95 px-3 py-2 text-sm font-semibold text-background shadow-lg backdrop-blur transition-all hover:bg-foreground"
+          className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-foreground/95 px-3 py-2 text-sm font-semibold text-background shadow-lg backdrop-blur transition-all hover:bg-foreground"
           style={{ pointerEvents: 'auto' }}
           title="Открыть редактор страницы"
         >

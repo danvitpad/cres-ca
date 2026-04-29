@@ -97,10 +97,10 @@ export function SalonInlineCoverBanner({ salonId, salonOwnerId, initialCoverUrl 
       title="Обложка салона"
       footer={
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => setOpen(false)} className="rounded-full border border-neutral-200 px-5 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50">
+          <button type="button" onClick={() => setOpen(false)} className="rounded-[var(--brand-radius-lg)] border border-neutral-200 px-5 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50">
             Отмена
           </button>
-          <button type="button" onClick={save} disabled={saving} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
+          <button type="button" onClick={save} disabled={saving} className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
             {saving && <Loader2 className="size-3.5 animate-spin" />}
             Сохранить
           </button>
@@ -141,7 +141,7 @@ export function SalonInlineCoverBanner({ salonId, salonOwnerId, initialCoverUrl 
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-neutral-900 hover:bg-neutral-50 disabled:opacity-50"
+          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-neutral-900 hover:bg-neutral-50 disabled:opacity-50"
         >
           <ImagePlus className="size-4" />
           {draftUrl ? 'Заменить фото' : 'Загрузить фото'}
@@ -150,7 +150,7 @@ export function SalonInlineCoverBanner({ salonId, salonOwnerId, initialCoverUrl 
           <button
             type="button"
             onClick={() => setDraftUrl(null)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-rose-700 hover:bg-rose-50"
+            className="inline-flex items-center justify-center gap-1.5 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-rose-700 hover:bg-rose-50"
           >
             <Trash2 className="size-4" />
             Убрать

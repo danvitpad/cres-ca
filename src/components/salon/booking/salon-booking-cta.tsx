@@ -31,7 +31,7 @@ export function SalonBookingCTA({ variant, masterId, label, className }: Props) 
         type="button"
         onClick={() => open({ masterId: masterId ?? null })}
         className={
-          'inline-flex h-12 w-full items-center justify-center rounded-full border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 ' +
+          'inline-flex h-12 w-full items-center justify-center rounded-[var(--brand-radius-lg)] border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 ' +
           (className ?? '')
         }
       >
@@ -47,7 +47,7 @@ export function SalonBookingCTA({ variant, masterId, label, className }: Props) 
         type="button"
         onClick={() => open({ masterId: masterId ?? null })}
         className={
-          'flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 px-6 py-3 text-[15px] font-semibold text-white ' +
+          'flex w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-6 py-3 text-[15px] font-semibold text-white ' +
           (className ?? '')
         }
       >
@@ -66,7 +66,7 @@ export function SalonBookingCTA({ variant, masterId, label, className }: Props) 
         open({ masterId: masterId ?? null });
       }}
       className={
-        'inline-flex items-center gap-1 rounded-full border border-neutral-900 bg-white px-3 py-1.5 text-[12px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 ' +
+        'inline-flex items-center gap-1 rounded-[var(--brand-radius-lg)] border border-neutral-900 bg-white px-3 py-1.5 text-[12px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 ' +
         (className ?? '')
       }
     >

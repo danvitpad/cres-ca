@@ -122,10 +122,10 @@ function BioSheet({
         <div className="flex items-center justify-between gap-3">
           <p className="text-[12px] text-neutral-500">{draft.length} / 600</p>
           <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="rounded-full border border-neutral-200 px-5 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50">
+            <button type="button" onClick={onClose} className="rounded-[var(--brand-radius-lg)] border border-neutral-200 px-5 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50">
               Отмена
             </button>
-            <button type="button" onClick={onSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
+            <button type="button" onClick={onSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50">
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Сохранить
             </button>

@@ -203,7 +203,7 @@ export function SalonJoinRequestCard({
               <button
                 type="button"
                 onClick={() => { setExisting(null); setShowForm(true); }}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-neutral-900 bg-white px-4 py-1.5 text-[13px] font-semibold text-neutral-900 hover:bg-neutral-50"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] border border-neutral-900 bg-white px-4 py-1.5 text-[13px] font-semibold text-neutral-900 hover:bg-neutral-50"
               >
                 Запросить заново
               </button>
@@ -251,7 +251,7 @@ export function SalonJoinRequestCard({
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-neutral-800"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white hover:bg-neutral-800"
             >
               Запросить вступление
             </button>
@@ -290,7 +290,7 @@ export function SalonJoinRequestCard({
             type="button"
             onClick={submit}
             disabled={submitting}
-            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
           >
             {submitting ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
             Отправить заявку

@@ -43,7 +43,7 @@ export function AddBlockCard({ title, description, icon, onClick, className }: A
     >
       <div className="flex items-center gap-4">
         <div
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white transition-transform group-hover:scale-105 dark:bg-neutral-100 dark:text-neutral-900"
+          className="flex size-12 shrink-0 items-center justify-center rounded-[var(--brand-radius-lg)] bg-neutral-900 text-white transition-transform group-hover:scale-105 dark:bg-neutral-100 dark:text-neutral-900"
         >
           {icon ?? <Plus className="size-5" />}
         </div>

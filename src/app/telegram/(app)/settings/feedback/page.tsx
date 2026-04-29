@@ -77,7 +77,7 @@ export default function ClientMiniAppFeedbackPage() {
               setText('');
               setSent(false);
             }}
-            className="mt-6 rounded-full border border-neutral-200 bg-neutral-50 px-4 py-2 text-[12px] font-semibold text-neutral-800 active:bg-neutral-100"
+            className="mt-6 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-neutral-50 px-4 py-2 text-[12px] font-semibold text-neutral-800 active:bg-neutral-100"
           >
             Написать ещё
           </button>

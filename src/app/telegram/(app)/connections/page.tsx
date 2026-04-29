@@ -385,7 +385,7 @@ function EmptyState({
       <p className="mt-1.5 max-w-[280px] text-[12px] leading-relaxed text-neutral-500">{desc}</p>
       <Link
         href={ctaHref}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[12px] font-semibold text-black active:bg-white/80 transition-colors"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-white px-4 py-2 text-[12px] font-semibold text-black active:bg-white/80 transition-colors"
       >
         <SearchIcon className="size-3.5" />
         {ctaLabel}

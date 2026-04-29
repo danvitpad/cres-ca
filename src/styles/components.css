@@ -519,7 +519,7 @@ html.dark .landing-v6 {
   justify-content: center;
   gap: 8px;
   padding: 14px 32px;
-  border-radius: 9999px;
+  border-radius: var(--brand-radius-lg);
   font-family: var(--lf);
   font-size: 16px;
   font-weight: 600;

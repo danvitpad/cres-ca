@@ -516,7 +516,7 @@ function RequestRow({
             type="button"
             onClick={() => decide('approve')}
             disabled={busy !== null}
-            className="inline-flex items-center gap-1 rounded-full bg-neutral-900 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
           >
             {busy === 'approve' ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
             Принять
@@ -829,7 +829,7 @@ function InviteSearchSheet({
                 type="button"
                 onClick={send}
                 disabled={submitting}
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
                 Отправить приглашение
@@ -1020,7 +1020,7 @@ function SettingsTab({
             type="button"
             onClick={saveMessage}
             disabled={savingMsg}
-            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-4 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
           >
             {savingMsg && <Loader2 className="size-3 animate-spin" />}
             Сохранить

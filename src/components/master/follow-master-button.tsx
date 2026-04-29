@@ -85,7 +85,7 @@ export function FollowMasterButton({ masterId, accent = 'var(--ds-accent, var(--
       onClick={onClick}
       disabled={isFollowing === null || pending}
       aria-pressed={!!isFollowing}
-      className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-5 py-3 text-sm font-medium text-neutral-700 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
+      className="inline-flex items-center gap-2 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-5 py-3 text-sm font-medium text-neutral-700 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
       style={isFollowing ? { color: accent, borderColor: accent } : undefined}
     >
       <Heart

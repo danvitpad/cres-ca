@@ -193,7 +193,7 @@ export default function ClientMiniAppNotifications() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-full border border-neutral-200 bg-white border-neutral-200 px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
+            className="rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white border-neutral-200 px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
           >
             Прочитать всё
           </button>
