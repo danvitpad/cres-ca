@@ -472,7 +472,9 @@ export default function MiniAppRegisterPage() {
             errMonth={t.dobMonthErr} errYear={t.dobYearErr}
             errDay={t.dobDayErr} errFuture={t.dobFutureErr} />
           <Field icon={Phone} label={t.phone} value={phone} onChange={setPhone}
-            placeholder="+380 ..." inputMode="tel" type="tel" />
+            inputMode="tel" type="tel"
+            onFocus={() => { if (!phone.trim()) setPhone('+380 '); }}
+            onBlur={() => { if (phone.trim() === '+380') setPhone(''); }} />
           <Field icon={Mail} label={t.email} value={email} onChange={setEmail}
             inputMode="email" type="email" />
           <Field icon={Lock} label={t.password} value={password} onChange={setPassword}
@@ -690,6 +692,7 @@ function DobField({
 
 function Field({
   icon: Icon, label, value, onChange, placeholder, inputMode, type = 'text',
+  onFocus, onBlur,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -698,6 +701,8 @@ function Field({
   placeholder?: string;
   inputMode?: 'tel' | 'email' | 'text' | 'numeric';
   type?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) {
   return (
     <div className="space-y-1">
@@ -717,6 +722,8 @@ function Field({
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
           inputMode={inputMode}
           type={type}

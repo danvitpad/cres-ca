@@ -671,11 +671,11 @@ export default function AuthPage() {
                                   type="tel" inputMode="tel"
                                   value={phone}
                                   onChange={e => {
-                                    // Разрешаем «+», цифры, пробелы и тире — формат свободный, нормализуем при сабмите.
                                     const cleaned = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 20);
                                     setPhone(cleaned);
                                   }}
-                                  placeholder="+380 50 123 4567"
+                                  onFocus={() => { if (!phone.trim()) setPhone('+380 '); }}
+                                  onBlur={() => { if (phone.trim() === '+380') setPhone(''); }}
                                   className="glass-input"
                                   required
                                 />
