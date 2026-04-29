@@ -129,6 +129,26 @@ export default function MiniAppWelcomePage() {
     }
   }, [setTheme]);
 
+  // Перекрашиваем шапку и низ TG в наш цвет фона при каждой смене темы —
+  // иначе остаётся синяя полоска TG, не совпадающая с нашим #141417/#ffffff.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !mounted) return;
+    const tg = (window as {
+      Telegram?: {
+        WebApp?: {
+          setHeaderColor?: (c: string) => void;
+          setBackgroundColor?: (c: string) => void;
+          setBottomBarColor?: (c: string) => void;
+        };
+      };
+    }).Telegram?.WebApp;
+    if (!tg) return;
+    const bg = resolvedTheme === 'dark' ? '#141417' : '#ffffff';
+    try { tg.setHeaderColor?.(bg); } catch {}
+    try { tg.setBackgroundColor?.(bg); } catch {}
+    try { tg.setBottomBarColor?.(bg); } catch {}
+  }, [resolvedTheme, mounted]);
+
   useEffect(() => {
     const raw = sessionStorage.getItem('cres:tg');
     if (!raw) {
