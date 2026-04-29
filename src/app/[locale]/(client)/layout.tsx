@@ -37,6 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { ClientOnboardingWizard } from '@/components/client/onboarding-wizard';
+import { InactivityLogout } from '@/components/auth/inactivity-logout';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { cn } from '@/lib/utils';
 
@@ -761,6 +762,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         onClose={() => setOnboardingOpen(false)}
         initial={onboardingInitial}
       />
+      <InactivityLogout />
     </div>
     </ConfirmProvider>
   );

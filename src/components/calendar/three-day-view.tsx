@@ -34,7 +34,7 @@ const LIGHT = {
 
 const DARK = {
   pageBg: '#141417',
-  nonWorkingBg: '#0f1120',
+  nonWorkingBg: '#0e0e10',
   gridBorder: 'rgba(45,212,191,0.1)',
   gridBorderSub: 'rgba(45,212,191,0.05)',
   text: '#fafafa',

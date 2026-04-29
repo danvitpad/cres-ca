@@ -34,6 +34,7 @@ import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, BarChart3 } fr
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
+import { InactivityLogout } from '@/components/auth/inactivity-logout';
 import { ReminderPopup } from '@/components/reminders/reminder-popup';
 import { F_LIGHT, F_DARK, type FTheme } from '@/lib/dashboard-theme';
 import { useNotifications } from '@/hooks/use-notifications';
@@ -342,6 +343,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <OnboardingDialog />
         <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
         <DashboardRealtimeToasts />
+        <InactivityLogout />
         <ReminderPopup />
       </div>
     </ConfirmProvider>

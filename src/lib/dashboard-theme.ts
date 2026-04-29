@@ -31,7 +31,7 @@ export const F_LIGHT = {
 } as const;
 
 export const F_DARK = {
-  headerBg: '#0e1020',
+  headerBg: '#0f0f12',
   headerBorder: '#1f1f22',
   sidebarBg: '#0f0f12',
   sidebarBorder: '#27272a',
