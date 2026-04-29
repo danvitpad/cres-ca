@@ -75,12 +75,10 @@ export default function MasterMiniAppSettings() {
     } catch { /* ignore */ }
 
     clearAuth();
-    try {
-      sessionStorage.removeItem('cres:tg');
-    } catch { /* ignore */ }
-
-    // Hard reload to /telegram (clean session, fresh auth check)
-    window.location.replace('/telegram');
+    // NB: keep cres:tg so welcome page works without bouncing through /telegram
+    // (which would re-auth via Telegram initData and bring user right back to home).
+    // Welcome screen is the natural «logged out» state inside a TG Mini App.
+    window.location.replace('/telegram/welcome');
   }
 
   return (
