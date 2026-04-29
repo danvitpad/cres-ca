@@ -136,6 +136,13 @@ export default function ClientSettingsPage() {
 
   function switchLocale(next: string) {
     if (next === locale || !pathname) return;
+    // Сохраняем выбор в профиле — чтобы Mini App и web-сессии подхватили
+    // тот же язык. Ошибки сети не блокируют переключение URL.
+    fetch('/api/me/ui-prefs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ui_language: next }),
+    }).catch(() => {});
     const segs = pathname.split('/');
     segs[1] = next;
     router.replace(segs.join('/'));

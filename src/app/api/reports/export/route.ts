@@ -10,6 +10,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { createClient } from '@/lib/supabase/server';
+import { registerCyrillicFont } from '@/lib/pdf/font';
 
 interface PaymentRow {
   id: string;
@@ -152,59 +153,63 @@ export async function GET(req: Request) {
 
   // PDF
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-  doc.setFont('helvetica', 'bold');
+  // Подключаем PTSans (Cyrillic). Если файл шрифта недоступен —
+  // упадём на helvetica и тексты на русском станут крякозябрами,
+  // но мы хотя бы не упадём целиком.
+  const FONT = registerCyrillicFont(doc);
+  doc.setFont(FONT, 'bold');
   doc.setFontSize(20);
   doc.text('CRES-CA', 40, 50);
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(FONT, 'normal');
   doc.text(masterName, 40, 68);
 
   doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Financial report', 40, 110);
+  doc.setFont(FONT, 'bold');
+  doc.text('Финансовый отчёт', 40, 110);
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Period: ${from} — ${to}`, 40, 128);
+  doc.setFont(FONT, 'normal');
+  doc.text(`Период: ${from} — ${to}`, 40, 128);
 
   autoTable(doc, {
     startY: 150,
-    head: [['Metric', 'Value']],
+    head: [['Показатель', 'Значение']],
     body: [
-      ['Revenue', `${revenue.toFixed(2)} ${currency}`],
-      ['Expenses', `${expenseTotal.toFixed(2)} ${currency}`],
-      ['Profit', `${profit.toFixed(2)} ${currency}`],
+      ['Выручка', `${revenue.toFixed(2)} ${currency}`],
+      ['Расходы', `${expenseTotal.toFixed(2)} ${currency}`],
+      ['Прибыль', `${profit.toFixed(2)} ${currency}`],
     ],
-    headStyles: { fillColor: [15, 16, 17], textColor: 255 },
-    styles: { fontSize: 11, cellPadding: 6 },
+    headStyles: { fillColor: [15, 16, 17], textColor: 255, font: FONT, fontStyle: 'bold' },
+    styles: { fontSize: 11, cellPadding: 6, font: FONT },
     theme: 'grid',
   });
 
   type DocWithY = jsPDF & { lastAutoTable: { finalY: number } };
   let y = (doc as DocWithY).lastAutoTable.finalY + 24;
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(FONT, 'bold');
   doc.setFontSize(12);
-  doc.text('Income', 40, y);
+  doc.text('Доходы', 40, y);
   y += 10;
   autoTable(doc, {
     startY: y,
-    head: [['Date', 'Service', 'Amount']],
+    head: [['Дата', 'Услуга', 'Сумма']],
     body: payRows.map((p) => [p.created_at.slice(0, 10), extractServiceName(p), `${Number(p.amount).toFixed(2)} ${p.currency}`]),
-    headStyles: { fillColor: [15, 16, 17], textColor: 255 },
-    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [15, 16, 17], textColor: 255, font: FONT, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 4, font: FONT },
     theme: 'grid',
   });
 
   y = (doc as DocWithY).lastAutoTable.finalY + 24;
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(FONT, 'bold');
   doc.setFontSize(12);
-  doc.text('Expenses', 40, y);
+  doc.text('Расходы', 40, y);
   y += 10;
   autoTable(doc, {
     startY: y,
-    head: [['Date', 'Category', 'Description', 'Amount']],
+    head: [['Дата', 'Категория', 'Описание', 'Сумма']],
     body: expRows.map((e) => [e.date, e.category ?? '—', e.description ?? '', `${Number(e.amount).toFixed(2)} ${e.currency}`]),
-    headStyles: { fillColor: [15, 16, 17], textColor: 255 },
-    styles: { fontSize: 9, cellPadding: 4 },
+    headStyles: { fillColor: [15, 16, 17], textColor: 255, font: FONT, fontStyle: 'bold' },
+    styles: { fontSize: 9, cellPadding: 4, font: FONT },
     theme: 'grid',
   });
 

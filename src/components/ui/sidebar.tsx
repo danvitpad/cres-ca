@@ -175,9 +175,10 @@ export function SessionNavBar({
     return (
       <div
         className={cn(
-          'flex h-10 w-full flex-row items-center rounded-md px-2 py-2 hover:bg-muted hover:text-primary',
-          active && 'bg-muted text-blue-600',
+          'flex h-10 w-full flex-row items-center rounded-md px-2 py-2 hover:bg-muted',
+          active && 'bg-muted',
         )}
+        style={active ? { color: 'var(--color-accent-text)' } : undefined}
       >
         <Icon className="shrink-0" style={iconStyle} />
         <div className="ml-3 flex items-center gap-2 overflow-hidden">
@@ -185,7 +186,8 @@ export function SessionNavBar({
           {item.badge != null && item.badge !== false && (
             <Badge
               variant="outline"
-              className="flex h-fit w-fit items-center gap-1.5 rounded border-none bg-blue-50 px-1.5 text-blue-600 dark:bg-blue-700 dark:text-blue-300"
+              className="flex h-fit w-fit items-center gap-1.5 rounded border-none px-1.5"
+              style={{ background: 'color-mix(in oklab, var(--color-accent) 14%, transparent)', color: 'var(--color-accent-text)' }}
             >
               {item.badge}
             </Badge>

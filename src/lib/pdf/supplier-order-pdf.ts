@@ -14,6 +14,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import fs from 'node:fs';
 import path from 'node:path';
+import { registerCyrillicFont } from '@/lib/pdf/font';
 
 export interface SupplierOrderItem {
   name: string;
@@ -43,8 +44,6 @@ export interface SupplierOrderPDFInput {
   /** Публичный язык мастера — определяет все надписи в PDF. Default 'ru'. */
   language?: PublicLanguage;
 }
-
-const FONT_NAME = 'PTSans';
 
 const STRINGS: Record<PublicLanguage, {
   orderNumber: string;
@@ -139,35 +138,6 @@ function loadLogoBase64(): string | null {
   }
 }
 
-/** Cache font bytes (read once per cold start) */
-let _fontCache: string | null = null;
-function loadFontBase64(): string | null {
-  if (_fontCache !== null) return _fontCache;
-  try {
-    const p = path.join(process.cwd(), 'public', 'fonts', 'PTSans-Regular.ttf');
-    const buf = fs.readFileSync(p);
-    _fontCache = buf.toString('base64');
-    return _fontCache;
-  } catch {
-    _fontCache = '';
-    return null;
-  }
-}
-
-/** Register Cyrillic-capable font if available; return the font name to use. */
-function registerFont(doc: jsPDF): string {
-  const base64 = loadFontBase64();
-  if (!base64) return 'helvetica';
-  try {
-    doc.addFileToVFS('PTSans-Regular.ttf', base64);
-    doc.addFont('PTSans-Regular.ttf', FONT_NAME, 'normal');
-    doc.addFont('PTSans-Regular.ttf', FONT_NAME, 'bold');
-    return FONT_NAME;
-  } catch {
-    return 'helvetica';
-  }
-}
-
 const SUPPORT_TG = 'https://t.me/cres_ca_bot?start=support';
 const SITE_URL = 'cres-ca.com';
 
@@ -178,7 +148,7 @@ export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array 
   const lang: PublicLanguage = input.language ?? 'ru';
   const S = STRINGS[lang];
 
-  const font = registerFont(doc);
+  const font = registerCyrillicFont(doc);
 
   const marginLeft = 40;
   const marginRight = 40;

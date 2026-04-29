@@ -51,6 +51,7 @@ import {
 import { useConfirm } from '@/hooks/use-confirm';
 import type { VerticalKey } from '@/lib/verticals/default-services';
 import { useFeatures } from '@/hooks/use-features';
+import { useUiPrefs } from '@/hooks/use-ui-prefs';
 import { motion } from 'framer-motion';
 import { humanizeError } from '@/lib/format/error';
 
@@ -409,6 +410,14 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
             placeholder="Коротко о себе и услугах (публично)"
           />
         </SettingsField>
+      </SettingsBlock>
+
+      <SettingsBlock
+        title="Язык интерфейса"
+        subtitle="На каком языке для тебя показываются меню, кнопки и тексты в системе. Сохраняется и подхватывается на телефоне (Mini App)."
+        C={C}
+      >
+        <UiLanguagePicker C={C} />
       </SettingsBlock>
 
       <SettingsBlock
@@ -1574,5 +1583,23 @@ function LoyaltyTab({
         </SettingsButton>
       </div>
     </div>
+  );
+}
+
+
+function UiLanguagePicker({ C }: { C: ReturnType<typeof usePageTheme>["C"] }) {
+  const { prefs, loaded, updateLanguage } = useUiPrefs();
+  if (!loaded) return null;
+  return (
+    <SettingsSegmented
+      value={prefs.language}
+      onChange={updateLanguage}
+      options={[
+        { value: "ru", label: "Русский" },
+        { value: "uk", label: "Українська" },
+        { value: "en", label: "English" },
+      ]}
+      C={C}
+    />
   );
 }

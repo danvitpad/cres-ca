@@ -516,11 +516,25 @@ function CreateBusinessWizard() {
     setAddressResults([]);
   };
 
-  const handleMapMove = (lat: number, lng: number) => {
+  const handleMapMove = async (lat: number, lng: number) => {
     setMapCenter([lat, lng]);
+    // Сразу подменим координаты, чтобы запись не зависла на старых
     if (selectedAddress) {
       setSelectedAddress({ ...selectedAddress, lat: String(lat), lon: String(lng) });
     }
+    // Reverse geocoding — Nominatim вернёт точную улицу/дом по pin'у,
+    // чтобы строка адреса соответствовала тому, куда мастер фактически указал.
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'Accept-Language': 'ru' } }
+      );
+      const data = (await res.json()) as { display_name?: string; lat?: string; lon?: string };
+      if (data.display_name) {
+        setSelectedAddress({ display_name: data.display_name, lat: String(lat), lon: String(lng) });
+        setAddress(data.display_name);
+      }
+    } catch { /* сетевая ошибка — оставляем уже подменённые координаты */ }
   };
 
   // Suppress unused var warning
@@ -591,9 +605,9 @@ function CreateBusinessWizard() {
               <StepWrapper key="step1">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                  {`Как называется ${copy.businessNomPossessive}?`}
+                  {userRole === 'master' ? 'Как тебя зовут?' : `Как называется ${copy.businessNomPossessive}?`}
                 </h1>
-                <p className="mt-2 text-muted-foreground">{t('businessNameDesc')}</p>
+                <p className="mt-2 text-muted-foreground">{userRole === 'master' ? 'Имя, которое будут видеть клиенты на твоей странице.' : t('businessNameDesc')}</p>
 
                 <div className="mt-8 space-y-5">
                   {/* Cover + avatar uploaders */}
@@ -666,7 +680,7 @@ function CreateBusinessWizard() {
                   <div className="h-6" />
 
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">{t('businessName')}</label>
+                    <label className="text-sm font-medium">{userRole === 'master' ? 'Имя' : t('businessName')}</label>
                     <input
                       type="text"
                       value={businessName}
