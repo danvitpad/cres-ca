@@ -73,6 +73,19 @@ export async function POST(request: Request) {
     });
   } catch { /* не критично */ }
 
+  // ── Бета-гейт: помечаем заявку использованной + выдаём 6 мес business
+  // (если пользователь зарегистрировался по бета-приглашению)
+  try {
+    const adminDb2 = adminDb();
+    await adminDb2.rpc('consume_beta_invite', {
+      p_profile_id: user.id,
+      p_email: user.email ?? null,
+      p_telegram_id: null,
+    });
+  } catch (e) {
+    console.error('[complete-profile] consume_beta_invite failed (non-blocking):', e);
+  }
+
   // Узнаём роль и возвращаем next URL.
   const { data: profile } = await supabase
     .from('profiles')

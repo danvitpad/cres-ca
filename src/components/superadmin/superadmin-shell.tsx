@@ -18,6 +18,7 @@ import {
   MessageSquare,
   TrendingUp,
   Settings,
+  Rocket,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/superadmin/dashboard', label: 'Дашборд', icon: LayoutDashboard },
   { href: '/superadmin/users', label: 'Пользователи', icon: Users },
+  { href: '/superadmin/beta', label: 'Бета-тестировщики', icon: Rocket },
   { href: '/superadmin/subscriptions', label: 'Подписки', icon: CreditCard },
   { href: '/superadmin/whitelist', label: 'Whitelist', icon: Star },
   { href: '/superadmin/blacklist', label: 'Blacklist', icon: Ban },

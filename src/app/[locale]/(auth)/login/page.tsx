@@ -399,6 +399,29 @@ export default function AuthPage() {
     }
 
     setLoading(true);
+
+    // ── Бета-гейт: проверяем разрешение до supabase.auth.signUp ──
+    try {
+      const gateRes = await fetch('/api/auth/check-signup-allowed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const gate = await gateRes.json().catch(() => ({}));
+      if (!gate?.allowed) {
+        setLoading(false);
+        const localeForRedirect = (typeof window !== 'undefined' && window.location.pathname.match(/^\/(ru|en|uk)\b/)?.[1]) || 'ru';
+        router.push(`/${localeForRedirect}/beta-closed`);
+        return;
+      }
+    } catch (e) {
+      // Сетевая ошибка — fail-closed, не пускаем
+      console.error('[signup] gate check failed:', e);
+      setLoading(false);
+      toast.error('Не удалось проверить доступ. Попробуйте ещё раз.');
+      return;
+    }
+
     const supabase = createClient();
     const personalFullName = [lastName.trim(), firstName.trim()]
       .filter(Boolean)

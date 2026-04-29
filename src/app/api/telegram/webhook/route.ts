@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { sendMessage } from '@/lib/telegram/bot';
 import { parseVoiceIntent, downloadTelegramFile, type VoiceIntent } from '@/lib/ai/gemini-voice';
+import { notifySuperadmin } from '@/lib/notifications/superadmin-notify';
 
 function createServiceClient() {
   return createSupabaseClient(
@@ -119,6 +120,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // ── Beta request: пользователь ответил на запрос почты ──
+  // Бот просил почту с тегом [beta_email]. Ловим ответ, сохраняем заявку,
+  // уведомляем супер-админа.
+  if (update.message.reply_to_message?.text?.includes('[beta_email]')) {
+    await handleBetaEmailReply(chatId, telegramId, text, firstName);
+    return NextResponse.json({ ok: true });
+  }
+
   // ── Review comment via force_reply ──
   // The earlier callback (review:<apt_id>:<stars>) sent a force_reply prompt
   // tagged with [review:<apt_id>]. When the user replies, we attach the text
@@ -160,20 +169,41 @@ export async function POST(request: Request) {
     } else if (param?.startsWith('master_')) {
       const inviteCode = param.replace('master_', '');
       await handleMasterLink(chatId, telegramId, inviteCode, firstName);
+    } else if (param === 'beta') {
+      // Deep-link с beta-closed страницы — сразу запускаем beta-flow
+      await handleBetaRequestStart(chatId, telegramId, firstName);
     } else {
       await sendMessage(
         chatId,
-        `👋 Добро пожаловать в <b>CRES-CA</b>, ${firstName}!\n\nНайди лучших мастеров, записывайся в пару тапов и получай бонусы.\n\n🎤 <b>Отправь голосовое сообщение</b> — я пойму и создам напоминание, запись или заметку.\n\nОткрой приложение, чтобы начать:`,
+        `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nСервис сейчас в стадии бета-тестирования. Открой приложение, если ты уже бета-тестировщик. Если нет — напиши «Хочу попасть в бета» и я возьму твою заявку.`,
         {
           parse_mode: 'HTML',
           reply_markup: {
-            inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: appUrl } }]],
+            inline_keyboard: [[{ text: 'Открыть CRES-CA', web_app: { url: appUrl } }]],
           },
         },
       );
     }
 
     return NextResponse.json({ ok: true });
+  }
+
+  // ── Beta keyword detection ──
+  // Если пользователь написал что-то про «опробовать / попробовать / тестировать /
+  // бета» и НЕ зарегистрирован — запускаем beta-flow.
+  if (/(хочу|хочется|можно)\s.{0,20}?(опробов|попробов|потестир|тестир|посмотр).{0,20}?(сайт|сервис|продукт|систем|app|приложен)/i.test(text)
+      || /^(бета|beta)\b/i.test(text)
+      || /попасть\s.{0,10}?(в\s+)?бет/i.test(text)) {
+    const supabase = createServiceClient();
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('telegram_id', telegramId)
+      .maybeSingle();
+    if (!existingProfile) {
+      await handleBetaRequestStart(chatId, telegramId, firstName, text);
+      return NextResponse.json({ ok: true });
+    }
   }
 
   // /find [query] — AI concierge search for a master
@@ -2040,4 +2070,94 @@ async function handleRebookDecline(chatId: number, telegramId: number, suggestio
     .eq('id', row.id);
 
   await sendMessage(chatId, '👌 Хорошо, напишу позже. Если захочешь записаться сама — просто открой приложение.');
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// Beta gate handlers
+// ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Запускает flow заявки в бета: создаёт `pending` запись (или находит
+ * существующую) и просит почту через force_reply с тегом [beta_email].
+ */
+async function handleBetaRequestStart(
+  chatId: number,
+  telegramId: number,
+  firstName: string,
+  rawText?: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Создаём (или обновляем) заявку без email пока
+  await supabase.rpc('create_beta_request', {
+    p_telegram_id: telegramId,
+    p_email: null,
+    p_full_name: firstName,
+    p_request_text: rawText ?? null,
+  });
+
+  await sendMessage(
+    chatId,
+    `Привет, ${firstName}.\n\n` +
+    `Сервис CRES-CA сейчас в закрытом бета-тестировании. Чтобы добавить тебя в список — пришли в ответ на это сообщение свою <b>почту</b>.\n\n` +
+    `Когда мы тебя одобрим, я напишу тебе тут же. На время бета и ещё 6 месяцев после релиза — <b>полный функционал бесплатно</b>.\n\n` +
+    `<i>[beta_email]</i>`,
+    {
+      parse_mode: 'HTML',
+      reply_markup: { force_reply: true, input_field_placeholder: 'your@email.com' },
+    },
+  );
+}
+
+/**
+ * Обрабатывает ответ пользователя с почтой. Сохраняет в beta_invites,
+ * шлёт уведомление Данилу в @crescasuperadmin_bot, благодарит юзера.
+ */
+async function handleBetaEmailReply(
+  chatId: number,
+  telegramId: number,
+  text: string,
+  firstName: string,
+): Promise<void> {
+  const email = text.trim().toLowerCase();
+  // Простая email валидация
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+    await sendMessage(chatId, 'Это не похоже на почту. Пришли в формате <b>name@domain.com</b>.', {
+      parse_mode: 'HTML',
+      reply_markup: { force_reply: true, input_field_placeholder: 'your@email.com' },
+    });
+    // Подмешиваем тег обратно — чтобы следующий ответ снова поймать
+    await sendMessage(chatId, '<i>[beta_email]</i>', { parse_mode: 'HTML' });
+    return;
+  }
+
+  const supabase = createServiceClient();
+  const { data: id } = await supabase.rpc('create_beta_request', {
+    p_telegram_id: telegramId,
+    p_email: email,
+    p_full_name: firstName,
+    p_request_text: null,
+  });
+
+  await sendMessage(
+    chatId,
+    `Спасибо, ${firstName}. Заявка принята — мы пришлём сообщение, когда одобрим.\n\n` +
+    `Обычно отвечаем в течение суток.`,
+    { parse_mode: 'HTML' },
+  );
+
+  // Уведомление Данилу в @crescasuperadmin_bot
+  await notifySuperadmin(
+    `<b>Новая заявка на бета</b>\n\n` +
+    `<b>Имя:</b> ${firstName}\n` +
+    `<b>Email:</b> ${email}\n` +
+    `<b>Telegram ID:</b> <code>${telegramId}</code>\n` +
+    `<b>Заявка ID:</b> <code>${id ?? '—'}</code>`,
+    {
+      parseMode: 'HTML',
+      buttons: [
+        [{ text: 'Открыть в админке', url: `${process.env.NEXT_PUBLIC_APP_URL}/ru/superadmin/beta` }],
+      ],
+    },
+  );
 }

@@ -107,6 +107,37 @@ export async function POST(request: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
+  // ── Бета-гейт (Шаг 1 release plan) ────────────────────────────────────
+  // Если public_signup_open=false и (email + tg_id) нет в одобренной бете —
+  // отказываем. RPC sзекьюрно: если RPC упадёт, возвращает allowed=false (fail-closed).
+  // Existing users (byTg / byPhone) пропускаются дальше — они УЖЕ были созданы,
+  // мы только обновляем их данные.
+  // ──────────────────────────────────────────────────────────────────────
+  // Если уже есть профиль с этим tg_id — это re-login, не блокируем.
+  const { data: existingByTg } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('telegram_id', tg.id)
+    .maybeSingle();
+
+  if (!existingByTg) {
+    const { data: gateResult, error: gateErr } = await admin.rpc('is_signup_allowed', {
+      p_email: email.trim().toLowerCase(),
+      p_telegram_id: tg.id,
+    });
+    if (gateErr) {
+      console.error('[telegram/register] gate rpc failed:', gateErr);
+      return NextResponse.json({ error: 'gate_check_failed' }, { status: 500 });
+    }
+    const result = gateResult as { allowed?: boolean; reason?: string } | null;
+    if (!result?.allowed) {
+      return NextResponse.json(
+        { error: 'beta_closed', reason: result?.reason ?? 'closed_no_match' },
+        { status: 403 },
+      );
+    }
+  }
+
   const personalName =
     fullNameOverride?.trim() ||
     [firstName, middleName, lastName]
@@ -253,6 +284,18 @@ export async function POST(request: Request) {
 
   // Record telegram session for voice/bot interactions
   await admin.from('telegram_sessions').upsert({ chat_id: tg.id, profile_id: created.user.id, logged_in_at: new Date().toISOString() }, { onConflict: 'chat_id' });
+
+  // ── Бета-гейт: помечаем заявку использованной + выдаём 6 мес business
+  // (если пользователь зарегистрировался по бета-приглашению)
+  try {
+    await admin.rpc('consume_beta_invite', {
+      p_profile_id: created.user.id,
+      p_email: authEmail,
+      p_telegram_id: tg.id,
+    });
+  } catch (e) {
+    console.error('[telegram/register] consume_beta_invite failed (non-blocking):', e);
+  }
 
   return NextResponse.json({
     userId: created.user.id,
