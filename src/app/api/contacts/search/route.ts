@@ -1,22 +1,21 @@
 /** --- YAML
  * name: Contacts Search API
- * description: Универсальный поиск для добавления в контакты.
- *              GET ?q=<text>&scope=client|master|salon|partners|all&limit=20
- *              Ищет по: имени/фамилии (full_name ilike), email, phone (digits-only),
- *              cres-id (masters.invite_code exact), названию команды (salons.name).
- *              scope=client: только client-профили (для master/salon добавляющих клиента).
- *              scope=partners: только мастера (для master ищущего партнёра).
- *              scope=salon: только команды.
- *              scope=all: всё подряд.
- *              Возвращает карточки с isLinked (уже в моих контактах).
+ * description: Универсальный поиск любого человека или команды в системе.
+ *              GET ?q=<text>&limit=20
+ *              Ищет по: имени/фамилии/имени+фамилии (любой порядок), email,
+ *              номеру телефона (только цифры), cres-id (masters.invite_code),
+ *              названию команды (salons.name).
+ *              Возвращает unified карточки c type ('client'|'master'|'salon').
+ *              isLinked = уже в моих контактах (если я мастер).
  * created: 2026-04-29
+ * updated: 2026-04-29
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 interface ResultCard {
-  id: string;
+  id: string;            // dedup key
   type: 'client' | 'master' | 'salon';
   fullName: string;
   subtitle: string | null;
@@ -40,6 +39,43 @@ function escLike(s: string): string {
   return s.replace(/([%,()\\])/g, '\\$1');
 }
 
+function tokenize(s: string): string[] {
+  return s
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length > 0);
+}
+
+interface ProfileRow {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  email: string | null;
+  role: string | null;
+}
+
+interface MasterRow {
+  id: string;
+  profile_id: string;
+  display_name: string | null;
+  specialization: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  invite_code: string | null;
+}
+
+interface SalonRow {
+  id: string;
+  owner_id: string;
+  name: string;
+  city: string | null;
+  logo_url: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 export async function GET(req: Request) {
   try {
     const supabase = await createClient();
@@ -48,118 +84,221 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const raw = (searchParams.get('q') ?? '').trim();
-    const scope = (searchParams.get('scope') ?? 'client') as 'client' | 'master' | 'salon' | 'partners' | 'all';
-    const limitParam = parseInt(searchParams.get('limit') ?? '20', 10);
-    const limit = Math.min(Math.max(limitParam, 1), 50);
+    const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '20', 10), 1), 50);
 
     if (!raw || raw.length < 2) {
       return NextResponse.json({ results: [] });
     }
 
-    const q = escLike(raw);
-    const ql = raw.toLowerCase();
+    const tokens = tokenize(raw);
     const phoneDigits = normalizePhone(raw);
-    const isEmail = ql.includes('@');
-    // cres-id (master invite_code) — hex 6+ chars
-    const isInviteCode = /^[0-9a-f]{6,}$/i.test(raw);
+    const isEmail = raw.includes('@');
+    const isInviteCode = /^[0-9a-f]{4,}$/i.test(raw); // hex >= 4 chars
 
-    const cards: ResultCard[] = [];
-    const seen = new Set<string>();
+    // ====================================================================
+    // 1. PROFILES — search by full_name (multi-word AND), phone, email
+    // ====================================================================
+    const profilePromises: Promise<{ data: ProfileRow[] | null }>[] = [];
 
-    // --- SEARCH MASTERS (for partners tab + general "find master") ---
-    if (scope === 'master' || scope === 'partners' || scope === 'all') {
-      const orFilters = [`display_name.ilike.%${q}%`, `specialization.ilike.%${q}%`];
-      if (isInviteCode) orFilters.push(`invite_code.eq.${raw.toLowerCase()}`);
+    // Multi-word AND: each token must appear in full_name (handles "имя фамилия"
+    // и "фамилия имя" равнозначно).
+    if (tokens.length > 0) {
+      let q = supabase.from('profiles').select('id, full_name, avatar_url, phone, email, role');
+      for (const t of tokens) {
+        q = q.ilike('full_name', `%${escLike(t)}%`);
+      }
+      profilePromises.push(q.limit(limit) as unknown as Promise<{ data: ProfileRow[] | null }>);
+    }
 
-      const queries = [
+    // Phone search (digits-only ilike — phone column may have +/-/spaces in stored format)
+    if (phoneDigits.length >= 4) {
+      profilePromises.push(
+        supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, phone, email, role')
+          .ilike('phone', `%${phoneDigits}%`)
+          .limit(limit) as unknown as Promise<{ data: ProfileRow[] | null }>,
+      );
+    }
+
+    // Email search
+    if (isEmail) {
+      profilePromises.push(
+        supabase
+          .from('profiles')
+          .select('id, full_name, avatar_url, phone, email, role')
+          .ilike('email', `%${escLike(raw.toLowerCase())}%`)
+          .limit(limit) as unknown as Promise<{ data: ProfileRow[] | null }>,
+      );
+    }
+
+    // ====================================================================
+    // 2. MASTERS — search by display_name, specialization, invite_code
+    //    (master profile also will be in profiles search, but we want to
+    //     enrich with master fields and add by display_name match.)
+    // ====================================================================
+    const masterPromises: Promise<{ data: MasterRow[] | null }>[] = [];
+    if (tokens.length > 0) {
+      let q = supabase
+        .from('masters')
+        .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code')
+        .eq('is_active', true);
+      for (const t of tokens) {
+        // OR within the row across display_name + specialization for each token,
+        // multiple tokens still AND'd through repeated .or() (each .or adds AND).
+        q = q.or(`display_name.ilike.%${escLike(t)}%,specialization.ilike.%${escLike(t)}%`);
+      }
+      masterPromises.push(q.limit(limit) as unknown as Promise<{ data: MasterRow[] | null }>);
+    }
+    if (isInviteCode) {
+      masterPromises.push(
         supabase
           .from('masters')
-          .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code, profile:profiles!masters_profile_id_fkey(id, full_name, avatar_url, phone, email)')
+          .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code')
           .eq('is_active', true)
-          .or(orFilters.join(','))
-          .limit(limit),
-        supabase
-          .from('masters')
-          .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code, profile:profiles!masters_profile_id_fkey(id, full_name, avatar_url, phone, email)')
-          .eq('is_active', true)
-          .ilike('profile.full_name', `%${q}%`)
-          .limit(limit),
-      ];
-      if (phoneDigits.length >= 4) {
-        queries.push(
-          supabase
-            .from('masters')
-            .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code, profile:profiles!masters_profile_id_fkey(id, full_name, avatar_url, phone, email)')
-            .eq('is_active', true)
-            .ilike('profile.phone', `%${phoneDigits}%`)
-            .limit(limit),
-        );
-      }
-      if (isEmail) {
-        queries.push(
-          supabase
-            .from('masters')
-            .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code, profile:profiles!masters_profile_id_fkey(id, full_name, avatar_url, phone, email)')
-            .eq('is_active', true)
-            .ilike('profile.email', `%${q}%`)
-            .limit(limit),
-        );
-      }
+          .eq('invite_code', raw.toLowerCase())
+          .limit(limit) as unknown as Promise<{ data: MasterRow[] | null }>,
+      );
+    }
 
-      type MasterRow = {
-        id: string;
-        profile_id: string;
-        display_name: string | null;
-        specialization: string | null;
-        city: string | null;
-        avatar_url: string | null;
-        invite_code: string | null;
-        profile: { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; email: string | null } | { id: string; full_name: string | null; avatar_url: string | null; phone: string | null; email: string | null }[] | null;
-      };
-      const responses = await Promise.all(queries);
-      for (const resp of responses) {
-        for (const m of (resp.data ?? []) as unknown as MasterRow[]) {
-          const key = `master:${m.id}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          if (m.profile_id === user.id) continue;
-          const p = Array.isArray(m.profile) ? m.profile[0] : m.profile;
-          cards.push({
-            id: m.id,
-            type: 'master',
-            fullName: m.display_name || p?.full_name || 'Мастер',
-            subtitle: m.specialization || m.city || null,
-            avatarUrl: m.avatar_url || p?.avatar_url || null,
-            phone: p?.phone ?? null,
-            email: p?.email ?? null,
-            isLinked: false,
-            payload: { profileId: m.profile_id, masterId: m.id, inviteCode: m.invite_code },
-          });
+    // ====================================================================
+    // 3. SALONS — search by name, city, phone, email
+    // ====================================================================
+    const salonPromises: Promise<{ data: SalonRow[] | null }>[] = [];
+    if (tokens.length > 0) {
+      let q = supabase.from('salons').select('id, owner_id, name, city, logo_url, phone, email');
+      for (const t of tokens) {
+        q = q.or(`name.ilike.%${escLike(t)}%,city.ilike.%${escLike(t)}%`);
+      }
+      salonPromises.push(q.limit(limit) as unknown as Promise<{ data: SalonRow[] | null }>);
+    }
+    if (phoneDigits.length >= 4) {
+      salonPromises.push(
+        supabase
+          .from('salons')
+          .select('id, owner_id, name, city, logo_url, phone, email')
+          .ilike('phone', `%${phoneDigits}%`)
+          .limit(limit) as unknown as Promise<{ data: SalonRow[] | null }>,
+      );
+    }
+    if (isEmail) {
+      salonPromises.push(
+        supabase
+          .from('salons')
+          .select('id, owner_id, name, city, logo_url, phone, email')
+          .ilike('email', `%${escLike(raw.toLowerCase())}%`)
+          .limit(limit) as unknown as Promise<{ data: SalonRow[] | null }>,
+      );
+    }
+
+    // Run all in parallel
+    const [profileResults, masterResults, salonResults] = await Promise.all([
+      Promise.all(profilePromises),
+      Promise.all(masterPromises),
+      Promise.all(salonPromises),
+    ]);
+
+    // ====================================================================
+    // Merge profiles
+    // ====================================================================
+    const profileById = new Map<string, ProfileRow>();
+    for (const r of profileResults) {
+      for (const p of (r.data ?? [])) {
+        if (p.id === user.id) continue; // не себя
+        if (!profileById.has(p.id)) profileById.set(p.id, p);
+      }
+    }
+
+    // ====================================================================
+    // Merge masters — also pull profile_ids of these masters
+    // ====================================================================
+    const mastersByProfileId = new Map<string, MasterRow>();
+    const masterProfileIds = new Set<string>();
+    for (const r of masterResults) {
+      for (const m of (r.data ?? [])) {
+        if (m.profile_id === user.id) continue;
+        if (!mastersByProfileId.has(m.profile_id)) {
+          mastersByProfileId.set(m.profile_id, m);
+          masterProfileIds.add(m.profile_id);
         }
       }
     }
 
-    // --- SEARCH SALONS ---
-    if (scope === 'salon' || scope === 'all') {
-      const orFilters = [`name.ilike.%${q}%`, `city.ilike.%${q}%`];
-      if (phoneDigits.length >= 4) orFilters.push(`phone.ilike.%${phoneDigits}%`);
-      if (isEmail) orFilters.push(`email.ilike.%${q}%`);
+    // Master profiles that weren't already in profileById need fetching
+    const missingMasterProfileIds = [...masterProfileIds].filter((id) => !profileById.has(id));
+    if (missingMasterProfileIds.length > 0) {
+      const { data: extraProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, phone, email, role')
+        .in('id', missingMasterProfileIds);
+      for (const p of (extraProfiles ?? []) as ProfileRow[]) {
+        profileById.set(p.id, p);
+      }
+    }
 
-      const { data: salonRows } = await supabase
-        .from('salons')
-        .select('id, owner_id, name, city, logo_url, phone, email')
-        .or(orFilters.join(','))
-        .limit(limit);
+    // For ALL profiles in result, also check if they are masters (enrichment)
+    // — if not already in mastersByProfileId.
+    const profileIds = [...profileById.keys()];
+    if (profileIds.length > 0) {
+      const missingMasterCheck = profileIds.filter((id) => !mastersByProfileId.has(id));
+      if (missingMasterCheck.length > 0) {
+        const { data: enrichMasters } = await supabase
+          .from('masters')
+          .select('id, profile_id, display_name, specialization, city, avatar_url, invite_code')
+          .in('profile_id', missingMasterCheck)
+          .eq('is_active', true);
+        for (const m of (enrichMasters ?? []) as MasterRow[]) {
+          mastersByProfileId.set(m.profile_id, m);
+        }
+      }
+    }
 
-      for (const s of (salonRows ?? []) as Array<{ id: string; owner_id: string; name: string; city: string | null; logo_url: string | null; phone: string | null; email: string | null }>) {
-        const key = `salon:${s.id}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
+    // ====================================================================
+    // Build cards
+    // ====================================================================
+    const cards: ResultCard[] = [];
+
+    // Profile cards (each profile may also be a master → enriched type)
+    for (const [profileId, p] of profileById) {
+      const master = mastersByProfileId.get(profileId);
+      if (master) {
         cards.push({
-          id: s.id,
+          id: `master:${master.id}`,
+          type: 'master',
+          fullName: master.display_name || p.full_name || 'Мастер',
+          subtitle: master.specialization || master.city || (p.full_name && master.display_name ? p.full_name : null),
+          avatarUrl: master.avatar_url || p.avatar_url,
+          phone: p.phone,
+          email: p.email,
+          isLinked: false,
+          payload: { profileId, masterId: master.id, inviteCode: master.invite_code },
+        });
+      } else {
+        cards.push({
+          id: `profile:${profileId}`,
+          type: 'client',
+          fullName: p.full_name || 'Без имени',
+          subtitle: p.phone || p.email || null,
+          avatarUrl: p.avatar_url,
+          phone: p.phone,
+          email: p.email,
+          isLinked: false,
+          payload: { profileId },
+        });
+      }
+    }
+
+    // Salon cards
+    const seenSalons = new Set<string>();
+    for (const r of salonResults) {
+      for (const s of (r.data ?? [])) {
+        if (seenSalons.has(s.id)) continue;
+        seenSalons.add(s.id);
+        cards.push({
+          id: `salon:${s.id}`,
           type: 'salon',
           fullName: s.name,
-          subtitle: s.city || null,
+          subtitle: s.city,
           avatarUrl: s.logo_url,
           phone: s.phone,
           email: s.email,
@@ -169,64 +308,10 @@ export async function GET(req: Request) {
       }
     }
 
-    // --- SEARCH CLIENT PROFILES (для master/salon добавляющего клиента) ---
-    if (scope === 'client' || scope === 'all') {
-      const queries = [
-        supabase
-          .from('profiles')
-          .select('id, full_name, avatar_url, phone, email, role')
-          .eq('role', 'client')
-          .ilike('full_name', `%${q}%`)
-          .limit(limit),
-      ];
-      if (phoneDigits.length >= 4) {
-        queries.push(
-          supabase
-            .from('profiles')
-            .select('id, full_name, avatar_url, phone, email, role')
-            .eq('role', 'client')
-            .ilike('phone', `%${phoneDigits}%`)
-            .limit(limit),
-        );
-      }
-      if (isEmail) {
-        queries.push(
-          supabase
-            .from('profiles')
-            .select('id, full_name, avatar_url, phone, email, role')
-            .eq('role', 'client')
-            .ilike('email', `%${q}%`)
-            .limit(limit),
-        );
-      }
-
-      const responses = await Promise.all(queries);
-      for (const resp of responses) {
-        for (const p of (resp.data ?? []) as Array<{ id: string; full_name: string | null; avatar_url: string | null; phone: string | null; email: string | null }>) {
-          const key = `client:${p.id}`;
-          if (seen.has(key)) continue;
-          seen.add(key);
-          if (p.id === user.id) continue;
-          cards.push({
-            id: p.id,
-            type: 'client',
-            fullName: p.full_name || 'Клиент',
-            subtitle: p.phone || p.email || null,
-            avatarUrl: p.avatar_url,
-            phone: p.phone,
-            email: p.email,
-            isLinked: false,
-            payload: { profileId: p.id },
-          });
-        }
-      }
-    }
-
-    // --- isLinked ---
-    // Для каждого master (текущего юзера) — ищем какие клиенты уже в его CRM,
-    // помечаем чтобы UI показал «Уже в контактах» вместо «Добавить».
+    // ====================================================================
+    // isLinked: пометить тех, кто уже в clients у текущего юзера-мастера
+    // ====================================================================
     if (cards.length > 0) {
-      // Find current user's master id (если он мастер).
       const { data: myMaster } = await supabase
         .from('masters')
         .select('id')
@@ -234,13 +319,13 @@ export async function GET(req: Request) {
         .maybeSingle();
 
       if (myMaster?.id) {
-        const profileIds = cards.filter((c) => c.payload.profileId).map((c) => c.payload.profileId!) as string[];
-        if (profileIds.length > 0) {
+        const allProfileIds = cards.map((c) => c.payload.profileId).filter(Boolean) as string[];
+        if (allProfileIds.length > 0) {
           const { data: linked } = await supabase
             .from('clients')
             .select('profile_id')
             .eq('master_id', myMaster.id)
-            .in('profile_id', profileIds);
+            .in('profile_id', allProfileIds);
           const linkedSet = new Set((linked ?? []).map((l) => l.profile_id as string));
           for (const c of cards) {
             if (c.payload.profileId && linkedSet.has(c.payload.profileId)) {
@@ -251,16 +336,20 @@ export async function GET(req: Request) {
       }
     }
 
-    // Sort: exact-name match → invite_code match → others
-    const queryLower = ql;
+    // ====================================================================
+    // Sorting: exact full name match → starts-with → ranked by relevance
+    // ====================================================================
+    const ql = raw.toLowerCase();
     cards.sort((a, b) => {
-      const aExact = a.fullName.toLowerCase() === queryLower ? 0 : 1;
-      const bExact = b.fullName.toLowerCase() === queryLower ? 0 : 1;
+      const aN = a.fullName.toLowerCase();
+      const bN = b.fullName.toLowerCase();
+      const aExact = aN === ql ? 0 : 1;
+      const bExact = bN === ql ? 0 : 1;
       if (aExact !== bExact) return aExact - bExact;
-      const aStarts = a.fullName.toLowerCase().startsWith(queryLower) ? 0 : 1;
-      const bStarts = b.fullName.toLowerCase().startsWith(queryLower) ? 0 : 1;
+      const aStarts = aN.startsWith(ql) ? 0 : 1;
+      const bStarts = bN.startsWith(ql) ? 0 : 1;
       if (aStarts !== bStarts) return aStarts - bStarts;
-      return 0;
+      return aN.localeCompare(bN);
     });
 
     return NextResponse.json({ results: cards.slice(0, limit) });

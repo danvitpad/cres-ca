@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
@@ -24,10 +24,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { AddContactDialog } from '@/components/contacts/add-contact-dialog';
 import {
   AlertTriangle, Users, Star, Heart, Search,
-  Cake, Clock, Sparkles,
+  Cake, Clock, Sparkles, Loader2,
 } from 'lucide-react';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
@@ -297,11 +296,25 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [tab, setTab] = useState<TabType>('clients');
   const [followList, setFollowList] = useState<FollowerRow[]>([]);
   const [followListLoading, setFollowListLoading] = useState(false);
   const [clientProfileIds, setClientProfileIds] = useState<Set<string>>(new Set());
+
+  // System-wide contact search (when query >= 2 chars)
+  interface SystemCard {
+    id: string;
+    type: 'client' | 'master' | 'salon';
+    fullName: string;
+    subtitle: string | null;
+    avatarUrl: string | null;
+    isLinked: boolean;
+    payload: { profileId?: string; masterId?: string; salonId?: string };
+  }
+  const [systemResults, setSystemResults] = useState<SystemCard[]>([]);
+  const [systemSearching, setSystemSearching] = useState(false);
+  const [adding, setAdding] = useState<Set<string>>(new Set());
+  const sysDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadClients = useCallback(async () => {
     if (!master) return;
@@ -373,6 +386,49 @@ export default function ClientsPage() {
     if (tab === 'audience') loadFollowList('followers');
   }, [master, tab, loadFollowList]);
 
+  // Live system search
+  useEffect(() => {
+    if (sysDebounceRef.current) clearTimeout(sysDebounceRef.current);
+    if (search.trim().length < 2) {
+      setSystemResults([]);
+      return;
+    }
+    sysDebounceRef.current = setTimeout(async () => {
+      setSystemSearching(true);
+      try {
+        const res = await fetch(`/api/contacts/search?q=${encodeURIComponent(search.trim())}&limit=20`);
+        if (res.ok) {
+          const j = (await res.json()) as { results: SystemCard[] };
+          setSystemResults(j.results ?? []);
+        }
+      } finally {
+        setSystemSearching(false);
+      }
+    }, 200);
+    return () => { if (sysDebounceRef.current) clearTimeout(sysDebounceRef.current); };
+  }, [search]);
+
+  async function addSystemContact(card: SystemCard) {
+    if (!card.payload.profileId || adding.has(card.id) || card.isLinked) return;
+    setAdding((s) => new Set(s).add(card.id));
+    try {
+      const res = await fetch('/api/master/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profile_id: card.payload.profileId }),
+      });
+      if (res.ok) {
+        setSystemResults((rs) => rs.map((r) => r.id === card.id ? { ...r, isLinked: true } : r));
+        toast.success(`${card.fullName} добавлен в контакты`);
+        loadClients();
+      } else {
+        toast.error('Не удалось добавить');
+      }
+    } finally {
+      setAdding((s) => { const n = new Set(s); n.delete(card.id); return n; });
+    }
+  }
+
   async function addClient(formData: { full_name: string; phone: string; email: string; date_of_birth: string; notes: string }) {
     if (!master) return;
     const res = await fetch('/api/master/clients', {
@@ -394,7 +450,6 @@ export default function ClientsPage() {
     }
     const j = (await res.json()) as { linked: boolean };
     toast.success(j.linked ? 'Клиент привязан к существующему аккаунту' : tc('success'));
-    setDialogOpen(false);
     loadClients();
   }
 
@@ -477,15 +532,6 @@ export default function ClientsPage() {
             from /clients subtab "Подписчики" or when a user books online. */}
       </div>
 
-      {/* Add Contact Dialog (search-first) */}
-      <AddContactDialog
-        scope="client"
-        title="Добавить контакт"
-        addEndpoint="/api/master/clients"
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        onAdded={() => loadClients()}
-      />
 
       {/* ═══ Top tabs (Clients / Partners) — Аудитория removed per product decision ═══ */}
       <div style={{
@@ -565,14 +611,97 @@ export default function ClientsPage() {
               description={filter === 'all' ? 'Добавьте первого клиента или импортируйте из другой системы' : 'Попробуйте другой фильтр'}
             />
           ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: 14,
-            }}>
-              {filteredClients.map((c, i) => (
-                <ClientCard key={c.id} client={c} C={C} isDark={isDark} index={i} />
-              ))}
+            <>
+              {search.trim().length >= 2 && (
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.textTertiary, margin: '0 0 12px 0' }}>
+                  Ваши клиенты
+                </p>
+              )}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                gap: 14,
+              }}>
+                {filteredClients.map((c, i) => (
+                  <ClientCard key={c.id} client={c} C={C} isDark={isDark} index={i} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* System search section: people in CRES-CA, not yet in your contacts */}
+          {search.trim().length >= 2 && (
+            <div style={{ marginTop: 24 }}>
+              {(() => {
+                const existingProfileIds = new Set(clients.map((c) => (c as ClientRow & { profile_id?: string }).profile_id).filter(Boolean) as string[]);
+                const filtered = systemResults.filter((r) => !r.payload.profileId || !existingProfileIds.has(r.payload.profileId));
+                if (filtered.length === 0 && !systemSearching) return null;
+                return (
+                  <>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.textTertiary, margin: '0 0 12px 0' }}>
+                      В CRES-CA {systemSearching && <span style={{ marginLeft: 6 }}><Loader2 size={11} className="animate-spin" style={{ display: 'inline', verticalAlign: 'middle' }} /></span>}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {filtered.map((r) => {
+                        const isAdding = adding.has(r.id);
+                        return (
+                          <div key={r.id} style={{
+                            display: 'flex', alignItems: 'center', gap: 12, padding: 12,
+                            background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+                          }}>
+                            <div style={{
+                              width: 40, height: 40, borderRadius: '50%', background: C.surfaceElevated,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              overflow: 'hidden', flexShrink: 0, fontWeight: 700, color: C.text,
+                            }}>
+                              {r.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={r.avatarUrl} alt={r.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                (r.fullName[0] || '?').toUpperCase()
+                              )}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {r.fullName}
+                              </div>
+                              <div style={{ fontSize: 12, color: C.textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {r.type === 'master' ? 'Мастер' : r.type === 'salon' ? 'Команда' : 'Клиент'}
+                                {r.subtitle ? ` · ${r.subtitle}` : ''}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => addSystemContact(r)}
+                              disabled={r.isLinked || isAdding}
+                              style={{
+                                flexShrink: 0,
+                                padding: '8px 14px',
+                                borderRadius: 999,
+                                border: 'none',
+                                background: r.isLinked ? C.surfaceElevated : C.text,
+                                color: r.isLinked ? C.textTertiary : C.bg,
+                                fontSize: 12,
+                                fontWeight: 700,
+                                cursor: r.isLinked ? 'default' : 'pointer',
+                                fontFamily: FONT,
+                                opacity: isAdding ? 0.6 : 1,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              {isAdding ? <Loader2 size={12} className="animate-spin" />
+                                : r.isLinked ? '✓ В контактах'
+                                : '+ Добавить'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </>
