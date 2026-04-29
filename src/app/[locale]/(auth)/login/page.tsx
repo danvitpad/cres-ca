@@ -60,7 +60,7 @@ html.dark .auth-glass {
 .auth-glass input, .auth-glass button, .auth-glass select { font-family: var(--af); }
 .auth-glass a { color: inherit; text-decoration: none; }
 .glass-wrap {
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid var(--acb);
   background: color-mix(in oklab, var(--afg) 5%, transparent);
   backdrop-filter: blur(8px);
@@ -77,7 +77,7 @@ html.dark .auth-glass {
   width: 100%; height: 46px; padding: 0 16px;
   border: none; outline: none; background: transparent;
   color: var(--afg); font-size: 14px;
-  border-radius: 16px;
+  border-radius: 14px;
 }
 .glass-input::placeholder { color: var(--afg3); }
 .auth-label { font-size: 12px; font-weight: 600; color: var(--afg2); display: block; margin-bottom: 6px; letter-spacing: .01em; }
@@ -1106,7 +1106,7 @@ function PrimaryButton({
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: '100%', height: 48, borderRadius: 16,
+        width: "100%", height: 48, borderRadius: 14,
         background: 'var(--aviolet)', color: '#fff',
         border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
         fontSize: 14, fontWeight: 600, letterSpacing: '.005em',
