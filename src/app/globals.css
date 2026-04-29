@@ -286,6 +286,17 @@
   html {
     @apply font-sans;
   }
+  /* Hide native up/down spin arrows on all <input type="number"> fields. */
+  /* Numeric keyboard on mobile is preserved via inputmode="numeric" attr. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 @keyframes caret-blink {

@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     userId?: string;
     vertical?: string;
     specialization?: string;
+    workMode?: 'cabinet' | 'mobile' | 'both';
     services?: ServiceInput[];
   };
 
@@ -48,6 +49,9 @@ export async function POST(req: Request) {
   const masterUpdate: Record<string, unknown> = {};
   if (body.vertical) masterUpdate.vertical = body.vertical;
   if (body.specialization) masterUpdate.specialization = body.specialization;
+  if (body.workMode && ['cabinet', 'mobile', 'both'].includes(body.workMode)) {
+    masterUpdate.work_mode = body.workMode;
+  }
 
   if (Object.keys(masterUpdate).length > 0) {
     await admin.from('masters').update(masterUpdate).eq('profile_id', userId);

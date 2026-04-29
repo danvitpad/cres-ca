@@ -17,6 +17,7 @@ import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
 import { OwnerToolbar } from '@/components/master/owner-toolbar';
+import { MiniAppBackBar } from '@/components/master/mini-app-back-bar';
 import { OwnerCompletenessPrompt } from '@/components/master/owner-completeness-prompt';
 import { FollowMasterButton } from '@/components/master/follow-master-button';
 import { MasterPageSectionTabs } from '@/components/master/section-tabs';
@@ -465,6 +466,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         ['--page-accent' as string]: accent,
       }}
     >
+      <MiniAppBackBar />
       <OwnerToolbar masterProfileId={master.profile_id} />
       <RefCapture />
       <script

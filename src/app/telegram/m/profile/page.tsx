@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
-import { Settings, Star, Share2, Image as ImageIcon, Loader2, Users, LogOut } from 'lucide-react';
+import { Settings, Star, Share2, ExternalLink, Loader2, Users, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
@@ -516,7 +516,7 @@ export default function MasterMiniAppProfile() {
           </div>
         )}
 
-        {/* Actions row */}
+        {/* Actions row — share + open public page (single button, ?from=profile so the page can offer back nav) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
           <button
             type="button"
@@ -543,7 +543,7 @@ export default function MasterMiniAppProfile() {
           </button>
           {master.invite_code ? (
             <Link
-              href={`/m/${master.invite_code}?owner=1#portfolio`}
+              href={`/m/${master.invite_code}?owner=1&from=profile`}
               onClick={() => haptic('light')}
               style={{
                 display: 'inline-flex',
@@ -561,8 +561,8 @@ export default function MasterMiniAppProfile() {
                 boxShadow: SHADOW.card,
               }}
             >
-              <ImageIcon size={16} strokeWidth={2.2} />
-              Портфолио
+              <ExternalLink size={16} strokeWidth={2.2} />
+              Моя страница
             </Link>
           ) : (
             <button
@@ -585,31 +585,11 @@ export default function MasterMiniAppProfile() {
                 fontFamily: 'inherit',
               }}
             >
-              <ImageIcon size={16} strokeWidth={2.2} />
-              Портфолио
+              <ExternalLink size={16} strokeWidth={2.2} />
+              Моя страница
             </button>
           )}
         </div>
-
-        {master.invite_code && (
-          <Link
-            href={`/m/${master.invite_code}?owner=1`}
-            onClick={() => haptic('light')}
-            style={{
-              margin: `0 ${PAGE_PADDING_X}px`,
-              padding: 14,
-              borderRadius: R.md,
-              border: `1px solid ${T.borderSubtle}`,
-              background: T.surface,
-              textAlign: 'center',
-              ...TYPE.caption,
-              color: T.textSecondary,
-              textDecoration: 'none',
-            }}
-          >
-            Открыть публичную страницу
-          </Link>
-        )}
       </motion.div>
     </MobilePage>
   );
