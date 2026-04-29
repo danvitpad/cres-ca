@@ -23,7 +23,7 @@ import { HELP_CATEGORIES, type HelpCategory } from '@/lib/help/articles';
  * Replace this URL once the real support bot is configured.
  * Currently a stub — see CLAUDE.md TODO "TG support bot stub".
  */
-const SUPPORT_BOT_URL = 'https://t.me/cres_ca_bot?start=support';
+const SUPPORT_BOT_URL = 'https://t.me/crescacom_bot?start=support';
 
 const ICON_BY_KEY: Record<string, typeof LayoutDashboard> = {
   'getting-started': Zap,

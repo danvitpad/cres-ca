@@ -21,7 +21,7 @@ const SAMPLES = [
   { icon: Clock, title: 'Перенос', text: '«Перенеси Машу на субботу на 14»' },
 ];
 
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'crescacom_bot';
 
 export default function VoiceAssistantIntro() {
   const router = useRouter();

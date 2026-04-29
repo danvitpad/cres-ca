@@ -128,8 +128,8 @@ export default function MiniAppSettingsPage() {
   async function savePassword() {
     if (pwBusy) return;
     setPwError(null);
-    if (pwNew.length < 6) {
-      setPwError('Пароль должен быть не короче 6 символов');
+    if (pwNew.length < 8) {
+      setPwError('Пароль должен быть не короче 8 символов');
       return;
     }
     if (pwNew !== pwConfirm) {

@@ -10,7 +10,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Send, ShieldCheck, Sparkles } from 'lucide-react';
 
-const BOT_BETA_URL = 'https://t.me/cres_ca_bot?start=beta';
+const BOT_BETA_URL = 'https://t.me/crescacom_bot?start=beta';
 
 export default async function BetaClosedPage({
   params,
@@ -92,7 +92,7 @@ export default async function BetaClosedPage({
             Подать заявку через Telegram
           </a>
           <p className="mt-3 text-center text-xs text-[color-mix(in_oklab,var(--foreground)_50%,transparent)]">
-            Откроется чат с ботом @cres_ca_bot — он попросит вашу почту и передаст заявку нам. Обычно отвечаем в течение суток.
+            Откроется чат с ботом @crescacom_bot — он попросит вашу почту и передаст заявку нам. Обычно отвечаем в течение суток.
           </p>
         </div>
       </div>

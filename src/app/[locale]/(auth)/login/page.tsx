@@ -373,7 +373,7 @@ export default function AuthPage() {
   /* ───── sign-up ───── */
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
+    if (password.length < 8) { toast.error('Пароль — минимум 8 символов'); return; }
     if (!terms) { toast.error('Примите условия использования'); return; }
     if (role === 'salon_admin' && !salonName.trim()) {
       toast.error('Укажите название команды');

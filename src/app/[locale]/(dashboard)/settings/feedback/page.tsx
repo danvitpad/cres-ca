@@ -112,7 +112,7 @@ export default function FeedbackPage() {
       <div className="rounded-2xl border border-border bg-muted/20 p-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">или голосом — в Telegram</p>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Открой нашего <a href="https://t.me/cres_ca_bot" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">Telegram-бота</a> и отправь команду <code className="rounded bg-background px-1.5 py-0.5">/feedback</code> или просто голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
+          Открой нашего <a href="https://t.me/crescacom_bot" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">Telegram-бота</a> и отправь команду <code className="rounded bg-background px-1.5 py-0.5">/feedback</code> или просто голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
         </p>
       </div>
     </div>

@@ -87,7 +87,7 @@ export default function CompleteProfilePage() {
     if (!lastName.trim()) { toast.error('Введи фамилию'); return; }
     if (!phone.trim() || phone.length < 9) { toast.error('Введи телефон'); return; }
     if (role !== 'salon_admin' && !dob) { toast.error('Введи дату рождения'); return; }
-    if (needsPassword && password.length < 6) { toast.error('Придумай пароль (минимум 6 символов)'); return; }
+    if (needsPassword && password.length < 8) { toast.error('Придумай пароль (минимум 8 символов)'); return; }
     if (needsPassword && !terms) { toast.error('Прими условия использования'); return; }
     setSaving(true);
 

@@ -28,7 +28,7 @@ interface SendOpts {
  * Требует две env переменные:
  *   - TELEGRAM_SUPERADMIN_BOT_TOKEN — токен бота @crescasuperadmin_bot
  *   - SUPERADMIN_TG_CHAT_ID — числовой Telegram ID получателя (переиспользуем
- *     существующую переменную — это тот же chat_id что для @cres_ca_bot,
+ *     существующую переменную — это тот же chat_id что для @crescacom_bot,
  *     отличается только токен бота-отправителя)
  *
  * Если хоть одна не задана — функция тихо возвращает false (best-effort).

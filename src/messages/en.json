@@ -96,7 +96,7 @@
     "firstNamePlaceholder": "Enter your first name",
     "lastNamePlaceholder": "Enter your last name",
     "newPasswordPlaceholder": "Enter a new password",
-    "passwordTooShort": "Password must be at least 6 characters",
+    "passwordTooShort": "Password must be at least 8 characters",
     "acceptTerms": "I accept the Privacy Policy and Terms of Service",
     "createAccount": "Create Account",
     "emailNotFound": "No account found. Let’s sign you up...",

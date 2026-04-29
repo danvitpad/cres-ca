@@ -64,7 +64,7 @@ const COMMANDS: CommandCard[] = [
   { icon: UserPlus, titleKey: 'cmdCreateClient', exampleKey: 'cmdCreateClientEx' },
 ];
 
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'crescacom_bot';
 
 export default function VoiceAssistantPage() {
   const t = useTranslations('voice_assistant');

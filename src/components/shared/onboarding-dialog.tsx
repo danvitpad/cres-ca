@@ -185,7 +185,7 @@ export function OnboardingDialog() {
   /* ─── Invite link ─── */
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://cres-ca.com';
   const webLink = master?.invite_code ? `${appUrl}/invite/${master.invite_code}` : '';
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT ?? 'cres_ca_bot';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT ?? 'crescacom_bot';
   const tgLink = master?.invite_code ? `https://t.me/${botUsername}?start=master_${master.invite_code}` : '';
 
   async function copy(text: string) {

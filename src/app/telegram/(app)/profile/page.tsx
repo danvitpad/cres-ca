@@ -273,7 +273,7 @@ export default function MiniAppProfilePage() {
       key: 'support',
       icon: <MessageCircle size={22} strokeWidth={1.8} />,
       label: 'Поддержка',
-      onClick: () => window.open('https://t.me/cres_ca_bot?start=support', '_blank'),
+      onClick: () => window.open('https://t.me/crescacom_bot?start=support', '_blank'),
       rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
   ];

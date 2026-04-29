@@ -138,7 +138,7 @@ function loadLogoBase64(): string | null {
   }
 }
 
-const SUPPORT_TG = 'https://t.me/cres_ca_bot?start=support';
+const SUPPORT_TG = 'https://t.me/crescacom_bot?start=support';
 const SITE_URL = 'cres-ca.com';
 
 export function buildSupplierOrderPDF(input: SupplierOrderPDFInput): Uint8Array {

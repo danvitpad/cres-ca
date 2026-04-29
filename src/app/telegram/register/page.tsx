@@ -246,7 +246,18 @@ export default function MiniAppRegisterPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setErrorMsg(mapError(data.error)); setSubmitting(false); return; }
+      if (!res.ok) {
+        // Бета-гейт: сервис закрыт, не нашли в одобренной бете
+        if (data.error === 'beta_closed') {
+          setSubmitting(false);
+          // Открываем бота с deep-link на бета-заявку
+          window.location.href = 'https://t.me/crescacom_bot?start=beta';
+          return;
+        }
+        setErrorMsg(mapError(data.error));
+        setSubmitting(false);
+        return;
+      }
 
       setAuth(data.userId, data.role, null);
       sessionStorage.removeItem('cres:tg');

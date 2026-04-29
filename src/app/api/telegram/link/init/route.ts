@@ -23,7 +23,7 @@ export async function POST() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
+  const bot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'crescacom_bot';
   const deeplink = `https://t.me/${bot}?start=linkmaster_${token}`;
 
   return NextResponse.json({ ok: true, token, deeplink });

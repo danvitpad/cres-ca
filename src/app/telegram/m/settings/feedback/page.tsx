@@ -97,7 +97,7 @@ export default function MiniAppFeedbackPage() {
       <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">или голосом — в Telegram</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-neutral-700">
-          Открой нашего <a href="https://t.me/cres_ca_bot" target="_blank" rel="noreferrer" className="font-semibold text-violet-600 underline">Telegram-бота</a> и отправь команду <code className="rounded bg-white/10 px-1 text-violet-700">/feedback</code> или голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
+          Открой нашего <a href="https://t.me/crescacom_bot" target="_blank" rel="noreferrer" className="font-semibold text-violet-600 underline">Telegram-бота</a> и отправь команду <code className="rounded bg-white/10 px-1 text-violet-700">/feedback</code> или голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.
         </p>
       </div>
     </SettingsShell>

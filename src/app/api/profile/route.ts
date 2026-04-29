@@ -25,7 +25,7 @@ export async function PATCH(req: Request) {
 
   let passwordChanged = false;
   if (typeof body.password === 'string' && body.password.length > 0) {
-    if (body.password.length < 6) {
+    if (body.password.length < 8) {
       return NextResponse.json({ error: 'password_too_short' }, { status: 400 });
     }
     const { error: pwErr } = await supabase.auth.updateUser({ password: body.password });

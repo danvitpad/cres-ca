@@ -96,7 +96,7 @@
     "firstNamePlaceholder": "Введіть своє ім'я",
     "lastNamePlaceholder": "Введіть своє прізвище",
     "newPasswordPlaceholder": "Введіть новий пароль",
-    "passwordTooShort": "Пароль має містити мінімум 6 символів",
+    "passwordTooShort": "Пароль має містити мінімум 8 символів",
     "acceptTerms": "Я приймаю Політику конфіденційності та Умови використання",
     "createAccount": "Створити акаунт",
     "emailNotFound": "Користувача не знайдено. Реєструємо...",

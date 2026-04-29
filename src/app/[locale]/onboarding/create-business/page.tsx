@@ -1222,7 +1222,7 @@ function InviteScreen({
 }) {
   const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const webLink = inviteCode ? `${appUrl}/invite/${inviteCode}` : '';
-  const tgBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
+  const tgBot = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'crescacom_bot';
   const tgLink = inviteCode ? `https://t.me/${tgBot}?start=master_${inviteCode}` : '';
 
   const copy = async () => {

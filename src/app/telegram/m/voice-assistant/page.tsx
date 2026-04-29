@@ -61,7 +61,7 @@ const ACTION_LABELS: Record<string, string> = {
   query: 'Запрос',
 };
 
-const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'cres_ca_bot';
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'crescacom_bot';
 
 export default function VoiceAssistantMiniApp() {
   const { userId } = useAuthStore();
