@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, full_name, avatar_url')
+    .select('id, full_name, first_name, last_name, avatar_url')
     .eq('telegram_id', tg.id)
     .maybeSingle();
   if (!profile) {
@@ -70,3 +70,39 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ profile, master, subscription, stats });
 }
+
+
+export async function PATCH(request: Request) {
+  const body = await request.json().catch(() => ({})) as {
+    initData?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  if (!body.initData) {
+    return NextResponse.json({ error: "missing_init_data" }, { status: 400 });
+  }
+  const result = validateInitData(body.initData);
+  if ("error" in result) {
+    return NextResponse.json({ error: result.error }, { status: 403 });
+  }
+  const tg = result.user;
+  const firstName = (body.first_name ?? "").trim();
+  const lastName = (body.last_name ?? "").trim();
+  if (!firstName) {
+    return NextResponse.json({ error: "first_name_required" }, { status: 400 });
+  }
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+  const { error } = await admin
+    .from("profiles")
+    .update({ first_name: firstName, last_name: lastName || null, full_name: fullName })
+    .eq("telegram_id", tg.id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true, full_name: fullName });
+}
+

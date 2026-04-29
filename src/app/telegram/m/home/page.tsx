@@ -90,7 +90,9 @@ export default function MasterMiniAppHome() {
       const ctx = await ctxRes.json();
       if (!ctx.master) { setLoading(false); return; }
       setMasterId(ctx.master.id);
-      setProfileName(ctx.profile?.full_name?.split(' ')[0] || null);
+      // Prefer dedicated first_name column (правильное имя). Fallback на split
+      // полного имени — это последний шанс, если first_name не заполнен.
+      setProfileName(ctx.profile?.first_name || ctx.profile?.full_name?.split(' ')[0] || null);
       setLoading(false);
 
       fetch('/api/telegram/m/stats', {

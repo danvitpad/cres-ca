@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
-import { Settings, Star, Share2, ExternalLink, Loader2, Users, LogOut } from 'lucide-react';
+import { Settings, Star, Share2, ExternalLink, Loader2, Users, LogOut, Pencil, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
@@ -66,6 +66,10 @@ export default function MasterMiniAppProfile() {
   const { userId } = useAuthStore();
   const [master, setMaster] = useState<MasterSelf | null>(null);
   const [profileFullName, setProfileFullName] = useState<string>('');
+  const [profileFirstName, setProfileFirstName] = useState<string>('');
+  const [profileLastName, setProfileLastName] = useState<string>('');
+  const [nameEditOpen, setNameEditOpen] = useState(false);
+  const [nameSaving, setNameSaving] = useState(false);
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
   const [sub, setSub] = useState<SubInfo | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
@@ -178,7 +182,17 @@ export default function MasterMiniAppProfile() {
       if (!res.ok) { setLoading(false); return; }
       const json = await res.json();
       if (json.master) setMaster(json.master as MasterSelf);
-      if (json.profile?.full_name) setProfileFullName(json.profile.full_name as string);
+      // Prefer first_name + last_name (правильный порядок имени).
+      // Fallback на full_name только если первые отдельно не заполнены.
+      if (json.profile) {
+        const fn = (json.profile.first_name as string | null) ?? '';
+        const ln = (json.profile.last_name as string | null) ?? '';
+        const composed = [fn, ln].filter(Boolean).join(' ').trim();
+        const fallback = (json.profile.full_name as string | null) ?? '';
+        setProfileFullName(composed || fallback);
+        setProfileFirstName(fn);
+        setProfileLastName(ln);
+      }
       if (json.profile?.avatar_url) setProfileAvatar(json.profile.avatar_url as string);
       if (json.subscription) setSub(json.subscription as SubInfo);
       if (json.stats) setStats(json.stats as ProfileStats);
@@ -295,19 +309,39 @@ export default function MasterMiniAppProfile() {
             outputSize={512}
           />
           <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
-            <h1
-              style={{
-                ...TYPE.h2,
-                color: T.text,
-                margin: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontSize: 22,
-              }}
-            >
-              {displayName}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h1
+                style={{
+                  ...TYPE.h2,
+                  color: T.text,
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: 22,
+                }}
+              >
+                {displayName}
+              </h1>
+              <button
+                type="button"
+                onClick={() => { haptic('selection'); setNameEditOpen(true); }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: T.textTertiary,
+                  flexShrink: 0,
+                }}
+                aria-label="Изменить имя"
+              >
+                <Pencil size={14} />
+              </button>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
               {master.specialization && (
                 <span
@@ -591,7 +625,101 @@ export default function MasterMiniAppProfile() {
           )}
         </div>
       </motion.div>
+
+      {nameEditOpen && (
+        <NameEditSheet
+          initialFirstName={profileFirstName}
+          initialLastName={profileLastName}
+          saving={nameSaving}
+          onClose={() => setNameEditOpen(false)}
+          onSave={async (fn, ln) => {
+            const initData = (typeof window !== 'undefined' ? (window as { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp?.initData : null) ?? '';
+            if (!initData) return;
+            setNameSaving(true);
+            try {
+              const res = await fetch('/api/telegram/m/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ initData, first_name: fn, last_name: ln }),
+              });
+              if (res.ok) {
+                setProfileFirstName(fn);
+                setProfileLastName(ln);
+                setProfileFullName([fn, ln].filter(Boolean).join(' '));
+                setNameEditOpen(false);
+              }
+            } finally {
+              setNameSaving(false);
+            }
+          }}
+        />
+      )}
     </MobilePage>
+  );
+}
+
+function NameEditSheet({
+  initialFirstName, initialLastName, saving, onClose, onSave,
+}: {
+  initialFirstName: string;
+  initialLastName: string;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (firstName: string, lastName: string) => void;
+}) {
+  const [fn, setFn] = useState(initialFirstName);
+  const [ln, setLn] = useState(initialLastName);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', background: T.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32, boxShadow: SHADOW.elevated }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Имя и фамилия</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ background: T.bgSubtle, border: 'none', width: 32, height: 32, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <X size={16} color={T.text} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div>
+            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 4px 4px' }}>Имя</p>
+            <input
+              autoFocus
+              value={fn}
+              onChange={(e) => setFn(e.target.value)}
+              placeholder="Даниил"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: R.md, border: `1px solid ${T.border}`, background: T.surfaceElevated, fontSize: 14, color: T.text, fontFamily: 'inherit', outline: 'none' }}
+            />
+          </div>
+          <div>
+            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 4px 4px' }}>Фамилия</p>
+            <input
+              value={ln}
+              onChange={(e) => setLn(e.target.value)}
+              placeholder="Падалко"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: R.md, border: `1px solid ${T.border}`, background: T.surfaceElevated, fontSize: 14, color: T.text, fontFamily: 'inherit', outline: 'none' }}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => onSave(fn.trim(), ln.trim())}
+            disabled={saving || !fn.trim()}
+            style={{ marginTop: 6, padding: '14px 16px', borderRadius: R.pill, border: 'none', background: T.text, color: T.bg, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: saving || !fn.trim() ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            {saving && <Loader2 size={14} className="animate-spin" />} Сохранить
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

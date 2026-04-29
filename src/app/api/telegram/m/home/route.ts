@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, first_name, last_name')
     .eq('telegram_id', tg.id)
     .maybeSingle();
   if (!profile) {
