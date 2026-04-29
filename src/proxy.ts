@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { locales, defaultLocale } from '@/lib/i18n/config';
-import { isSuperadminEmail } from '@/lib/superadmin/access';
 
 const intlMiddleware = createIntlMiddleware({
   locales,
@@ -131,9 +130,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Суперадмин (sa@cres-ca.system или из SUPERADMIN_EMAILS) — мимо онбординга
-  // полностью. Если попал куда-то кроме /superadmin/*, перебрасываем на дашборд админки.
-  if (isSuperadminEmail(user.email)) {
+  // Скрытый системный суперадмин (sa@cres-ca.system, без онбординга) —
+  // только этот аккаунт автоматически тянем в /superadmin/*. Реальные
+  // суперадмины (из SUPERADMIN_EMAILS) — это обычные мастера/клиенты,
+  // у них своя нормальная работа, в /superadmin они заходят сами вручную.
+  const synthSaEmail = (process.env.SA_INTERNAL_EMAIL ?? 'sa@cres-ca.system').trim().toLowerCase();
+  if ((user.email ?? '').trim().toLowerCase() === synthSaEmail) {
     const isSuperadminPath = strippedPath.startsWith('/superadmin');
     if (!isSuperadminPath) {
       return NextResponse.redirect(new URL('/superadmin/dashboard', request.url));
