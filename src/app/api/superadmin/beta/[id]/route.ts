@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { requireSuperadmin } from '@/lib/superadmin/auth';
 import { logSuperadminAction } from '@/lib/superadmin/access';
-import { sendViaSuperadminBot } from '@/lib/notifications/superadmin-notify';
+import { sendMessage } from '@/lib/telegram/bot';
 
 function admin() {
   return createAdminClient(
@@ -65,17 +65,38 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // ── Уведомление пользователю в TG если одобрили ──
-  if (body.status === 'approved' && updated.telegram_id) {
+  // ── Уведомление пользователю в обычный бот @crescacom_bot ──
+  // ВАЖНО: используем sendMessage (обычный бот), а не super-bot, потому что
+  // юзер подавал заявку через @crescacom_bot и ТОЛЬКО там у него есть чат.
+  // Super-bot — для уведомлений Данилу, не для рассылки юзерам.
+  if (updated.telegram_id) {
     const greeting = updated.full_name ? `, ${updated.full_name}` : '';
-    const text =
-      `<b>Вас добавили в бета-тестировщики CRES-CA</b>${greeting}.\n\n` +
-      `Теперь можете зарегистрироваться: откройте <a href="https://cres-ca.com">cres-ca.com</a> или нажмите кнопку ниже.\n\n` +
-      `На время бета-тестирования и ещё 6 месяцев после релиза — полный функционал бесплатно.\n\n` +
-      `Если найдёте баг или неудобство — пишите нам в этом же боте, мы быстро всё чиним.`;
-    await sendViaSuperadminBot(updated.telegram_id, text, {
-      buttons: [[{ text: 'Открыть сайт', url: 'https://cres-ca.com' }]],
-    });
+    if (body.status === 'approved') {
+      const text =
+        `<b>Вас добавили в бета-тестировщики CRES-CA</b>${greeting}.\n\n` +
+        `Теперь можете зарегистрироваться: откройте <a href="https://cres-ca.com">cres-ca.com</a> или нажмите кнопку ниже.\n\n` +
+        `На время бета-тестирования и ещё 6 месяцев после релиза — полный функционал бесплатно.\n\n` +
+        `Если найдёте баг или неудобство — пишите нам в этом же боте, мы быстро всё чиним.`;
+      try {
+        await sendMessage(updated.telegram_id, text, {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [[{ text: 'Открыть сайт', url: 'https://cres-ca.com' }]] },
+        });
+      } catch (e) {
+        console.error('[beta/approve] sendMessage failed (non-blocking):', e);
+      }
+    } else if (body.status === 'rejected') {
+      const reason = body.rejection_reason ? `\n\nПричина: ${body.rejection_reason}` : '';
+      const text =
+        `Здравствуйте${greeting}.\n\n` +
+        `К сожалению, ваша заявка на участие в бета-тестировании CRES-CA не одобрена.${reason}\n\n` +
+        `Вы сможете зарегистрироваться после публичного релиза сервиса. Спасибо за интерес.`;
+      try {
+        await sendMessage(updated.telegram_id, text, { parse_mode: 'HTML' });
+      } catch (e) {
+        console.error('[beta/reject] sendMessage failed (non-blocking):', e);
+      }
+    }
   }
 
   await logSuperadminAction(sa.profileId, `beta_${body.status}`, 'beta_invite', id, patch);
