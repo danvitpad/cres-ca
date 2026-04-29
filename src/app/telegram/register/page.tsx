@@ -262,7 +262,7 @@ export default function MiniAppRegisterPage() {
       const otpRes = await fetch('/api/telegram/email-otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), locale: lang }),
+        body: JSON.stringify({ email: email.trim(), locale: lang, userId: data.userId }),
       });
       if (!otpRes.ok) {
         const j = await otpRes.json().catch(() => ({}));
