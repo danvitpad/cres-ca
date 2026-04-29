@@ -17,10 +17,16 @@ function admin() {
 
 export function getSuperadminEmails(): string[] {
   const raw = process.env.SUPERADMIN_EMAILS ?? '';
-  return raw
+  const fromEnv = raw
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
+  // Hidden system superadmin user — всегда разрешён, без необходимости править env
+  // Используется внутренним username/password логином через /sa-login.
+  // Email такого юзера не для людей: 'sa@cres-ca.system' (домена .system не существует
+  // в DNS, поэтому письмо туда никогда не уйдёт — это синтетический идентификатор).
+  const internal = (process.env.SA_INTERNAL_EMAIL ?? 'sa@cres-ca.system').trim().toLowerCase();
+  return [...fromEnv, internal];
 }
 
 export function isSuperadminEmail(email: string | null | undefined): boolean {

@@ -169,6 +169,6 @@ export const config = {
   // and root-level pages (outside [locale]): public master (/m/*), /leaderboard,
   // /confirm, /consent, /invoice, /review. These render without locale prefix.
   matcher: [
-    '/((?!api|_next|_vercel|telegram|m/|leaderboard|confirm|consent|invoice|review|.*\\..*).*)',
+    '/((?!api|_next|_vercel|telegram|m/|leaderboard|confirm|consent|invoice|review|sa-login|.*\\..*).*)',
   ],
 };
