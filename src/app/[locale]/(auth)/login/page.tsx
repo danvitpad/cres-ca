@@ -175,7 +175,7 @@ export default function AuthPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [salonName, setSalonName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('+380 ');
   const [dob, setDob] = useState('');
   const [terms, setTerms] = useState(false);
 
@@ -674,8 +674,6 @@ export default function AuthPage() {
                                     const cleaned = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 20);
                                     setPhone(cleaned);
                                   }}
-                                  onFocus={() => { if (!phone.trim()) setPhone('+380 '); }}
-                                  onBlur={() => { if (phone.trim() === '+380') setPhone(''); }}
                                   className="glass-input"
                                   required
                                 />

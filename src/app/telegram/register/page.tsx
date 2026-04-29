@@ -148,7 +148,8 @@ export default function MiniAppRegisterPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [salonName, setSalonName] = useState('');
-  const [phone, setPhone] = useState('');
+  // Телефон сразу со страны-кода — нет «резкого» появления при тапе
+  const [phone, setPhone] = useState('+380 ');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [dob, setDob] = useState('');
@@ -163,8 +164,9 @@ export default function MiniAppRegisterPage() {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
-  // Sticky bottom скрывается когда юзер печатает — не перекрывает клаву
-  const [inputFocused, setInputFocused] = useState(false);
+  // Кнопка прячется только когда клавиатура РЕАЛЬНО открылась
+  // (visualViewport уменьшается при появлении клавиатуры на мобильном)
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   // Читаем сохранённый язык из welcome
   useEffect(() => {
@@ -183,19 +185,16 @@ export default function MiniAppRegisterPage() {
     if (s.tgData?.last_name) setLastName(s.tgData.last_name);
   }, [router]);
 
+  // Следим за реальным размером видимой области — когда клавиатура открывается,
+  // visualViewport.height падает. Прячем sticky bottom только тогда.
   useEffect(() => {
-    function isTextInput(el: EventTarget | null) {
-      if (!(el instanceof HTMLElement)) return false;
-      return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
-    }
-    function onFocus(e: FocusEvent) { if (isTextInput(e.target)) setInputFocused(true); }
-    function onBlur(e: FocusEvent) { if (isTextInput(e.target)) setInputFocused(false); }
-    document.addEventListener('focusin', onFocus);
-    document.addEventListener('focusout', onBlur);
-    return () => {
-      document.removeEventListener('focusin', onFocus);
-      document.removeEventListener('focusout', onBlur);
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      setKeyboardOpen(vv.height < window.innerHeight * 0.8);
     };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
   }, []);
 
   const t = T[lang];
@@ -472,9 +471,7 @@ export default function MiniAppRegisterPage() {
             errMonth={t.dobMonthErr} errYear={t.dobYearErr}
             errDay={t.dobDayErr} errFuture={t.dobFutureErr} />
           <Field icon={Phone} label={t.phone} value={phone} onChange={setPhone}
-            inputMode="tel" type="tel"
-            onFocus={() => { if (!phone.trim()) setPhone('+380 '); }}
-            onBlur={() => { if (phone.trim() === '+380') setPhone(''); }} />
+            inputMode="tel" type="tel" />
           <Field icon={Mail} label={t.email} value={email} onChange={setEmail}
             inputMode="email" type="email" />
           <Field icon={Lock} label={t.password} value={password} onChange={setPassword}
@@ -532,8 +529,8 @@ export default function MiniAppRegisterPage() {
       <div
         className="fixed inset-x-0 bottom-0 space-y-2 px-6 pb-6 pt-8 transition-opacity duration-200"
         style={{
-          opacity: inputFocused ? 0 : 1,
-          pointerEvents: inputFocused ? 'none' : 'auto',
+          opacity: keyboardOpen ? 0 : 1,
+          pointerEvents: keyboardOpen ? 'none' : 'auto',
           paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
           background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
         }}
