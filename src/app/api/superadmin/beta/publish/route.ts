@@ -58,10 +58,15 @@ export async function POST(req: Request) {
   );
 
   // Уведомляем самого Данила в @crescasuperadmin_bot — это критическое действие
+  const kyivTime = new Date().toLocaleString('ru-RU', {
+    timeZone: 'Europe/Kyiv',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
   await notifySuperadmin(
     next
-      ? `<b>Сервис опубликован для всех</b>\n\nРегистрация теперь открыта без бета-проверки.\nДата: ${new Date().toLocaleString('ru-RU')}`
-      : `<b>Сервис снова закрыт (только бета)</b>\n\nРегистрация снова требует бета-приглашения.\nДата: ${new Date().toLocaleString('ru-RU')}`,
+      ? `<b>Сервис опубликован для всех</b>\n\nРегистрация теперь открыта без бета-проверки.\nДата: ${kyivTime}`
+      : `<b>Сервис снова закрыт (только бета)</b>\n\nРегистрация снова требует бета-приглашения.\nДата: ${kyivTime}`,
   );
 
   return NextResponse.json({ ok: true, public_signup_open: next });

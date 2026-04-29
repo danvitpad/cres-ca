@@ -2077,8 +2077,13 @@ async function handleRebookDecline(chatId: number, telegramId: number, suggestio
 // ──────────────────────────────────────────────────────────────────────
 
 /**
- * Запускает flow заявки в бета: создаёт `pending` запись (или находит
- * существующую) и просит почту через force_reply с тегом [beta_email].
+ * Запускает flow заявки в бета. Сначала проверяет, нет ли уже заявки
+ * от этого telegram_id, и в каком она статусе:
+ *   - approved (ещё не зарегистрировался) → «вы уже одобрены, регистрируйтесь»
+ *   - used (зарегистрирован) → «вы уже зарегистрированы»
+ *   - pending → «вы уже подали, ждём одобрения»
+ *   - rejected → «к сожалению, заявка отклонена»
+ *   - нет заявки → создаёт pending + просит почту с force_reply
  */
 async function handleBetaRequestStart(
   chatId: number,
@@ -2088,7 +2093,60 @@ async function handleBetaRequestStart(
 ): Promise<void> {
   const supabase = createServiceClient();
 
-  // Создаём (или обновляем) заявку без email пока
+  // 1. Проверяем существующую заявку
+  const { data: existing } = await supabase
+    .from('beta_invites')
+    .select('id, status, email, rejection_reason')
+    .eq('telegram_id', telegramId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === 'approved') {
+      await sendMessage(
+        chatId,
+        `${firstName}, вы уже одобрены — можно регистрироваться.\n\n` +
+        `Откройте <a href="https://cres-ca.com">cres-ca.com</a> и пройдите регистрацию по почте <b>${existing.email ?? '—'}</b>.`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [[{ text: 'Открыть сайт', url: 'https://cres-ca.com' }]] },
+        },
+      );
+      return;
+    }
+    if (existing.status === 'used') {
+      await sendMessage(
+        chatId,
+        `${firstName}, вы уже зарегистрированы в CRES-CA. Открывайте приложение и пользуйтесь.`,
+        {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: [[{ text: 'Открыть сайт', url: 'https://cres-ca.com' }]] },
+        },
+      );
+      return;
+    }
+    if (existing.status === 'pending') {
+      await sendMessage(
+        chatId,
+        `${firstName}, ваша заявка уже у нас. Мы её рассматриваем — обычно отвечаем в течение суток. Когда одобрим, я напишу сюда же.`,
+        { parse_mode: 'HTML' },
+      );
+      return;
+    }
+    if (existing.status === 'rejected') {
+      const reason = existing.rejection_reason ? `\n\nПричина: ${existing.rejection_reason}` : '';
+      await sendMessage(
+        chatId,
+        `${firstName}, к сожалению, ваша заявка не одобрена.${reason}\n\n` +
+        `Вы сможете зарегистрироваться после публичного релиза.`,
+        { parse_mode: 'HTML' },
+      );
+      return;
+    }
+  }
+
+  // 2. Заявки нет — создаём pending без email и просим почту
   await supabase.rpc('create_beta_request', {
     p_telegram_id: telegramId,
     p_email: null,
@@ -2099,8 +2157,8 @@ async function handleBetaRequestStart(
   await sendMessage(
     chatId,
     `Привет, ${firstName}.\n\n` +
-    `Сервис CRES-CA сейчас в закрытом бета-тестировании. Чтобы добавить тебя в список — пришли в ответ на это сообщение свою <b>почту</b>.\n\n` +
-    `Когда мы тебя одобрим, я напишу тебе тут же. На время бета и ещё 6 месяцев после релиза — <b>полный функционал бесплатно</b>.\n\n` +
+    `Сервис CRES-CA сейчас в закрытом бета-тестировании. Чтобы добавить вас в список — пришлите в ответ на это сообщение свою <b>почту</b>.\n\n` +
+    `Когда мы вас одобрим, я напишу тут же. На время бета и ещё 6 месяцев после релиза — <b>полный функционал бесплатно</b>.\n\n` +
     `<i>[beta_email]</i>`,
     {
       parse_mode: 'HTML',
@@ -2132,6 +2190,53 @@ async function handleBetaEmailReply(
   }
 
   const supabase = createServiceClient();
+
+  // Проверяем — может уже есть заявка с другим статусом
+  const { data: existing } = await supabase
+    .from('beta_invites')
+    .select('id, status, email, rejection_reason')
+    .eq('telegram_id', telegramId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing && existing.status === 'approved') {
+    await sendMessage(
+      chatId,
+      `${firstName}, вы уже одобрены раньше — можно регистрироваться. Открывайте <a href="https://cres-ca.com">cres-ca.com</a>.`,
+      { parse_mode: 'HTML' },
+    );
+    return;
+  }
+  if (existing && existing.status === 'used') {
+    await sendMessage(
+      chatId,
+      `${firstName}, вы уже зарегистрированы. Открывайте приложение.`,
+      { parse_mode: 'HTML' },
+    );
+    return;
+  }
+  if (existing && existing.status === 'rejected') {
+    const reason = existing.rejection_reason ? `\n\nПричина: ${existing.rejection_reason}` : '';
+    await sendMessage(
+      chatId,
+      `${firstName}, ваша предыдущая заявка не была одобрена.${reason}\n\nСможете зарегистрироваться после публичного релиза.`,
+      { parse_mode: 'HTML' },
+    );
+    return;
+  }
+
+  // Если уже была pending заявка с тем же email — не создаём дубль и не плодим уведомление Данилу
+  if (existing && existing.status === 'pending' && existing.email?.toLowerCase() === email) {
+    await sendMessage(
+      chatId,
+      `${firstName}, ваша заявка уже у нас. Мы её рассматриваем.`,
+      { parse_mode: 'HTML' },
+    );
+    return;
+  }
+
+  // Создаём (или обновляем pending заявку с новой почтой)
   const { data: id } = await supabase.rpc('create_beta_request', {
     p_telegram_id: telegramId,
     p_email: email,
@@ -2146,18 +2251,21 @@ async function handleBetaEmailReply(
     { parse_mode: 'HTML' },
   );
 
-  // Уведомление Данилу в @crescasuperadmin_bot
-  await notifySuperadmin(
-    `<b>Новая заявка на бета</b>\n\n` +
-    `<b>Имя:</b> ${firstName}\n` +
-    `<b>Email:</b> ${email}\n` +
-    `<b>Telegram ID:</b> <code>${telegramId}</code>\n` +
-    `<b>Заявка ID:</b> <code>${id ?? '—'}</code>`,
-    {
-      parseMode: 'HTML',
-      buttons: [
-        [{ text: 'Открыть в админке', url: `${process.env.NEXT_PUBLIC_APP_URL}/ru/superadmin/beta` }],
-      ],
-    },
-  );
+  // Уведомление Данилу в @crescasuperadmin_bot — только при первичной заявке,
+  // не при обновлении email в уже существующей pending
+  if (!existing) {
+    await notifySuperadmin(
+      `<b>Новая заявка на бета</b>\n\n` +
+      `<b>Имя:</b> ${firstName}\n` +
+      `<b>Email:</b> ${email}\n` +
+      `<b>Telegram ID:</b> <code>${telegramId}</code>\n` +
+      `<b>Заявка ID:</b> <code>${id ?? '—'}</code>`,
+      {
+        parseMode: 'HTML',
+        buttons: [
+          [{ text: 'Открыть в админке', url: `${process.env.NEXT_PUBLIC_APP_URL}/ru/superadmin/beta` }],
+        ],
+      },
+    );
+  }
 }
