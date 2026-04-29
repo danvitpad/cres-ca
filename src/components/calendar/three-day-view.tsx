@@ -29,7 +29,7 @@ const LIGHT = {
   headerBg: '#ffffff',
   headerBorder: 'rgba(13,148,136,0.08)',
   headerShadow: 'rgba(13,148,136,0.06) 0px 2px 4px 0px',
-  todayDot: '#0d9488',
+  todayDot: 'var(--color-accent)',
 };
 
 const DARK = {
@@ -44,7 +44,7 @@ const DARK = {
   headerBg: '#1a1a1d',
   headerBorder: 'rgba(45,212,191,0.1)',
   headerShadow: 'rgba(0, 0, 0, 0.4) 0px 2px 4px 0px',
-  todayDot: '#5eead4',
+  todayDot: 'var(--color-accent-text)',
 };
 
 const DAY_NAMES_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];

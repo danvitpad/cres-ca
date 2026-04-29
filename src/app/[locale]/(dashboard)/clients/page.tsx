@@ -43,14 +43,14 @@ import { humanizeError } from '@/lib/format/error';
 const PAGE_SIZE = 40;
 
 const AVATAR_GRADIENTS_LIGHT = [
-  'linear-gradient(135deg, #0d9488 0%, #5eead4 100%)',
+  'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-text) 100%)',
   'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
   'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
   'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
   'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
   'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
   'linear-gradient(135deg, #ef4444 0%, #fb7185 100%)',
-  'linear-gradient(135deg, #2dd4bf 0%, #5eead4 100%)',
+  'linear-gradient(135deg, #2dd4bf 0%, var(--color-accent-text) 100%)',
 ];
 
 interface ClientRow {
@@ -736,7 +736,7 @@ function PartnersSection({ C }: { C: PageTheme }) {
     let hash = 0;
     for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
     const grads = [
-      'linear-gradient(135deg, #0d9488 0%, #5eead4 100%)',
+      'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-text) 100%)',
       'linear-gradient(135deg, #ec4899 0%, #f472b6 100%)',
       'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
       'linear-gradient(135deg, #10b981 0%, #34d399 100%)',

@@ -40,7 +40,7 @@ const SOCIAL_KEYS = [
 ] as const;
 
 const PRESET_COLORS = [
-  '#0d9488', '#3b82f6', '#0ea5e9', '#06b6d4',
+  'var(--color-accent)', '#3b82f6', '#0ea5e9', '#06b6d4',
   '#10b981', '#22c55e', '#eab308', '#f97316',
   '#ef4444', '#ec4899', '#f43f5e', '#2dd4bf',
   '#1f2937', '#0f172a',
@@ -79,7 +79,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
   const [bio, setBio] = useState(master.bio ?? '');
   const [coverUrl, setCoverUrl] = useState<string | null>(master.cover_url);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(master.profile?.avatar_url ?? null);
-  const [primary, setPrimary] = useState(master.theme_primary_color ?? '#0d9488');
+  const [primary, setPrimary] = useState(master.theme_primary_color ?? 'var(--color-accent)');
   const [background, setBackground] = useState<string | null>(master.theme_background_color);
   const [bannerY, setBannerY] = useState(master.banner_position_y ?? 50);
   const [phonePublic, setPhonePublic] = useState(master.phone_public ?? true);
@@ -108,7 +108,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
     setBio(master.bio ?? '');
     setCoverUrl(master.cover_url);
     setAvatarUrl(master.profile?.avatar_url ?? null);
-    setPrimary(master.theme_primary_color ?? '#0d9488');
+    setPrimary(master.theme_primary_color ?? 'var(--color-accent)');
     setBackground(master.theme_background_color);
     setBannerY(master.banner_position_y ?? 50);
     setPhonePublic(master.phone_public ?? true);
@@ -393,7 +393,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
                 type="text"
                 value={primary}
                 onChange={(e) => setPrimary(e.target.value)}
-                placeholder="#0d9488"
+                placeholder="var(--color-accent)"
                 pattern="^#[0-9a-fA-F]{6}$"
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono outline-none focus:border-primary"
               />

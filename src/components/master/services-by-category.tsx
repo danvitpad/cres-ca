@@ -35,7 +35,7 @@ interface Props {
 
 const UNCATEGORIZED = 'Услуги';
 
-export function ServicesByCategory({ services, masterId, accent = '#0d9488', locale = 'ru' }: Props) {
+export function ServicesByCategory({ services, masterId, accent = 'var(--color-accent)', locale = 'ru' }: Props) {
   const groups = useMemo(() => {
     const map = new Map<string, Service[]>();
     for (const s of services) {

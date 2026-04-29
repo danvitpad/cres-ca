@@ -30,20 +30,20 @@ type Mode = 'signin' | 'signup';
 type Sub = 'form' | 'forgot' | 'reset-sent' | 'reset-otp' | 'new-password' | 'signup-otp' | '2fa' | 'restore';
 
 const REMEMBER_KEY = 'cres-ca-remember';
-// Нейтральная teal-tinted Unsplash для нового бренда (deep teal #0d9488)
+// Нейтральная teal-tinted Unsplash для нового бренда (deep teal var(--color-accent))
 const HERO_IMG = 'https://images.unsplash.com/photo-1604933762023-7213af7ff7a7?w=2160&q=80';
 
 /* ───── Themed CSS — glass inputs + teal accent (m0038 rebrand) ───── */
 const AUTH_CSS = `
 .auth-glass {
-  --af: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --af: var(--font-sans, 'Plus Jakarta Sans', sans-serif);
   --abg: var(--background, #ffffff);
   --acard: color-mix(in oklab, var(--abg) 92%, white);
   --afg: var(--foreground, #0a0a0a);
   --afg2: color-mix(in oklab, var(--afg) 65%, transparent);
   --afg3: color-mix(in oklab, var(--afg) 45%, transparent);
   --acb: color-mix(in oklab, var(--afg) 12%, transparent);
-  --aviolet: #0d9488; --aviolet-l: #f0fdfa;
+  --aviolet: var(--color-accent); --aviolet-l: #f0fdfa;
   --adanger: #b91c1c;
   font-family: var(--af);
   background: var(--abg);

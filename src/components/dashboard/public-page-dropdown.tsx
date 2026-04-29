@@ -91,7 +91,7 @@ export function PublicPageDropdown() {
           border: '1px solid',
           borderColor: tone === 'visible' ? 'rgba(13,148,136,0.35)' : 'rgba(245,158,11,0.35)',
           background: tone === 'visible' ? 'rgba(13,148,136,0.08)' : 'rgba(245,158,11,0.08)',
-          color: tone === 'visible' ? '#0d9488' : '#b45309',
+          color: tone === 'visible' ? 'var(--color-accent)' : '#b45309',
           fontSize: 13,
           fontWeight: 500,
           display: 'inline-flex',
@@ -149,7 +149,7 @@ export function PublicPageDropdown() {
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                   role="menuitem"
                 >
-                  <ExternalLink size={15} style={{ color: '#0d9488' }} />
+                  <ExternalLink size={15} style={{ color: 'var(--color-accent)' }} />
                   <span>Открыть</span>
                 </button>
                 <button
@@ -160,7 +160,7 @@ export function PublicPageDropdown() {
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                   role="menuitem"
                 >
-                  {copied ? <Check size={15} style={{ color: '#10b981' }} /> : <Copy size={15} style={{ color: '#0d9488' }} />}
+                  {copied ? <Check size={15} style={{ color: '#10b981' }} /> : <Copy size={15} style={{ color: 'var(--color-accent)' }} />}
                   <span>{copied ? 'Скопировано' : 'Скопировать ссылку'}</span>
                 </button>
               </>

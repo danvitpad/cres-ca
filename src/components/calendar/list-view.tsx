@@ -63,7 +63,7 @@ export function ListView({ appointments, onAppointmentClick, onDayClick }: ListV
     : {
       bg: '#faf8ff', surface: '#ffffff', border: 'rgba(13,148,136,0.10)',
       text: '#0a0a0a', textSecondary: '#4a4666', textTertiary: '#8781a5',
-      hover: '#fafafa', accent: '#0d9488', success: '#16a34a', danger: '#dc2626',
+      hover: '#fafafa', accent: 'var(--color-accent)', success: '#16a34a', danger: '#dc2626',
       warning: '#d97706', sectionBg: 'rgba(13,148,136,0.03)',
     };
 

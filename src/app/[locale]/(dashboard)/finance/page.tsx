@@ -906,7 +906,7 @@ export default function FinancePage() {
                       <span style={{ fontSize: 14, fontWeight: 550, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                         {category}
                         {isVoice && (
-                          <Mic size={12} aria-label="Создано голосом" style={{ color: '#5eead4', flexShrink: 0 }} />
+                          <Mic size={12} aria-label="Создано голосом" style={{ color: 'var(--color-accent-text)', flexShrink: 0 }} />
                         )}
                       </span>
                       <span style={{ fontSize: 13, color: C.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

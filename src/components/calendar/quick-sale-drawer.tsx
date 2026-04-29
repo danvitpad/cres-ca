@@ -20,7 +20,7 @@ const LIGHT = {
   border: '#e5e5e5',
   text: '#000000',
   textMuted: '#737373',
-  accent: '#0d9488',
+  accent: 'var(--color-accent)',
   accentSoft: '#f0eefe',
   danger: '#d4163a',
   btnBg: '#000000',

@@ -67,7 +67,7 @@ export function OnboardingChecklist({ master, theme }: Props) {
   const border = isDark ? '0.8px solid #333' : '0.8px solid #e0e0e0';
   const text = isDark ? '#f5f5f5' : '#0d0d0d';
   const textMuted = isDark ? '#a3a3a3' : '#737373';
-  const accent = '#0d9488';
+  const accent = 'var(--color-accent)';
   const successBg = isDark ? '#0a2010' : '#f0fdf4';
   const successBorder = isDark ? '#2c7016' : '#22c55e';
   const pendingBg = isDark ? '#1f1f1f' : '#f9fafb';

@@ -15,16 +15,16 @@ const LIGHT = {
   text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
-  accent: '#0d9488',
+  accent: 'var(--color-accent)',
   accentSoft: '#f0eefe',
   success: '#22c55e',
   successSoft: '#f0fdf4',
   danger: '#d4163a',
   dangerSoft: '#fef2f2',
   cardBg: '#f9f9f9',
-  chartBar: '#0d9488',
+  chartBar: 'var(--color-accent)',
   chartBarMuted: '#e5e5e5',
-  purpleCard: '#0d9488',
+  purpleCard: 'var(--color-accent)',
   purpleCardText: '#ffffff',
 };
 
@@ -42,7 +42,7 @@ const DARK = {
   cardBg: '#000000',
   chartBar: '#2dd4bf',
   chartBarMuted: '#1a1a1a',
-  purpleCard: '#0d9488',
+  purpleCard: 'var(--color-accent)',
   purpleCardText: '#ffffff',
 };
 
@@ -54,7 +54,7 @@ const TIME_TABS = [
 ] as const;
 
 const CHANNELS = [
-  { key: 'online', label: 'Онлайн запись', color: '#0d9488' },
+  { key: 'online', label: 'Онлайн запись', color: 'var(--color-accent)' },
   { key: 'manual', label: 'Ручная запись', color: '#f59e0b' },
   { key: 'telegram', label: 'Telegram', color: '#0ea5e9' },
   { key: 'walk_in', label: 'Без записи', color: '#2dd4bf' },

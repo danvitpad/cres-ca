@@ -140,7 +140,7 @@ export default function OnboardingVerticalPage() {
                   className="flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors"
                   style={{
                     background: isSelected ? 'rgba(45,212,191,0.22)' : 'rgba(45,212,191,0.10)',
-                    color: isSelected ? '#5eead4' : '#5eead4',
+                    color: isSelected ? 'var(--color-accent-text)' : 'var(--color-accent-text)',
                   }}
                 >
                   <Icon className="size-5" />

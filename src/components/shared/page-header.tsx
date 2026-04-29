@@ -33,7 +33,7 @@ const LIGHT = {
 const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
-  btnBg: '#0d9488',
+  btnBg: 'var(--color-accent)',
   btnText: '#ffffff',
   btnOutlineBg: 'transparent',
   btnOutlineBorder: '#1a1a1a',

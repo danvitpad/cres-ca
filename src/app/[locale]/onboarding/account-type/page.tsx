@@ -64,7 +64,7 @@ export default function AccountTypePage() {
             border: '1px solid rgba(45,212,191,0.3)',
           }}
         >
-          <span className="text-xl font-bold" style={{ color: '#5eead4', letterSpacing: '-0.02em' }}>
+          <span className="text-xl font-bold" style={{ color: 'var(--color-accent-text)', letterSpacing: '-0.02em' }}>
             C
           </span>
         </motion.div>
@@ -113,7 +113,7 @@ export default function AccountTypePage() {
           >
             <div
               className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'rgba(45,212,191,0.12)', color: '#5eead4' }}
+              style={{ background: 'rgba(45,212,191,0.12)', color: 'var(--color-accent-text)' }}
             >
               <Building2 className="size-5" />
             </div>
@@ -155,7 +155,7 @@ export default function AccountTypePage() {
           >
             <div
               className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'rgba(45,212,191,0.12)', color: '#5eead4' }}
+              style={{ background: 'rgba(45,212,191,0.12)', color: 'var(--color-accent-text)' }}
             >
               <Users className="size-5" />
             </div>

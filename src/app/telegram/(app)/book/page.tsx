@@ -91,7 +91,7 @@ const MONTH_NAMES_FULL = [
 ];
 
 const VIOLET = '#2dd4bf';
-const _VIOLET_DARK = '#0d9488';
+const _VIOLET_DARK = 'var(--color-accent)';
 
 const DEFAULT_WORKING_HOURS: NonNullable<MasterInfo['working_hours']> = {
   sunday: null,

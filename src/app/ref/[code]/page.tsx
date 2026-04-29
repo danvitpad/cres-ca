@@ -80,7 +80,7 @@ export default async function ReferralByCodePage({ params }: PageProps) {
             height: 88,
             borderRadius: 24,
             margin: '0 auto 24px',
-            background: 'linear-gradient(135deg, #0d9488 0%, #8b6cf7 100%)',
+            background: 'linear-gradient(135deg, var(--color-accent) 0%, #8b6cf7 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

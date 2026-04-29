@@ -21,10 +21,10 @@ const LIGHT = {
   otherMonthText: '#9994ad',
   text: '#0a0a0a',
   textMuted: '#64607a',
-  todayBg: '#0d9488',
+  todayBg: 'var(--color-accent)',
   todayText: '#ffffff',
-  accent: '#0d9488',
-  dotColors: ['#0d9488', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#ec4899'],
+  accent: 'var(--color-accent)',
+  dotColors: ['var(--color-accent)', '#06b6d4', '#f59e0b', '#10b981', '#ef4444', '#ec4899'],
   weekendBg: '#fafafa',
 };
 

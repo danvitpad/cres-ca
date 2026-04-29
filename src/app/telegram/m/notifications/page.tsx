@@ -87,7 +87,7 @@ const NOTIF_ICONS: Record<string, typeof Bell> = {
 const NOTIF_ICON_BG: Record<string, { bg: string; color: string }> = {
   new_follower: { bg: '#dbeafe', color: '#1d4ed8' },
   mutual_follow: { bg: '#dcfce7', color: '#15803d' },
-  salon_invite: { bg: '#f0fdfa', color: '#0f766e' },
+  salon_invite: { bg: '#f0fdfa', color: 'var(--color-accent-hover)' },
   salon_invite_accepted: { bg: '#dcfce7', color: '#15803d' },
   salon_invite_declined: { bg: '#fee2e2', color: '#b91c1c' },
   salon_join_request: { bg: '#fef3c7', color: '#b45309' },

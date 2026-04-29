@@ -24,7 +24,7 @@ interface Props {
   topOffset?: number;
 }
 
-export function MasterPageSectionTabs({ sections, accent = '#0d9488', topOffset = 64 }: Props) {
+export function MasterPageSectionTabs({ sections, accent = 'var(--color-accent)', topOffset = 64 }: Props) {
   const [active, setActive] = useState<string>(sections[0]?.id ?? '');
   const railRef = useRef<HTMLDivElement>(null);
 

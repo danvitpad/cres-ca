@@ -17,7 +17,7 @@ const LIGHT = {
   text: '#000000',
   textMuted: '#737373',
   border: '#e5e5e5',
-  accent: '#0d9488',
+  accent: 'var(--color-accent)',
   accentSoft: '#f0eefe',
   success: '#22c55e',
   danger: '#d4163a',
@@ -46,7 +46,7 @@ const DARK = {
   overlay: 'rgba(0,0,0,0.6)',
   tabActive: '#e5e5e5',
   tabInactive: '#555555',
-  btnBg: '#0d9488',
+  btnBg: 'var(--color-accent)',
   btnText: '#ffffff',
 };
 

@@ -24,7 +24,7 @@ const LIGHT = {
   border: 'rgba(13,148,136,0.13)',
   surface: '#ffffff',
   surfaceElevated: '#fafafa',
-  accent: '#0d9488',
+  accent: 'var(--color-accent)',
   accentSoft: 'rgba(13,148,136,0.08)',
 };
 

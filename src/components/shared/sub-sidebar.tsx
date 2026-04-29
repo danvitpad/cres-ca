@@ -35,7 +35,7 @@ const LIGHT = {
   textMuted: '#737373',
   activeBg: '#f0f0ff',
   activeText: '#000000',
-  activeBorder: '#0d9488',
+  activeBorder: 'var(--color-accent)',
   hoverBg: '#f5f5f5',
   badgeBg: '#0075a8',
   badgeText: '#ffffff',

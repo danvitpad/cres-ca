@@ -117,7 +117,7 @@ export default function PartnerDetailPage({ params }: { params: Promise<{ id: st
     let hash = 0;
     for (let i = 0; i < partnerName.length; i++) hash = partnerName.charCodeAt(i) + ((hash << 5) - hash);
     const grads = [
-      'linear-gradient(135deg, #0d9488 0%, #5eead4 100%)',
+      'linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-text) 100%)',
       'linear-gradient(135deg, #06b6d4 0%, #67e8f9 100%)',
       'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
       'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',

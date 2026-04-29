@@ -824,7 +824,7 @@ function ServiceForm({
         </Label>
         <div className="flex flex-wrap gap-2">
           {[
-            '#0d9488', '#ec4899', '#ef4444', '#f59e0b',
+            'var(--color-accent)', '#ec4899', '#ef4444', '#f59e0b',
             '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
             '#2dd4bf', '#f43f5e', '#64748b', '#0f172a',
           ].map((c) => (
@@ -1087,11 +1087,11 @@ function CategoryDialog({
   onCreated: (id: string) => void;
 }) {
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#0d9488');
+  const [color, setColor] = useState('var(--color-accent)');
   const [saving, setSaving] = useState(false);
 
   const SWATCHES = [
-    '#0d9488', '#ec4899', '#ef4444', '#f59e0b',
+    'var(--color-accent)', '#ec4899', '#ef4444', '#f59e0b',
     '#10b981', '#06b6d4', '#3b82f6', '#6366f1',
     '#2dd4bf', '#f43f5e', '#64748b', '#0f172a',
   ];
@@ -1109,7 +1109,7 @@ function CategoryDialog({
     if (error) { toast.error(humanizeError(error)); return; }
     toast.success('Категория создана');
     setName('');
-    setColor('#0d9488');
+    setColor('var(--color-accent)');
     if (data?.id) onCreated(data.id);
   }
 

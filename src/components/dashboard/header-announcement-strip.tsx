@@ -21,7 +21,7 @@ interface Props {
 
 const TYPE_CONFIG: Record<string, { icon: typeof Info; color: string; dotColor: string }> = {
   info:    { icon: Info,            color: '#3b82f6', dotColor: '#3b82f6' },
-  promo:   { icon: Sparkles,       color: '#0d9488', dotColor: '#0d9488' },
+  promo:   { icon: Sparkles,       color: 'var(--color-accent)', dotColor: 'var(--color-accent)' },
   warning: { icon: AlertTriangle,  color: '#f59e0b', dotColor: '#f59e0b' },
   update:  { icon: ArrowUpCircle,  color: '#10b981', dotColor: '#10b981' },
 };

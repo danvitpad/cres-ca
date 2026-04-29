@@ -215,10 +215,10 @@ export default function MasterMiniAppHome() {
                   justifyContent: 'center',
                 }}
               >
-                <MailOpen size={20} color="#0f766e" strokeWidth={2.4} />
+                <MailOpen size={20} color="var(--color-accent-hover)" strokeWidth={2.4} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#0f766e', margin: 0 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-hover)', margin: 0 }}>
                   Приглашение в команду
                 </p>
                 <p style={{ ...TYPE.h3, color: T.text, marginTop: 4 }}>
@@ -226,7 +226,7 @@ export default function MasterMiniAppHome() {
                 </p>
               </div>
             </div>
-            <ChevronRight size={18} color="#0f766e" />
+            <ChevronRight size={18} color="var(--color-accent-hover)" />
           </Link>
         )}
 
