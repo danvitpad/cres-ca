@@ -223,6 +223,8 @@ export async function GET(
 }
 
 interface PostBody {
+  /** Если задан — добавляем существующий профиль из системы. */
+  profile_id?: string;
   full_name?: string;
   phone?: string | null;
   email?: string | null;
@@ -255,13 +257,81 @@ export async function POST(
   if (!salon) return NextResponse.json({ error: 'salon_not_found' }, { status: 404 });
 
   const body = (await req.json().catch(() => ({}))) as PostBody;
+  const adm = admin();
+
+  // Mode 1: profile_id передан напрямую (search → + flow).
+  if (body.profile_id) {
+    const { data: profile } = await adm
+      .from('profiles')
+      .select('id, full_name, phone, email, date_of_birth')
+      .eq('id', body.profile_id)
+      .maybeSingle();
+    if (!profile) return NextResponse.json({ error: 'profile_not_found' }, { status: 404 });
+
+    // Если master_id задан — кладём в clients под этим мастером
+    if (body.master_id) {
+      const { data: m } = await adm
+        .from('masters').select('id, salon_id').eq('id', body.master_id).eq('salon_id', salonId).maybeSingle();
+      if (!m) return NextResponse.json({ error: 'master_not_in_salon' }, { status: 400 });
+
+      const { data: existing } = await adm
+        .from('clients').select('id').eq('profile_id', profile.id).eq('master_id', m.id).maybeSingle();
+
+      let clientId: string;
+      if (existing) {
+        clientId = existing.id;
+      } else {
+        const { data: inserted, error } = await adm
+          .from('clients')
+          .insert({
+            master_id: m.id, salon_id: salonId, profile_id: profile.id,
+            full_name: profile.full_name || 'Клиент',
+            phone: profile.phone ?? null, email: profile.email ?? null,
+            date_of_birth: profile.date_of_birth ?? null,
+          })
+          .select('id').single();
+        if (error) return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+        clientId = inserted.id;
+      }
+      if (profile.id !== user.id) {
+        await notifyUser(adm, {
+          profileId: profile.id,
+          title: 'Вас добавили в контакты',
+          body: `Команда «${salon.name}» добавила вас в свои контакты`,
+          data: { type: 'salon_added_you', salon_id: salonId, action_url: `/s/${salonId}` },
+          deepLinkPath: `/telegram/salon/${salonId}`,
+          deepLinkLabel: 'Открыть салон',
+        });
+      }
+      return NextResponse.json({ id: clientId, linked: true, salon_level: false });
+    }
+
+    // Иначе — salon-level через salon_follows
+    await adm
+      .from('salon_follows')
+      .upsert(
+        { profile_id: profile.id, salon_id: salonId },
+        { onConflict: 'profile_id,salon_id', ignoreDuplicates: true },
+      );
+    if (profile.id !== user.id) {
+      await notifyUser(adm, {
+        profileId: profile.id,
+        title: 'Вас добавили в контакты',
+        body: `Команда «${salon.name}» добавила вас в свои контакты`,
+        data: { type: 'salon_added_you', salon_id: salonId, action_url: `/s/${salonId}` },
+        deepLinkPath: `/telegram/salon/${salonId}`,
+        deepLinkLabel: 'Открыть салон',
+      });
+    }
+    return NextResponse.json({ id: `follow:${profile.id}`, linked: true, salon_level: true });
+  }
+
+  // Mode 2: ручное (full_name + опц. phone/email)
   const fullName = (body.full_name ?? '').trim();
   if (!fullName) return NextResponse.json({ error: 'full_name_required' }, { status: 400 });
 
   const phoneNorm = normalizePhone(body.phone);
   const emailNorm = normalizeEmail(body.email);
-
-  const adm = admin();
 
   // Если master_id задан — проверяем что он действительно входит в команду.
   let masterId: string | null = null;

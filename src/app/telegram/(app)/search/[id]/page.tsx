@@ -12,7 +12,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Star, MapPin, Clock, Loader2, Share2,
-  ChevronRight, Camera, MessageSquare, CalendarCheck,
+  ChevronRight, Camera, MessageSquare, CalendarCheck, Heart, HeartOff,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -135,6 +135,8 @@ export default function MiniAppMasterDetailPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [showBottomBar, setShowBottomBar] = useState(false);
   const [portfolioOpen, setPortfolioOpen] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
 
   // Refs for scroll-to-section
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -247,6 +249,45 @@ export default function MiniAppMasterDetailPage() {
       setLoading(false);
     })();
   }, [params?.id]);
+
+  /* ─── load follow state ─── */
+  useEffect(() => {
+    if (!params?.id || !userId) return;
+    const supabase = createClient();
+    (async () => {
+      const { data } = await supabase
+        .from('client_master_links')
+        .select('profile_id')
+        .eq('profile_id', userId)
+        .eq('master_id', params.id)
+        .maybeSingle();
+      setFollowing(Boolean(data));
+    })();
+  }, [params?.id, userId]);
+
+  /* ─── follow toggle ─── */
+  const toggleFollow = useCallback(async () => {
+    if (!master || followBusy) return;
+    if (!userId) {
+      router.push('/telegram/welcome');
+      return;
+    }
+    haptic('selection');
+    setFollowBusy(true);
+    try {
+      const res = await fetch('/api/follow/crm/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId: master.id }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { following: boolean };
+        setFollowing(j.following);
+      }
+    } finally {
+      setFollowBusy(false);
+    }
+  }, [master, followBusy, userId, haptic, router]);
 
   /* ─── share ─── */
   const handleShare = useCallback(() => {
@@ -397,14 +438,32 @@ export default function MiniAppMasterDetailPage() {
         >
           <button
             onClick={() => { haptic('light'); router.back(); }}
-            className="flex size-10 items-center justify-center rounded-full bg-neutral-900/40 backdrop-blur-xl border border-neutral-200 active:scale-90 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-white shadow-md active:scale-90 transition-transform"
+            aria-label="Назад"
           >
             <ArrowLeft className="size-[18px] text-neutral-900" />
           </button>
           <div className="flex items-center gap-2">
             <button
+              onClick={toggleFollow}
+              disabled={followBusy}
+              className={`flex size-10 items-center justify-center rounded-full shadow-md active:scale-90 transition-transform disabled:opacity-60 ${
+                following ? 'bg-rose-500 text-white' : 'bg-white text-rose-500'
+              }`}
+              aria-label={following ? 'Убрать из контактов' : 'В контакты'}
+            >
+              {followBusy ? (
+                <Loader2 className="size-[18px] animate-spin" />
+              ) : following ? (
+                <HeartOff className="size-[18px]" />
+              ) : (
+                <Heart className="size-[18px]" />
+              )}
+            </button>
+            <button
               onClick={handleShare}
-              className="flex size-10 items-center justify-center rounded-full bg-neutral-900/40 backdrop-blur-xl border border-neutral-200 active:scale-90 transition-transform"
+              className="flex size-10 items-center justify-center rounded-full bg-white shadow-md active:scale-90 transition-transform"
+              aria-label="Поделиться"
             >
               <Share2 className="size-[18px] text-neutral-900" />
             </button>

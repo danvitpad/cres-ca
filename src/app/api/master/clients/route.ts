@@ -23,6 +23,8 @@ function admin() {
 }
 
 interface Body {
+  /** Если задан — добавляем уже существующий профиль из системы (search → +). */
+  profile_id?: string;
   full_name?: string;
   phone?: string | null;
   email?: string | null;
@@ -55,13 +57,70 @@ export async function POST(req: Request) {
   if (!master) return NextResponse.json({ error: 'not_a_master' }, { status: 403 });
 
   const body = (await req.json().catch(() => ({}))) as Body;
+  const adm = admin();
+
+  // Mode 1: profile_id передан напрямую (search → + flow).
+  if (body.profile_id) {
+    const { data: profile } = await adm
+      .from('profiles')
+      .select('id, full_name, phone, email, date_of_birth')
+      .eq('id', body.profile_id)
+      .maybeSingle();
+    if (!profile) return NextResponse.json({ error: 'profile_not_found' }, { status: 404 });
+
+    const { data: existing } = await adm
+      .from('clients')
+      .select('id')
+      .eq('profile_id', profile.id)
+      .eq('master_id', master.id)
+      .maybeSingle();
+
+    let clientId: string;
+    if (existing) {
+      clientId = existing.id;
+    } else {
+      const { data: inserted, error } = await adm
+        .from('clients')
+        .insert({
+          master_id: master.id,
+          salon_id: master.salon_id ?? null,
+          profile_id: profile.id,
+          full_name: profile.full_name || 'Клиент',
+          phone: profile.phone ?? null,
+          email: profile.email ?? null,
+          date_of_birth: profile.date_of_birth ?? null,
+        })
+        .select('id')
+        .single();
+      if (error) return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+      clientId = inserted.id;
+    }
+
+    // Notify client
+    if (profile.id !== user.id) {
+      await notifyUser(adm, {
+        profileId: profile.id,
+        title: 'Вас добавили в контакты',
+        body: `${master.display_name || 'Мастер'} добавил вас в свои контакты`,
+        data: {
+          type: 'added_to_contacts',
+          master_id: master.id,
+          action_url: `/m/${master.id}`,
+        },
+        deepLinkPath: `/telegram/search/${master.id}`,
+        deepLinkLabel: 'Открыть мастера',
+      });
+    }
+
+    return NextResponse.json({ id: clientId, linked: true });
+  }
+
+  // Mode 2: ручное добавление (full_name + опц. phone/email).
   const fullName = (body.full_name ?? '').trim();
   if (!fullName) return NextResponse.json({ error: 'full_name_required' }, { status: 400 });
 
   const phoneNorm = normalizePhone(body.phone);
   const emailNorm = normalizeEmail(body.email);
-
-  const adm = admin();
 
   // Auto-link: ищем профиль по телефону или почте.
   let linkedProfileId: string | null = null;

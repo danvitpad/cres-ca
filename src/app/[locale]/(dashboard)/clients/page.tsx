@@ -24,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { AddContactDialog } from '@/components/contacts/add-contact-dialog';
 import {
   AlertTriangle, Users, Star, Heart, Search,
   Cake, Clock, Sparkles,
@@ -476,13 +477,15 @@ export default function ClientsPage() {
             from /clients subtab "Подписчики" or when a user books online. */}
       </div>
 
-      {/* Add Client Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>{t('addClient')}</DialogTitle></DialogHeader>
-          <AddClientForm onSubmit={addClient} />
-        </DialogContent>
-      </Dialog>
+      {/* Add Contact Dialog (search-first) */}
+      <AddContactDialog
+        scope="client"
+        title="Добавить контакт"
+        addEndpoint="/api/master/clients"
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onAdded={() => loadClients()}
+      />
 
       {/* ═══ Top tabs (Clients / Partners) — Аудитория removed per product decision ═══ */}
       <div style={{
