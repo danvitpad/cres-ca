@@ -66,7 +66,7 @@ export async function GET(request: Request) {
       if (parsed.last_name) prefilledLastName = parsed.last_name.trim();
       if (parsed.phone) prefilledPhone = parsed.phone;
       if (parsed.date_of_birth) prefilledDob = parsed.date_of_birth;
-      if (parsed.password && parsed.password.length >= 6) prefilledPassword = parsed.password;
+      if (parsed.password && parsed.password.length >= 8) prefilledPassword = parsed.password;
     } catch { /* malformed cookie — ignore */ }
   }
   const oauthRole: Role | null = cookieRole ?? (isRole(searchParams.get('role')) ? (searchParams.get('role') as Role) : null);
@@ -100,6 +100,27 @@ export async function GET(request: Request) {
   // Это значит trigger handle_new_user сработал прямо сейчас.
   const createdAt = user.created_at ? new Date(user.created_at) : null;
   const justCreated = !!createdAt && Date.now() - createdAt.getTime() < 60_000;
+
+  // ── Бета-гейт для OAuth (Google и т.п.) ───────────────────────────────
+  // Если аккаунт ТОЛЬКО ЧТО создан через OAuth — проверяем разрешение через
+  // is_signup_allowed. Если public_signup закрыт И почты нет в одобренной бете —
+  // удаляем созданный auth.user и кидаем на /beta-closed.
+  // Существующие юзеры (не justCreated) — пропускаем как обычно.
+  if (justCreated && user.email) {
+    const admin = adminDb();
+    const { data: gateData } = await admin.rpc('is_signup_allowed', {
+      p_email: user.email,
+      p_telegram_id: null,
+    });
+    const allowed = (gateData as { allowed?: boolean } | null)?.allowed === true;
+    if (!allowed) {
+      try {
+        await supabase.auth.signOut();
+        await admin.auth.admin.deleteUser(user.id);
+      } catch { /* noop — даже если admin delete не получился, сессию мы уже выгнали */ }
+      return redirectAndClear(`${origin}/beta-closed`);
+    }
+  }
 
   // Режим «Войти»: если только что создался — пользователь имел в виду логин,
   // а такого аккаунта нет. Удаляем созданное (admin) и шлём с ошибкой.
@@ -178,6 +199,21 @@ export async function GET(request: Request) {
       email: user.email ?? null,
       avatar_url: typeof md.avatar_url === 'string' ? md.avatar_url : null,
     });
+  }
+
+  // ── Если только что создан через OAuth и был в одобренной бете —
+  // помечаем заявку использованной + выдаём 6 мес business
+  if (justCreated && user.email) {
+    try {
+      const admin = adminDb();
+      await admin.rpc('consume_beta_invite', {
+        p_profile_id: user.id,
+        p_email: user.email,
+        p_telegram_id: null,
+      });
+    } catch (e) {
+      console.error('[auth/callback] consume_beta_invite failed (non-blocking):', e);
+    }
   }
 
   // Если в куке прилетели prefilled данные — сразу сохраняем (можно скипнуть
