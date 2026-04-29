@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { createServerClient } from '@supabase/ssr';
 import { locales, defaultLocale } from '@/lib/i18n/config';
+import { isSuperadminEmail } from '@/lib/superadmin/access';
 
 const intlMiddleware = createIntlMiddleware({
   locales,
@@ -128,6 +129,16 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Суперадмин (sa@cres-ca.system или из SUPERADMIN_EMAILS) — мимо онбординга
+  // полностью. Если попал куда-то кроме /superadmin/*, перебрасываем на дашборд админки.
+  if (isSuperadminEmail(user.email)) {
+    const isSuperadminPath = strippedPath.startsWith('/superadmin');
+    if (!isSuperadminPath) {
+      return NextResponse.redirect(new URL('/superadmin/dashboard', request.url));
+    }
+    return response;
   }
 
   // Onboarding gate: если юзер не дошёл до конца онбординга — гоним на нужный шаг.
