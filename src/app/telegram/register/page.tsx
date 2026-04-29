@@ -273,8 +273,8 @@ export default function MiniAppRegisterPage() {
               disabled={otpBusy || otpCode.length !== 8}
               className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
               style={{
-                background: 'var(--foreground)',
-                color: 'var(--background)',
+                background: 'var(--primary)',
+                color: 'var(--primary-foreground)',
               }}
             >
               {otpBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
@@ -458,8 +458,9 @@ export default function MiniAppRegisterPage() {
             disabled={submitting}
             className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
             style={{
-              background: 'var(--foreground)',
-              color: 'var(--background)',
+              background: 'var(--primary)',
+              color: 'var(--primary-foreground)',
+              boxShadow: '0 6px 20px color-mix(in oklab, var(--primary) 32%, transparent)',
             }}
           >
             {submitting ? (

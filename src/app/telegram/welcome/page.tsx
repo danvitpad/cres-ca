@@ -116,6 +116,19 @@ export default function MiniAppWelcomePage() {
     }
   }, []);
 
+  // Синхронизируем тему с Telegram при первом заходе. Если юзер ещё не выбирал
+  // тему вручную (next-themes хранит выбор в localStorage 'theme') — берём
+  // colorScheme из TG. Если в TG включена тёмная — приложение тоже тёмное.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const tg = (window as { Telegram?: { WebApp?: { colorScheme?: 'light' | 'dark' } } }).Telegram?.WebApp;
+    if (!tg?.colorScheme) return;
+    const stored = localStorage.getItem('theme');
+    if (!stored || stored === 'system') {
+      setTheme(tg.colorScheme);
+    }
+  }, [setTheme]);
+
   useEffect(() => {
     const raw = sessionStorage.getItem('cres:tg');
     if (!raw) {
@@ -264,8 +277,9 @@ export default function MiniAppWelcomePage() {
           onClick={() => router.push('/telegram/register')}
           className="w-full rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform"
           style={{
-            background: 'var(--foreground)',
-            color: 'var(--background)',
+            background: 'var(--primary)',
+            color: 'var(--primary-foreground)',
+            boxShadow: '0 6px 20px color-mix(in oklab, var(--primary) 32%, transparent)',
           }}
         >
           {t.create}
@@ -385,8 +399,8 @@ export default function MiniAppWelcomePage() {
                   disabled={busy || !email || !password}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
                   style={{
-                    background: 'var(--foreground)',
-                    color: 'var(--background)',
+                    background: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
                   }}
                 >
                   {busy && <Loader2 className="size-4 animate-spin" />}

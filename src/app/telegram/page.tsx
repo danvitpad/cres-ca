@@ -35,10 +35,12 @@ export default function TelegramEntryPage() {
       webapp.ready();
       webapp.expand();
       try { webapp.disableVerticalSwipes(); } catch {}
+      // TG header/bg цвет — подхватываем из текущей темы Telegram (bg_color),
+      // чтобы наша мини-апа выглядела родной — не белая на тёмной TG и наоборот.
       try {
-        webapp.setHeaderColor('#141417');
-        webapp.setBackgroundColor('#141417');
-        webapp.setBottomBarColor('#141417');
+        webapp.setHeaderColor('bg_color');
+        webapp.setBackgroundColor('bg_color');
+        webapp.setBottomBarColor('bg_color');
       } catch {}
 
       const initData = webapp.initData;
