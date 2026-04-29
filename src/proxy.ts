@@ -114,12 +114,22 @@ export async function proxy(request: NextRequest) {
   }
 
   // Onboarding gate: если юзер не дошёл до конца онбординга — гоним на нужный шаг.
-  // Пропускаем сами /onboarding/* (иначе цикл) и /salon/*/dashboard (там salon_admin
-  // финиширует через create-business → редирект напрямую).
+  // /salon/*/dashboard — там salon_admin финиширует через create-business → редирект напрямую.
   const isOnboardingPath = onboardingPaths.some((p) => strippedPath.startsWith(p));
   const isSalonDashboard = /^\/salon\/[^/]+\/dashboard/.test(strippedPath);
-  if (!isOnboardingPath) {
-    const { data: nextStep } = await supabase.rpc('get_next_onboarding_step', { p_user_id: user.id });
+  const { data: nextStep } = await supabase.rpc('get_next_onboarding_step', { p_user_id: user.id });
+
+  if (isOnboardingPath) {
+    // Если онбординг уже пройден — на /onboarding/* не пускаем, увозим на нужный
+    // дашборд по роли. Это защита от «человек жмёт Назад в браузере и попадает
+    // обратно в wizard, который для него закрыт».
+    if (!nextStep) {
+      const { data: profile } = await supabase
+        .from('profiles').select('role').eq('id', user.id).single();
+      const target = profile?.role === 'client' ? '/feed' : '/calendar';
+      return NextResponse.redirect(new URL(target, request.url));
+    }
+  } else {
     if (typeof nextStep === 'string' && nextStep && !pathname.endsWith(nextStep)) {
       return NextResponse.redirect(new URL(nextStep, request.url));
     }

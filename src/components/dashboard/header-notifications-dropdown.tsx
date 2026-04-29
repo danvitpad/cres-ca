@@ -197,10 +197,10 @@ export function HeaderNotificationsDropdown({
                         <div style={{
                           width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          backgroundColor: notifType === 'new_follower' ? 'rgba(59,130,246,0.12)'
+                          backgroundColor: notifType === 'new_follower' ? 'color-mix(in oklab, var(--color-accent) 14%, transparent)'
                             : notifType === 'mutual_follow' ? 'rgba(16,185,129,0.12)'
                             : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                          color: notifType === 'new_follower' ? '#3b82f6'
+                          color: notifType === 'new_follower' ? 'var(--color-accent-text)'
                             : notifType === 'mutual_follow' ? '#10b981'
                             : F.textSecondary,
                         }}>
