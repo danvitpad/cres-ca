@@ -82,8 +82,14 @@ export async function POST(req: Request) {
     salonId = salon.id;
   }
 
-  if (body.avatarUrl) {
-    await supabase.from('profiles').update({ avatar_url: body.avatarUrl }).eq('id', user.id);
+  // Сохраняем нишу в profiles — иначе guard get_next_onboarding_step()
+  // будет бесконечно гнать пользователя обратно на /onboarding/vertical
+  // (он смотрит profiles.vertical, а не masters.vertical).
+  const profileUpdate: Record<string, unknown> = {};
+  if (body.vertical) profileUpdate.vertical = body.vertical;
+  if (body.avatarUrl) profileUpdate.avatar_url = body.avatarUrl;
+  if (Object.keys(profileUpdate).length > 0) {
+    await supabase.from('profiles').update(profileUpdate).eq('id', user.id);
   }
 
   // Своё описание ниши («Другое») и/или своя специализация — кладём в bio

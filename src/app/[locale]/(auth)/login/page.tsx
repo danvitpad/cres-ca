@@ -1,8 +1,8 @@
 /** --- YAML
  * name: Auth Page (unified login + register, glass split-layout)
- * description: 2-column auth page (form + hero image). Sign-in = form left / image right; sign-up = form right / image left, swapped with framer-motion layout animation. 3 role toggles (Клиент / Мастер / Команда), glass inputs, Supabase auth + OTP signup + reset-password flow + Google OAuth + remember-me.
+ * description: 2-column auth page (form + hero image). 3 role toggles (Клиент / Мастер / Команда), glass inputs, Supabase email+password auth + OTP signup + reset-password flow + remember-me (saves email and password to localStorage).
  * created: 2026-04-15
- * updated: 2026-04-18
+ * updated: 2026-04-29
  * --- */
 
 'use client';
@@ -110,14 +110,14 @@ const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
   { value: 'salon_admin', label: 'Команда',  icon: Building2 },
 ];
 
-function readRemembered(): { email?: string; role?: Role } {
+function readRemembered(): { email?: string; password?: string; role?: Role } {
   if (typeof window === 'undefined') return {};
   try {
     const saved = window.localStorage.getItem(REMEMBER_KEY);
     if (!saved) return {};
-    const p = JSON.parse(saved) as { email?: string; role?: string };
+    const p = JSON.parse(saved) as { email?: string; password?: string; role?: string };
     const role = p.role && ['client','master','salon_admin'].includes(p.role) ? (p.role as Role) : undefined;
-    return { email: p.email, role };
+    return { email: p.email, password: p.password, role };
   } catch { return {}; }
 }
 
@@ -138,25 +138,14 @@ export default function AuthPage() {
   const [sub, setSub] = useState<Sub>('form');
   const [loading, setLoading] = useState(false);
 
-  // Если callback вернул ?error=no_account — показываем тост и переключаемся
-  // на регистрацию. Читаем через window.location напрямую (надёжно после маунта)
-  // и откладываем toast.error в setTimeout — Sonner Toaster может ещё не успеть
-  // подписаться на global state в момент первого useEffect.
+  // Показываем тост если callback вернул ?error=auth (общий случай ошибки входа).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const e = params.get('error');
-    if (!e) return;
-    const fire = () => {
-      if (e === 'no_account') {
-        toast.error('Такого аккаунта нет. Зарегистрируйся или войди под другим Google.', { duration: 7000 });
-      } else if (e === 'already_registered') {
-        toast.info('Этот Google-аккаунт уже зарегистрирован. Просто войди — твоя текущая роль сохранится.', { duration: 8000 });
-      } else if (e === 'auth') {
-        toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 7000 });
-      }
-    };
-    // 100ms — гарантия что Toaster уже подключился к global toast queue.
-    const id = window.setTimeout(fire, 100);
+    if (e !== 'auth') return;
+    const id = window.setTimeout(() => {
+      toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 7000 });
+    }, 100);
     return () => window.clearTimeout(id);
   }, []);
 
@@ -176,9 +165,10 @@ export default function AuthPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlMode]);
 
-  const [email, setEmail] = useState(() => urlEmail || readRemembered().email || '');
+  const remembered = readRemembered();
+  const [email, setEmail] = useState(() => urlEmail || remembered.email || '');
   const [rememberMe, setRememberMe] = useState(true);
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(() => remembered.password || '');
   const [showPwd, setShowPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
 
@@ -232,7 +222,7 @@ export default function AuthPage() {
     if (!email || !password) return;
     setLoading(true);
     try {
-      if (rememberMe) localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, role }));
+      if (rememberMe) localStorage.setItem(REMEMBER_KEY, JSON.stringify({ email, password, role }));
       else localStorage.removeItem(REMEMBER_KEY);
     } catch {}
     const supabase = createClient();
@@ -491,26 +481,6 @@ export default function AuthPage() {
     setPassword(''); setOtp(''); setNewPwd('');
   }
 
-  /* ───── OAuth (только Google).
-     После Google: callback приведёт юзера на /onboarding/complete-profile, где
-     показываются ровно те же поля что и в email-форме (Имя/Фамилия/Телефон/ДР/
-     Пароль + чекбокс terms). Email приходит из Google и не редактируется.
-     В куке cres_oauth_intent — только role+mode (что юзер выбрал на login). */
-  async function handleOAuth(provider: 'google') {
-    const supabase = createClient();
-    const intent = JSON.stringify({ role, mode });
-    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
-    document.cookie = `cres_oauth_intent=${encodeURIComponent(intent)}; Path=/; Max-Age=300; SameSite=Lax${isHttps ? '; Secure' : ''}`;
-    const params = new URLSearchParams({ role, mode });
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?${params.toString()}`,
-      },
-    });
-    if (error) toast.error(humanizeError(error));
-  }
-
   const isSignUp = mode === 'signup';
 
   const slide = {
@@ -619,12 +589,6 @@ export default function AuthPage() {
                             ? 'Создайте аккаунт для вашей команды'
                             : 'Создайте бесплатный аккаунт'}
                       </p>
-
-                      {/* Google OAuth — доступен всем 3 ролям, на login и signup.
-                          Email через Google автоматически верифицирован — никаких
-                          OTP-кодов слать не нужно. */}
-                      <OAuthRow onClick={handleOAuth} />
-                      <Divider />
 
                       <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: isSignUp ? 8 : 12 }}>
                         {mode === 'signup' && (
@@ -1182,32 +1146,3 @@ function IconBubble({ children }: { children: ReactNode }) {
   );
 }
 
-function Divider() {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0' }}>
-      <div style={{ flex: 1, height: 1, background: 'var(--acb)' }} />
-      <span style={{ fontSize: 11, color: 'var(--afg3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>или</span>
-      <div style={{ flex: 1, height: 1, background: 'var(--acb)' }} />
-    </div>
-  );
-}
-
-function OAuthRow({ onClick }: { onClick: (p: 'google') => void }) {
-  // Facebook убран — оставлен только Google. Если signup идёт через Google,
-  // считаем email подтверждённым (провайдер уже верифицировал) и не шлём
-  // OTP-письмо. Кнопка одна и доступна на всех 3 ролях (клиент/мастер/команда).
-  const btnStyle: React.CSSProperties = {
-    width: '100%', height: 46, borderRadius: 14,
-    border: '1px solid var(--acb)', background: 'transparent', color: 'var(--afg)',
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-    fontSize: 14, fontWeight: 600, cursor: 'pointer',
-    fontFamily: 'var(--af)',
-    transition: 'background .15s, border-color .15s',
-  };
-  return (
-    <button type="button" onClick={() => onClick('google')} style={btnStyle}>
-      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-      Продолжить с Google
-    </button>
-  );
-}
