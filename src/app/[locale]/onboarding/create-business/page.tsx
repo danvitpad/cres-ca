@@ -163,15 +163,8 @@ function CreateBusinessWizard() {
 
   const skipTeamStep = userRole === 'master' || userRole === 'salon_admin';
   const inferredTeamType = userRole === 'salon_admin' ? 'team' : 'solo';
-  // Solo master = name + photos step is unnecessary (their public name is just
-  // their personal name; cover/avatar upload happens in dashboard later).
-  const isSoloMaster = userRole === 'master';
 
   const [step, setStep] = useState(1);
-  // When userRole resolves to 'master' (solo), skip step 1 and start at categories.
-  useEffect(() => {
-    if (isSoloMaster && step === 1) setStep(2);
-  }, [isSoloMaster, step]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState<string | null>(null);
@@ -275,8 +268,8 @@ function CreateBusinessWizard() {
   }, [selectedCategories, vertical]);
 
   // Build the ordered list of visible steps (skipping where needed).
-  // Solo masters skip step 1 (name + photos) — name auto-fills from user metadata,
-  // photos uploaded later in dashboard. They start straight at category selection.
+  // Шаг 1 (имя + аватар + баннер) показываем всем, включая solo-мастера —
+  // у мастера тоже должно быть лицо (фото) и имя для публичной страницы.
   // Админ салона НЕ предоставляет услуги — шаг 5 (где принимаешь клиентов) для
   // него скрыт. Адрес салона он указывает через шаг 6 если включил «физическое
   // помещение» (locationType пропускается, locationPhysical считается дефолтом
@@ -286,8 +279,7 @@ function CreateBusinessWizard() {
   // абстрактного «бизнес», тренировки / приёмы / сеансы вместо «услуги», и т.д.
   const copy = getVerticalCopy(vertical, isAdminFlow ? 'admin' : 'solo');
   const buildStepSequence = useCallback(() => {
-    const steps: number[] = [];
-    if (!isSoloMaster) steps.push(1); // name + photos (только для команд / салонов)
+    const steps: number[] = [1]; // name + photos (всем)
     steps.push(2, 3); // categories, specialization
     if (!skipTeamStep) steps.push(4); // solo/team
     const effectiveTeamType = skipTeamStep ? inferredTeamType : teamType;
@@ -296,7 +288,7 @@ function CreateBusinessWizard() {
     if (isAdminFlow || locationType === 'locationPhysical') steps.push(6); // address
     steps.push(7); // services
     return steps;
-  }, [isSoloMaster, skipTeamStep, inferredTeamType, teamType, locationType, isAdminFlow]);
+  }, [skipTeamStep, inferredTeamType, teamType, locationType, isAdminFlow]);
 
   const stepSequence = buildStepSequence();
   const totalVisibleSteps = stepSequence.length;

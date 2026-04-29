@@ -183,6 +183,18 @@ export default function AuthPage() {
   const [twoFaCode, setTwoFaCode] = useState('');
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [pendingActualRole, setPendingActualRole] = useState<string | null>(null);
+  // Сколько секунд осталось до возможности повторно отправить код. Стартует
+  // с 60 при попадании на signup-otp / reset-otp, тикает каждую секунду.
+  const [resendIn, setResendIn] = useState(0);
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn((v) => Math.max(0, v - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
+  useEffect(() => {
+    if (sub === 'signup-otp' || sub === 'reset-otp') setResendIn(60);
+    else setResendIn(0);
+  }, [sub]);
 
   async function routeAfterAuth(actualRole: string) {
     if (actualRole === 'client') {
@@ -421,12 +433,13 @@ export default function AuthPage() {
   }
 
   async function handleResendSignupOTP() {
+    if (resendIn > 0) return;
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.resend({ type: 'signup', email });
     setLoading(false);
     if (error) toast.error(humanizeError(error));
-    else toast.success('Код отправлен повторно');
+    else { toast.success('Код отправлен повторно'); setResendIn(60); }
   }
 
   /* ───── forgot password ───── */
@@ -805,19 +818,22 @@ export default function AuthPage() {
                       </PrimaryButton>
                       <button
                         type="button"
-                        disabled={loading}
+                        disabled={loading || resendIn > 0}
                         onClick={async () => {
-                          if (loading || !email) return;
+                          if (loading || resendIn > 0 || !email) return;
                           setLoading(true);
                           const supabase = createClient();
                           const { error } = await supabase.auth.resetPasswordForEmail(email);
                           setLoading(false);
                           setOtp('');
                           if (error) toast.error(humanizeError(error));
-                          else toast.success('Новый код отправлен');
+                          else { toast.success('Новый код отправлен'); setResendIn(60); }
                         }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--aviolet)', fontSize: 13, marginTop: 12, fontWeight: 600 }}>
-                        Отправить новый код
+                        style={{ background: 'none', border: 'none',
+                          cursor: resendIn > 0 ? 'not-allowed' : 'pointer',
+                          color: resendIn > 0 ? 'var(--afg3)' : 'var(--aviolet)',
+                          fontSize: 13, marginTop: 12, fontWeight: 600 }}>
+                        {resendIn > 0 ? `Отправить новый код через ${resendIn}с` : 'Отправить новый код'}
                       </button>
                       <button type="button" onClick={() => { setSub('forgot'); setOtp(''); }}
                         style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12 }}>
@@ -941,9 +957,11 @@ export default function AuthPage() {
                       <PrimaryButton disabled={loading || otp.length !== 8} onClick={handleVerifySignupOTP} type="button">
                         {loading ? '...' : 'Подтвердить'}
                       </PrimaryButton>
-                      <button type="button" onClick={handleResendSignupOTP} disabled={loading}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--aviolet)', fontSize: 13, marginTop: 12, fontWeight: 600 }}>
-                        Отправить повторно
+                      <button type="button" onClick={handleResendSignupOTP} disabled={loading || resendIn > 0}
+                        style={{ background: 'none', border: 'none', cursor: resendIn > 0 ? 'not-allowed' : 'pointer',
+                          color: resendIn > 0 ? 'var(--afg3)' : 'var(--aviolet)',
+                          fontSize: 13, marginTop: 12, fontWeight: 600 }}>
+                        {resendIn > 0 ? `Отправить повторно через ${resendIn}с` : 'Отправить повторно'}
                       </button>
                     </motion.div>
                   )}
