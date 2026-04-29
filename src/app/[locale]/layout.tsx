@@ -11,6 +11,7 @@ import { locales } from '@/lib/i18n/config';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/components/shared/auth-provider';
+import { SwipeNavigator } from '@/components/shared/swipe-navigator';
 
 export async function generateMetadata({
   params,
@@ -73,6 +74,7 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages}>
       <AuthProvider>
         <TooltipProvider>
+          <SwipeNavigator />
           {children}
           <Toaster />
         </TooltipProvider>

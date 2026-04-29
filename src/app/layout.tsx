@@ -3,7 +3,7 @@
  * description: Top-level HTML layout — sets fonts, metadata. Children are [locale] layouts.
  * --- */
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { getLocale } from 'next-intl/server';
@@ -33,6 +33,17 @@ export const metadata: Metadata = {
       'x-default': 'https://cres-ca.com/en',
     },
   },
+};
+
+// initial-scale=1 + maximum-scale=1 + user-scalable=no — Safari больше не зумит
+// при тапе на input, даже если font-size ниже 16px. На практике все наши инпуты
+// уже >=16px, но это второй пояс защиты.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default async function RootLayout({

@@ -20,6 +20,9 @@ const protectedPatterns = [
   '/wallet', '/notifications', '/account-settings', '/profile',
   // Shared
   '/map',
+  // Onboarding wizard — пускаем только залогиненных, и только тех, кто
+  // ещё не завершил онбординг (см. guard ниже в этом файле).
+  '/onboarding',
 ];
 
 // Финальные дашборды по ролям — попадание сюда впервые завершает онбординг
