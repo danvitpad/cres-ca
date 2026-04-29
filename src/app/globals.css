@@ -1,13 +1,14 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../styles/components.css";
 
 @custom-variant dark (&:is(.dark *));
 
 /* ═══════════════════════════════════════════════════════════
- * BRAND TOKENS — source of truth: src/design/brand.tokens.ts
- * Редактируй значения здесь и в brand.tokens.ts синхронно.
- * Docs: .workspace/brand/BRAND.md
+ * BRAND TOKENS (примитивы) — source of truth: .workspace/brand/STYLE.md (Часть 1)
+ * Рецепты компонентов (.btn-primary, .card, ...) — app/src/styles/components.css
+ * Редактируй STYLE.md → команда «синкни стили» → этот файл и components.css перегенерируются.
  * ═══════════════════════════════════════════════════════════ */
 
 :root {
