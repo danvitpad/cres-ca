@@ -473,7 +473,8 @@ export default function MiniAppRegisterPage() {
           <DobField value={dob} onChange={setDob} label={t.dob} placeholder={t.dobPlaceholder}
             errMonth={t.dobMonthErr} errYear={t.dobYearErr}
             errDay={t.dobDayErr} errFuture={t.dobFutureErr} />
-          <Field icon={Phone} label={t.phone} value={phone} onChange={setPhone}
+          <Field icon={Phone} label={t.phone} value={phone}
+            onChange={(v) => { const p = '+380 '; setPhone(v.startsWith(p) ? v : p); }}
             inputMode="tel" type="tel" />
           <Field icon={Mail} label={t.email} value={email} onChange={setEmail}
             inputMode="email" type="email" />
