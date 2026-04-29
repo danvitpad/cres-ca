@@ -20,10 +20,8 @@ import {
   Settings,
   LogOut,
   User as UserIcon,
-  Heart,
-  FileText,
-  HelpCircle,
-  Globe,
+  Users,
+  MessageCircle,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -111,7 +109,7 @@ export default function MiniAppProfilePage() {
   }, [userId]);
 
   function openEdit() {
-    setEditName(fullName ?? '');
+    setEditName(fullName || tgFullName || '');
     setEditBio(bio ?? '');
     setEditSlug(slug ?? '');
     setEditError(null);
@@ -248,9 +246,9 @@ export default function MiniAppProfilePage() {
       rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
     {
-      key: 'favorites',
-      icon: <Heart size={22} strokeWidth={1.8} />,
-      label: 'Избранное',
+      key: 'contacts',
+      icon: <Users size={22} strokeWidth={1.8} />,
+      label: 'Контакты',
       href: '/telegram/connections',
       rightSlot: (
         <>
@@ -260,13 +258,6 @@ export default function MiniAppProfilePage() {
           <ChevronRight size={20} color={T.textTertiary} />
         </>
       ),
-    },
-    {
-      key: 'forms',
-      icon: <FileText size={22} strokeWidth={1.8} />,
-      label: 'Анкеты',
-      href: '/telegram/forms',
-      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
     {
       key: 'settings',
@@ -280,16 +271,9 @@ export default function MiniAppProfilePage() {
   const supportMenu: MenuItem[] = [
     {
       key: 'support',
-      icon: <HelpCircle size={22} strokeWidth={1.8} />,
+      icon: <MessageCircle size={22} strokeWidth={1.8} />,
       label: 'Поддержка',
-      href: '/telegram/settings/feedback',
-      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
-    },
-    {
-      key: 'language',
-      icon: <Globe size={22} strokeWidth={1.8} />,
-      label: 'русский (Украина)',
-      href: '/telegram/settings',
+      onClick: () => window.open('https://t.me/cres_ca_bot?start=support', '_blank'),
       rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
   ];
