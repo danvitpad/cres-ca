@@ -87,8 +87,18 @@ export async function POST(request: Request) {
       .limit(50),
   ]);
 
-  return NextResponse.json({
-    masters: mastersRes.data ?? [],
-    salons: salonsRes.data ?? [],
-  });
+  let masters = mastersRes.data ?? [];
+  const salons = salonsRes.data ?? [];
+
+  // Fallback: if no nearby masters found, fetch all active masters regardless of location
+  if (masters.length === 0) {
+    const fallback = await admin
+      .from('masters')
+      .select(masterSelect)
+      .eq('is_active', true)
+      .limit(50);
+    masters = fallback.data ?? [];
+  }
+
+  return NextResponse.json({ masters, salons });
 }

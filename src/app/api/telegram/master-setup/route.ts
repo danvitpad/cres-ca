@@ -22,6 +22,8 @@ export async function POST(req: Request) {
     specialization?: string;
     workMode?: 'cabinet' | 'mobile' | 'both';
     address?: string;
+    latitude?: number;
+    longitude?: number;
     services?: ServiceInput[];
   };
 
@@ -54,6 +56,8 @@ export async function POST(req: Request) {
     masterUpdate.work_mode = body.workMode;
   }
   if (body.address) masterUpdate.address = body.address;
+  if (typeof body.latitude === 'number') masterUpdate.latitude = body.latitude;
+  if (typeof body.longitude === 'number') masterUpdate.longitude = body.longitude;
 
   if (Object.keys(masterUpdate).length > 0) {
     await admin.from('masters').update(masterUpdate).eq('profile_id', userId);

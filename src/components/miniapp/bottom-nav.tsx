@@ -100,7 +100,7 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                 <Icon
                   size={24}
                   strokeWidth={active ? 2.4 : 2}
-                  fill={active ? accent : 'none'}
+                  fill="none"
                   style={{ position: 'relative', zIndex: 1 }}
                 />
               </Link>

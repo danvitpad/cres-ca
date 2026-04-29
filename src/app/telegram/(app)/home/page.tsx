@@ -66,20 +66,20 @@ interface FeaturedMaster {
 }
 
 const CATEGORY_TILES = [
-  { key: 'beauty', label: 'Красота', q: 'красота', bg: '#f4b740', emoji: '💅' },
+  { key: 'beauty', label: 'Красота', q: 'красота', bg: '#f4b740', emoji: '💇' },
   { key: 'health', label: 'Здоровье', q: 'здоровье', bg: '#3b82f6', emoji: '🩺' },
-  { key: 'nails', label: 'Ногти', q: 'маникюр', bg: '#ec4899', emoji: '💅' },
-  { key: 'massage', label: 'Массаж', q: 'массаж', bg: '#14b8a6', emoji: '💆' },
-  { key: 'medspa', label: 'Косметология', q: 'косметология', bg: '#f97316', emoji: '✨' },
-  { key: 'spa', label: 'Спа и сауна', q: 'спа', bg: '#84cc16', emoji: '🧖' },
+  { key: 'pets', label: 'Питомцы', q: 'груминг', bg: '#14b8a6', emoji: '🐾' },
+  { key: 'fitness', label: 'Фитнес', q: 'тренер', bg: '#ec4899', emoji: '💪' },
+  { key: 'auto', label: 'Авто', q: 'авто', bg: '#f97316', emoji: '🚗' },
+  { key: 'home', label: 'Дом', q: 'ремонт', bg: '#84cc16', emoji: '🔧' },
 ] as const;
 
 const TOP_CATEGORIES = [
   { key: 'hair', label: 'Стрижка и укладка', q: 'стрижка' },
-  { key: 'manicure', label: 'Ногти', q: 'маникюр' },
-  { key: 'brows', label: 'Брови и ресницы', q: 'брови' },
   { key: 'massage', label: 'Массаж', q: 'массаж' },
-  { key: 'facial', label: 'Косметология', q: 'лицо' },
+  { key: 'trainer', label: 'Тренер', q: 'тренер' },
+  { key: 'grooming', label: 'Груминг', q: 'груминг' },
+  { key: 'repair', label: 'Ремонт', q: 'ремонт' },
 ] as const;
 
 export default function MiniAppHomePage() {
@@ -542,7 +542,7 @@ export default function MiniAppHomePage() {
                       fontSize: 32,
                     }}
                   >
-                    {['💇', '💅', '👁️', '💆', '✨'][i]}
+                    {['💇', '💆', '💪', '🐾', '🔧'][i]}
                   </div>
                   <span
                     style={{

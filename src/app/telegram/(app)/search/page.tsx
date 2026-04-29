@@ -642,6 +642,7 @@ export default function MiniAppSearchPage() {
             borderRadius: R.lg,
             border: `1px solid ${T.borderSubtle}`,
             boxShadow: SHADOW.card,
+            background: T.bgSubtle,
           }}
         >
           {loading && (

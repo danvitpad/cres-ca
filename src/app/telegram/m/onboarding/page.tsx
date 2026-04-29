@@ -191,6 +191,7 @@ export default function MasterOnboardingPage() {
   const [specialization, setSpecialization] = useState<string | null>(null);
   const [workMode, setWorkMode] = useState<WorkMode | null>(null);
   const [address, setAddress] = useState('');
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [services, setServices] = useState<ServiceItem[]>([]);
 
   const [saving, setSaving] = useState(false);
@@ -292,6 +293,8 @@ export default function MasterOnboardingPage() {
           specialization: specialization ?? undefined,
           workMode: workMode ?? undefined,
           address: address.trim() || undefined,
+          latitude: coords?.lat ?? undefined,
+          longitude: coords?.lng ?? undefined,
           services: selected,
         }),
       });
@@ -442,6 +445,7 @@ export default function MasterOnboardingPage() {
                 address={address}
                 onSelect={setWorkMode}
                 onAddressChange={setAddress}
+                onCoordsChange={setCoords}
                 onNext={goNext}
               />
             </motion.div>
@@ -653,6 +657,7 @@ function Step3Workplace({
   address,
   onSelect,
   onAddressChange,
+  onCoordsChange,
   onNext,
 }: {
   t: (typeof T)[Lang];
@@ -660,6 +665,7 @@ function Step3Workplace({
   address: string;
   onSelect: (m: WorkMode) => void;
   onAddressChange: (a: string) => void;
+  onCoordsChange: (c: { lat: number; lng: number } | null) => void;
   onNext: () => void;
 }) {
   const needsAddress = selected === 'cabinet' || selected === 'both';
@@ -691,7 +697,10 @@ function Step3Workplace({
 
   function pickResult(r: NominatimResult) {
     onAddressChange(r.display_name);
-    setMapGeo({ lat: Number(r.lat), lon: Number(r.lon) });
+    const latN = Number(r.lat);
+    const lonN = Number(r.lon);
+    setMapGeo({ lat: latN, lon: lonN });
+    onCoordsChange({ lat: latN, lng: lonN });
     setResults([]);
     setQuery('');
   }
@@ -699,6 +708,7 @@ function Step3Workplace({
   function clearAddress() {
     onAddressChange('');
     setMapGeo(null);
+    onCoordsChange(null);
     setQuery('');
     setResults([]);
   }
@@ -706,6 +716,7 @@ function Step3Workplace({
   // Reverse geocode after pin drag
   async function handleMapMove(lat: number, lon: number) {
     setMapGeo({ lat, lon });
+    onCoordsChange({ lat, lng: lon });
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`,
