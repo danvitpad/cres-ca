@@ -174,7 +174,6 @@ export default function AuthPage() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [middleName, setMiddleName] = useState('');
   const [salonName, setSalonName] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
@@ -385,21 +384,23 @@ export default function AuthPage() {
       return;
     }
 
-    // Нормализуем телефон: «+380...», «380...», «0501234567» → всегда «+...».
-    // Если пользователь стер всё кроме плюса — считаем поле пустым.
+    // Телефон обязательный. Нормализуем: «+380...», «380...», «0501234567» → «+...».
     const normalizedPhone = (() => {
       const trimmed = phone.trim();
-      if (!trimmed) return undefined;
+      if (!trimmed) return null;
       const digits = trimmed.replace(/\D/g, '');
-      if (!digits) return undefined;
-      // Если начали с 0 (украинский локальный формат) — считаем что хотели +380.
+      if (digits.length < 9 || digits.length > 15) return null;
       if (digits.startsWith('0') && digits.length === 10) return '+380' + digits.slice(1);
       return '+' + digits;
     })();
+    if (!normalizedPhone) {
+      toast.error('Введите телефон в международном формате');
+      return;
+    }
 
     setLoading(true);
     const supabase = createClient();
-    const personalFullName = [lastName.trim(), firstName.trim(), middleName.trim()]
+    const personalFullName = [lastName.trim(), firstName.trim()]
       .filter(Boolean)
       .join(' ');
     const fullName = role === 'salon_admin' && salonName.trim()
@@ -415,7 +416,6 @@ export default function AuthPage() {
           role,
           first_name: firstName || undefined,
           last_name: lastName || undefined,
-          middle_name: middleName.trim() || undefined,
           salon_name: role === 'salon_admin' ? salonName.trim() : undefined,
           phone: normalizedPhone,
           date_of_birth: dob || undefined,
@@ -665,17 +665,6 @@ export default function AuthPage() {
                               </Field>
                             </div>
 
-                            <Field label="Отчество">
-                              <GlassWrap>
-                                <input
-                                  className="glass-input"
-                                  value={middleName}
-                                  onChange={e => setMiddleName(e.target.value)}
-                                  placeholder="Необязательно"
-                                />
-                              </GlassWrap>
-                            </Field>
-
                             <Field label="Телефон">
                               <GlassWrap>
                                 <input
@@ -688,6 +677,7 @@ export default function AuthPage() {
                                   }}
                                   placeholder="+380 50 123 4567"
                                   className="glass-input"
+                                  required
                                 />
                               </GlassWrap>
                             </Field>

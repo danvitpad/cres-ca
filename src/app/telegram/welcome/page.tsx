@@ -352,6 +352,7 @@ export default function MiniAppWelcomePage() {
                     borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
                     background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
                     color: 'var(--foreground)',
+                    caretColor: 'var(--color-accent)',
                   }}
                 />
                 <input
@@ -364,6 +365,7 @@ export default function MiniAppWelcomePage() {
                     borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
                     background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
                     color: 'var(--foreground)',
+                    caretColor: 'var(--color-accent)',
                   }}
                 />
                 {err && (

@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppRegisterPage
- * description: Manual registration form — role picker (client/master/salon), personal or salon name, phone, email, optional DoB. Opt-in checkbox at bottom to link Telegram ID + username.
+ * description: Manual registration form в Mini App. Поля: роль (клиент/мастер/команда), Имя+Фамилия (для команды — Имя/Фамилия владельца + Название команды), Телефон (обязательно), Email, Пароль, ДР (опц). Telegram привязывается автоматически — показано как готовый факт. Реагирует на тёмную/светлую тему. Sticky bottom скрывается когда юзер набирает в инпуте.
  * created: 2026-04-13
- * updated: 2026-04-15
+ * updated: 2026-04-29
  * --- */
 
 'use client';
@@ -39,24 +39,25 @@ export default function MiniAppRegisterPage() {
   const [role, setRole] = useState<'client' | 'master' | 'salon_admin'>('client');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [middleName, setMiddleName] = useState('');
   const [salonName, setSalonName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [dob, setDob] = useState('');
-  const [linkTelegram, setLinkTelegram] = useState(true);
 
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Email OTP verification state
   const [otpStage, setOtpStage] = useState<'form' | 'otp'>('form');
   const [otpCode, setOtpCode] = useState('');
   const [otpBusy, setOtpBusy] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
+
+  // Когда юзер начинает печатать в любом инпуте — прячем нижнюю sticky-панель
+  // (кнопка «Создать аккаунт» + текст про условия), чтобы не залезала на клаву.
+  const [inputFocused, setInputFocused] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('cres:tg');
@@ -66,10 +67,31 @@ export default function MiniAppRegisterPage() {
     }
     const s = JSON.parse(raw) as Stash;
     setStash(s);
-    // Prefill name from Telegram if present — user can edit.
     if (s.tgData?.first_name) setFirstName(s.tgData.first_name);
     if (s.tgData?.last_name) setLastName(s.tgData.last_name);
   }, [router]);
+
+  // Глобальный focus/blur listener — на любых input/textarea внутри страницы
+  // прячем sticky bottom. Безопасно для DateWheelPicker (он не текстовый input).
+  useEffect(() => {
+    function isTextInput(el: EventTarget | null) {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA';
+    }
+    function onFocus(e: FocusEvent) {
+      if (isTextInput(e.target)) setInputFocused(true);
+    }
+    function onBlur(e: FocusEvent) {
+      if (isTextInput(e.target)) setInputFocused(false);
+    }
+    document.addEventListener('focusin', onFocus);
+    document.addEventListener('focusout', onBlur);
+    return () => {
+      document.removeEventListener('focusin', onFocus);
+      document.removeEventListener('focusout', onBlur);
+    };
+  }, []);
 
   function normalizePhone(value: string): string | null {
     const digits = value.replace(/\D/g, '');
@@ -80,10 +102,9 @@ export default function MiniAppRegisterPage() {
   function validate(): string | null {
     if (role === 'salon_admin') {
       if (!salonName.trim()) return mapError('missing_salon_name');
-    } else {
-      if (!firstName.trim()) return mapError('missing_name');
-      if (!lastName.trim()) return mapError('missing_name');
     }
+    if (!firstName.trim()) return mapError('missing_name');
+    if (!lastName.trim()) return mapError('missing_name');
     if (!normalizePhone(phone)) return mapError('invalid_phone');
     if (!email.trim()) return mapError('missing_email');
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) return mapError('invalid_email');
@@ -101,7 +122,7 @@ export default function MiniAppRegisterPage() {
     setErrorMsg(null);
     setSubmitting(true);
 
-    const personalFullName = [lastName.trim(), firstName.trim(), middleName.trim()]
+    const personalFullName = [lastName.trim(), firstName.trim()]
       .filter(Boolean)
       .join(' ');
     const normalizedPhone = normalizePhone(phone)!;
@@ -112,16 +133,15 @@ export default function MiniAppRegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           initData: stash.initData,
-          firstName: firstName.trim() || 'Salon',
-          lastName: lastName.trim() || 'Owner',
-          middleName: middleName.trim() || null,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           fullNameOverride: role === 'salon_admin' ? salonName.trim() : personalFullName,
           salonName: role === 'salon_admin' ? salonName.trim() : undefined,
           phone: normalizedPhone,
           email: email.trim(),
           password,
           dateOfBirth: dob || null,
-          linkTelegram,
+          linkTelegram: true,
           role,
         }),
       });
@@ -142,7 +162,6 @@ export default function MiniAppRegisterPage() {
             : '/telegram/home';
       setPendingRoute(target);
 
-      // Email is required — always send OTP and block until verified
       const otpRes = await fetch('/api/telegram/email-otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,7 +219,7 @@ export default function MiniAppRegisterPage() {
   }
 
   if (!stash) {
-    return <div className="min-h-dvh bg-white" />;
+    return <div className="min-h-dvh" style={{ background: 'var(--background)' }} />;
   }
 
   if (otpStage === 'otp') {
@@ -208,16 +227,23 @@ export default function MiniAppRegisterPage() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex min-h-dvh flex-col bg-white text-neutral-900"
+        className="flex min-h-dvh flex-col"
+        style={{ background: 'var(--background)', color: 'var(--foreground)' }}
       >
         <div className="flex-1 space-y-6 px-6 pt-16">
           <div className="space-y-3 text-center">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-violet-100">
-              <Mail className="size-6 text-violet-700" />
+            <div
+              className="mx-auto flex size-14 items-center justify-center rounded-2xl"
+              style={{ background: 'color-mix(in oklab, var(--color-accent) 15%, transparent)' }}
+            >
+              <Mail className="size-6" style={{ color: 'var(--color-accent)' }} />
             </div>
             <h1 className="text-2xl font-bold">Подтверждение email</h1>
-            <p className="mx-auto max-w-xs text-[13px] leading-relaxed text-neutral-600">
-              Мы отправили 8-значный код на <span className="font-semibold text-neutral-900">{email}</span>. Введите его ниже.
+            <p
+              className="mx-auto max-w-xs text-[13px] leading-relaxed"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 65%, transparent)' }}
+            >
+              Мы отправили 8-значный код на <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{email}</span>. Введите его ниже.
             </p>
           </div>
 
@@ -228,24 +254,37 @@ export default function MiniAppRegisterPage() {
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
               placeholder="• • • • • • • •"
-              className="w-full rounded-2xl border border-neutral-200 bg-white/5 px-4 py-5 text-center font-mono text-2xl tracking-[0.3em] outline-none focus:border-white/30"
+              className="w-full rounded-2xl border px-4 py-5 text-center font-mono text-2xl tracking-[0.3em] outline-none"
+              style={{
+                borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
+                background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
+                color: 'var(--foreground)',
+                caretColor: 'var(--color-accent)',
+              }}
             />
           </div>
 
-          {otpError && <p className="text-center text-xs text-rose-600">{otpError}</p>}
+          {otpError && (
+            <p className="text-center text-xs" style={{ color: '#f43f5e' }}>{otpError}</p>
+          )}
 
           <div className="mx-auto max-w-xs space-y-2">
             <button
               onClick={verifyOtp}
               disabled={otpBusy || otpCode.length !== 8}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
+              style={{
+                background: 'var(--foreground)',
+                color: 'var(--background)',
+              }}
             >
               {otpBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
               Подтвердить
             </button>
             <button
               onClick={resendOtp}
-              className="w-full py-2 text-xs text-neutral-500 underline-offset-2 hover:underline"
+              className="w-full py-2 text-xs underline-offset-2 hover:underline"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
             >
               Отправить код ещё раз
             </button>
@@ -256,79 +295,60 @@ export default function MiniAppRegisterPage() {
   }
 
   const tgHandle = stash.tgData?.username;
+  const tgFirstName = stash.tgData?.first_name;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex min-h-dvh flex-col bg-white text-neutral-900"
+      className="flex min-h-dvh flex-col"
+      style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
-      <div className="flex-1 space-y-6 px-6 pt-10 pb-6">
+      <div className="flex-1 space-y-6 px-6 pt-10 pb-[140px]">
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">Регистрация</h1>
-          <p className="mx-auto max-w-xs text-[13px] text-neutral-500">
+          <p
+            className="mx-auto max-w-xs text-[13px]"
+            style={{ color: 'color-mix(in oklab, var(--foreground) 60%, transparent)' }}
+          >
             Заполните, пожалуйста, несколько полей — это займёт меньше минуты.
           </p>
         </div>
 
         {/* Role picker — client / master / salon */}
         <div className="space-y-1">
-          <div className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+          <div
+            className="px-1 text-[11px] font-semibold uppercase tracking-wide"
+            style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+          >
             Я регистрируюсь как
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => setRole('client')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
-                role === 'client'
-                  ? 'border-violet-400 bg-violet-100 text-neutral-900'
-                  : 'border-neutral-200 bg-white/5 text-neutral-600'
-              }`}
-            >
-              <UserRound className="size-4" />
-              Клиент
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('master')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
-                role === 'master'
-                  ? 'border-violet-400 bg-violet-100 text-neutral-900'
-                  : 'border-neutral-200 bg-white/5 text-neutral-600'
-              }`}
-            >
-              <Briefcase className="size-4" />
-              Мастер
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('salon_admin')}
-              className={`flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors ${
-                role === 'salon_admin'
-                  ? 'border-emerald-400 bg-emerald-100 text-neutral-900'
-                  : 'border-neutral-200 bg-white/5 text-neutral-600'
-              }`}
-            >
-              <Building2 className="size-4" />
-              Команда
-            </button>
+            <RoleTile active={role === 'client'} onClick={() => setRole('client')} icon={UserRound} label="Клиент" />
+            <RoleTile active={role === 'master'} onClick={() => setRole('master')} icon={Briefcase} label="Мастер" />
+            <RoleTile active={role === 'salon_admin'} onClick={() => setRole('salon_admin')} icon={Building2} label="Команда" />
           </div>
           {role === 'master' && (
-            <p className="mt-2 px-1 text-[11px] leading-snug text-neutral-500">
+            <p
+              className="mt-2 px-1 text-[11px] leading-snug"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+            >
               Вы получите Mini App мастера с календарём, клиентами и финансами. Настроить услуги и график можно будет сразу после регистрации.
             </p>
           )}
           {role === 'salon_admin' && (
-            <p className="mt-2 px-1 text-[11px] leading-snug text-neutral-500">
+            <p
+              className="mt-2 px-1 text-[11px] leading-snug"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+            >
               Команде — мультимастерский календарь, состав, смены и отчёты. Услуги и людей добавите после регистрации. Подходит для любой сферы услуг.
             </p>
           )}
         </div>
 
         <div className="space-y-3">
-          {role === 'salon_admin' ? (
+          {role === 'salon_admin' && (
             <Field
               icon={Building2}
               label="Название команды"
@@ -336,10 +356,21 @@ export default function MiniAppRegisterPage() {
               onChange={setSalonName}
               placeholder="Например: Studio 54, AutoPro, Dr. Smile..."
             />
-          ) : null}
-          <Field icon={User} label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'} value={lastName} onChange={setLastName} placeholder="Иванов" optional={role === 'salon_admin'} />
-          <Field icon={User} label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'} value={firstName} onChange={setFirstName} placeholder="Иван" optional={role === 'salon_admin'} />
-          <Field icon={User} label="Отчество" value={middleName} onChange={setMiddleName} placeholder="Иванович" optional />
+          )}
+          <Field
+            icon={User}
+            label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'}
+            value={lastName}
+            onChange={setLastName}
+            placeholder="Иванов"
+          />
+          <Field
+            icon={User}
+            label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'}
+            value={firstName}
+            onChange={setFirstName}
+            placeholder="Иван"
+          />
           <Field
             icon={Phone}
             label="Телефон"
@@ -367,10 +398,25 @@ export default function MiniAppRegisterPage() {
             type="password"
           />
           <div className="space-y-1">
-            <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-              <Calendar className="size-3" /> Дата рождения <span className="normal-case text-neutral-400">· необязательно</span>
+            <div
+              className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+            >
+              <Calendar className="size-3" /> Дата рождения{' '}
+              <span
+                className="normal-case"
+                style={{ color: 'color-mix(in oklab, var(--foreground) 40%, transparent)' }}
+              >
+                · необязательно
+              </span>
             </div>
-            <div className="rounded-2xl border border-neutral-200 bg-white/5 py-2">
+            <div
+              className="rounded-2xl border py-2"
+              style={{
+                borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
+                background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
+              }}
+            >
               <DateWheelPicker
                 size="sm"
                 locale="ru-RU"
@@ -381,48 +427,68 @@ export default function MiniAppRegisterPage() {
           </div>
         </div>
 
-        {/* Telegram opt-in */}
-        <button
-          type="button"
-          onClick={() => setLinkTelegram((v) => !v)}
-          className="flex w-full items-start gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-4 text-left active:scale-[0.99] transition-transform"
+        {/* Telegram — констатация факта, не выбор */}
+        <div
+          className="flex items-start gap-3 rounded-2xl border p-4"
+          style={{
+            borderColor: 'color-mix(in oklab, var(--color-accent) 30%, transparent)',
+            background: 'color-mix(in oklab, var(--color-accent) 8%, transparent)',
+          }}
         >
           <div
-            className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-              linkTelegram ? 'border-violet-400 bg-violet-500' : 'border-neutral-300 bg-transparent'
-            }`}
+            className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md"
+            style={{ background: 'var(--color-accent)' }}
           >
-            {linkTelegram && <Check className="size-3.5" />}
+            <Check className="size-3.5" style={{ color: '#fff' }} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Привязать Telegram</p>
-            <p className="mt-1 text-[12px] leading-snug text-neutral-500">
-              Разрешаю сохранить мой Telegram ID{tgHandle ? ` и @${tgHandle}` : ''} для входа и связи с мастерами.
-              Больше никакие данные из Telegram не копируются.
+            <p className="text-sm font-semibold">Telegram привязан</p>
+            <p
+              className="mt-1 text-[12px] leading-snug"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 60%, transparent)' }}
+            >
+              {tgHandle ? `@${tgHandle}` : (tgFirstName ?? 'Ваш аккаунт')} — для входа без пароля и для уведомлений.
             </p>
           </div>
-        </button>
+        </div>
 
         {errorMsg && (
-          <div className="rounded-2xl border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+          <div
+            className="rounded-2xl border p-3 text-sm"
+            style={{
+              borderColor: 'rgba(244,63,94,0.3)',
+              background: 'rgba(244,63,94,0.08)',
+              color: '#f43f5e',
+            }}
+          >
             {errorMsg}
           </div>
         )}
       </div>
 
+      {/* Sticky bottom — прячется когда юзер фокусится на инпуте */}
       <div
-        className="sticky bottom-0 space-y-2 bg-gradient-to-t from-[#141417] via-[#141417] to-transparent px-6 pb-6 pt-8"
-        style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+        className="fixed inset-x-0 bottom-0 space-y-2 px-6 pb-6 pt-8 transition-opacity duration-200"
+        style={{
+          opacity: inputFocused ? 0 : 1,
+          pointerEvents: inputFocused ? 'none' : 'auto',
+          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
+        }}
       >
         {done ? (
-          <div className="flex items-center justify-center gap-2 py-4 text-emerald-600">
+          <div className="flex items-center justify-center gap-2 py-4" style={{ color: '#15803d' }}>
             <Check className="size-5" /> <span className="text-sm font-semibold">Готово — открываем CRES-CA</span>
           </div>
         ) : (
           <button
             onClick={submit}
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:scale-[0.98] transition-transform disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
+            style={{
+              background: 'var(--foreground)',
+              color: 'var(--background)',
+            }}
           >
             {submitting ? (
               <>
@@ -435,15 +501,58 @@ export default function MiniAppRegisterPage() {
             )}
           </button>
         )}
-        <p className="text-center text-[11px] leading-relaxed text-neutral-400">
+        <p
+          className="text-center text-[11px] leading-relaxed"
+          style={{ color: 'color-mix(in oklab, var(--foreground) 50%, transparent)' }}
+        >
           Продолжая, вы принимаете{' '}
-          <Link href="/telegram/terms" className="underline decoration-white/30">
+          <Link
+            href="/telegram/terms"
+            className="underline"
+            style={{ textDecorationColor: 'color-mix(in oklab, var(--foreground) 30%, transparent)' }}
+          >
             Условия использования
           </Link>{' '}
           CRES-CA.
         </p>
       </div>
     </motion.div>
+  );
+}
+
+function RoleTile({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-xs font-semibold transition-colors"
+      style={
+        active
+          ? {
+              borderColor: 'var(--color-accent)',
+              background: 'color-mix(in oklab, var(--color-accent) 14%, transparent)',
+              color: 'var(--foreground)',
+            }
+          : {
+              borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
+              background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
+              color: 'color-mix(in oklab, var(--foreground) 65%, transparent)',
+            }
+      }
+    >
+      <Icon className="size-4" />
+      {label}
+    </button>
   );
 }
 
@@ -455,7 +564,6 @@ function Field({
   placeholder,
   inputMode,
   type = 'text',
-  optional,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -464,22 +572,33 @@ function Field({
   placeholder?: string;
   inputMode?: 'tel' | 'email' | 'text' | 'numeric';
   type?: string;
-  optional?: boolean;
 }) {
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+      <div
+        className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide"
+        style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
+      >
         <Icon className="size-3" /> {label}
-        {optional && <span className="normal-case text-neutral-400">· необязательно</span>}
       </div>
-      <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
+      <div
+        className="rounded-2xl border p-4"
+        style={{
+          borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
+          background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
+        }}
+      >
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           inputMode={inputMode}
           type={type}
-          className="w-full bg-transparent text-base outline-none placeholder:text-neutral-900/25"
+          className="w-full bg-transparent text-base outline-none"
+          style={{
+            color: 'var(--foreground)',
+            caretColor: 'var(--color-accent)',
+          }}
         />
       </div>
     </div>
