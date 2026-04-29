@@ -19,6 +19,9 @@
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+const AddressMap = dynamic(() => import('./map'), { ssr: false });
 import {
   ArrowLeft, Check, ChevronRight, Loader2, Search, X as XIcon,
   // Vertical icons
@@ -700,11 +703,19 @@ function Step3Workplace({
     setResults([]);
   }
 
-  // Build OSM embed URL
-  function buildMapUrl(lat: number, lon: number): string {
-    const pad = 0.006;
-    const s = lat - pad, n = lat + pad, w = lon - pad * 1.4, e = lon + pad * 1.4;
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${w}%2C${s}%2C${e}%2C${n}&layer=mapnik&marker=${lat}%2C${lon}`;
+  // Reverse geocode after pin drag
+  async function handleMapMove(lat: number, lon: number) {
+    setMapGeo({ lat, lon });
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18`,
+        { headers: { 'Accept-Language': 'ru,uk,en' } },
+      );
+      if (res.ok) {
+        const data = (await res.json()) as { display_name?: string };
+        if (data.display_name) onAddressChange(data.display_name);
+      }
+    } catch { /* best-effort */ }
   }
 
   const labels: Record<WorkMode, { title: string; sub: string }> = {
@@ -910,14 +921,13 @@ function Step3Workplace({
               {mapGeo && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 180 }}
+                  animate={{ opacity: 1, height: 200 }}
                   style={{ borderRadius: R.md, overflow: 'hidden', border: `1px solid ${THEME.border}` }}
                 >
-                  <iframe
-                    title="Карта"
-                    src={buildMapUrl(mapGeo.lat, mapGeo.lon)}
-                    style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-                    loading="lazy"
+                  <AddressMap
+                    center={[mapGeo.lat, mapGeo.lon]}
+                    accent={THEME.accent}
+                    onMove={handleMapMove}
                   />
                 </motion.div>
               )}

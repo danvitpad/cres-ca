@@ -47,6 +47,7 @@ export default function AddressMap({ center, onMove }: AddressMapProps) {
       center,
       zoom: 16,
       zoomControl: false,
+      attributionControl: false,
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
