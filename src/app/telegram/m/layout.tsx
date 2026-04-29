@@ -137,11 +137,12 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
   ];
 
-  // Fullscreen routes — booking/voice flows have own footers.
+  // Fullscreen routes — booking/voice flows have own footers; onboarding = no nav.
   const isFullscreen =
     pathname.startsWith('/telegram/m/voice-book') ||
     pathname.startsWith('/telegram/m/voice-intro') ||
-    pathname.startsWith('/telegram/m/slot/');
+    pathname.startsWith('/telegram/m/slot/') ||
+    pathname.startsWith('/telegram/m/onboarding');
 
   return (
     <TelegramProvider>
