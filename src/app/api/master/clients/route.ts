@@ -10,9 +10,9 @@
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { notifyUser } from '@/lib/notifications/notify';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 function admin() {
   return createAdminClient(
@@ -45,14 +45,14 @@ function normalizeEmail(e: string | null | undefined): string | null {
 }
 
 export async function POST(req: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const supabase = admin();
 
   const { data: master } = await supabase
     .from('masters')
     .select('id, salon_id, display_name, profile_id')
-    .eq('profile_id', user.id)
+    .eq('profile_id', userId)
     .maybeSingle();
   if (!master) return NextResponse.json({ error: 'not_a_master' }, { status: 403 });
 
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     }
 
     // Notify client
-    if (profile.id !== user.id) {
+    if (profile.id !== userId) {
       await notifyUser(adm, {
         profileId: profile.id,
         title: 'Вас добавили в контакты',
@@ -177,7 +177,7 @@ export async function POST(req: Request) {
     }
 
     // Уведомляем клиента: «Мастер X добавил вас в свои контакты».
-    if (linkedProfileId !== user.id) {
+    if (linkedProfileId !== userId) {
       await notifyUser(adm, {
         profileId: linkedProfileId,
         title: 'Вас добавили в контакты',

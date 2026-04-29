@@ -125,7 +125,10 @@ export default function MiniAppSalonClientsPage() {
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/contacts/search?q=${encodeURIComponent(query.trim())}&limit=20`);
+        const initData = getInitData();
+        const headers: HeadersInit = {};
+        if (initData) headers['X-TG-Init-Data'] = initData;
+        const res = await fetch(`/api/contacts/search?q=${encodeURIComponent(query.trim())}&limit=20`, { headers });
         if (res.ok) {
           const j = (await res.json()) as { results: SystemCard[] };
           setSystemResults(j.results ?? []);

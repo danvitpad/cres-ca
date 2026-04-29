@@ -12,7 +12,16 @@
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { resolveUserId } from '@/lib/auth/resolve-user';
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
 
 interface ResultCard {
   id: string;            // dedup key
@@ -78,9 +87,11 @@ interface SalonRow {
 
 export async function GET(req: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    const userId = await resolveUserId(req);
+    if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    // Use admin client for reads — works regardless of how userId was resolved
+    // (cookie session OR initData). RLS bypassed; we still gate by userId above.
+    const supabase = admin();
 
     const { searchParams } = new URL(req.url);
     const raw = (searchParams.get('q') ?? '').trim();
@@ -204,7 +215,7 @@ export async function GET(req: Request) {
     const profileById = new Map<string, ProfileRow>();
     for (const r of profileResults) {
       for (const p of (r.data ?? [])) {
-        if (p.id === user.id) continue; // не себя
+        if (p.id === userId) continue; // не себя
         if (!profileById.has(p.id)) profileById.set(p.id, p);
       }
     }
@@ -216,7 +227,7 @@ export async function GET(req: Request) {
     const masterProfileIds = new Set<string>();
     for (const r of masterResults) {
       for (const m of (r.data ?? [])) {
-        if (m.profile_id === user.id) continue;
+        if (m.profile_id === userId) continue;
         if (!mastersByProfileId.has(m.profile_id)) {
           mastersByProfileId.set(m.profile_id, m);
           masterProfileIds.add(m.profile_id);
@@ -315,7 +326,7 @@ export async function GET(req: Request) {
       const { data: myMaster } = await supabase
         .from('masters')
         .select('id')
-        .eq('profile_id', user.id)
+        .eq('profile_id', userId)
         .maybeSingle();
 
       if (myMaster?.id) {
@@ -326,7 +337,7 @@ export async function GET(req: Request) {
             .select('profile_id')
             .eq('master_id', myMaster.id)
             .in('profile_id', allProfileIds);
-          const linkedSet = new Set((linked ?? []).map((l) => l.profile_id as string));
+          const linkedSet = new Set((linked ?? []).map((l: { profile_id: string }) => l.profile_id));
           for (const c of cards) {
             if (c.payload.profileId && linkedSet.has(c.payload.profileId)) {
               c.isLinked = true;
