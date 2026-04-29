@@ -174,6 +174,8 @@ export default function AuthPage() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [salonName, setSalonName] = useState('');
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [terms, setTerms] = useState(false);
@@ -374,25 +376,48 @@ export default function AuthPage() {
     e.preventDefault();
     if (password.length < 6) { toast.error('Пароль — минимум 6 символов'); return; }
     if (!terms) { toast.error('Примите условия использования'); return; }
+    if (role === 'salon_admin' && !salonName.trim()) {
+      toast.error('Укажите название команды');
+      return;
+    }
     if (isDisposableEmail(email)) {
       toast.error('Используйте проверенную почту (Gmail, Outlook и т.п.). Регистрация с временной почтой нарушает наши условия использования.');
       return;
     }
 
+    // Нормализуем телефон: «+380...», «380...», «0501234567» → всегда «+...».
+    // Если пользователь стер всё кроме плюса — считаем поле пустым.
+    const normalizedPhone = (() => {
+      const trimmed = phone.trim();
+      if (!trimmed) return undefined;
+      const digits = trimmed.replace(/\D/g, '');
+      if (!digits) return undefined;
+      // Если начали с 0 (украинский локальный формат) — считаем что хотели +380.
+      if (digits.startsWith('0') && digits.length === 10) return '+380' + digits.slice(1);
+      return '+' + digits;
+    })();
+
     setLoading(true);
     const supabase = createClient();
-    // ФИО админа команды собираем тут же как для мастера/клиента — название
-    // салона спросим на онбординге шага «Расскажи о бизнесе».
-    const fullName = `${firstName} ${lastName}`.trim();
+    const personalFullName = [lastName.trim(), firstName.trim(), middleName.trim()]
+      .filter(Boolean)
+      .join(' ');
+    const fullName = role === 'salon_admin' && salonName.trim()
+      ? salonName.trim()
+      : (personalFullName || firstName);
 
     const locale = (typeof window !== 'undefined' && window.location.pathname.match(/^\/(ru|en|uk)\b/)?.[1]) || 'ru';
     const { data, error } = await supabase.auth.signUp({
       email, password,
       options: {
         data: {
-          full_name: fullName || firstName,
+          full_name: fullName,
           role,
-          phone: phone ? `+380${phone}` : undefined,
+          first_name: firstName || undefined,
+          last_name: lastName || undefined,
+          middle_name: middleName.trim() || undefined,
+          salon_name: role === 'salon_admin' ? salonName.trim() : undefined,
+          phone: normalizedPhone,
           date_of_birth: dob || undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           locale,
@@ -606,39 +631,64 @@ export default function AuthPage() {
                       <form onSubmit={mode === 'signin' ? handleSignIn : handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: isSignUp ? 8 : 12 }}>
                         {mode === 'signup' && (
                           <>
-                            {/* Имя+Фамилия для всех ролей включая Команду — админ
-                                команды это конкретный человек. Название салона
-                                собирается на следующем шаге онбординга, тут не нужно. */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                              <Field label="Имя">
+                            {role === 'salon_admin' && (
+                              <Field label="Название команды">
                                 <GlassWrap>
-                                  <input className="glass-input" value={firstName} onChange={e => setFirstName(e.target.value)} required autoFocus />
+                                  <input
+                                    className="glass-input"
+                                    value={salonName}
+                                    onChange={e => setSalonName(e.target.value)}
+                                    placeholder="Например: Studio 54, AutoPro, Dr. Smile…"
+                                    required
+                                    autoFocus
+                                  />
                                 </GlassWrap>
                               </Field>
-                              <Field label="Фамилия">
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                              <Field label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'}>
+                                <GlassWrap>
+                                  <input
+                                    className="glass-input"
+                                    value={firstName}
+                                    onChange={e => setFirstName(e.target.value)}
+                                    required
+                                    autoFocus={role !== 'salon_admin'}
+                                  />
+                                </GlassWrap>
+                              </Field>
+                              <Field label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'}>
                                 <GlassWrap>
                                   <input className="glass-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
                                 </GlassWrap>
                               </Field>
                             </div>
 
+                            <Field label="Отчество">
+                              <GlassWrap>
+                                <input
+                                  className="glass-input"
+                                  value={middleName}
+                                  onChange={e => setMiddleName(e.target.value)}
+                                  placeholder="Необязательно"
+                                />
+                              </GlassWrap>
+                            </Field>
+
                             <Field label="Телефон">
                               <GlassWrap>
-                                <div style={{ display: 'flex', alignItems: 'center', height: 46 }}>
-                                  <span style={{
-                                    padding: '0 12px', fontSize: 13, color: 'var(--afg2)',
-                                    borderRight: '1px solid var(--acb)', height: 30,
-                                    display: 'flex', alignItems: 'center',
-                                  }}>+380</span>
-                                  <input
-                                    type="tel" inputMode="numeric"
-                                    value={phone}
-                                    onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                                    placeholder="501234567"
-                                    className="glass-input"
-                                    style={{ height: '100%', borderRadius: 0, paddingLeft: 10 }}
-                                  />
-                                </div>
+                                <input
+                                  type="tel" inputMode="tel"
+                                  value={phone}
+                                  onChange={e => {
+                                    // Разрешаем «+», цифры, пробелы и тире — формат свободный, нормализуем при сабмите.
+                                    const cleaned = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 20);
+                                    setPhone(cleaned);
+                                  }}
+                                  placeholder="+380 50 123 4567"
+                                  className="glass-input"
+                                />
                               </GlassWrap>
                             </Field>
 

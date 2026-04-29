@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Auth Provider
- * description: Client component that syncs Supabase auth session to Zustand store on mount and auth state changes
+ * description: Client component that syncs Supabase auth session to Zustand store. На мобильном дополнительно подталкивает refresh при возвращении вкладки в фокус — чтобы Telegram WebView / iOS Safari не теряли сессию после паузы.
  * --- */
 
 'use client';
@@ -25,7 +25,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: profile } = await supabase
           .from('profiles').select('role').eq('id', session.user.id).single();
         if (!profile) {
-          clearAuth();
+          // Профиль не нашли — это может быть транзиентная ошибка сети.
+          // Не выкидываем юзера, просто оставляем текущее состояние.
           return;
         }
         // `.maybeSingle()` errors on multi-row results; `.limit(1)` guards against duplicates.
@@ -37,18 +38,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .maybeSingle();
         setAuth(session.user.id, profile.role, sub?.tier ?? null);
       } catch {
-        clearAuth();
+        // Сетевая/транзиентная ошибка — НЕ разлогиниваем, иначе на нестабильном
+        // мобильном инете юзер мгновенно вылетает. Реальный SIGNED_OUT придёт
+        // отдельно через onAuthStateChange.
       }
     }
 
     loadSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) clearAuth();
-      else loadSession();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Только явный SIGNED_OUT (юзер сам вышел или Supabase окончательно отказал
+      // в refresh) очищает локальное состояние. Все остальные события (TOKEN_REFRESHED,
+      // USER_UPDATED, INITIAL_SESSION) — просто перезагружают данные.
+      if (event === 'SIGNED_OUT') {
+        clearAuth();
+        return;
+      }
+      if (session) loadSession();
     });
 
-    return () => subscription.unsubscribe();
+    // Telegram WebView / iOS Safari ставят таймеры в фоне на паузу, поэтому когда
+    // пользователь возвращается в приложение — принудительно зовём refresh, чтобы
+    // токен не «протух молча».
+    function onVisible() {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.getSession().catch(() => {});
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [setAuth, clearAuth]);
 
   return <>{children}</>;

@@ -78,7 +78,21 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+            // Принудительно ставим долгий maxAge на auth-cookie, иначе на iOS Safari/
+            // Telegram WebView ITP может «подрезать» куки и пользователь незаметно
+            // разлогинивается. Daniil: не разлогинивать на мобильном никогда.
+            const isAuthCookie = name.startsWith('sb-') || name.includes('auth-token');
+            response.cookies.set(name, value, {
+              ...options,
+              ...(isAuthCookie
+                ? {
+                    maxAge: 60 * 60 * 24 * 365, // 1 год
+                    sameSite: options?.sameSite ?? 'lax',
+                    secure: options?.secure ?? true,
+                    path: options?.path ?? '/',
+                  }
+                : {}),
+            });
           });
         },
       },
