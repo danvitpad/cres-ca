@@ -104,6 +104,7 @@ export default function MiniAppRegisterPage() {
     }
     if (!firstName.trim()) return mapError('missing_name');
     if (!lastName.trim()) return mapError('missing_name');
+    if (!dob) return 'Введите дату рождения';
     if (!normalizePhone(phone)) return mapError('invalid_phone');
     if (!email.trim()) return mapError('missing_email');
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) return mapError('invalid_email');
@@ -358,14 +359,14 @@ export default function MiniAppRegisterPage() {
           )}
           <Field
             icon={User}
-            label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'}
+            label={role === 'salon_admin' ? 'Имя администратора' : 'Имя'}
             value={firstName}
             onChange={setFirstName}
             placeholder="Иван"
           />
           <Field
             icon={User}
-            label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'}
+            label={role === 'salon_admin' ? 'Фамилия администратора' : 'Фамилия'}
             value={lastName}
             onChange={setLastName}
             placeholder="Иванов"
@@ -583,13 +584,7 @@ function DobField({ value, onChange }: { value: string; onChange: (iso: string) 
         className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide"
         style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
       >
-        <Calendar className="size-3" /> Дата рождения{' '}
-        <span
-          className="normal-case"
-          style={{ color: 'color-mix(in oklab, var(--foreground) 40%, transparent)' }}
-        >
-          · необязательно
-        </span>
+        <Calendar className="size-3" /> Дата рождения
       </div>
       <div
         className="rounded-2xl border p-4"
