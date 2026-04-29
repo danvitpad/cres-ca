@@ -34,7 +34,7 @@ const T = {
     teamNamePlaceholder: 'Наприклад: Studio 54, AutoPro, Dr. Smile...',
     firstName: "Ім'я", firstNameAdmin: "Ім'я адміністратора",
     lastName: 'Прізвище', lastNameAdmin: 'Прізвище адміністратора',
-    dob: 'Дата народження', dobPlaceholder: 'ДД.ММ.РРРР',
+    dob: 'Дата народження', dobPlaceholder: '__.__.____',
     dobMonthErr: 'Місяць від 01 до 12',
     dobYearErr: (y: number) => `Рік від 1900 до ${y}`,
     dobDayErr: (d: number, m: string, y: string) => `У ${m}.${y} немає ${d}-го числа`,
@@ -66,7 +66,7 @@ const T = {
     teamNamePlaceholder: 'Например: Studio 54, AutoPro, Dr. Smile...',
     firstName: 'Имя', firstNameAdmin: 'Имя администратора',
     lastName: 'Фамилия', lastNameAdmin: 'Фамилия администратора',
-    dob: 'Дата рождения', dobPlaceholder: 'ДД.ММ.ГГГГ',
+    dob: 'Дата рождения', dobPlaceholder: '__.__.____',
     dobMonthErr: 'Месяц от 01 до 12',
     dobYearErr: (y: number) => `Год от 1900 до ${y}`,
     dobDayErr: (d: number, m: string, y: string) => `В ${m}.${y} нет ${d}-го числа`,
@@ -98,7 +98,7 @@ const T = {
     teamNamePlaceholder: 'E.g.: Studio 54, AutoPro, Dr. Smile...',
     firstName: 'First name', firstNameAdmin: "Admin's first name",
     lastName: 'Last name', lastNameAdmin: "Admin's last name",
-    dob: 'Date of birth', dobPlaceholder: 'DD.MM.YYYY',
+    dob: 'Date of birth', dobPlaceholder: '__.__.____',
     dobMonthErr: 'Month must be 01–12',
     dobYearErr: (y: number) => `Year must be 1900–${y}`,
     dobDayErr: (d: number, m: string, y: string) => `${m}.${y} has no day ${d}`,
@@ -464,17 +464,17 @@ export default function MiniAppRegisterPage() {
           )}
           <Field icon={User}
             label={role === 'salon_admin' ? t.firstNameAdmin : t.firstName}
-            value={firstName} onChange={setFirstName} placeholder="Ivan" />
+            value={firstName} onChange={setFirstName} />
           <Field icon={User}
             label={role === 'salon_admin' ? t.lastNameAdmin : t.lastName}
-            value={lastName} onChange={setLastName} placeholder="Ivanov" />
+            value={lastName} onChange={setLastName} />
           <DobField value={dob} onChange={setDob} label={t.dob} placeholder={t.dobPlaceholder}
             errMonth={t.dobMonthErr} errYear={t.dobYearErr}
             errDay={t.dobDayErr} errFuture={t.dobFutureErr} />
           <Field icon={Phone} label={t.phone} value={phone} onChange={setPhone}
             placeholder="+380 ..." inputMode="tel" type="tel" />
           <Field icon={Mail} label={t.email} value={email} onChange={setEmail}
-            placeholder="you@example.com" inputMode="email" type="email" />
+            inputMode="email" type="email" />
           <Field icon={Lock} label={t.password} value={password} onChange={setPassword}
             placeholder={t.passwordPlaceholder} type="password" />
         </div>

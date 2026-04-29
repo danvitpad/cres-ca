@@ -647,7 +647,7 @@ export default function AuthPage() {
                             )}
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                              <Field label={role === 'salon_admin' ? 'Имя владельца' : 'Имя'}>
+                              <Field label={role === 'salon_admin' ? 'Имя администратора' : 'Имя'}>
                                 <GlassWrap>
                                   <input
                                     className="glass-input"
@@ -658,7 +658,7 @@ export default function AuthPage() {
                                   />
                                 </GlassWrap>
                               </Field>
-                              <Field label={role === 'salon_admin' ? 'Фамилия владельца' : 'Фамилия'}>
+                              <Field label={role === 'salon_admin' ? 'Фамилия администратора' : 'Фамилия'}>
                                 <GlassWrap>
                                   <input className="glass-input" value={lastName} onChange={e => setLastName(e.target.value)} required />
                                 </GlassWrap>
@@ -696,8 +696,7 @@ export default function AuthPage() {
                           <GlassWrap>
                             <input className="glass-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required
                               autoFocus={mode === 'signin'}
-                              autoComplete={mode === 'signup' ? 'email' : 'username'}
-                              placeholder="you@example.com" />
+                              autoComplete={mode === 'signup' ? 'email' : 'username'} />
                           </GlassWrap>
                         </Field>
 
@@ -1140,7 +1139,7 @@ function DobInput({ value, onChange }: { value: string; onChange: (isoOrEmpty: s
         type="text"
         inputMode="numeric"
         autoComplete="bday"
-        placeholder="ДД.ММ.ГГГГ"
+        placeholder="__.__.____"
         value={text}
         onChange={(e) => handleChange(e.target.value)}
         style={error ? { borderColor: '#ef4444' } : undefined}
