@@ -76,6 +76,7 @@ function formatDay(d: Date) {
 const NOTIF_ICONS: Record<string, typeof Bell> = {
   new_follower: UserPlus,
   mutual_follow: Users,
+  salon_new_contact: UserPlus,
   salon_invite: MailOpen,
   salon_invite_accepted: CheckCircle2,
   salon_invite_declined: XCircle,
@@ -87,6 +88,7 @@ const NOTIF_ICONS: Record<string, typeof Bell> = {
 const NOTIF_ICON_BG: Record<string, { bg: string; color: string }> = {
   new_follower: { bg: '#dbeafe', color: '#1d4ed8' },
   mutual_follow: { bg: '#dcfce7', color: '#15803d' },
+  salon_new_contact: { bg: '#dbeafe', color: '#1d4ed8' },
   salon_invite: { bg: '#f0fdfa', color: 'var(--color-accent-hover)' },
   salon_invite_accepted: { bg: '#dcfce7', color: '#15803d' },
   salon_invite_declined: { bg: '#fee2e2', color: '#b91c1c' },

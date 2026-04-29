@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MapPin, Phone, Loader2, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, Loader2, Users, Heart, HeartOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -40,6 +40,9 @@ export default function MiniAppSalonDetailPage() {
   const [salon, setSalon] = useState<SalonRow | null>(null);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewerId, setViewerId] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followBusy, setFollowBusy] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
@@ -80,9 +83,40 @@ export default function MiniAppSalonDetailPage() {
         };
       });
       setTeam(members);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      setViewerId(user?.id ?? null);
+      if (user) {
+        const { data: f } = await supabase
+          .from('salon_follows')
+          .select('id')
+          .eq('profile_id', user.id)
+          .eq('salon_id', params.id)
+          .maybeSingle();
+        setFollowing(Boolean(f));
+      }
+
       setLoading(false);
     })();
   }, [params?.id]);
+
+  async function toggleFollow() {
+    if (!viewerId || !params?.id || followBusy) return;
+    haptic('selection');
+    setFollowBusy(true);
+    try {
+      const res = await fetch(`/api/salon/${params.id}/follow`, {
+        method: following ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { following: boolean };
+        setFollowing(j.following);
+      }
+    } finally {
+      setFollowBusy(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -130,6 +164,27 @@ export default function MiniAppSalonDetailPage() {
           )}
         </div>
       </div>
+
+      {salon.owner_id !== viewerId && (
+        <button
+          onClick={toggleFollow}
+          disabled={followBusy}
+          className={`flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-[14px] font-semibold transition-colors disabled:opacity-60 ${
+            following
+              ? 'bg-neutral-100 text-neutral-900 active:bg-neutral-200'
+              : 'bg-neutral-900 text-white active:bg-neutral-800'
+          }`}
+        >
+          {followBusy ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : following ? (
+            <HeartOff className="size-4" />
+          ) : (
+            <Heart className="size-4" />
+          )}
+          {following ? 'В контактах' : 'В контакты'}
+        </button>
+      )}
 
       {salon.description && (
         <p className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-[13px] leading-relaxed text-neutral-700">

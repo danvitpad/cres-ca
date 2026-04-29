@@ -12,6 +12,7 @@ import { MapPin, Star } from 'lucide-react';
 import { SalonInlineLogoEdit } from './inline/salon-logo-edit';
 import { SalonInlineContactsBlock } from './inline/salon-contacts-block';
 import { SalonBookingCTA } from './booking/salon-booking-cta';
+import { SalonFollowButton } from './salon-follow-button';
 
 interface Props {
   salonId: string;
@@ -26,6 +27,10 @@ interface Props {
   reviewsCount: number;
   teamSize: number;
   servicesCount: number;
+  /** Текущий пользователь (если есть) — нужно для кнопки «В контакты» */
+  viewerProfileId: string | null;
+  /** Уже добавил салон в контакты? */
+  viewerFollows: boolean;
 }
 
 export function SalonHeroCard({
@@ -41,8 +46,12 @@ export function SalonHeroCard({
   reviewsCount,
   teamSize,
   servicesCount,
+  viewerProfileId,
+  viewerFollows,
 }: Props) {
   const initial = name.trim()[0]?.toUpperCase() ?? 'S';
+  const isOwner = viewerProfileId !== null && viewerProfileId === salonOwnerId;
+  const showFollowButton = !isOwner;
 
   return (
     <aside className="relative flex flex-col gap-5 rounded-[20px] border border-neutral-200 bg-[#f7f7f7] p-6 lg:sticky lg:top-6">
@@ -96,6 +105,16 @@ export function SalonHeroCard({
 
       {/* Main CTA — opens salon booking drawer */}
       <SalonBookingCTA variant="hero" />
+
+      {showFollowButton && (
+        <div className="flex justify-center">
+          <SalonFollowButton
+            salonId={salonId}
+            initialFollowing={viewerFollows}
+            authed={viewerProfileId !== null}
+          />
+        </div>
+      )}
 
       <div className="border-t border-neutral-200" />
 

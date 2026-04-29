@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, AlertTriangle, Star, Crown, Loader2 } from 'lucide-react';
+import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
@@ -81,10 +81,13 @@ export default function MasterMiniAppClientsPage() {
   const [rows, setRows] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
     (async () => {
+      setLoading(true);
       const initData = getInitData();
       if (!initData) {
         setLoading(false);
@@ -106,7 +109,7 @@ export default function MasterMiniAppClientsPage() {
       } catch { /* network error */ }
       setLoading(false);
     })();
-  }, [userId]);
+  }, [userId, reloadKey]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -172,6 +175,32 @@ export default function MasterMiniAppClientsPage() {
         >
           Партнёры
         </Link>
+      </div>
+
+      {/* Add client button */}
+      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
+        <button
+          type="button"
+          onClick={() => { haptic('selection'); setAddOpen(true); }}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: R.pill,
+            border: `1px solid ${T.border}`,
+            background: T.surfaceElevated,
+            color: T.text,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+          }}
+        >
+          <UserPlus size={16} /> Новый клиент
+        </button>
       </div>
 
       {/* Search */}
@@ -314,6 +343,187 @@ export default function MasterMiniAppClientsPage() {
           </ul>
         )}
       </div>
+
+      {addOpen && (
+        <NewClientSheet
+          endpoint="/api/master/clients"
+          onClose={() => setAddOpen(false)}
+          onCreated={() => { setAddOpen(false); setReloadKey((k) => k + 1); }}
+        />
+      )}
     </MobilePage>
+  );
+}
+
+interface NewClientSheetProps {
+  endpoint: string;
+  /** Дополнительные поля для POST (например salon master_id) */
+  extraFields?: Record<string, unknown>;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+export function NewClientSheet({ endpoint, extraFields, onClose, onCreated }: NewClientSheetProps) {
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      setErr('Укажите имя');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+          ...(extraFields ?? {}),
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setErr(j?.detail || j?.error || 'Не удалось добавить');
+        return;
+      }
+      onCreated();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        zIndex: 100,
+        display: 'flex',
+        alignItems: 'flex-end',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          background: T.surface,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          padding: 20,
+          paddingBottom: 32,
+          boxShadow: SHADOW.elevated,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Новый клиент</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: T.bgSubtle,
+              border: 'none',
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <X size={16} color={T.text} />
+          </button>
+        </div>
+        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input
+            autoFocus
+            placeholder="Имя"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            style={{
+              padding: '12px 14px',
+              borderRadius: R.md,
+              border: `1px solid ${T.border}`,
+              background: T.surfaceElevated,
+              fontSize: 14,
+              color: T.text,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          <input
+            placeholder="Телефон"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            inputMode="tel"
+            style={{
+              padding: '12px 14px',
+              borderRadius: R.md,
+              border: `1px solid ${T.border}`,
+              background: T.surfaceElevated,
+              fontSize: 14,
+              color: T.text,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          <input
+            placeholder="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{
+              padding: '12px 14px',
+              borderRadius: R.md,
+              border: `1px solid ${T.border}`,
+              background: T.surfaceElevated,
+              fontSize: 14,
+              color: T.text,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          {err && (
+            <p style={{ color: T.danger, fontSize: 12, margin: 0 }}>{err}</p>
+          )}
+          <button
+            type="submit"
+            disabled={busy}
+            style={{
+              marginTop: 6,
+              padding: '14px 16px',
+              borderRadius: R.pill,
+              border: 'none',
+              background: T.text,
+              color: T.bg,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              opacity: busy ? 0.6 : 1,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {busy && <Loader2 size={16} className="animate-spin" />} Добавить
+          </button>
+        </form>
+        <p style={{ ...TYPE.micro, color: T.textTertiary, marginTop: 12, marginBottom: 0, textAlign: 'center' }}>
+          Если у клиента уже есть аккаунт CRES-CA — мы свяжем автоматически по телефону или почте.
+        </p>
+      </div>
+    </div>
   );
 }

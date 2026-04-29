@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Search, User } from 'lucide-react';
+import { Search, User, UserPlus, X, Loader2 } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 interface ClientRow {
@@ -57,6 +57,8 @@ export default function MiniAppSalonClientsPage() {
   const [data, setData] = useState<ClientsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!ready) return;
@@ -85,7 +87,7 @@ export default function MiniAppSalonClientsPage() {
     return () => {
       cancelled = true;
     };
-  }, [ready, salonId]);
+  }, [ready, salonId, reloadKey]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -98,16 +100,29 @@ export default function MiniAppSalonClientsPage() {
     );
   }, [data, query]);
 
+  const canAdd = data?.role === 'admin' || data?.role === 'receptionist';
+
   return (
     <div className="p-4 space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-400" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Поиск по имени или телефону"
-          className="w-full rounded-full bg-neutral-50 border border-neutral-200 pl-9 pr-3 py-2 text-sm placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/30"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-neutral-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по имени или телефону"
+            className="w-full rounded-full bg-neutral-50 border border-neutral-200 pl-9 pr-3 py-2 text-sm placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/30"
+          />
+        </div>
+        {canAdd && (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-neutral-900 px-4 text-sm font-semibold text-white"
+          >
+            <UserPlus className="size-4" />
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -150,6 +165,105 @@ export default function MiniAppSalonClientsPage() {
           ))}
         </ul>
       )}
+
+      {addOpen && (
+        <SalonAddClientSheet
+          salonId={salonId}
+          onClose={() => setAddOpen(false)}
+          onCreated={() => { setAddOpen(false); setReloadKey((k) => k + 1); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SalonAddClientSheet({ salonId, onClose, onCreated }: { salonId: string; onClose: () => void; onCreated: () => void }) {
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim()) { setErr('Укажите имя'); return; }
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/salon/${salonId}/clients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        setErr(j?.detail || j?.error || 'Не удалось добавить');
+        return;
+      }
+      onCreated();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end bg-black/50"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full rounded-t-2xl bg-white p-5 pb-8"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">Новый клиент команды</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="size-8 rounded-full bg-neutral-100 flex items-center justify-center"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="space-y-2.5">
+          <input
+            autoFocus
+            placeholder="Имя"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full px-3.5 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-sm"
+          />
+          <input
+            placeholder="Телефон"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            inputMode="tel"
+            className="w-full px-3.5 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-sm"
+          />
+          <input
+            placeholder="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3.5 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-sm"
+          />
+          {err && <p className="text-red-600 text-xs">{err}</p>}
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full mt-2 py-3.5 rounded-full bg-neutral-900 text-white text-sm font-bold disabled:opacity-60 inline-flex items-center justify-center gap-2"
+          >
+            {busy && <Loader2 className="size-4 animate-spin" />} Добавить
+          </button>
+        </form>
+        <p className="text-[11px] text-neutral-500 mt-3 text-center">
+          Если у клиента уже есть аккаунт — мы свяжем его автоматически по телефону или почте.
+        </p>
+      </div>
     </div>
   );
 }

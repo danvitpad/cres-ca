@@ -11,6 +11,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { SalonHeroCard } from '@/components/salon/salon-hero-card';
 import { SalonTeamGrid } from '@/components/salon/salon-team-grid';
 import { SalonJoinRequestCard } from '@/components/salon/salon-join-request-card';
@@ -220,6 +221,20 @@ export default async function PublicSalonPage({ params }: PageProps) {
   if (!data) notFound();
   const { salon, masters, bookingMasters, bookingServices, servicesCount, rating, reviewsCount } = data;
 
+  // Viewer state (для кнопки «В контакты»)
+  const userSupabase = await createClient();
+  const { data: { user: viewer } } = await userSupabase.auth.getUser();
+  let viewerFollows = false;
+  if (viewer) {
+    const { data: f } = await userSupabase
+      .from('salon_follows')
+      .select('id')
+      .eq('profile_id', viewer.id)
+      .eq('salon_id', salon.id)
+      .maybeSingle();
+    viewerFollows = Boolean(f);
+  }
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -273,6 +288,8 @@ export default async function PublicSalonPage({ params }: PageProps) {
               reviewsCount={reviewsCount}
               teamSize={masters.length}
               servicesCount={servicesCount}
+              viewerProfileId={viewer?.id ?? null}
+              viewerFollows={viewerFollows}
             />
           </div>
 

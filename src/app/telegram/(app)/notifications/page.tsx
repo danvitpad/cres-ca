@@ -74,11 +74,15 @@ function formatDay(d: Date) {
 const NOTIF_ICONS: Record<string, typeof Bell> = {
   new_follower: UserPlus,
   mutual_follow: Users,
+  salon_added_you: UserCheck,
+  added_to_contacts: UserCheck,
 };
 
 const NOTIF_ICON_COLORS: Record<string, string> = {
   new_follower: 'text-blue-600',
   mutual_follow: 'text-emerald-600',
+  salon_added_you: 'text-violet-600',
+  added_to_contacts: 'text-violet-600',
 };
 
 export default function ClientMiniAppNotifications() {

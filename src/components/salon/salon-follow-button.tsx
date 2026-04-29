@@ -1,8 +1,11 @@
 /** --- YAML
  * name: SalonFollowButton
- * description: Client-side follow/unfollow button for public salon page. Posts to /api/follow with targetId = salon.owner_id.
- *              Redirects to /login if user is not authenticated.
+ * description: Кнопка «В контакты» / «В контактах» на публичной странице салона.
+ *              POST /api/salon/[id]/follow добавляет, DELETE — убирает.
+ *              Гость → редирект на /login. Это не запись на услугу, это «контакт» —
+ *              салон видит клиента в общем списке, клиент получает рассылки команды.
  * created: 2026-04-19
+ * updated: 2026-04-29
  * --- */
 
 'use client';
@@ -12,12 +15,12 @@ import { useRouter } from 'next/navigation';
 import { Heart, HeartOff, Loader2 } from 'lucide-react';
 
 interface Props {
-  ownerId: string;
+  salonId: string;
   initialFollowing: boolean;
   authed: boolean;
 }
 
-export function SalonFollowButton({ ownerId, initialFollowing, authed }: Props) {
+export function SalonFollowButton({ salonId, initialFollowing, authed }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
   const [, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
@@ -30,10 +33,9 @@ export function SalonFollowButton({ ownerId, initialFollowing, authed }: Props) 
     }
     setBusy(true);
     try {
-      const res = await fetch('/api/follow', {
-        method: 'POST',
+      const res = await fetch(`/api/salon/${salonId}/follow`, {
+        method: following ? 'DELETE' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetId: ownerId }),
       });
       if (res.ok) {
         const j = (await res.json()) as { following: boolean };
@@ -50,8 +52,8 @@ export function SalonFollowButton({ ownerId, initialFollowing, authed }: Props) 
       disabled={busy}
       className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${
         following
-          ? 'bg-muted text-foreground hover:bg-muted/80'
-          : 'bg-primary text-primary-foreground hover:opacity-90'
+          ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
+          : 'bg-neutral-900 text-white hover:bg-neutral-800'
       }`}
     >
       {busy ? (
@@ -61,7 +63,7 @@ export function SalonFollowButton({ ownerId, initialFollowing, authed }: Props) 
       ) : (
         <Heart className="size-4" />
       )}
-      {following ? 'Подписан' : 'Подписаться'}
+      {following ? 'В контактах' : 'В контакты'}
     </button>
   );
 }

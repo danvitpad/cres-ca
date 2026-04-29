@@ -10,8 +10,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Users, Search, Building2, Cake } from 'lucide-react';
+import { Users, Search, Building2, Cake, UserPlus, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface ClientRow {
   id: string;
@@ -19,10 +20,11 @@ interface ClientRow {
   phone: string | null;
   email: string | null;
   date_of_birth: string | null;
-  master_id?: string;
+  master_id?: string | null;
   master_name?: string | null;
   visits?: number;
   spent?: number;
+  source?: 'master' | 'salon_follow';
   created_at: string;
 }
 
@@ -47,6 +49,8 @@ export default function SalonClientsPage() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [masterFilter, setMasterFilter] = useState<string>('all');
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +65,7 @@ export default function SalonClientsPage() {
       .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'error'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [salonId]);
+  }, [salonId, reloadKey]);
 
   const filtered = useMemo(() => {
     if (!data?.clients) return [];
@@ -106,6 +110,7 @@ export default function SalonClientsPage() {
   const showFinance = data.role === 'admin';
   const showMasterFilter = data.role !== 'master' && (isUnified || data.role === 'receptionist');
   const showMasterColumn = isUnified || data.role === 'master';
+  const canAdd = data.role === 'admin' || data.role === 'receptionist';
 
   return (
     <div className="p-4 md:p-6 space-y-5 pb-20">
@@ -147,7 +152,24 @@ export default function SalonClientsPage() {
             ))}
           </select>
         )}
+        {canAdd && (
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <UserPlus className="size-4" /> Новый клиент
+          </button>
+        )}
       </div>
+
+      {dialogOpen && (
+        <NewSalonClientDialog
+          salonId={salonId}
+          masters={data.masters ?? []}
+          onClose={() => setDialogOpen(false)}
+          onCreated={() => { setDialogOpen(false); setReloadKey((k) => k + 1); }}
+        />
+      )}
 
       {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-10 text-center">
@@ -207,6 +229,163 @@ export default function SalonClientsPage() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+interface NewSalonClientDialogProps {
+  salonId: string;
+  masters: Array<{ id: string; display_name: string | null }>;
+  onClose: () => void;
+  onCreated: () => void;
+}
+
+function NewSalonClientDialog({ salonId, masters, onClose, onCreated }: NewSalonClientDialogProps) {
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [dob, setDob] = useState('');
+  const [notes, setNotes] = useState('');
+  const [masterId, setMasterId] = useState<string>('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      toast.error('Укажите имя клиента');
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/salon/${salonId}/clients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: fullName.trim(),
+          phone: phone.trim() || null,
+          email: email.trim() || null,
+          date_of_birth: dob || null,
+          notes: notes.trim() || null,
+          master_id: masterId || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        toast.error(j?.detail || j?.error || 'Не удалось добавить');
+        return;
+      }
+      const j = (await res.json()) as { linked: boolean; salon_level: boolean };
+      const msg = j.linked
+        ? (j.salon_level ? 'Клиент привязан к команде' : 'Клиент привязан к мастеру')
+        : 'Клиент добавлен';
+      toast.success(msg);
+      onCreated();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 md:items-center md:p-6"
+      onClick={onClose}
+      onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-t-2xl border border-border bg-background p-6 md:rounded-2xl"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">Новый клиент команды</h2>
+          <button onClick={onClose} className="size-8 rounded-lg hover:bg-muted flex items-center justify-center">
+            <X className="size-4" />
+          </button>
+        </div>
+        <form onSubmit={submit} className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Имя *</label>
+            <input
+              autoFocus
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+              placeholder="Анна Иванова"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Телефон</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+                placeholder="+380..."
+                inputMode="tel"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Email</label>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+                placeholder="anna@..."
+                type="email"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Дата рождения</label>
+            <input
+              value={dob}
+              onChange={(e) => setDob(e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+              type="date"
+            />
+          </div>
+          {masters.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">К какому мастеру</label>
+              <select
+                value={masterId}
+                onChange={(e) => setMasterId(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg border border-border bg-background text-sm"
+              >
+                <option value="">Без привязки (общий контакт салона)</option>
+                {masters.map((m) => (
+                  <option key={m.id} value={m.id}>{m.display_name || 'Мастер'}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Заметки</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none"
+              placeholder="Аллергия, предпочтения..."
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-10 rounded-lg border border-border text-sm font-semibold hover:bg-muted"
+            >
+              Отмена
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-2"
+            >
+              {busy && <Loader2 className="size-4 animate-spin" />} Добавить
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

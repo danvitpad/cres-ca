@@ -374,17 +374,25 @@ export default function ClientsPage() {
 
   async function addClient(formData: { full_name: string; phone: string; email: string; date_of_birth: string; notes: string }) {
     if (!master) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('clients').insert({
-      master_id: master.id,
-      full_name: formData.full_name,
-      phone: formData.phone || null,
-      email: formData.email || null,
-      date_of_birth: formData.date_of_birth || null,
-      notes: formData.notes || null,
+    const res = await fetch('/api/master/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: formData.full_name,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        date_of_birth: formData.date_of_birth || null,
+        notes: formData.notes || null,
+      }),
     });
-    if (error) { toast.error(humanizeError(error)); return; }
-    toast.success(tc('success'));
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      const msg = j?.error === 'full_name_required' ? 'Укажите имя клиента' : (j?.detail || tc('error'));
+      toast.error(msg);
+      return;
+    }
+    const j = (await res.json()) as { linked: boolean };
+    toast.success(j.linked ? 'Клиент привязан к существующему аккаунту' : tc('success'));
     setDialogOpen(false);
     loadClients();
   }
