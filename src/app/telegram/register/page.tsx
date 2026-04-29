@@ -1,6 +1,6 @@
 /** --- YAML
  * name: MiniAppRegisterPage
- * description: Manual registration form в Mini App. Поля: роль (клиент/мастер/команда), Имя+Фамилия (для команды — Имя/Фамилия владельца + Название команды), Телефон (обязательно), Email, Пароль, ДР (опц). Telegram привязывается автоматически — показано как готовый факт. Реагирует на тёмную/светлую тему. Sticky bottom скрывается когда юзер набирает в инпуте.
+ * description: Registration form in Mini App. Reads cres:locale from localStorage and shows UI in uk/ru/en. Fields: role (client/master/team), Name+Surname, DoB (required), Phone (required), Email, Password. Telegram auto-linked — shown as fact. Theme-responsive. Sticky bottom hides on keyboard.
  * created: 2026-04-13
  * updated: 2026-04-29
  * --- */
@@ -11,10 +11,117 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Phone, Mail, Calendar, Loader2, Check, Send, UserRound, Briefcase, Building2, Lock, ArrowLeft } from 'lucide-react';
+import {
+  User, Phone, Mail, Calendar, Loader2, Check, Send,
+  UserRound, Briefcase, Building2, Lock, ArrowLeft,
+} from 'lucide-react';
 import { mapError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/auth-store';
 
+// ─── i18n ────────────────────────────────────────────────────────────────────
+type Lang = 'uk' | 'ru' | 'en';
+const LANG_CYCLE: Lang[] = ['uk', 'ru', 'en'];
+
+const T = {
+  uk: {
+    title: 'Реєстрація',
+    subtitle: 'Заповніть, будь ласка, кілька полів — це займе менше хвилини.',
+    roleLabel: 'Я реєструюся як',
+    roleClient: 'Клієнт', roleMaster: 'Майстер', roleTeam: 'Команда',
+    masterHint: 'Ви отримаєте Mini App майстра з календарем, клієнтами та фінансами. Налаштувати послуги та графік можна одразу після реєстрації.',
+    teamHint: 'Команді — мультимайстерський календар, склад, зміни та звіти. Послуги та людей додасте після реєстрації.',
+    teamName: 'Назва команди',
+    teamNamePlaceholder: 'Наприклад: Studio 54, AutoPro, Dr. Smile...',
+    firstName: "Ім'я", firstNameAdmin: "Ім'я адміністратора",
+    lastName: 'Прізвище', lastNameAdmin: 'Прізвище адміністратора',
+    dob: 'Дата народження', dobPlaceholder: 'ДД.ММ.РРРР',
+    dobMonthErr: 'Місяць від 01 до 12',
+    dobYearErr: (y: number) => `Рік від 1900 до ${y}`,
+    dobDayErr: (d: number, m: string, y: string) => `У ${m}.${y} немає ${d}-го числа`,
+    dobFutureErr: 'Дата в майбутньому',
+    dobRequired: 'Введіть дату народження',
+    phone: 'Телефон', email: 'Email',
+    password: 'Пароль', passwordPlaceholder: 'мінімум 8 символів',
+    tgLinked: 'Telegram прив\'язаний',
+    tgLinkedSub: (handle: string) => `${handle} — для входу без пароля та для сповіщень.`,
+    createBtn: 'Створити акаунт', saving: 'Зберігаємо…',
+    done: 'Готово — відкриваємо CRES-CA',
+    terms: 'Продовжуючи, ви погоджуєтесь з',
+    termsLink: 'Умовами використання',
+    haveAccount: 'Вже є акаунт?', signIn: 'Увійти',
+    otpTitle: 'Підтвердження email',
+    otpSub: (email: string) => `Ми надіслали 8-значний код на ${email}. Введіть його нижче.`,
+    otpPlaceholder: '• • • • • • • •',
+    otpConfirm: 'Підтвердити',
+    otpResend: 'Надіслати код ще раз',
+  },
+  ru: {
+    title: 'Регистрация',
+    subtitle: 'Заполните, пожалуйста, несколько полей — это займёт меньше минуты.',
+    roleLabel: 'Я регистрируюсь как',
+    roleClient: 'Клиент', roleMaster: 'Мастер', roleTeam: 'Команда',
+    masterHint: 'Вы получите Mini App мастера с календарём, клиентами и финансами. Настроить услуги и график можно будет сразу после регистрации.',
+    teamHint: 'Команде — мультимастерский календарь, состав, смены и отчёты. Услуги и людей добавите после регистрации.',
+    teamName: 'Название команды',
+    teamNamePlaceholder: 'Например: Studio 54, AutoPro, Dr. Smile...',
+    firstName: 'Имя', firstNameAdmin: 'Имя администратора',
+    lastName: 'Фамилия', lastNameAdmin: 'Фамилия администратора',
+    dob: 'Дата рождения', dobPlaceholder: 'ДД.ММ.ГГГГ',
+    dobMonthErr: 'Месяц от 01 до 12',
+    dobYearErr: (y: number) => `Год от 1900 до ${y}`,
+    dobDayErr: (d: number, m: string, y: string) => `В ${m}.${y} нет ${d}-го числа`,
+    dobFutureErr: 'Дата в будущем',
+    dobRequired: 'Введите дату рождения',
+    phone: 'Телефон', email: 'Email',
+    password: 'Пароль', passwordPlaceholder: 'минимум 8 символов',
+    tgLinked: 'Telegram привязан',
+    tgLinkedSub: (handle: string) => `${handle} — для входа без пароля и для уведомлений.`,
+    createBtn: 'Создать аккаунт', saving: 'Сохраняем…',
+    done: 'Готово — открываем CRES-CA',
+    terms: 'Продолжая, вы принимаете',
+    termsLink: 'Условия использования',
+    haveAccount: 'Уже есть аккаунт?', signIn: 'Войти',
+    otpTitle: 'Подтверждение email',
+    otpSub: (email: string) => `Мы отправили 8-значный код на ${email}. Введите его ниже.`,
+    otpPlaceholder: '• • • • • • • •',
+    otpConfirm: 'Подтвердить',
+    otpResend: 'Отправить код ещё раз',
+  },
+  en: {
+    title: 'Sign up',
+    subtitle: 'Fill in a few fields — it takes less than a minute.',
+    roleLabel: 'I am signing up as',
+    roleClient: 'Client', roleMaster: 'Master', roleTeam: 'Team',
+    masterHint: 'You will get a Master Mini App with calendar, clients and finances. Set up services and schedule right after sign-up.',
+    teamHint: 'Team — multi-master calendar, roster, shifts and reports. Add services and people after sign-up.',
+    teamName: 'Team name',
+    teamNamePlaceholder: 'E.g.: Studio 54, AutoPro, Dr. Smile...',
+    firstName: 'First name', firstNameAdmin: "Admin's first name",
+    lastName: 'Last name', lastNameAdmin: "Admin's last name",
+    dob: 'Date of birth', dobPlaceholder: 'DD.MM.YYYY',
+    dobMonthErr: 'Month must be 01–12',
+    dobYearErr: (y: number) => `Year must be 1900–${y}`,
+    dobDayErr: (d: number, m: string, y: string) => `${m}.${y} has no day ${d}`,
+    dobFutureErr: 'Date is in the future',
+    dobRequired: 'Enter date of birth',
+    phone: 'Phone', email: 'Email',
+    password: 'Password', passwordPlaceholder: 'at least 8 characters',
+    tgLinked: 'Telegram connected',
+    tgLinkedSub: (handle: string) => `${handle} — for passwordless sign-in and notifications.`,
+    createBtn: 'Create account', saving: 'Saving…',
+    done: 'Done — opening CRES-CA',
+    terms: 'By continuing you accept the',
+    termsLink: 'Terms of Use',
+    haveAccount: 'Already have an account?', signIn: 'Sign in',
+    otpTitle: 'Email confirmation',
+    otpSub: (email: string) => `We sent an 8-digit code to ${email}. Enter it below.`,
+    otpPlaceholder: '• • • • • • • •',
+    otpConfirm: 'Confirm',
+    otpResend: 'Resend code',
+  },
+} as const;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 interface TgData {
   id: number;
   first_name: string;
@@ -30,10 +137,12 @@ interface Stash {
   startParam: string | null;
 }
 
+// ─── Page ────────────────────────────────────────────────────────────────────
 export default function MiniAppRegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [stash, setStash] = useState<Stash | null>(null);
+  const [lang, setLang] = useState<Lang>('ru');
 
   const [role, setRole] = useState<'client' | 'master' | 'salon_admin'>('client');
   const [firstName, setFirstName] = useState('');
@@ -54,36 +163,33 @@ export default function MiniAppRegisterPage() {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [pendingRoute, setPendingRoute] = useState<string | null>(null);
 
-  // Когда юзер начинает печатать в любом инпуте — прячем нижнюю sticky-панель
-  // (кнопка «Создать аккаунт» + текст про условия), чтобы не залезала на клаву.
+  // Sticky bottom скрывается когда юзер печатает — не перекрывает клаву
   const [inputFocused, setInputFocused] = useState(false);
+
+  // Читаем сохранённый язык из welcome
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('cres:locale') as Lang | null;
+      if (stored && LANG_CYCLE.includes(stored)) setLang(stored);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('cres:tg');
-    if (!raw) {
-      router.replace('/telegram');
-      return;
-    }
+    if (!raw) { router.replace('/telegram'); return; }
     const s = JSON.parse(raw) as Stash;
     setStash(s);
     if (s.tgData?.first_name) setFirstName(s.tgData.first_name);
     if (s.tgData?.last_name) setLastName(s.tgData.last_name);
   }, [router]);
 
-  // Глобальный focus/blur listener — на любых input/textarea внутри страницы
-  // прячем sticky bottom. Безопасно для DateWheelPicker (он не текстовый input).
   useEffect(() => {
     function isTextInput(el: EventTarget | null) {
       if (!(el instanceof HTMLElement)) return false;
-      const tag = el.tagName;
-      return tag === 'INPUT' || tag === 'TEXTAREA';
+      return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA';
     }
-    function onFocus(e: FocusEvent) {
-      if (isTextInput(e.target)) setInputFocused(true);
-    }
-    function onBlur(e: FocusEvent) {
-      if (isTextInput(e.target)) setInputFocused(false);
-    }
+    function onFocus(e: FocusEvent) { if (isTextInput(e.target)) setInputFocused(true); }
+    function onBlur(e: FocusEvent) { if (isTextInput(e.target)) setInputFocused(false); }
     document.addEventListener('focusin', onFocus);
     document.addEventListener('focusout', onBlur);
     return () => {
@@ -92,6 +198,8 @@ export default function MiniAppRegisterPage() {
     };
   }, []);
 
+  const t = T[lang];
+
   function normalizePhone(value: string): string | null {
     const digits = value.replace(/\D/g, '');
     if (digits.length < 9 || digits.length > 15) return null;
@@ -99,12 +207,10 @@ export default function MiniAppRegisterPage() {
   }
 
   function validate(): string | null {
-    if (role === 'salon_admin') {
-      if (!salonName.trim()) return mapError('missing_salon_name');
-    }
+    if (role === 'salon_admin' && !salonName.trim()) return mapError('missing_salon_name');
     if (!firstName.trim()) return mapError('missing_name');
     if (!lastName.trim()) return mapError('missing_name');
-    if (!dob) return 'Введите дату рождения';
+    if (!dob) return t.dobRequired;
     if (!normalizePhone(phone)) return mapError('invalid_phone');
     if (!email.trim()) return mapError('missing_email');
     if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email.trim())) return mapError('invalid_email');
@@ -114,17 +220,12 @@ export default function MiniAppRegisterPage() {
 
   async function submit() {
     if (!stash) return;
-    const validationError = validate();
-    if (validationError) {
-      setErrorMsg(validationError);
-      return;
-    }
+    const err = validate();
+    if (err) { setErrorMsg(err); return; }
     setErrorMsg(null);
     setSubmitting(true);
 
-    const personalFullName = [lastName.trim(), firstName.trim()]
-      .filter(Boolean)
-      .join(' ');
+    const personalFullName = [lastName.trim(), firstName.trim()].filter(Boolean).join(' ');
     const normalizedPhone = normalizePhone(phone)!;
 
     try {
@@ -146,11 +247,8 @@ export default function MiniAppRegisterPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(mapError(data.error));
-        setSubmitting(false);
-        return;
-      }
+      if (!res.ok) { setErrorMsg(mapError(data.error)); setSubmitting(false); return; }
+
       setAuth(data.userId, data.role, null);
       sessionStorage.removeItem('cres:tg');
 
@@ -165,7 +263,7 @@ export default function MiniAppRegisterPage() {
       const otpRes = await fetch('/api/telegram/email-otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), locale: 'ru' }),
+        body: JSON.stringify({ email: email.trim(), locale: lang }),
       });
       if (!otpRes.ok) {
         const j = await otpRes.json().catch(() => ({}));
@@ -192,15 +290,9 @@ export default function MiniAppRegisterPage() {
         body: JSON.stringify({ code: otpCode }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setOtpError(mapError(data.error, 'Ошибка проверки'));
-        setOtpBusy(false);
-        return;
-      }
+      if (!res.ok) { setOtpError(mapError(data.error, 'Ошибка проверки')); setOtpBusy(false); return; }
       setDone(true);
-      setTimeout(() => {
-        if (pendingRoute) router.replace(pendingRoute);
-      }, 500);
+      setTimeout(() => { if (pendingRoute) router.replace(pendingRoute); }, 500);
     } catch {
       setOtpError(mapError('network_error'));
       setOtpBusy(false);
@@ -213,15 +305,14 @@ export default function MiniAppRegisterPage() {
       await fetch('/api/telegram/email-otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), locale: 'ru' }),
+        body: JSON.stringify({ email: email.trim(), locale: lang }),
       });
     } catch {}
   }
 
-  if (!stash) {
-    return <div className="min-h-dvh" style={{ background: 'var(--background)' }} />;
-  }
+  if (!stash) return <div className="min-h-dvh" style={{ background: 'var(--background)' }} />;
 
+  // ─── OTP screen ─────────────────────────────────────────────────────────────
   if (otpStage === 'otp') {
     return (
       <motion.div
@@ -238,12 +329,14 @@ export default function MiniAppRegisterPage() {
             >
               <Mail className="size-6" style={{ color: 'var(--color-accent)' }} />
             </div>
-            <h1 className="text-2xl font-bold">Подтверждение email</h1>
+            <h1 className="text-2xl font-bold">{t.otpTitle}</h1>
             <p
               className="mx-auto max-w-xs text-[13px] leading-relaxed"
               style={{ color: 'color-mix(in oklab, var(--foreground) 65%, transparent)' }}
             >
-              Мы отправили 8-значный код на <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{email}</span>. Введите его ниже.
+              {t.otpSub(email).split(email)[0]}
+              <span className="font-semibold" style={{ color: 'var(--foreground)' }}>{email}</span>
+              {t.otpSub(email).split(email)[1]}
             </p>
           </div>
 
@@ -253,7 +346,7 @@ export default function MiniAppRegisterPage() {
               inputMode="numeric"
               value={otpCode}
               onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
-              placeholder="• • • • • • • •"
+              placeholder={t.otpPlaceholder}
               className="w-full rounded-2xl border px-4 py-5 text-center font-mono text-2xl tracking-[0.3em] outline-none"
               style={{
                 borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
@@ -273,20 +366,17 @@ export default function MiniAppRegisterPage() {
               onClick={verifyOtp}
               disabled={otpBusy || otpCode.length !== 8}
               className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
-              style={{
-                background: 'var(--primary)',
-                color: 'var(--primary-foreground)',
-              }}
+              style={{ background: 'var(--primary)', color: 'var(--primary-foreground)' }}
             >
               {otpBusy ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-              Подтвердить
+              {t.otpConfirm}
             </button>
             <button
               onClick={resendOtp}
               className="w-full py-2 text-xs underline-offset-2 hover:underline"
               style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
             >
-              Отправить код ещё раз
+              {t.otpResend}
             </button>
           </div>
         </div>
@@ -296,7 +386,9 @@ export default function MiniAppRegisterPage() {
 
   const tgHandle = stash.tgData?.username;
   const tgFirstName = stash.tgData?.first_name;
+  const tgDisplayName = tgHandle ? `@${tgHandle}` : (tgFirstName ?? 'Telegram');
 
+  // ─── Registration form ───────────────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -305,7 +397,7 @@ export default function MiniAppRegisterPage() {
       className="flex min-h-dvh flex-col"
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
-      {/* Кнопка «назад» — в верхнем левом углу */}
+      {/* Back button */}
       <div
         className="flex items-center px-4 pt-4"
         style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
@@ -326,101 +418,68 @@ export default function MiniAppRegisterPage() {
       </div>
 
       <div className="flex-1 space-y-6 px-6 pt-6 pb-[140px]">
+        {/* Header */}
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Регистрация</h1>
+          <h1 className="text-2xl font-bold">{t.title}</h1>
           <p
             className="mx-auto max-w-xs text-[13px]"
             style={{ color: 'color-mix(in oklab, var(--foreground) 60%, transparent)' }}
           >
-            Заполните, пожалуйста, несколько полей — это займёт меньше минуты.
+            {t.subtitle}
           </p>
         </div>
 
-        {/* Role picker — client / master / salon */}
+        {/* Role picker */}
         <div className="space-y-1">
           <div
             className="px-1 text-[11px] font-semibold uppercase tracking-wide"
             style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
           >
-            Я регистрируюсь как
+            {t.roleLabel}
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <RoleTile active={role === 'client'} onClick={() => setRole('client')} icon={UserRound} label="Клиент" />
-            <RoleTile active={role === 'master'} onClick={() => setRole('master')} icon={Briefcase} label="Мастер" />
-            <RoleTile active={role === 'salon_admin'} onClick={() => setRole('salon_admin')} icon={Building2} label="Команда" />
+            <RoleTile active={role === 'client'} onClick={() => setRole('client')} icon={UserRound} label={t.roleClient} />
+            <RoleTile active={role === 'master'} onClick={() => setRole('master')} icon={Briefcase} label={t.roleMaster} />
+            <RoleTile active={role === 'salon_admin'} onClick={() => setRole('salon_admin')} icon={Building2} label={t.roleTeam} />
           </div>
           {role === 'master' && (
-            <p
-              className="mt-2 px-1 text-[11px] leading-snug"
-              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-            >
-              Вы получите Mini App мастера с календарём, клиентами и финансами. Настроить услуги и график можно будет сразу после регистрации.
+            <p className="mt-2 px-1 text-[11px] leading-snug"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}>
+              {t.masterHint}
             </p>
           )}
           {role === 'salon_admin' && (
-            <p
-              className="mt-2 px-1 text-[11px] leading-snug"
-              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-            >
-              Команде — мультимастерский календарь, состав, смены и отчёты. Услуги и людей добавите после регистрации. Подходит для любой сферы услуг.
+            <p className="mt-2 px-1 text-[11px] leading-snug"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}>
+              {t.teamHint}
             </p>
           )}
         </div>
 
+        {/* Fields */}
         <div className="space-y-3">
           {role === 'salon_admin' && (
-            <Field
-              icon={Building2}
-              label="Название команды"
-              value={salonName}
-              onChange={setSalonName}
-              placeholder="Например: Studio 54, AutoPro, Dr. Smile..."
-            />
+            <Field icon={Building2} label={t.teamName} value={salonName} onChange={setSalonName}
+              placeholder={t.teamNamePlaceholder} />
           )}
-          <Field
-            icon={User}
-            label={role === 'salon_admin' ? 'Имя администратора' : 'Имя'}
-            value={firstName}
-            onChange={setFirstName}
-            placeholder="Иван"
-          />
-          <Field
-            icon={User}
-            label={role === 'salon_admin' ? 'Фамилия администратора' : 'Фамилия'}
-            value={lastName}
-            onChange={setLastName}
-            placeholder="Иванов"
-          />
-          <DobField value={dob} onChange={setDob} />
-          <Field
-            icon={Phone}
-            label="Телефон"
-            value={phone}
-            onChange={setPhone}
-            placeholder="+380 ..."
-            inputMode="tel"
-            type="tel"
-          />
-          <Field
-            icon={Mail}
-            label="Email"
-            value={email}
-            onChange={setEmail}
-            placeholder="you@example.com"
-            inputMode="email"
-            type="email"
-          />
-          <Field
-            icon={Lock}
-            label="Пароль"
-            value={password}
-            onChange={setPassword}
-            placeholder="минимум 8 символов"
-            type="password"
-          />
+          <Field icon={User}
+            label={role === 'salon_admin' ? t.firstNameAdmin : t.firstName}
+            value={firstName} onChange={setFirstName} placeholder="Ivan" />
+          <Field icon={User}
+            label={role === 'salon_admin' ? t.lastNameAdmin : t.lastName}
+            value={lastName} onChange={setLastName} placeholder="Ivanov" />
+          <DobField value={dob} onChange={setDob} label={t.dob} placeholder={t.dobPlaceholder}
+            errMonth={t.dobMonthErr} errYear={t.dobYearErr}
+            errDay={t.dobDayErr} errFuture={t.dobFutureErr} />
+          <Field icon={Phone} label={t.phone} value={phone} onChange={setPhone}
+            placeholder="+380 ..." inputMode="tel" type="tel" />
+          <Field icon={Mail} label={t.email} value={email} onChange={setEmail}
+            placeholder="you@example.com" inputMode="email" type="email" />
+          <Field icon={Lock} label={t.password} value={password} onChange={setPassword}
+            placeholder={t.passwordPlaceholder} type="password" />
         </div>
 
-        {/* Telegram — констатация факта, не выбор */}
+        {/* Telegram fact */}
         <div
           className="flex items-start gap-3 rounded-2xl border p-4"
           style={{
@@ -435,47 +494,39 @@ export default function MiniAppRegisterPage() {
             <Check className="size-3.5" style={{ color: '#fff' }} />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Telegram привязан</p>
-            <p
-              className="mt-1 text-[12px] leading-snug"
-              style={{ color: 'color-mix(in oklab, var(--foreground) 60%, transparent)' }}
-            >
-              {tgHandle ? `@${tgHandle}` : (tgFirstName ?? 'Ваш аккаунт')} — для входа без пароля и для уведомлений.
+            <p className="text-sm font-semibold">{t.tgLinked}</p>
+            <p className="mt-1 text-[12px] leading-snug"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 60%, transparent)' }}>
+              {t.tgLinkedSub(tgDisplayName)}
             </p>
           </div>
         </div>
 
+        {/* Error */}
         {errorMsg && (
-          <div
-            className="rounded-2xl border p-3 text-sm"
+          <div className="rounded-2xl border p-3 text-sm"
             style={{
               borderColor: 'rgba(244,63,94,0.3)',
               background: 'rgba(244,63,94,0.08)',
               color: '#f43f5e',
-            }}
-          >
+            }}>
             {errorMsg}
           </div>
         )}
 
-        {/* Ссылка на вход — для тех у кого аккаунт уже есть */}
-        <p
-          className="text-center text-[13px] pb-2"
-          style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-        >
-          Уже есть аккаунт?{' '}
-          <button
-            type="button"
-            onClick={() => router.replace('/telegram/welcome')}
+        {/* Link to sign-in */}
+        <p className="text-center text-[13px] pb-2"
+          style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}>
+          {t.haveAccount}{' '}
+          <button type="button" onClick={() => router.replace('/telegram/welcome')}
             className="font-semibold underline underline-offset-2"
-            style={{ color: 'var(--foreground)' }}
-          >
-            Войти
+            style={{ color: 'var(--foreground)' }}>
+            {t.signIn}
           </button>
         </p>
       </div>
 
-      {/* Sticky bottom — прячется когда юзер фокусится на инпуте */}
+      {/* Sticky bottom */}
       <div
         className="fixed inset-x-0 bottom-0 space-y-2 px-6 pb-6 pt-8 transition-opacity duration-200"
         style={{
@@ -487,7 +538,8 @@ export default function MiniAppRegisterPage() {
       >
         {done ? (
           <div className="flex items-center justify-center gap-2 py-4" style={{ color: '#15803d' }}>
-            <Check className="size-5" /> <span className="text-sm font-semibold">Готово — открываем CRES-CA</span>
+            <Check className="size-5" />
+            <span className="text-sm font-semibold">{t.done}</span>
           </div>
         ) : (
           <button
@@ -501,40 +553,28 @@ export default function MiniAppRegisterPage() {
             }}
           >
             {submitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Сохраняем…
-              </>
+              <><Loader2 className="size-4 animate-spin" /> {t.saving}</>
             ) : (
-              <>
-                <Send className="size-4" /> Создать аккаунт
-              </>
+              <><Send className="size-4" /> {t.createBtn}</>
             )}
           </button>
         )}
-        <p
-          className="text-center text-[11px] leading-relaxed"
-          style={{ color: 'color-mix(in oklab, var(--foreground) 50%, transparent)' }}
-        >
-          Продолжая, вы принимаете{' '}
-          <Link
-            href="/telegram/terms"
-            className="underline"
-            style={{ textDecorationColor: 'color-mix(in oklab, var(--foreground) 30%, transparent)' }}
-          >
-            Условия использования
-          </Link>{' '}
-          CRES-CA.
+        <p className="text-center text-[11px] leading-relaxed"
+          style={{ color: 'color-mix(in oklab, var(--foreground) 50%, transparent)' }}>
+          {t.terms}{' '}
+          <Link href="/telegram/terms" className="underline"
+            style={{ textDecorationColor: 'color-mix(in oklab, var(--foreground) 30%, transparent)' }}>
+            {t.termsLink}
+          </Link>{' '}CRES-CA.
         </p>
       </div>
     </motion.div>
   );
 }
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
 function RoleTile({
-  active,
-  onClick,
-  icon: Icon,
-  label,
+  active, onClick, icon: Icon, label,
 }: {
   active: boolean;
   onClick: () => void;
@@ -566,9 +606,19 @@ function RoleTile({
   );
 }
 
-function DobField({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
-  // ДР как обычный текстовый инпут «ДД.ММ.ГГГГ» — без колеса, надёжно работает
-  // на любой теме. На лету собирает точки между цифрами и валидирует диапазон.
+function DobField({
+  value, onChange, label, placeholder,
+  errMonth, errYear, errDay, errFuture,
+}: {
+  value: string;
+  onChange: (iso: string) => void;
+  label: string;
+  placeholder: string;
+  errMonth: string;
+  errYear: (y: number) => string;
+  errDay: (d: number, m: string, y: string) => string;
+  errFuture: string;
+}) {
   const isoToDmy = (iso: string) => {
     const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return m ? `${m[3]}.${m[2]}.${m[1]}` : '';
@@ -576,9 +626,7 @@ function DobField({ value, onChange }: { value: string; onChange: (iso: string) 
   const [text, setText] = useState<string>(isoToDmy(value));
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setText(isoToDmy(value));
-  }, [value]);
+  useEffect(() => { setText(isoToDmy(value)); }, [value]);
 
   function handleChange(raw: string) {
     const digits = raw.replace(/\D/g, '').slice(0, 8);
@@ -587,29 +635,22 @@ function DobField({ value, onChange }: { value: string; onChange: (iso: string) 
     else if (digits.length > 2) formatted = `${digits.slice(0, 2)}.${digits.slice(2)}`;
     setText(formatted);
 
-    if (digits.length === 0) {
-      setError(null);
-      onChange('');
-      return;
-    }
+    if (digits.length === 0) { setError(null); onChange(''); return; }
     const full = formatted.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-    if (!full) {
-      setError(null);
-      onChange('');
-      return;
-    }
+    if (!full) { setError(null); onChange(''); return; }
+
     const [, d, m, y] = full;
     const day = +d, month = +m, year = +y;
     const currentYear = new Date().getFullYear();
-    if (month < 1 || month > 12) { setError('Месяц от 01 до 12'); onChange(''); return; }
-    if (year < 1900 || year > currentYear) { setError(`Год от 1900 до ${currentYear}`); onChange(''); return; }
+    if (month < 1 || month > 12) { setError(errMonth); onChange(''); return; }
+    if (year < 1900 || year > currentYear) { setError(errYear(currentYear)); onChange(''); return; }
     const candidate = new Date(year, month - 1, day);
     const valid =
       candidate.getFullYear() === year &&
       candidate.getMonth() === month - 1 &&
       candidate.getDate() === day;
-    if (!valid) { setError(`В ${m}.${y} нет ${day}-го числа`); onChange(''); return; }
-    if (candidate.getTime() > Date.now()) { setError('Дата в будущем'); onChange(''); return; }
+    if (!valid) { setError(errDay(day, m, y)); onChange(''); return; }
+    if (candidate.getTime() > Date.now()) { setError(errFuture); onChange(''); return; }
     setError(null);
     onChange(`${y}-${m}-${d}`);
   }
@@ -620,7 +661,7 @@ function DobField({ value, onChange }: { value: string; onChange: (iso: string) 
         className="flex items-center gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide"
         style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
       >
-        <Calendar className="size-3" /> Дата рождения
+        <Calendar className="size-3" /> {label}
       </div>
       <div
         className="rounded-2xl border p-4"
@@ -635,31 +676,20 @@ function DobField({ value, onChange }: { value: string; onChange: (iso: string) 
           type="text"
           inputMode="numeric"
           autoComplete="bday"
-          placeholder="ДД.ММ.ГГГГ"
+          placeholder={placeholder}
           value={text}
           onChange={(e) => handleChange(e.target.value)}
           className="w-full bg-transparent text-base outline-none"
-          style={{
-            color: 'var(--foreground)',
-            caretColor: 'var(--color-accent)',
-          }}
+          style={{ color: 'var(--foreground)', caretColor: 'var(--color-accent)' }}
         />
       </div>
-      {error && (
-        <p className="px-1 text-[11px]" style={{ color: '#f43f5e' }}>{error}</p>
-      )}
+      {error && <p className="px-1 text-[11px]" style={{ color: '#f43f5e' }}>{error}</p>}
     </div>
   );
 }
 
 function Field({
-  icon: Icon,
-  label,
-  value,
-  onChange,
-  placeholder,
-  inputMode,
-  type = 'text',
+  icon: Icon, label, value, onChange, placeholder, inputMode, type = 'text',
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
@@ -691,10 +721,7 @@ function Field({
           inputMode={inputMode}
           type={type}
           className="w-full bg-transparent text-base outline-none"
-          style={{
-            color: 'var(--foreground)',
-            caretColor: 'var(--color-accent)',
-          }}
+          style={{ color: 'var(--foreground)', caretColor: 'var(--color-accent)' }}
         />
       </div>
     </div>
