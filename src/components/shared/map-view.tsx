@@ -182,5 +182,5 @@ export default function MapView({
     }
   }, [userLocation]);
 
-  return <div ref={containerRef} className={className} style={{ minHeight: '300px' }} />;
+  return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%', minHeight: '300px' }} />;
 }

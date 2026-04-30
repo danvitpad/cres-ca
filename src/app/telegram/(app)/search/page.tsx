@@ -731,7 +731,7 @@ export default function MiniAppSearchPage() {
             position: 'relative',
             margin: `0 ${PAGE_PADDING_X}px 16px`,
             flex: 1,
-            minHeight: 0,
+            minHeight: 'calc(100dvh - 280px)',
             overflow: 'hidden',
             borderRadius: R.lg,
             border: `1px solid ${T.borderSubtle}`,
@@ -762,7 +762,7 @@ export default function MiniAppSearchPage() {
             userLocation={userLocation}
           />
 
-          {!loading && (
+          {!loading && (markers.length > 0 || salonMarkers.length > 0) && (
             <div
               style={{
                 position: 'absolute',
@@ -773,14 +773,17 @@ export default function MiniAppSearchPage() {
                 borderRadius: R.pill,
                 background: 'rgba(255,255,255,0.95)',
                 backdropFilter: 'blur(8px)',
-                border: `1px solid ${T.borderSubtle}`,
+                border: '1px solid rgba(0,0,0,0.1)',
                 fontSize: 12,
                 fontWeight: 700,
-                color: T.text,
+                color: '#1f1f22',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              {markers.length} · {salonMarkers.length}
+              <span title="мастеров">👤 {markers.length}</span>
+              {salonMarkers.length > 0 && (
+                <span style={{ marginLeft: 8 }} title="команд">🏢 {salonMarkers.length}</span>
+              )}
             </div>
           )}
 
