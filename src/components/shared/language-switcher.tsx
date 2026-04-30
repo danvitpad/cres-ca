@@ -1,15 +1,19 @@
 /** --- YAML
  * name: LanguageSwitcher
- * description: Locale dropdown switcher — changes URL prefix to switch language
+ * description: Locale dropdown switcher — меняет URL-префикс и сохраняет выбор в
+ *              profiles.ui_language через useUiPrefs. Это делает выбор постоянным —
+ *              на следующих сессиях/устройствах язык остаётся как выбрал юзер.
+ *              Также используется для отправки персональных писем/TG этому юзеру.
  * --- */
 
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
+import { useUiPrefs, type UiLanguage } from '@/hooks/use-ui-prefs';
 
 const LOCALES = [
   { code: 'uk', label: 'Українська' },
@@ -18,8 +22,8 @@ const LOCALES = [
 ];
 
 export function LanguageSwitcher({ className }: { className?: string }) {
-  const router = useRouter();
   const pathname = usePathname();
+  const { updateLanguage } = useUiPrefs();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,10 +42,11 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   useEscapeKey(open, () => setOpen(false));
 
   function switchLocale(newLocale: string) {
-    const newSegments = [...segments];
-    newSegments[1] = newLocale;
-    router.replace(newSegments.join('/'), { scroll: false });
     setOpen(false);
+    // updateLanguage сам:
+    //  1) PATCH /api/me/ui-prefs (сохранит в profiles.ui_language)
+    //  2) router.push на новую локаль
+    void updateLanguage(newLocale as UiLanguage);
   }
 
   return (
