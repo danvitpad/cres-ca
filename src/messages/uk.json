@@ -952,7 +952,8 @@
     "toggleTheme": "Змінити тему",
     "darkMode": "Темна тема",
     "lightMode": "Світла тема",
-    "searchFor": "Знайти"
+    "searchFor": "Знайти",
+    "noResults": "Нічого не знайдено"
   },
   "serviceCategories": {
     "allServices": "Усі послуги",

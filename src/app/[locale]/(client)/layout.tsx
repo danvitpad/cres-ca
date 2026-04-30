@@ -32,6 +32,7 @@ import {
   Sun,
   Moon,
   ArrowRight,
+  Loader2,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { createClient } from '@/lib/supabase/client';
@@ -94,6 +95,62 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'procedures' | 'venues' | 'pros'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
+
+  // Live search results for header popover
+  type SearchHit = { id: string; name: string; sub: string; href: string; avatar: string | null };
+  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const q = searchInput.trim();
+    if (!q) { setSearchHits([]); return; }
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(async () => {
+      setSearchLoading(true);
+      const supabase = createClient();
+      const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const [mRes, sRes] = await Promise.all([
+        supabase
+          .from('masters')
+          .select('id, display_name, specialization, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url)')
+          .eq('is_active', true)
+          .limit(60),
+        supabase
+          .from('salons')
+          .select('id, name, logo_url')
+          .limit(40),
+      ]);
+      function unwrapProfile(p: unknown) {
+        if (!p) return null;
+        return Array.isArray(p) ? (p[0] ?? null) : p as { full_name: string | null; avatar_url: string | null };
+      }
+      const masters: SearchHit[] = ((mRes.data ?? []) as Array<{ id: string; display_name: string | null; specialization: string | null; avatar_url: string | null; profiles: unknown }>)
+        .filter((r) => {
+          const profile = unwrapProfile(r.profiles);
+          const hay = [r.display_name, profile?.full_name, r.specialization].filter(Boolean).join(' ').toLowerCase();
+          return words.every((w) => hay.includes(w));
+        })
+        .map((r) => {
+          const profile = unwrapProfile(r.profiles);
+          return {
+            id: r.id,
+            name: r.display_name ?? profile?.full_name ?? 'Мастер',
+            sub: r.specialization ?? '',
+            href: `/m/${r.id}`,
+            avatar: r.avatar_url ?? profile?.avatar_url ?? null,
+          };
+        });
+      const salons: SearchHit[] = ((sRes.data ?? []) as Array<{ id: string; name: string | null; logo_url: string | null }>)
+        .filter((r) => {
+          const hay = (r.name ?? '').toLowerCase();
+          return words.every((w) => hay.includes(w));
+        })
+        .map((r) => ({ id: r.id, name: r.name ?? 'Команда', sub: 'Команда', href: `/s/${r.id}`, avatar: r.logo_url ?? null }));
+      setSearchHits([...masters, ...salons].slice(0, 8));
+      setSearchLoading(false);
+    }, 250);
+  }, [searchInput]);
 
   // Location state
   const [selectedCity, setSelectedCity] = useState<string>('');
@@ -379,16 +436,33 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
               </div>
               <div className="max-h-[380px] overflow-y-auto p-2">
                 {searchInput.trim() ? (
-                  <button
-                    onClick={() => goSearch(searchInput)}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors font-medium"
-                  >
-                    <div className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
-                      <Search className="size-4" />
+                  searchLoading ? (
+                    <div className="flex items-center justify-center py-6 text-sm text-muted-foreground gap-2">
+                      <Loader2 className="size-4 animate-spin" />
+                      {tc('loading')}
                     </div>
-                    <span>{tHeader('searchFor')} «{searchInput.trim()}»</span>
-                    <ArrowRight className="ml-auto size-4 text-muted-foreground" />
-                  </button>
+                  ) : searchHits.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-muted-foreground">{tHeader('noResults')}</p>
+                  ) : (
+                    searchHits.map((hit) => (
+                      <Link
+                        key={hit.id}
+                        href={hit.href}
+                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+                      >
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-foreground overflow-hidden">
+                          {hit.avatar
+                            ? <img src={hit.avatar} alt="" className="size-full object-cover" />
+                            : hit.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{hit.name}</p>
+                          {hit.sub && <p className="truncate text-xs text-muted-foreground">{hit.sub}</p>}
+                        </div>
+                        <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
+                      </Link>
+                    ))
+                  )
                 ) : (
                   <>
                     <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">

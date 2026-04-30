@@ -970,7 +970,8 @@
     "toggleTheme": "Toggle theme",
     "darkMode": "Dark mode",
     "lightMode": "Light mode",
-    "searchFor": "Search"
+    "searchFor": "Search",
+    "noResults": "No results found"
   },
   "serviceCategories": {
     "allServices": "All services",
