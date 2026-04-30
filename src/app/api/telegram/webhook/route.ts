@@ -219,11 +219,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  // ── Master slash-commands ──
+  if (text.startsWith('/today') || text.startsWith('/tomorrow')) {
+    await handleMasterDayList(chatId, telegramId, text.startsWith('/tomorrow') ? 'tomorrow' : 'today');
+    return NextResponse.json({ ok: true });
+  }
+  if (text.startsWith('/clients')) {
+    await handleMasterClientsCount(chatId, telegramId);
+    return NextResponse.json({ ok: true });
+  }
+  if (text.startsWith('/finance') || text.startsWith('/earnings')) {
+    await handleMasterFinance(chatId, telegramId);
+    return NextResponse.json({ ok: true });
+  }
+
   // /help
   if (text.startsWith('/help')) {
     await sendMessage(
       chatId,
-      '💡 <b>Команды CRES-CA:</b>\n\n/start — запуск\n/find — найти мастера (AI-консьерж)\n/feedback — оставить отзыв\n/help — справка\n\n🔎 <b>AI-консьерж (для клиентов):</b>\nНапиши что хочешь — AI подберёт лучших:\n• «найди маникюр в Киеве до 800»\n• «ищу парикмахера во Львове»\n• <code>/find педикюр</code>\n\n🎤 <b>Голосовой ассистент (мастера):</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход.\n\n💬 <b>Отзыв голосом (все):</b>\nЗапиши голосовое со словами «обратная связь» — я сохраню в feedback.',
+      '💡 <b>Команды CRES-CA:</b>\n\n<b>Общие:</b>\n/start — запуск\n/find — найти мастера (AI)\n/feedback — оставить отзыв\n/help — справка\n\n<b>Для мастеров:</b>\n/today — записи на сегодня\n/tomorrow — записи на завтра\n/clients — сколько у меня клиентов\n/finance — заработок за неделю/месяц\n\n🎤 <b>Голос (мастер):</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход.\n\n💬 <b>Отзыв голосом (все):</b>\nЗапиши голосовое со словами «обратная связь» — я сохраню в feedback.',
       { parse_mode: 'HTML' },
     );
     return NextResponse.json({ ok: true });
@@ -450,8 +464,30 @@ async function routeVoiceAction(
 
     case 'client_note': {
       if (intent.client_name) {
-        // Find client by name (fuzzy — tolerates AI transcription typos)
-        const clients = await findClientsFuzzy(supabase, masterId, intent.client_name, 1);
+        // Find client by name (fuzzy — tolerates AI transcription typos).
+        // Шаг 11: limit=5 to detect same-name ambiguity.
+        const clients = await findClientsFuzzy(supabase, masterId, intent.client_name, 5);
+
+        if (clients && clients.length > 1) {
+          const list = clients.slice(0, 5).map((c, i) => {
+            const name = c.full_name ?? '—';
+            const phoneSuffix = c.phone ? ` (${c.phone.slice(-4)})` : '';
+            return `${i + 1}. ${escapeHtml(name)}${phoneSuffix}`;
+          }).join('\n');
+          await logAiAction(supabase, masterId, {
+            actionType: 'client_note',
+            inputText: intent.raw_transcript || intent.text,
+            status: 'needs_confirmation',
+            errorMessage: 'multiple_clients_matched',
+            result: { client_name: intent.client_name, candidates: clients.length },
+          });
+          await sendMessage(
+            chatId,
+            `🤔 Нашёл несколько клиентов с именем «${escapeHtml(intent.client_name)}»:\n\n${list}\n\nПовтори голосом с фамилией — например: «У Анны Ивановой ...»`,
+            { parse_mode: 'HTML' },
+          );
+          break;
+        }
 
         if (clients && clients.length > 0) {
           const client = clients[0];
@@ -560,7 +596,30 @@ async function routeVoiceAction(
         break;
       }
 
-      const client = clientsMatch[0]; // take first match
+      // Шаг 11: same-name disambiguation. If multiple clients matched, ask
+      // master to be more specific instead of silently picking the first.
+      if (clientsMatch.length > 1) {
+        const list = clientsMatch.slice(0, 5).map((c, i) => {
+          const name = c.full_name ?? '—';
+          const phoneSuffix = c.phone ? ` (${c.phone.slice(-4)})` : '';
+          return `${i + 1}. ${escapeHtml(name)}${phoneSuffix}`;
+        }).join('\n');
+        await logAiAction(supabase, masterId, {
+          actionType: 'appointment_created',
+          inputText: intent.raw_transcript || intent.text,
+          status: 'needs_confirmation',
+          errorMessage: 'multiple_clients_matched',
+          result: { client_name: intent.client_name, candidates: clientsMatch.length },
+        });
+        await sendMessage(
+          chatId,
+          `🤔 Нашёл несколько клиентов с именем «${escapeHtml(intent.client_name)}»:\n\n${list}\n\nПовтори голосом с фамилией — например: «Запиши Анну Иванову...»`,
+          { parse_mode: 'HTML' },
+        );
+        break;
+      }
+
+      const client = clientsMatch[0]; // single match
 
       // Find service (multi-pass fuzzy)
       let service: { id: string; name: string; duration_minutes: number; price: number } | null = null;
@@ -2268,4 +2327,147 @@ async function handleBetaEmailReply(
       },
     );
   }
+}
+
+/* ─── Master slash-commands ─── */
+
+async function resolveMaster(telegramId: number): Promise<{ id: string; profileId: string } | null> {
+  const supabase = createServiceClient();
+  const { data: profile } = await supabase
+    .from('profiles').select('id').eq('telegram_id', telegramId).maybeSingle();
+  if (!profile) return null;
+  const { data: master } = await supabase
+    .from('masters').select('id').eq('profile_id', profile.id).maybeSingle();
+  if (!master) return null;
+  return { id: master.id as string, profileId: profile.id as string };
+}
+
+function fmtTime(iso: string): string {
+  const d = new Date(iso);
+  const tz = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Kyiv' }));
+  return `${tz.getHours().toString().padStart(2, '0')}:${tz.getMinutes().toString().padStart(2, '0')}`;
+}
+
+async function handleMasterDayList(chatId: number, telegramId: number, day: 'today' | 'tomorrow') {
+  const m = await resolveMaster(telegramId);
+  if (!m) {
+    await sendMessage(chatId, '⚠️ Эта команда доступна только мастерам. Открой /telegram чтобы стать мастером.');
+    return;
+  }
+
+  // Compute Kyiv day boundaries
+  const offsetMs = day === 'tomorrow' ? 86400000 : 0;
+  const now = new Date(Date.now() + offsetMs);
+  const kyivDate = now.toLocaleDateString('en-CA', { timeZone: 'Europe/Kyiv' }); // YYYY-MM-DD
+  const startISO = `${kyivDate}T00:00:00+02:00`;
+  const endISO = `${kyivDate}T23:59:59+02:00`;
+
+  const supabase = createServiceClient();
+  const { data: appts } = await supabase
+    .from('appointments')
+    .select('id, starts_at, status, client:clients(full_name, phone), service:services(name, price, currency)')
+    .eq('master_id', m.id)
+    .gte('starts_at', startISO)
+    .lte('starts_at', endISO)
+    .neq('status', 'cancelled')
+    .neq('status', 'cancelled_by_client')
+    .order('starts_at');
+
+  const dayLabel = day === 'today' ? 'Сегодня' : 'Завтра';
+  if (!appts || appts.length === 0) {
+    await sendMessage(chatId, `📅 <b>${dayLabel}</b> — записей нет.`, { parse_mode: 'HTML' });
+    return;
+  }
+
+  type Row = { id: string; starts_at: string; status: string;
+    client: { full_name: string | null; phone: string | null } | { full_name: string | null; phone: string | null }[] | null;
+    service: { name: string | null; price: number | null; currency: string | null } | { name: string | null; price: number | null; currency: string | null }[] | null;
+  };
+  const lines = (appts as Row[]).map((a, i) => {
+    const cli = Array.isArray(a.client) ? a.client[0] : a.client;
+    const srv = Array.isArray(a.service) ? a.service[0] : a.service;
+    const time = fmtTime(a.starts_at);
+    const name = cli?.full_name ?? '—';
+    const sname = srv?.name ?? '—';
+    return `${i + 1}. <b>${time}</b> — ${escapeHtml(name)} (${escapeHtml(sname)})`;
+  });
+
+  await sendMessage(
+    chatId,
+    `📅 <b>${dayLabel}</b> · ${appts.length} ${appts.length === 1 ? 'запись' : appts.length < 5 ? 'записи' : 'записей'}\n\n${lines.join('\n')}`,
+    {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: 'Открыть календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/calendar` } }]],
+      },
+    },
+  );
+}
+
+async function handleMasterClientsCount(chatId: number, telegramId: number) {
+  const m = await resolveMaster(telegramId);
+  if (!m) {
+    await sendMessage(chatId, '⚠️ Эта команда доступна только мастерам.');
+    return;
+  }
+  const supabase = createServiceClient();
+  const { count: total } = await supabase
+    .from('clients').select('id', { count: 'exact', head: true })
+    .eq('master_id', m.id).is('deleted_at', null);
+
+  // Активные за 90 дней — через completed appointments
+  const since = new Date(Date.now() - 90 * 86400000).toISOString();
+  const { data: activeIds } = await supabase
+    .from('appointments').select('client_id')
+    .eq('master_id', m.id).eq('status', 'completed').gte('starts_at', since);
+  const activeUnique = new Set((activeIds ?? []).map((r: { client_id: string }) => r.client_id)).size;
+
+  await sendMessage(
+    chatId,
+    `👥 <b>Клиенты</b>\n\nВсего в базе: <b>${total ?? 0}</b>\nАктивных за 90 дней: <b>${activeUnique}</b>`,
+    {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: 'Открыть клиентов', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/clients` } }]],
+      },
+    },
+  );
+}
+
+async function handleMasterFinance(chatId: number, telegramId: number) {
+  const m = await resolveMaster(telegramId);
+  if (!m) {
+    await sendMessage(chatId, '⚠️ Эта команда доступна только мастерам.');
+    return;
+  }
+  const supabase = createServiceClient();
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 7);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [weekRes, monthRes] = await Promise.all([
+    supabase.from('appointments').select('total_price')
+      .eq('master_id', m.id).eq('status', 'completed')
+      .gte('starts_at', weekStart.toISOString()),
+    supabase.from('appointments').select('total_price')
+      .eq('master_id', m.id).eq('status', 'completed')
+      .gte('starts_at', monthStart.toISOString()),
+  ]);
+
+  const sum = (rows: { total_price: number | null }[] | null) =>
+    (rows ?? []).reduce((s, r) => s + Number(r.total_price ?? 0), 0);
+  const week = sum(weekRes.data as { total_price: number | null }[]);
+  const month = sum(monthRes.data as { total_price: number | null }[]);
+
+  await sendMessage(
+    chatId,
+    `💰 <b>Заработок</b>\n\nЗа неделю: <b>${Math.round(week)} ₴</b>\nС начала месяца: <b>${Math.round(month)} ₴</b>`,
+    {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [[{ text: 'Открыть финансы', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/stats` } }]],
+      },
+    },
+  );
 }
