@@ -307,19 +307,20 @@ export default function MiniAppHomePage() {
                   style={{
                     minWidth: 200,
                     flex: '0 0 auto',
-                    border: '1px solid rgb(229, 231, 235)',
-                    borderRadius: 16,
-                    background: 'white',
+                    border: `1px solid ${T.borderSubtle}`,
+                    borderRadius: R.md,
+                    background: T.surface,
                     padding: 12,
                     textAlign: 'left',
                     cursor: 'pointer',
                     scrollSnapAlign: 'start',
+                    minHeight: 88,
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{r.service_name}</div>
-                  <div style={{ marginTop: 2, fontSize: 12, color: '#666' }}>у {r.master_name}</div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#10b981', fontWeight: 600 }}>
-                    {r.service_price ? `${Math.round(Number(r.service_price))} ₴` : ''}
+                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.service_name}</div>
+                  <div style={{ marginTop: 2, fontSize: 12, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>у {r.master_name}</div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: T.success, fontWeight: 700 }}>
+                    {formatMoney(r.service_price, 'UAH')}
                     {r.service_duration ? ` · ${r.service_duration} мин` : ''}
                   </div>
                 </button>

@@ -103,8 +103,9 @@ export default function MiniAppPublicProfilePage() {
       <div className="flex min-h-[70dvh] flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-sm text-neutral-600">Профиль не найден</p>
         <button
-          onClick={() => router.back()}
+          onClick={() => { haptic('selection'); router.back(); }}
           className="rounded-full border border-neutral-200 bg-white/5 px-4 py-2 text-xs font-semibold"
+          style={{ minHeight: 44 }}
         >
           Назад
         </button>
@@ -126,8 +127,9 @@ export default function MiniAppPublicProfilePage() {
       {/* Header */}
       <div className="flex items-center gap-3 px-5 pt-5">
         <button
-          onClick={() => router.back()}
+          onClick={() => { haptic('selection'); router.back(); }}
           className="flex size-9 items-center justify-center rounded-xl bg-white/5 border border-neutral-200 active:scale-95 transition-transform"
+          aria-label="Назад"
         >
           <ArrowLeft className="size-4" />
         </button>
@@ -171,8 +173,9 @@ export default function MiniAppPublicProfilePage() {
       <div className="flex gap-2 px-5">
         {isSelf ? (
           <button
-            onClick={() => router.push('/telegram/profile')}
+            onClick={() => { haptic('selection'); router.push('/telegram/profile'); }}
             className="flex-1 rounded-xl border border-neutral-200 bg-white/5 py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform"
+            style={{ minHeight: 44 }}
           >
             Редактировать профиль
           </button>
@@ -186,6 +189,7 @@ export default function MiniAppPublicProfilePage() {
                   ? 'border border-neutral-200 bg-white/5 text-neutral-900'
                   : 'bg-white text-black'
               }`}
+              style={{ minHeight: 44 }}
             >
               {followBusy ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -201,8 +205,9 @@ export default function MiniAppPublicProfilePage() {
             </button>
             {profile.role === 'master' && (
               <button
-                onClick={() => router.push(`/telegram/search/${profile.id}`)}
+                onClick={() => { haptic('selection'); router.push(`/telegram/search/${profile.id}`); }}
                 className="rounded-xl border border-neutral-200 bg-white/5 px-4 py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform"
+                style={{ minHeight: 44 }}
               >
                 Записаться
               </button>

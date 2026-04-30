@@ -222,8 +222,9 @@ export default function MiniAppAppointmentDetail() {
         <AlertTriangle className="mb-4 size-12 text-neutral-400" />
         <p className="text-base font-semibold">Запись не найдена</p>
         <button
-          onClick={() => router.push('/telegram/activity')}
+          onClick={() => { haptic('selection'); router.push('/telegram/activity'); }}
           className="mt-6 rounded-[var(--brand-radius-lg)] border border-neutral-200 px-4 py-2 text-sm"
+          style={{ minHeight: 44 }}
         >
           Назад
         </button>
@@ -284,8 +285,9 @@ export default function MiniAppAppointmentDetail() {
           </div>
 
           <button
-            onClick={() => router.push(`/telegram/search/${row.master_id}`)}
+            onClick={() => { haptic('selection'); router.push(`/telegram/search/${row.master_id}`); }}
             className="flex w-full items-center gap-3 rounded-2xl bg-white/5 p-3 text-left active:scale-[0.98] transition-transform"
+            style={{ minHeight: 56 }}
           >
             <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-sm font-bold">
               {masterAvatar ? (
@@ -417,16 +419,18 @@ export default function MiniAppAppointmentDetail() {
         )}
         {isCompleted && (
           <button
-            onClick={() => router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`)}
+            onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`); }}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+            style={{ minHeight: 44 }}
           >
             <RefreshCw className="size-5" /> Повторить запись
           </button>
         )}
         {canReschedule && (
           <button
-            onClick={() => router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`)}
+            onClick={() => { haptic('light'); router.push(`/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}&reschedule=${row.id}`); }}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+            style={{ minHeight: 44 }}
           >
             <Sparkles className="size-5" /> Перенести
           </button>

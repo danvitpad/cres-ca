@@ -238,6 +238,7 @@ export default function ClientMiniAppNotifications() {
                     <li key={n.id}>
                       <button
                         onClick={() => {
+                          haptic('selection');
                           markRead(n.id);
                           if (isFollowNotif && followerProfileId) {
                             navigateToProfile(followerProfileId);

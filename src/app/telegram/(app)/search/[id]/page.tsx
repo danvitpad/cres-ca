@@ -395,8 +395,9 @@ export default function MiniAppMasterDetailPage() {
         </div>
         <p className="text-sm text-neutral-500">Мастер не найден</p>
         <button
-          onClick={() => router.back()}
+          onClick={() => { haptic('selection'); router.back(); }}
           className="mt-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-medium text-neutral-800 active:scale-95 transition-transform"
+          style={{ minHeight: 44 }}
         >
           Назад
         </button>
