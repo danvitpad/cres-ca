@@ -38,7 +38,7 @@ import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboar
 /**
  * Convert a quantity from one unit to a compatible base unit.
  * Returns the converted number, or null if the units are incompatible.
- * Used so service_recipes.quantity is always stored in the SAME unit the
+ * Used so service_materials.quantity is always stored in the SAME unit the
  * inventory_items.quantity uses, so the auto-deduct trigger does plain
  * subtraction without conversion.
  */
@@ -158,15 +158,33 @@ function ServicesCatalogueView() {
   async function handleDelete(id: string) {
     const ok = await confirm({
       title: 'Удалить услугу?',
-      description: 'Услугу нельзя будет восстановить. Прошлые записи с ней останутся.',
+      description: 'Услугу нельзя будет восстановить. Если на неё есть прошлые записи — будет предложен архив.',
       confirmLabel: 'Удалить',
       destructive: true,
     });
     if (!ok) return;
     const supabase = createClient();
     const { error } = await supabase.from('services').delete().eq('id', id);
-    if (error) toast.error(humanizeError(error));
-    else loadServices();
+    if (error) {
+      // DB trigger blocks delete if service used in completed/in_progress appointments
+      if (error.message?.includes('service_in_use')) {
+        const archive = await confirm({
+          title: 'Услугу нельзя удалить',
+          description: 'На эту услугу есть завершённые записи. Архивировать вместо удаления? Услуга исчезнет с публичной страницы, но записи сохранятся.',
+          confirmLabel: 'Архивировать',
+        });
+        if (archive) {
+          const { error: archiveErr } = await supabase
+            .from('services')
+            .update({ is_active: false })
+            .eq('id', id);
+          if (archiveErr) toast.error(humanizeError(archiveErr));
+          else { toast.success('Услуга в архиве'); loadServices(); }
+        }
+      } else {
+        toast.error(humanizeError(error));
+      }
+    } else loadServices();
   }
 
   if (masterLoading || loading) {
@@ -552,14 +570,14 @@ function ServiceForm({
       setInventoryItems((data ?? []) as { id: string; name: string; unit: string }[]);
       if (editing) {
         const { data: recs } = await supabase
-          .from('service_recipes')
-          .select('item_id, quantity, unit')
+          .from('service_materials')
+          .select('material_id, quantity, unit')
           .eq('service_id', editing.id);
         const map: Record<string, number> = {};
         const unitMap: Record<string, string> = {};
-        for (const r of (recs ?? []) as { item_id: string; quantity: number; unit: string | null }[]) {
-          map[r.item_id] = Number(r.quantity);
-          if (r.unit) unitMap[r.item_id] = r.unit;
+        for (const r of (recs ?? []) as { material_id: string; quantity: number; unit: string | null }[]) {
+          map[r.material_id] = Number(r.quantity);
+          if (r.unit) unitMap[r.material_id] = r.unit;
         }
         setRecipeMap(map);
         setRecipeUnitMap(unitMap);
@@ -626,7 +644,7 @@ function ServiceForm({
     setSaving(false);
     if (error) { toast.error(humanizeError(error)); return; }
 
-    // Sync service_recipes
+    // Sync service_materials
     const serviceId = editing?.id ??
       (await supabase
         .from('services')
@@ -637,31 +655,30 @@ function ServiceForm({
         .limit(1)
         .maybeSingle()).data?.id;
     if (serviceId) {
-      await supabase.from('service_recipes').delete().eq('service_id', serviceId);
+      await supabase.from('service_materials').delete().eq('service_id', serviceId);
       const recipeRows = Object.entries(recipeMap)
         .filter(([, q]) => q > 0)
-        .map(([item_id, qtyInDisplayUnit]) => {
-          const inv = inventoryItems.find((x) => x.id === item_id);
-          const displayUnit = recipeUnitMap[item_id] || inv?.unit || '';
+        .map(([material_id, qtyInDisplayUnit]) => {
+          const inv = inventoryItems.find((x) => x.id === material_id);
+          const displayUnit = recipeUnitMap[material_id] || inv?.unit || '';
           const baseQty = convertToBaseUnit(qtyInDisplayUnit, displayUnit, inv?.unit || displayUnit);
           if (baseQty === null) {
-            // Incompatible — store as-is with display unit so master sees their original value
             return {
               service_id: serviceId,
-              item_id,
+              material_id,
               quantity: qtyInDisplayUnit,
               unit: displayUnit || null,
             };
           }
           return {
             service_id: serviceId,
-            item_id,
+            material_id,
             quantity: baseQty,
             unit: displayUnit && displayUnit !== inv?.unit ? displayUnit : null,
           };
         });
       if (recipeRows.length > 0) {
-        await supabase.from('service_recipes').insert(recipeRows);
+        await supabase.from('service_materials').insert(recipeRows);
       }
     }
 
