@@ -93,7 +93,7 @@ export default function MiniAppServicesPage() {
                 </p>
               </div>
               <p className="shrink-0 text-[13px] font-bold tabular-nums text-neutral-900">
-                {Number(s.price).toFixed(0)} <span className="text-[11px] font-normal text-neutral-500">{s.currency}</span>
+                {Number(s.price).toFixed(0)} <span className="text-[11px] font-normal text-neutral-500">{s.currency === 'UAH' ? '₴' : s.currency}</span>
               </p>
             </motion.li>
           ))}

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { formatMoney } from '@/lib/format/money';
 
 interface DetailRow {
   id: string;
@@ -325,7 +326,7 @@ export default function MiniAppAppointmentDetail() {
           <div className="flex items-baseline justify-between border-t border-neutral-200 pt-3">
             <span className="text-xs text-neutral-500">Итого</span>
             <span className="text-2xl font-bold tabular-nums">
-              {Number(row.price).toFixed(0)} {row.currency}
+              {formatMoney(row.price, row.currency)}
             </span>
           </div>
         </div>
@@ -487,10 +488,10 @@ export default function MiniAppAppointmentDetail() {
                 >
                   {cancelCost.kind === 'free' && <p className="font-semibold">Отмена бесплатна</p>}
                   {cancelCost.kind === 'partial' && (
-                    <p className="font-semibold">Частичная оплата: {cancelCost.amount} {row.currency}</p>
+                    <p className="font-semibold">Частичная оплата: {formatMoney(cancelCost.amount, row.currency)}</p>
                   )}
                   {cancelCost.kind === 'full' && (
-                    <p className="font-semibold">Полная стоимость: {cancelCost.amount} {row.currency}</p>
+                    <p className="font-semibold">Полная стоимость: {formatMoney(cancelCost.amount, row.currency)}</p>
                   )}
                 </div>
               )}
