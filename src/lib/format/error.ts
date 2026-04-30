@@ -63,6 +63,8 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
   { match: /promo_discount_too_large/i, ru: 'Скидка больше 95% — слишком много. Максимум 95%.' },
   { match: /cyclic_referral_blocked/i, ru: 'Нельзя пригласить того, кто уже пригласил тебя — это циклическая цепь.' },
   { match: /self_referral_blocked/i, ru: 'Нельзя пригласить самого себя.' },
+  { match: /redeem_disabled_by_master/i, ru: 'Мастер пока не разрешает тратить баллы у себя.' },
+  { match: /redeem_min_visits_not_met/i, ru: 'Сначала нужно выполнить визит у этого мастера, потом сможешь тратить баллы.' },
 
   // ─── Default fallback ───
   { match: /Internal Server Error/i, ru: 'Сервер задумался. Попробуй ещё раз' },

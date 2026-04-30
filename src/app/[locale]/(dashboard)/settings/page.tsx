@@ -1445,6 +1445,17 @@ function LoyaltyTab({
   const [bdayEnabled, setBdayEnabled] = useState(master.loyalty_birthday_enabled ?? false);
   const [bdayPercent, setBdayPercent] = useState(master.loyalty_birthday_percent ?? 10);
   const [bdayValidity, setBdayValidity] = useState(master.loyalty_birthday_validity_days ?? 30);
+  // Контроль над списанием баллов клиентом — мастер сам решает
+  const m2 = master as unknown as {
+    loyalty_redeem_enabled?: boolean | null;
+    loyalty_max_redeem_percent?: number | null;
+    loyalty_max_redeem_amount?: number | null;
+    loyalty_min_visits_to_redeem?: number | null;
+  };
+  const [redeemEnabled, setRedeemEnabled] = useState(m2.loyalty_redeem_enabled ?? true);
+  const [redeemMaxPercent, setRedeemMaxPercent] = useState(m2.loyalty_max_redeem_percent ?? 50);
+  const [redeemMaxAmount, setRedeemMaxAmount] = useState(m2.loyalty_max_redeem_amount ?? 200);
+  const [redeemMinVisits, setRedeemMinVisits] = useState(m2.loyalty_min_visits_to_redeem ?? 1);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
@@ -1461,6 +1472,10 @@ function LoyaltyTab({
         loyalty_birthday_enabled: bdayEnabled,
         loyalty_birthday_percent: bdayPercent,
         loyalty_birthday_validity_days: bdayValidity,
+        loyalty_redeem_enabled: redeemEnabled,
+        loyalty_max_redeem_percent: redeemMaxPercent,
+        loyalty_max_redeem_amount: redeemMaxAmount,
+        loyalty_min_visits_to_redeem: redeemMinVisits,
       })
       .eq('id', master.id);
     setSaving(false);
@@ -1483,13 +1498,16 @@ function LoyaltyTab({
         C={C}
         right={(
           <HelpHint title="Как работают баллы лояльности">
-            <p><b>1 балл = 1 ₴ скидки.</b> Никаких множителей, никакой математики — просто и понятно клиенту.</p>
-            <p><b>Кто кому начисляет:</b> ты начисляешь клиенту, не наоборот. Например 5% с чека: клиент сделал стрижку за 600 ₴ → ему упало 30 баллов на счёт у тебя.</p>
-            <p><b>Где видны баллы:</b> у клиента в Mini App → раздел «Бонусы» — там per-master список «У Маши: 30, у Ивана: 50». При следующей записи к тебе клиент видит галочку «Применить 30 баллов» и платит 570 ₴ вместо 600.</p>
-            <p><b>Что в финансах у тебя:</b> запись с применёнными баллами помечается «бонусы списано: N ₴». Доход в отчёте — за вычетом бонусов.</p>
-            <p><b>Срок жизни:</b> через N месяцев (по умолчанию 6) баллы сгорают. Каждое утро крон проверяет и списывает истёкшие — клиент получает уведомление за 7 дней.</p>
-            <p><b>Cap «не больше N ₴ за визит»:</b> защита от больших чеков — например, окрашивание за 3000 ₴ дало бы 150 баллов, ты ставишь cap 100 — упадёт 100. Так клиент не «копит на бесплатное» по одному визиту.</p>
-            <p><b>Почему один тумблер:</b> вся программа = один логичный комплект. Не нужно отдельно включать/выключать визиты + рефералы + ДР — это всё одна экономика. Хочешь меньше — снижай % или отключай ДР-промокод.</p>
+            <p><b>1 балл = 1 ₴ скидки</b> у тебя. Это не настоящие деньги — это твоя внутренняя «валюта скидки», возвращающая клиента к тебе.</p>
+            <p><b>Кто кому начисляет:</b> ты клиенту. Например 5% с чека: стрижка за 600 ₴ → 30 баллов на счёт у тебя (не у Маши, не у Ивана).</p>
+            <p><b>Где видны баллы:</b> клиент видит per-master список в Mini App «Бонусы» («У Маши: 30, у Ивана: 50»). При записи к тебе появится галочка «Списать N баллов» — но только если ты включил это в блоке ниже.</p>
+            <p><b>Что в финансах у тебя:</b> запись с применёнными баллами помечается «списано: N ₴». Доход — за вычетом бонусов.</p>
+            <p><b>Защита экономики (5 правил, ниже отдельный блок):</b></p>
+            <p>1. Тумблер «Списание разрешено» — на старте можешь выключить и клиенты только копят.</p>
+            <p>2. Cap % от чека (default 50%) — клиент не оплатит весь визит баллами.</p>
+            <p>3. Cap ₴ за визит (default 200) — абсолютный потолок.</p>
+            <p>4. Минимум визитов (default 1) — анти-фрод от реферал-бонусов на первой записи.</p>
+            <p>5. Финальная цена не ниже расходников (автоматически, если заполнены) + не складывается с промокодом + срок жизни 6 мес.</p>
           </HelpHint>
         )}
       >
@@ -1543,6 +1561,51 @@ function LoyaltyTab({
               />
             </SettingsField>
           </div>
+        </SettingsBlock>
+
+        <SettingsBlock
+          title="💸 Списание баллов клиентом"
+          subtitle="Контроль того, как и когда клиент может потратить накопленные баллы. Все 4 условия применяются одновременно — система всегда выбирает самый строгий лимит. Это защита от ситуаций «клиент с 1000 баллов пришёл бесплатно»."
+          C={C}
+          right={<SettingsSwitch checked={redeemEnabled} onChange={setRedeemEnabled} C={C} />}
+        >
+          <div style={{
+            opacity: redeemEnabled ? 1 : 0.5,
+            pointerEvents: redeemEnabled ? 'auto' : 'none',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 12,
+          }}>
+            <SettingsField label="% от чека (макс.)" hint="Не больше N% от стоимости визита можно оплатить баллами. Default 50% — половина деньгами, половина баллами." C={C}>
+              <input
+                type="number" min={0} max={100}
+                value={redeemMaxPercent}
+                onChange={(e) => setRedeemMaxPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+            <SettingsField label="Лимит ₴ за визит" hint="Абсолютный потолок: даже если у клиента 1000 баллов, спишет не больше N." C={C}>
+              <input
+                type="number" min={0}
+                value={redeemMaxAmount}
+                onChange={(e) => setRedeemMaxAmount(Math.max(0, Number(e.target.value) || 0))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+            <SettingsField label="Минимум визитов для списания" hint="Сколько выполненных визитов клиент должен иметь у тебя прежде чем сможет тратить баллы. 1 = после первого, 0 = можно сразу (рискованно), 3 = только постоянные." C={C}>
+              <input
+                type="number" min={0} max={20}
+                value={redeemMinVisits}
+                onChange={(e) => setRedeemMinVisits(Math.max(0, Math.min(20, Number(e.target.value) || 0)))}
+                style={settingsInputStyle(C)}
+              />
+            </SettingsField>
+          </div>
+          {!redeemEnabled && (
+            <p style={{ fontSize: 12, color: C.textTertiary, marginTop: 8 }}>
+              Списание выключено — клиенты копят баллы, но потратить их пока не могут. Включи когда будешь готов.
+            </p>
+          )}
         </SettingsBlock>
 
         <SettingsBlock
