@@ -18,6 +18,7 @@ export interface MapMarker {
   name: string;
   rating: number;
   specialization?: string;
+  address?: string;
   masterId: string;
 }
 

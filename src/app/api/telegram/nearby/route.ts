@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   );
 
   const masterSelect =
-    'id, specialization, rating, salon_id, latitude, longitude, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city)';
+    'id, specialization, rating, salon_id, latitude, longitude, address, city, workplace_name, display_name, avatar_url, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city)';
 
   // Name-based search — multi-word AND (ловит «имя фамилия» И «фамилия имя»).
   if (hasQuery) {

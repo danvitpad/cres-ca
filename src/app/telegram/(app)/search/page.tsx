@@ -81,6 +81,9 @@ interface ApiMasterRow {
   salon_id: string | null;
   latitude: number | null;
   longitude: number | null;
+  address: string | null;
+  city: string | null;
+  workplace_name: string | null;
   display_name: string | null;
   avatar_url: string | null;
   profile: { full_name: string | null } | { full_name: string | null }[] | null;
@@ -111,6 +114,11 @@ interface NormMaster {
   salonId: string | null;
   lat: number | null;
   lng: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  address: string | null;
+  city: string | null;
+  workplace: string | null;
   salon: { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null } | null;
 }
 
@@ -132,6 +140,11 @@ function normalizeMaster(row: ApiMasterRow): NormMaster {
     salonId: row.salon_id,
     lat: row.latitude,
     lng: row.longitude,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    address: row.address,
+    city: row.city,
+    workplace: row.workplace_name,
     salon: salon
       ? {
           id: salon.id,
@@ -402,6 +415,7 @@ export default function MiniAppSearchPage() {
           name: m.displayName,
           rating: m.rating,
           specialization: m.specialization ?? undefined,
+          address: [m.workplace, m.address || m.city].filter(Boolean).join(' · ') || undefined,
           masterId: m.id,
         })),
     [filteredMasters],
@@ -793,62 +807,106 @@ export default function MiniAppSearchPage() {
 
           <AnimatePresence>
             {selected && (
-              <motion.button
-                type="button"
+              <motion.div
                 initial={{ y: 80, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 80, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                onClick={() => router.push(`/telegram/search/${selected.id}`)}
                 style={{
                   position: 'absolute',
                   bottom: 12,
                   left: 12,
                   right: 12,
                   zIndex: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: 12,
                   background: T.surface,
                   border: `1px solid ${T.borderSubtle}`,
                   borderRadius: R.md,
                   boxShadow: SHADOW.elevated,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
+                  overflow: 'hidden',
                 }}
               >
                 {(() => {
                   const d = resolveCardDisplay(toMasterRef(selected), toSalonRef(selected.salon), MINIAPP_CARD_LABELS);
                   const Icon = d.mode === 'solo' ? UserIcon : Building2;
+                  const fullAddress = [selected.workplace, selected.address || selected.city].filter(Boolean).join(' · ');
+                  const mapsUrl = fullAddress
+                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
+                    : (selected.latitude && selected.longitude)
+                      ? `https://www.google.com/maps/search/?api=1&query=${selected.latitude},${selected.longitude}`
+                      : null;
                   return (
                     <>
-                      <AvatarCircle url={d.avatarSrc} name={d.avatarName} size={56} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Icon size={13} color={T.textTertiary} />
-                          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {d.primary}
-                          </p>
-                        </div>
-                        {d.secondary && (
-                          <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {d.secondary}
-                          </p>
-                        )}
-                        {d.rating != null && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 4, fontSize: 12, fontWeight: 600 }}>
-                            <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                            <span style={{ color: T.text }}>{d.rating.toFixed(1)}</span>
+                      <button
+                        type="button"
+                        onClick={() => { haptic('selection'); router.push(`/telegram/search/${selected.id}`); }}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 12,
+                          padding: 12,
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        <AvatarCircle url={d.avatarSrc} name={d.avatarName} size={56} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Icon size={13} color={T.textTertiary} />
+                            <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {d.primary}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <ChevronRight size={20} color={T.textTertiary} />
+                          {d.secondary && (
+                            <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {d.secondary}
+                            </p>
+                          )}
+                          {fullAddress && (
+                            <p style={{ ...TYPE.caption, marginTop: 4, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                              📍 {fullAddress}
+                            </p>
+                          )}
+                          {d.rating != null && d.rating > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 6, fontSize: 12, fontWeight: 600 }}>
+                              <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                              <span style={{ color: T.text }}>{d.rating.toFixed(1)}</span>
+                            </div>
+                          )}
+                        </div>
+                        <ChevronRight size={20} color={T.textTertiary} style={{ flexShrink: 0, marginTop: 18 }} />
+                      </button>
+                      {mapsUrl && (
+                        <a
+                          href={mapsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => { e.stopPropagation(); haptic('light'); }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            padding: '12px 16px',
+                            borderTop: `1px solid ${T.borderSubtle}`,
+                            background: T.surfaceElevated || T.surface,
+                            color: T.accent,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            minHeight: 44,
+                          }}
+                        >
+                          🗺 Маршрут до мастера
+                        </a>
+                      )}
                     </>
                   );
                 })()}
-              </motion.button>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
