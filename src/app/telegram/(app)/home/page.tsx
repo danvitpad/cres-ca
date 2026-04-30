@@ -529,27 +529,29 @@ export default function MiniAppHomePage() {
                 onClick={() => haptic('light')}
                 style={{
                   position: 'relative',
-                  aspectRatio: '5/3',
-                  background: c.bg,
+                  height: 110,
+                  background: `linear-gradient(135deg, ${c.bg} 0%, ${c.bg}dd 100%)`,
                   borderRadius: R.md,
                   textDecoration: 'none',
                   color: '#fff',
                   overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'flex-end',
-                  padding: 14,
-                  fontSize: 18,
-                  fontWeight: 800,
+                  padding: 12,
+                  fontSize: 15,
+                  fontWeight: 700,
                   letterSpacing: '-0.01em',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                 }}
               >
                 <span
                   style={{
                     position: 'absolute',
-                    top: 12,
-                    right: 12,
-                    fontSize: 28,
-                    opacity: 0.85,
+                    top: 10,
+                    right: 10,
+                    fontSize: 24,
+                    opacity: 0.95,
+                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
                   }}
                 >
                   {c.emoji}
