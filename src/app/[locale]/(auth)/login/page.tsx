@@ -224,13 +224,16 @@ export default function AuthPage() {
   }, [sub]);
 
   async function routeAfterAuth(actualRole: string) {
+    // Используем window.location вместо router.push для всех редиректов после
+    // signInWithPassword — гарантирует что middleware на защищённых страницах
+    // получит свежие auth-cookies без race condition.
     if (actualRole === 'client') {
       try {
         const res = await fetch('/api/invite/claim', { method: 'POST' });
         const body = (await res.json()) as { master_id?: string };
-        if (body.master_id) { router.push(`/masters/${body.master_id}`); return; }
+        if (body.master_id) { window.location.href = `/masters/${body.master_id}`; return; }
       } catch {}
-      router.push('/feed');
+      window.location.href = '/feed';
       return;
     }
     // Админ команды → сразу на свой /salon/{id}/dashboard, иначе обычный мастер → /calendar
@@ -245,14 +248,14 @@ export default function AuthPage() {
             .eq('owner_id', user.id)
             .limit(1)
             .maybeSingle();
-          if (salon?.id) { router.push(`/salon/${salon.id}/dashboard`); return; }
+          if (salon?.id) { window.location.href = `/salon/${salon.id}/dashboard`; return; }
         }
       } catch {}
       // Если салон ещё не создан — вернёмся к онбордингу
-      router.push('/onboarding/account-type');
+      window.location.href = '/onboarding/account-type';
       return;
     }
-    router.push('/calendar');
+    window.location.href = '/calendar';
   }
 
   /* ───── sign-in ───── */
@@ -502,8 +505,12 @@ export default function AuthPage() {
       return;
     }
     toast.success('Аккаунт подтверждён');
-    if (role === 'client') router.push('/feed');
-    else router.push('/onboarding/account-type');
+    // Полная навигация (window.location) — нужна чтобы middleware на следующей
+    // странице увидел свежие auth-cookies. router.push сохраняет client-state и
+    // может race'нуть с серверной проверкой сессии — пользователя выкидывает
+    // обратно на /login.
+    if (role === 'client') window.location.href = '/feed';
+    else window.location.href = '/onboarding/account-type';
   }
 
   async function handleResendSignupOTP() {
