@@ -51,6 +51,12 @@ export default function ClientFeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState<string | undefined>(undefined);
+  const [regulars, setRegulars] = useState<Array<{
+    master_id: string; master_name: string; master_slug: string;
+    service_id: string; service_name: string;
+    service_duration: number | null; service_price: number | null;
+    visit_count: number;
+  }>>([]);
 
   useEffect(() => {
     try {
@@ -73,6 +79,17 @@ export default function ClientFeedPage() {
         setLoading(false);
       }
     })();
+
+    // Load "Твои постоянные" (≥3 completed visits)
+    (async () => {
+      try {
+        const res = await fetch('/api/me/regular-services');
+        if (res.ok) {
+          const j = await res.json();
+          setRegulars(Array.isArray(j.items) ? j.items : []);
+        }
+      } catch {}
+    })();
   }, []);
 
   return (
@@ -83,6 +100,31 @@ export default function ClientFeedPage() {
           Ближайшие открытые часы у твоих контактов — мастеров, салонов и команд.
         </p>
       </header>
+
+      {/* Твои постоянные — мастер+услуга где было ≥3 визитов */}
+      {regulars.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-3 text-[14px] font-semibold uppercase tracking-wide text-neutral-700 dark:text-neutral-300">
+            Твои постоянные
+          </h2>
+          <div className="flex gap-2 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch] [scroll-snap-type:x_mandatory]">
+            {regulars.map((r) => (
+              <Link
+                key={`${r.master_id}-${r.service_id}`}
+                href={`/book?master=${r.master_id}&service=${r.service_id}`}
+                className="flex-none [scroll-snap-align:start] min-w-[220px] rounded-2xl border border-border/50 bg-card/80 p-3 transition-colors hover:border-primary/40"
+              >
+                <div className="text-[13px] font-semibold text-foreground">{r.service_name}</div>
+                <div className="mt-1 text-[12px] text-muted-foreground">у {r.master_name}</div>
+                <div className="mt-2 text-[12px] font-semibold text-primary">
+                  {r.service_price ? `${Math.round(Number(r.service_price))} ₴` : ''}
+                  {r.service_duration ? ` · ${r.service_duration} мин` : ''}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Рекомендации показываем ВСЕГДА — без фильтра по подписке клиента,
           чтобы новый пользователь сразу видел кого можно записать. Будем
