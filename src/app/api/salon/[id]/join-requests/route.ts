@@ -110,6 +110,14 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    // Fan out salon catalog if unified team_mode (RPC no-ops otherwise)
+    const masterId = (requestRow as { master_id: string | null }).master_id;
+    if (masterId) {
+      await supabase.rpc('fanout_salon_catalog_to_new_master', {
+        p_master_id: masterId,
+        p_salon_id: salonId,
+      });
+    }
   } else {
     const { error } = await supabase.rpc('reject_salon_join_request', {
       p_request_id: body.request_id,

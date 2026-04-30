@@ -38,6 +38,14 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Fan out salon catalog (only if salon is in unified team_mode — RPC checks)
+  if (invite?.master_id && invite?.salon_id) {
+    await supabase.rpc('fanout_salon_catalog_to_new_master', {
+      p_master_id: invite.master_id,
+      p_salon_id: invite.salon_id,
+    });
+  }
+
   // Best-effort notification to the salon owner.
   type MasterField = { display_name: string | null };
   type SalonField = { name: string | null; owner_id: string | null };
