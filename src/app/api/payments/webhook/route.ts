@@ -47,6 +47,11 @@ interface HutkoEvent {
     currency?: string;
     error?: string;
     message?: string;
+    // Subscription-flow fields (when reference начинается с "sub_")
+    subscription_id?: string;
+    profile_id?: string;
+    tier?: string;
+    period_end?: string;
   };
 }
 
@@ -71,7 +76,49 @@ export async function POST(request: Request) {
 
   console.log('[payments/webhook] event', event.type, 'ref:', intentId);
 
-  // ── Checkout events ──
+  // ── Subscription events ──
+  // reference: "sub_{profile_id}_{tier}" (matches LiqPay convention)
+  if (intentId?.startsWith('sub_')) {
+    const parts = intentId.split('_');
+    const profileId = parts[1];
+    const tier = parts[2];
+    if (!profileId || !tier) {
+      return NextResponse.json({ ok: true, ignored: 'malformed_sub_ref' });
+    }
+
+    if (event.type === 'subscription.activated' || event.type === 'subscription.renewed' || event.type === 'payment.completed') {
+      const periodEnd = data.period_end ? new Date(data.period_end) : (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + 1);
+        return d;
+      })();
+      await db
+        .from('subscriptions')
+        .update({ tier, status: 'active', current_period_end: periodEnd.toISOString() })
+        .eq('profile_id', profileId);
+      return NextResponse.json({ ok: true, path: 'subscription' });
+    }
+
+    if (event.type === 'subscription.cancelled' || event.type === 'subscription.expired') {
+      await db
+        .from('subscriptions')
+        .update({ status: event.type === 'subscription.cancelled' ? 'cancelled' : 'expired' })
+        .eq('profile_id', profileId);
+      return NextResponse.json({ ok: true, path: 'subscription' });
+    }
+
+    if (event.type === 'subscription.payment_failed' || event.type === 'payment.failed') {
+      await db
+        .from('subscriptions')
+        .update({ status: 'past_due' })
+        .eq('profile_id', profileId);
+      return NextResponse.json({ ok: true, path: 'subscription' });
+    }
+
+    return NextResponse.json({ ok: true, ignored: event.type, path: 'subscription' });
+  }
+
+  // ── Checkout events (escrow) ──
   if (event.type === 'checkout.succeeded' || event.type === 'payment.completed') {
     if (!intentId) return NextResponse.json({ ok: true, ignored: 'no_reference' });
     await markHeld(db, intentId, data.payment_id ?? '', signature);

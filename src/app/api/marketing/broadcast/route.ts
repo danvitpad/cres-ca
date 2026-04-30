@@ -45,6 +45,15 @@ export async function POST(req: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
+  const { checkFeatureAccess } = await import('@/lib/subscription/feature-access');
+  const access = await checkFeatureAccess(user.id, 'auto_messages');
+  if (!access.allowed) {
+    return NextResponse.json(
+      { error: 'feature_locked', feature: 'auto_messages', required_tier: 'pro', current_tier: access.tier },
+      { status: 402 },
+    );
+  }
+
   const body = (await req.json().catch(() => null)) as BroadcastInput | null;
   if (!body?.body?.trim()) {
     return NextResponse.json({ error: 'empty_body' }, { status: 400 });
