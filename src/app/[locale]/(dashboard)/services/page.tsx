@@ -1262,6 +1262,10 @@ export default function ServicesPage() {
       {active === 'services' && <ServicesCatalogueView />}
       {active === 'inventory' && <InventoryPage initialTab="materials" hideTabs />}
       {active === 'suppliers' && <SuppliersAndOrdersWrapper />}
+
+      {active === 'services' && (
+        <Spotlight id="services_add" target='[data-tour="services-add"]' text="Добавьте первую услугу — название, цену и длительность" />
+      )}
     </div>
   );
 }
@@ -1310,8 +1314,6 @@ function SuppliersAndOrdersWrapper() {
 
       {sub === 'suppliers' && <InventoryPage initialTab="suppliers" hideTabs />}
       {sub === 'orders' && <SupplierOrdersTab />}
-
-      <Spotlight id="services_add" target='[data-tour="services-add"]' text="Добавьте первую услугу — название, цену и длительность" />
     </div>
   );
 }
