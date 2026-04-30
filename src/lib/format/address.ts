@@ -8,12 +8,19 @@
  * --- */
 
 const ADMIN_NOISE = [
-  'сільська громада', 'сельская громада',
+  'громада', 'gromada', 'hromada',
   'район', 'область', 'oblast', 'raion',
   'країна', 'страна', 'country',
   'Україна', 'Украина', 'Ukraine',
   'Російська Федерація', 'Российская Федерация',
 ];
+
+const NEIGHBOURHOOD_NOISE = new Set([
+  'нагорный', 'нагорний',
+  'центральный', 'центральний',
+  'киевский', 'київський',
+  'шевченковский', 'шевченківський',
+]);
 
 const POSTAL_RE = /\b\d{5,6}\b/;
 
@@ -27,7 +34,9 @@ export function cleanAddress(raw: string | null | undefined): string {
     // убираем индекс (5-6 цифр)
     .filter((p) => !POSTAL_RE.test(p))
     // убираем административные хвосты
-    .filter((p) => !ADMIN_NOISE.some((noise) => p.toLowerCase().includes(noise.toLowerCase())));
+    .filter((p) => !ADMIN_NOISE.some((noise) => p.toLowerCase().includes(noise.toLowerCase())))
+    // убираем известные имена районов/жилых массивов
+    .filter((p) => !NEIGHBOURHOOD_NOISE.has(p.toLowerCase()));
   // дедуп подряд идущих одинаковых частей
   const dedup: string[] = [];
   for (const p of parts) {
