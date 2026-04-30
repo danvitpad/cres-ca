@@ -521,16 +521,20 @@ function NotesBlock({
                     <div className="flex shrink-0 gap-0.5 opacity-70">
                       <button
                         onClick={() => { haptic('selection'); setEditingIndex(entry.index); setDraft(entry.body); }}
-                        className="flex size-6 items-center justify-center rounded-md text-neutral-700"
-                      ><Pencil className="size-3" /></button>
+                        className="flex size-9 items-center justify-center rounded-md text-neutral-700 active:bg-neutral-100"
+                        aria-label="Редактировать"
+                      ><Pencil className="size-3.5" /></button>
                       <button
                         onClick={async () => {
+                          haptic('error');
+                          if (!confirm('Удалить заметку?')) return;
                           const lines = (notes ?? '').split('\n');
                           lines.splice(entry.index, 1);
                           await persist(lines);
                         }}
-                        className="flex size-6 items-center justify-center rounded-md text-rose-400"
-                      ><Trash2 className="size-3" /></button>
+                        className="flex size-9 items-center justify-center rounded-md text-rose-500 active:bg-rose-50"
+                        aria-label="Удалить"
+                      ><Trash2 className="size-3.5" /></button>
                     </div>
                   </div>
                 )}
