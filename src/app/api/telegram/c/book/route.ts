@@ -227,6 +227,18 @@ export async function POST(request: Request) {
       data: { type: isReschedule ? 'appointment_rescheduled' : 'new_booking', client_id: clientId, action_url: '/calendar' },
     });
   }
+  // In-app notification for client (notification bell in Mini App)
+  if (profile.id && service_names && date_formatted && selected_time) {
+    await admin.from('notifications').insert({
+      profile_id: profile.id,
+      channel: 'in_app',
+      title: isReschedule ? 'Запись перенесена' : 'Запись подтверждена',
+      body: bodyText,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+      data: { type: isReschedule ? 'appointment_rescheduled' : 'appointment_created', action_url: '/telegram/app/activity' },
+    });
+  }
 
   return NextResponse.json({
     ok: true,

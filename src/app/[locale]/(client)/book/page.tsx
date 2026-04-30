@@ -511,35 +511,14 @@ export default function BookPage() {
         .eq('id', rescheduleId);
     }
 
-    // Notify master about new booking
-    const masterDisplay = master?.display_name ?? master?.profile?.full_name ?? '';
-    const dateShort = selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
-    if (master) {
-      const { data: masterProfile } = await supabase
-        .from('masters')
-        .select('profile_id')
-        .eq('id', preselectedMasterId)
-        .single();
-      if (masterProfile?.profile_id) {
-        const forWhom = bookingFor ? ` (${bookingFor.member_name})` : '';
-        await supabase.from('notifications').insert({
-          profile_id: masterProfile.profile_id,
-          channel: 'push',
-          title: 'Новая запись',
-          body: `${selectedService.name} — ${dateShort} в ${selectedTime}${forWhom}`,
-          data: { type: 'new_booking', action_url: '/calendar' },
-        });
-      }
+    // Notify master + confirm to client via unified notify endpoint (in-app + TG)
+    if (newAppointmentId) {
+      fetch(`/api/appointments/${newAppointmentId}/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ triggeredBy: 'client' }),
+      }).catch(() => undefined);
     }
-
-    // Notify client (self) — mirrors into Telegram bot if bot is linked
-    await supabase.from('notifications').insert({
-      profile_id: userId,
-      channel: 'push',
-      title: 'Запись подтверждена',
-      body: `Вы записаны к ${masterDisplay} — ${dateShort} в ${selectedTime}`,
-      data: { type: 'booking_confirmed', action_url: '/appointments' },
-    });
 
     // If prepayment required, get LiqPay form data
     if (selectedService.requires_prepayment && Number(selectedService.prepayment_amount) > 0) {
