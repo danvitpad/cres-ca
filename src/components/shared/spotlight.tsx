@@ -33,6 +33,13 @@ export function Spotlight({ id, target, text, position = 'bottom', timeout = 600
 
   useEffect(() => {
     let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    let pollDeadline = 0;
+
+    const cleanup = () => {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    };
+
     (async () => {
       try {
         const supabase = createClient();
@@ -47,15 +54,28 @@ export function Spotlight({ id, target, text, position = 'bottom', timeout = 600
         const progress = (data as { tour_progress?: Record<string, boolean> } | null)?.tour_progress ?? {};
         if (progress[id]) return;
 
-        const el = document.querySelector(target);
-        if (!el || cancelled) return;
-        setRect(el.getBoundingClientRect());
-        setVisible(true);
+        // Poll for target up to 8 seconds — на странице часто рендерятся
+        // skeleton-плейсхолдеры до того как настоящая кнопка появится в DOM,
+        // поэтому одной попытки на mount часто недостаточно.
+        pollDeadline = Date.now() + 8000;
+        const tryShow = () => {
+          if (cancelled) { cleanup(); return; }
+          const el = document.querySelector(target);
+          if (el) {
+            setRect(el.getBoundingClientRect());
+            setVisible(true);
+            cleanup();
+            return;
+          }
+          if (Date.now() > pollDeadline) cleanup();
+        };
+        tryShow();
+        if (!cancelled) pollTimer = setInterval(tryShow, 250);
       } catch {
         // best-effort
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; cleanup(); };
   }, [id, target]);
 
   useEffect(() => {
