@@ -84,18 +84,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // Проверяем — мастер сам владелец салона? Если да, перестраиваем сайдбар
   // под админ-флоу: разделы ведут на /salon/{id}/..., добавляется «Команда».
   const [ownedSalonId, setOwnedSalonId] = useState<string | null>(null);
+  // Если мастер — член команды в unified-режиме, скрываем разделы которыми
+  // владеет админ (склад, финансы, клиенты, каталог-edit).
+  const [unifiedTeamLimited, setUnifiedTeamLimited] = useState(false);
   useEffect(() => {
-    if (!userId) { setOwnedSalonId(null); return; }
+    if (!userId) { setOwnedSalonId(null); setUnifiedTeamLimited(false); return; }
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase
+      const { data: owned } = await supabase
         .from('salons')
         .select('id')
         .eq('owner_id', userId)
         .limit(1)
         .maybeSingle();
-      if (!cancelled) setOwnedSalonId(data?.id ?? null);
+      if (!cancelled) setOwnedSalonId(owned?.id ?? null);
+      if (owned?.id) return; // owner не ограничен
+
+      // Member check: ищем salon где user — member (не owner)
+      const { data: member } = await supabase
+        .from('salon_members')
+        .select('salon_id, role, salon:salons(team_mode)')
+        .eq('profile_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+      const teamMode = (member?.salon as { team_mode?: string } | null)?.team_mode;
+      const role = member?.role;
+      // Только обычный мастер (не admin/receptionist) в unified-режиме ограничен
+      const limited = teamMode === 'unified' && role === 'master';
+      if (!cancelled) setUnifiedTeamLimited(limited);
     })();
     return () => { cancelled = true; };
   }, [userId]);
@@ -117,6 +134,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { key: 'salon-stats', icon: BarChart3, href: '/stats', label: 'Статистика' },
       ];
     }
+    // Master в unified-команде: только календарь + read-only услуги.
+    // Финансы / клиенты / маркетинг / стат — управляет админ команды.
+    if (unifiedTeamLimited) {
+      return [
+        { key: 'today', icon: FreshaHome, href: '/today', label: t('nav.dashboard') },
+        { key: 'calendar', icon: FreshaCalendar, href: '/calendar', label: t('nav.calendar') },
+        { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
+      ];
+    }
     return [
       { key: 'today', icon: FreshaHome, href: '/today', label: t('nav.dashboard') },
       { key: 'calendar', icon: FreshaCalendar, href: '/calendar', label: t('nav.calendar') },
@@ -126,7 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
       { key: 'stats', icon: BarChart3, href: '/stats', label: 'Статистика' },
     ];
-  }, [t, ownedSalonId]);
+  }, [t, ownedSalonId, unifiedTeamLimited]);
 
   const bottomItems: SidebarNavItem[] = useMemo(
     () => [

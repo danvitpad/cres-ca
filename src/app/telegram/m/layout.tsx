@@ -33,6 +33,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   const userId = useAuthStore((s) => s.userId);
   const [checking, setChecking] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unifiedTeamLimited, setUnifiedTeamLimited] = useState(false);
 
   const isSalonContext = pathname.startsWith('/telegram/m/salon/');
 
@@ -52,6 +53,15 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         router.replace('/telegram/home');
         return;
       }
+      // Check unified team membership for nav restriction
+      const { data: member } = await supabase
+        .from('salon_members')
+        .select('role, salon:salons(team_mode)')
+        .eq('profile_id', userId)
+        .eq('is_active', true)
+        .maybeSingle();
+      const teamMode = (member?.salon as { team_mode?: string } | null)?.team_mode;
+      setUnifiedTeamLimited(teamMode === 'unified' && member?.role === 'master');
       setChecking(false);
     })();
   }, [userId, router, isSalonContext]);
@@ -129,13 +139,21 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     return <>{children}</>;
   }
 
-  const tabs: readonly NavTab[] = [
-    { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
-    { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
-    { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
-    { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
-    { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
-  ];
+  // Master в unified-команде: убираем «Клиенты» (общая база у админа).
+  const tabs: readonly NavTab[] = unifiedTeamLimited
+    ? [
+        { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
+        { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
+        { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
+        { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
+      ]
+    : [
+        { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
+        { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
+        { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
+        { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
+        { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
+      ];
 
   // Fullscreen routes — booking/voice flows have own footers; onboarding = no nav.
   const isFullscreen =
