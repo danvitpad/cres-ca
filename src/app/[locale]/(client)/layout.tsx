@@ -40,6 +40,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { ClientOnboardingWizard } from '@/components/client/onboarding-wizard';
 import { InactivityLogout } from '@/components/auth/inactivity-logout';
 import { ConfirmProvider } from '@/hooks/use-confirm';
+import { WelcomeGate } from '@/components/shared/welcome-gate';
 import { cn } from '@/lib/utils';
 
 // IG-style sidebar — hover to expand.
@@ -875,6 +876,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         initial={onboardingInitial}
       />
       <InactivityLogout />
+      <WelcomeGate />
     </div>
     </ConfirmProvider>
   );

@@ -31,6 +31,7 @@ import {
   MessageSquareHeart,
   Gift,
   Settings as SettingsCogIcon,
+  RotateCcw,
 } from 'lucide-react';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 import {
@@ -252,6 +253,29 @@ function SettingsHomeView({
           );
         })}
       </div>
+
+      {/* Replay onboarding tour */}
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await fetch('/api/account/tour-reset', { method: 'POST' });
+            window.location.href = `/${window.location.pathname.split('/')[1]}/welcome`;
+          } catch {}
+        }}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          margin: '28px auto 0', padding: '10px 20px',
+          background: 'transparent', border: `1px solid ${C.border}`,
+          borderRadius: 10, color: C.textSecondary,
+          fontSize: 13, fontWeight: 500, cursor: 'pointer',
+          fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+          transition: 'border-color 0.15s',
+        }}
+      >
+        <RotateCcw size={14} />
+        Пройти обучение заново
+      </button>
     </div>
   );
 }

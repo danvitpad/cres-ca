@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { Spotlight } from '@/components/shared/spotlight';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { formatPhone } from '@/lib/phone';
@@ -578,6 +579,7 @@ export default function ClientsPage() {
               color: C.textTertiary, pointerEvents: 'none',
             }} />
             <input
+              data-tour="clients-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Поиск по имени, телефону, email..."
@@ -712,6 +714,8 @@ export default function ClientsPage() {
 
       {/* ═══ PARTNERS TAB — master↔master recommendation agreements ═══ */}
       {tab === 'users' && <PartnersSection C={C} />}
+
+      <Spotlight id="clients_search" target='[data-tour="clients-search"]' text="Ищите клиентов по имени, телефону или email — в том числе среди всех пользователей CRES-CA" position="bottom" />
     </div>
   );
 }

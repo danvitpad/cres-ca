@@ -51,6 +51,7 @@ import { FONT } from '@/lib/dashboard-theme';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import type { AppointmentData } from '@/hooks/use-appointments';
 import { humanizeError } from '@/lib/format/error';
+import { Spotlight } from '@/components/shared/spotlight';
 
 type ViewMode = 'day' | '3day' | 'week' | 'month' | 'list';
 
@@ -706,6 +707,7 @@ export default function CalendarPage() {
           {/* "Добавить" split button — Fresha: dark/inverted */}
           <div ref={addDropdownRef} style={{ position: 'relative' }}>
             <button
+              data-tour="calendar-add"
               onClick={() => { setAddDropdownOpen(!addDropdownOpen); setViewDropdownOpen(false); setTeamDropdownOpen(false); }}
               style={pillBtn(F, {
                 paddingLeft: 16, paddingRight: 12, gap: 8,
@@ -1172,6 +1174,11 @@ export default function CalendarPage() {
         defaultClientId={newDialogDefaults.clientId}
         defaultServiceId={newDialogDefaults.serviceId}
         onCreated={refetch}
+      />
+      <Spotlight
+        id="calendar_add"
+        target='[data-tour="calendar-add"]'
+        text="Здесь создаются записи и блоки нерабочего времени"
       />
     </div>
   );

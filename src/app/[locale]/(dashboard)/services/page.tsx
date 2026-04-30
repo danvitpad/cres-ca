@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
+import { Spotlight } from '@/components/shared/spotlight';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -256,6 +257,7 @@ function ServicesCatalogueView() {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button
+            data-tour="services-add"
             onClick={openNew}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
@@ -1308,6 +1310,8 @@ function SuppliersAndOrdersWrapper() {
 
       {sub === 'suppliers' && <InventoryPage initialTab="suppliers" hideTabs />}
       {sub === 'orders' && <SupplierOrdersTab />}
+
+      <Spotlight id="services_add" target='[data-tour="services-add"]' text="Добавьте первую услугу — название, цену и длительность" />
     </div>
   );
 }
