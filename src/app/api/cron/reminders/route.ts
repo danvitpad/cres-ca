@@ -339,10 +339,11 @@ export async function GET(request: Request) {
     const startsAt = new Date(apt.starts_at);
     const minutesUntil = (startsAt.getTime() - now.getTime()) / 60000;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://cres-ca.com';
-    const time = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // ALWAYS Europe/Kyiv — server timezone is UTC, but our users are in Ukraine.
+    const time = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
     const langForDate = resolveLang(master?.public_language);
     const localeMap: Record<Lang, string> = { ru: 'ru-RU', uk: 'uk-UA', en: 'en-US' };
-    const date = startsAt.toLocaleDateString(localeMap[langForDate], { weekday: 'long', day: 'numeric', month: 'long' });
+    const date = startsAt.toLocaleDateString(localeMap[langForDate], { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' });
 
     // Стоимость берём с appointment.price (snapshot на момент бронирования) — fallback на service.price
     const priceVal = apt.price && apt.price > 0 ? apt.price : (service?.price ?? null);
@@ -350,9 +351,14 @@ export async function GET(request: Request) {
     const priceLabel = fmtPrice(priceVal, curVal);
     const addressLabel = fmtAddress(master?.address, master?.city, master?.workplace_name);
 
+    // Strip "(индивид.)" — individual is the default; no need to mark
+    const cleanedServiceName = (service?.name ?? 'услуга').replace(
+      /\s*\((индивид\.|индивидуально|индивидуальный|индивидуальная|individual)\)/gi,
+      '',
+    ).trim();
     const ctx = {
       client_name: client?.full_name ?? 'клиент',
-      service_name: service?.name ?? 'услуга',
+      service_name: cleanedServiceName,
       time,
       date,
       master_name: master?.display_name ?? '',
