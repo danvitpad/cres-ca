@@ -579,32 +579,34 @@ export default function DealsPage() {
                   <span style={{ fontSize: 13, color: C.text }}>{form.isActive ? 'Активен' : 'На паузе'}</span>
                 </div>
 
-                {/* Шаг 10: симулятор прибыли/убытка */}
+                {/* Шаг 10: AI-подсказка (не блокер) — мастер сам решает */}
                 {simSummary && simSummary.total_services > 0 && (
                   <div style={{
                     padding: 12,
                     borderRadius: 12,
-                    background: simSummary.unsafe_services > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
-                    border: `1px solid ${simSummary.unsafe_services > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                    background: simSummary.unsafe_services > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)',
+                    border: `1px solid ${simSummary.unsafe_services > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`,
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: simSummary.unsafe_services > 0 ? '#dc2626' : '#059669', marginBottom: 6 }}>
-                      {simSummary.unsafe_services > 0 ? '⚠️ Внимание: убыточный сценарий' : '✓ Промокод безопасен'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: simSummary.unsafe_services > 0 ? '#b45309' : '#059669', marginBottom: 6 }}>
+                      {simSummary.unsafe_services > 0
+                        ? `💡 ИИ-подсказка: ${simSummary.unsafe_services} из ${simSummary.total_services} ${simSummary.unsafe_services === 1 ? 'услуги уйдёт' : 'услуг уйдут'} в минус`
+                        : `✓ Промокод выгоден: средняя прибыль ${simSummary.avg_margin_per_visit} ₴ с визита`}
                     </div>
                     <p style={{ fontSize: 12, color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>
                       {simSummary.unsafe_services > 0 ? (
                         <>
-                          {simSummary.unsafe_services} из {simSummary.total_services} услуг станут убыточными после скидки.
-                          {' '}Минимальная маржа: <b style={{ color: '#dc2626' }}>{simSummary.min_margin_per_visit} ₴</b> за визит.
+                          Маржа упадёт до <b style={{ color: '#b45309' }}>{simSummary.min_margin_per_visit} ₴</b> за визит.
+                          {' '}Это твой выбор — можно сохранить (например, чтобы привлечь новых клиентов), но имей в виду.
+                          {' '}При 100 применениях: <b>{simSummary.profit_per_100 > 0 ? `+${simSummary.profit_per_100}` : simSummary.profit_per_100} ₴</b>.
                         </>
                       ) : (
                         <>
-                          После скидки средняя прибыль: <b style={{ color: '#059669' }}>{simSummary.avg_margin_per_visit} ₴</b> с визита.
-                          {' '}Если 100 клиентов применят — {simSummary.profit_per_100 > 0 ? `+${simSummary.profit_per_100}` : simSummary.profit_per_100} ₴ прибыли.
+                          Если 100 клиентов применят — <b>{simSummary.profit_per_100 > 0 ? `+${simSummary.profit_per_100}` : simSummary.profit_per_100} ₴</b> прибыли.
                         </>
                       )}
                     </p>
                     {simRows.filter(r => !r.is_safe).slice(0, 3).map((r, i) => (
-                      <p key={i} style={{ fontSize: 11, color: '#dc2626', margin: '4px 0 0 0' }}>
+                      <p key={i} style={{ fontSize: 11, color: '#b45309', margin: '4px 0 0 0' }}>
                         • {r.service_name}: финал {Math.round(r.final_price)} ₴, расходники {Math.round(r.material_cost)} ₴
                       </p>
                     ))}
