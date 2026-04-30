@@ -14,6 +14,7 @@ import { Sparkles, Copy, Check, Share2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { HelpHint } from '@/components/shared/help-hint';
 
 interface MasterBalance {
   master_id: string;
@@ -144,7 +145,17 @@ export default function MiniAppBonusesPage() {
       <div className="rounded-2xl border border-neutral-200 bg-white p-6">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Всего бонусов</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Всего бонусов</p>
+              <HelpHint title="Что это за бонусы и как их использовать" size={12}>
+                <p><b>Откуда:</b> бонусы дают тебе мастера, у которых ты записываешься. Например, мастер может настроить «5% от чека» — после визита на 600 ₴ тебе упадёт 30 баллов на счёт у этого мастера.</p>
+                <p><b>Как тратить:</b> при следующей записи к этому же мастеру в Mini App / на сайте ты увидишь галочку «Применить N баллов» — цена услуги уменьшится на эту сумму.</p>
+                <p><b>1 балл = 1 ₴ скидки</b> у того мастера, кто начислил.</p>
+                <p><b>Важно:</b> баллы привязаны к мастеру. Если у Маши накопилось 50 баллов — потратить их можно только у Маши, не у Ивана.</p>
+                <p><b>Пригласи друга:</b> у тебя есть личная ссылка (кнопка выше). Когда твой друг сделает первую запись и придёт — тебе упадёт реферальный бонус (мастер сам настраивает сумму).</p>
+                <p><b>Срок:</b> баллы живут 6 месяцев (мастер может изменить). После — сгорают, ты получишь напоминание за неделю.</p>
+              </HelpHint>
+            </div>
             <p className="mt-2 text-5xl font-bold tabular-nums">
               {loading ? '—' : totalBalance.toFixed(0)}
             </p>

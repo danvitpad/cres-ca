@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, CURRENCY } from '@/lib/dashboard-theme';
 import { humanizeError } from '@/lib/format/error';
+import { HelpHint } from '@/components/shared/help-hint';
 
 // Валидные значения определены check-constraint masters_client_referral_reward_type_check.
 // UI должен слать ровно эти строки, иначе PATCH 400. bonus_points не выводим
@@ -197,9 +198,20 @@ export function ReferralProgramPanel() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, marginBottom: 4 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: 0 }}>
-              Программа рекомендаций
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: 0 }}>
+                Программа рекомендаций
+              </h3>
+              <HelpHint title="Как работает реферальная программа" size={15}>
+                <p><b>Идея:</b> постоянный клиент рекомендует тебя другу — друг записывается — клиент получает бонус.</p>
+                <p><b>Шаг 1:</b> у каждого клиента есть личная ссылка вида <code>cres-ca.com/m/&lt;твой_слаг&gt;?ref=&lt;его_код&gt;</code>. Клиент берёт ссылку в своём профиле и шлёт другу.</p>
+                <p><b>Шаг 2:</b> друг открывает ссылку и записывается. Запись помечается «приведена клиентом X».</p>
+                <p><b>Шаг 3:</b> когда друг приходит на свой <b>первый завершённый визит</b> (статус «выполнено»), клиент-приглашатель получает бонус — сумма / процент тут в форме ниже.</p>
+                <p><b>Что значит для тебя:</b> ты привлекаешь клиентов руками других клиентов вместо рекламы. Бонус выпадает только после фактического выполненного визита — без визита приглашатель ничего не получит, защита от накруток.</p>
+                <p><b>Что в финансах:</b> бонус приглашателя выпадает в его счёт лояльности, не в кэш. То есть он сможет потратить его только на следующую запись у тебя — деньги остаются в твоём круге.</p>
+                <p><b>Анти-фрод:</b> система не разрешает циклы (А привёл Б — Б привести А не может) и self-referral (сам себя пригласить нельзя).</p>
+              </HelpHint>
+            </div>
             <button
               onClick={() => save({ enabled: !cfg.enabled })}
               disabled={saving}

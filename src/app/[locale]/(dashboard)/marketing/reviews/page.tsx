@@ -15,6 +15,7 @@ import { useMaster } from '@/hooks/use-master';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { humanizeError } from '@/lib/format/error';
+import { HelpHint } from '@/components/shared/help-hint';
 
 interface ReviewRow {
   id: string;
@@ -81,9 +82,18 @@ export default function ReviewsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
-      <p className="text-sm text-muted-foreground">
-        Сводка по всем отзывам. Опубликованные отзывы показываются на публичной странице.
-      </p>
+      <div className="flex items-start gap-1.5">
+        <p className="text-sm text-muted-foreground">
+          Сводка по всем отзывам. Опубликованные отзывы показываются на публичной странице.
+        </p>
+        <HelpHint title="Как работают отзывы" size={15}>
+          <p><b>Когда клиент видит запрос отзыва:</b> на следующий день после выполненного визита бот шлёт ему «Как тебе всё прошло? Поставь оценку от 1 до 5».</p>
+          <p><b>Что клиент может:</b> поставить оценку (звёзды), написать комментарий, прикрепить фото. Может отметить отзыв «анонимный» — тогда его имя не покажется на твоей публичной странице.</p>
+          <p><b>Кто решает что публично:</b> ты. Каждый отзыв в этом списке имеет переключатель «Опубликовать / Скрыть». По умолчанию все 4-5 звёзд публикуются автоматически, 1-3 — скрыты до твоего решения.</p>
+          <p><b>Что в финансах:</b> отзывы напрямую не влияют на доход, но средний рейтинг показывается в поиске мастеров — клиент с большей вероятностью запишется к тому, у кого 4.8★ (50 отзывов), чем к 4.2★ (3 отзыва).</p>
+          <p><b>Жалобы vs отзывы:</b> если оценка 1-2★ — это сигнал что клиент остался недоволен. У тебя есть 24 часа чтобы написать ему лично и решить ситуацию до того как он опубликует на публичной странице.</p>
+        </HelpHint>
+      </div>
 
       <div className="grid gap-4 rounded-lg border bg-card p-5 md:grid-cols-[auto_1fr]">
         <div className="flex flex-col items-center justify-center md:border-r md:pr-6">

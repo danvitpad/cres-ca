@@ -20,6 +20,7 @@ import { useConfirm } from '@/hooks/use-confirm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { humanizeError } from '@/lib/format/error';
+import { HelpHint } from '@/components/shared/help-hint';
 
 type Mode = 'segment' | 'manual';
 type Segment = 'all' | 'vip' | 'regular' | 'new' | 'inactive';
@@ -249,7 +250,15 @@ export default function CampaignsPage() {
       {/* Recipient mode */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Получатели</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Получатели</h2>
+            <HelpHint title="Как работают рассылки">
+              <p><b>Кому уйдёт сообщение:</b> ты выбираешь сегмент (например, «спящие 30+ дней») или конкретных клиентов вручную. Видят сообщение только те, кто привязал Telegram к твоему профилю.</p>
+              <p><b>Что увидит клиент:</b> сообщение приходит в TG-бот @cres_ca_bot от твоего имени с твоим аватаром, как личное сообщение. Если клиент не подписан — сообщение не доходит (это не email).</p>
+              <p><b>Зачем мастеру/команде:</b> вернуть «спящих» клиентов одной рассылкой за 5 секунд вместо ручного обзвона. Хорошо работает с акцией («Только до пятницы — стрижка по старой цене»).</p>
+              <p><b>Что в финансах:</b> рассылка сама по себе бесплатная (в TG нет оплаты за сообщение). Учитывается только «доход» от записей которые клиенты сделают после рассылки.</p>
+            </HelpHint>
+          </div>
           <div className="inline-flex gap-1 rounded-lg bg-muted p-0.5 text-xs">
             {(['segment', 'manual'] as Mode[]).map(m => (
               <button

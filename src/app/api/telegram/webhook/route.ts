@@ -2447,18 +2447,18 @@ async function handleMasterFinance(chatId: number, telegramId: number) {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const [weekRes, monthRes] = await Promise.all([
-    supabase.from('appointments').select('total_price')
+    supabase.from('appointments').select('price')
       .eq('master_id', m.id).eq('status', 'completed')
       .gte('starts_at', weekStart.toISOString()),
-    supabase.from('appointments').select('total_price')
+    supabase.from('appointments').select('price')
       .eq('master_id', m.id).eq('status', 'completed')
       .gte('starts_at', monthStart.toISOString()),
   ]);
 
-  const sum = (rows: { total_price: number | null }[] | null) =>
-    (rows ?? []).reduce((s, r) => s + Number(r.total_price ?? 0), 0);
-  const week = sum(weekRes.data as { total_price: number | null }[]);
-  const month = sum(monthRes.data as { total_price: number | null }[]);
+  const sum = (rows: { price: number | null }[] | null) =>
+    (rows ?? []).reduce((s, r) => s + Number(r.price ?? 0), 0);
+  const week = sum(weekRes.data as { price: number | null }[]);
+  const month = sum(monthRes.data as { price: number | null }[]);
 
   await sendMessage(
     chatId,

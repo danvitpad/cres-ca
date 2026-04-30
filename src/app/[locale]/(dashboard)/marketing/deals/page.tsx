@@ -33,6 +33,7 @@ import { Label } from '@/components/ui/label';
 import { usePageTheme, FONT, FONT_FEATURES, CURRENCY } from '@/lib/dashboard-theme';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { humanizeError } from '@/lib/format/error';
+import { HelpHint } from '@/components/shared/help-hint';
 
 /* ── types ─────────────────────────────────────────────── */
 
@@ -325,9 +326,18 @@ export default function DealsPage() {
     <div style={{ fontFamily: FONT, fontFeatureSettings: FONT_FEATURES, background: C.bg, color: C.text, padding: '32px 40px', maxWidth: 860, margin: '0 auto', width: '100%' }}>
       {/* Header — only subtitle + action; main h1 lives on the parent /marketing page */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 16 }}>
-        <p style={{ fontSize: 14, color: C.textSecondary, margin: 0 }}>
-          Создавай промокоды со скидками, отправляй клиентам и отслеживай результаты.
-        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, flex: 1 }}>
+          <p style={{ fontSize: 14, color: C.textSecondary, margin: 0 }}>
+            Создавай промокоды со скидками, отправляй клиентам и отслеживай результаты.
+          </p>
+          <HelpHint title="Как работают промокоды" size={16}>
+            <p><b>Что это:</b> ты выпускаешь код вроде «NEW2026» со скидкой (например, -20%). Клиент при записи вводит этот код — цена услуги падает.</p>
+            <p><b>Кто видит:</b> промокод видишь только ты в этом разделе. Клиент узнаёт код от тебя — через сообщение, рассылку, инстаграм. Деньги клиент платит уже со скидкой.</p>
+            <p><b>Что в финансах:</b> в записи остаётся пометка какой промокод применён и сколько ₴ скидки. В отчёте «Доход» сумма уже за вычетом скидки — то есть это твой реальный заработок.</p>
+            <p><b>Защита от убытков:</b> если ты заполнил расходники в услугах, при создании промокода появится подсказка «Эта скидка сделает услугу убыточной» — это не блок, ты сам решаешь (например, для привлечения новых клиентов это нормально).</p>
+            <p><b>Промокод vs бонусы:</b> клиент не может применить и промокод, и бонусы лояльности одновременно. Применится только большая скидка — а вторая останется на счёте клиента.</p>
+          </HelpHint>
+        </div>
         <button
           onClick={openCreate}
           style={{

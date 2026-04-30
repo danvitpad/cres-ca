@@ -486,8 +486,12 @@ export default function BookPage() {
       ends_at: endsAt,
       status: 'booked',
       price: totalPrice,
+      price_base: basePrice,
       currency: selectedService.currency,
       referrer_profile_id: referrerProfileId,
+      promo_code_id: effectivePromoDiscount > 0 ? appliedPromo?.promo_id ?? null : null,
+      promo_discount_amount: effectivePromoDiscount,
+      bonus_redeemed: bonusToSpend,
     }).select('id').single();
     const newAppointmentId: string | null = (insertedApt as { id?: string } | null)?.id ?? null;
 
