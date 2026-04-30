@@ -91,3 +91,55 @@ export async function sendViaSuperadminBot(
 ): Promise<boolean> {
   return notifySuperadmin(text, { ...opts, chatId });
 }
+
+/**
+ * Прикрепляет голосовое сообщение и шлёт в @crescasuperadmin_bot Данилу.
+ * Используется для пересылки голосового фидбека напрямую — Daniil слушает в TG
+ * без скачивания ссылки. Пользователь не видит факт пересылки.
+ *
+ * Best-effort: возвращает false если токен/chat_id не заданы или TG отказал.
+ */
+export async function sendVoiceToSuperadmin(
+  audioBuffer: Buffer,
+  mimeType: string,
+  caption?: string,
+): Promise<boolean> {
+  const token = (process.env.TELEGRAM_SUPERADMIN_BOT_TOKEN ?? '').trim();
+  const adminId = (process.env.SUPERADMIN_TG_CHAT_ID ?? '').trim();
+  if (!token || !adminId) return false;
+
+  try {
+    const form = new FormData();
+    form.append('chat_id', adminId);
+    if (caption) {
+      form.append('caption', caption);
+      form.append('parse_mode', 'HTML');
+    }
+
+    // Telegram sendVoice ожидает OGG OPUS, но также примет sendAudio для других форматов.
+    // Для совместимости с Mini App записями (audio/webm) и iOS (audio/m4a) —
+    // используем sendAudio который принимает большинство форматов.
+    const isOgg = mimeType.includes('ogg') || mimeType.includes('opus');
+    const endpoint = isOgg ? 'sendVoice' : 'sendAudio';
+    const fieldName = isOgg ? 'voice' : 'audio';
+    const ext = isOgg ? 'ogg' : mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') || mimeType.includes('m4a') ? 'm4a' : 'mp3';
+
+    const blob = new Blob([new Uint8Array(audioBuffer)], { type: mimeType });
+    form.append(fieldName, blob, `feedback.${ext}`);
+
+    const res = await fetch(`https://api.telegram.org/bot${token}/${endpoint}`, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      console.warn(`[superadmin-notify/voice] ${endpoint} failed:`, res.status, txt);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn('[superadmin-notify/voice] error:', e);
+    return false;
+  }
+}

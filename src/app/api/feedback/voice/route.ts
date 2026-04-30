@@ -1,55 +1,22 @@
 /** --- YAML
  * name: Voice feedback API
- * description: POST /api/feedback/voice — аудио (multipart/form-data field "audio")
- *              → транскрибация Gemini → upload в Storage bucket feedback-voice
- *              → submitFeedback() с voice_file_url. Все эффекты (DB / TG / Sheets)
- *              делает submitFeedback.
+ * description: POST /api/feedback/voice — аудио (multipart/form-data field "audio").
+ *              Транскрибация Gemini → submitFeedback() (cleanup, categorize, DB,
+ *              text-уведомление в TG, Sheets-sync) → отдельно шлёт оригинальный
+ *              аудио-файл напрямую Данилу через @crescasuperadmin_bot, чтобы он
+ *              мог прослушать в TG не открывая ссылок. Пользователь о факте
+ *              пересылки не знает — просто видит «спасибо за фидбек».
  * created: 2026-04-21
  * updated: 2026-04-30
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { voiceToText, AIUnavailableError } from '@/lib/ai/router';
 import { submitFeedback, type FeedbackSource } from '@/lib/feedback/submit';
+import { sendVoiceToSuperadmin } from '@/lib/notifications/superadmin-notify';
 
 export const maxDuration = 60;
-
-const STORAGE_BUCKET = 'feedback-voice';
-
-async function uploadAudio(buf: Buffer, mimeType: string, profileId: string): Promise<string | null> {
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminUrl || !serviceKey) return null;
-
-  try {
-    const admin = createAdminClient(adminUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('webm') ? 'webm' : 'm4a';
-    const path = `${profileId}/${Date.now()}.${ext}`;
-
-    const { error } = await admin.storage.from(STORAGE_BUCKET).upload(path, buf, {
-      contentType: mimeType,
-      upsert: false,
-    });
-    if (error) {
-      console.warn('[feedback/voice] storage upload failed:', error.message);
-      return null;
-    }
-
-    // Bucket публичный → возвращаем public URL. Если приватный — getPublicUrl всё равно
-    // возвращает строку, но при доступе будет 403. Можно при необходимости делать
-    // signed URL, но для админа Daniil это не критично.
-    const { data: pub } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    return pub.publicUrl;
-  } catch (e) {
-    console.warn('[feedback/voice] upload error:', e);
-    return null;
-  }
-}
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -77,7 +44,7 @@ export async function POST(req: Request) {
   const buf = Buffer.from(await audio.arrayBuffer());
   const audioBase64 = buf.toString('base64');
 
-  // Транскрибация
+  // 1) Транскрибация
   let transcript = '';
   try {
     const res = await voiceToText({ audioBase64, mimeType });
@@ -90,28 +57,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'transcript_empty' }, { status: 400 });
   }
 
-  // Upload в Storage (best-effort)
-  const voiceFileUrl = await uploadAudio(buf, mimeType, user.id);
-
+  // 2) Профиль для snapshot
   const { data: profile } = await supabase
     .from('profiles')
     .select('full_name, role')
     .eq('id', user.id)
     .maybeSingle();
+  const profileName = profile?.full_name ?? user.email ?? 'User';
+  const profileRole = profile?.role ?? null;
 
+  // 3) Сохраняем фидбек (текст-уведомление Данилу + Sheets sync)
   const result = await submitFeedback({
     supabase,
     profileId: user.id,
-    profileName: profile?.full_name ?? user.email ?? 'User',
-    profileRole: profile?.role ?? null,
+    profileName,
+    profileRole,
     source,
     originalText: transcript,
-    voiceFileUrl,
+    voiceFileUrl: null, // больше не сохраняем в Storage — голос идёт напрямую в TG
   });
 
   if (!result) {
     return NextResponse.json({ error: 'submit_failed' }, { status: 500 });
   }
 
-  return NextResponse.json({ id: result.id, transcript, category: result.category, voice_file_url: voiceFileUrl });
+  // 4) Отправляем оригинальный аудио-файл напрямую Данилу в супер-бот.
+  // Делается ПОСЛЕ submitFeedback, чтобы Daniil сначала видел текстовое
+  // сообщение с категорией и сутью, потом получил голос для прослушивания.
+  // Пользователь об этой пересылке не знает — UI не показывает.
+  // Best-effort: если упадёт — фидбек всё равно сохранён.
+  await sendVoiceToSuperadmin(buf, mimeType, `Фидбек <code>${result.id}</code> · от ${profileName}`);
+
+  return NextResponse.json({ id: result.id, transcript, category: result.category });
 }

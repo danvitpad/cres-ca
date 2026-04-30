@@ -89,12 +89,11 @@ interface SubmitResult {
   sheetSynced: boolean;
 }
 
-async function sendTg(chatId: string, text: string, buttons?: Array<{ text: string; url: string }>): Promise<number | null> {
+async function sendTg(chatId: string, text: string): Promise<number | null> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return null;
   try {
     const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };
-    if (buttons && buttons.length > 0) body.reply_markup = { inline_keyboard: [buttons] };
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -133,29 +132,20 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
     return null;
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.cres-ca.com';
-  const adminUrl = `${appUrl}/ru/superadmin/feedback`;
-  const sheetsId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  const sheetsUrl = sheetsId ? `https://docs.google.com/spreadsheets/d/${sheetsId}` : null;
-
-  const voiceLine = voiceFileUrl ? `\n<b>🎙 Аудио:</b> ${voiceFileUrl}` : '';
   const roleLine = profileRole ? ` (${profileRole})` : '';
   const tgText =
     `${CATEGORY_LABELS[category]} <b>Новый фидбек</b>\n` +
     `<b>От:</b> ${profileName}${roleLine}\n` +
     `<b>Источник:</b> ${source}\n` +
-    `<b>ID:</b> <code>${row.id}</code>${voiceLine}\n\n` +
+    `<b>ID:</b> <code>${row.id}</code>\n\n` +
     `<b>Суть:</b>\n${cleaned}\n\n` +
     `<i>Оригинал:</i>\n${originalText}`;
 
-  const buttons: Array<{ text: string; url: string }> = [{ text: '🔧 Открыть в админке', url: adminUrl }];
-  if (sheetsUrl) buttons.push({ text: '📊 Таблица', url: sheetsUrl });
-
-  await notifySuperadmin(tgText, { parseMode: 'HTML', buttons: [buttons] });
+  await notifySuperadmin(tgText, { parseMode: 'HTML' });
 
   const channelId = process.env.FEEDBACK_TG_CHANNEL_ID;
   if (channelId) {
-    const tgMessageId = await sendTg(channelId, tgText, buttons);
+    const tgMessageId = await sendTg(channelId, tgText);
     if (tgMessageId) {
       await supabase.from('feedback').update({ tg_message_id: tgMessageId }).eq('id', row.id);
     }
