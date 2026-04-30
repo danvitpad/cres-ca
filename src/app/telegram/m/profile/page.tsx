@@ -80,6 +80,7 @@ export default function MasterMiniAppProfile() {
   const [team, setTeam] = useState<TeamMembership | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [leaveConfirm, setLeaveConfirm] = useState(false);
+  const [leaveKeepWithSalon, setLeaveKeepWithSalon] = useState(false);
 
   function getInitData(): string | null {
     if (typeof window === 'undefined') return null;
@@ -120,7 +121,7 @@ export default function MasterMiniAppProfile() {
       const res = await fetch('/api/telegram/m/team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, action: 'leave', salonId: team.salon_id }),
+        body: JSON.stringify({ initData, action: 'leave', salonId: team.salon_id, keepWithSalon: leaveKeepWithSalon }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -473,6 +474,24 @@ export default function MasterMiniAppProfile() {
             </div>
             {!team.is_owner && team.role !== 'admin' ? (
               leaveConfirm ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 13, color: T.textSecondary }}>
+                    Что сделать с твоими будущими записями?
+                  </div>
+                  <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 10, border: `1px solid ${T.border}`, borderRadius: R.md, cursor: 'pointer' }}>
+                    <input type="radio" checked={!leaveKeepWithSalon} onChange={() => setLeaveKeepWithSalon(false)} style={{ marginTop: 3 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Записи переходят со мной</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>Перейдут в твой соло-календарь</div>
+                    </div>
+                  </label>
+                  <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: 10, border: `1px solid ${T.border}`, borderRadius: R.md, cursor: 'pointer' }}>
+                    <input type="radio" checked={leaveKeepWithSalon} onChange={() => setLeaveKeepWithSalon(true)} style={{ marginTop: 3 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.text }}>Остаются у салона</div>
+                      <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 2 }}>Будут отменены, клиенты выберут другого мастера</div>
+                    </div>
+                  </label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     type="button"
@@ -517,6 +536,7 @@ export default function MasterMiniAppProfile() {
                     {leaving ? <Loader2 size={14} className="animate-spin" /> : <LogOut size={14} />}
                     Выйти
                   </button>
+                </div>
                 </div>
               ) : (
                 <button

@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
 
 interface TeamMember {
@@ -54,6 +55,10 @@ export default function TeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
+  const [memberSalon, setMemberSalon] = useState<{ id: string; name: string } | null>(null);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [leaveKeepWithSalon, setLeaveKeepWithSalon] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteRole, setInviteRole] = useState<'master' | 'receptionist'>('master');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -84,6 +89,19 @@ export default function TeamPage() {
       .maybeSingle();
 
     if (!salon) {
+      // Not an owner — check if member of some team
+      const { data: member } = await supabase
+        .from('salon_members')
+        .select('salon_id, role, salon:salons(id, name)')
+        .eq('profile_id', userId)
+        .eq('status', 'active')
+        .neq('role', 'admin')
+        .maybeSingle();
+      const salonField = member?.salon;
+      const sa = (Array.isArray(salonField) ? salonField[0] : salonField) as { id: string; name: string | null } | null;
+      if (sa) {
+        setMemberSalon({ id: sa.id, name: sa.name ?? 'Команда' });
+      }
       setLoading(false);
       return;
     }
@@ -254,6 +272,97 @@ export default function TeamPage() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-20" />
         <Skeleton className="h-20" />
+      </div>
+    );
+  }
+
+  // Master is a member of someone else's team
+  if (memberSalon && !salonId) {
+    async function leaveTeam() {
+      if (!memberSalon) return;
+      setLeaveBusy(true);
+      const res = await fetch('/api/me/leave-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salonId: memberSalon.id, keepWithSalon: leaveKeepWithSalon }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string; message?: string; mode?: string; moved_appointments?: number; cancelled_appointments?: number };
+      setLeaveBusy(false);
+      if (!res.ok) { toast.error(j.message ?? j.error ?? 'Не удалось выйти'); return; }
+      const aps = j.mode === 'kept_with_salon'
+        ? `Отменено записей: ${j.cancelled_appointments ?? 0}. Клиенты получили уведомление.`
+        : `Перенесено записей в соло-календарь: ${j.moved_appointments ?? 0}.`;
+      toast.success(`Ты вышел из команды. ${aps}`);
+      setLeaveDialogOpen(false);
+      setMemberSalon(null);
+    }
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Users className="size-6 text-primary" />
+          Я в команде
+        </h2>
+        <Card>
+          <CardContent className="p-6 flex items-center justify-between gap-4">
+            <div>
+              <div className="text-lg font-semibold">{memberSalon.name}</div>
+              <div className="text-sm text-muted-foreground mt-1">Ты — мастер этой команды.</div>
+            </div>
+            <Button variant="destructive" onClick={() => setLeaveDialogOpen(true)}>
+              Выйти из команды
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Dialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Выйти из команды «{memberSalon.name}»?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 text-sm">
+              <p className="text-muted-foreground">
+                Что сделать с твоими будущими записями?
+              </p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/40">
+                  <input
+                    type="radio"
+                    checked={!leaveKeepWithSalon}
+                    onChange={() => setLeaveKeepWithSalon(false)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="font-medium">Записи переходят со мной</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Будущие записи перейдут в твой соло-календарь. Ты обслужишь клиентов сам.
+                    </div>
+                  </div>
+                </label>
+                <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/40">
+                  <input
+                    type="radio"
+                    checked={leaveKeepWithSalon}
+                    onChange={() => setLeaveKeepWithSalon(true)}
+                    className="mt-1"
+                  />
+                  <div>
+                    <div className="font-medium">Остаются у салона</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Будущие записи будут отменены. Клиенты получат уведомление выбрать другого мастера команды или записаться к тебе напрямую.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLeaveDialogOpen(false)} disabled={leaveBusy}>Отмена</Button>
+              <Button variant="destructive" onClick={leaveTeam} disabled={leaveBusy}>
+                {leaveBusy ? 'Выхожу…' : 'Подтвердить выход'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

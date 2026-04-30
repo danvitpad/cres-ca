@@ -15,6 +15,9 @@ interface Body {
   initData?: string;
   action?: 'status' | 'leave';
   salonId?: string;
+  /** true = appointments stay with salon (cancelled, clients notified to rebook).
+   *  false (default) = appointments go with master into his solo calendar. */
+  keepWithSalon?: boolean;
 }
 
 const ERROR_LABELS: Record<string, string> = {
@@ -100,6 +103,7 @@ export async function POST(request: Request) {
     const { data: rpcData, error: rpcError } = await admin.rpc('leave_salon_for', {
       p_profile_id: profile.id,
       p_salon_id: salonId,
+      p_keep_with_salon: body.keepWithSalon === true,
     });
 
     if (rpcError) {
@@ -112,18 +116,23 @@ export async function POST(request: Request) {
       ok: boolean;
       salon_name: string | null;
       salon_owner_id: string | null;
-      moved_appointments: number;
+      moved_appointments?: number;
+      cancelled_appointments?: number;
+      mode: 'taken_with_master' | 'kept_with_salon';
     };
     const result = rpcData as LeaveResult;
 
     // Уведомляем владельца команды (best-effort).
     if (result.salon_owner_id) {
       const masterName = profile.full_name ?? tg.first_name ?? 'Мастер';
+      const apsLine = result.mode === 'kept_with_salon'
+        ? `Будущие записи отменены (${result.cancelled_appointments ?? 0}). Клиенты получили уведомление о выборе другого мастера.`
+        : `Будущие записи (${result.moved_appointments ?? 0}) ушли с ним в соло-календарь.`;
       await notifyUser(admin, {
         profileId: result.salon_owner_id,
         title: `${masterName} вышел из команды`,
-        body: `Команда «${result.salon_name ?? 'без названия'}». Будущие записи мастера ушли в его соло-календарь (${result.moved_appointments}).`,
-        data: { type: 'salon_member_left', salon_id: salonId, profile_id: profile.id },
+        body: `Команда «${result.salon_name ?? 'без названия'}». ${apsLine}`,
+        data: { type: 'salon_member_left', salon_id: salonId, profile_id: profile.id, mode: result.mode },
         deepLinkPath: `/telegram/m/salon/${salonId}/team`,
         deepLinkLabel: 'Открыть команду',
       });
@@ -131,7 +140,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      moved_appointments: result.moved_appointments,
+      mode: result.mode,
+      moved_appointments: result.moved_appointments ?? 0,
+      cancelled_appointments: result.cancelled_appointments ?? 0,
     });
   }
 
