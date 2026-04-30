@@ -48,7 +48,6 @@ const sidebarNav = [
   { key: 'appointments', icon: CalendarDays, href: '/appointments' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
   { key: 'family', icon: Users, href: '/family' },
-  { key: 'search', icon: Search, href: '/search' },
   { key: 'wallet', icon: Wallet, href: '/wallet' },
   { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;

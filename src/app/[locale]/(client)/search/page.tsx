@@ -167,13 +167,16 @@ export default function SearchPage() {
       }
       if (opts.rating > 0) mQ = mQ.gte('rating', opts.rating);
       if (opts.cat !== 'all') mQ = mQ.ilike('specialization', `%${tInd(opts.cat)}%`);
-      if (hasQuery) {
+      // Multi-word search — каждое слово ищется отдельно в любом из полей.
+      // «даниил падалко» → AND слова в любом поле (display_name / specialization / city / address).
+      const words = hasQuery ? qText.split(/\s+/).filter((w) => w.length > 0) : [];
+      for (const w of words) {
         mQ = mQ.or(
           [
-            `display_name.ilike.%${qText}%`,
-            `specialization.ilike.%${qText}%`,
-            `city.ilike.%${qText}%`,
-            `address.ilike.%${qText}%`,
+            `display_name.ilike.%${w}%`,
+            `specialization.ilike.%${w}%`,
+            `city.ilike.%${w}%`,
+            `address.ilike.%${w}%`,
           ].join(','),
         );
       }
@@ -192,7 +195,9 @@ export default function SearchPage() {
           .lte('longitude', opts.lng + radiusDeg);
       }
       if (opts.rating > 0) sQ = sQ.gte('rating', opts.rating);
-      if (hasQuery) sQ = sQ.or([`name.ilike.%${qText}%`, `city.ilike.%${qText}%`].join(','));
+      for (const w of words) {
+        sQ = sQ.or([`name.ilike.%${w}%`, `city.ilike.%${w}%`].join(','));
+      }
 
       const [mRes, sRes] = await Promise.all([mQ, sQ]);
 
