@@ -167,19 +167,7 @@ export default function SearchPage() {
       }
       if (opts.rating > 0) mQ = mQ.gte('rating', opts.rating);
       if (opts.cat !== 'all') mQ = mQ.ilike('specialization', `%${tInd(opts.cat)}%`);
-      // Multi-word search — каждое слово ищется отдельно в любом из полей.
-      // «даниил падалко» → AND слова в любом поле (display_name / specialization / city / address).
-      const words = hasQuery ? qText.split(/\s+/).filter((w) => w.length > 0) : [];
-      for (const w of words) {
-        mQ = mQ.or(
-          [
-            `display_name.ilike.%${w}%`,
-            `specialization.ilike.%${w}%`,
-            `city.ilike.%${w}%`,
-            `address.ilike.%${w}%`,
-          ].join(','),
-        );
-      }
+      // Text search is done client-side after fetch so profiles.full_name is included.
 
       // Salons
       let sQ = supabase
@@ -195,18 +183,37 @@ export default function SearchPage() {
           .lte('longitude', opts.lng + radiusDeg);
       }
       if (opts.rating > 0) sQ = sQ.gte('rating', opts.rating);
-      for (const w of words) {
-        sQ = sQ.or([`name.ilike.%${w}%`, `city.ilike.%${w}%`].join(','));
-      }
 
       const [mRes, sRes] = await Promise.all([mQ, sQ]);
 
-      setMasters(((mRes.data ?? []) as unknown as MasterRow[]).map((r) => ({
-        ...r,
-        profiles: unwrap(r.profiles),
-        salon: unwrap(r.salon),
-      })));
-      setSalons((sRes.data ?? []) as unknown as SalonRow[]);
+      const words = hasQuery ? qText.toLowerCase().split(/\s+/).filter((w) => w.length > 0) : [];
+
+      function masterMatchesQuery(r: MasterRow) {
+        if (words.length === 0) return true;
+        const haystack = [
+          r.display_name,
+          (unwrap(r.profiles) as { full_name: string | null } | null)?.full_name,
+          r.specialization,
+          r.city,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return words.every((w) => haystack.includes(w));
+      }
+
+      function salonMatchesQuery(r: SalonRow) {
+        if (words.length === 0) return true;
+        const haystack = [r.name, r.city].filter(Boolean).join(' ').toLowerCase();
+        return words.every((w) => haystack.includes(w));
+      }
+
+      setMasters(
+        ((mRes.data ?? []) as unknown as MasterRow[])
+          .map((r) => ({ ...r, profiles: unwrap(r.profiles), salon: unwrap(r.salon) }))
+          .filter(masterMatchesQuery),
+      );
+      setSalons(((sRes.data ?? []) as unknown as SalonRow[]).filter(salonMatchesQuery));
       setLoading(false);
     },
     [tInd],
