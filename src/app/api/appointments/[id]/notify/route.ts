@@ -108,5 +108,19 @@ export async function POST(
 
   await Promise.allSettled(jobs);
 
+  // Dedup: DB trigger trg_appointments_booking_created auto-inserts a pending
+  // 'telegram' notification for the client on every appointment INSERT, which a
+  // cron sends later (5-min lag → would duplicate our immediate TG message).
+  // Mark it as 'sent' so the cron skips it.
+  if (clientProfileId) {
+    await adm
+      .from('notifications')
+      .update({ status: 'sent', sent_at: new Date().toISOString() })
+      .eq('profile_id', clientProfileId)
+      .eq('status', 'pending')
+      .eq('channel', 'telegram')
+      .filter('data->>apt_id', 'eq', appointmentId);
+  }
+
   return NextResponse.json({ ok: true });
 }
