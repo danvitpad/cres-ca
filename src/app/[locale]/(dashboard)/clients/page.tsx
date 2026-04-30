@@ -715,7 +715,9 @@ export default function ClientsPage() {
       {/* ═══ PARTNERS TAB — master↔master recommendation agreements ═══ */}
       {tab === 'users' && <PartnersSection C={C} />}
 
-      <Spotlight id="clients_search" target='[data-tour="clients-search"]' text="Ищите клиентов по имени, телефону или email — в том числе среди всех пользователей CRES-CA" position="bottom" />
+      {tab === 'clients' && (
+        <Spotlight id="clients_search" target='[data-tour="clients-search"]' text="Ищите клиентов по имени, телефону или email — в том числе среди всех пользователей CRES-CA" position="bottom" />
+      )}
     </div>
   );
 }
