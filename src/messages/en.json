@@ -969,7 +969,8 @@
     "notifViewAll": "All notifications",
     "toggleTheme": "Toggle theme",
     "darkMode": "Dark mode",
-    "lightMode": "Light mode"
+    "lightMode": "Light mode",
+    "searchFor": "Search"
   },
   "serviceCategories": {
     "allServices": "All services",

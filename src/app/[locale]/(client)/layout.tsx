@@ -378,24 +378,39 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 </div>
               </div>
               <div className="max-h-[380px] overflow-y-auto p-2">
-                <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">
-                  {tHeader('procedures')}
-                </p>
-                {headerCategories.map(({ key, icon: Icon }) => {
-                  const label = key === 'allServices' ? tHeader('allServices') : tInd(key);
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => goSearch(key === 'allServices' ? '' : label)}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                    >
-                      <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Icon className="size-4" />
-                      </div>
-                      <span>{label}</span>
-                    </button>
-                  );
-                })}
+                {searchInput.trim() ? (
+                  <button
+                    onClick={() => goSearch(searchInput)}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors font-medium"
+                  >
+                    <div className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
+                      <Search className="size-4" />
+                    </div>
+                    <span>{tHeader('searchFor')} «{searchInput.trim()}»</span>
+                    <ArrowRight className="ml-auto size-4 text-muted-foreground" />
+                  </button>
+                ) : (
+                  <>
+                    <p className="px-3 py-2 text-xs font-semibold text-muted-foreground">
+                      {tHeader('procedures')}
+                    </p>
+                    {headerCategories.map(({ key, icon: Icon }) => {
+                      const label = key === 'allServices' ? tHeader('allServices') : tInd(key);
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => goSearch(key === 'allServices' ? '' : label)}
+                          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
+                        >
+                          <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Icon className="size-4" />
+                          </div>
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </PopoverContent>
           </Popover>

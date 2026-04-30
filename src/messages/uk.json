@@ -951,7 +951,8 @@
     "notifViewAll": "Усі сповіщення",
     "toggleTheme": "Змінити тему",
     "darkMode": "Темна тема",
-    "lightMode": "Світла тема"
+    "lightMode": "Світла тема",
+    "searchFor": "Знайти"
   },
   "serviceCategories": {
     "allServices": "Усі послуги",

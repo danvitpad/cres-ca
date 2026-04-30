@@ -978,7 +978,8 @@
     "notifViewAll": "Все уведомления",
     "toggleTheme": "Сменить тему",
     "darkMode": "Тёмная тема",
-    "lightMode": "Светлая тема"
+    "lightMode": "Светлая тема",
+    "searchFor": "Найти"
   },
   "serviceCategories": {
     "allServices": "Все услуги",
