@@ -68,6 +68,47 @@ export async function POST(req: Request) {
     .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancel_reason: 'banned' })
     .eq('profile_id', body.profile_id);
 
+  // Cancel future appointments if the banned user is a master
+  try {
+    const { data: master } = await db
+      .from('masters')
+      .select('id')
+      .eq('profile_id', body.profile_id)
+      .maybeSingle();
+
+    if (master) {
+      const now = new Date().toISOString();
+      const { data: futureApts } = await db
+        .from('appointments')
+        .select('id, profile_id')
+        .eq('master_id', master.id)
+        .in('status', ['confirmed', 'pending'])
+        .gte('start_time', now);
+
+      if (futureApts && futureApts.length > 0) {
+        await db
+          .from('appointments')
+          .update({ status: 'cancelled', notes: 'Отменено: аккаунт мастера заблокирован' })
+          .in('id', futureApts.map(a => a.id));
+
+        const clientIds = [...new Set(futureApts.map(a => a.profile_id).filter(Boolean))];
+        for (const clientId of clientIds) {
+          await db.from('notifications').insert({
+            profile_id: clientId,
+            channel: 'in_app',
+            status: 'pending',
+            scheduled_for: now,
+            title: 'Запись отменена',
+            body: 'Ваша запись была отменена. Приносим извинения за неудобства.',
+            data: { type: 'appointment_cancelled_by_platform' },
+          });
+        }
+      }
+    }
+  } catch {
+    // best-effort: ban itself already succeeded
+  }
+
   await logSuperadminAction(sa.profileId, 'blacklist_add', 'profile', body.profile_id, {
     reason: body.reason ?? null,
     blacklist_id: data?.id,

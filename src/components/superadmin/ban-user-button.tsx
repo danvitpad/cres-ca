@@ -118,7 +118,7 @@ export function BanUserButton({
             </div>
 
             <div className="mb-4 rounded-lg border border-amber-400/20 bg-amber-500/[0.04] p-3 text-[12px] text-amber-200">
-              После блокировки: пользователь будет немедленно выкинут из сессии, не сможет войти. Подписка отменена, whitelist удалён.
+              После блокировки: пользователь будет немедленно выкинут из сессии, не сможет войти. Подписка отменена, whitelist удалён. Если это мастер — все будущие записи отменяются, клиенты получат уведомление.
             </div>
 
             <label className="block text-[11px] uppercase tracking-wider text-white/50">Причина блокировки</label>
