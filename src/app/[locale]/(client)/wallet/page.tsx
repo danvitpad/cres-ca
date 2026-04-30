@@ -70,7 +70,7 @@ export default function WalletPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, bonus_balance, bonus_points, lifetime_bonus, referral_code')
+        .select('id, referral_code')
         .eq('id', userId)
         .maybeSingle();
 
@@ -78,9 +78,17 @@ export default function WalletPage() {
         (profile?.referral_code as string | null) ??
         (userId ?? '').slice(0, 8).toUpperCase();
 
+      // Per-master loyalty balances (unified system, replaces deprecated profiles.bonus_*)
+      const { data: balances } = await supabase
+        .from('loyalty_balances')
+        .select('balance, lifetime_earned')
+        .eq('profile_id', userId);
+      const totalBalance = (balances ?? []).reduce((s, b) => s + Number(b.balance ?? 0), 0);
+      const totalLifetime = (balances ?? []).reduce((s, b) => s + Number(b.lifetime_earned ?? 0), 0);
+
       const { data: refList } = await supabase
         .from('referrals')
-        .select('id, bonus_points, created_at, referee_name')
+        .select('id, bonus_points, created_at')
         .eq('referrer_profile_id', userId)
         .order('created_at', { ascending: false })
         .limit(20);
@@ -90,9 +98,9 @@ export default function WalletPage() {
         (refList ?? []).reduce((s, r) => s + Number(r.bonus_points ?? 0), 0);
 
       setData({
-        balance: Number(profile?.bonus_balance ?? 0),
-        bonusPoints: Number(profile?.bonus_points ?? 0),
-        lifetimeEarned: Number(profile?.lifetime_bonus ?? 0),
+        balance: totalBalance,
+        bonusPoints: totalBalance,
+        lifetimeEarned: totalLifetime,
         referralCode: code,
         invitedCount: invited,
         referralEarned: refEarned,
@@ -103,7 +111,7 @@ export default function WalletPage() {
         items.push({
           id: `ref-${r.id}`,
           kind: 'in',
-          title: r.referee_name ? `+ ${r.referee_name}` : t('timelineRefBonus'),
+          title: t('timelineRefBonus'),
           amount: Number(r.bonus_points ?? 0),
           at: r.created_at,
         });
