@@ -52,8 +52,14 @@ export function BanUserButton({
     }
   };
 
+  const [confirmingUnban, setConfirmingUnban] = useState(false);
   const unban = async () => {
-    if (!confirm(`Разблокировать ${profileName}?`)) return;
+    if (!confirmingUnban) {
+      setConfirmingUnban(true);
+      // Авто-сброс через 5 секунд если не нажали повторно
+      setTimeout(() => setConfirmingUnban(false), 5000);
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch(`/api/superadmin/blacklist?profile_id=${profileId}`, {
@@ -61,6 +67,7 @@ export function BanUserButton({
       });
       if (res.ok) {
         toast.success('Разблокирован');
+        setConfirmingUnban(false);
         startTransition(() => router.refresh());
       } else {
         const err = await res.json().catch(() => ({ error: 'unknown' }));
@@ -77,10 +84,14 @@ export function BanUserButton({
         type="button"
         onClick={unban}
         disabled={submitting}
-        className="flex h-9 items-center gap-1.5 rounded-md border border-emerald-400/30 bg-emerald-500/10 px-3 text-[13px] font-medium text-emerald-200 transition-colors hover:bg-emerald-500/15 disabled:opacity-50"
+        className={`flex h-9 items-center gap-1.5 rounded-md border px-3 text-[13px] font-medium transition-colors disabled:opacity-50 ${
+          confirmingUnban
+            ? 'border-amber-400/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/20'
+            : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/15'
+        }`}
       >
         <Ban className="size-3.5" />
-        Разблокировать
+        {confirmingUnban ? 'Подтвердить разблокировку?' : 'Разблокировать'}
       </button>
     );
   }
