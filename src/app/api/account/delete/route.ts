@@ -56,8 +56,8 @@ export async function POST(request: Request) {
       const purgeDateStr = purgeDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
       await notifyUser(admin, {
         profileId: user.id,
-        title: 'Аккаунт помечен на удаление',
-        body: `Аккаунт будет удалён ${purgeDateStr}. Чтобы передумать — войди под этим email в течение 30 дней и нажми «Восстановить».`,
+        title: 'Запрос на удаление аккаунта принят',
+        body: `Учётная запись будет удалена ${purgeDateStr}. Восстановление доступно в течение 30 дней: выполните вход под этим адресом электронной почты и подтвердите восстановление. По истечении срока данные удаляются без возможности восстановления.`,
         data: { type: 'account_deletion_requested', purge_at: purgeDate.toISOString() },
       });
     } catch (e) {
@@ -85,8 +85,8 @@ export async function POST(request: Request) {
           if (!targetProfileId) continue;
           await notifyUser(admin, {
             profileId: targetProfileId,
-            title: 'Мастер временно недоступен',
-            body: `${masterName} приостановил приём. Запись на будущую дату может быть отменена. Если у вас есть вопросы — свяжитесь напрямую.`,
+            title: 'Изменение статуса записи',
+            body: `Специалист ${masterName} приостановил приём. Возможна отмена ранее подтверждённой записи. Рекомендуем связаться со специалистом для уточнения деталей.`,
             data: { type: 'master_unavailable', appointment_id: apt.id },
           });
         }

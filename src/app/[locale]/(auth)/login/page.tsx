@@ -393,7 +393,7 @@ export default function AuthPage() {
     setPendingUserId(null);
     setPendingActualRole(null);
     setPassword('');
-    toast.info('Вход отменён. Аккаунт по-прежнему помечен на удаление.');
+    toast.info('Вход отменён. Запрос на удаление аккаунта остаётся в силе.');
   }
 
   /* ───── sign-up ───── */
@@ -1019,10 +1019,10 @@ export default function AuthPage() {
                     <motion.div key="restore" {...slide} style={{ textAlign: 'center' }}>
                       <IconBubble><Shield size={24} /></IconBubble>
                       <h1 style={{ fontSize: 24, fontWeight: 300, margin: '14px 0 4px', letterSpacing: '-.02em' }}>
-                        Аккаунт помечен на удаление
+                        Учётная запись подлежит удалению
                       </h1>
                       <p style={{ fontSize: 13, color: 'var(--afg2)', margin: '0 0 22px', lineHeight: 1.5 }}>
-                        Хотите восстановить? После 30 дней с момента запроса удаления все данные удаляются безвозвратно.
+                        Был получен запрос на удаление этого аккаунта. Восстановление доступно в течение 30 дней с момента запроса. По истечении срока данные удаляются без возможности восстановления.
                       </p>
                       <PrimaryButton disabled={loading} onClick={handleRestoreConfirm} type="button">
                         {loading ? '...' : 'Восстановить аккаунт'}

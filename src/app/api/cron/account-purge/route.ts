@@ -61,8 +61,8 @@ export async function GET(request: Request) {
     const purgeDateStr = purgeDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
     await notifyUser(admin, {
       profileId: p.id,
-      title: 'Через 7 дней аккаунт будет удалён',
-      body: `${purgeDateStr} мы безвозвратно сотрём все данные. Если передумал — войди и нажми «Восстановить».`,
+      title: 'Напоминание: до удаления аккаунта осталось 7 дней',
+      body: `${purgeDateStr} учётная запись и связанные с ней данные будут удалены без возможности восстановления. Чтобы отменить удаление, выполните вход в систему и подтвердите восстановление.`,
       data: { type: 'account_purge_warning', purge_warn_kind: 'purge_7day', purge_at: purgeDate.toISOString() },
     });
     result.warned_7day += 1;
@@ -80,8 +80,8 @@ export async function GET(request: Request) {
     if (await alreadyWarned(p.id, 'purge_1day')) continue;
     await notifyUser(admin, {
       profileId: p.id,
-      title: 'Завтра аккаунт будет удалён безвозвратно',
-      body: 'Это последняя возможность отменить удаление. Войди под этим email и нажми «Восстановить».',
+      title: 'Финальное уведомление: удаление аккаунта завтра',
+      body: 'Это последнее напоминание. Завтра учётная запись и все связанные данные будут удалены без возможности восстановления. Чтобы отменить удаление, выполните вход в систему до окончания текущих суток.',
       data: { type: 'account_purge_warning', purge_warn_kind: 'purge_1day' },
     });
     result.warned_1day += 1;
