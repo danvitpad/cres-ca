@@ -430,6 +430,10 @@ export default function MiniAppSearchPage() {
         ...FONT_BASE,
         display: 'flex',
         flexDirection: 'column',
+        // height (not minHeight) so child with flex:1 actually fills viewport.
+        // Map view in the right tab needs full vertical space — minHeight let
+        // the container collapse to its content height (~300px map collapsed).
+        height: view === 'map' ? '100dvh' : 'auto',
         minHeight: '100dvh',
         background: T.bg,
         color: T.text,
@@ -731,7 +735,7 @@ export default function MiniAppSearchPage() {
             position: 'relative',
             margin: `0 ${PAGE_PADDING_X}px 16px`,
             flex: 1,
-            minHeight: 'calc(100dvh - 280px)',
+            minHeight: 0,
             overflow: 'hidden',
             borderRadius: R.lg,
             border: `1px solid ${T.borderSubtle}`,
