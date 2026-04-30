@@ -53,7 +53,13 @@ export type SubscriptionFeature =
   | 'social_posting'
   | 'punch_card_loyalty'
   | 'gdpr_export'
-  | 'tax_reports';
+  | 'tax_reports'
+  // — Step 13 (release) —
+  | 'team_management'      // Управление командой (несколько мастеров под админом)
+  | 'salon_marketing'      // Рассылки от лица салона
+  | 'unified_catalog'      // Единый каталог команды (salon_services)
+  | 'payouts'              // Payouts мастерам, commission %
+  | 'marketplace_publish'; // Авто-публикация на CRES-CA marketplace
 
 const STARTER_FEATURES: SubscriptionFeature[] = [
   'calendar', 'online_booking', 'basic_client_cards', 'reminders', 'basic_finance',
@@ -65,14 +71,18 @@ const PRO_FEATURES: SubscriptionFeature[] = [
   'gift_certificates', 'referral', 'auto_review_request', 'smart_rebooking',
   'burning_slots', 'auto_upsell', 'extended_analytics', 'punch_card_loyalty',
   'allergies', 'auto_messages',
+  // Step 13: PRO даёт мастеру voice AI и публикацию на marketplace
+  'voice_ai', 'marketplace_publish', 'tax_reports',
 ];
 
 const BUSINESS_FEATURES: SubscriptionFeature[] = [
   ...PRO_FEATURES,
-  'ai_features', 'voice_ai', 'multi_currency', 'guild_marketing', 'auto_reports',
-  'google_business', 'social_posting', 'gdpr_export', 'tax_reports',
+  'ai_features', 'multi_currency', 'guild_marketing', 'auto_reports',
+  'google_business', 'social_posting', 'gdpr_export',
   'cross_marketing', 'currency_tracking', 'behavior_indicators',
   'file_storage', 'equipment_booking', 'priority_support',
+  // Step 13: BUSINESS даёт инструменты команды
+  'team_management', 'salon_marketing', 'unified_catalog', 'payouts',
 ];
 
 export const SUBSCRIPTION_CONFIG: Record<SubscriptionTier, SubscriptionLimits> = {

@@ -149,6 +149,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // Step 13: гард по тарифу — voice_ai требует PRO+
+  const { checkFeatureAccess } = await import('@/lib/subscription/feature-access');
+  const access = await checkFeatureAccess(user.id, 'voice_ai');
+  if (!access.allowed) {
+    return NextResponse.json(
+      { error: 'feature_locked', feature: 'voice_ai', required_tier: 'pro', current_tier: access.tier },
+      { status: 402 },
+    );
+  }
+
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

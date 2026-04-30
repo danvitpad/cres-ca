@@ -36,12 +36,17 @@ export const ROUTE_FEATURES: Record<string, RouteFeatureRule> = {
   '/finance?tab=reports': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Reports' },
   '/finance?tab=services': { feature: 'extended_analytics', requiredTier: 'pro', label: 'Services profitability' },
 
-  '/marketing?tab=campaigns':  { feature: 'auto_messages', requiredTier: 'pro', label: 'Campaigns' },
-  '/marketing?tab=automation': { feature: 'auto_messages', requiredTier: 'pro', label: 'Automation' },
-  '/marketing?tab=deals':      { feature: 'auto_upsell', requiredTier: 'pro', label: 'Deals' },
-  '/marketing?tab=reviews':    { feature: 'auto_review_request', requiredTier: 'pro', label: 'Reviews' },
+  '/marketing?tab=campaigns':  { feature: 'auto_messages', requiredTier: 'pro', label: 'Кампании' },
+  '/marketing?tab=automation': { feature: 'auto_messages', requiredTier: 'pro', label: 'Автоматика' },
+  '/marketing?tab=deals':      { feature: 'auto_upsell', requiredTier: 'pro', label: 'Промокоды' },
+  '/marketing?tab=reviews':    { feature: 'auto_review_request', requiredTier: 'pro', label: 'Отзывы' },
+  '/marketing?tab=referrals':  { feature: 'referral', requiredTier: 'pro', label: 'Реферальная программа' },
 
-  '/settings/equipment': { feature: 'equipment_booking', requiredTier: 'business', label: 'Equipment booking' },
+  '/settings/equipment': { feature: 'equipment_booking', requiredTier: 'business', label: 'Оборудование' },
+
+  // Step 13: команда — только Business-уровень
+  '/salon': { feature: 'team_management', requiredTier: 'business', label: 'Команда' },
+  '/partners': { feature: 'cross_marketing', requiredTier: 'business', label: 'Партнёры' },
 };
 
 /**
