@@ -104,6 +104,38 @@ export default function DealsPage() {
   const [saving, setSaving] = useState(false);
   const [showServicePicker, setShowServicePicker] = useState(false);
 
+  // Шаг 10: simulator preview
+  interface SimulatorRow { service_name: string; original_price: number; final_price: number; material_cost: number; margin_per_visit: number; is_safe: boolean; warning: string | null; }
+  interface SimulatorSummary { total_services: number; safe_services: number; unsafe_services: number; min_margin_per_visit: number; avg_margin_per_visit: number; profit_per_100: number; }
+  const [simRows, setSimRows] = useState<SimulatorRow[]>([]);
+  const [simSummary, setSimSummary] = useState<SimulatorSummary | null>(null);
+
+  useEffect(() => {
+    if (!showForm || !form.discountValue || form.discountValue <= 0) {
+      setSimRows([]);
+      setSimSummary(null);
+      return;
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/promo-codes/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            discount_type: form.discountType,
+            discount_value: form.discountValue,
+            applicable_service_ids: form.serviceIds,
+          }),
+        });
+        if (!res.ok) { setSimRows([]); setSimSummary(null); return; }
+        const j = await res.json();
+        setSimRows(j.rows ?? []);
+        setSimSummary(j.summary ?? null);
+      } catch { /* ignore network */ }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [showForm, form.discountType, form.discountValue, form.serviceIds]);
+
   /* ── load data ─────────────────────────────────────── */
 
   const loadCodes = useCallback(async () => {
@@ -546,6 +578,38 @@ export default function DealsPage() {
                   </button>
                   <span style={{ fontSize: 13, color: C.text }}>{form.isActive ? 'Активен' : 'На паузе'}</span>
                 </div>
+
+                {/* Шаг 10: симулятор прибыли/убытка */}
+                {simSummary && simSummary.total_services > 0 && (
+                  <div style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    background: simSummary.unsafe_services > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
+                    border: `1px solid ${simSummary.unsafe_services > 0 ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: simSummary.unsafe_services > 0 ? '#dc2626' : '#059669', marginBottom: 6 }}>
+                      {simSummary.unsafe_services > 0 ? '⚠️ Внимание: убыточный сценарий' : '✓ Промокод безопасен'}
+                    </div>
+                    <p style={{ fontSize: 12, color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>
+                      {simSummary.unsafe_services > 0 ? (
+                        <>
+                          {simSummary.unsafe_services} из {simSummary.total_services} услуг станут убыточными после скидки.
+                          {' '}Минимальная маржа: <b style={{ color: '#dc2626' }}>{simSummary.min_margin_per_visit} ₴</b> за визит.
+                        </>
+                      ) : (
+                        <>
+                          После скидки средняя прибыль: <b style={{ color: '#059669' }}>{simSummary.avg_margin_per_visit} ₴</b> с визита.
+                          {' '}Если 100 клиентов применят — {simSummary.profit_per_100 > 0 ? `+${simSummary.profit_per_100}` : simSummary.profit_per_100} ₴ прибыли.
+                        </>
+                      )}
+                    </p>
+                    {simRows.filter(r => !r.is_safe).slice(0, 3).map((r, i) => (
+                      <p key={i} style={{ fontSize: 11, color: '#dc2626', margin: '4px 0 0 0' }}>
+                        • {r.service_name}: финал {Math.round(r.final_price)} ₴, расходники {Math.round(r.material_cost)} ₴
+                      </p>
+                    ))}
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>

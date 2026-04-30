@@ -404,9 +404,14 @@ export default function BookPage() {
     const endM = (endMinutes % 60).toString().padStart(2, '0');
     const endsAt = `${dateStr}T${endH}:${endM}:00`;
     const basePrice = Number(selectedService.price) + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
-    const bonusToSpend = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
+    const bonusCandidate = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
     const promoDiscount = appliedPromo?.discount_amount ?? 0;
-    const totalPrice = Math.max(0, basePrice - bonusToSpend - promoDiscount);
+    // Шаг 10.3: applies whichever discount is larger — promo OR bonuses, not both.
+    // When both are active, promo wins if it's bigger; otherwise bonuses win.
+    const useBonusInstead = bonusCandidate > promoDiscount;
+    const bonusToSpend = useBonusInstead ? bonusCandidate : 0;
+    const effectivePromoDiscount = useBonusInstead ? 0 : promoDiscount;
+    const totalPrice = Math.max(0, basePrice - bonusToSpend - effectivePromoDiscount);
 
     // Find or create client record for self or selected family member
     let clientId: string | null = null;
@@ -577,7 +582,7 @@ export default function BookPage() {
     // owning master read/write their own row, so this update is also safe via
     // direct call from the booking client. If RLS rejects, the booking still
     // succeeds — we just lose accurate counter (acceptable degradation).
-    if (appliedPromo && newAppointmentId) {
+    if (appliedPromo && newAppointmentId && effectivePromoDiscount > 0) {
       try {
         await supabase.rpc('bump_promo_uses', { p_promo_id: appliedPromo.promo_id });
       } catch { /* RLS reject is acceptable — counter is best-effort */ }
@@ -621,8 +626,13 @@ export default function BookPage() {
 
   const basePrice = (selectedService ? Number(selectedService.price) : 0)
     + selectedUpsells.reduce((s, u) => s + Number(u.price), 0);
-  const bonusPreview = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
-  const promoPreview = appliedPromo?.discount_amount ?? 0;
+  const bonusCandidatePreview = useBonuses ? Math.min(bonusPoints, Math.floor(basePrice)) : 0;
+  const promoCandidatePreview = appliedPromo?.discount_amount ?? 0;
+  // Шаг 10.3: only the larger of (bonus, promo) is applied — never both.
+  const bonusWinsPreview = bonusCandidatePreview > promoCandidatePreview;
+  const bonusPreview = bonusWinsPreview ? bonusCandidatePreview : 0;
+  const promoPreview = bonusWinsPreview ? 0 : promoCandidatePreview;
+  const showStackingHint = bonusCandidatePreview > 0 && promoCandidatePreview > 0;
   const totalPrice = Math.max(0, basePrice - bonusPreview - promoPreview);
 
   async function applyPromo() {
@@ -950,6 +960,13 @@ export default function BookPage() {
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Скидка бонусами</span>
                   <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{formatMoney(bonusPreview, selectedService.currency)}</span>
+                </div>
+              )}
+              {showStackingHint && (
+                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+                  {bonusWinsPreview
+                    ? 'Применены бонусы — они выгоднее промокода. Промокод сохранится для другой записи.'
+                    : 'Применён промокод — он выгоднее бонусов. Бонусы останутся на счёте.'}
                 </div>
               )}
 

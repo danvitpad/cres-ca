@@ -57,6 +57,13 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
   { match: /\b503\b/, ru: 'Сервис временно недоступен' },
   { match: /\b504\b/, ru: 'Сервер слишком долго отвечает' },
 
+  // ─── Кастомные защиты от убытков (Шаг 10) ───
+  { match: /promo_below_material_cost/i, ru: 'Этот промокод сделает услугу убыточной — финальная цена ниже расходников. Уменьши скидку.' },
+  { match: /promo_negative_price/i, ru: 'Скидка больше цены услуги — это бесплатно или с доплатой. Уменьши скидку.' },
+  { match: /promo_discount_too_large/i, ru: 'Скидка больше 95% — слишком много. Максимум 95%.' },
+  { match: /cyclic_referral_blocked/i, ru: 'Нельзя пригласить того, кто уже пригласил тебя — это циклическая цепь.' },
+  { match: /self_referral_blocked/i, ru: 'Нельзя пригласить самого себя.' },
+
   // ─── Default fallback ───
   { match: /Internal Server Error/i, ru: 'Сервер задумался. Попробуй ещё раз' },
 ];
