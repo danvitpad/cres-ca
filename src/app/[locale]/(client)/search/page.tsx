@@ -25,7 +25,10 @@ import {
   SlidersHorizontal,
   Building2,
   MapPin,
+  UserPlus,
+  Check,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import type { MapMarker, SalonMarker } from '@/components/shared/map-view';
 import {
@@ -675,42 +678,106 @@ interface ResultCardProps {
 }
 
 function ResultCard({ master, salon, city, href, labels }: ResultCardProps) {
+  const router = useRouter();
   const d = resolveCardDisplay(master, salon, labels);
   const Icon = d.mode === 'solo' ? MapPin : Building2;
+  const [following, setFollowing] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function toggleFollow(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (busy) return;
+    setBusy(true);
+    try {
+      let res: Response;
+      if (master?.id) {
+        res = await fetch('/api/follow/crm/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ masterId: master.id }),
+        });
+      } else if (salon?.id) {
+        res = await fetch(`/api/salon/${salon.id}/follow`, {
+          method: following ? 'DELETE' : 'POST',
+        });
+      } else {
+        return;
+      }
+      if (res.status === 401) {
+        router.push('/ru/login');
+        return;
+      }
+      if (!res.ok) {
+        toast.error('Не удалось обновить контакты');
+        return;
+      }
+      setFollowing(!following);
+      toast.success(!following ? 'Добавлено в контакты' : 'Удалено из контактов');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Link href={href} className="block">
-      <div className="group relative rounded-2xl border border-border/50 bg-card/80 backdrop-blur p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/20">
-        <div className="flex items-start gap-3">
-          <AvatarRing src={d.avatarSrc} name={d.avatarName} size={56} />
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(href)}
+      onKeyDown={(e) => { if (e.key === 'Enter') router.push(href); }}
+      className="group relative rounded-2xl border border-border/50 bg-card/80 backdrop-blur p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/20 cursor-pointer"
+    >
+      <div className="flex items-start gap-3">
+        <AvatarRing src={d.avatarSrc} name={d.avatarName} size={56} />
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <Icon className="size-3.5 shrink-0 text-muted-foreground" />
-              <h3 className="truncate font-semibold group-hover:text-primary transition-colors">
-                {d.primary}
-              </h3>
-            </div>
-            {d.secondary && (
-              <p className="truncate text-sm text-muted-foreground">{d.secondary}</p>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+            <h3 className="truncate font-semibold group-hover:text-primary transition-colors">
+              {d.primary}
+            </h3>
+          </div>
+          {d.secondary && (
+            <p className="truncate text-sm text-muted-foreground">{d.secondary}</p>
+          )}
+
+          <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
+            {d.rating != null && (
+              <span className="flex items-center gap-1">
+                <Star className="size-3.5 fill-amber-400 text-amber-400" />
+                <span className="tabular-nums">{d.rating.toFixed(1)}</span>
+              </span>
             )}
-
-            <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-              {d.rating != null && (
-                <span className="flex items-center gap-1">
-                  <Star className="size-3.5 fill-amber-400 text-amber-400" />
-                  <span className="tabular-nums">{d.rating.toFixed(1)}</span>
-                </span>
-              )}
-              {city && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="size-3.5" />
-                  {city}
-                </span>
-              )}
-            </div>
+            {city && (
+              <span className="flex items-center gap-1">
+                <MapPin className="size-3.5" />
+                {city}
+              </span>
+            )}
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={toggleFollow}
+          disabled={busy}
+          className={cn(
+            'flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+            following
+              ? 'border-primary/40 bg-primary/10 text-primary'
+              : 'border-border bg-background text-foreground hover:border-primary/40 hover:bg-primary/5',
+            busy && 'opacity-50',
+          )}
+        >
+          {busy ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : following ? (
+            <Check className="size-3.5" />
+          ) : (
+            <UserPlus className="size-3.5" />
+          )}
+          {following ? 'В контактах' : 'В контакты'}
+        </button>
       </div>
-    </Link>
+    </div>
   );
 }

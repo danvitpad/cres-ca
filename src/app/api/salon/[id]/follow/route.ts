@@ -54,16 +54,32 @@ export async function POST(
     return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
   }
 
-  if (salon.owner_id && salon.owner_id !== user.id) {
-    const adm = admin();
-    const { data: profile } = await adm
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .maybeSingle();
-    const clientName = profile?.full_name || 'Клиент';
+  // Notify ALL admins of the salon (owner + admin/receptionist team members),
+  // not just the owner — anyone with admin access should know about new contact.
+  const adm = admin();
+  const { data: profile } = await adm
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .maybeSingle();
+  const clientName = profile?.full_name || 'Клиент';
+
+  // Collect admin profile_ids: owner + members with role='admin' or 'receptionist'
+  const recipients = new Set<string>();
+  if (salon.owner_id) recipients.add(salon.owner_id);
+  const { data: members } = await adm
+    .from('salon_members')
+    .select('profile_id, role')
+    .eq('salon_id', salonId)
+    .in('role', ['admin', 'receptionist']);
+  for (const m of (members ?? []) as Array<{ profile_id: string }>) {
+    if (m.profile_id) recipients.add(m.profile_id);
+  }
+  recipients.delete(user.id); // don't notify the follower themselves
+
+  for (const recipientId of recipients) {
     await notifyUser(adm, {
-      profileId: salon.owner_id,
+      profileId: recipientId,
       title: 'Новый контакт салона',
       body: `${clientName} добавил ваш салон в контакты`,
       data: {

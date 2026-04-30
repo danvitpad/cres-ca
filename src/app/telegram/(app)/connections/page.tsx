@@ -9,8 +9,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, Sparkles } from 'lucide-react';
+import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, Sparkles, UserMinus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -72,6 +73,7 @@ interface NextSlot {
 }
 
 export default function MiniAppContactsPage() {
+  const router = useRouter();
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
   const [tab, setTab] = useState<Tab>('masters');
@@ -82,6 +84,73 @@ export default function MiniAppContactsPage() {
   const [friends, setFriends] = useState<FriendItem[]>([]);
   const [nextSlots, setNextSlots] = useState<NextSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  function tgConfirm(message: string): Promise<boolean> {
+    const tg = (typeof window !== 'undefined' ? window : null) as
+      | (Window & { Telegram?: { WebApp?: { showConfirm?: (m: string, cb: (ok: boolean) => void) => void } } })
+      | null;
+    if (tg?.Telegram?.WebApp?.showConfirm) {
+      return new Promise((resolve) => tg.Telegram!.WebApp!.showConfirm!(message, (ok) => resolve(ok)));
+    }
+    return Promise.resolve(window.confirm(message));
+  }
+
+  async function unfollowMaster(id: string, name: string | null) {
+    if (removing) return;
+    const ok = await tgConfirm(`Удалить ${name ?? 'мастера'} из контактов?`);
+    if (!ok) return;
+    setRemoving(id);
+    haptic('warning');
+    try {
+      const res = await fetch('/api/follow/crm/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ masterId: id }),
+      });
+      if (res.ok) setMasters((prev) => prev.filter((m) => m.id !== id));
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  async function unfollowSalon(id: string, name: string) {
+    if (removing) return;
+    const ok = await tgConfirm(`Удалить салон "${name}" из контактов?`);
+    if (!ok) return;
+    setRemoving(id);
+    haptic('warning');
+    try {
+      const res = await fetch(`/api/salon/${id}/follow`, {
+        method: 'DELETE',
+        headers: authHeaders(),
+      });
+      if (res.ok) setSalons((prev) => prev.filter((s) => s.id !== id));
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  async function unfollowFriend(id: string, name: string | null) {
+    if (removing) return;
+    const ok = await tgConfirm(`Отписаться от ${name ?? 'пользователя'}?`);
+    if (!ok) return;
+    setRemoving(id);
+    haptic('warning');
+    try {
+      const res = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ targetId: id }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { following?: boolean };
+        if (data.following === false) setFriends((prev) => prev.filter((f) => f.id !== id));
+      }
+    } finally {
+      setRemoving(null);
+    }
+  }
 
   useEffect(() => {
     if (!userId) return;
@@ -194,10 +263,12 @@ export default function MiniAppContactsPage() {
               <ul className="space-y-2">
               {masters.map((m) => (
                 <li key={m.id}>
-                  <Link
-                    href={`/telegram/m/${m.id}`}
-                    onClick={() => haptic('light')}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-3 py-3 active:bg-neutral-50 transition-colors"
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { haptic('light'); router.push(`/telegram/m/${m.id}`); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/m/${m.id}`); }}
+                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
                   >
                     <Avatar src={m.avatar} name={m.name} />
                     <div className="min-w-0 flex-1">
@@ -226,8 +297,16 @@ export default function MiniAppContactsPage() {
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-neutral-400" />
-                  </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); unfollowMaster(m.id, m.name); }}
+                      disabled={removing === m.id}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
+                      aria-label="Удалить из контактов"
+                    >
+                      {removing === m.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
+                    </button>
+                  </div>
                 </li>
               ))}
               </ul>
@@ -246,10 +325,12 @@ export default function MiniAppContactsPage() {
             <ul className="space-y-2">
               {salons.map((s) => (
                 <li key={s.id}>
-                  <Link
-                    href={`/telegram/salon/${s.id}`}
-                    onClick={() => haptic('light')}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-3 py-3 active:bg-neutral-50 transition-colors"
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { haptic('light'); router.push(`/telegram/salon/${s.id}`); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/salon/${s.id}`); }}
+                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
                   >
                     <Avatar src={s.logo} name={s.name} />
                     <div className="min-w-0 flex-1">
@@ -269,8 +350,16 @@ export default function MiniAppContactsPage() {
                         )}
                       </div>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-neutral-400" />
-                  </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); unfollowSalon(s.id, s.name); }}
+                      disabled={removing === s.id}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
+                      aria-label="Удалить из контактов"
+                    >
+                      {removing === s.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -289,10 +378,12 @@ export default function MiniAppContactsPage() {
             <ul className="space-y-2">
               {friends.map((f) => (
                 <li key={f.id}>
-                  <Link
-                    href={f.publicId ? `/telegram/u/${f.publicId}` : '#'}
-                    onClick={() => haptic('light')}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-3 py-3 active:bg-neutral-50 transition-colors"
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => { if (f.publicId) { haptic('light'); router.push(`/telegram/u/${f.publicId}`); } }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && f.publicId) router.push(`/telegram/u/${f.publicId}`); }}
+                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
                   >
                     <Avatar src={f.avatar} name={f.name} />
                     <div className="min-w-0 flex-1">
@@ -301,8 +392,16 @@ export default function MiniAppContactsPage() {
                         {f.slug ? `@${f.slug}` : f.publicId ?? ''}
                       </p>
                     </div>
-                    <ChevronRight className="size-4 shrink-0 text-neutral-400" />
-                  </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); unfollowFriend(f.id, f.name); }}
+                      disabled={removing === f.id}
+                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
+                      aria-label="Отписаться"
+                    >
+                      {removing === f.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

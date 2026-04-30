@@ -7,6 +7,16 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { notifyUser } from '@/lib/notifications/notify';
+
+function admin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
 
 export async function POST(req: Request) {
   const supabase = await createClient();
@@ -52,25 +62,28 @@ export async function POST(req: Request) {
   ]);
 
   const myName = myProfile?.full_name || 'Пользователь';
+  const adm = admin();
 
-  // Notify target about new follower
-  await supabase.from('notifications').insert({
-    profile_id: targetId,
-    channel: 'push',
+  // Notify target about new follower (in-app + TG)
+  await notifyUser(adm, {
+    profileId: targetId,
     title: 'Новый подписчик',
     body: `${myName} подписался на вас`,
     data: { type: 'new_follower', follower_profile_id: user.id },
+    deepLinkPath: '/telegram/m/clients',
+    deepLinkLabel: 'Открыть',
   });
 
-  // If mutual — notify both
+  // If mutual — notify the new follower too
   if (mutual) {
     const targetName = targetProfile?.full_name || 'Пользователь';
-    await supabase.from('notifications').insert({
-      profile_id: user.id,
-      channel: 'push',
+    await notifyUser(adm, {
+      profileId: user.id,
       title: 'Взаимная подписка',
       body: `${targetName} тоже подписан на вас`,
       data: { type: 'mutual_follow', profile_id: targetId },
+      deepLinkPath: '/telegram/app/connections',
+      deepLinkLabel: 'Открыть',
     });
   }
 
