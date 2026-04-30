@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
@@ -38,8 +38,19 @@ export default function MarketingPage() {
   const pathname = usePathname();
   const { C } = usePageTheme();
 
-  const rawTab = searchParams.get('tab') || 'campaigns';
-  const activeTab = TABS.some(t => t.value === rawTab) ? (rawTab as TopTab) : 'campaigns';
+  // Hydration-safe: на SSR всегда default 'campaigns'. После монтирования
+  // useEffect читает реальный ?tab= из URL и переключает таб. Раньше читали
+  // searchParams напрямую при первом render → SSR ≠ client → React #418
+  // → нужен был F5 чтобы вкладка ожила.
+  const [activeTab, setActiveTab] = useState<TopTab>('campaigns');
+  useEffect(() => {
+    const rawTab = searchParams.get('tab') || 'campaigns';
+    if (TABS.some(t => t.value === rawTab)) {
+      setActiveTab(rawTab as TopTab);
+    } else {
+      setActiveTab('campaigns');
+    }
+  }, [searchParams]);
 
   function setTab(key: string) {
     const params = new URLSearchParams(searchParams.toString());

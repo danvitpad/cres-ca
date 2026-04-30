@@ -86,6 +86,12 @@ export default function BookPage() {
   const rescheduleId = searchParams.get('reschedule');
   const salonId = searchParams.get('salon');
 
+  // Hydration-safe gate: рендерим skeleton до монтирования, чтобы SSR HTML
+  // совпадал с клиентом. Раньше клик на услугу замораживал страницу из-за
+  // React #418 (различие в DOM между server и client из-за useTheme/searchParams).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const [step, setStep] = useState<Step>('service');
   const [master, setMaster] = useState<MasterInfo | null>(null);
   const [services, setServices] = useState<ServiceItem[]>([]);
@@ -643,6 +649,18 @@ export default function BookPage() {
     }
 
     router.push('/appointments');
+  }
+
+  // Hydration gate: до монтирования показываем skeleton (одинаковый для SSR и client).
+  // Это устраняет React #418 hydration mismatch на /book.
+  if (!mounted) {
+    return (
+      <div className="p-4 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    );
   }
 
   if (!preselectedMasterId) {
