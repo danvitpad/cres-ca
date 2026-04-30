@@ -67,8 +67,8 @@ export async function POST(
   const masterName = (masterRow as { display_name?: string } | null)?.display_name || 'Мастер';
 
   const startsAt = new Date(apt.starts_at as string);
-  const dateStr = startsAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
-  const timeStr = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const dateStr = startsAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' });
+  const timeStr = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' });
 
   const jobs: Promise<void>[] = [];
 

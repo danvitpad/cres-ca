@@ -46,13 +46,23 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (clientProfile) {
-    await supabase.from('clients').upsert({
-      profile_id: clientProfileId,
-      master_id: master.id,
-      full_name: clientProfile.full_name || 'Клиент',
-      phone: clientProfile.phone || null,
-      email: clientProfile.email || null,
-    }, { onConflict: 'profile_id,master_id', ignoreDuplicates: true });
+    // SELECT-then-INSERT (clients table only has a partial unique index on
+    // (profile_id, master_id), which Postgres ON CONFLICT can't target).
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('profile_id', clientProfileId)
+      .eq('master_id', master.id)
+      .maybeSingle();
+    if (!existingClient) {
+      await supabase.from('clients').insert({
+        profile_id: clientProfileId,
+        master_id: master.id,
+        full_name: clientProfile.full_name || 'Клиент',
+        phone: clientProfile.phone || null,
+        email: clientProfile.email || null,
+      });
+    }
   }
 
   // Notify client about mutual follow
