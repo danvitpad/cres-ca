@@ -479,6 +479,9 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
   const [hours, setHours] = useState<WorkingHours>(master.working_hours || {});
   const [bufferMin, setBufferMin] = useState<number>(((master as unknown) as { long_visit_buffer_minutes: number | null }).long_visit_buffer_minutes ?? 0);
   const [bufferThreshold, setBufferThreshold] = useState<number>(((master as unknown) as { long_visit_threshold_minutes: number | null }).long_visit_threshold_minutes ?? 120);
+  const [cancelGraceHours, setCancelGraceHours] = useState<number>(((master as unknown) as { cancel_grace_hours: number | null }).cancel_grace_hours ?? 24);
+  const [lateCancelThreshold, setLateCancelThreshold] = useState<number>(((master as unknown) as { late_cancel_threshold: number | null }).late_cancel_threshold ?? 2);
+  const [noShowThreshold, setNoShowThreshold] = useState<number>(((master as unknown) as { no_show_threshold: number | null }).no_show_threshold ?? 1);
 
   function toggleDay(day: string, enabled: boolean) {
     setHours((prev) => ({
@@ -521,6 +524,9 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
         working_hours: hours,
         long_visit_buffer_minutes: bufferMin,
         long_visit_threshold_minutes: bufferThreshold,
+        cancel_grace_hours: cancelGraceHours,
+        late_cancel_threshold: lateCancelThreshold,
+        no_show_threshold: noShowThreshold,
       })
       .eq('id', master.id);
     setSaving(false);
@@ -613,6 +619,53 @@ function WorkingHoursTab({ master, onSaved }: { master: NonNullable<ReturnType<t
           </SettingsField>
           <SettingsField label="Порог длительности (мин)" C={C}>
             <input type="number" min={30} max={480} value={bufferThreshold} onChange={(e) => setBufferThreshold(Number(e.target.value) || 120)} style={settingsInputStyle(C)} />
+          </SettingsField>
+        </div>
+      </SettingsBlock>
+
+      <SettingsBlock
+        title="Правила отмены"
+        subtitle="Защита от частых отмен в последний момент. Клиент видит правило перед записью; нарушения отображаются в его карточке."
+        C={C}
+      >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+          <SettingsField label="Безопасная отмена за…" C={C}>
+            <SettingsSegmented
+              value={String(cancelGraceHours)}
+              onChange={(v) => setCancelGraceHours(Number(v))}
+              options={[
+                { value: '1', label: '1 ч' },
+                { value: '6', label: '6 ч' },
+                { value: '12', label: '12 ч' },
+                { value: '24', label: '24 ч' },
+                { value: '48', label: '48 ч' },
+              ]}
+              C={C}
+            />
+          </SettingsField>
+          <SettingsField label="Поздних отмен → метка" C={C}>
+            <SettingsSegmented
+              value={String(lateCancelThreshold)}
+              onChange={(v) => setLateCancelThreshold(Number(v))}
+              options={[
+                { value: '1', label: '1' },
+                { value: '2', label: '2' },
+                { value: '3', label: '3' },
+              ]}
+              C={C}
+            />
+          </SettingsField>
+          <SettingsField label="Неявок → большая метка" C={C}>
+            <SettingsSegmented
+              value={String(noShowThreshold)}
+              onChange={(v) => setNoShowThreshold(Number(v))}
+              options={[
+                { value: '1', label: '1' },
+                { value: '2', label: '2' },
+                { value: '3', label: '3' },
+              ]}
+              C={C}
+            />
           </SettingsField>
         </div>
       </SettingsBlock>
