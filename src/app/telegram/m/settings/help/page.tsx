@@ -76,7 +76,7 @@ function Item({ q, a }: { q: string; a: string }) {
 export default function MiniAppHelpPage() {
   return (
     <SettingsShell title="Помощь">
-      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200">
+      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
         {FAQ.map((f, i) => <Item key={i} q={f.q} a={f.a} />)}
       </ul>
       <Link
@@ -85,7 +85,7 @@ export default function MiniAppHelpPage() {
       >
         <ChatCircle size={18} weight="fill" className="text-violet-700" />
         <div>
-          <p className="text-[13px] font-semibold text-violet-100">Нужна помощь с чем-то ещё?</p>
+          <p className="text-[13px] font-semibold text-violet-700">Нужна помощь с чем-то ещё?</p>
           <p className="text-[11px] text-violet-600/70">Напиши в обратную связь — отвечу лично</p>
         </div>
       </Link>

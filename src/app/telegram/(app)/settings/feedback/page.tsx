@@ -56,7 +56,7 @@ export default function ClientMiniAppFeedbackPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+            className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
             aria-label="Назад"
           >
             <ChevronLeft className="size-5" />
@@ -96,7 +96,7 @@ export default function ClientMiniAppFeedbackPage() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+          className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
           aria-label="Назад"
         >
           <ChevronLeft className="size-5" />
@@ -113,7 +113,7 @@ export default function ClientMiniAppFeedbackPage() {
           onChange={(e) => setText(e.target.value.slice(0, MAX))}
           placeholder="Например: хотелось бы видеть напоминания за 2 часа, а не только за сутки…"
           rows={8}
-          className="w-full resize-none rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-4 py-3 text-[13px] leading-relaxed text-neutral-900 placeholder:text-neutral-400 focus:border-violet-400 focus:outline-none"
+          className="w-full resize-none rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-[13px] leading-relaxed text-neutral-900 placeholder:text-neutral-400 focus:border-violet-400 focus:outline-none"
         />
         <div className="mt-1.5 flex items-center justify-between px-1">
           <p className="text-[11px] text-neutral-400">
@@ -138,7 +138,7 @@ export default function ClientMiniAppFeedbackPage() {
         )}
       </button>
 
-      <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+      <div className="rounded-2xl border border-neutral-200 bg-white p-4">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">или голосом — в Telegram</p>
         <p className="mt-1.5 text-[12px] leading-relaxed text-neutral-700">
           Открой нашего <a href="https://t.me/crescacom_bot" target="_blank" rel="noreferrer" className="font-semibold text-violet-600 underline">Telegram-бота</a> и отправь команду <code className="rounded bg-white/10 px-1 text-violet-700">/feedback</code> или голосовое со словами «обратная связь». AI расшифрует и передаст команде CRES-CA.

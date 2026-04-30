@@ -112,7 +112,7 @@ export default function MiniAppBillingPage() {
 
       <Link
         href="/ru/settings/billing"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-100 active:bg-violet-500/25 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-700 active:bg-violet-200 transition-colors"
       >
         {tier === 'trial' ? 'Выбрать тариф' : 'Управление подпиской'}
         <ArrowSquareOut size={14} weight="bold" />

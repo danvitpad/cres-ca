@@ -60,8 +60,8 @@ export default function MiniAppServicesPage() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-8 text-center">
-          <div className="mx-auto flex size-10 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-8 text-center">
+          <div className="mx-auto flex size-10 items-center justify-center rounded-xl border border-neutral-200 bg-white">
             <Scissors size={18} className="text-neutral-400" />
           </div>
           <p className="mt-3 text-[13px] text-neutral-600">Пока нет услуг</p>
@@ -77,7 +77,7 @@ export default function MiniAppServicesPage() {
               transition={{ delay: i * 0.02 }}
               className={`flex items-center gap-3 rounded-2xl border px-4 py-3 ${
                 s.is_active
-                  ? 'border-neutral-200 bg-white border-neutral-200'
+                  ? 'border-neutral-200 bg-white'
                   : 'border-white/5 bg-white/[0.015] opacity-60'
               }`}
             >
@@ -102,7 +102,7 @@ export default function MiniAppServicesPage() {
 
       <Link
         href="/ru/services"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-100 active:bg-violet-500/25 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-700 active:bg-violet-200 transition-colors"
       >
         <Plus size={15} weight="bold" />
         Добавить / редактировать

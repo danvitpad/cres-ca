@@ -102,7 +102,7 @@ export default function VoiceAssistantMiniApp() {
     <div className="px-4 py-5 pb-10">
       <header className="mb-5">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-full border border-neutral-200 bg-white border-neutral-200 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full border border-neutral-200 bg-white flex items-center justify-center">
             <Mic className="w-5 h-5 text-violet-600" />
           </div>
           <h1 className="text-xl font-semibold">Голосовой ассистент</h1>
@@ -133,9 +133,9 @@ export default function VoiceAssistantMiniApp() {
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.04 * i, duration: 0.25 }}
-                className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-start gap-3"
+                className="rounded-xl border border-neutral-200 bg-white p-3 flex items-start gap-3"
               >
-                <div className="w-8 h-8 rounded-lg border border-neutral-200 bg-white border-neutral-200 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg border border-neutral-200 bg-white flex items-center justify-center shrink-0">
                   <Icon className="w-4 h-4 text-neutral-700" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -159,7 +159,7 @@ export default function VoiceAssistantMiniApp() {
             ))}
           </div>
         ) : logs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-4 text-sm text-neutral-400 text-center">
+          <div className="rounded-xl border border-dashed border-neutral-200 bg-white p-4 text-sm text-neutral-400 text-center">
             Пока нет голосовых команд.
           </div>
         ) : (
@@ -169,7 +169,7 @@ export default function VoiceAssistantMiniApp() {
                 key={log.id}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-start gap-3"
+                className="rounded-xl border border-neutral-200 bg-white p-3 flex items-start gap-3"
               >
                 {log.status === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />

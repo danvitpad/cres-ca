@@ -208,7 +208,7 @@ export default function MiniAppContactsPage() {
       <p className="mt-1 text-[13px] text-neutral-500">Твои мастера, салоны и друзья</p>
 
       {/* Tabs */}
-      <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-1">
+      <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
         <TabBtn active={tab === 'masters'} onClick={() => { setTab('masters'); haptic('light'); }} icon={User} label="Мастера" count={counts.masters} />
         <TabBtn active={tab === 'salons'} onClick={() => { setTab('salons'); haptic('light'); }} icon={Building2} label="Салоны" count={counts.salons} />
         <TabBtn active={tab === 'friends'} onClick={() => { setTab('friends'); haptic('light'); }} icon={Users} label="Друзья" count={counts.friends} />
@@ -476,8 +476,8 @@ function EmptyState({
   ctaHref: string;
 }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-neutral-200 bg-white border-neutral-200 px-6 py-10 text-center">
-      <div className="flex size-14 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200">
+    <div className="flex flex-col items-center rounded-2xl border border-neutral-200 bg-white px-6 py-10 text-center">
+      <div className="flex size-14 items-center justify-center rounded-full border border-neutral-200 bg-white">
         <Icon className="size-6 text-neutral-600" />
       </div>
       <p className="mt-4 text-[15px] font-semibold">{title}</p>

@@ -197,7 +197,7 @@ export default function ClientMiniAppNotifications() {
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white border-neutral-200 px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
+            className="rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
           >
             Прочитать всё
           </button>
@@ -211,8 +211,8 @@ export default function ClientMiniAppNotifications() {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-10 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200">
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-10 text-center">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-neutral-200 bg-white">
             <Inbox className="size-6 text-neutral-600" />
           </div>
           <p className="mt-4 text-base font-semibold">Пусто</p>
@@ -244,10 +244,10 @@ export default function ClientMiniAppNotifications() {
                             navigateToProfile(followerProfileId);
                           }
                         }}
-                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 pl-5 text-left active:bg-neutral-50 transition-colors"
+                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 pl-5 text-left active:bg-neutral-50 transition-colors"
                       >
                         {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white">
                           <Icon className={`size-4 ${iconColor}`} />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -270,7 +270,7 @@ export default function ClientMiniAppNotifications() {
                             disabled={followState === 'loading'}
                             className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
                               followState === true
-                                ? 'border border-neutral-200 bg-white border-neutral-200 text-neutral-700 active:bg-neutral-50'
+                                ? 'border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50'
                                 : 'bg-white text-black active:bg-white/80'
                             }`}
                           >

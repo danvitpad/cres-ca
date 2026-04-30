@@ -33,7 +33,7 @@ export function SettingsShell({
       <Link
         href={back}
         onClick={() => haptic('light')}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white border-neutral-200 px-3 py-1.5 text-[12px] text-neutral-700 active:bg-neutral-50 transition-colors"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] text-neutral-700 active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft size={13} weight="bold" />
         Назад

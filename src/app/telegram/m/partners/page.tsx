@@ -88,7 +88,7 @@ export default function MasterMiniAppPartnersList() {
       className="space-y-4 px-4 pt-4 pb-24"
     >
       {/* Tabs */}
-      <div className="flex gap-1.5 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-1">
+      <div className="flex gap-1.5 rounded-2xl border border-neutral-200 bg-white p-1">
         <Link
           href="/telegram/m/clients"
           onClick={() => haptic('light')}

@@ -573,7 +573,7 @@ export default function MiniAppBookPage() {
           <div className="flex items-center justify-between">
             <button
               onClick={goBack}
-              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
             >
               <ArrowLeft className="size-4 text-neutral-800" />
             </button>
@@ -586,7 +586,7 @@ export default function MiniAppBookPage() {
 
             <button
               onClick={handleClose}
-              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
             >
               <X className="size-4 text-neutral-800" />
             </button>
@@ -636,7 +636,7 @@ export default function MiniAppBookPage() {
                       className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
                         !activeCategory
                           ? 'bg-white text-black'
-                          : 'border border-neutral-200 bg-white border-neutral-200 text-neutral-700 active:bg-neutral-50'
+                          : 'border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50'
                       }`}
                     >
                       Все
@@ -648,7 +648,7 @@ export default function MiniAppBookPage() {
                         className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
                           activeCategory === cat.id
                             ? 'bg-white text-black'
-                            : 'border border-neutral-200 bg-white border-neutral-200 text-neutral-700 active:bg-neutral-50'
+                            : 'border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50'
                         }`}
                       >
                         {cat.name}
@@ -669,7 +669,7 @@ export default function MiniAppBookPage() {
                         initial="hidden"
                         animate="visible"
                         onClick={() => toggleService(service)}
-                        className={`group relative flex w-full items-start gap-3.5 overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 pl-5 text-left transition-colors active:bg-neutral-50`}
+                        className={`group relative flex w-full items-start gap-3.5 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 pl-5 text-left transition-colors active:bg-neutral-50`}
                       >
                         {isSelected && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
                         {/* Checkmark circle */}
@@ -751,7 +751,7 @@ export default function MiniAppBookPage() {
                   </h2>
                   <button
                     onClick={() => { haptic('light'); setShowFullCalendar(!showFullCalendar); }}
-                    className={`flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white border-neutral-200 transition-colors active:bg-neutral-50 ${
+                    className={`flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white transition-colors active:bg-neutral-50 ${
                       showFullCalendar ? 'text-violet-600' : 'text-neutral-600'
                     }`}
                   >
@@ -795,7 +795,7 @@ export default function MiniAppBookPage() {
                                     ? 'opacity-30'
                                     : isToday
                                       ? 'border border-neutral-300 bg-white border-neutral-200'
-                                      : 'border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50'
+                                      : 'border border-neutral-200 bg-white active:bg-neutral-50'
                               }`}
                               style={{ minWidth: 56 }}
                             >
@@ -828,7 +828,7 @@ export default function MiniAppBookPage() {
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
-                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
                         >
                           <ChevronLeft className="size-4" />
                         </button>
@@ -837,7 +837,7 @@ export default function MiniAppBookPage() {
                         </span>
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
-                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
                         >
                           <ChevronRight className="size-4" />
                         </button>
@@ -901,7 +901,7 @@ export default function MiniAppBookPage() {
                         ))}
                       </div>
                     ) : slots.length === 0 ? (
-                      <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-6 text-center">
+                      <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
                         <CalendarIcon className="mx-auto mb-2 size-7 text-neutral-900/20" />
                         <p className="text-[13px] font-medium text-neutral-500">
                           Нет свободных слотов
@@ -909,7 +909,7 @@ export default function MiniAppBookPage() {
                         {nextAvailableDate && (
                           <button
                             onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
-                            className="mt-3 rounded-xl border border-neutral-200 bg-white border-neutral-200 px-4 py-2 text-[12px] font-semibold text-violet-600 active:bg-neutral-50 transition-colors"
+                            className="mt-3 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-[12px] font-semibold text-violet-600 active:bg-neutral-50 transition-colors"
                           >
                             Ближайшая: {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
                           </button>
@@ -930,7 +930,7 @@ export default function MiniAppBookPage() {
                               className={`flex items-center justify-center rounded-xl border py-3 text-[15px] font-semibold transition-colors ${
                                 isSelected
                                   ? 'border-neutral-300 bg-white text-black'
-                                  : 'border-neutral-200 bg-white border-neutral-200 text-neutral-900 active:bg-neutral-50'
+                                  : 'border-neutral-200 bg-white text-neutral-900 active:bg-neutral-50'
                               }`}
                             >
                               {time}
@@ -960,7 +960,7 @@ export default function MiniAppBookPage() {
                   variants={fadeUp}
                   initial="hidden"
                   animate="visible"
-                  className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200"
+                  className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
                 >
                   {/* Master info */}
                   <div className="flex items-center gap-3.5 p-5">
@@ -995,7 +995,7 @@ export default function MiniAppBookPage() {
                   {/* Date & Time */}
                   <div className="space-y-3 p-5">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white">
                         <CalendarIcon className="size-4 text-violet-600" />
                       </div>
                       <div>
@@ -1009,7 +1009,7 @@ export default function MiniAppBookPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white">
                         <Clock className="size-4 text-violet-600" />
                       </div>
                       <div>
@@ -1184,7 +1184,7 @@ export default function MiniAppBookPage() {
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={() => { haptic('light'); setShowExitModal(false); }}
-                  className="flex-1 rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-3.5 text-[14px] font-semibold text-neutral-700 active:bg-neutral-50 transition-colors"
+                  className="flex-1 rounded-2xl border border-neutral-200 bg-white py-3.5 text-[14px] font-semibold text-neutral-700 active:bg-neutral-50 transition-colors"
                 >
                   Отменить
                 </button>

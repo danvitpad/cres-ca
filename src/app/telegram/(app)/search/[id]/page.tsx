@@ -599,7 +599,7 @@ export default function MiniAppMasterDetailPage() {
 
           {/* Service list */}
           {filteredServices.length === 0 ? (
-            <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-8 text-center">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-8 text-center">
               <p className="text-[13px] text-neutral-400">Пока нет активных услуг</p>
             </div>
           ) : (
@@ -614,7 +614,7 @@ export default function MiniAppMasterDetailPage() {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ delay: i * 0.03, duration: 0.25 }}
                   >
-                    <div className="group rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 transition-colors hover:bg-neutral-50">
+                    <div className="group rounded-2xl border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           {/* Color dot + name */}
@@ -755,7 +755,7 @@ export default function MiniAppMasterDetailPage() {
             </h2>
 
             {/* Rating summary */}
-            <div className="mb-4 flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+            <div className="mb-4 flex items-center gap-4 rounded-2xl border border-neutral-200 bg-white p-4">
               <div className="text-center">
                 <p className="text-3xl font-bold text-neutral-900">{master.rating.toFixed(1)}</p>
                 <div className="mt-1 flex items-center gap-0.5">
@@ -778,7 +778,7 @@ export default function MiniAppMasterDetailPage() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04, duration: 0.25 }}
-                  className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4"
+                  className="rounded-2xl border border-neutral-200 bg-white p-4"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
@@ -817,14 +817,14 @@ export default function MiniAppMasterDetailPage() {
 
           {/* Bio */}
           {master.bio && (
-            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
               <p className="text-[13px] leading-relaxed text-neutral-700">{master.bio}</p>
             </div>
           )}
 
           {/* Working hours */}
           {master.working_hours && (
-            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
               <h3 className="mb-3 text-[13px] font-semibold text-neutral-800">Часы работы</h3>
               <ul className="space-y-2">
                 {DAYS_ORDER.map((day) => {
@@ -867,7 +867,7 @@ export default function MiniAppMasterDetailPage() {
 
           {/* Address */}
           {(master.city || master.address) && (
-            <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
               <div className="flex items-start gap-3">
                 <MapPin className="mt-0.5 size-4 shrink-0 text-neutral-400" />
                 <div className="min-w-0 flex-1">

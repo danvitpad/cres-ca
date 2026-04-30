@@ -131,7 +131,7 @@ export default function MiniAppSalonFinancePage() {
             ) : (
               <ul className="space-y-2">
                 {data.masters.map((m) => (
-                  <li key={m.master_id} className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3 flex items-center gap-3">
+                  <li key={m.master_id} className="rounded-xl border border-neutral-200 bg-white p-3 flex items-center gap-3">
                     <div className="size-9 rounded-full bg-white/10 text-neutral-900 font-bold flex items-center justify-center overflow-hidden shrink-0">
                       {m.avatar_url ? (
                         <img src={m.avatar_url} alt="" className="size-full object-cover" />
@@ -174,7 +174,7 @@ function TotalCard({
   tint: string;
 }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white border-neutral-200 p-3">
+    <div className="rounded-xl border border-neutral-200 bg-white p-3">
       <div className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider ${tint}`}>
         <Icon className="size-3" />
         {label}

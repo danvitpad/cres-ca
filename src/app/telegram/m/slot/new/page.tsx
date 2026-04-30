@@ -169,7 +169,7 @@ function MasterMiniAppQuickBookingInner() {
           else if (step === 'time') setStep('service');
           else router.back();
         }}
-        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -207,7 +207,7 @@ function MasterMiniAppQuickBookingInner() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск клиента…"
-              className="w-full rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-3 pl-11 pr-4 text-[13px] outline-none focus:border-neutral-300"
+              className="w-full rounded-2xl border border-neutral-200 bg-white py-3 pl-11 pr-4 text-[13px] outline-none focus:border-neutral-300"
             />
           </div>
           <ul className="space-y-2">
@@ -219,7 +219,7 @@ function MasterMiniAppQuickBookingInner() {
                     setSelectedClient(c);
                     setStep('service');
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3 text-left active:bg-neutral-50 transition-colors"
+                  className="flex w-full items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 text-left active:bg-neutral-50 transition-colors"
                 >
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-50 text-[12px] font-bold text-neutral-900">
                     {c.full_name.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—'}
@@ -242,7 +242,7 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'service' && (
         <>
           {selectedClient && (
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3">
               <UserIcon className="size-3.5 text-neutral-500" />
               <p className="truncate text-[12px] text-neutral-700">{selectedClient.full_name}</p>
             </div>
@@ -256,7 +256,7 @@ function MasterMiniAppQuickBookingInner() {
                     setSelectedService(s);
                     setStep('time');
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-left active:bg-neutral-50 transition-colors"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-left active:bg-neutral-50 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{s.name}</p>
@@ -279,7 +279,7 @@ function MasterMiniAppQuickBookingInner() {
       {step === 'time' && selectedService && selectedClient && (
         <>
           <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3">
               <UserIcon className="size-3.5 text-neutral-500" />
               <p className="truncate text-[12px] text-neutral-700">{selectedClient.full_name}</p>
               <span className="text-neutral-400">·</span>
@@ -287,7 +287,7 @@ function MasterMiniAppQuickBookingInner() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400">Дата</p>
             <input
               type="date"
@@ -300,7 +300,7 @@ function MasterMiniAppQuickBookingInner() {
             />
           </div>
 
-          <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-[10px] uppercase tracking-wide text-neutral-400">Время начала</p>
             <input
               type="time"
@@ -318,7 +318,7 @@ function MasterMiniAppQuickBookingInner() {
           </div>
 
           {error && (
-            <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3 pl-5 text-[12px] text-rose-600">
+            <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-3 pl-5 text-[12px] text-rose-600">
               <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
               {error}
             </div>

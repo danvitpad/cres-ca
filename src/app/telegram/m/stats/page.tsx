@@ -134,7 +134,7 @@ export default function MasterMiniAppStats() {
         className="space-y-5 px-5 pt-6 pb-10"
       >
         {/* Period tabs — Today / 7 / 30 */}
-        <div className="flex gap-1 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-1">
+        <div className="flex gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
           {(['today', 'week', 'month'] as const).map((p) => (
             <button
               key={p}
@@ -188,7 +188,7 @@ export default function MasterMiniAppStats() {
             </div>
 
             {kpi.noShow > 0 && (
-              <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 pl-5">
+              <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 pl-5">
                 <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-rose-500" />
                 <XCircle className="size-5 text-rose-600" />
                 <div>
@@ -225,7 +225,7 @@ export default function MasterMiniAppStats() {
             )}
 
             {rows.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-neutral-200 bg-white border-neutral-200 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-8 text-center">
                 <p className="text-sm font-semibold">Ещё нет данных</p>
                 <p className="mt-1 text-xs text-neutral-500">Начни принимать клиентов — статистика появится автоматически</p>
               </div>
@@ -279,7 +279,7 @@ function StatCard({
     sky: 'text-sky-600',
   };
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4">
       <Icon className={`size-4 ${accents[accent]}`} />
       <p className="mt-3 text-xl font-bold text-neutral-900 tabular-nums">{value}</p>
       <p className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</p>
@@ -372,7 +372,7 @@ function FinanceEntryForm({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0"
-          className="mt-1 w-full rounded-xl border border-neutral-200 bg-white border-neutral-200 px-4 py-3 text-lg font-bold outline-none focus:border-neutral-300 tabular-nums"
+          className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-lg font-bold outline-none focus:border-neutral-300 tabular-nums"
         />
       </div>
 
@@ -422,7 +422,7 @@ function FinanceEntryForm({
                   key={m}
                   type="button"
                   onClick={() => setC(m)}
-                  className={`rounded-xl border py-2 text-[12px] font-semibold transition-colors ${c === m ? 'border-white/30 bg-neutral-100 text-neutral-900' : 'border-neutral-200 bg-white border-neutral-200 text-neutral-600 active:bg-neutral-50'}`}
+                  className={`rounded-xl border py-2 text-[12px] font-semibold transition-colors ${c === m ? 'border-white/30 bg-neutral-100 text-neutral-900' : 'border-neutral-200 bg-white text-neutral-600 active:bg-neutral-50'}`}
                 >
                   {m}
                 </button>
@@ -441,7 +441,7 @@ function FinanceEntryForm({
                   key={cat}
                   type="button"
                   onClick={() => setA(cat)}
-                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${a === cat ? 'border-white/30 bg-neutral-100 text-neutral-900' : 'border-neutral-200 bg-white border-neutral-200 text-neutral-600 active:bg-neutral-50'}`}
+                  className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${a === cat ? 'border-white/30 bg-neutral-100 text-neutral-900' : 'border-neutral-200 bg-white text-neutral-600 active:bg-neutral-50'}`}
                 >
                   {cat}
                 </button>
@@ -487,7 +487,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-xl border border-neutral-200 bg-white border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-300"
+        className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-300"
       />
     </div>
   );
@@ -548,7 +548,7 @@ function Autocomplete({
         onFocus={() => setFocused(true)}
         placeholder={placeholder}
         autoComplete="off"
-        className="mt-1 w-full rounded-xl border border-neutral-200 bg-white border-neutral-200 px-3 py-2.5 text-sm outline-none focus:border-neutral-300"
+        className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-neutral-300"
       />
       {focused && filtered.length > 0 && (
         <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-56 overflow-y-auto rounded-xl border border-neutral-200 bg-[#1c1c1c] shadow-xl">

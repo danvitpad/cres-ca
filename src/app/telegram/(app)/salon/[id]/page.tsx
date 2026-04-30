@@ -139,7 +139,7 @@ export default function MiniAppSalonDetailPage() {
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors"
+        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft className="size-4" />
       </button>
@@ -187,23 +187,29 @@ export default function MiniAppSalonDetailPage() {
       )}
 
       {salon.description && (
-        <p className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-[13px] leading-relaxed text-neutral-700">
+        <p className="rounded-2xl border border-neutral-200 bg-white p-4 text-[13px] leading-relaxed text-neutral-700">
           {salon.description}
         </p>
       )}
 
       {salon.address && (
-        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
-          <p className="text-[10px] uppercase tracking-wide text-neutral-400">Адрес</p>
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([salon.name, salon.address, salon.city].filter(Boolean).join(' '))}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => haptic('light')}
+          className="block rounded-2xl border border-neutral-200 bg-white p-4 active:bg-neutral-50 transition-colors"
+        >
+          <p className="text-[10px] uppercase tracking-wide text-neutral-400">Адрес · нажми для маршрута</p>
           <p className="mt-1 text-sm">{salon.address}</p>
-        </div>
+        </a>
       )}
 
       {salon.phone && (
         <a
           href={`tel:${salon.phone}`}
           onClick={() => haptic('selection')}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-4 text-sm font-semibold active:bg-neutral-50 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white py-4 text-sm font-semibold active:bg-neutral-50 transition-colors"
         >
           <Phone className="size-4" /> {salon.phone}
         </a>
@@ -222,7 +228,7 @@ export default function MiniAppSalonDetailPage() {
                 <button
                   key={m.id}
                   onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-                  className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3 text-left active:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3 text-left active:bg-neutral-50 transition-colors"
                 >
                   <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50 text-sm font-bold text-neutral-900">
                     {m.avatar_url ? (

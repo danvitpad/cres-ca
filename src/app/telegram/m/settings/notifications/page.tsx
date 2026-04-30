@@ -69,7 +69,7 @@ export default function MiniAppNotificationsPage() {
 
   return (
     <SettingsShell title="Уведомления" subtitle="Что присылать тебе в Telegram">
-      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 divide-y divide-neutral-200">
+      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-200">
         {ITEMS.map((item) => (
           <li key={item.key} className="flex items-start gap-3 px-4 py-3.5">
             <div className="min-w-0 flex-1">

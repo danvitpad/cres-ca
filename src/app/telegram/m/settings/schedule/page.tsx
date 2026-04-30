@@ -109,7 +109,7 @@ export default function MiniAppSchedulePage() {
               className={`rounded-2xl border p-3 transition-colors ${
                 active
                   ? 'border-violet-500/25 bg-violet-500/[0.08]'
-                  : 'border-neutral-200 bg-white border-neutral-200'
+                  : 'border-neutral-200 bg-white'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -118,7 +118,7 @@ export default function MiniAppSchedulePage() {
                   className={`flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors ${
                     active
                       ? 'border-violet-500 bg-violet-500 text-neutral-900'
-                      : 'border-neutral-200 bg-white border-neutral-200 text-neutral-400'
+                      : 'border-neutral-200 bg-white text-neutral-400'
                   }`}
                 >
                   {active && <Check size={14} weight="bold" />}
@@ -132,14 +132,14 @@ export default function MiniAppSchedulePage() {
                     type="time"
                     value={day.start}
                     onChange={(e) => setTime(d.key, 'start', e.target.value)}
-                    className="flex-1 rounded-lg border border-neutral-200 bg-white border-neutral-200 px-3 py-2 text-[13px] tabular-nums text-neutral-900 focus:border-violet-400 focus:outline-none"
+                    className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[13px] tabular-nums text-neutral-900 focus:border-violet-400 focus:outline-none"
                   />
                   <span className="text-[12px] text-neutral-400">—</span>
                   <input
                     type="time"
                     value={day.end}
                     onChange={(e) => setTime(d.key, 'end', e.target.value)}
-                    className="flex-1 rounded-lg border border-neutral-200 bg-white border-neutral-200 px-3 py-2 text-[13px] tabular-nums text-neutral-900 focus:border-violet-400 focus:outline-none"
+                    className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-[13px] tabular-nums text-neutral-900 focus:border-violet-400 focus:outline-none"
                   />
                 </div>
               )}

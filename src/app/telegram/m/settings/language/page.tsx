@@ -59,7 +59,7 @@ export default function MiniAppLanguagePage() {
 
   return (
     <SettingsShell title="Язык" subtitle="Синхронизируется с веб-дашбордом">
-      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 divide-y divide-neutral-200">
+      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-200">
         {LANGS.map((l) => (
           <li key={l.code}>
             <button

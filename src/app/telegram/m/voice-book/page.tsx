@@ -154,14 +154,14 @@ export default function VoiceBookPage() {
       </div>
 
       {text && (
-        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 text-sm">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm">
           <div className="text-[10px] uppercase tracking-wide text-neutral-400">Ты сказал</div>
           <div className="mt-1">{text}</div>
         </div>
       )}
 
       {parsed && (
-        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4 space-y-2">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-2">
           <div className="text-sm font-semibold">Распознано</div>
           <div className="text-[13px] text-neutral-800">Клиент: <b className="text-neutral-900">{parsed.client_name ?? '—'}</b></div>
           <div className="text-[13px] text-neutral-800">Дата: <b className="text-neutral-900">{parsed.date ?? '—'}</b></div>

@@ -133,7 +133,7 @@ export default function MiniAppBonusesPage() {
         <button
           onClick={copyReferral}
           disabled={!referralCode}
-          className="flex w-[56px] items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200 active:bg-neutral-50 transition-colors disabled:opacity-50"
+          className="flex w-[56px] items-center justify-center rounded-2xl border border-neutral-200 bg-white active:bg-neutral-50 transition-colors disabled:opacity-50"
           aria-label="Скопировать ссылку"
         >
           {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
@@ -141,7 +141,7 @@ export default function MiniAppBonusesPage() {
       </div>
 
       {/* Total balance */}
-      <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-6">
+      <div className="rounded-2xl border border-neutral-200 bg-white p-6">
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Всего бонусов</p>
@@ -150,7 +150,7 @@ export default function MiniAppBonusesPage() {
             </p>
             <p className="mt-1 text-[11px] text-neutral-600">1 балл = 1 ₴ скидки у мастера, который начислил</p>
           </div>
-          <div className="flex size-12 items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200">
+          <div className="flex size-12 items-center justify-center rounded-2xl border border-neutral-200 bg-white">
             <Sparkles className="size-6 text-amber-600" />
           </div>
         </div>
@@ -163,7 +163,7 @@ export default function MiniAppBonusesPage() {
           {perMaster.map((m) => (
             <div
               key={m.master_id}
-              className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3"
+              className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-3"
             >
               <div className="flex size-10 items-center justify-center rounded-full bg-white/[0.05] text-[12px] font-semibold uppercase">
                 {m.master_avatar ? (
@@ -187,7 +187,7 @@ export default function MiniAppBonusesPage() {
       )}
 
       {!loading && totalBalance === 0 && (
-        <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-5 text-center">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 text-center">
           <p className="text-sm text-neutral-600">У тебя пока нет бонусов</p>
           <p className="text-[11px] text-neutral-400 mt-1">
             Бонусы начисляются автоматически после визита, если у мастера включена программа лояльности
@@ -198,11 +198,11 @@ export default function MiniAppBonusesPage() {
       {/* Referral stats (only when non-zero) */}
       {invitedCount > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Приглашено</p>
             <p className="mt-1 text-2xl font-bold tabular-nums">{invitedCount}</p>
           </div>
-          <div className="rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+          <div className="rounded-2xl border border-neutral-200 bg-white p-4">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">Заработано</p>
             <p className="mt-1 text-2xl font-bold tabular-nums">
               {earnedTotal.toFixed(0)}

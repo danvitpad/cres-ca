@@ -56,7 +56,7 @@ export default function VoiceAssistantIntro() {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.05, type: 'spring', stiffness: 220, damping: 20 }}
-          className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-neutral-200 bg-white border-neutral-200"
+          className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-neutral-200 bg-white"
         >
           <Mic className="size-7 text-violet-600" />
         </motion.div>
@@ -67,7 +67,7 @@ export default function VoiceAssistantIntro() {
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-4">
+      <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4">
         <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
         <div className="pl-3">
           <div className="flex items-center gap-2">
@@ -95,9 +95,9 @@ export default function VoiceAssistantIntro() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.04 }}
-                className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-white border-neutral-200 p-3.5"
+                className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-white p-3.5"
               >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white border-neutral-200">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white">
                   <Icon className="size-4 text-neutral-700" />
                 </div>
                 <div className="min-w-0">
@@ -119,7 +119,7 @@ export default function VoiceAssistantIntro() {
         </button>
         <button
           onClick={skip}
-          className="w-full rounded-2xl border border-neutral-200 bg-white border-neutral-200 py-3 text-[13px] font-semibold text-neutral-700 transition-colors active:bg-neutral-50"
+          className="w-full rounded-2xl border border-neutral-200 bg-white py-3 text-[13px] font-semibold text-neutral-700 transition-colors active:bg-neutral-50"
         >
           Позже
         </button>
