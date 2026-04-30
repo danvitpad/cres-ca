@@ -26,6 +26,7 @@ import {
   User as UserIcon,
 } from 'lucide-react';
 import { getLocation } from '@/lib/telegram/geolocation';
+import { composeAddress } from '@/lib/format/address';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { createClient as createBrowserClient } from '@/lib/supabase/client';
 import type { MapMarker, SalonMarker } from '@/components/shared/map-view';
@@ -415,7 +416,7 @@ export default function MiniAppSearchPage() {
           name: m.displayName,
           rating: m.rating,
           specialization: m.specialization ?? undefined,
-          address: [m.workplace, m.address || m.city].filter(Boolean).join(' · ') || undefined,
+          address: composeAddress(m.workplace, m.address, m.city) || undefined,
           masterId: m.id,
         })),
     [filteredMasters],
@@ -828,7 +829,7 @@ export default function MiniAppSearchPage() {
                 {(() => {
                   const d = resolveCardDisplay(toMasterRef(selected), toSalonRef(selected.salon), MINIAPP_CARD_LABELS);
                   const Icon = d.mode === 'solo' ? UserIcon : Building2;
-                  const fullAddress = [selected.workplace, selected.address || selected.city].filter(Boolean).join(' · ');
+                  const fullAddress = composeAddress(selected.workplace, selected.address, selected.city);
                   const mapsUrl = fullAddress
                     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`
                     : (selected.latitude && selected.longitude)
