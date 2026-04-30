@@ -25,30 +25,47 @@ export default function TelegramEntryPage() {
       return null;
     }
 
+    function parseInitDataFromHash(): string | null {
+      // Telegram puts tgWebAppData=... in URL hash when opening WebApp in browser.
+      // This is a standard fallback when window.Telegram.WebApp polyfill isn't loaded.
+      try {
+        const rawHash = window.location.hash.startsWith('#')
+          ? window.location.hash.substring(1)
+          : window.location.hash;
+        const params = new URLSearchParams(rawHash);
+        const data = params.get('tgWebAppData');
+        return data ? decodeURIComponent(data) : null;
+      } catch {
+        return null;
+      }
+    }
+
     async function init() {
       const webapp = await waitForWebApp();
-      if (!webapp) {
-        setError('Откройте это приложение из Telegram');
-        return;
+      let initData: string | undefined;
+
+      if (webapp) {
+        webapp.ready();
+        webapp.expand();
+        try { webapp.disableVerticalSwipes(); } catch {}
+        try {
+          const isDark = (webapp as { colorScheme?: 'light' | 'dark' }).colorScheme === 'dark';
+          const bg = isDark ? '#141417' : '#ffffff';
+          webapp.setHeaderColor(bg);
+          webapp.setBackgroundColor(bg);
+          webapp.setBottomBarColor(bg);
+        } catch {}
+        initData = webapp.initData;
+      } else {
+        // No Telegram polyfill (e.g. browser opened via shared web-app link) —
+        // fall back to parsing initData from URL hash. Same HMAC validation
+        // is enforced server-side in /api/telegram/auth.
+        const hashData = parseInitDataFromHash();
+        if (hashData) initData = hashData;
       }
 
-      webapp.ready();
-      webapp.expand();
-      try { webapp.disableVerticalSwipes(); } catch {}
-      // Полоски TG сверху/снизу — явный hex под нашу палитру (одни и те же
-      // переменные --background light=#ffffff / dark=#141417). Не bg_color,
-      // потому что он у TG слегка синий и не совпадает с нашим чёрным.
-      try {
-        const isDark = (webapp as { colorScheme?: 'light' | 'dark' }).colorScheme === 'dark';
-        const bg = isDark ? '#141417' : '#ffffff';
-        webapp.setHeaderColor(bg);
-        webapp.setBackgroundColor(bg);
-        webapp.setBottomBarColor(bg);
-      } catch {}
-
-      const initData = webapp.initData;
       if (!initData) {
-        setError('Нет данных инициализации');
+        setError('Откройте это приложение из Telegram');
         return;
       }
 
@@ -65,7 +82,7 @@ export default function TelegramEntryPage() {
       }
 
       const data = await res.json();
-      const startParam = webapp.initDataUnsafe?.start_param ?? null;
+      const startParam = webapp?.initDataUnsafe?.start_param ?? null;
 
       // Always stash initData + tg data for subsequent pages
       sessionStorage.setItem(
