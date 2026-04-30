@@ -159,7 +159,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     const endpoint = hit.kind === 'master'
       ? `/api/follow/crm/toggle`
       : `/api/salon/${hit.id}/follow`;
-    const body = hit.kind === 'master' ? { master_id: hit.id } : undefined;
+    const body = hit.kind === 'master' ? { masterId: hit.id } : undefined;
     await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     setFollowedIds((prev) => {
       const next = new Set(prev);

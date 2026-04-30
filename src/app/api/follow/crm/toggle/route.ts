@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { notifyUser } from '@/lib/notifications/notify';
 
 // Service-role client used after auth validation to bypass RLS for the
 // auto-create-client + notification side-effects. The primary follow toggle
@@ -76,16 +77,13 @@ export async function POST(req: Request) {
 
   if (master?.profile_id) {
     const clientName = profile?.full_name || 'Клиент';
-    await adm.from('notifications').insert({
-      profile_id: master.profile_id,
-      channel: 'push',
-      title: 'Новый подписчик',
-      body: `${clientName} подписался на вас`,
-      data: {
-        type: 'new_follower',
-        follower_profile_id: user.id,
-        action_url: '/clients',
-      },
+    await notifyUser(adm, {
+      profileId: master.profile_id,
+      title: 'Новый контакт',
+      body: `${clientName} добавил вас в контакты`,
+      data: { type: 'new_follower', follower_profile_id: user.id },
+      deepLinkPath: '/telegram/m/clients',
+      deepLinkLabel: 'Открыть клиентов',
     });
   }
 
