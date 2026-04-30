@@ -694,8 +694,21 @@ export default function AuthPage() {
                                   type="tel" inputMode="tel"
                                   value={phone}
                                   onChange={e => {
-                                    const cleaned = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 20);
+                                    let cleaned = e.target.value.replace(/[^\d+\s-]/g, '').slice(0, 20);
+                                    // Lock the +380 prefix — if user wipes the field, restore it.
+                                    // Allows typing/deleting anywhere AFTER the prefix without losing it.
+                                    if (!cleaned.startsWith('+380')) {
+                                      cleaned = '+380 ' + cleaned.replace(/^\+?380?\s?/, '');
+                                    }
                                     setPhone(cleaned);
+                                  }}
+                                  onFocus={e => {
+                                    // If field somehow ended up empty, prefill +380 on focus
+                                    if (!phone || !phone.trim()) {
+                                      setPhone('+380 ');
+                                      // Move cursor to end after React updates
+                                      setTimeout(() => e.target.setSelectionRange(5, 5), 0);
+                                    }
                                   }}
                                   className="glass-input"
                                   required
@@ -737,9 +750,9 @@ export default function AuthPage() {
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 required
-                                minLength={mode === 'signup' ? 6 : undefined}
+                                minLength={mode === 'signup' ? 8 : undefined}
                                 style={{ paddingRight: 44 }}
-                                placeholder={mode === 'signup' ? 'Минимум 6 символов' : undefined}
+                                placeholder={mode === 'signup' ? 'Минимум 8 символов' : undefined}
                                 /* autoComplete='new-password' — Chrome не должен
                                    автозаполнять сохранённый старый пароль при
                                    регистрации. Для входа — current-password. */
