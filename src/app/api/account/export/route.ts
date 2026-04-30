@@ -89,24 +89,22 @@ export async function GET(request: Request) {
       const [
         services, inventory, suppliers, supplierOrders,
         appointments, manualClients, manualIncomes, expenses,
-        broadcasts, templates, beforeAfter, giftCards,
+        broadcasts, templates, beforeAfter,
       ] = await Promise.all([
         db.from('services').select('id, name, description, price, currency, duration_minutes, is_active, created_at').eq('master_id', masterId),
-        db.from('inventory_items').select('id, name, current_stock, unit, cost_per_unit, low_stock_threshold, preferred_supplier_id, created_at').eq('master_id', masterId),
-        db.from('suppliers').select('id, name, contact_phone, contact_email, notes, created_at').eq('master_id', masterId),
-        db.from('supplier_orders').select('id, supplier_id, status, total_amount, created_at, ordered_at, delivered_at').eq('master_id', masterId),
+        db.from('inventory_items').select('id, name, quantity, unit, cost_per_unit, low_stock_threshold, preferred_supplier_id, created_at').eq('master_id', masterId),
+        db.from('suppliers').select('id, name, contact_person, phone, email, website, note, is_active, created_at').eq('master_id', masterId),
+        db.from('supplier_orders').select('id, supplier_id, status, items, total_cost, currency, sent_at, delivered_at, note, created_at').eq('master_id', masterId),
         // Записи без PII клиентов: только время, статус, услуга, сумма.
         db.from('appointments').select('id, starts_at, ends_at, status, price, currency, tip_amount, service_id, cancellation_reason, created_at').eq('master_id', masterId).order('starts_at', { ascending: false }).limit(10000),
         // Manual-клиенты: те, кого мастер сам добавил в кабинете (не контакты-«друзья»).
-        // Детектим по client_master_links: если связь автоматическая через TG → клиент-«друг», иначе — manual.
-        // Простейше: берём clients где profile_id IS NULL (без TG-аккаунта = ручные).
-        db.from('clients').select('id, name, phone, email, notes, behavior_indicator, created_at').eq('master_id', masterId).is('profile_id', null),
-        db.from('manual_incomes').select('id, amount, currency, category, description, occurred_at, created_at').eq('master_id', masterId),
-        db.from('expenses').select('id, amount, currency, category, description, occurred_at, created_at').eq('master_id', masterId),
-        db.from('master_broadcasts').select('id, subject, body, audience, recipients_count, delivered_count, status, sent_at, created_at').eq('master_id', masterId),
-        db.from('message_templates').select('id, kind, subject, content, created_at').eq('master_id', masterId),
-        db.from('before_after_photos').select('id, before_url, after_url, service_id, created_at').eq('master_id', masterId),
-        db.from('gift_cards').select('id, code, value, currency, balance, status, expires_at, created_at').eq('master_id', masterId),
+        // Берём clients где profile_id IS NULL (без TG-аккаунта = ручные).
+        db.from('clients').select('id, full_name, phone, email, notes, behavior_indicators, total_visits, total_spent, created_at').eq('master_id', masterId).is('profile_id', null),
+        db.from('manual_incomes').select('id, amount, currency, category, client_name, service_name, payment_method, note, date, created_at').eq('master_id', masterId),
+        db.from('expenses').select('id, amount, currency, category, description, vendor, payment_method, date, created_at').eq('master_id', masterId),
+        db.from('master_broadcasts').select('id, subject, body, audience, recipients_count, delivered_count, failed_count, status, sent_at, created_at').eq('master_id', masterId),
+        db.from('message_templates').select('id, kind, name, subject, content, is_active, created_at').eq('master_id', masterId),
+        db.from('before_after_photos').select('id, before_url, after_url, caption, service_id, appointment_id, created_at').eq('master_id', masterId),
       ]);
 
       payload.master = master;
@@ -121,7 +119,6 @@ export async function GET(request: Request) {
       payload.broadcasts = broadcasts.data ?? [];
       payload.message_templates = templates.data ?? [];
       payload.before_after_photos = beforeAfter.data ?? [];
-      payload.gift_cards = giftCards.data ?? [];
       payload.excluded = {
         client_friends_contacts: 'Контактные данные клиентов, добавивших вас в свои контакты в CRES-CA, не включены. Это их персональные данные.',
         public_reviews: 'Отзывы и публичный рейтинг привязаны к публичной странице и не подлежат экспорту мастером.',
@@ -138,9 +135,11 @@ export async function GET(request: Request) {
       clientIds.length
         ? db.from('appointments').select('id, master_id, service_id, starts_at, ends_at, status, price, currency, created_at').in('client_id', clientIds)
         : Promise.resolve({ data: [] }),
-      db.from('reviews').select('id, master_id, score, comment, is_anonymous, created_at').eq('client_profile_id', user.id),
-      db.from('consent_forms').select('id, master_id, kind, signed_at, content').eq('client_profile_id', user.id),
-      db.from('loyalty_balances').select('master_id, balance, locked_in, updated_at').eq('profile_id', user.id),
+      db.from('reviews').select('id, target_type, target_id, score, comment, is_anonymous, created_at').eq('reviewer_id', user.id),
+      clientIds.length
+        ? db.from('consent_forms').select('id, master_id, title, form_text, client_agreed, agreed_at, created_at').in('client_id', clientIds)
+        : Promise.resolve({ data: [] }),
+      db.from('loyalty_balances').select('master_id, balance, lifetime_earned, lifetime_spent, last_earned_at, last_spent_at, updated_at').eq('profile_id', user.id),
     ]);
     payload.appointments = appts.data ?? [];
     payload.reviews = reviews.data ?? [];

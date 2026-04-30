@@ -348,6 +348,33 @@ export default function MiniAppSettingsPage() {
           </Link>
         </div>
 
+        {/* Web-only actions notice */}
+        <div
+          style={{
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.lg,
+            padding: '14px 16px',
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: T.textSecondary,
+            boxShadow: SHADOW.card,
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
+            Действия с учётной записью
+          </div>
+          Экспорт данных и удаление учётной записи доступны в веб-версии:&nbsp;
+          <a
+            href="https://cres-ca.com/ru/account-settings"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: T.accent, fontWeight: 500, textDecoration: 'none' }}
+          >
+            cres-ca.com
+          </a>
+        </div>
+
         {/* Sign out */}
         <button
           type="button"
