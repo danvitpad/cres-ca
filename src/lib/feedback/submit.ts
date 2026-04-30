@@ -89,23 +89,6 @@ interface SubmitResult {
   sheetSynced: boolean;
 }
 
-async function sendTg(chatId: string, text: string): Promise<number | null> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) return null;
-  try {
-    const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true };
-    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const j = (await res.json()) as { ok?: boolean; result?: { message_id?: number } };
-    return j.ok ? (j.result?.message_id ?? null) : null;
-  } catch {
-    return null;
-  }
-}
-
 /** Главный entry: сохраняет фидбек со всеми эффектами. */
 export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | null> {
   const { supabase, profileId, profileName, profileRole, source, originalText, voiceFileUrl } = opts;
@@ -141,15 +124,9 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
     `<b>Суть:</b>\n${cleaned}\n\n` +
     `<i>Оригинал:</i>\n${originalText}`;
 
+  // Только @crescasuperadmin_bot Данилу. Дублирования в общий канал не делаем —
+  // фидбек личный, не для команды.
   await notifySuperadmin(tgText, { parseMode: 'HTML' });
-
-  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID;
-  if (channelId) {
-    const tgMessageId = await sendTg(channelId, tgText);
-    if (tgMessageId) {
-      await supabase.from('feedback').update({ tg_message_id: tgMessageId }).eq('id', row.id);
-    }
-  }
 
   const sheetOk = await appendFeedbackRow([
     new Date(row.created_at).toISOString(),
