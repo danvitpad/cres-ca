@@ -385,7 +385,13 @@ export default function BookPage() {
   }
 
   async function handleConfirm() {
-    if (!selectedService || !selectedDate || !selectedTime || !preselectedMasterId || !userId) return;
+    if (!selectedService || !selectedDate || !selectedTime || !preselectedMasterId) return;
+    if (!userId) {
+      // Guest → send to register with current booking URL as return destination
+      const returnUrl = encodeURIComponent(window.location.href);
+      router.push(`/${locale}/register?redirect=${returnUrl}`);
+      return;
+    }
     setSubmitting(true);
 
     const supabase = createClient();
