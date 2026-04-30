@@ -9,7 +9,6 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { usePageTheme, pageContainer } from '@/lib/dashboard-theme';
 
 import CampaignsPage from './campaigns/page';
@@ -115,11 +114,8 @@ export default function MarketingPage() {
         })}
       </div>
 
-      <motion.div
+      <div
         key={activeTab}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
         style={activeTab === 'referrals' ? undefined : { margin: '0 -36px' /* cancel outer pageContainer horizontal padding */ }}
       >
         {activeTab === 'campaigns' && <CampaignsWithAudienceSwitcher />}
@@ -127,7 +123,7 @@ export default function MarketingPage() {
         {activeTab === 'deals' && <DealsPage />}
         {activeTab === 'reviews' && <ReviewsPage />}
         {activeTab === 'referrals' && <ReferralProgramPanel />}
-      </motion.div>
+      </div>
     </div>
   );
 }
