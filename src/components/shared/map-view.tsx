@@ -1,6 +1,9 @@
 /** --- YAML
  * name: MapView
- * description: Leaflet map component with master markers and popups, dynamically imported (no SSR)
+ * description: Leaflet map with master/salon markers. At zoom ≥14 shows
+ *              permanent name labels under each marker. Tap on marker fires
+ *              onMarkerClick / onSalonClick — parent shows a bottom-sheet
+ *              card with full info.
  * --- */
 
 'use client';
@@ -76,13 +79,14 @@ const salonIcon = L.divIcon({
     box-shadow:0 2px 10px rgba(45,212,191,0.45);
     display:flex;align-items:center;justify-content:center;
     color:white;font-size:16px;font-weight:800;
-    transform:rotate(0deg);
   ">S</div>`,
   className: '',
   iconSize: [36, 36],
   iconAnchor: [18, 18],
   popupAnchor: [0, -22],
 });
+
+const ZOOM_NAME_THRESHOLD = 13;
 
 export default function MapView({
   markers,
@@ -111,12 +115,21 @@ export default function MapView({
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-    // Independent layer groups so updates of one set never wipe others
     masterLayerRef.current = L.layerGroup().addTo(map);
     salonLayerRef.current = L.layerGroup().addTo(map);
     userLayerRef.current = L.layerGroup().addTo(map);
 
+    // Toggle marker labels visibility based on zoom level
+    const updateLabelVisibility = () => {
+      const showLabels = map.getZoom() >= ZOOM_NAME_THRESHOLD;
+      const root = containerRef.current;
+      if (root) root.classList.toggle('cres-zoom-far', !showLabels);
+    };
+    updateLabelVisibility();
+    map.on('zoomend', updateLabelVisibility);
+
     return () => {
+      map.off('zoomend', updateLabelVisibility);
       map.remove();
       mapRef.current = null;
       masterLayerRef.current = null;
@@ -138,13 +151,13 @@ export default function MapView({
 
     markers.forEach((m) => {
       const marker = L.marker([m.lat, m.lng], { icon: createIcon(m.rating) });
-      marker.bindPopup(`
-        <div style="min-width:160px;font-family:system-ui">
-          <strong style="font-size:14px">${m.name}</strong>
-          ${m.specialization ? `<br/><span style="color:#666;font-size:12px">${m.specialization}</span>` : ''}
-          <br/><span style="color:#f59e0b">★</span> ${m.rating.toFixed(1)}
-        </div>
-      `);
+      // Permanent label visible at high zoom (CSS class hides at low zoom)
+      marker.bindTooltip(escapeHtml(m.name), {
+        permanent: true,
+        direction: 'bottom',
+        offset: [0, 6],
+        className: 'cres-marker-label',
+      });
       if (onMarkerClick) {
         marker.on('click', () => onMarkerClick(m.masterId));
       }
@@ -159,13 +172,12 @@ export default function MapView({
 
     salonMarkers.forEach((s) => {
       const marker = L.marker([s.lat, s.lng], { icon: salonIcon });
-      marker.bindPopup(`
-        <div style="min-width:160px;font-family:system-ui">
-          <strong style="font-size:14px">${s.name}</strong>
-          ${s.address ? `<br/><span style="color:#666;font-size:12px">${s.address}</span>` : ''}
-          <br/><span style="color:#2dd4bf;font-weight:600;font-size:11px">Салон · команда</span>
-        </div>
-      `);
+      marker.bindTooltip(escapeHtml(s.name), {
+        permanent: true,
+        direction: 'bottom',
+        offset: [0, 8],
+        className: 'cres-marker-label cres-marker-label-salon',
+      });
       if (onSalonClick) {
         marker.on('click', () => onSalonClick(s.salonId));
       }
@@ -182,5 +194,40 @@ export default function MapView({
     }
   }, [userLocation]);
 
-  return <div ref={containerRef} className={className} style={{ width: '100%', height: '100%', minHeight: '300px' }} />;
+  return (
+    <>
+      <style jsx global>{`
+        .cres-marker-label {
+          background: rgba(255, 255, 255, 0.95);
+          color: #1f1f22;
+          border: none;
+          border-radius: 8px;
+          padding: 3px 8px;
+          font-size: 11px;
+          font-weight: 600;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+          font-family: system-ui, -apple-system, sans-serif;
+          white-space: nowrap;
+          max-width: 160px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .cres-marker-label::before {
+          display: none !important;
+        }
+        .cres-marker-label-salon {
+          background: rgba(45, 212, 191, 0.95);
+          color: white;
+        }
+        .cres-zoom-far .cres-marker-label {
+          display: none !important;
+        }
+      `}</style>
+      <div ref={containerRef} className={className} style={{ width: '100%', height: '100%', minHeight: '300px' }} />
+    </>
+  );
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
