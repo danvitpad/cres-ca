@@ -70,7 +70,7 @@ export default function ClientMiniAppFeedbackPage() {
           </div>
           <p className="mt-4 text-[16px] font-semibold text-emerald-700">Команда CRES-CA благодарит вас за отзыв</p>
           <p className="mt-2 text-[12.5px] leading-relaxed text-emerald-700/80">
-            Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.
+            Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — мы прочитаем каждое сообщение лично!
           </p>
           <button
             onClick={() => {

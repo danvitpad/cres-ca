@@ -35,7 +35,7 @@ export default function FeedbackPage() {
       }
       setDone(true);
       setText('');
-      toast.success('Спасибо! Мы прочитаем и ответим при необходимости');
+      toast.success('Команда CRES-CA благодарит вас за отзыв 💜 Мы прочитаем каждое сообщение лично!');
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -56,7 +56,7 @@ export default function FeedbackPage() {
           </div>
           <h1 className="text-xl font-bold">Команда CRES-CA благодарит вас за отзыв</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.
+            Мы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — мы прочитаем каждое сообщение лично!
           </p>
           <button
             type="button"

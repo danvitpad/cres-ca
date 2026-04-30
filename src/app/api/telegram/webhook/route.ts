@@ -1794,7 +1794,7 @@ async function handleClientSearch(chatId: number, query: string) {
 
 const FEEDBACK_PROMPT = 'Запиши голосовое или напиши текстом — расскажи что улучшить, что сломалось, какая фича нужна. Твой отзыв прочитает команда CRES-CA лично.';
 
-const FEEDBACK_THANKS = 'Команда CRES-CA благодарит вас за отзыв 💜\n\nМы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — я прочитаю каждое сообщение лично.';
+const FEEDBACK_THANKS = 'Команда CRES-CA благодарит вас за отзыв 💜\n\nМы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — мы прочитаем каждое сообщение лично!';
 
 async function saveFeedbackAndNotify(profileId: string, transcript: string, source: 'telegram_bot' | 'telegram_voice') {
   const supabase = createServiceClient();
