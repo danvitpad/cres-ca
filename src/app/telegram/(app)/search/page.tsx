@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { getLocation } from '@/lib/telegram/geolocation';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { createClient as createBrowserClient } from '@/lib/supabase/client';
 import type { MapMarker, SalonMarker } from '@/components/shared/map-view';
 import { BottomSheet } from '@/components/shared/primitives/bottom-sheet';
 import {
@@ -185,6 +186,11 @@ export default function MiniAppSearchPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
+  // Follow state — what user already added to contacts (mastersById, salonsById)
+  const [followedMasters, setFollowedMasters] = useState<Set<string>>(new Set());
+  const [followedSalons, setFollowedSalons] = useState<Set<string>>(new Set());
+  const [followBusy, setFollowBusy] = useState<Set<string>>(new Set());
+
   const centerRef = useRef(center);
   centerRef.current = center;
 
@@ -199,12 +205,94 @@ export default function MiniAppSearchPage() {
       });
       if (!res.ok) { setLoading(false); return; }
       const json = (await res.json()) as { masters?: ApiMasterRow[]; salons?: ApiSalonRow[] };
-      setMasters((json.masters ?? []).map(normalizeMaster));
-      setSalons(json.salons ?? []);
+      const normMasters = (json.masters ?? []).map(normalizeMaster);
+      const newSalons = json.salons ?? [];
+      setMasters(normMasters);
+      setSalons(newSalons);
+
+      // Load follow state for these results
+      try {
+        const masterIds = normMasters.map((m) => m.id);
+        const salonIds = newSalons.map((s) => s.id);
+        if (masterIds.length || salonIds.length) {
+          const sb = createBrowserClient();
+          const { data: { user } } = await sb.auth.getUser();
+          if (user) {
+            if (masterIds.length) {
+              const { data } = await sb.from('client_master_links')
+                .select('master_id')
+                .eq('profile_id', user.id)
+                .in('master_id', masterIds);
+              setFollowedMasters((s) => {
+                const n = new Set(s);
+                for (const r of (data ?? []) as Array<{ master_id: string }>) n.add(r.master_id);
+                return n;
+              });
+            }
+            if (salonIds.length) {
+              const { data } = await sb.from('salon_follows')
+                .select('salon_id')
+                .eq('profile_id', user.id)
+                .in('salon_id', salonIds);
+              setFollowedSalons((s) => {
+                const n = new Set(s);
+                for (const r of (data ?? []) as Array<{ salon_id: string }>) n.add(r.salon_id);
+                return n;
+              });
+            }
+          }
+        }
+      } catch { /* non-fatal */ }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function toggleFollowMaster(masterId: string) {
+    if (followBusy.has(masterId)) return;
+    haptic('selection');
+    setFollowBusy((s) => new Set(s).add(masterId));
+    try {
+      const res = await fetch('/api/follow/crm/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ masterId }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { following: boolean };
+        setFollowedMasters((s) => {
+          const n = new Set(s);
+          if (j.following) n.add(masterId); else n.delete(masterId);
+          return n;
+        });
+      }
+    } finally {
+      setFollowBusy((s) => { const n = new Set(s); n.delete(masterId); return n; });
+    }
+  }
+
+  async function toggleFollowSalon(salonId: string) {
+    if (followBusy.has(salonId)) return;
+    haptic('selection');
+    setFollowBusy((s) => new Set(s).add(salonId));
+    try {
+      const isFollowing = followedSalons.has(salonId);
+      const res = await fetch(`/api/salon/${salonId}/follow`, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { following: boolean };
+        setFollowedSalons((s) => {
+          const n = new Set(s);
+          if (j.following) n.add(salonId); else n.delete(salonId);
+          return n;
+        });
+      }
+    } finally {
+      setFollowBusy((s) => { const n = new Set(s); n.delete(salonId); return n; });
+    }
+  }
 
   const locate = useCallback(
     async (interactive: boolean) => {
@@ -603,6 +691,9 @@ export default function MiniAppSearchPage() {
                       master={toMasterRef(m)}
                       salon={toSalonRef(m.salon)}
                       onClick={() => { haptic('selection'); router.push(`/telegram/search/${m.id}`); }}
+                      isAdded={followedMasters.has(m.id)}
+                      addBusy={followBusy.has(m.id)}
+                      onAdd={() => toggleFollowMaster(m.id)}
                     />
                   </motion.div>
                 ))}
@@ -624,6 +715,9 @@ export default function MiniAppSearchPage() {
                         rating: s.rating,
                       }}
                       onClick={() => { haptic('selection'); router.push(`/telegram/salon/${s.id}`); }}
+                      isAdded={followedSalons.has(s.id)}
+                      addBusy={followBusy.has(s.id)}
+                      onAdd={() => toggleFollowSalon(s.id)}
                     />
                   </motion.div>
                 ))}
@@ -879,15 +973,20 @@ interface MiniResultCardProps {
   master: MasterRef | null;
   salon: SalonRef | null;
   onClick: () => void;
+  isAdded?: boolean;
+  addBusy?: boolean;
+  onAdd?: () => void;
 }
 
-function MiniResultCard({ master, salon, onClick }: MiniResultCardProps) {
+function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd }: MiniResultCardProps) {
   const d = resolveCardDisplay(master, salon, MINIAPP_CARD_LABELS);
   const Icon = d.mode === 'solo' ? UserIcon : Building2;
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -923,7 +1022,36 @@ function MiniResultCard({ master, salon, onClick }: MiniResultCardProps) {
           </div>
         )}
       </div>
-      <ChevronRight size={18} color={T.textTertiary} />
-    </button>
+      {onAdd ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); if (!isAdded && !addBusy) onAdd(); }}
+          disabled={isAdded || addBusy}
+          style={{
+            flexShrink: 0,
+            padding: '8px 12px',
+            borderRadius: R.pill,
+            border: 'none',
+            background: isAdded ? T.bgSubtle : T.text,
+            color: isAdded ? T.textTertiary : T.bg,
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: isAdded ? 'default' : 'pointer',
+            fontFamily: 'inherit',
+            opacity: addBusy ? 0.6 : 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            minHeight: 32,
+          }}
+        >
+          {addBusy ? <Loader2 size={12} className="animate-spin" />
+            : isAdded ? '✓ В контактах'
+            : '+ В контакты'}
+        </button>
+      ) : (
+        <ChevronRight size={18} color={T.textTertiary} />
+      )}
+    </div>
   );
 }
