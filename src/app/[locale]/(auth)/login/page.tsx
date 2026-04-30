@@ -102,6 +102,17 @@ input[type="checkbox"].auth-cb { accent-color: var(--aviolet); width: 14px; heig
   color: #fff;
   box-shadow: 0 4px 14px color-mix(in oklab, var(--aviolet) 35%, transparent);
 }
+
+/* Desktop layout: страница не скроллится. Если форма signup всё равно
+   выше viewport — скроллится только её колонка, картинка остаётся видна.
+   Mobile (≤767px) — картинка скрыта, страница скроллится свободно. */
+@media (min-width: 768px) {
+  html, body { overflow: hidden; }
+  .auth-glass { height: 100dvh; overflow: hidden; }
+  .auth-form-col { overflow-y: auto; max-height: 100%; scrollbar-width: thin; }
+  .auth-form-col::-webkit-scrollbar { width: 6px; }
+  .auth-form-col::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--afg) 18%, transparent); border-radius: 3px; }
+}
 `;
 
 const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
@@ -576,7 +587,7 @@ export default function AuthPage() {
         {/* Top bar — slim */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px clamp(16px,3vw,36px)',
+          padding: '8px clamp(16px,3vw,36px)',
           flexShrink: 0,
         }}>
           <Link href="/" style={{
@@ -612,10 +623,11 @@ export default function AuthPage() {
           <motion.section
             layout
             transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 0.8 }}
+            className="auth-form-col"
             style={{
               flex: 1, order: isSignUp ? 2 : 1,
               display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              padding: 'clamp(20px, 3vw, 40px) clamp(12px, 2.5vw, 32px) clamp(40px, 5vw, 64px)',
+              padding: 'clamp(16px, 2.5vw, 28px) clamp(12px, 2.5vw, 32px) clamp(20px, 3vw, 32px)',
             }}
           >
               <div style={{ width: '100%', maxWidth: 400 }}>
