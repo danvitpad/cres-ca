@@ -65,14 +65,25 @@ export async function POST(req: Request) {
   ]);
 
   if (profile) {
-    await adm.from('clients').upsert({
-      profile_id: user.id,
-      master_id: masterId,
-      full_name: profile.full_name || 'Клиент',
-      phone: profile.phone || null,
-      email: profile.email || null,
-      date_of_birth: profile.date_of_birth || null,
-    }, { onConflict: 'profile_id,master_id', ignoreDuplicates: true });
+    // Use SELECT + INSERT (not upsert) since clients has a partial unique index
+    // (profile_id, master_id) WHERE profile_id IS NOT NULL — Postgres ON CONFLICT
+    // can't target partial indexes with simple onConflict spec.
+    const { data: existingClient } = await adm
+      .from('clients')
+      .select('id')
+      .eq('profile_id', user.id)
+      .eq('master_id', masterId)
+      .maybeSingle();
+    if (!existingClient) {
+      await adm.from('clients').insert({
+        profile_id: user.id,
+        master_id: masterId,
+        full_name: profile.full_name || 'Клиент',
+        phone: profile.phone || null,
+        email: profile.email || null,
+        date_of_birth: profile.date_of_birth || null,
+      });
+    }
   }
 
   if (master?.profile_id) {
