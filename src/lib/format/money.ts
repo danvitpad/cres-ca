@@ -7,7 +7,7 @@
  * --- */
 
 export const CURRENCY_LABEL: Record<string, string> = {
-  UAH: 'грн',
+  UAH: '₴',
   USD: '$',
   EUR: '€',
   RUB: '₽',

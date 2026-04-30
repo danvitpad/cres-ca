@@ -193,7 +193,7 @@ function ServiceRow({
             {svc.duration_minutes ? `${svc.duration_minutes} мин` : '—'}
             {' · '}
             {svc.price && svc.price > 0
-              ? `${new Intl.NumberFormat('ru-RU').format(svc.price)} ${svc.currency === 'UAH' ? 'грн' : svc.currency}`
+              ? `${new Intl.NumberFormat('ru-RU').format(svc.price)} ${svc.currency === 'UAH' ? '₴' : svc.currency}`
               : 'без цены'}
             {cat?.name && ' · ' + cat.name}
           </p>
@@ -318,7 +318,7 @@ function ServiceForm({
         </div>
         <div>
           <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-            Цена (грн)
+            Цена (₴)
           </label>
           <input
             type="number"
