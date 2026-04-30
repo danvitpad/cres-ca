@@ -75,13 +75,23 @@ export async function GET(request: Request) {
     return (count ?? 0) > 0;
   }
 
+  // Профили, помеченные на удаление, исключаем из всех веток (биллинг ставится на паузу).
+  const { data: deletedProfiles } = await supabase
+    .from('profiles')
+    .select('id')
+    .not('deleted_at', 'is', null);
+  const deletedSet = new Set<string>(((deletedProfiles ?? []) as Array<{ id: string }>).map((p) => p.id));
+  const skipDeleted = <T extends { profile_id: string }>(rows: T[] | null | undefined): T[] =>
+    (rows ?? []).filter((r) => !deletedSet.has(r.profile_id));
+
   // ── Pre-warning: за 3 дня до конца trial / платного периода ──
-  const { data: warn3 } = await supabase
+  const { data: warn3raw } = await supabase
     .from('subscriptions')
     .select('id, profile_id, tier, status, trial_ends_at, current_period_end')
     .or(`and(tier.eq.trial,status.eq.trial,trial_ends_at.gte.${nowIso},trial_ends_at.lt.${in3Days}),and(status.eq.active,current_period_end.gte.${nowIso},current_period_end.lt.${in3Days})`);
+  const warn3 = skipDeleted((warn3raw ?? []) as SubRow[]);
 
-  for (const sub of (warn3 ?? []) as SubRow[]) {
+  for (const sub of warn3 as SubRow[]) {
     if (await alreadyWarned(sub.profile_id, 'sub_3day')) continue;
     const isTrial = sub.tier === 'trial';
     const title = isTrial ? '⏰ 3 дня до конца пробного периода' : '⏰ 3 дня до окончания подписки';
@@ -98,12 +108,13 @@ export async function GET(request: Request) {
   }
 
   // ── Pre-warning: за 1 день ──
-  const { data: warn1 } = await supabase
+  const { data: warn1raw } = await supabase
     .from('subscriptions')
     .select('id, profile_id, tier, status, trial_ends_at, current_period_end')
     .or(`and(tier.eq.trial,status.eq.trial,trial_ends_at.gte.${nowIso},trial_ends_at.lt.${in1Day}),and(status.eq.active,current_period_end.gte.${nowIso},current_period_end.lt.${in1Day})`);
+  const warn1 = skipDeleted((warn1raw ?? []) as SubRow[]);
 
-  for (const sub of (warn1 ?? []) as SubRow[]) {
+  for (const sub of warn1 as SubRow[]) {
     if (await alreadyWarned(sub.profile_id, 'sub_1day')) continue;
     const isTrial = sub.tier === 'trial';
     const title = isTrial ? '🔔 Завтра закончится пробный период' : '🔔 Завтра спишется оплата подписки';
@@ -120,14 +131,15 @@ export async function GET(request: Request) {
   }
 
   // 1. trial → past_due: trial закончился, оплата не пришла
-  const { data: expiredTrials } = await supabase
+  const { data: expiredTrialsRaw } = await supabase
     .from('subscriptions')
     .select('id, profile_id')
     .eq('tier', 'trial')
     .eq('status', 'trial')
     .lt('trial_ends_at', nowIso);
+  const expiredTrials = skipDeleted((expiredTrialsRaw ?? []) as Array<{ id: string; profile_id: string }>);
 
-  for (const sub of expiredTrials || []) {
+  for (const sub of expiredTrials) {
     const title = 'Пробный период завершён';
     const body = 'Выберите тариф, чтобы продолжить пользоваться платными функциями.';
     await supabase.from('subscriptions').update({ status: 'past_due' }).eq('id', sub.id);
@@ -140,13 +152,14 @@ export async function GET(request: Request) {
   }
 
   // 2. active → past_due: current_period_end прошёл
-  const { data: expiredActive } = await supabase
+  const { data: expiredActiveRaw } = await supabase
     .from('subscriptions')
     .select('id, profile_id')
     .eq('status', 'active')
     .lt('current_period_end', nowIso);
+  const expiredActive = skipDeleted((expiredActiveRaw ?? []) as Array<{ id: string; profile_id: string }>);
 
-  for (const sub of expiredActive || []) {
+  for (const sub of expiredActive) {
     const title = 'Оплата просрочена';
     const body = 'Не удалось продлить подписку. Обнови способ оплаты в Биллинге — у тебя 7 дней до отключения платных функций.';
     await supabase.from('subscriptions').update({ status: 'past_due' }).eq('id', sub.id);
@@ -159,13 +172,14 @@ export async function GET(request: Request) {
   }
 
   // 3. past_due → expired: >7 дней просрочки (downgrade в starter)
-  const { data: longPastDue } = await supabase
+  const { data: longPastDueRaw } = await supabase
     .from('subscriptions')
     .select('id, profile_id, updated_at')
     .eq('status', 'past_due')
     .lt('updated_at', sevenDaysAgo);
+  const longPastDue = skipDeleted((longPastDueRaw ?? []) as Array<{ id: string; profile_id: string; updated_at: string }>);
 
-  for (const sub of longPastDue || []) {
+  for (const sub of longPastDue) {
     const title = 'Подписка приостановлена';
     const body = 'Вы автоматически переведены на минимальный тариф. Платные функции отключены до новой оплаты.';
     await supabase

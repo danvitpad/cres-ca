@@ -40,12 +40,21 @@ export async function GET(request: NextRequest) {
   // Fetch master working hours
   const { data: master } = await supabase
     .from('masters')
-    .select('working_hours, is_busy, busy_until, long_visit_buffer_minutes, long_visit_threshold_minutes')
+    .select('working_hours, is_busy, busy_until, long_visit_buffer_minutes, long_visit_threshold_minutes, profile_id, profile:profiles!masters_profile_id_fkey(deleted_at)')
     .eq('id', masterId)
     .single();
 
   if (!master) {
     return NextResponse.json({ error: 'Master not found' }, { status: 404 });
+  }
+
+  // Если аккаунт мастера помечен на удаление — слоты недоступны.
+  const masterProfile = (master as { profile?: { deleted_at: string | null } | { deleted_at: string | null }[] | null }).profile;
+  const profileDeletedAt = Array.isArray(masterProfile)
+    ? masterProfile[0]?.deleted_at ?? null
+    : masterProfile?.deleted_at ?? null;
+  if (profileDeletedAt) {
+    return NextResponse.json({ slots: [], reason: 'master_unavailable' });
   }
 
   // Busy mode — master toggled off availability (instant block)

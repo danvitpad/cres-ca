@@ -150,11 +150,13 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     'theme_primary_color, theme_background_color, banner_position_y, ' +
     'phone_public, email_public, dob_public, interests, social_links, page_type, ' +
     'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
-    'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth)';
+    'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth, deleted_at)';
 
   const flatten = (row: Record<string, unknown> | null): MasterRow | null => {
     if (!row) return null;
-    const profile = (row.profile ?? null) as { phone: string | null; email: string | null; date_of_birth: string | null } | null;
+    const profile = (row.profile ?? null) as { phone: string | null; email: string | null; date_of_birth: string | null; deleted_at: string | null } | null;
+    // Если аккаунт мастера помечен на удаление — публичная страница недоступна.
+    if (profile?.deleted_at) return null;
     return {
       ...(row as unknown as Omit<MasterRow, 'phone' | 'email' | 'date_of_birth'>),
       phone: profile?.phone ?? null,
