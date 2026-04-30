@@ -97,9 +97,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [searchExpanded, setSearchExpanded] = useState(false);
 
   // Live search results for header popover
-  type SearchHit = { id: string; name: string; sub: string; href: string; avatar: string | null };
+  type SearchHit = { id: string; name: string; sub: string; href: string; avatar: string | null; kind: 'master' | 'salon' };
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       const [mRes, sRes] = await Promise.all([
         supabase
           .from('masters')
-          .select('id, display_name, specialization, avatar_url, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url)')
+          .select('id, display_name, specialization, avatar_url, slug, invite_code, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url)')
           .eq('is_active', true)
           .limit(60),
         supabase
@@ -125,7 +126,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         if (!p) return null;
         return Array.isArray(p) ? (p[0] ?? null) : p as { full_name: string | null; avatar_url: string | null };
       }
-      const masters: SearchHit[] = ((mRes.data ?? []) as Array<{ id: string; display_name: string | null; specialization: string | null; avatar_url: string | null; profiles: unknown }>)
+      const masters: SearchHit[] = ((mRes.data ?? []) as Array<{ id: string; display_name: string | null; specialization: string | null; avatar_url: string | null; slug: string | null; invite_code: string | null; profiles: unknown }>)
         .filter((r) => {
           const profile = unwrapProfile(r.profiles);
           const hay = [r.display_name, profile?.full_name, r.specialization].filter(Boolean).join(' ').toLowerCase();
@@ -133,12 +134,14 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         })
         .map((r) => {
           const profile = unwrapProfile(r.profiles);
+          const handle = r.slug ?? r.invite_code ?? r.id;
           return {
             id: r.id,
             name: r.display_name ?? profile?.full_name ?? 'Мастер',
             sub: r.specialization ?? '',
-            href: `/m/${r.id}`,
+            href: `/m/${handle}`,
             avatar: r.avatar_url ?? profile?.avatar_url ?? null,
+            kind: 'master' as const,
           };
         });
       const salons: SearchHit[] = ((sRes.data ?? []) as Array<{ id: string; name: string | null; logo_url: string | null }>)
@@ -146,11 +149,24 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           const hay = (r.name ?? '').toLowerCase();
           return words.every((w) => hay.includes(w));
         })
-        .map((r) => ({ id: r.id, name: r.name ?? 'Команда', sub: 'Команда', href: `/s/${r.id}`, avatar: r.logo_url ?? null }));
+        .map((r) => ({ id: r.id, name: r.name ?? 'Команда', sub: 'Команда', href: `/s/${r.id}`, avatar: r.logo_url ?? null, kind: 'salon' as const }));
       setSearchHits([...masters, ...salons].slice(0, 8));
       setSearchLoading(false);
     }, 250);
   }, [searchInput]);
+
+  async function toggleFollow(hit: SearchHit) {
+    const endpoint = hit.kind === 'master'
+      ? `/api/follow/crm/toggle`
+      : `/api/salon/${hit.id}/follow`;
+    const body = hit.kind === 'master' ? { master_id: hit.id } : undefined;
+    await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    setFollowedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(hit.id)) next.delete(hit.id); else next.add(hit.id);
+      return next;
+    });
+  }
 
   // Location state
   const [selectedCity, setSelectedCity] = useState<string>('');
@@ -445,22 +461,30 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     <p className="py-6 text-center text-sm text-muted-foreground">{tHeader('noResults')}</p>
                   ) : (
                     searchHits.map((hit) => (
-                      <Link
-                        key={hit.id}
-                        href={hit.href}
-                        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted transition-colors"
-                      >
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-foreground overflow-hidden">
-                          {hit.avatar
-                            ? <img src={hit.avatar} alt="" className="size-full object-cover" />
-                            : hit.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{hit.name}</p>
-                          {hit.sub && <p className="truncate text-xs text-muted-foreground">{hit.sub}</p>}
-                        </div>
-                        <ArrowRight className="ml-auto size-4 shrink-0 text-muted-foreground" />
-                      </Link>
+                      <div key={hit.id} className="flex items-center gap-2 rounded-xl px-3 py-2 hover:bg-muted transition-colors">
+                        <Link href={hit.href} className="flex flex-1 items-center gap-3 min-w-0">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted font-semibold text-foreground overflow-hidden">
+                            {hit.avatar
+                              ? <img src={hit.avatar} alt="" className="size-full object-cover" />
+                              : hit.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{hit.name}</p>
+                            {hit.sub && <p className="truncate text-xs text-muted-foreground">{hit.sub}</p>}
+                          </div>
+                        </Link>
+                        <button
+                          onClick={(e) => { e.preventDefault(); toggleFollow(hit); }}
+                          className={cn(
+                            'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors border',
+                            followedIds.has(hit.id)
+                              ? 'border-muted bg-muted text-muted-foreground'
+                              : 'border-foreground bg-foreground text-background hover:opacity-80',
+                          )}
+                        >
+                          {followedIds.has(hit.id) ? '✓' : '+ В контакты'}
+                        </button>
+                      </div>
                     ))
                   )
                 ) : (

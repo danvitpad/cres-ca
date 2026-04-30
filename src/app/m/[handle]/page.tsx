@@ -507,7 +507,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
           {/* ─── LEFT col (Hero card) — sticky on desktop, normal on mobile ─── */}
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-4 space-y-4">
             <PublicHeroCard
               masterId={master.id}
               masterProfileId={master.profile_id}
@@ -531,6 +531,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 manager: ownedSalon.manager,
               } : null}
             />
+            <FollowMasterButton masterId={master.id} />
           </div>
 
           {/* ─── RIGHT col (scroll content) ─── */}
