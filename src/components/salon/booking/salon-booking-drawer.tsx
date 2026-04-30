@@ -293,7 +293,7 @@ export function SalonBookingDrawer({
       const duration = selectedVariant.duration_minutes ?? 60;
       const endsAt = new Date(startsAt.getTime() + duration * 60 * 1000);
 
-      const { error } = await supabase
+      const { data: created, error } = await supabase
         .from('appointments')
         .insert({
           master_id: selectedMasterId,
@@ -306,12 +306,20 @@ export function SalonBookingDrawer({
           notes: notes.trim() || null,
           status: 'booked',
           booked_via: 'public_page',
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) {
         toast.error(error.message || 'Не удалось создать запись');
         return;
       }
+      // Notify master + confirm to client (best-effort)
+      fetch(`/api/appointments/${(created as { id: string }).id}/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ triggeredBy: 'client' }),
+      }).catch(() => undefined);
       setDone(true);
       setStep('done');
       toast.success('Запись создана');

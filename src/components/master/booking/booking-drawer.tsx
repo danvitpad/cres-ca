@@ -236,7 +236,14 @@ export function BookingDrawer({ master, services, open, onClose, defaultServiceI
         toast.error(error.message || 'Не удалось создать запись');
         return;
       }
-      setCreatedAptId((created as { id: string }).id);
+      const aptId = (created as { id: string }).id;
+      setCreatedAptId(aptId);
+      // Notify master + confirm to client (best-effort)
+      fetch(`/api/appointments/${aptId}/notify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ triggeredBy: 'client' }),
+      }).catch(() => undefined);
       setStep('done');
       toast.success('Запись создана');
     } catch (e) {

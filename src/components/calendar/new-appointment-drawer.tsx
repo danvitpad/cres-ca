@@ -162,7 +162,7 @@ export function NewAppointmentDrawer({
         created_by_role: createdByRole,
       }));
 
-      const { error } = await supabase.from('appointments').insert(rows);
+      const { data: created, error } = await supabase.from('appointments').insert(rows).select('id');
       setSaving(false);
       if (error) {
         // Surface friendly message for our overlap trigger
@@ -175,6 +175,14 @@ export function NewAppointmentDrawer({
           toast.error(msg || 'Не удалось создать запись');
         }
         return;
+      }
+      // Notify each client (best-effort, fire-and-forget)
+      for (const apt of (created ?? [])) {
+        fetch(`/api/appointments/${apt.id}/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ triggeredBy: 'master' }),
+        }).catch(() => undefined);
       }
       toast.success(selectedClientIds.length > 1 ? 'Групповая запись создана' : 'Запись создана');
       onSaved();

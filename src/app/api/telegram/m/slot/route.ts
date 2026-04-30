@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { notifyUser } from '@/lib/notifications/notify';
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
@@ -57,6 +58,30 @@ export async function POST(request: Request) {
       .select('id')
       .single();
     if (error || !data) return NextResponse.json({ error: error?.message ?? 'insert_failed' }, { status: 500 });
+
+    // Notify client about new appointment (best-effort)
+    const [{ data: clientRow }, { data: serviceRow }, { data: masterRow }] = await Promise.all([
+      admin.from('clients').select('profile_id, full_name').eq('id', client_id).maybeSingle(),
+      admin.from('services').select('name').eq('id', service_id).maybeSingle(),
+      admin.from('masters').select('display_name').eq('id', master.id).maybeSingle(),
+    ]);
+    const clientProfileId = (clientRow as { profile_id: string | null } | null)?.profile_id ?? null;
+    if (clientProfileId) {
+      const serviceName = (serviceRow as { name?: string } | null)?.name || 'Услуга';
+      const masterName = (masterRow as { display_name?: string } | null)?.display_name || 'Мастер';
+      const startsAt = new Date(starts_at as string);
+      const dateStr = startsAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+      const timeStr = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false });
+      notifyUser(admin, {
+        profileId: clientProfileId,
+        title: 'Запись подтверждена',
+        body: `${serviceName} у ${masterName}, ${dateStr} в ${timeStr}`,
+        data: { type: 'appointment_created', appointment_id: data.id },
+        deepLinkPath: '/telegram/app/activity',
+        deepLinkLabel: 'Мои записи',
+      }).catch(() => undefined);
+    }
+
     return NextResponse.json({ id: data.id });
   }
 
