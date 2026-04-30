@@ -248,6 +248,7 @@ export function AppointmentDetailDrawer({
       .update({
         status: newStatus,
         cancelled_at: new Date().toISOString(),
+        cancelled_by: initiator,  // DB trigger uses this to route notification to the OTHER side
         cancellation_reason: reasonLabel,
       })
       .eq('id', appointment.id);
@@ -256,6 +257,13 @@ export function AppointmentDetailDrawer({
 
     if (initiator === 'client') await applyClientLatePenalty('late_cancel');
     await notifyWaitlistOnFreedSlot();
+
+    // Flush DB trigger's pending TG notification immediately
+    fetch(`/api/appointments/${appointment.id}/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).catch(() => undefined);
 
     setUpdating(false);
     setOptionsOpen(false);

@@ -312,22 +312,13 @@ export default function AppointmentsPage() {
       });
     }
 
-    if (cancelTarget.master?.id) {
-      const { data: masterRow } = await supabase
-        .from('masters')
-        .select('profile_id')
-        .eq('id', cancelTarget.master.id)
-        .maybeSingle();
-      if (masterRow?.profile_id) {
-        await supabase.from('notifications').insert({
-          profile_id: masterRow.profile_id,
-          channel: 'telegram',
-          title: '❌ Client cancelled',
-          body: `${cancelTarget.service?.name ?? 'Appointment'} on ${new Date(cancelTarget.starts_at).toLocaleString()} cancelled${cancelReason.trim() ? `: ${cancelReason.trim()}` : ''}. [cancel:${cancelTarget.id}]`,
-          scheduled_for: new Date().toISOString(),
-        });
-      }
-    }
+    // DB trigger trg_appointments_booking_updated already created the master
+    // notification (with proper currency/timezone/copy). Flush it to TG immediately.
+    fetch(`/api/appointments/${cancelTarget.id}/notify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).catch(() => undefined);
 
     toast.success(tCal('cancelDone'));
     setCancelTarget(null);
