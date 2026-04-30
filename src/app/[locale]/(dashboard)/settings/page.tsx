@@ -1469,10 +1469,10 @@ function DataExportBlock({ C }: { C: ReturnType<typeof usePageTheme>['C'] }) {
       .catch(() => {});
   }, []);
 
-  async function downloadArchive() {
+  async function downloadArchive(format: 'json' | 'zip') {
     setDownloading(true);
     try {
-      const res = await fetch('/api/account/export');
+      const res = await fetch(`/api/account/export?format=${format}`);
       if (res.status === 429) {
         const body = await res.json().catch(() => ({}));
         toast.error(body.message || 'Экспорт доступен один раз в 30 дней.');
@@ -1487,11 +1487,10 @@ function DataExportBlock({ C }: { C: ReturnType<typeof usePageTheme>['C'] }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Архив с вашими данными загружен.');
-      // После успешного экспорта — следующий доступен через 30 дней.
       const next = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
       setNextAvailableAt(next.toISOString());
     } finally {
@@ -1530,10 +1529,16 @@ function DataExportBlock({ C }: { C: ReturnType<typeof usePageTheme>['C'] }) {
             Следующий экспорт будет доступен <strong style={{ color: C.text }}>{dateLabel}</strong>.
           </div>
         )}
-        <div>
-          <SettingsButton onClick={downloadArchive} disabled={downloading || limited} C={C}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <SettingsButton onClick={() => downloadArchive('json')} disabled={downloading || limited} C={C}>
             {downloading ? 'Формируем архив...' : 'Скачать архив (JSON)'}
           </SettingsButton>
+          <SettingsButton onClick={() => downloadArchive('zip')} disabled={downloading || limited} C={C}>
+            {downloading ? 'Формируем архив...' : 'Скачать архив (ZIP)'}
+          </SettingsButton>
+        </div>
+        <div style={{ fontSize: 11, color: C.textTertiary, lineHeight: 1.4 }}>
+          ZIP содержит JSON + отдельные CSV-листы по основным таблицам (удобно для Excel и Google Sheets).
         </div>
       </div>
     </section>

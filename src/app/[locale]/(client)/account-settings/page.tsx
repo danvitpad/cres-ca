@@ -150,9 +150,9 @@ export default function ClientSettingsPage() {
 
   const isDark = (resolvedTheme ?? theme) === 'dark';
 
-  async function exportData() {
+  async function exportData(format: 'json' | 'zip' = 'json') {
     try {
-      const res = await fetch('/api/account/export');
+      const res = await fetch(`/api/account/export?format=${format}`);
       if (res.status === 429) {
         const body = await res.json().catch(() => ({}));
         toast.error(body.message || 'Экспорт доступен один раз в 30 дней.');
@@ -163,7 +163,7 @@ export default function ClientSettingsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.${format}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Архив с вашими данными загружен.');
@@ -485,7 +485,8 @@ export default function ClientSettingsPage() {
       </Section>
 
       <Section title={t('data')}>
-        <LinkRow icon={Download} label={t('dataExport')} onClick={exportData} />
+        <LinkRow icon={Download} label={`${t('dataExport')} — JSON`} onClick={() => exportData('json')} />
+        <LinkRow icon={Download} label={`${t('dataExport')} — ZIP (с CSV для Excel)`} onClick={() => exportData('zip')} />
         <div className="px-6 py-4">
           <Button variant="destructive" onClick={openDeleteDialog}>
             <Trash2 className="mr-2 size-4" />
