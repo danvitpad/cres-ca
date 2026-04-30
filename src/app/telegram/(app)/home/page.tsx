@@ -89,6 +89,11 @@ export default function MiniAppHomePage() {
   const [next, setNext] = useState<NextAppointment | null>(null);
   const [slots, setSlots] = useState<SlotItem[]>([]);
   const [featured, setFeatured] = useState<FeaturedMaster[]>([]);
+  const [regulars, setRegulars] = useState<Array<{
+    master_id: string; master_name: string; master_avatar: string | null; master_slug: string;
+    service_id: string; service_name: string; service_duration: number | null;
+    service_price: number | null; service_currency: string | null; visit_count: number;
+  }>>([]);
   const [, setLoading] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
 
@@ -183,6 +188,15 @@ export default function MiniAppHomePage() {
         }
       } catch { /* ignore */ }
 
+      // Regular services (≥3 completed visits at the same master+service)
+      try {
+        const res = await fetch('/api/me/regular-services');
+        if (res.ok) {
+          const j = await res.json();
+          setRegulars(Array.isArray(j.items) ? j.items : []);
+        }
+      } catch { /* ignore */ }
+
       setLoading(false);
     })();
   }, [userId]);
@@ -267,6 +281,52 @@ export default function MiniAppHomePage() {
             </div>
           </Link>
         ) : null}
+
+        {/* Твои постоянные — мастер+услуга где было ≥3 визитов */}
+        {regulars.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <SectionHeader title="Твои постоянные" rightLabel="" />
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                overflowX: 'auto',
+                paddingBottom: 4,
+                scrollSnapType: 'x mandatory',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {regulars.map((r) => (
+                <button
+                  key={`${r.master_id}-${r.service_id}`}
+                  type="button"
+                  onClick={() => {
+                    haptic('light');
+                    router.push(`/telegram/book?master=${r.master_id}&service=${r.service_id}`);
+                  }}
+                  style={{
+                    minWidth: 200,
+                    flex: '0 0 auto',
+                    border: '1px solid rgb(229, 231, 235)',
+                    borderRadius: 16,
+                    background: 'white',
+                    padding: 12,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    scrollSnapAlign: 'start',
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{r.service_name}</div>
+                  <div style={{ marginTop: 2, fontSize: 12, color: '#666' }}>у {r.master_name}</div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#10b981', fontWeight: 600 }}>
+                    {r.service_price ? `${Math.round(Number(r.service_price))} ₴` : ''}
+                    {r.service_duration ? ` · ${r.service_duration} мин` : ''}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Свободные окна у моих контактов */}
         {slots.length > 0 && (
