@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Clock,
+  Flag,
   MapPin,
   RefreshCw,
   Star,
@@ -33,6 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { humanizeError } from '@/lib/format/error';
+import { ComplaintDialog } from '@/components/client/complaint-dialog';
 
 interface DetailRow {
   id: string;
@@ -101,6 +103,7 @@ export default function AppointmentDetailPage() {
   const [ratingComment, setRatingComment] = useState('');
   const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [complaintOpen, setComplaintOpen] = useState(false);
 
   useEffect(() => {
     if (!userId || !params?.id) return;
@@ -438,7 +441,25 @@ export default function AppointmentDetailPage() {
             {td('cancelCta')}
           </Button>
         )}
+        {(row.status === 'completed' || row.status === 'no_show' || row.status === 'cancelled' || row.status === 'cancelled_by_client') && (
+          <Button
+            variant="ghost"
+            className="h-11 w-full gap-2 rounded-2xl text-sm text-muted-foreground hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400"
+            onClick={() => setComplaintOpen(true)}
+          >
+            <Flag className="size-4" />
+            Пожаловаться
+          </Button>
+        )}
       </div>
+
+      <ComplaintDialog
+        open={complaintOpen}
+        onClose={() => setComplaintOpen(false)}
+        masterId={row.master_id}
+        masterName={row.master?.display_name ?? null}
+        appointmentId={row.id}
+      />
 
       {/* Cancel confirm sheet */}
       {cancelOpen && (

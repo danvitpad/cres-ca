@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Settings,
   Rocket,
+  Flag,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const NAV: NavItem[] = [
   { href: '/superadmin/subscriptions', label: 'Подписки', icon: CreditCard },
   { href: '/superadmin/whitelist', label: 'Whitelist', icon: Star },
   { href: '/superadmin/blacklist', label: 'Blacklist', icon: Ban },
+  { href: '/superadmin/complaints', label: 'Жалобы', icon: Flag },
   { href: '/superadmin/offers', label: 'Спецпредложения', icon: Megaphone },
   { href: '/superadmin/feedback', label: 'Feedback', icon: MessageSquare },
   { href: '/superadmin/finance', label: 'Финансы', icon: TrendingUp },
