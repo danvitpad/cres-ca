@@ -152,7 +152,12 @@ export default function ClientSettingsPage() {
 
   async function exportData() {
     try {
-      const res = await fetch('/api/gdpr/self-export');
+      const res = await fetch('/api/account/export');
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.message || 'Экспорт доступен один раз в 30 дней.');
+        return;
+      }
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -161,6 +166,7 @@ export default function ClientSettingsPage() {
       a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success('Архив с вашими данными загружен.');
     } catch {
       toast.error(tc('error'));
     }

@@ -1374,6 +1374,9 @@ function SecurityTab() {
         )}
       </SettingsBlock>
 
+      {/* Export — GDPR self-export */}
+      <DataExportBlock C={C} />
+
       {/* Danger zone — delete account */}
       <section
         style={{
@@ -1385,10 +1388,11 @@ function SecurityTab() {
         }}
       >
         <header style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.danger, lineHeight: 1.2 }}>Опасная зона</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.danger, lineHeight: 1.2 }}>Удаление учётной записи</div>
           <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.45 }}>
-            Аккаунт будет помечен на удаление. У вас есть 30 дней на восстановление — просто войдите снова.
-            После 30 дней все данные (клиенты, записи, услуги, расходы) удаляются безвозвратно.
+            После подтверждения учётная запись будет помечена на удаление. Восстановление доступно
+            в течение 30 дней — для этого выполните вход под этим адресом электронной почты.
+            По истечении 30 дней данные (клиенты, записи, услуги, расходы) удаляются без возможности восстановления.
           </div>
         </header>
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1424,6 +1428,91 @@ function SecurityTab() {
         </div>
       </section>
     </div>
+  );
+}
+
+/* ─── Data export — GDPR self-export with 1/30 days rate limit ─────────── */
+function DataExportBlock({ C }: { C: ReturnType<typeof usePageTheme>['C'] }) {
+  const [downloading, setDownloading] = useState(false);
+  const [nextAvailableAt, setNextAvailableAt] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/account/export', { method: 'HEAD' })
+      .then((res) => {
+        if (res.status === 429) setNextAvailableAt(res.headers.get('x-next-available-at'));
+        else setNextAvailableAt(null);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function downloadArchive() {
+    setDownloading(true);
+    try {
+      const res = await fetch('/api/account/export');
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.message || 'Экспорт доступен один раз в 30 дней.');
+        setNextAvailableAt(body.next_available_at ?? null);
+        return;
+      }
+      if (!res.ok) {
+        toast.error('Не удалось сформировать архив. Попробуйте позже.');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cres-ca-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Архив с вашими данными загружен.');
+      // После успешного экспорта — следующий доступен через 30 дней.
+      const next = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      setNextAvailableAt(next.toISOString());
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  const limited = !!nextAvailableAt;
+  const dateLabel = nextAvailableAt
+    ? new Date(nextAvailableAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
+  return (
+    <section
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        padding: 0,
+        fontFamily: FONT,
+      }}
+    >
+      <header style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>Экспорт данных</div>
+        <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 4, lineHeight: 1.5 }}>
+          В соответствии со статьёй 20 GDPR вы можете получить копию своих данных в переносимом
+          формате. В архив включены: профиль, услуги, склад, поставщики, история записей (без
+          персональных данных клиентов), финансы, маркетинговые рассылки, шаблоны сообщений и
+          метаданные фотографий. Контактные данные клиентов, добавивших вас в свои контакты в CRES-CA,
+          публичные отзывы и реферальная сеть в архив не входят. Экспорт доступен один раз в 30 дней.
+        </div>
+      </header>
+      <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {limited && (
+          <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.4 }}>
+            Следующий экспорт будет доступен <strong style={{ color: C.text }}>{dateLabel}</strong>.
+          </div>
+        )}
+        <div>
+          <SettingsButton onClick={downloadArchive} disabled={downloading || limited} C={C}>
+            {downloading ? 'Формируем архив...' : 'Скачать архив (JSON)'}
+          </SettingsButton>
+        </div>
+      </div>
+    </section>
   );
 }
 
