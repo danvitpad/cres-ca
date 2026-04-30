@@ -130,9 +130,14 @@ export default function AuthPage() {
   const urlEmail = sp.get('email') || '';
   const urlError = sp.get('error');
 
+  // Hydration-safe init: на SSR localStorage недоступен, поэтому читаем
+  // запомненное только из URL. После монтирования useEffect ниже подтягивает
+  // role/email/password из localStorage. Раньше useState(() => readRemembered())
+  // читал localStorage в первом рендере, что давало SSR ≠ client → React #418
+  // (hydration mismatch) → кнопки переключения роли «залипали».
   const [role, setRole] = useState<Role>(() => {
     if (urlRole && ['client','master','salon_admin'].includes(urlRole)) return urlRole;
-    return readRemembered().role ?? 'client';
+    return 'client';
   });
   const [mode, setMode] = useState<Mode>(urlMode === 'signup' ? 'signup' : 'signin');
   const [sub, setSub] = useState<Sub>('form');
@@ -165,10 +170,20 @@ export default function AuthPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlMode]);
 
-  const remembered = readRemembered();
-  const [email, setEmail] = useState(() => urlEmail || remembered.email || '');
+  const [email, setEmail] = useState<string>(urlEmail || '');
   const [rememberMe, setRememberMe] = useState(true);
-  const [password, setPassword] = useState(() => remembered.password || '');
+  const [password, setPassword] = useState<string>('');
+
+  // После монтирования (только на клиенте) — подтягиваем сохранённые
+  // значения из localStorage. Не делаем это в useState initializer,
+  // иначе SSR-html отличается от первого client render → React #418.
+  useEffect(() => {
+    const r = readRemembered();
+    if (!urlEmail && r.email) setEmail(r.email);
+    if (r.password) setPassword(r.password);
+    if (!urlRole && r.role) setRole(r.role);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showPwd, setShowPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
 
