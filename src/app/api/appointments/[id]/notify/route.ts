@@ -1,15 +1,18 @@
 /** --- YAML
  * name: Appointment Notify
- * description: POST {triggeredBy:'master'|'client'} → sends in-app + TG notifications
- *              after appointment creation. Master creates → notifies client.
- *              Client creates → notifies master + confirms to client.
+ * description: POST {triggeredBy} → flushes pending booking notifications
+ *              created by DB trigger (dispatch_booking_notification) by sending
+ *              Telegram messages immediately and marking them as 'sent'.
+ *              The trigger handles both client and master notifications with
+ *              correct copy based on booked_via. This endpoint just makes the
+ *              dispatch immediate (default cron is up to 5 min).
  * created: 2026-04-30
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { notifyUser } from '@/lib/notifications/notify';
+import { sendMessage } from '@/lib/telegram/bot';
 
 function admin() {
   return createAdminClient(
@@ -19,13 +22,15 @@ function admin() {
   );
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: appointmentId } = await params;
-  const body = (await req.json().catch(() => ({}))) as { triggeredBy?: 'master' | 'client' };
-  const { triggeredBy = 'client' } = body;
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,94 +38,64 @@ export async function POST(
 
   const adm = admin();
 
+  // Verify caller is master or client of this appointment
   const { data: apt } = await adm
     .from('appointments')
-    .select('id, starts_at, master_id, client_id, service_id')
+    .select('id, master_id, client_id')
     .eq('id', appointmentId)
     .maybeSingle();
-
   if (!apt) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-  // Verify caller is master or client of this appointment
   const [{ data: masterRow }, { data: clientRow }] = await Promise.all([
-    adm.from('masters').select('profile_id, display_name').eq('id', apt.master_id).maybeSingle(),
-    adm.from('clients').select('profile_id, full_name').eq('id', apt.client_id).maybeSingle(),
+    adm.from('masters').select('profile_id').eq('id', apt.master_id).maybeSingle(),
+    adm.from('clients').select('profile_id').eq('id', apt.client_id).maybeSingle(),
   ]);
-
   const masterProfileId = (masterRow as { profile_id: string } | null)?.profile_id ?? null;
   const clientProfileId = (clientRow as { profile_id: string | null } | null)?.profile_id ?? null;
 
-  const isCallerMaster = masterProfileId === user.id;
-  const isCallerClient = clientProfileId === user.id;
-  if (!isCallerMaster && !isCallerClient) {
+  if (masterProfileId !== user.id && clientProfileId !== user.id) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
-  const { data: service } = await adm
-    .from('services')
-    .select('name')
-    .eq('id', apt.service_id)
-    .maybeSingle();
+  // Find all pending telegram notifications for this appointment
+  const { data: pending } = await adm
+    .from('notifications')
+    .select('id, profile_id, title, body, status')
+    .eq('channel', 'telegram')
+    .eq('status', 'pending')
+    .filter('data->>apt_id', 'eq', appointmentId);
 
-  const serviceName = (service as { name?: string } | null)?.name || 'Услуга';
-  const clientName = (clientRow as { full_name?: string } | null)?.full_name || 'Клиент';
-  const masterName = (masterRow as { display_name?: string } | null)?.display_name || 'Мастер';
+  if (!pending || pending.length === 0) return NextResponse.json({ ok: true, sent: 0 });
 
-  const startsAt = new Date(apt.starts_at as string);
-  const dateStr = startsAt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' });
-  const timeStr = startsAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' });
+  // Fetch telegram_ids in one query
+  const profileIds = Array.from(new Set(pending.map((n) => n.profile_id)));
+  const { data: profiles } = await adm
+    .from('profiles')
+    .select('id, telegram_id')
+    .in('id', profileIds);
+  const tgByProfile = new Map<string, number | null>();
+  (profiles ?? []).forEach((p: { id: string; telegram_id: number | string | null }) => {
+    tgByProfile.set(p.id, p.telegram_id ? Number(p.telegram_id) : null);
+  });
 
-  const jobs: Promise<void>[] = [];
-
-  if (triggeredBy === 'master') {
-    if (clientProfileId) {
-      jobs.push(notifyUser(adm, {
-        profileId: clientProfileId,
-        title: 'Запись подтверждена',
-        body: `${serviceName} у ${masterName}, ${dateStr} в ${timeStr}`,
-        data: { type: 'appointment_created', appointment_id: appointmentId },
-        deepLinkPath: '/telegram/app/activity',
-        deepLinkLabel: 'Мои записи',
-      }));
+  let sent = 0;
+  for (const n of pending) {
+    const chatId = tgByProfile.get(n.profile_id);
+    if (chatId) {
+      const html = `<b>${escapeHtml(n.title)}</b>\n${escapeHtml(n.body)}`;
+      try {
+        await sendMessage(chatId, html, { parse_mode: 'HTML' });
+        sent++;
+      } catch {
+        continue; // leave as pending; cron will retry
+      }
     }
-  } else {
-    if (masterProfileId) {
-      jobs.push(notifyUser(adm, {
-        profileId: masterProfileId,
-        title: 'Новая запись',
-        body: `${clientName} на ${serviceName}, ${dateStr} в ${timeStr}`,
-        data: { type: 'new_appointment', appointment_id: appointmentId },
-        deepLinkPath: '/telegram/m/home',
-        deepLinkLabel: 'Открыть кабинет',
-      }));
-    }
-    if (clientProfileId) {
-      jobs.push(notifyUser(adm, {
-        profileId: clientProfileId,
-        title: 'Запись подтверждена',
-        body: `${serviceName} у ${masterName}, ${dateStr} в ${timeStr}`,
-        data: { type: 'appointment_created', appointment_id: appointmentId },
-        deepLinkPath: '/telegram/app/activity',
-        deepLinkLabel: 'Мои записи',
-      }));
-    }
-  }
-
-  await Promise.allSettled(jobs);
-
-  // Dedup: DB trigger trg_appointments_booking_created auto-inserts a pending
-  // 'telegram' notification for the client on every appointment INSERT, which a
-  // cron sends later (5-min lag → would duplicate our immediate TG message).
-  // Mark it as 'sent' so the cron skips it.
-  if (clientProfileId) {
+    // Mark sent regardless of telegram_id (no chatId → cron also can't send)
     await adm
       .from('notifications')
       .update({ status: 'sent', sent_at: new Date().toISOString() })
-      .eq('profile_id', clientProfileId)
-      .eq('status', 'pending')
-      .eq('channel', 'telegram')
-      .filter('data->>apt_id', 'eq', appointmentId);
+      .eq('id', n.id);
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sent });
 }

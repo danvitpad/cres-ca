@@ -764,26 +764,49 @@ function DoneStep({
   time: string;
   onClose: () => void;
 }) {
+  const address = [master.workplaceName, master.address, master.city]
+    .filter(Boolean)
+    .join(' · ') || null;
   return (
-    <div className="mx-auto max-w-md py-8 text-center sm:py-16">
-      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-        <Check className="size-8" />
+    <div className="mx-auto max-w-md py-8 sm:py-12">
+      <div className="text-center">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <Check className="size-8" />
+        </div>
+        <h1 className="mt-6 text-[26px] font-bold tracking-tight text-neutral-900">Запись создана!</h1>
       </div>
-      <h1 className="mt-6 text-[28px] font-bold tracking-tight text-neutral-900">Запись создана!</h1>
-      <p className="mt-3 text-[15px] leading-relaxed text-neutral-600">
-        {service.name?.trim() || 'Услуга'} у {master.displayName}<br />
-        {dateLabel(date)} в {time}
-      </p>
-      <p className="mt-5 text-[13px] text-neutral-500">
+      <div className="mt-6 space-y-2.5 rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-[14px]">
+        <Row label="Мастер" value={master.displayName} />
+        <Row label="Услуга" value={service.name?.trim() || 'Услуга'} />
+        <Row label="Дата" value={dateLabel(date)} />
+        <Row label="Время" value={time} />
+        <Row label="Стоимость" value={formatMoney(service.price ?? 0, service.currency)} />
+        {service.duration_minutes ? (
+          <Row label="Длительность" value={formatDuration(service.duration_minutes)} />
+        ) : null}
+        {address ? <Row label="Адрес" value={address} /> : null}
+      </div>
+      <p className="mt-5 text-center text-[13px] text-neutral-500">
         Подтверждение придёт в Telegram. Если планы изменятся — отмени за сутки в разделе «Мои записи».
       </p>
-      <button
-        type="button"
-        onClick={onClose}
-        className="mt-8 inline-flex h-12 min-w-[200px] items-center justify-center rounded-[var(--brand-radius-lg)] bg-neutral-900 px-6 text-[15px] font-semibold text-white"
-      >
-        Готово
-      </button>
+      <div className="mt-6 text-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-12 min-w-[200px] items-center justify-center rounded-[var(--brand-radius-lg)] bg-neutral-900 px-6 text-[15px] font-semibold text-white"
+        >
+          Готово
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="text-neutral-500">{label}</span>
+      <span className="text-right font-medium text-neutral-900">{value}</span>
     </div>
   );
 }
