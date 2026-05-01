@@ -12,12 +12,24 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
 import { ArrowLeft } from 'lucide-react';
+
+// /m/[handle] живёт вне /[locale] segment — там нет NextIntlClientProvider,
+// поэтому useLocale() падает с 500. Локаль читаем вручную из cookie/URL,
+// или берём 'ru' по дефолту.
+function detectLocale(): string {
+  if (typeof window === 'undefined') return 'ru';
+  // 1. Cookie NEXT_LOCALE (next-intl ставит)
+  const m = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
+  if (m && /^(ru|uk|en)$/.test(m[1])) return m[1];
+  // 2. Document language
+  const lang = (document.documentElement.lang || '').slice(0, 2);
+  if (/^(ru|uk|en)$/.test(lang)) return lang;
+  return 'ru';
+}
 
 export function PublicBackButton() {
   const router = useRouter();
-  const locale = useLocale();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -36,7 +48,7 @@ export function PublicBackButton() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
-      router.push(`/${locale}/feed`);
+      router.push(`/${detectLocale()}/feed`);
     }
   }
 
