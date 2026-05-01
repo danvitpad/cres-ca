@@ -454,7 +454,7 @@ export default function AuthPage() {
     }
 
     const supabase = createClient();
-    const personalFullName = [lastName.trim(), firstName.trim()]
+    const personalFullName = [firstName.trim(), lastName.trim()]
       .filter(Boolean)
       .join(' ');
     const fullName = role === 'salon_admin' && salonName.trim()
