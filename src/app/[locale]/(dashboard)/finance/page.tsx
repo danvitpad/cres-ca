@@ -29,6 +29,7 @@ import { StatCard } from '@/components/shared/primitives/stat-card';
 import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
+import { LostRevenueCard } from '@/components/shared/lost-revenue-card';
 // import { ExportMenu } from '@/components/finance/export-menu'; // v1: hidden
 import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
 import { humanizeError } from '@/lib/format/error';
@@ -456,6 +457,12 @@ export default function FinancePage() {
           trend={pctChange(appointmentsCount, prevAppointments)}
           icon={<CalendarIcon size={18} />}
         />
+      </div>
+
+      {/* Lost-revenue insights — где теряются деньги (дыры в расписании,
+          спящие клиенты, апсейл, цены). Дополняет свободный AI-чат ниже. */}
+      <div style={{ marginBottom: 24 }}>
+        <LostRevenueCard />
       </div>
 
       {/* AI Insight + ask-anything bubble.
