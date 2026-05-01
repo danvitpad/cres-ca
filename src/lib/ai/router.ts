@@ -9,17 +9,40 @@
  * created: 2026-04-20
  * --- */
 
-const GEMINI_KEY = () => (process.env.GOOGLE_AI_STUDIO_KEY || process.env.GEMINI_API_KEY || '').trim();
+/**
+ * Gemini keys — collect ALL configured keys (deduped) so each model
+ * attempt can rotate through every key before falling through. Using two
+ * keys doubles the free-tier RPM/RPD budget.
+ */
+const GEMINI_KEYS = (): string[] => {
+  const raw = [
+    process.env.GOOGLE_AI_STUDIO_KEY,
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_AI_STUDIO_KEY_2,
+    process.env.GEMINI_API_KEY_2,
+  ];
+  const seen = new Set<string>();
+  const keys: string[] = [];
+  for (const k of raw) {
+    const v = (k || '').trim();
+    if (v && !seen.has(v)) {
+      seen.add(v);
+      keys.push(v);
+    }
+  }
+  return keys;
+};
 const OPENROUTER_KEY = () => (process.env.OPENROUTER_API_KEY || '').trim();
 
 const GOOGLE_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Voice audio → JSON intent (Gemini can eat audio directly)
-const VOICE_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+// Voice audio → JSON intent (Gemini can eat audio directly).
+// 1.5-flash — старая, но устойчивая (отдельный бесплатный лимит, реже даёт 429/503).
+const VOICE_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
 // Text → JSON / text (ordered by preference)
-const TEXT_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+const TEXT_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 const TEXT_OPENROUTER_MODELS = [
   'deepseek/deepseek-chat-v3.1:free',
   'meta-llama/llama-3.3-70b-instruct:free',
@@ -211,34 +234,45 @@ async function callGeminiAudio(
   model: string,
   params: { audioBase64: string; mimeType: string; systemPrompt: string },
 ): Promise<string> {
-  const key = GEMINI_KEY();
-  if (!key) throw new Error('GEMINI_API_KEY not set');
+  const keys = GEMINI_KEYS();
+  if (keys.length === 0) throw new Error('GEMINI_API_KEY not set');
 
-  // 2.5-flash supports thinkingBudget; setting it to 0 disables thinking → 3-5x faster
-  // and frees up output token budget for actual JSON. 2.0-flash ignores this field.
-  const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: params.systemPrompt },
-          { inline_data: { mime_type: params.mimeType, data: params.audioBase64 } },
-        ],
-      }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-        ...(model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-      },
-    }),
-  });
+  let lastErr = '';
+  // Rotate through every configured Gemini key. If first key hits 429/503 we
+  // immediately retry with the second — doubles effective RPM on the free tier.
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    // 2.5-flash supports thinkingBudget; setting it to 0 disables thinking → 3-5x faster
+    // and frees up output token budget for actual JSON. 2.0-flash ignores this field.
+    const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: params.systemPrompt },
+            { inline_data: { mime_type: params.mimeType, data: params.audioBase64 } },
+          ],
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 2048,
+          ...(model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+        },
+      }),
+    });
 
-  if (res.status === 429 || res.status === 503) throw new Error(`${model} ${res.status}`);
-  if (!res.ok) throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (res.status === 429 || res.status === 503) {
+      lastErr = `${model} ${res.status} (key#${i + 1})`;
+      continue; // try next key
+    }
+    if (!res.ok) {
+      throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    }
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  }
+  throw new Error(lastErr || `${model} all keys failed`);
 }
 
 async function callGeminiText(
@@ -247,8 +281,8 @@ async function callGeminiText(
   history: ChatMessage[],
   maxTokens = 1024,
 ): Promise<string> {
-  const key = GEMINI_KEY();
-  if (!key) throw new Error('GEMINI_API_KEY not set');
+  const keys = GEMINI_KEYS();
+  if (keys.length === 0) throw new Error('GEMINI_API_KEY not set');
 
   const contents = history
     .filter((m) => m.role !== 'system')
@@ -257,21 +291,30 @@ async function callGeminiText(
       parts: [{ text: m.content }],
     }));
 
-  const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents,
-      generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
-    }),
-  });
+  let lastErr = '';
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents,
+        generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+      }),
+    });
 
-  if (res.status === 429 || res.status === 503) throw new Error(`${model} ${res.status}`);
-  if (!res.ok) throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (res.status === 429 || res.status === 503) {
+      lastErr = `${model} ${res.status} (key#${i + 1})`;
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`${model} ${res.status}: ${(await res.text()).slice(0, 200)}`);
+    }
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  }
+  throw new Error(lastErr || `${model} all keys failed`);
 }
 
 async function callOpenRouter(
