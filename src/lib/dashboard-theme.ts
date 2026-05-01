@@ -148,9 +148,10 @@ export const pageContainer = {
   fontFamily: FONT,
   fontFeatureSettings: FONT_FEATURES,
   // Дыхательные отступы: top/horizontal — `clamp(...)`, bottom — фиксированные
-  // 120px, чтобы контент никогда не прилипал к нижнему краю экрана и
-  // sticky-bars / plus-кнопки не закрывали последние карточки.
-  padding: 'clamp(16px, 3vw, 28px) clamp(16px, 3vw, 36px) 120px',
+  // 160px, чтобы контент никогда не прилипал к нижнему краю экрана,
+  // sticky-bars / plus-кнопки не закрывали последние карточки и хватало воздуха
+  // когда у пользователя видна панель задач Windows.
+  padding: 'clamp(16px, 3vw, 28px) clamp(16px, 3vw, 36px) 160px',
   maxWidth: 1280,
   margin: '0 auto' as const,
   width: '100%' as const,

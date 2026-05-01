@@ -1,6 +1,9 @@
 /** --- YAML
  * name: LostRevenueCard
- * description: AI-powered revenue insights card for the finance dashboard
+ * description: AI-подсказки по доходу. Карусель из 1 карточки за раз
+ *              со стрелками + точками-индикаторами. Компактные карточки —
+ *              убран дубль текста (title служит заголовком, action — кнопкой).
+ * updated: 2026-05-01
  * --- */
 
 'use client';
@@ -8,7 +11,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Calendar, Users, TrendingUp, ShoppingBag, ChevronRight, RefreshCw } from 'lucide-react';
+import {
+  Brain, Calendar, Users, TrendingUp, ShoppingBag,
+  ChevronRight, RefreshCw, ChevronLeft,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Insight {
@@ -36,6 +42,7 @@ export function LostRevenueCard() {
   const t = useTranslations('finance');
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeIdx, setActiveIdx] = useState(0);
 
   async function fetchInsights() {
     setLoading(true);
@@ -54,62 +61,124 @@ export function LostRevenueCard() {
     fetchInsights();
   }, []);
 
+  // Когда подсказки обновились — сбрасываем активный индекс на первую,
+  // чтобы пользователь не залип на пустом слайде после рефреша.
+  useEffect(() => {
+    if (activeIdx >= insights.length) setActiveIdx(0);
+  }, [insights, activeIdx]);
+
+  const total = insights.length;
+  const current = total > 0 ? insights[activeIdx] : null;
+  const goPrev = () => setActiveIdx((i) => (i - 1 + total) % total);
+  const goNext = () => setActiveIdx((i) => (i + 1) % total);
+
   return (
     <div className="rounded-[var(--radius-card)] border bg-card shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between border-b p-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-            <Brain className="h-4 w-4" />
+      {/* Header */}
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)] shrink-0">
+            <Brain className="h-3.5 w-3.5" />
           </div>
-          <div>
-            <h3 className="text-sm font-semibold">{t('aiInsights')}</h3>
-            <p className="text-xs text-muted-foreground">{t('aiInsightsDescription')}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold leading-tight truncate">{t('aiInsights')}</h3>
+            {total > 1 && (
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                {activeIdx + 1} из {total}
+              </p>
+            )}
           </div>
         </div>
         <button
+          type="button"
           onClick={fetchInsights}
           disabled={loading}
-          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
+          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted"
+          aria-label="Обновить"
         >
-          <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+          <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
         </button>
       </div>
 
-      <div className="p-4 space-y-3">
+      {/* Body */}
+      <div className="px-4 py-3">
         {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
-        ) : insights.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">{t('noInsights')}</p>
+          <div className="h-16 animate-pulse rounded-lg bg-muted" />
+        ) : !current ? (
+          <p className="py-3 text-center text-sm text-muted-foreground">{t('noInsights')}</p>
         ) : (
-          <AnimatePresence mode="popLayout">
-            {insights.map((insight, i) => (
-              <motion.div
-                key={`${insight.type}-${i}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="rounded-lg border p-3 space-y-2"
+          <div className="flex items-stretch gap-2">
+            {/* Prev arrow (only if more than 1) */}
+            {total > 1 && (
+              <button
+                type="button"
+                onClick={goPrev}
+                className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted self-center"
+                aria-label="Назад"
               >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Card */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${current.type}-${activeIdx}`}
+                initial={{ opacity: 0, x: 12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.18 }}
+                className="flex-1 min-w-0 rounded-lg border p-3"
+              >
+                {/* Заголовок + конкретное действие. Раньше было 3 строки
+                    (title + description + action) — два из них дублировали
+                    друг друга. Оставляем только заголовок и action. */}
                 <div className="flex items-start gap-2">
-                  <div className={cn('mt-0.5 rounded-md p-1.5', typeColors[insight.type])}>
-                    {typeIcons[insight.type]}
+                  <div className={cn('mt-0.5 rounded-md p-1', typeColors[current.type])}>
+                    {typeIcons[current.type]}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{insight.title}</p>
-                    <p className="text-xs text-muted-foreground">{insight.description}</p>
+                    <p className="text-sm font-semibold leading-snug">{current.title}</p>
+                    <p className="mt-1 text-xs text-muted-foreground leading-snug">
+                      {current.action}
+                    </p>
                   </div>
                 </div>
-                <button className="flex w-full items-center gap-1 rounded-lg bg-muted/50 px-3 py-1.5 text-xs font-medium text-[var(--ds-accent)] transition-colors hover:bg-muted">
-                  {insight.action}
-                  <ChevronRight className="ml-auto h-3 w-3" />
-                </button>
               </motion.div>
+            </AnimatePresence>
+
+            {/* Next arrow */}
+            {total > 1 && (
+              <button
+                type="button"
+                onClick={goNext}
+                className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted self-center"
+                aria-label="Вперёд"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Dots */}
+        {total > 1 && (
+          <div className="mt-3 flex items-center justify-center gap-1.5">
+            {insights.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setActiveIdx(i)}
+                aria-label={`Подсказка ${i + 1}`}
+                className={cn(
+                  'h-1.5 rounded-full transition-all',
+                  i === activeIdx
+                    ? 'w-5 bg-[var(--ds-accent)]'
+                    : 'w-1.5 bg-muted hover:bg-muted-foreground/40',
+                )}
+              />
             ))}
-          </AnimatePresence>
+          </div>
         )}
       </div>
     </div>

@@ -184,7 +184,6 @@ export default function StatsPage() {
     <div style={{
       ...pageContainer,
       color: C.text, background: C.bg, minHeight: '100%',
-      paddingBottom: 96,
       fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
     }}>
       <motion.div
