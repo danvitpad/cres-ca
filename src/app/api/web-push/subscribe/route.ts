@@ -10,9 +10,13 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 export async function GET() {
+  // VAPID public key can be exposed under either NEXT_PUBLIC_* (preferred —
+  // available at build time) or plain VAPID_PUBLIC_KEY (server-only). The
+  // client-side hook calls this endpoint to get whichever name is set.
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || null;
   return NextResponse.json({
-    publicKey: process.env.VAPID_PUBLIC_KEY ?? null,
-    enabled: Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
+    publicKey,
+    enabled: Boolean(publicKey && process.env.VAPID_PRIVATE_KEY),
   });
 }
 
