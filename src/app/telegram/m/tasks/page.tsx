@@ -28,22 +28,26 @@ interface Task {
 
 type Tab = 'active' | 'history';
 
+// Все абсолютные времена показываем в киевском часовом поясе — у нас украинский
+// продукт, мастер всегда думает по Киеву. Даже если телефон у мастера в роуминге.
+const KYIV_TZ = 'Europe/Kyiv';
+
 function formatRemindAt(iso: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = d.getTime() - now.getTime();
   const diffMin = Math.round(diffMs / 60000);
   if (diffMin < -60 * 24) {
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', timeZone: KYIV_TZ });
   }
   if (diffMin < -60) return `${Math.abs(Math.round(diffMin / 60))} ч назад`;
   if (diffMin < 0) return `${Math.abs(diffMin)} мин назад`;
   if (diffMin === 0) return 'сейчас';
   if (diffMin < 60) return `через ${diffMin} мин`;
   if (diffMin < 60 * 24) return `через ${Math.round(diffMin / 60)} ч`;
-  // Same week — show weekday and time
-  const day = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
-  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  // Same week — show weekday and time (Kyiv)
+  const day = d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: KYIV_TZ });
+  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: KYIV_TZ });
   return `${day} в ${time}`;
 }
 

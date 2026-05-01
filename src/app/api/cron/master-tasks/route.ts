@@ -59,8 +59,15 @@ export async function GET(request: Request) {
     const recipient = t.assigned_to ?? t.created_by;
     const channels = (t.channels && t.channels.length > 0) ? t.channels : ['telegram'];
 
+    // Format scheduled time in Kyiv timezone — this is the time mastery
+    // originally picked when creating the task ("в 14:30" means 14:30 Kyiv).
+    const remindAt = new Date(t.remind_at);
+    const kyivTime = remindAt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
+
     const title = `📌 ${t.title}`;
-    const body = t.description?.trim() ? t.description.trim() : 'Напоминание';
+    const body = t.description?.trim()
+      ? `${t.description.trim()}\n\n⏰ ${kyivTime}`
+      : `⏰ Напоминание · ${kyivTime}`;
 
     // Insert one notification per channel (most often just telegram).
     for (const channel of channels) {
