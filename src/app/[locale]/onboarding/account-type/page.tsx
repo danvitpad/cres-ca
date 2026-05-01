@@ -19,9 +19,8 @@ export default function AccountTypePage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
-  // Guard: страница только для master / salon_admin. Если профиль = client —
-  // увозим на /feed. Если у salon_admin уже создан салон (трейггер на регистрации) —
-  // перепрыгиваем сразу к следующему шагу онбординга через RPC get_next_onboarding_step.
+  // Команда временно отключена — релизим только соло мастера. Любой мастер
+  // сразу попадает на выбор вертикали, минуя выбор «соло / команда».
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -33,21 +32,8 @@ export default function AccountTypePage() {
       if (cancelled) return;
       if (profile?.role === 'client') { router.replace('/feed'); return; }
 
-      // Если RPC говорит что следующий шаг не account-type — переходим туда.
-      // Это случай когда салон уже создан автоматически и пользователю нечего
-      // выбирать здесь (создать новый или присоединиться).
-      const { data: nextStep } = await supabase.rpc('get_next_onboarding_step', { p_user_id: user.id });
-      if (cancelled) return;
-      if (typeof nextStep === 'string' && nextStep && !nextStep.endsWith('/account-type')) {
-        router.replace(nextStep);
-        return;
-      }
-      // Если онбординг уже завершён (nextStep=null) — на дашборд по роли.
-      if (nextStep === null) {
-        router.replace(profile?.role === 'salon_admin' ? '/calendar' : '/calendar');
-        return;
-      }
-      setReady(true);
+      // Master / salon_admin → сразу на vertical (соло-flow)
+      router.replace('/onboarding/vertical');
     })();
     return () => { cancelled = true; };
   }, [router]);

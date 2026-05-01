@@ -139,21 +139,15 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     return <>{children}</>;
   }
 
-  // Master в unified-команде: убираем «Клиенты» (общая база у админа).
-  const tabs: readonly NavTab[] = unifiedTeamLimited
-    ? [
-        { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
-        { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
-        { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
-        { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
-      ]
-    : [
-        { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
-        { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
-        { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
-        { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
-        { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
-      ];
+  // Команда временно отключена — у каждого мастера полный соло-набор табов.
+  void unifiedTeamLimited;
+  const tabs: readonly NavTab[] = [
+    { key: 'home', href: '/telegram/m/home', icon: Home, label: 'Главная' },
+    { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
+    { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
+    { key: 'notifications', href: '/telegram/m/notifications', icon: Bell, label: 'Уведомления' },
+    { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, label: 'Профиль' },
+  ];
 
   // Fullscreen routes — booking/voice flows have own footers; onboarding = no nav.
   const isFullscreen =

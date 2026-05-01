@@ -187,7 +187,8 @@ export default function MasterMiniAppHome() {
       >
         <PageHeader title={`Привет, ${greetingName}`} subtitle={dateLabel} />
 
-        {pendingInvites > 0 && (
+        {/* Приглашения в команду — временно скрыто до окончания доработки. */}
+        {false && pendingInvites > 0 && (
           <Link
             href="/telegram/m/invites"
             style={{

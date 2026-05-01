@@ -115,10 +115,10 @@ input[type="checkbox"].auth-cb { accent-color: var(--aviolet); width: 14px; heig
 }
 `;
 
+// Команда временно скрыта до окончания доработки. Релизим только Клиент + Соло Мастер.
 const ROLES: { value: Role; label: string; icon: typeof UserIcon }[] = [
   { value: 'client',      label: 'Клиент',   icon: CalendarCheck },
   { value: 'master',      label: 'Мастер',   icon: UserIcon },
-  { value: 'salon_admin', label: 'Команда',  icon: Building2 },
 ];
 
 function readRemembered(): { email?: string; password?: string; role?: Role } {
