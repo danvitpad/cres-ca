@@ -165,6 +165,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   return (
     <TelegramProvider>
       <MiniAppThemeProvider
+        className="miniapp-scope"
         style={{
           ...FONT_BASE,
           minHeight: '100dvh',

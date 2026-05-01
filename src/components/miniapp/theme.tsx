@@ -42,9 +42,10 @@ function readSystemTheme(): Theme {
 interface Props {
   children: ReactNode;
   style?: CSSProperties;
+  className?: string;
 }
 
-export function MiniAppThemeProvider({ children, style }: Props) {
+export function MiniAppThemeProvider({ children, style, className }: Props) {
   const userId = useAuthStore((s) => s.userId);
   const [theme, setTheme] = useState<Theme>('light');
 
@@ -77,7 +78,7 @@ export function MiniAppThemeProvider({ children, style }: Props) {
   }, [userId]);
 
   return (
-    <div data-theme={theme} style={style}>
+    <div data-theme={theme} className={className} style={style}>
       {children}
     </div>
   );

@@ -430,3 +430,64 @@
   padding-right: var(--tg-safe-area-inset-right, 0px);
   min-height: var(--tg-viewport-stable-height, 100vh);
 }
+/* ═══════════════════════════════════════════════════════════
+ * MINI APP STYLE OVERRIDES — приводим легаси страницы к дизайн-системе
+ * (T-токены из components/miniapp/design.ts) без правки 31+ файла.
+ *
+ * Все экраны под /telegram/* обёрнуты в .miniapp-scope (см.
+ * telegram/m/layout.tsx и telegram/(app)/layout.tsx).
+ *
+ * Маппинг ниже превращает Tailwind-хардкод (bg-white, text-violet-600,
+ * text-neutral-500 и т.п.) в наши CSS-переменные (--m-surface, --m-accent,
+ * --m-text-secondary). Это работает и в light, и в dark теме потому
+ * что CSS-переменные сами переключаются на data-theme=dark.
+ * ═══════════════════════════════════════════════════════════ */
+
+.miniapp-scope .bg-white {
+  background-color: var(--m-surface) !important;
+}
+.miniapp-scope .bg-neutral-50  { background-color: var(--m-bg-subtle) !important; }
+.miniapp-scope .bg-neutral-100 { background-color: var(--m-bg-subtle) !important; }
+.miniapp-scope .bg-neutral-200 { background-color: var(--m-surface-elevated) !important; }
+.miniapp-scope .bg-neutral-900 { background-color: var(--m-text) !important; }
+
+.miniapp-scope .text-black,
+.miniapp-scope .text-neutral-900,
+.miniapp-scope .text-neutral-800 { color: var(--m-text) !important; }
+.miniapp-scope .text-neutral-700,
+.miniapp-scope .text-neutral-600 { color: var(--m-text-secondary) !important; }
+.miniapp-scope .text-neutral-500,
+.miniapp-scope .text-neutral-400 { color: var(--m-text-tertiary) !important; }
+.miniapp-scope .text-neutral-300 { color: var(--m-text-disabled) !important; }
+
+.miniapp-scope .border-neutral-100,
+.miniapp-scope .border-neutral-200 { border-color: var(--m-border) !important; }
+.miniapp-scope .border-neutral-300 { border-color: var(--m-border) !important; }
+
+/* Brand accent — фиолетовый акцент со старых экранов → наш teal */
+.miniapp-scope .text-violet-500,
+.miniapp-scope .text-violet-600,
+.miniapp-scope .text-violet-700,
+.miniapp-scope .text-purple-500,
+.miniapp-scope .text-purple-600,
+.miniapp-scope .text-purple-700 { color: var(--m-accent) !important; }
+
+.miniapp-scope .bg-violet-500,
+.miniapp-scope .bg-violet-600,
+.miniapp-scope .bg-purple-500,
+.miniapp-scope .bg-purple-600 { background-color: var(--m-accent) !important; }
+
+.miniapp-scope .bg-violet-50,
+.miniapp-scope .bg-violet-100,
+.miniapp-scope .bg-purple-50,
+.miniapp-scope .bg-purple-100 { background-color: var(--m-accent-soft) !important; }
+
+.miniapp-scope .border-violet-200,
+.miniapp-scope .border-violet-300,
+.miniapp-scope .border-purple-200,
+.miniapp-scope .border-purple-300 { border-color: var(--m-accent) !important; }
+
+/* Hover/active state остаётся в той же палитре */
+.miniapp-scope .hover\:bg-white:hover { background-color: var(--m-surface-elevated) !important; }
+.miniapp-scope .hover\:bg-neutral-50:hover,
+.miniapp-scope .hover\:bg-neutral-100:hover { background-color: var(--m-surface-elevated) !important; }
