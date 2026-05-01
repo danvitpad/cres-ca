@@ -356,43 +356,50 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     .eq('profile_id', session.profile_id)
     .maybeSingle();
 
-  // Voice feedback path — for clients voice is always feedback (they have no AI assistant).
-  // For masters: explicit feedback keywords route to feedback, else master AI intent path.
-  try {
-    const { voiceToText } = await import('@/lib/ai/router');
-    const { data: transcript } = await voiceToText({ audioBase64: base64, mimeType });
-    const t = (transcript ?? '').trim();
-
-    const isFeedback = isFeedbackTranscript(t);
-    // Clients (no master record) → all voice is feedback by default if transcript non-empty
-    if (isFeedback || (!master && t.length >= 4)) {
+  // ── Client (no master record) → only path is feedback ──
+  // Clients use voice exclusively for feedback. Single short transcription call.
+  if (!master) {
+    try {
+      const { voiceToText } = await import('@/lib/ai/router');
+      const { data: transcript } = await voiceToText({ audioBase64: base64, mimeType });
+      const t = (transcript ?? '').trim();
       if (t.length < 4) {
         await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуй сказать чётче или напиши текстом командой /feedback');
         return;
       }
       await saveFeedbackAndNotify(session.profile_id, t, 'telegram_voice');
       await sendMessage(chatId, FEEDBACK_THANKS);
-      return;
+    } catch (err) {
+      console.error('[voice] client feedback transcription failed:', (err as Error)?.message);
+      await sendMessage(chatId, '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.');
     }
-  } catch (err) {
-    console.warn('[voice] pre-transcription failed, falling back to intent path:', err);
-  }
-
-  // Not feedback → master-only AI intent path
-  if (!master) {
-    await sendMessage(chatId, '❌ Не удалось обработать голосовое. Если это отзыв — повтори голосом или напиши /feedback <текст>.');
     return;
   }
 
+  // ── Master path: ONE Gemini call (intent + transcript together) ──
+  // parseVoiceIntent already returns raw_transcript, so we don't need a separate
+  // transcription call. Saves 50% of Gemini quota per voice message.
   try {
-    // Gemini: audio → structured intent
     const intent = await parseVoiceIntent(base64, mimeType);
+
+    // Detect feedback from raw transcript (kept for masters who want to send feedback by voice)
+    const transcript = (intent.raw_transcript || '').trim();
+    if (isFeedbackTranscript(transcript) && transcript.length >= 4) {
+      await saveFeedbackAndNotify(session.profile_id, transcript, 'telegram_voice');
+      await sendMessage(chatId, FEEDBACK_THANKS);
+      return;
+    }
 
     // Route action
     await routeVoiceAction(chatId, master.id, intent, supabase);
   } catch (err) {
     const msg = (err as Error)?.message ?? '';
-    console.error('Voice processing error:', err);
+    // Print full error breakdown for debugging (Vercel truncates first line, so split into two)
+    console.error('[voice] intent failed (msg):', msg.slice(0, 200));
+    const aiErr = err as { log?: Array<{ model: string; error?: string }> };
+    if (aiErr.log) {
+      for (const a of aiErr.log) console.error(`[voice] ${a.model} → ${a.error ?? 'ok'}`);
+    }
     let userMsg = '❌ Не удалось обработать голосовое. Попробуй ещё раз, говори чётче.';
     if (msg.includes('All Gemini') || msg.includes('Gemini unavailable')) {
       userMsg = '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.';

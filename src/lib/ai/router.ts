@@ -214,6 +214,8 @@ async function callGeminiAudio(
   const key = GEMINI_KEY();
   if (!key) throw new Error('GEMINI_API_KEY not set');
 
+  // 2.5-flash supports thinkingBudget; setting it to 0 disables thinking → 3-5x faster
+  // and frees up output token budget for actual JSON. 2.0-flash ignores this field.
   const res = await fetch(`${GOOGLE_BASE}/${model}:generateContent?key=${key}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -224,7 +226,11 @@ async function callGeminiAudio(
           { inline_data: { mime_type: params.mimeType, data: params.audioBase64 } },
         ],
       }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+        ...(model.startsWith('gemini-2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+      },
     }),
   });
 
