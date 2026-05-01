@@ -39,10 +39,12 @@ export async function POST(
     return NextResponse.json({ error: 'cannot_purge_self' }, { status: 400 });
   }
 
-  // 2. Body confirmation: caller must send the target email back.
+  // 2. Body: skip_confirm=true bypasses email check (quick-delete from list); otherwise confirm_email required.
   const body = await req.json().catch(() => ({}));
+  const skipConfirm = (body as { skip_confirm?: boolean }).skip_confirm === true;
   const confirmEmail = String((body as { confirm_email?: string }).confirm_email ?? '').trim().toLowerCase();
-  if (!confirmEmail) {
+
+  if (!skipConfirm && !confirmEmail) {
     return NextResponse.json({ error: 'confirm_email_required' }, { status: 400 });
   }
 
@@ -55,18 +57,26 @@ export async function POST(
     .eq('id', targetId)
     .maybeSingle();
 
-  if (!target) {
-    // maybe the profile is gone but auth.users row remains — allow purge by id only
+  if (!skipConfirm) {
+    if (!target) {
+      // maybe the profile is gone but auth.users row remains — allow purge by id only
+      const { data: { user: authUser }, error: authErr } = await db.auth.admin.getUserById(targetId);
+      if (authErr || !authUser) {
+        return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      }
+      if ((authUser.email ?? '').toLowerCase() !== confirmEmail) {
+        return NextResponse.json({ error: 'confirm_email_mismatch', expected_email_hint: maskEmail(authUser.email) }, { status: 400 });
+      }
+    } else {
+      if ((target.email ?? '').toLowerCase() !== confirmEmail) {
+        return NextResponse.json({ error: 'confirm_email_mismatch', expected_email_hint: maskEmail(target.email) }, { status: 400 });
+      }
+    }
+  } else if (!target) {
+    // skip_confirm but profile not found — check auth.users
     const { data: { user: authUser }, error: authErr } = await db.auth.admin.getUserById(targetId);
     if (authErr || !authUser) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
-    }
-    if ((authUser.email ?? '').toLowerCase() !== confirmEmail) {
-      return NextResponse.json({ error: 'confirm_email_mismatch', expected_email_hint: maskEmail(authUser.email) }, { status: 400 });
-    }
-  } else {
-    if ((target.email ?? '').toLowerCase() !== confirmEmail) {
-      return NextResponse.json({ error: 'confirm_email_mismatch', expected_email_hint: maskEmail(target.email) }, { status: 400 });
     }
   }
 
