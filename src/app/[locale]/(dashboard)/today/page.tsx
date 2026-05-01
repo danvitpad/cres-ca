@@ -273,8 +273,8 @@ export default function TodayPage() {
 
   return (
     <div
-      style={{ ...pageContainer, height: 'calc(100dvh - 64px)' }}
-      className="flex flex-col gap-4 overflow-hidden"
+      style={{ ...pageContainer, minHeight: 'calc(100dvh - 64px)' }}
+      className="flex flex-col gap-4"
     >
       {/* Greeting */}
       <motion.div {...stagger(0)} className="shrink-0">

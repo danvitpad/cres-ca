@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mic, Calendar, Receipt, NotebookPen, Clock, UserPlus, Sparkles } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { T, R } from '@/components/miniapp/design';
 
 const SAMPLES = [
   { icon: Calendar, title: 'Запись', text: '«Запиши Марию на окрашивание в пятницу в 3»' },
@@ -50,40 +51,75 @@ export default function VoiceAssistantIntro() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className="space-y-6 px-5 pt-8 pb-10"
+      style={{ background: T.bg, color: T.text, minHeight: '100dvh' }}
     >
       <div className="text-center">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.05, type: 'spring', stiffness: 220, damping: 20 }}
-          className="mx-auto flex size-16 items-center justify-center rounded-2xl border border-neutral-200 bg-white"
+          className="mx-auto flex size-16 items-center justify-center"
+          style={{
+            background: T.accentSoft,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.lg,
+          }}
         >
-          <Mic className="size-7 text-violet-600" />
+          <Mic className="size-7" style={{ color: T.accent }} />
         </motion.div>
-        <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-600">Новое</p>
-        <h1 className="mt-1 text-2xl font-bold">Познакомься с голосом</h1>
-        <p className="mx-auto mt-2 max-w-sm text-[13px] text-neutral-600">
+        <p
+          className="mt-4 text-[10px] font-semibold uppercase tracking-[0.2em]"
+          style={{ color: T.accent }}
+        >
+          Новое
+        </p>
+        <h1 className="mt-1 text-2xl font-bold" style={{ color: T.text }}>Познакомься с голосом</h1>
+        <p
+          className="mx-auto mt-2 max-w-sm text-[13px]"
+          style={{ color: T.textSecondary }}
+        >
           Управляй CRM голосом из Telegram. Запись, расход, клиент, напоминание — одна команда и готово.
         </p>
       </div>
 
-      <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4">
-        <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />
+      <div
+        className="relative overflow-hidden p-4"
+        style={{
+          background: T.surface,
+          border: `1px solid ${T.border}`,
+          borderRadius: R.lg,
+        }}
+      >
+        <span
+          className="absolute inset-y-3 left-0 w-1 rounded-r-full"
+          style={{ background: T.accent }}
+        />
         <div className="pl-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-violet-600" />
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-700">Как это работает</p>
+            <Sparkles className="size-4" style={{ color: T.accent }} />
+            <p
+              className="text-[11px] font-semibold uppercase tracking-wide"
+              style={{ color: T.accent }}
+            >
+              Как это работает
+            </p>
           </div>
-          <ol className="mt-2 space-y-1.5 text-[13px] text-neutral-700">
-            <li><span className="text-neutral-400">1.</span> Открой чат бота в Telegram</li>
-            <li><span className="text-neutral-400">2.</span> Запиши голосовое — одна фраза</li>
-            <li><span className="text-neutral-400">3.</span> Получи подтверждение — запись в базе</li>
+          <ol
+            className="mt-2 space-y-1.5 text-[13px]"
+            style={{ color: T.textSecondary }}
+          >
+            <li><span style={{ color: T.textTertiary }}>1.</span> Открой чат бота в Telegram</li>
+            <li><span style={{ color: T.textTertiary }}>2.</span> Запиши голосовое — одна фраза</li>
+            <li><span style={{ color: T.textTertiary }}>3.</span> Получи подтверждение — запись в базе</li>
           </ol>
         </div>
       </div>
 
       <div>
-        <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
+        <p
+          className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide"
+          style={{ color: T.textTertiary }}
+        >
           Попробуй одну из команд
         </p>
         <ul className="space-y-2">
@@ -95,14 +131,31 @@ export default function VoiceAssistantIntro() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + i * 0.04 }}
-                className="flex items-start gap-3 rounded-2xl border border-neutral-200 bg-white p-3.5"
+                className="flex items-start gap-3 p-3.5"
+                style={{
+                  background: T.surface,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: R.lg,
+                }}
               >
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white">
-                  <Icon className="size-4 text-neutral-700" />
+                <div
+                  className="flex size-9 shrink-0 items-center justify-center"
+                  style={{
+                    background: T.accentSoft,
+                    border: `1px solid ${T.borderSubtle}`,
+                    borderRadius: R.sm,
+                  }}
+                >
+                  <Icon className="size-4" style={{ color: T.accent }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[12px] font-semibold">{s.title}</p>
-                  <p className="mt-0.5 text-[12px] italic text-neutral-600">{s.text}</p>
+                  <p className="text-[12px] font-semibold" style={{ color: T.text }}>{s.title}</p>
+                  <p
+                    className="mt-0.5 text-[12px] italic"
+                    style={{ color: T.textSecondary }}
+                  >
+                    {s.text}
+                  </p>
                 </div>
               </motion.li>
             );
@@ -113,13 +166,24 @@ export default function VoiceAssistantIntro() {
       <div className="space-y-2 pt-2">
         <button
           onClick={openBot}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-sm font-semibold text-black transition-colors active:bg-white/80"
+          className="flex w-full items-center justify-center gap-2 py-4 text-sm font-semibold transition-colors active:opacity-90"
+          style={{
+            background: T.accent,
+            color: T.accentText,
+            borderRadius: R.lg,
+          }}
         >
           <Mic className="size-4" /> Отправить тестовое в @{BOT_USERNAME}
         </button>
         <button
           onClick={skip}
-          className="w-full rounded-2xl border border-neutral-200 bg-white py-3 text-[13px] font-semibold text-neutral-700 transition-colors active:bg-neutral-50"
+          className="w-full py-3 text-[13px] font-semibold transition-colors active:opacity-80"
+          style={{
+            background: 'transparent',
+            border: `1px solid ${T.border}`,
+            color: T.textSecondary,
+            borderRadius: R.lg,
+          }}
         >
           Позже
         </button>

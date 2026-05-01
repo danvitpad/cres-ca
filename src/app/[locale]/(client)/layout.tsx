@@ -808,7 +808,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         </div>
 
         {/* Main content */}
-        <main ref={scrollRef} className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+        <main ref={scrollRef} className="flex-1 overflow-y-auto pb-32 lg:pb-32">
           <div
             className={cn(
               'py-6 lg:py-10',
