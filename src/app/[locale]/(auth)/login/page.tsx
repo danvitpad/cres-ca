@@ -1072,6 +1072,10 @@ export default function AuthPage() {
                           fontSize: 13, marginTop: 12, fontWeight: 600 }}>
                         {resendIn > 0 ? `Отправить повторно через ${resendIn}с` : 'Отправить повторно'}
                       </button>
+                      <button type="button" onClick={() => { setSub('form'); setOtp(''); }}
+                        style={{ display: 'block', margin: '8px auto 0', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--afg3)', fontSize: 12 }}>
+                        Изменить email
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>

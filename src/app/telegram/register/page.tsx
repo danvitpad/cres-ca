@@ -54,6 +54,7 @@ const T = {
     otpPlaceholder: '• • • • • • • •',
     otpConfirm: 'Підтвердити',
     otpResend: 'Надіслати код ще раз',
+    otpChangeEmail: 'Змінити email',
   },
   ru: {
     title: 'Регистрация',
@@ -86,6 +87,7 @@ const T = {
     otpPlaceholder: '• • • • • • • •',
     otpConfirm: 'Подтвердить',
     otpResend: 'Отправить код ещё раз',
+    otpChangeEmail: 'Изменить email',
   },
   en: {
     title: 'Sign up',
@@ -118,6 +120,7 @@ const T = {
     otpPlaceholder: '• • • • • • • •',
     otpConfirm: 'Confirm',
     otpResend: 'Resend code',
+    otpChangeEmail: 'Change email',
   },
 } as const;
 
@@ -390,6 +393,13 @@ export default function MiniAppRegisterPage() {
               style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
             >
               {t.otpResend}
+            </button>
+            <button
+              onClick={() => { setOtpStage('form'); setOtpCode(''); setOtpError(''); }}
+              className="w-full py-1 text-xs underline-offset-2 hover:underline"
+              style={{ color: 'color-mix(in oklab, var(--foreground) 40%, transparent)' }}
+            >
+              {t.otpChangeEmail}
             </button>
           </div>
         </div>
