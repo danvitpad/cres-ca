@@ -46,6 +46,22 @@ const PRESET_COLORS = [
   '#1f2937', '#0f172a',
 ];
 
+// Быстрые пресеты фона публичной страницы. Светлые теплоту/холод —
+// деликатные, не кричащие, чтобы не перебивать контент. Тёмные —
+// на любителя «night mode» презентации.
+const BACKGROUND_PRESETS: { label: string; value: string | null; sample: string }[] = [
+  { label: 'По умолчанию', value: null,        sample: '#ffffff' },
+  { label: 'Молочный',     value: '#fafaf7',   sample: '#fafaf7' },
+  { label: 'Светло-серый', value: '#f3f4f6',   sample: '#f3f4f6' },
+  { label: 'Песочный',     value: '#fef9f0',   sample: '#fef9f0' },
+  { label: 'Розовый',      value: '#fdf2f8',   sample: '#fdf2f8' },
+  { label: 'Мятный',       value: '#ecfdf5',   sample: '#ecfdf5' },
+  { label: 'Голубой',      value: '#eff6ff',   sample: '#eff6ff' },
+  { label: 'Лавандовый',   value: '#f5f3ff',   sample: '#f5f3ff' },
+  { label: 'Графит',       value: '#1f2937',   sample: '#1f2937' },
+  { label: 'Полночь',      value: '#0f172a',   sample: '#0f172a' },
+];
+
 interface Master {
   id: string;
   profile_id?: string | null;
@@ -400,7 +416,33 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
             </div>
           </Section>
 
-          <Section title="Цвет фона страницы">
+          <Section title="Фон страницы">
+            {/* Готовые пресеты — клик и фон сразу применился. Без ручного
+                поиска нужного hex'а в палитре. */}
+            <div className="grid grid-cols-5 gap-2 mb-3">
+              {BACKGROUND_PRESETS.map((p) => {
+                const active = (background ?? null) === p.value;
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setBackground(p.value)}
+                    className={`group flex flex-col items-center gap-1 rounded-lg border p-2 transition ${active ? 'border-primary' : 'border-input hover:border-primary/40'}`}
+                    title={p.label}
+                  >
+                    <span
+                      className="h-8 w-full rounded-md border border-black/5"
+                      style={{ background: p.sample }}
+                    />
+                    <span className="text-[10px] leading-tight text-muted-foreground group-hover:text-foreground">
+                      {p.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Свой цвет — color picker + ручной hex для тех кому нужен
+                нестандартный оттенок. */}
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -412,7 +454,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
                 type="text"
                 value={background ?? ''}
                 onChange={(e) => setBackground(e.target.value || null)}
-                placeholder="по умолчанию (как у сайта)"
+                placeholder="свой цвет (например #f0f9ff)"
                 className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono outline-none focus:border-primary"
               />
               {background && (
