@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendMessage, sendDocument } from '@/lib/telegram/bot';
+import { sendWebPush } from '@/lib/notifications/web-push';
 
 interface AttachmentRef { url: string; name?: string }
 import { getResend } from '@/lib/email/resend';
@@ -42,6 +43,16 @@ export async function GET(request: Request) {
     const profile = n.profiles as { telegram_id: string | null; full_name: string } | null;
 
     const attachments = (n.data as Record<string, unknown> | null)?.attachment_urls as AttachmentRef[] | undefined;
+
+    // Параллельно — web push в браузер (для всех каналов, если подписан).
+    // Не валит основной flow — sendWebPush сам swallowит ошибки.
+    void sendWebPush(supabase, n.profile_id, {
+      title: n.title ?? 'CRES-CA',
+      body: n.body ?? '',
+      url: ((n.data as Record<string, unknown> | null)?.url as string | undefined) ?? '/telegram',
+      tag: ((n.data as Record<string, unknown> | null)?.kind as string | undefined) ?? n.id,
+      data: { notificationId: n.id, ...((n.data as Record<string, unknown> | null) ?? {}) },
+    });
 
     // If the notification carries its own inline_keyboard (e.g. native TG review
     // with 5 star buttons) — use it instead of the default «✨ CRES-CA» web-app

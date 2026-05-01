@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Bell } from 'lucide-react';
 import { NotificationPreferencesEditor } from '@/components/notifications/notification-preferences-editor';
+import { WebPushToggle } from '@/components/settings/web-push-toggle';
 
 export default function NotificationsSettingsPage() {
   return (
@@ -27,6 +28,8 @@ export default function NotificationsSettingsPage() {
           Настрой когда и как часто получать напоминания о своих визитах. Можно добавить несколько — например «за 2 дня» + «за 2 часа» + «за 15 минут».
         </p>
       </div>
+
+      <WebPushToggle />
 
       <NotificationPreferencesEditor theme="light" />
     </div>
