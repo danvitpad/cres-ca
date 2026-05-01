@@ -5,6 +5,7 @@
  * --- */
 
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { getSuperadminEmails } from '@/lib/superadmin/access';
 
 function admin() {
   return createAdminClient(
@@ -66,13 +67,21 @@ export async function listUsers(f: UsersListFilters = {}): Promise<UsersListResu
 
   q = q.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
-  const { data: profiles, count, error } = await q;
+  const { data: profilesRaw, count: rawCount, error } = await q;
   if (error) {
     console.error('[superadmin/users] profiles query error:', error.message, error.details, error.hint);
     return { rows: [], total: 0 };
   }
 
-  const profileIds = (profiles ?? []).map((p) => p.id);
+  // Супер-админы — служебные аккаунты, в списке пользователей не показываются
+  const saEmails = new Set(getSuperadminEmails().map((e) => e.toLowerCase()));
+  const profiles = (profilesRaw ?? []).filter(
+    (p) => !p.email || !saEmails.has(p.email.toLowerCase())
+  );
+  const hiddenCount = (profilesRaw?.length ?? 0) - profiles.length;
+  const count = (rawCount ?? 0) - hiddenCount;
+
+  const profileIds = profiles.map((p) => p.id);
   if (profileIds.length === 0) return { rows: [], total: count ?? 0 };
 
   // Step 2: parallel side queries for masters, salons, subs, whitelist (flat IN-queries, no embeds)
@@ -182,6 +191,10 @@ export async function getUserDetail(profileId: string): Promise<UserDetail | nul
     .eq('id', profileId)
     .maybeSingle();
   if (!p) return null;
+
+  // Супер-админ не отображается как пользователь — возвращаем null (404)
+  const saEmails = new Set(getSuperadminEmails().map((e) => e.toLowerCase()));
+  if (p.email && saEmails.has(p.email.toLowerCase())) return null;
 
   const [master, salon, sub, wl, bl, appts, apptsDone, voice, payments] = await Promise.all([
     db.from('masters').select('id, city, specialization, is_active').eq('profile_id', profileId).maybeSingle(),

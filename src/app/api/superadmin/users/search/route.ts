@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { requireSuperadmin } from '@/lib/superadmin/auth';
+import { getSuperadminEmails } from '@/lib/superadmin/access';
 
 function admin() {
   return createAdminClient(
@@ -37,13 +38,17 @@ export async function GET(req: Request) {
     .is('deleted_at', null)
     .limit(10);
 
-  const results = (data ?? []).map((r) => ({
-    id: r.id,
-    name: r.full_name || r.first_name || 'Без имени',
-    email: r.email,
-    phone: r.phone,
-    role: r.role,
-  }));
+  // Супер-админов не показываем в поиске пользователей
+  const saEmails = new Set(getSuperadminEmails().map((e) => e.toLowerCase()));
+  const results = (data ?? [])
+    .filter((r) => !r.email || !saEmails.has(r.email.toLowerCase()))
+    .map((r) => ({
+      id: r.id,
+      name: r.full_name || r.first_name || 'Без имени',
+      email: r.email,
+      phone: r.phone,
+      role: r.role,
+    }));
 
   return NextResponse.json({ results });
 }

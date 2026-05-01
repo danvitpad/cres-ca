@@ -5,6 +5,7 @@
  * --- */
 
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { getSuperadminEmails } from '@/lib/superadmin/access';
 
 function admin() {
   return createAdminClient(
@@ -194,10 +195,12 @@ export async function getRegistrationsSeries(): Promise<RegistrationPoint[]> {
   const db = admin();
   const since = daysAgo(30);
   const [p, m, s] = await Promise.all([
-    db.from('profiles').select('created_at, role').gte('created_at', since),
+    db.from('profiles').select('created_at, role, email').gte('created_at', since),
     db.from('masters').select('created_at').gte('created_at', since),
     db.from('salons').select('created_at').gte('created_at', since),
   ]);
+  // Супер-админов исключаем из счётчиков регистраций
+  const saEmails = new Set(getSuperadminEmails().map((e) => e.toLowerCase()));
   const map = new Map<string, { clients: number; masters: number; salons: number }>();
   const now = new Date();
   for (let i = 29; i >= 0; i--) {
@@ -206,7 +209,8 @@ export async function getRegistrationsSeries(): Promise<RegistrationPoint[]> {
     const key = d.toISOString().slice(0, 10);
     map.set(key, { clients: 0, masters: 0, salons: 0 });
   }
-  for (const row of (p.data ?? []) as Array<{ created_at: string; role: string }>) {
+  for (const row of (p.data ?? []) as Array<{ created_at: string; role: string; email: string | null }>) {
+    if (row.email && saEmails.has(row.email.toLowerCase())) continue;
     const key = row.created_at.slice(0, 10);
     const b = map.get(key);
     if (!b) continue;
@@ -232,7 +236,7 @@ export async function getRecentEvents(limit = 15): Promise<EventItem[]> {
   const events: EventItem[] = [];
 
   const [profs, subs, cancels, sls] = await Promise.all([
-    db.from('profiles').select('full_name, first_name, role, created_at').order('created_at', { ascending: false }).limit(10),
+    db.from('profiles').select('full_name, first_name, role, created_at, email').order('created_at', { ascending: false }).limit(20),
     db.from('subscriptions').select('tier, created_at, profile_id, profiles:profile_id(full_name, first_name)').neq('tier', 'trial').order('created_at', { ascending: false }).limit(10),
     db.from('subscriptions').select('tier, cancelled_at, cancel_reason, profile_id, profiles:profile_id(full_name, first_name)').eq('status', 'cancelled').not('cancelled_at', 'is', null).order('cancelled_at', { ascending: false }).limit(10),
     db.from('salons').select('name, city, created_at').order('created_at', { ascending: false }).limit(10),
@@ -244,7 +248,12 @@ export async function getRecentEvents(limit = 15): Promise<EventItem[]> {
     return one?.full_name || one?.first_name || '—';
   };
 
-  for (const row of (profs.data ?? []) as Array<{ full_name: string | null; first_name: string | null; role: string; created_at: string }>) {
+  // Супер-админов в ленте недавних событий не показываем
+  const saEmails = new Set(getSuperadminEmails().map((e) => e.toLowerCase()));
+  let pushedProfiles = 0;
+  for (const row of (profs.data ?? []) as Array<{ full_name: string | null; first_name: string | null; role: string; created_at: string; email: string | null }>) {
+    if (row.email && saEmails.has(row.email.toLowerCase())) continue;
+    if (pushedProfiles >= 10) break;
     const name = row.full_name || row.first_name || 'Без имени';
     events.push({
       at: row.created_at,
@@ -252,6 +261,7 @@ export async function getRecentEvents(limit = 15): Promise<EventItem[]> {
       title: `Новый ${row.role === 'master' ? 'мастер' : row.role === 'salon_admin' ? 'админ салона' : 'пользователь'}: ${name}`,
       subtitle: '',
     });
+    pushedProfiles += 1;
   }
   for (const row of (subs.data ?? []) as unknown as Array<{ tier: string; created_at: string; profiles: ProfRef | ProfRef[] | null }>) {
     events.push({ at: row.created_at, kind: 'subscription', title: `Подписка ${row.tier}: ${pickName(row.profiles)}`, subtitle: '' });

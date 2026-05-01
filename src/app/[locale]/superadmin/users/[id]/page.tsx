@@ -9,6 +9,8 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Ban, Mail, Phone, Send } from 'lucide-react';
 import { getUserDetail } from '@/lib/superadmin/users';
 import { BanUserButton } from '@/components/superadmin/ban-user-button';
+import { PurgeUserButton } from '@/components/superadmin/purge-user-button';
+import { requireSuperadmin } from '@/lib/superadmin/auth';
 
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
@@ -48,6 +50,10 @@ export default async function SuperadminUserDetailPage({ params }: { params: Pro
   if (!detail) notFound();
 
   const { profile, master, salon, subscription, whitelist, blacklist, activity, paymentsCount } = detail;
+
+  // Текущий супер-админ — чтобы заблокировать кнопку «Удалить» на самом себе
+  const actor = await requireSuperadmin();
+  const isSelf = actor.profileId === profile.id;
 
   return (
     <div className="p-6">
@@ -194,6 +200,12 @@ export default async function SuperadminUserDetailPage({ params }: { params: Pro
             Отправить предложение
           </Link>
           <BanUserButton profileId={profile.id} profileName={profile.displayName} isBanned={!!blacklist} />
+          <PurgeUserButton
+            profileId={profile.id}
+            profileName={profile.displayName}
+            profileEmail={profile.email ?? null}
+            isSelf={isSelf}
+          />
         </div>
       </div>
     </div>
