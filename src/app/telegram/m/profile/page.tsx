@@ -429,7 +429,6 @@ export default function MasterMiniAppProfile() {
           </div>
         )}
 
-
         {/* Actions row — share + open public page (single button, ?from=profile so the page can offer back nav) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
           <button

@@ -24,7 +24,6 @@ import {
   FreshaSearch,
   FreshaBell,
 } from '@/components/shared/fresha-icons';
-import { Users as UsersIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';

@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/input-otp';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Shield,
-  CalendarCheck, User as UserIcon, Building2,
+  CalendarCheck, User as UserIcon,
 } from 'lucide-react';
 import { humanizeError } from '@/lib/format/error';
 import { isDisposableEmail } from '@/lib/format/email-validator';
@@ -642,7 +642,7 @@ export default function AuthPage() {
                     [data-active="true"] (см. AUTH_CSS) — инлайн-стили реконсилировались
                     некорректно в React 19. */}
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4,
+                  display: 'grid', gridTemplateColumns: `repeat(${ROLES.length}, 1fr)`, gap: 4,
                   padding: 4, borderRadius: 14,
                   border: '1px solid var(--acb)',
                   background: 'color-mix(in oklab, var(--afg) 4%, transparent)',
