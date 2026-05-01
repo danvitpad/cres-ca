@@ -997,3 +997,76 @@ html.dark .landing-v6 {
 html.dark .landing-v6 .hero-mock {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
 }
+
+/* ─── 22. ПОПУЛЯРНАЯ КАРТОЧКА ТАРИФА ─── */
+
+.landing-v6 .price-card.price-popular {
+  border: 2px solid var(--color-accent);
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.10);
+}
+.landing-v6 .price-card.price-popular:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.10), 0 20px 48px rgba(13, 148, 136, 0.14);
+}
+
+/* ─── 23. LANDING LAYOUT FOOTER ─── */
+
+.landing-layout-footer {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background: #ffffff;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  padding: 24px clamp(24px, 5vw, 64px);
+  -webkit-font-smoothing: antialiased;
+}
+html.dark .landing-layout-footer {
+  background: #09090b;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.landing-layout-footer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .landing-layout-footer__inner {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}
+
+.landing-layout-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.landing-layout-footer nav a {
+  padding: 4px 10px;
+  font-size: 13px;
+  color: #888888;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: color 0.15s, background-color 0.15s;
+}
+.landing-layout-footer nav a:hover {
+  color: #0a0a0a;
+  background: rgba(0, 0, 0, 0.04);
+}
+html.dark .landing-layout-footer nav a { color: #555555; }
+html.dark .landing-layout-footer nav a:hover {
+  color: #fafafa;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.landing-layout-footer p {
+  font-size: 12px;
+  color: #aaaaaa;
+  margin: 0;
+  white-space: nowrap;
+}
+html.dark .landing-layout-footer p { color: #444444; }

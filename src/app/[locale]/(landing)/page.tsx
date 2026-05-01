@@ -1,10 +1,11 @@
 /** --- YAML
- * name: Landing Page v7
- * description: Premium landing — мигрировано на классы рецептов из STYLE.md (Часть 2.Б, разделы 16-21).
- *              Все стили живут в app/src/styles/components.css. Inline остаются ТОЛЬКО уникальные
- *              элементы которые не повторяются нигде (DashboardMock, Reveal-обёртка, Counter).
+ * name: Landing Page v8
+ * description: Premium landing — solo master focus. DashboardMock = real Today-page
+ *              layout (sidebar + stats + appointment list). Pricing 3 solo tiers
+ *              (START / PRO / MAX) — no team refs. Honest highlights bar.
+ *              Footer styled to match landing theme.
  * created: 2026-04-18
- * updated: 2026-04-29
+ * updated: 2026-05-01
  * --- */
 
 'use client';
@@ -16,7 +17,7 @@ import { useLocale } from 'next-intl';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { ThemeSwitchCircular } from '@/components/ui/theme-switch-circular';
 
-/* ═══ Reveal on scroll (логика, не визуал) ═══ */
+/* ═══ Reveal on scroll ═══ */
 function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [vis, setVis] = useState(false);
@@ -38,40 +39,6 @@ function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }
       {children}
     </div>
   );
-}
-
-/* ═══ Animated counter (логика) ═══ */
-function Counter({ value, suffix = '' }: { value: string; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement | null>(null);
-  const [display, setDisplay] = useState('0');
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => {
-      if (!e.isIntersecting) return;
-      io.disconnect();
-      const num = parseFloat(value.replace(/[^0-9.]/g, ''));
-      const dur = 1200;
-      let start: number | null = null;
-      const fmt = (n: number) => {
-        if (n >= 1e6) return (n / 1e6).toFixed(0) + 'M';
-        if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
-        return Number.isInteger(n) ? n.toString() : n.toFixed(1);
-      };
-      const tick = (ts: number) => {
-        if (!start) start = ts;
-        const p = Math.min((ts - start) / dur, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        const current = eased * num;
-        setDisplay(fmt(Math.round(current * 10) / 10) + suffix);
-        if (p < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }, { threshold: 0.3 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [value, suffix]);
-  return <span ref={ref}>{display}</span>;
 }
 
 /* ═══ Feature card ═══ */
@@ -98,151 +65,152 @@ function StepCard({ step }: { step: { n: string; t: string; d: string } }) {
 
 /* ═══ Pricing card ═══ */
 function PriceCard({
-  name, price, features, pop, startLabel,
-}: { name: string; price: string; features: string[]; pop?: boolean; startLabel: string }) {
+  name, price, priceNote, features, pop, ctaLabel,
+}: {
+  name: string;
+  price: string;
+  priceNote?: string;
+  features: string[];
+  pop?: boolean;
+  ctaLabel: string;
+}) {
   return (
-    <div className="price-card">
+    <div className={`price-card${pop ? ' price-popular' : ''}`}>
       {pop && <div className="badge-popular">Популярный</div>}
       <div className="price-name">{name}</div>
       <div className="price-amount">
         {price} ₴<small>/мес</small>
       </div>
+      {priceNote && (
+        <div style={{ fontSize: 12, color: 'var(--lfg3)', marginTop: 6, lineHeight: 1.45 }}>
+          {priceNote}
+        </div>
+      )}
       <ul className="price-features">
-        {features.map(f => <li key={f}>{f}</li>)}
+        {features.map((f) => <li key={f}>{f}</li>)}
       </ul>
       <Link href="/register" className="btn-pill-primary btn-pill-block price-cta">
-        {startLabel}
+        {ctaLabel}
       </Link>
     </div>
   );
 }
 
-/* ═══ Dashboard mock — уникальный элемент, остаётся inline ═══ */
+/* ═══ Dashboard mock — реальный Today-экран дашборда ═══ */
 function DashboardMock() {
-  const barRef = useRef<HTMLDivElement | null>(null);
-  const [anim, setAnim] = useState(false);
-  useEffect(() => {
-    const el = barRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setAnim(true); io.disconnect(); } }, { threshold: 0.3 });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  const bars = [85, 62, 78, 45, 92];
-  const stats = [
-    { l: 'Записи сегодня', v: '47',   t: '+23%',   c: '#3b82f6' },
-    { l: 'Новые клиенты', v: '12',   t: '+8%',    c: '#10b981' },
-    { l: 'Выручка',       v: '₴3.2K', t: '+18%',   c: 'var(--color-accent)' },
-    { l: 'Рейтинг',       v: '4.9',  t: '★★★★★',   c: '#f59e0b' },
+  const apts = [
+    { time: '10:00', name: 'Анна К.',   svc: 'Стандартная услуга',   price: '₴850',   done: true  },
+    { time: '11:30', name: 'Максим Д.', svc: 'Консультация',          price: '₴400',   now:  true  },
+    { time: '14:00', name: 'Ирина Г.',  svc: 'Комплексная процедура', price: '₴1 400', done: false },
   ];
-  const services = [
-    { n: 'Стрижка',    p: 65, c: 'var(--color-accent)' },
-    { n: 'Маникюр',    p: 48, c: '#ec4899' },
-    { n: 'Массаж',     p: 38, c: '#06b6d4' },
-    { n: 'Окрашивание', p: 28, c: '#10b981' },
-  ];
-  const svcTotal = services.reduce((s, x) => s + x.p, 0);
-  const svcR = 30;
-  const svcCirc = 2 * Math.PI * svcR;
-  let svcOffset = 0;
+  const navEmojis = ['🏠', '📅', '💰', '👥', '📣'];
 
   return (
-    <div ref={barRef}>
-      <div style={{ display: 'flex', gap: 5, marginBottom: 16, alignItems: 'center' }}>
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
-        <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: 'var(--lfg3)', fontWeight: 500 }}>cres-ca.com/dashboard</span>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 16 }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{
-            background: 'var(--lcard)', borderRadius: 10, padding: '12px 14px',
-            border: '1px solid var(--lcb)', transition: 'background .4s, border-color .4s',
-          }}>
-            <div style={{ fontSize: 10, color: 'var(--lfg3)', fontWeight: 500 }}>{s.l}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{s.v}</div>
-            <div style={{ fontSize: 10, color: s.c, fontWeight: 600, marginTop: 1 }}>{s.t}</div>
-          </div>
+    <div>
+      {/* Browser chrome */}
+      <div style={{ display: 'flex', gap: 5, marginBottom: 12, alignItems: 'center' }}>
+        {(['#ff5f57', '#febc2e', '#28c840'] as const).map((c, i) => (
+          <span key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c, display: 'block', flexShrink: 0 }} />
         ))}
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 11, color: 'var(--lfg3)', fontWeight: 500 }}>cres-ca.com/today</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+
+      {/* App shell */}
+      <div style={{ display: 'flex', border: '1px solid var(--lcb)', borderRadius: 10, overflow: 'hidden' }}>
+        {/* Collapsed sidebar */}
         <div style={{
-          background: 'var(--lcard)', borderRadius: 10, padding: 14,
-          border: '1px solid var(--lcb)', transition: 'background .4s, border-color .4s',
+          width: 48, flexShrink: 0,
+          background: 'var(--lbg3)', borderRight: '1px solid var(--lcb)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: 4, paddingTop: 10, paddingBottom: 10,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--lfg3)', marginBottom: 12 }}>Загрузка по дням</div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 60 }}>
-            {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d, i) => {
-              const h = bars[i % bars.length];
-              return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{
-                    width: '100%', borderRadius: 4, background: 'var(--color-accent)',
-                    opacity: 0.15 + (h / 100) * 0.85,
-                    height: anim ? h * 0.6 : 0,
-                    transition: `height .8s cubic-bezier(.22,1,.36,1) ${i * 0.06}s`,
-                  }} />
-                  <span style={{ fontSize: 9, color: 'var(--lfg3)' }}>{d}</span>
-                </div>
-              );
-            })}
-          </div>
+          {/* Logo */}
+          <div style={{
+            width: 28, height: 28, borderRadius: 7, background: 'var(--color-accent)',
+            display: 'grid', placeItems: 'center', color: '#fff',
+            fontSize: 11, fontWeight: 900, marginBottom: 6,
+          }}>C</div>
+          {/* Nav icons */}
+          {navEmojis.map((emoji, i) => (
+            <div key={i} style={{
+              width: 36, height: 36, borderRadius: 8, fontSize: 14,
+              display: 'grid', placeItems: 'center',
+              background: i === 0 ? 'var(--color-accent)' : 'transparent',
+              color: i === 0 ? '#fff' : 'var(--lfg4)',
+            }}>
+              {emoji}
+            </div>
+          ))}
         </div>
-        <div style={{
-          background: 'var(--lcard)', borderRadius: 10, padding: 14,
-          border: '1px solid var(--lcb)', transition: 'background .4s, border-color .4s',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--lfg3)', marginBottom: 10 }}>Услуги</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
-              <svg width="72" height="72" viewBox="0 0 72 72" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="36" cy="36" r={svcR} fill="none" stroke="var(--lcb)" strokeWidth="8" />
-                {services.map((sv, i) => {
-                  const frac = sv.p / svcTotal;
-                  const dash = anim ? frac * svcCirc : 0;
-                  const el = (
-                    <circle
-                      key={i}
-                      cx="36" cy="36" r={svcR}
-                      fill="none" stroke={sv.c} strokeWidth="8"
-                      strokeDasharray={`${dash} ${svcCirc - dash}`}
-                      strokeDashoffset={-svcOffset}
-                      style={{ transition: `stroke-dasharray 1s cubic-bezier(.22,1,.36,1) ${0.2 + i * 0.1}s` }}
-                    />
-                  );
-                  svcOffset += frac * svcCirc;
-                  return el;
-                })}
-              </svg>
-              <div style={{
-                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+
+        {/* Main content */}
+        <div style={{ flex: 1, padding: '14px 16px', minWidth: 0 }}>
+          {/* Page header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, letterSpacing: '-0.02em', color: 'var(--lfg)' }}>Сегодня</div>
+              <div style={{ fontSize: 10, color: 'var(--lfg3)', marginTop: 1 }}>Четверг, 1 мая 2026</div>
+            </div>
+            <div style={{
+              fontSize: 10, fontWeight: 600, color: 'var(--color-accent)',
+              background: 'rgba(13,148,136,0.08)', padding: '4px 9px',
+              borderRadius: 6, cursor: 'default',
+            }}>
+              + Запись
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
+            {[
+              { l: 'Записей',  v: '5',      c: 'var(--color-accent)' },
+              { l: 'Выручка',  v: '₴2 650', c: '#10b981' },
+              { l: 'Рейтинг',  v: '4.9 ★',  c: '#f59e0b' },
+            ].map((s) => (
+              <div key={s.l} style={{ background: 'var(--lcard)', borderRadius: 8, padding: '8px 10px', border: '1px solid var(--lcb)' }}>
+                <div style={{ fontSize: 9, color: 'var(--lfg3)', fontWeight: 500, marginBottom: 2 }}>{s.l}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: s.c, letterSpacing: '-0.03em' }}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Section label */}
+          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--lfg3)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Ближайшие записи
+          </div>
+
+          {/* Appointment list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {apts.map((a, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: a.now ? 'rgba(13,148,136,0.05)' : 'var(--lcard)',
+                border: `1px solid ${a.now ? 'rgba(13,148,136,0.22)' : 'var(--lcb)'}`,
+                borderRadius: 8, padding: '8px 10px', fontSize: 11,
               }}>
-                <span style={{ fontSize: 9, color: 'var(--lfg3)', fontWeight: 600, letterSpacing: '0.03em' }}>ВСЕГО</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--lfg)', fontVariantNumeric: 'tabular-nums', marginTop: -1 }}>
-                  {svcTotal}%
+                <span style={{ color: 'var(--color-accent)', fontWeight: 700, minWidth: 36, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {a.time}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--lfg)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.name}
+                  </span>
+                  <span style={{ color: 'var(--lfg3)', fontSize: 10, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {a.svc}
+                  </span>
+                </span>
+                <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--lfg)', flexShrink: 0 }}>{a.price}</span>
+                <span style={{
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                  display: 'grid', placeItems: 'center', fontSize: 9, color: '#fff',
+                  background: a.done ? '#10b981' : a.now ? 'var(--color-accent)' : 'transparent',
+                  border: a.done || a.now ? 'none' : '1.5px solid var(--lfg4)',
+                }}>
+                  {a.done ? '✓' : a.now ? '●' : ''}
                 </span>
               </div>
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
-              {services.map((sv, i) => {
-                const pct = Math.round((sv.p / svcTotal) * 100);
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: 2, background: sv.c, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, color: 'var(--lfg2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {sv.n}
-                    </span>
-                    <span style={{ color: 'var(--lfg)', fontWeight: 600, fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-                      {pct}%
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -253,25 +221,75 @@ function DashboardMock() {
 /* ═══ Main page ═══ */
 export default function LandingPage() {
   const locale = useLocale();
-  // Intentionally read theme to keep next-themes hook active for future visual tweaks.
-  useTheme();
+  useTheme(); // keep hook active for theme awareness
 
   const features = [
-    { icon: '📅', title: 'Умное расписание', desc: 'Клиенты записываются сами. Конфликты исключены. Мастера управляют графиком в пару кликов.' },
-    { icon: '👥', title: 'CRM-профили',      desc: 'Полная история каждого клиента: визиты, предпочтения, аллергии, заметки мастера.' },
-    { icon: '🌐', title: 'Запись 24/7',      desc: 'Через ваш сайт, Telegram Mini App или прямую ссылку. Работает круглосуточно.' },
-    { icon: '💰', title: 'Финансы',           desc: 'Выручка, расходы, прибыль в реальном времени. Отчёты без бухгалтера и Excel.' },
-    { icon: '🔔', title: 'Авто-напоминания',  desc: 'SMS и push за 24ч и 2ч до визита. Неявки сокращаются на 70%.' },
-    { icon: '📊', title: 'Маркетинг и рост',  desc: 'Бонусная программа, реферальные скидки, авто-рассылки — рост на автопилоте.' },
+    { icon: '📅', title: 'Умный календарь',    desc: 'Клиенты записываются сами — через ссылку или Telegram. Конфликты и задвоения исключены автоматически.' },
+    { icon: '👤', title: 'Карточки клиентов',  desc: 'История посещений, предпочтения, заметки и бонусы. Каждый клиент — в одном месте, всегда под рукой.' },
+    { icon: '🤖', title: 'Telegram-бот',        desc: 'Управляйте записями и расходами голосом прямо из Telegram. Бот понимает команды и действует за вас.' },
+    { icon: '💰', title: 'Финансы',             desc: 'Доходы, расходы, маржа по услугам и складу. Понятные отчёты без Excel и бухгалтера.' },
+    { icon: '🔔', title: 'Авто-напоминания',   desc: 'Уведомление за 24 ч и 2 ч до визита. Клиент выбирает канал сам. Неявок становится в разы меньше.' },
+    { icon: '📊', title: 'Маркетинг и рост',   desc: 'Реферальные ссылки, акции, рассылки и бонусная программа — клиенты возвращаются и приводят друзей.' },
   ];
 
   const steps = [
-    { n: '01', t: 'Регистрация',  d: 'Создайте аккаунт за 2 минуты. Укажите услуги, график и цены.' },
-    { n: '02', t: 'Подключение',  d: 'Поделитесь ссылкой или добавьте Telegram-бот. Клиенты начнут записываться.' },
-    { n: '03', t: 'Рост',         d: 'Аналитика, напоминания и маркетинг работают за вас. Вы — занимаетесь делом.' },
+    { n: '01', t: 'Регистрация', d: 'Создайте аккаунт за 2 минуты. Укажите услуги, рабочее время и цены.' },
+    { n: '02', t: 'Подключение', d: 'Поделитесь ссылкой или добавьте Telegram-бот. Клиенты начнут записываться сразу.' },
+    { n: '03', t: 'Рост',        d: 'Аналитика, напоминания и маркетинг работают за вас. Вы занимаетесь своим делом.' },
   ];
 
-  const startLabel = 'Начать бесплатно';
+  const TIERS = [
+    {
+      name: 'START',
+      price: '299',
+      priceNote: 'Всё необходимое для старта',
+      ctaLabel: 'Начать — 14 дней бесплатно',
+      features: [
+        'Онлайн-запись 24/7',
+        'Публичная страница /m/handle',
+        'До 200 клиентов',
+        'Календарь и расписание',
+        'Напоминания в Telegram',
+        'Базовая статистика',
+      ],
+    },
+    {
+      name: 'PRO',
+      price: '799',
+      pop: true,
+      priceNote: 'Для профессионального роста',
+      ctaLabel: 'Попробовать PRO',
+      features: [
+        'Всё из START',
+        'Безлимит клиентов',
+        'Финансы и учёт склада',
+        'Авто-рассылки клиентам',
+        'Реферальная программа',
+        'Расширенная аналитика',
+      ],
+    },
+    {
+      name: 'MAX',
+      price: '1 999',
+      priceNote: 'AI-функции и максимум возможностей',
+      ctaLabel: 'Попробовать MAX',
+      features: [
+        'Всё из PRO',
+        'AI-голосовой ассистент',
+        'Приоритет в поиске',
+        'AI-анализ карточек клиентов',
+        'Брендированная страница',
+        'Приоритетная поддержка',
+      ],
+    },
+  ];
+
+  const highlights = [
+    { icon: '🎤', text: 'Голосовой ввод' },
+    { icon: '📱', text: 'Telegram Mini App' },
+    { icon: '🔗', text: 'Публичная страница' },
+    { icon: '⚡', text: '14 дней бесплатно' },
+  ];
 
   return (
     <>
@@ -279,6 +297,7 @@ export default function LandingPage() {
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
       <div className="landing-v6">
+
         {/* ─── NAV ─── */}
         <nav className="landing-nav">
           <div className="landing-nav-inner">
@@ -291,8 +310,9 @@ export default function LandingPage() {
               <a href="#pricing"  className="nav-link">Тарифы</a>
               <LanguageSwitcher />
               <ThemeSwitchCircular size="sm" aria-label="Переключить тему" />
-              <Link href="/login" className="btn-pill-primary btn-pill-nav" style={{ marginLeft: 4 }}>
-                Начать бесплатно
+              <Link href="/login"    className="nav-link" style={{ marginLeft: 4 }}>Войти</Link>
+              <Link href="/register" className="btn-pill-primary btn-pill-nav" style={{ marginLeft: 4 }}>
+                Начать
               </Link>
             </div>
           </div>
@@ -303,29 +323,30 @@ export default function LandingPage() {
           <div className="hero-glow" />
           <div className="landing-container" style={{ position: 'relative' }}>
             <Reveal>
-              <div className="hero-badge">Платформа №1 для сферы услуг</div>
+              <div className="hero-badge">Платформа для специалистов услуг</div>
             </Reveal>
             <Reveal delay={80}>
               <h1 className="heading-hero">
-                Записи, клиенты, финансы — <span className="accent">в одном месте</span>
+                Меньше рутины.<br />
+                <span className="accent">Больше клиентов.</span>
               </h1>
             </Reveal>
             <Reveal delay={160}>
               <p className="hero-lead">
-                Всё для управления бизнесом услуг. Расписание, CRM, аналитика и&nbsp;маркетинг — работает на вебе и&nbsp;в&nbsp;Telegram.
+                Расписание, CRM, финансы и маркетинг — в одном месте.
+                Плюс Telegram-бот с голосовым управлением.
               </p>
             </Reveal>
             <Reveal delay={240}>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
-                <Link href="/register" className="btn-pill-primary">Попробовать бесплатно</Link>
-                <a    href="#features"  className="btn-pill-ghost">Смотреть демо</a>
+                <Link href="/register" className="btn-pill-primary">Начать — 14 дней бесплатно</Link>
+                <a    href="#features"  className="btn-pill-ghost">Смотреть возможности</a>
               </div>
             </Reveal>
             <Reveal delay={300}>
-              <p className="micro-note">14 дней бесплатно · Без привязки карты</p>
+              <p className="micro-note">Без привязки карты · Отмена в один клик</p>
             </Reveal>
-
-            <Reveal delay={400}>
+            <Reveal delay={420}>
               <div className="hero-mock">
                 <DashboardMock />
               </div>
@@ -333,19 +354,16 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ─── TRUST BAR ─── */}
+        {/* ─── HIGHLIGHTS BAR ─── */}
         <Reveal>
           <div className="landing-container">
             <div className="trust-bar">
-              {[
-                { v: '1000000', s: '+', l: 'Записей обработано' },
-                { v: '130000',  s: '+', l: 'Специалистов' },
-                { v: '120',     s: '+', l: 'Городов' },
-                { v: '4.9',     s: '★', l: 'Средний рейтинг' },
-              ].map((s, i) => (
+              {highlights.map((h, i) => (
                 <div key={i}>
-                  <div className="trust-value"><Counter value={s.v} suffix={s.s} /></div>
-                  <div className="trust-label">{s.l}</div>
+                  <div className="trust-value" style={{ fontSize: 'clamp(24px,3.5vw,36px)', lineHeight: 1.1 }}>
+                    {h.icon}
+                  </div>
+                  <div className="trust-label">{h.text}</div>
                 </div>
               ))}
             </div>
@@ -397,30 +415,24 @@ export default function LandingPage() {
             <Reveal>
               <div className="section-header">
                 <span className="section-eyebrow">Тарифы</span>
-                <h2 className="heading-section-lg">Простые и честные цены</h2>
-                <p className="section-lead">Для клиентов — бесплатно. Для профессионалов — от 299 ₴/мес.</p>
+                <h2 className="heading-section-lg">Честные цены для мастеров</h2>
+                <p className="section-lead">
+                  Для клиентов — бесплатно навсегда.&nbsp;&nbsp;Для мастеров — от 299&nbsp;₴/мес.
+                </p>
               </div>
             </Reveal>
             <div className="pricing-grid">
-              <Reveal delay={0}>
-                <PriceCard
-                  name="Starter" price="299" startLabel={startLabel}
-                  features={['До 50 клиентов', '1 мастер', 'Календарь и запись', 'Напоминания', 'Базовая статистика']}
-                />
-              </Reveal>
-              <Reveal delay={80}>
-                <PriceCard
-                  name="Pro" price="799" pop startLabel={startLabel}
-                  features={['До 500 клиентов', 'Всё из Starter', 'Лист ожидания', 'Склад и расходники', 'Расширенная аналитика', 'Авто-рассылки']}
-                />
-              </Reveal>
-              <Reveal delay={160}>
-                <PriceCard
-                  name="Business" price="1 999" startLabel={startLabel}
-                  features={['Безлимит клиентов', 'Безлимит мастеров', 'Всё из Pro', 'AI-функции', 'Мультивалютность', 'Приоритетная поддержка']}
-                />
-              </Reveal>
+              {TIERS.map((t, i) => (
+                <Reveal key={t.name} delay={i * 80}>
+                  <PriceCard {...t} />
+                </Reveal>
+              ))}
             </div>
+            <Reveal delay={200}>
+              <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--lfg3)', marginTop: 24, lineHeight: 1.5 }}>
+                * 14 дней пробного периода на любом тарифе. Без привязки карты. Отмена в один клик.
+              </p>
+            </Reveal>
           </div>
         </section>
 
@@ -430,17 +442,18 @@ export default function LandingPage() {
           <Reveal>
             <div style={{ position: 'relative', maxWidth: 600, margin: '0 auto', padding: '0 24px' }}>
               <h2 className="heading-cta">Готовы начать?</h2>
-              <p className="hero-lead" style={{ maxWidth: 400 }}>
-                Присоединяйтесь к 130&nbsp;000+ специалистов. Бесплатно. Без карты.
+              <p className="hero-lead" style={{ maxWidth: 420 }}>
+                Настройте профиль за 2 минуты. Первые 14 дней — бесплатно, без привязки карты.
               </p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28 }}>
                 <Link href="/register" className="btn-pill-primary btn-pill-lg">
-                  Попробовать бесплатно
+                  Создать аккаунт
                 </Link>
               </div>
             </div>
           </Reveal>
         </section>
+
       </div>
     </>
   );
