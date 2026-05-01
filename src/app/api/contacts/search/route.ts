@@ -14,6 +14,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { resolveUserId } from '@/lib/auth/resolve-user';
+import { isSuperadminEmail } from '@/lib/superadmin/access';
 
 function admin() {
   return createAdminClient(
@@ -216,6 +217,9 @@ export async function GET(req: Request) {
     for (const r of profileResults) {
       for (const p of (r.data ?? [])) {
         if (p.id === userId) continue; // не себя
+        // Super-admin (sa@cres-ca.system или email из SUPERADMIN_EMAILS env)
+        // не должен показываться обычным пользователям ни в поиске, ни как мастер.
+        if (isSuperadminEmail(p.email)) continue;
         if (!profileById.has(p.id)) profileById.set(p.id, p);
       }
     }
@@ -243,6 +247,12 @@ export async function GET(req: Request) {
         .select('id, full_name, avatar_url, phone, email, role')
         .in('id', missingMasterProfileIds);
       for (const p of (extraProfiles ?? []) as ProfileRow[]) {
+        if (isSuperadminEmail(p.email)) {
+          // Уже отсеяли в первом проходе, но если super-admin внезапно
+          // оказался привязан к masters — всё равно прячем.
+          mastersByProfileId.delete(p.id);
+          continue;
+        }
         profileById.set(p.id, p);
       }
     }

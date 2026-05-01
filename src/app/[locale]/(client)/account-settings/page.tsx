@@ -379,8 +379,9 @@ export default function ClientSettingsPage() {
             toast.info(t('connectTelegramHint'));
           }}
         />
-        <LinkRow icon={Link2} label={t('connectGoogle')} rightLabel={t('connect')} />
-        <LinkRow icon={Link2} label={t('connectFacebook')} rightLabel={t('connect')} />
+        {/* Подключение Google/Facebook убрано: реальной OAuth-связки этих
+            аккаунтов в проекте сейчас нет, кнопки висели заглушками. Когда
+            появится реальный flow — добавим обратно с настоящим click handler. */}
       </Section>
 
       <Section title={t('security')}>

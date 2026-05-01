@@ -74,24 +74,30 @@ export function FollowMasterButton({ masterId, accent = 'var(--ds-accent, var(--
     });
   }
 
+  // Instagram-стиль: «Подписаться» (нейтральный) → «Вы подписаны» (акцентный
+  // фон, более жирный, чтобы было сразу видно что состояние изменилось).
   const label = isFollowing
-    ? 'В избранном'
+    ? 'Вы подписаны'
     : authed === false
-      ? 'Сохранить'
-      : 'В избранное';
+      ? 'Подписаться'
+      : 'Подписаться';
 
   return (
     <button
       onClick={onClick}
       disabled={isFollowing === null || pending}
       aria-pressed={!!isFollowing}
-      className="inline-flex items-center gap-2 rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-5 py-3 text-sm font-medium text-neutral-700 transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
-      style={isFollowing ? { color: accent, borderColor: accent } : undefined}
+      className="inline-flex items-center gap-2 rounded-[var(--brand-radius-lg)] border px-5 py-3 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
+      style={
+        isFollowing
+          ? { background: accent, borderColor: accent, color: 'white' }
+          : { background: 'white', borderColor: '#e5e7eb', color: '#374151' }
+      }
     >
       <Heart
         className="size-4 transition-all"
-        fill={isFollowing ? accent : 'none'}
-        style={isFollowing ? { color: accent } : undefined}
+        fill={isFollowing ? 'white' : 'none'}
+        style={isFollowing ? { color: 'white' } : undefined}
       />
       {label}
     </button>

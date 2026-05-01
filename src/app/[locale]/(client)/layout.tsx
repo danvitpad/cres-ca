@@ -779,19 +779,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                     </Link>
                   );
                 })}
-                <button
-                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
-                  aria-label={tHeader('toggleTheme')}
-                  className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground whitespace-nowrap"
-                >
-                  <span className="relative size-[22px] shrink-0">
-                    <Sun className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100')} />
-                    <Moon className={cn('absolute inset-0 size-[22px] transition-all', isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0')} />
-                  </span>
-                  <span className="opacity-0 group-hover/sb:opacity-100 transition-opacity duration-150">
-                    {isDark ? tHeader('lightMode') : tHeader('darkMode')}
-                  </span>
-                </button>
+                {/* Тумблер темы убран из сайдбара клиента — управление темой
+                    живёт в /account-settings (как у мастера). Дублировать
+                    в навигации избыточно и засоряет панель. */}
                 <button
                   onClick={handleSignOut}
                   aria-label={tAuth('signOut')}
