@@ -127,7 +127,9 @@ function readRemembered(): { email?: string; password?: string; role?: Role } {
     const saved = window.localStorage.getItem(REMEMBER_KEY);
     if (!saved) return {};
     const p = JSON.parse(saved) as { email?: string; password?: string; role?: string };
-    const role = p.role && ['client','master','salon_admin'].includes(p.role) ? (p.role as Role) : undefined;
+    // 'salon_admin' из старых сессий мапим в master — команда временно отключена.
+    const rawRole = p.role === 'salon_admin' ? 'master' : p.role;
+    const role = rawRole && ['client','master'].includes(rawRole) ? (rawRole as Role) : undefined;
     return { email: p.email, password: p.password, role };
   } catch { return {}; }
 }
