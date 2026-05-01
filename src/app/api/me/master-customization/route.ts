@@ -13,8 +13,38 @@ import { createClient } from '@/lib/supabase/server';
 
 const PAGE_TYPES = new Set(['master', 'salon', 'clinic', 'workshop', 'auto_service', 'fitness', 'other']);
 
+// Зарезервированные слова — нельзя использовать как личный CRESCA-ID,
+// иначе мастера будут перетирать наши собственные роуты.
+const RESERVED_SLUGS = new Set([
+  'api', 'admin', 'superadmin', 'login', 'logout', 'signup', 'register',
+  'feed', 'today', 'calendar', 'finance', 'stats', 'help', 'settings',
+  'clients', 'partners', 'marketing', 'inventory', 'services', 'salon',
+  'telegram', 'm', 's', 'u', 'find', 'book', 'dashboard', 'onboarding',
+  'welcome', 'profile', 'account-settings', 'integrations', 'notifications',
+  'recommend', 'referral', 'queue', 'before-after', 'portfolio', 'addons',
+  'forms', 'history', 'family', 'wallet', 'masters', 'my-masters',
+  'my-calendar', 'map', 'review', 'reviews', 'cron', 'public', 'static',
+]);
+
 function isHexColor(v: unknown): v is string {
   return typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+}
+
+/**
+ * Валидация кастомного CRESCA-ID (slug). Возвращает нормализованную
+ * строку (lowercase) либо ошибку — человеко-читаемое сообщение для UI.
+ */
+function validateSlug(raw: unknown): { ok: true; slug: string } | { ok: false; error: string } {
+  if (typeof raw !== 'string') return { ok: false, error: 'CRES-CA ID должен быть строкой' };
+  const slug = raw.trim().toLowerCase();
+  if (slug.length < 3) return { ok: false, error: 'CRES-CA ID минимум 3 символа' };
+  if (slug.length > 32) return { ok: false, error: 'CRES-CA ID максимум 32 символа' };
+  if (!/^[a-z]/.test(slug)) return { ok: false, error: 'Должен начинаться с буквы (a-z)' };
+  if (!/^[a-z0-9-]+$/.test(slug)) return { ok: false, error: 'Только латинские буквы, цифры и дефис' };
+  if (/--/.test(slug)) return { ok: false, error: 'Не используй два дефиса подряд' };
+  if (slug.endsWith('-')) return { ok: false, error: 'Не может заканчиваться на дефис' };
+  if (RESERVED_SLUGS.has(slug)) return { ok: false, error: 'Это зарезервированное слово, выбери другое' };
+  return { ok: true, slug };
 }
 
 export async function PATCH(req: Request) {
@@ -92,6 +122,16 @@ export async function PATCH(req: Request) {
       ? body.workplace_photo_url : undefined;
   }
 
+  // CRESCA-ID — кастомный slug для публичной страницы /m/{slug}.
+  // Если пустая строка — игнорим (не сбрасываем — старый slug остаётся).
+  if ('slug' in body && body.slug !== null && body.slug !== '') {
+    const v = validateSlug(body.slug);
+    if (!v.ok) {
+      return NextResponse.json({ error: v.error, field: 'slug' }, { status: 400 });
+    }
+    update.slug = v.slug;
+  }
+
   if (Object.keys(update).length === 0 && !('avatar_url' in body)) {
     return NextResponse.json({ ok: true, updated: 0 });
   }
@@ -103,7 +143,17 @@ export async function PATCH(req: Request) {
 
   if (Object.keys(update).length > 0) {
     const { error } = await supabase.from('masters').update(update).eq('profile_id', user.id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      // Уникальный slug уже занят другим мастером — отдельная человеко-читаемая
+      // ошибка вместо сырого «duplicate key value violates unique constraint».
+      if (error.code === '23505' && error.message.includes('masters_slug_key')) {
+        return NextResponse.json(
+          { error: 'Этот CRES-CA ID уже занят другим мастером', field: 'slug' },
+          { status: 409 },
+        );
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ ok: true, updated: Object.keys(update).length });

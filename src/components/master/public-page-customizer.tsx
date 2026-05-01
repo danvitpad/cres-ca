@@ -65,6 +65,7 @@ const BACKGROUND_PRESETS: { label: string; value: string | null; sample: string 
 interface Master {
   id: string;
   profile_id?: string | null;
+  slug?: string | null;
   bio: string | null;
   cover_url: string | null;
   theme_primary_color: string | null;
@@ -107,6 +108,8 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
   const [pageType, setPageType] = useState(master.page_type ?? 'master');
   const [isPublic, setIsPublic] = useState(master.is_public ?? true);
   const [languages, setLanguages] = useState<string[]>(master.languages ?? []);
+  const [slug, setSlug] = useState(master.slug ?? '');
+  const [slugError, setSlugError] = useState<string | null>(null);
   const [languageDraft, setLanguageDraft] = useState('');
   const [workplaceName, setWorkplaceName] = useState(master.workplace_name ?? '');
   const [workplacePhotoUrl, setWorkplacePhotoUrl] = useState<string | null>(master.workplace_photo_url);
@@ -137,6 +140,8 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
     setLanguages(master.languages ?? []);
     setWorkplaceName(master.workplace_name ?? '');
     setWorkplacePhotoUrl(master.workplace_photo_url);
+    setSlug(master.slug ?? '');
+    setSlugError(null);
   }, [open, master]);
 
   async function uploadImage(kind: 'cover' | 'avatar', file: File) {
@@ -219,6 +224,11 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
 
   async function save() {
     setSaving(true);
+    setSlugError(null);
+    // Slug передаём только если мастер его поменял — иначе backend должен
+    // оставить текущий и не делать UPDATE с тем же значением (нет смысла
+    // обращаться к unique constraint лишний раз).
+    const slugChanged = slug.trim() && slug.trim().toLowerCase() !== (master.slug ?? '').toLowerCase();
     const res = await fetch('/api/me/master-customization', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -239,12 +249,21 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
         languages,
         workplace_name: workplaceName.trim() || null,
         workplace_photo_url: workplacePhotoUrl,
+        ...(slugChanged ? { slug: slug.trim().toLowerCase() } : {}),
       }),
     });
     setSaving(false);
     const j = await res.json().catch(() => ({} as Record<string, unknown>));
     if (!res.ok) {
-      toast.error((j as { error?: string }).error || 'Не удалось сохранить');
+      const err = j as { error?: string; field?: string };
+      // Отдельная подсветка ошибки CRES-CA ID — не общим toast'ом, а под полем,
+      // чтобы юзер сразу понял что именно не так.
+      if (err.field === 'slug') {
+        setSlugError(err.error || 'Неверный CRES-CA ID');
+        toast.error(err.error || 'Неверный CRES-CA ID');
+        return;
+      }
+      toast.error(err.error || 'Не удалось сохранить');
       return;
     }
     toast.success('Сохранено');
@@ -382,6 +401,38 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
                 Двигай ползунок чтобы выбрать какую часть высокой картинки видно — низ / центр / верх
               </p>
             </div>
+          </Section>
+
+          {/* CRES-CA ID — личный slug мастера для красивой ссылки на публичку */}
+          <Section title="CRES-CA ID — твоя ссылка">
+            <p className="mb-2 text-xs text-muted-foreground">
+              Кастомный идентификатор для адреса страницы. Другим мастерам
+              такой же ID занять нельзя.
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-muted px-2 py-2 text-sm font-mono text-muted-foreground">
+                cres-ca.com/m/
+              </span>
+              <input
+                type="text"
+                value={slug}
+                onChange={(e) => {
+                  setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                  setSlugError(null);
+                }}
+                placeholder={master.slug ?? 'твой-id'}
+                maxLength={32}
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono outline-none focus:border-primary"
+                style={slugError ? { borderColor: '#ef4444' } : undefined}
+              />
+            </div>
+            {slugError ? (
+              <p className="mt-1.5 text-xs text-rose-500">{slugError}</p>
+            ) : (
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
+                3–32 символа · только латинские буквы, цифры и дефис · должен начинаться с буквы
+              </p>
+            )}
           </Section>
 
           {/* Theme colors */}
