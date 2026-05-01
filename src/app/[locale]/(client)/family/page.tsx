@@ -45,6 +45,8 @@ export default function ClientFamilyPage() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState<string>('child');
+  // Когда выбрано «Другое» — даём ввести своё определение (тётя, кум, друг и т.д.)
+  const [otherLabel, setOtherLabel] = useState('');
 
   const fetchMembers = useCallback(async () => {
     if (!userId) return;
@@ -81,16 +83,24 @@ export default function ClientFamilyPage() {
   async function handleAdd() {
     if (!name.trim() || !userId) return;
     const supabase = createClient();
+    // Для «other» сохраняем кастомную подпись прямо в relationship — так не
+    // нужно лезть в схему: одна колонка делает работу обоих случаев.
+    const finalRelationship =
+      relationship === 'other' && otherLabel.trim()
+        ? otherLabel.trim()
+        : relationship;
     const { error } = await supabase.from('family_links').insert({
       parent_profile_id: userId,
       member_name: name.trim(),
-      relationship,
+      relationship: finalRelationship,
     });
     if (error) {
       toast.error(humanizeError(error));
     } else {
       toast.success(t('added'));
       setName('');
+      setOtherLabel('');
+      setRelationship('child');
       setShowForm(false);
       fetchMembers();
     }
@@ -198,6 +208,19 @@ export default function ClientFamilyPage() {
                     </button>
                   ))}
                 </div>
+                {/* Когда выбрано «Другое» — поле для ввода своей подписи
+                    (тётя, кум, лучший друг и т.д.). Без этого поля кнопка
+                    «Другое» не давала пользователю никакой пользы. */}
+                {relationship === 'other' && (
+                  <input
+                    type="text"
+                    value={otherLabel}
+                    onChange={(e) => setOtherLabel(e.target.value)}
+                    placeholder="Кто это? (тётя, кум, друг…)"
+                    autoFocus
+                    className="mt-2 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none ring-ring focus:ring-2"
+                  />
+                )}
               </div>
               <button
                 onClick={handleAdd}
@@ -236,7 +259,15 @@ export default function ClientFamilyPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{member.member_name}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {t(member.relationship as 'child')} · {t('spent')}: {(budgetByMember.get(member.id) ?? 0).toFixed(0)}
+                    {/* Если relationship — одно из 4 стандартных значений, то
+                        переводим, иначе показываем как есть (кастомная подпись
+                        из поля «Другое»). */}
+                    {(['child', 'spouse', 'parent', 'other'] as const).includes(
+                      member.relationship as 'child',
+                    )
+                      ? t(member.relationship as 'child')
+                      : member.relationship}
+                    {' · '}{t('spent')}: {(budgetByMember.get(member.id) ?? 0).toFixed(0)}
                   </p>
                 </div>
                 <Link
