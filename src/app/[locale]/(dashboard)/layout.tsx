@@ -29,6 +29,7 @@ import { useMaster } from '@/hooks/use-master';
 import { CommandPalette, useCommandPalette } from '@/components/shared/primitives/command-palette';
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { WelcomeGate } from '@/components/shared/welcome-gate';
+import { TourOverlay } from '@/components/shared/tour-overlay';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, BarChart3 } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
@@ -346,6 +347,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <WelcomeGate />
+        <TourOverlay />
       <OnboardingDialog />
         <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
         <DashboardRealtimeToasts />
