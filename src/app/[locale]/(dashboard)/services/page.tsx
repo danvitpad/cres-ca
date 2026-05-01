@@ -115,6 +115,28 @@ function ServicesCatalogueView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
+  // Click-outside + Escape: меню три-точки на карточке услуги закрывается
+  // при клике где угодно за его пределами и при нажатии Esc. Раньше его
+  // приходилось закрывать тем же кликом по три-точкам — неинтуитивно.
+  useEffect(() => {
+    if (!menuOpenId) return;
+    function onDocClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest(`[data-service-menu="${menuOpenId}"]`)) return;
+      setMenuOpenId(null);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpenId(null);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpenId]);
+
   const loadServices = useCallback(async () => {
     if (!master) {
       if (!masterLoading) setLoading(false);
@@ -415,7 +437,14 @@ function ServicesCatalogueView() {
                     position: 'relative',
                   }}
                   onClick={() => openEdit(s)}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                  // На hover карточка подсвечивается своим цветом услуги
+                  // (а не общим серым) — так визуально цвет услуги «оживает»
+                  // как пользователь и просил. Без translate/scale, чтобы
+                  // карточка оставалась на месте.
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor =
+                      `color-mix(in srgb, ${s.color} 10%, transparent)`;
+                  }}
                   onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = C.bg; }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -430,6 +459,7 @@ function ServicesCatalogueView() {
                     {s.price.toLocaleString()} ₴
                   </div>
                   <button
+                    data-service-menu={s.id}
                     onClick={(e) => {
                       e.stopPropagation();
                       setMenuOpenId(menuOpenId === s.id ? null : s.id);
@@ -445,6 +475,7 @@ function ServicesCatalogueView() {
                   {/* Three-dot dropdown menu */}
                   {menuOpenId === s.id && (
                     <div
+                      data-service-menu={s.id}
                       style={{
                         position: 'absolute', right: 8, top: '100%', zIndex: 50,
                         backgroundColor: C.surface, border: `1px solid ${C.border}`,
