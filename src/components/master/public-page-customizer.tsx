@@ -78,6 +78,7 @@ interface Master {
   social_links: Record<string, string> | null;
   page_type: string | null;
   is_public: boolean | null;
+  works_online: boolean | null;
   // Migration 00114
   languages: string[] | null;
   workplace_name: string | null;
@@ -107,6 +108,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
   const [social, setSocial] = useState<Record<string, string>>(master.social_links ?? {});
   const [pageType, setPageType] = useState(master.page_type ?? 'master');
   const [isPublic, setIsPublic] = useState(master.is_public ?? true);
+  const [worksOnline, setWorksOnline] = useState(master.works_online ?? false);
   const [languages, setLanguages] = useState<string[]>(master.languages ?? []);
   const [slug, setSlug] = useState(master.slug ?? '');
   const [slugError, setSlugError] = useState<string | null>(null);
@@ -137,6 +139,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
     setSocial(master.social_links ?? {});
     setPageType(master.page_type ?? 'master');
     setIsPublic(master.is_public ?? true);
+    setWorksOnline(master.works_online ?? false);
     setLanguages(master.languages ?? []);
     setWorkplaceName(master.workplace_name ?? '');
     setWorkplacePhotoUrl(master.workplace_photo_url);
@@ -246,6 +249,7 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
         social_links: social,
         page_type: pageType,
         is_public: isPublic,
+        works_online: worksOnline,
         languages,
         workplace_name: workplaceName.trim() || null,
         workplace_photo_url: workplacePhotoUrl,
@@ -307,6 +311,22 @@ export function PublicPageCustomizer({ open, onOpenChange, master, onSaved }: Pr
                 type="checkbox"
                 checked={isPublic}
                 onChange={(e) => setIsPublic(e.target.checked)}
+                className="size-5 accent-primary"
+              />
+            </label>
+            <label className="mt-2 flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">Принимаю онлайн</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Подходит для онлайн-уроков и консультаций. На странице
+                  появится бейдж «Online», блок с адресом скрывается если
+                  адрес не указан.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={worksOnline}
+                onChange={(e) => setWorksOnline(e.target.checked)}
                 className="size-5 accent-primary"
               />
             </label>

@@ -33,6 +33,7 @@ interface MasterCfg {
   social_links: Record<string, string> | null;
   page_type: string | null;
   is_public: boolean | null;
+  works_online: boolean | null;
   languages: string[] | null;
   workplace_name: string | null;
   workplace_photo_url: string | null;
@@ -64,7 +65,7 @@ export function OwnerToolbar({ masterProfileId }: { masterProfileId: string | nu
       setIsOwner(true);
       const { data: row } = await supabase
         .from('masters')
-        .select('id, profile_id, slug, bio, cover_url, theme_primary_color, theme_background_color, banner_position_y, phone_public, email_public, dob_public, interests, social_links, page_type, is_public, languages, workplace_name, workplace_photo_url, profile:profiles!masters_profile_id_fkey(avatar_url)')
+        .select('id, profile_id, slug, bio, cover_url, theme_primary_color, theme_background_color, banner_position_y, phone_public, email_public, dob_public, interests, social_links, page_type, is_public, works_online, languages, workplace_name, workplace_photo_url, profile:profiles!masters_profile_id_fkey(avatar_url)')
         .eq('profile_id', masterProfileId)
         .maybeSingle();
       if (row) setMaster(row as unknown as MasterCfg);

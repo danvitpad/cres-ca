@@ -43,6 +43,7 @@ interface Props {
   bookHref: string;
   accent?: string;
   salonContext?: SalonContext | null;
+  worksOnline?: boolean;
 }
 
 export function PublicHeroCard({
@@ -63,6 +64,7 @@ export function PublicHeroCard({
   bookHref,
   accent = '#0a0a0a',
   salonContext = null,
+  worksOnline = false,
 }: Props) {
   void masterId;
   void bookHref;
@@ -87,14 +89,27 @@ export function PublicHeroCard({
         <ShareStoryButton masterId={masterId} masterName={displayName} />
       </div>
 
-      {/* Avatar (centered, large) — inline-editable for owner */}
-      <div className="mx-auto mt-2 size-40 overflow-hidden rounded-full bg-neutral-200 ring-1 ring-black/5">
-        <InlineAvatarEdit
-          masterProfileId={masterProfileId}
-          initialUrl={avatarUrl}
-          name={displayName}
-          className="size-full"
-        />
+      {/* Avatar (centered, large) — inline-editable for owner.
+          Бейдж «Online» в левом верхнем углу аватара если мастер
+          принимает онлайн (works_online = true). */}
+      <div className="relative mx-auto mt-2 size-40">
+        <div className="size-full overflow-hidden rounded-full bg-neutral-200 ring-1 ring-black/5">
+          <InlineAvatarEdit
+            masterProfileId={masterProfileId}
+            initialUrl={avatarUrl}
+            name={displayName}
+            className="size-full"
+          />
+        </div>
+        {worksOnline && (
+          <span
+            className="absolute -left-1 top-1 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg ring-2 ring-white"
+            title="Принимает онлайн"
+          >
+            <span className="size-1.5 rounded-full bg-white" />
+            Online
+          </span>
+        )}
       </div>
 
       {/* Identity */}

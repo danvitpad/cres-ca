@@ -77,6 +77,7 @@ interface MasterRow {
   interests: string[] | null;
   social_links: Record<string, string> | null;
   page_type: string | null;
+  works_online: boolean | null;
   // Migration 00114: cached public metrics + languages + workplace
   completed_appointments_count: number;
   served_clients_count: number;
@@ -149,7 +150,7 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     'id, profile_id, display_name, specialization, bio, address, city, rating, total_reviews, avatar_url, cover_url, ' +
     'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
     'theme_primary_color, theme_background_color, banner_position_y, ' +
-    'phone_public, email_public, dob_public, interests, social_links, page_type, ' +
+    'phone_public, email_public, dob_public, interests, social_links, page_type, works_online, ' +
     'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
     'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth, deleted_at)';
 
@@ -440,6 +441,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     return wh && !wh.closed && wh.start && wh.end;
   });
   const hasAddress = !!(master.city || master.address || salon?.address);
+  // Online-мастер: если работает онлайн и физический адрес не указан —
+  // блок «Адрес и часы работы» сворачивается до одних только часов.
+  const worksOnline = master.works_online === true;
+  const showAddressBlock = hasAddress || !worksOnline;
 
   const queryStr = (() => {
     const cleanedStreet = cleanAddress(salon?.address ?? master.address);
@@ -534,6 +539,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 membersCount: ownedSalon.members.length,
                 manager: ownedSalon.manager,
               } : null}
+              worksOnline={worksOnline}
             />
             <FollowMasterButton masterId={master.id} />
           </div>
@@ -666,17 +672,23 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             )}
 
             {/* Address + Hours — inline-editable. Каждый блок сам решает скрыться
-                для клиента когда пусто и показать dashed-CTA для владельца. */}
+                для клиента когда пусто и показать dashed-CTA для владельца.
+                Если мастер online и адрес не указан — адрес блок прячем,
+                часы остаются на всю ширину. */}
             <section id="address" className="scroll-mt-24">
-              <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Адрес и часы работы</h2>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <InlineAddressBlock
-                  masterId={master.id}
-                  masterProfileId={master.profile_id}
-                  initialCity={master.city}
-                  initialAddress={master.address}
-                  workplaceName={salon?.name ?? master.workplace_name ?? null}
-                />
+              <h2 className="mb-4 text-[22px] font-bold text-neutral-900">
+                {showAddressBlock ? 'Адрес и часы работы' : 'Часы работы'}
+              </h2>
+              <div className={showAddressBlock ? 'grid gap-5 sm:grid-cols-2' : ''}>
+                {showAddressBlock && (
+                  <InlineAddressBlock
+                    masterId={master.id}
+                    masterProfileId={master.profile_id}
+                    initialCity={master.city}
+                    initialAddress={master.address}
+                    workplaceName={salon?.name ?? master.workplace_name ?? null}
+                  />
+                )}
                 <InlineHoursBlock
                   masterId={master.id}
                   masterProfileId={master.profile_id}

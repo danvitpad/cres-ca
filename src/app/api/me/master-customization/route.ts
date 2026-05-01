@@ -105,6 +105,7 @@ export async function PATCH(req: Request) {
     update.page_type = body.page_type;
   }
   if ('is_public' in body) update.is_public = Boolean(body.is_public);
+  if ('works_online' in body) update.works_online = Boolean(body.works_online);
   if ('languages' in body && Array.isArray(body.languages)) {
     update.languages = body.languages
       .filter((x): x is string => typeof x === 'string')
