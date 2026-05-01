@@ -23,7 +23,11 @@ import { humanizeError } from '@/lib/format/error';
 import { HelpHint } from '@/components/shared/help-hint';
 
 type Mode = 'segment' | 'manual';
-type Segment = 'all' | 'vip' | 'regular' | 'new' | 'inactive';
+// VIP убран как отдельный сегмент по решению продакта — слишком пересекался
+// с «Постоянными» (15+ визитов vs 3+ визитов это градация одной аудитории,
+// а не два разных сценария рассылки). Постоянные теперь покрывают всех от
+// 3 визитов и выше.
+type Segment = 'all' | 'regular' | 'new' | 'inactive';
 type Channel = 'telegram' | 'email' | 'both';
 
 interface ClientRow {
@@ -44,8 +48,7 @@ interface Attachment {
 
 const SEGMENTS: { key: Segment; label: string; desc: string }[] = [
   { key: 'all',      label: 'Все',         desc: 'Все клиенты' },
-  { key: 'vip',      label: 'VIP',         desc: '15+ визитов' },
-  { key: 'regular',  label: 'Постоянные',  desc: '3-14 визитов' },
+  { key: 'regular',  label: 'Постоянные',  desc: '3+ визитов' },
   { key: 'new',      label: 'Новые',       desc: '<3 визитов' },
   { key: 'inactive', label: 'Спящие',      desc: 'Не были >60 дней' },
 ];
@@ -89,8 +92,8 @@ export default function CampaignsPage() {
     return list.filter((c) => {
       switch (s) {
         case 'all': return true;
-        case 'vip': return c.tier === 'vip';
-        case 'regular': return c.tier === 'regular';
+        // «Постоянные» теперь покрывают всех от 3 визитов — включая бывших VIP.
+        case 'regular': return c.tier === 'regular' || c.tier === 'vip';
         case 'new': return c.tier === 'new';
         case 'inactive': return !c.last_visit_at || now - new Date(c.last_visit_at).getTime() > sixty;
       }

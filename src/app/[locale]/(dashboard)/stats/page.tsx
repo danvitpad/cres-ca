@@ -366,7 +366,7 @@ function LtvRetentionSection() {
   if (loading) {
     return (
       <div className="rounded-2xl border bg-card p-5 mt-4">
-        <p className="text-xs text-muted-foreground text-center py-3">Считаем LTV и удержание…</p>
+        <p className="text-xs text-muted-foreground text-center py-3">Считаем сколько приносит один клиент…</p>
       </div>
     );
   }
@@ -374,7 +374,7 @@ function LtvRetentionSection() {
   if (!data || data.empty || data.total_clients === 0) {
     return (
       <div className="rounded-2xl border bg-card p-5 mt-4">
-        <h3 className="text-sm font-semibold mb-1">LTV и удержание клиентов</h3>
+        <h3 className="text-sm font-semibold mb-1">Сколько приносит один клиент</h3>
         <p className="text-xs text-muted-foreground">
           Появятся данные, как только пройдёт пара завершённых визитов. Ничего настраивать не нужно.
         </p>
