@@ -36,7 +36,17 @@ import { humanizeError } from '@/lib/format/error';
 
 const dateFnsLocales: Record<string, Locale> = { ru, uk, en: enUS };
 
-type SubTab = 'overview' | 'income' | 'expenses' | 'recurring';
+type SubTab = 'overview' | 'income' | 'expenses' | 'recurring' | 'margin';
+
+interface MarginRow {
+  service_id: string;
+  name: string;
+  count: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin_pct: number;
+}
 const EXPENSE_CATEGORIES = ['Расходники', 'Аренда', 'Еда', 'Транспорт', 'Коммунальные', 'Реклама', 'Оборудование', 'Прочее'];
 
 interface PeriodMetrics {
@@ -115,6 +125,9 @@ export default function FinancePage() {
 
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+
+  const [marginRows, setMarginRows] = useState<MarginRow[]>([]);
+  const [marginLoading, setMarginLoading] = useState(false);
 
   const todayIso = () => new Date().toISOString().slice(0, 10);
   const [expAmount, setExpAmount] = useState('');
@@ -342,8 +355,29 @@ export default function FinancePage() {
     { value: 'overview', label: 'Обзор' },
     { value: 'income', label: 'Доходы', count: payments.length + manualIncomes.length },
     { value: 'expenses', label: 'Расходы', count: expenses.length },
+    { value: 'margin', label: 'Маржа' },
     { value: 'recurring', label: 'Постоянные расходы' },
   ];
+
+  // Lazy-fetch margin rows when user opens the tab — keeps initial page fast
+  useEffect(() => {
+    if (activeTab !== 'margin' || marginRows.length > 0 || marginLoading) return;
+    setMarginLoading(true);
+    const fromIso = period.start.toISOString();
+    const toIso   = period.end.toISOString();
+    fetch(`/api/finance/margin-by-service?from=${fromIso}&to=${toIso}`)
+      .then((r) => r.json())
+      .then((d) => setMarginRows(d.rows ?? []))
+      .catch(() => setMarginRows([]))
+      .finally(() => setMarginLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, period.start, period.end]);
+
+  // Reset margin cache when period changes
+  useEffect(() => {
+    setMarginRows([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period.start, period.end]);
 
   const expensesTotal = useMemo(() => expenses.reduce((s, e) => s + Number(e.amount), 0), [expenses]);
 
@@ -958,6 +992,126 @@ export default function FinancePage() {
                     −{expensesTotal.toLocaleString()} {CURRENCY}
                   </span>
                   <span />
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === 'margin' && (
+          <motion.div
+            key="margin"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div style={{
+              padding: 16, marginBottom: 16,
+              background: C.accentSoft, borderRadius: 12,
+              border: `1px solid ${C.border}`,
+              fontSize: 13, color: C.textSecondary, lineHeight: 1.5,
+            }}>
+              <strong style={{ color: C.text }}>Маржа по услугам.</strong>{' '}
+              Сколько вы реально зарабатываете на каждой услуге за выбранный период:
+              доход минус себестоимость материалов. Колонка «Маржа %» — доля прибыли
+              от выручки. Чем выше число, тем выгоднее эта услуга для вас.
+            </div>
+
+            {marginLoading ? (
+              <div style={{ padding: 40, textAlign: 'center', color: C.textTertiary }}>
+                <Loader2 size={20} className="animate-spin" style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 13 }}>Считаем маржу…</div>
+              </div>
+            ) : marginRows.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: C.textTertiary, fontSize: 14 }}>
+                За выбранный период нет завершённых записей.
+                <br />Попробуйте выбрать другой период.
+              </div>
+            ) : (
+              <div style={{
+                background: C.surface, border: `1px solid ${C.border}`,
+                borderRadius: 12, overflow: 'hidden',
+              }}>
+                {/* Header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 80px 1fr 1fr 1fr 90px',
+                  padding: '12px 20px',
+                  background: C.surfaceElevated,
+                  borderBottom: `1px solid ${C.border}`,
+                  fontSize: 12, fontWeight: 600, color: C.textSecondary,
+                  textTransform: 'uppercase', letterSpacing: '0.04em',
+                }}>
+                  <span>Услуга</span>
+                  <span style={{ textAlign: 'right' }}>Записей</span>
+                  <span style={{ textAlign: 'right' }}>Доход</span>
+                  <span style={{ textAlign: 'right' }}>Себестоимость</span>
+                  <span style={{ textAlign: 'right' }}>Прибыль</span>
+                  <span style={{ textAlign: 'right' }}>Маржа</span>
+                </div>
+                {/* Rows */}
+                {marginRows.map((row) => (
+                  <div key={row.service_id} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '2fr 80px 1fr 1fr 1fr 90px',
+                    padding: '14px 20px',
+                    borderTop: `1px solid ${C.border}`,
+                    fontSize: 14,
+                    fontVariantNumeric: 'tabular-nums',
+                    alignItems: 'center',
+                  }}>
+                    <span style={{ fontWeight: 500, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {row.name}
+                    </span>
+                    <span style={{ textAlign: 'right', color: C.textSecondary }}>{row.count}</span>
+                    <span style={{ textAlign: 'right', color: C.text }}>
+                      {row.revenue.toLocaleString()} {CURRENCY}
+                    </span>
+                    <span style={{ textAlign: 'right', color: C.textSecondary }}>
+                      {row.cost > 0 ? `${row.cost.toLocaleString()} ${CURRENCY}` : '—'}
+                    </span>
+                    <span style={{ textAlign: 'right', fontWeight: 600, color: row.profit >= 0 ? '#10b981' : C.danger }}>
+                      {row.profit >= 0 ? '+' : ''}{row.profit.toLocaleString()} {CURRENCY}
+                    </span>
+                    <span style={{
+                      textAlign: 'right', fontWeight: 700,
+                      color: row.margin_pct >= 70 ? '#10b981'
+                           : row.margin_pct >= 40 ? '#f59e0b'
+                           : C.danger,
+                    }}>
+                      {row.margin_pct}%
+                    </span>
+                  </div>
+                ))}
+                {/* Total */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 80px 1fr 1fr 1fr 90px',
+                  padding: '14px 20px',
+                  borderTop: `1px solid ${C.border}`,
+                  background: C.surfaceElevated,
+                  fontSize: 14, fontWeight: 700,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  <span style={{ color: C.textSecondary }}>Итого</span>
+                  <span style={{ textAlign: 'right' }}>{marginRows.reduce((s, r) => s + r.count, 0)}</span>
+                  <span style={{ textAlign: 'right' }}>
+                    {marginRows.reduce((s, r) => s + r.revenue, 0).toLocaleString()} {CURRENCY}
+                  </span>
+                  <span style={{ textAlign: 'right', color: C.textSecondary }}>
+                    {marginRows.reduce((s, r) => s + r.cost, 0).toLocaleString()} {CURRENCY}
+                  </span>
+                  <span style={{ textAlign: 'right', color: '#10b981' }}>
+                    +{marginRows.reduce((s, r) => s + r.profit, 0).toLocaleString()} {CURRENCY}
+                  </span>
+                  <span style={{ textAlign: 'right' }}>
+                    {(() => {
+                      const totalRev = marginRows.reduce((s, r) => s + r.revenue, 0);
+                      const totalProfit = marginRows.reduce((s, r) => s + r.profit, 0);
+                      return totalRev > 0 ? `${Math.round((totalProfit / totalRev) * 100)}%` : '—';
+                    })()}
+                  </span>
                 </div>
               </div>
             )}

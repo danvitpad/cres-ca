@@ -38,6 +38,8 @@ export interface MasterCard {
   reviewsCount: number;
   topServices: Array<{ name: string; price: number; currency: string }>;
   distanceKm?: number;
+  /** Premium placement — true for MAX-tier masters, surfaces them first */
+  isPremium?: boolean;
 }
 
 export async function searchMasters(params: SearchParams): Promise<MasterCard[]> {
@@ -105,8 +107,9 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
 
   if (rows.length === 0) return [];
 
-  // Stage 4: enrich — ratings + top services
-  const [ratingsRes, servicesRes] = await Promise.all([
+  // Stage 4: enrich — ratings + top services + active subscription tier
+  // (subscription tier drives premium placement: MAX-tier surfaces first)
+  const [ratingsRes, servicesRes, subsRes] = await Promise.all([
     db.from('master_ratings')
       .select('master_id, reviews_count, average_score')
       .in('master_id', rows.map((r) => r.id)),
@@ -116,6 +119,10 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
       .eq('is_active', true)
       .order('price', { ascending: true })
       .limit(rows.length * 3),
+    db.from('subscriptions')
+      .select('profile_id, tier, status, current_period_end, trial_ends_at')
+      .in('profile_id', rows.map((r) => r.profile_id))
+      .in('status', ['active', 'trialing']),
   ]);
 
   const ratingMap = new Map<string, { count: number; avg: number | null }>();
@@ -127,6 +134,13 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
     const arr = svcByMaster.get(s.master_id) ?? [];
     if (arr.length < 3) arr.push({ name: s.name, price: Number(s.price), currency: s.currency });
     svcByMaster.set(s.master_id, arr);
+  }
+
+  // tier per profile (MAX-tier = 'business' enum value in subscriptions.tier)
+  const premiumProfiles = new Set<string>();
+  for (const s of ((subsRes.data ?? []) as Array<{ profile_id: string; tier: string; current_period_end: string | null; trial_ends_at: string | null }>)) {
+    const periodOk = !s.current_period_end || new Date(s.current_period_end).getTime() > Date.now();
+    if (s.tier === 'business' && periodOk) premiumProfiles.add(s.profile_id);
   }
 
   let cards: MasterCard[] = rows.map((r) => {
@@ -145,6 +159,7 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
       rating: rating?.avg ?? null,
       reviewsCount: rating?.count ?? 0,
       topServices: svcByMaster.get(r.id) ?? [],
+      isPremium: premiumProfiles.has(r.profile_id),
     };
     if (params.near && r.latitude != null && r.longitude != null) {
       card.distanceKm = haversine(params.near.lat, params.near.lng, r.latitude, r.longitude);
@@ -157,8 +172,9 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
     cards = cards.filter((c) => c.distanceKm !== undefined && c.distanceKm <= params.near!.radiusKm);
   }
 
-  // Sort: rating desc, reviews desc, then distance asc
+  // Sort: premium first, then rating desc, reviews desc, then distance asc
   cards.sort((a, b) => {
+    if (!!a.isPremium !== !!b.isPremium) return a.isPremium ? -1 : 1;
     const aRat = a.rating ?? 0;
     const bRat = b.rating ?? 0;
     if (aRat !== bRat) return bRat - aRat;

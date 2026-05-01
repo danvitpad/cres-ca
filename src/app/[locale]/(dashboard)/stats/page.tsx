@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import {
   BarChart3, Calendar as CalendarIcon, Bell,
   CheckCircle2, XCircle, UserX, RotateCcw,
+  Heart, Repeat, TrendingUp, Crown,
 } from 'lucide-react';
 import { startOfWeek, endOfDay } from 'date-fns';
 import { createClient } from '@/lib/supabase/client';
@@ -332,7 +333,112 @@ export default function StatsPage() {
         {loading && (
           <p className="text-xs text-muted-foreground text-center py-3">Загрузка…</p>
         )}
+
+        <LtvRetentionSection />
       </div>
+    </div>
+  );
+}
+
+interface LtvData {
+  ltv_avg: number;
+  ltv_median: number;
+  retention_rate: number;
+  active_30d: number;
+  total_clients: number;
+  total_revenue: number;
+  top_clients: { client_id: string; name: string; total: number; visits: number; last: string }[];
+  cohort_monthly: { month: string; new_count: number; returned: number; return_rate: number }[];
+  empty?: boolean;
+}
+
+function LtvRetentionSection() {
+  const [data, setData] = useState<LtvData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/stats/ltv-retention')
+      .then((r) => r.json())
+      .then((d) => setData(d))
+      .catch(() => setData(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border bg-card p-5 mt-4">
+        <p className="text-xs text-muted-foreground text-center py-3">Считаем LTV и удержание…</p>
+      </div>
+    );
+  }
+
+  if (!data || data.empty || data.total_clients === 0) {
+    return (
+      <div className="rounded-2xl border bg-card p-5 mt-4">
+        <h3 className="text-sm font-semibold mb-1">LTV и удержание клиентов</h3>
+        <p className="text-xs text-muted-foreground">
+          Появятся данные, как только пройдёт пара завершённых визитов. Ничего настраивать не нужно.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border bg-card p-4 sm:p-5 mt-4 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm sm:text-base font-semibold">LTV и удержание клиентов</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Сколько в среднем вы зарабатываете на одном клиенте и какая часть возвращается</p>
+        </div>
+        <Heart className="w-4 h-4 text-rose-500" />
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Tile icon={<TrendingUp className="w-4 h-4" />} label="LTV средний"   value={data.ltv_avg}        accent="emerald" />
+        <Tile icon={<TrendingUp className="w-4 h-4" />} label="LTV медиана"  value={data.ltv_median}     accent="blue"    />
+        <Tile icon={<Repeat className="w-4 h-4" />}     label="Возврат %"     value={data.retention_rate} accent="violet"  />
+        <Tile icon={<Bell className="w-4 h-4" />}       label="Активны 30д %" value={data.active_30d}     accent="amber"   />
+      </div>
+
+      {data.top_clients.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+            <Crown className="w-3 h-3" /> Топ-5 клиентов по доходу
+          </div>
+          <div className="space-y-1">
+            {data.top_clients.map((c) => (
+              <div key={c.client_id} className="flex items-center justify-between gap-3 text-sm rounded-lg bg-background/40 px-3 py-2">
+                <span className="font-medium truncate">{c.name}</span>
+                <div className="flex items-center gap-3 text-xs tabular-nums shrink-0">
+                  <span className="text-muted-foreground">{c.visits} {c.visits === 1 ? 'визит' : c.visits < 5 ? 'визита' : 'визитов'}</span>
+                  <span className="font-semibold">{c.total.toLocaleString()} ₴</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.cohort_monthly.length > 0 && (
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+            Когорты — клиенты, пришедшие впервые в каждом месяце
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+            {data.cohort_monthly.map((c) => (
+              <div key={c.month} className="rounded-lg border bg-background/40 px-2 py-1.5 text-center">
+                <div className="text-[10px] text-muted-foreground">{c.month}</div>
+                <div className="text-base font-semibold tabular-nums leading-none mt-0.5">{c.new_count}</div>
+                <div className="text-[10px] mt-1 leading-none">
+                  <span className={c.return_rate >= 50 ? 'text-emerald-600' : c.return_rate >= 25 ? 'text-amber-600' : 'text-muted-foreground'}>
+                    {c.return_rate}% вернулись
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

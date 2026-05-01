@@ -25,6 +25,7 @@ import { BehaviorIndicators } from '@/components/shared/behavior-indicators';
 import { useMaster } from '@/hooks/use-master';
 import { motion } from 'framer-motion';
 import { LoyaltyCreditButton } from '@/components/clients/loyalty-credit-button';
+import { ClientBehaviorAnalysis } from '@/components/clients/client-behavior-analysis';
 import { differenceInYears, differenceInDays, setYear, getYear, startOfDay } from 'date-fns';
 import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
@@ -352,6 +353,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
           Иконка превращается в строку ввода при клике, мастер
           печатает заметки → AI разносит по категориям и дописывает их в client.notes. */}
       <ClientAiChat clientId={id} onApplied={loadClient} C={C} />
+
+      {/* ═══ AI-анализ поведения клиента (MAX-фича) ═══ */}
+      <div style={{ marginBottom: 16 }}>
+        <ClientBehaviorAnalysis clientId={id} />
+      </div>
 
       {/* ═══ Tabs ═══ */}
       <ClientTabs

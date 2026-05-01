@@ -104,9 +104,20 @@ export async function POST(req: Request) {
   const deliveryRows = recipientIds.map((pid) => ({ broadcast_id: broadcast.id, profile_id: pid }));
   await supabase.from('master_broadcast_deliveries').insert(deliveryRows);
 
-  // If immediate — fanout via TG bot
+  // If immediate — fanout via TG bot. MAX-tier (slug=business) gets the
+  // branded message format (header + signature block + horizontal rules)
+  // — that's the user-facing difference between PRO рассылки and MAX
+  // брендированные рассылки.
+  const branded = access.tier === 'business';
   if (!body.scheduledFor) {
-    fanoutInBackground(broadcast.id, recipientIds, body.subject?.trim() ?? null, body.body.trim(), master.display_name ?? 'Мастер');
+    fanoutInBackground(
+      broadcast.id,
+      recipientIds,
+      body.subject?.trim() ?? null,
+      body.body.trim(),
+      master.display_name ?? 'Мастер',
+      branded,
+    );
   }
 
   return NextResponse.json({
@@ -155,6 +166,7 @@ async function fanoutInBackground(
   subject: string | null,
   body: string,
   masterName: string,
+  branded: boolean = false,
 ) {
   // Use direct admin client for background work (no auth context).
   const { createClient: createAdmin } = await import('@supabase/supabase-js');
@@ -176,8 +188,12 @@ async function fanoutInBackground(
 
   let delivered = 0;
   let failed = 0;
+  // Branded format (MAX-tier): big bold header + horizontal rule + signature
+  // block. Plain format (PRO): subject + body + dash signature.
   const tgTitle = subject ? `*${subject}*\n\n` : '';
-  const tgText = `${tgTitle}${body}\n\n— ${masterName}`;
+  const tgText = branded
+    ? `🌟 *${masterName}* — личное сообщение\n━━━━━━━━━━━━━━\n${tgTitle}${body}\n━━━━━━━━━━━━━━\n_Это рассылка от вашего мастера_`
+    : `${tgTitle}${body}\n\n— ${masterName}`;
 
   for (const pid of recipientIds) {
     const tgId = tgMap.get(pid);
