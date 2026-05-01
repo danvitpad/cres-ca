@@ -48,9 +48,9 @@ export function RebookPanel({ items }: { items: RebookCardData[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-violet-400/25 bg-violet-500/[0.04] p-5">
+    <div className="rounded-xl border border-teal-400/25 bg-teal-500/[0.04] p-5">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wider text-violet-200">
+        <h2 className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-wider text-teal-200">
           <RefreshCw className="size-3.5" />
           Пора вернуть клиентов
         </h2>
@@ -125,7 +125,7 @@ function RebookCard({ item }: { item: RebookCardData }) {
           <p className="mt-0.5 truncate text-[12px] text-white/60">
             {item.serviceName} · обычно раз в {item.medianIntervalDays} дн · был {daysAgo(item.lastVisitAt)}
           </p>
-          <p className="mt-1.5 text-[12px] font-medium text-violet-200">
+          <p className="mt-1.5 text-[12px] font-medium text-teal-200">
             Предложить: {fmt(item.suggestedStartsAt)}
             {item.altSlots.length > 0 && (
               <span className="ml-1 text-white/40">
@@ -146,7 +146,7 @@ function RebookCard({ item }: { item: RebookCardData }) {
           <button
             onClick={approve}
             disabled={!!busy || !item.clientHasTelegram}
-            className="grid size-8 place-items-center rounded-md border border-violet-400/40 bg-violet-500/20 text-violet-100 hover:bg-violet-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+            className="grid size-8 place-items-center rounded-md border border-teal-400/40 bg-teal-500/20 text-teal-100 hover:bg-teal-500/30 disabled:cursor-not-allowed disabled:opacity-40"
             title="Одобрить → отправить клиенту"
           >
             {busy === 'approve' ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}

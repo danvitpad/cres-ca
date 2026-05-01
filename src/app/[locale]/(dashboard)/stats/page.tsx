@@ -32,7 +32,7 @@ interface Appointment {
 type StatsPeriod = 'day' | 'week' | 'month';
 
 const ACCENT_BG: Record<string, string> = {
-  violet: 'bg-violet-500/10 text-violet-500',
+  violet: 'bg-teal-500/10 text-teal-500',
   blue: 'bg-blue-500/10 text-blue-500',
   emerald: 'bg-emerald-500/10 text-emerald-600',
   rose: 'bg-rose-500/10 text-rose-500',

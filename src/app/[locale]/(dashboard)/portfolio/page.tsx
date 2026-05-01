@@ -190,7 +190,7 @@ export default function PortfolioPage() {
                       {item.tags.map((t) => (
                         <span
                           key={t}
-                          className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700"
+                          className="rounded-full bg-teal-50 px-2 py-0.5 text-xs text-teal-700 dark:bg-teal-500/10 dark:text-teal-300"
                         >
                           #{t}
                         </span>

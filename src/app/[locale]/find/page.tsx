@@ -79,7 +79,7 @@ export default async function SearchPage({ params, searchParams }: SearchPagePro
               name="q"
               defaultValue={sp.q ?? ''}
               placeholder="Маникюр, стрижка, массаж…"
-              className="h-11 w-full rounded-xl border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-violet-500"
+              className="h-11 w-full rounded-xl border border-neutral-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-teal-500"
             />
           </div>
           <input
@@ -87,18 +87,18 @@ export default async function SearchPage({ params, searchParams }: SearchPagePro
             name="city"
             defaultValue={sp.city ?? ''}
             placeholder="Киев"
-            className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-violet-500"
+            className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-teal-500"
           />
           <input
             type="number"
             name="price_max"
             defaultValue={sp.price_max ?? ''}
             placeholder="до ₴"
-            className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-violet-500"
+            className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-teal-500"
           />
           <button
             type="submit"
-            className="h-11 rounded-xl bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-700"
+            className="h-11 rounded-xl bg-teal-600 px-5 text-sm font-semibold text-white hover:bg-teal-700"
           >
             Найти
           </button>
@@ -109,20 +109,20 @@ export default async function SearchPage({ params, searchParams }: SearchPagePro
             <Link
               key={m.id}
               href={`/m/${m.slug}`}
-              className="group rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-violet-400 hover:shadow-md"
+              className="group rounded-2xl border border-neutral-200 bg-white p-4 transition hover:border-teal-400 hover:shadow-md"
             >
               <div className="flex items-start gap-3">
                 <div className="relative size-14 shrink-0 overflow-hidden rounded-full bg-neutral-100">
                   {m.avatarUrl ? (
                     <Image src={m.avatarUrl} alt={m.fullName} fill className="object-cover" />
                   ) : (
-                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-violet-400 to-pink-400 text-lg font-semibold text-white">
+                    <div className="flex size-full items-center justify-center bg-gradient-to-br from-teal-400 to-emerald-500 text-lg font-semibold text-white">
                       {m.firstName.charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold text-neutral-900 group-hover:text-violet-700">{m.fullName}</div>
+                  <div className="truncate font-semibold text-neutral-900 group-hover:text-teal-700">{m.fullName}</div>
                   {m.specialization && <div className="truncate text-xs text-neutral-500">{m.specialization}</div>}
                   <div className="mt-1 flex items-center gap-3 text-xs text-neutral-500">
                     {m.city && (

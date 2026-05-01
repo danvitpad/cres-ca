@@ -73,7 +73,7 @@ export function FeaturedMastersStrip({ city }: { city?: string }) {
         <h2 className="text-lg font-semibold">
           Рекомендуем{city ? ` · ${city}` : ''}
         </h2>
-        <Link href="/search" className="text-xs font-semibold text-violet-600 hover:underline">
+        <Link href="/search" className="text-xs font-semibold text-teal-600 hover:underline dark:text-teal-300">
           Смотреть все →
         </Link>
       </div>

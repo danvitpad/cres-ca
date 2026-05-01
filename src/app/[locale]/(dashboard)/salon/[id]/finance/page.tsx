@@ -140,7 +140,7 @@ export default function SalonFinancePage() {
         className="flex flex-wrap items-center gap-3 justify-between"
       >
         <div className="flex items-center gap-3">
-          <div className="size-11 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-300">
+          <div className="size-11 rounded-xl bg-teal-500/15 border border-teal-500/25 flex items-center justify-center text-teal-600 dark:text-teal-300">
             <Building2 className="size-5" />
           </div>
           <div>
@@ -317,7 +317,7 @@ function TotalCard({
     emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     rose: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
     amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    violet: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
   };
   return (
     <motion.div

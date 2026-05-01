@@ -153,11 +153,11 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
   const todo = items.filter((i) => !i.done);
 
   return (
-    <div className="mt-6 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-indigo-50">
+    <div className="mt-6 overflow-hidden rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-emerald-50 dark:border-teal-500/30 dark:from-teal-500/[0.06] dark:via-transparent dark:to-emerald-500/[0.04]">
       <div className="flex items-start justify-between gap-3 px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-violet-600" />
+            <Sparkles className="size-4 text-teal-600 dark:text-teal-300" />
             <p className="text-sm font-bold text-neutral-900">Сделай страницу премиум · {pct}%</p>
           </div>
           <p className="mt-1 text-xs text-neutral-600">
@@ -172,22 +172,22 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
           Скрыть
         </button>
       </div>
-      <div className="h-1 bg-violet-100">
-        <div className="h-full bg-violet-500 transition-all" style={{ width: `${pct}%` }} />
+      <div className="h-1 bg-teal-100 dark:bg-teal-500/15">
+        <div className="h-full bg-teal-500 transition-all" style={{ width: `${pct}%` }} />
       </div>
-      <ul className="divide-y divide-violet-100">
+      <ul className="divide-y divide-teal-100 dark:divide-teal-500/15">
         {todo.map((item) => (
           <li key={item.key}>
             <Link
               href={item.href}
               className="group flex items-center gap-3 px-5 py-3 hover:bg-white/60"
             >
-              <CheckCircle2 className="size-5 shrink-0 text-neutral-300 group-hover:text-violet-500" strokeWidth={2.2} />
+              <CheckCircle2 className="size-5 shrink-0 text-neutral-300 group-hover:text-teal-500" strokeWidth={2.2} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-neutral-900">{item.label}</p>
                 <p className="mt-0.5 text-xs text-neutral-500">{item.hint}</p>
               </div>
-              <ChevronRight className="size-4 shrink-0 text-neutral-400 group-hover:text-violet-600" />
+              <ChevronRight className="size-4 shrink-0 text-neutral-400 group-hover:text-teal-600" />
             </Link>
           </li>
         ))}

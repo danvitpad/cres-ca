@@ -103,7 +103,7 @@ const DateWheelPicker = React.forwardRef<HTMLDivElement, DateWheelPickerProps>(
             sizeConfig[size],
             error
               ? 'border-rose-500/60 text-rose-300 focus:border-rose-500'
-              : 'border-white/10 text-white focus:border-violet-500/60',
+              : 'border-white/10 text-white focus:border-teal-500/60',
           )}
         />
         {error && (

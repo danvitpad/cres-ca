@@ -294,7 +294,7 @@ export default function MyMastersPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={cover} alt="" className="size-full object-cover transition-transform duration-500 group-hover/master:scale-105" />
                   ) : (
-                    <div className="size-full bg-gradient-to-br from-[var(--ds-accent)] via-purple-500 to-pink-500" />
+                    <div className="size-full bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
                   {m.bonusPoints > 0 && (
