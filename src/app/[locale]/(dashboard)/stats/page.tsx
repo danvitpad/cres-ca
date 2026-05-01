@@ -387,17 +387,17 @@ function LtvRetentionSection() {
     <div className="rounded-2xl border bg-card p-4 sm:p-5 mt-4 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm sm:text-base font-semibold">LTV и удержание клиентов</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Сколько в среднем вы зарабатываете на одном клиенте и какая часть возвращается</p>
+          <h3 className="text-sm sm:text-base font-semibold">Сколько клиент приносит за всё время</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">В среднем вы зарабатываете на одном клиенте за всю историю общения с ним</p>
         </div>
         <Heart className="w-4 h-4 text-rose-500" />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <Tile icon={<TrendingUp className="w-4 h-4" />} label="LTV средний"   value={data.ltv_avg}        accent="emerald" />
-        <Tile icon={<TrendingUp className="w-4 h-4" />} label="LTV медиана"  value={data.ltv_median}     accent="blue"    />
-        <Tile icon={<Repeat className="w-4 h-4" />}     label="Возврат %"     value={data.retention_rate} accent="violet"  />
-        <Tile icon={<Bell className="w-4 h-4" />}       label="Активны 30д %" value={data.active_30d}     accent="amber"   />
+        <Tile icon={<TrendingUp className="w-4 h-4" />} label="В среднем, ₴"   value={data.ltv_avg}        accent="emerald" />
+        <Tile icon={<TrendingUp className="w-4 h-4" />} label="Чаще всего, ₴"  value={data.ltv_median}     accent="blue"    />
+        <Tile icon={<Repeat className="w-4 h-4" />}     label="Возвращаются %"     value={data.retention_rate} accent="violet"  />
+        <Tile icon={<Bell className="w-4 h-4" />}       label="Были за 30 дней %" value={data.active_30d}     accent="amber"   />
       </div>
 
       {data.top_clients.length > 0 && (
@@ -422,7 +422,7 @@ function LtvRetentionSection() {
       {data.cohort_monthly.length > 0 && (
         <div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-            Когорты — клиенты, пришедшие впервые в каждом месяце
+            По месяцам — сколько новых пришло и кто из них вернулся
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
             {data.cohort_monthly.map((c) => (

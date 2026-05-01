@@ -36,6 +36,7 @@ import { TrialBadge } from '@/components/subscription/trial-badge';
 import { DashboardRealtimeToasts } from '@/components/dashboard/dashboard-realtime-toasts';
 import { InactivityLogout } from '@/components/auth/inactivity-logout';
 import { ReminderPopup } from '@/components/reminders/reminder-popup';
+import { PageHelpButton } from '@/components/shared/page-help-button';
 import { F_LIGHT, F_DARK, type FTheme } from '@/lib/dashboard-theme';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useAnnouncements } from '@/hooks/use-announcements';
@@ -350,6 +351,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <DashboardRealtimeToasts />
         <InactivityLogout />
         <ReminderPopup />
+        <PageHelpButton />
       </div>
     </ConfirmProvider>
   );
