@@ -29,7 +29,7 @@ import { StatCard } from '@/components/shared/primitives/stat-card';
 import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
-import { ExportMenu } from '@/components/finance/export-menu';
+// import { ExportMenu } from '@/components/finance/export-menu'; // v1: hidden
 import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
 import { humanizeError } from '@/lib/format/error';
 
@@ -422,7 +422,7 @@ export default function FinancePage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <PeriodSelector value={periodKey} onChange={(p) => setPeriodKey(p.key)} />
-          <ExportMenu from={format(period.start, 'yyyy-MM-dd')} to={format(period.end, 'yyyy-MM-dd')} C={C} />
+          {/* ExportMenu hidden for v1 release */}
         </div>
       </div>
 

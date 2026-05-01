@@ -485,8 +485,7 @@ export default function ClientSettingsPage() {
       </Section>
 
       <Section title={t('data')}>
-        <LinkRow icon={Download} label={`${t('dataExport')} — JSON`} onClick={() => exportData('json')} />
-        <LinkRow icon={Download} label={`${t('dataExport')} — ZIP (с CSV для Excel)`} onClick={() => exportData('zip')} />
+        {/* Export rows hidden for v1 release */}
         <div className="px-6 py-4">
           <Button variant="destructive" onClick={openDeleteDialog}>
             <Trash2 className="mr-2 size-4" />

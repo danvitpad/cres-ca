@@ -1451,8 +1451,8 @@ function SecurityTab() {
         )}
       </SettingsBlock>
 
-      {/* Export — GDPR self-export */}
-      <DataExportBlock C={C} />
+      {/* Export — hidden for v1 release */}
+      {false && <DataExportBlock C={C} />}
 
       {/* Danger zone — delete account */}
       <section
