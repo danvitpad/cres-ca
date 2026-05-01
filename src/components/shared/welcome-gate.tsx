@@ -25,6 +25,7 @@ export function WelcomeGate() {
   const locale = useLocale();
   const [showDialog, setShowDialog] = useState(false);
   const [firstName, setFirstName] = useState('');
+  const [role, setRole] = useState<'master' | 'client' | 'salon_admin' | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,14 +43,23 @@ export function WelcomeGate() {
         if (!user || ctrl.signal.aborted) return;
         const { data } = await supabase
           .from('profiles')
-          .select('welcome_seen, first_name, full_name')
+          .select('welcome_seen, first_name, full_name, role')
           .eq('id', user.id)
           .maybeSingle();
         if (ctrl.signal.aborted) return;
-        const row = data as { welcome_seen?: boolean; first_name?: string | null; full_name?: string | null } | null;
+        const row = data as {
+          welcome_seen?: boolean;
+          first_name?: string | null;
+          full_name?: string | null;
+          role?: string | null;
+        } | null;
         const seen = row?.welcome_seen ?? true;
         if (!seen) {
           setFirstName((row?.first_name || row?.full_name?.split(' ')[0] || '').trim());
+          // Тур у мастера, клиента и админа разные — кнопка «Пройти тур»
+          // должна вести на правильный стартовый экран в зависимости от роли.
+          const r = (row?.role as 'master' | 'client' | 'salon_admin' | null) ?? null;
+          setRole(r);
           setShowDialog(true);
         }
       } catch {
@@ -79,8 +89,20 @@ export function WelcomeGate() {
   async function onStartTour() {
     await markSeen();
     setShowDialog(false);
-    // Переходим на /today и запускаем тур через query-param.
-    router.push(`/${locale}/today?tour=today`);
+    // Каждой роли — свой стартовый экран тура. Раньше всех слепо
+    // отправлял на /today (мастерский экран) — клиент получал чужой
+    // дашборд под чужим профилем. Теперь:
+    //   master → /today?tour=today (его утренний экран)
+    //   client → /feed (полноценного клиентского тура пока нет — открываем
+    //                   главную клиента, чтобы не путать)
+    //   salon_admin → /dashboard (его кабинет команды)
+    if (role === 'client') {
+      router.push(`/${locale}/feed`);
+    } else if (role === 'salon_admin') {
+      router.push(`/${locale}/dashboard`);
+    } else {
+      router.push(`/${locale}/today?tour=today`);
+    }
   }
 
   return (

@@ -147,11 +147,11 @@ export const CURRENCY = '₴';
 export const pageContainer = {
   fontFamily: FONT,
   fontFeatureSettings: FONT_FEATURES,
-  // Дыхательные отступы: top/horizontal — `clamp(...)`, bottom — фиксированные
-  // 160px, чтобы контент никогда не прилипал к нижнему краю экрана,
-  // sticky-bars / plus-кнопки не закрывали последние карточки и хватало воздуха
-  // когда у пользователя видна панель задач Windows.
-  padding: 'clamp(16px, 3vw, 28px) clamp(16px, 3vw, 36px) 160px',
+  // Дыхательные отступы: top/horizontal — `clamp(...)`, bottom — компактный.
+  // 160 было перебором (большой пустой кусок), 96 был тесно; остановились
+  // на 32 — последний блок не липнет к краю экрана, но и пустоты под ним
+  // не зияет.
+  padding: 'clamp(16px, 3vw, 28px) clamp(16px, 3vw, 36px) 32px',
   maxWidth: 1280,
   margin: '0 auto' as const,
   width: '100%' as const,
