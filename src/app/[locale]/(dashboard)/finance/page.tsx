@@ -1036,7 +1036,8 @@ export default function FinancePage() {
                 {/* Header */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '2fr 80px 1fr 1fr 1fr 90px',
+                  gridTemplateColumns: 'minmax(120px, 2fr) 70px minmax(80px, 1fr) minmax(110px, 1fr) minmax(90px, 1fr) 70px',
+                  gap: 12,
                   padding: '12px 20px',
                   background: C.surfaceElevated,
                   borderBottom: `1px solid ${C.border}`,
@@ -1054,7 +1055,8 @@ export default function FinancePage() {
                 {marginRows.map((row) => (
                   <div key={row.service_id} style={{
                     display: 'grid',
-                    gridTemplateColumns: '2fr 80px 1fr 1fr 1fr 90px',
+                    gridTemplateColumns: 'minmax(120px, 2fr) 70px minmax(80px, 1fr) minmax(110px, 1fr) minmax(90px, 1fr) 70px',
+                  gap: 12,
                     padding: '14px 20px',
                     borderTop: `1px solid ${C.border}`,
                     fontSize: 14,
@@ -1087,7 +1089,8 @@ export default function FinancePage() {
                 {/* Total */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '2fr 80px 1fr 1fr 1fr 90px',
+                  gridTemplateColumns: 'minmax(120px, 2fr) 70px minmax(80px, 1fr) minmax(110px, 1fr) minmax(90px, 1fr) 70px',
+                  gap: 12,
                   padding: '14px 20px',
                   borderTop: `1px solid ${C.border}`,
                   background: C.surfaceElevated,

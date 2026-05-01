@@ -82,40 +82,51 @@ export async function GET(request: Request) {
     }
   }
 
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   const dayStats = dayNames.map((name, i) => `${name}: ${dayDistribution[i] ?? 0}`).join(', ');
 
   const serviceStats = services
-    .map((s) => `${s.name}: ${serviceBookings[s.id] ?? 0} bookings, price ${s.price}`)
+    .map((s) => `${s.name}: ${serviceBookings[s.id] ?? 0} записей, цена ${s.price} ₴`)
     .join('; ');
 
   const summary = [
-    `Total appointments (30d): ${appointments.length}`,
-    `Cancelled/no-show: ${cancelledCount}`,
-    `Total clients: ${clients.length}, dormant (60d+): ${dormantClients.length}`,
-    `Day distribution: ${dayStats}`,
-    `Services: ${serviceStats}`,
+    `Всего записей за 30 дней: ${appointments.length}`,
+    `Отменено и не пришли: ${cancelledCount}`,
+    `Всего клиентов: ${clients.length}, спящих (60+ дней): ${dormantClients.length}`,
+    `Распределение по дням: ${dayStats}`,
+    `Услуги: ${serviceStats}`,
   ].join('\n');
 
   const aiResponse = await aiComplete(
-    `You are a business analytics AI for a service professional (hairdresser, nail artist, massage therapist, etc). Generate exactly 3 actionable revenue insights based on the data. Return JSON array with objects: { "type": "schedule_gaps" | "dormant_clients" | "price_optimization" | "upsell_missed", "title": "short title", "description": "1-2 sentence insight", "action": "specific action to take" }. Be concise and specific. Use numbers from the data.`,
+    `Ты бизнес-аналитик для мастера сферы услуг (универсально: парикмахер, мастер маникюра, массажист, груминг, стоматолог, автосервис и т.д.). На основе данных дай ровно 3 практических совета мастеру, как заработать больше.
+
+КРИТИЧНО:
+- Отвечай ТОЛЬКО на русском языке. Никакого английского.
+- Все суммы — в гривнах (₴). Никаких других валют (₽/$/€) даже как примеров.
+- Только валидный JSON-массив без markdown и преамбул. Сразу [ ... ]
+- Каждый объект: { "type": "schedule_gaps" | "dormant_clients" | "price_optimization" | "upsell_missed", "title": "короткий заголовок", "description": "1-2 предложения с конкретными цифрами из данных", "action": "конкретное действие, которое мастер может сделать сегодня" }
+- Внутри строк только обычные кавычки. Без запятых после последнего элемента.`,
     summary,
   );
 
   // Parse AI response
-  let insights = [];
+  type Insight = { type: string; title: string; description: string; action: string };
+  let insights: Insight[] = [];
   try {
     const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       insights = JSON.parse(jsonMatch[0]);
     }
   } catch {
+    // ignore
+  }
+  if (insights.length === 0) {
     insights = [
       {
         type: 'schedule_gaps',
-        title: 'Review your schedule',
-        description: `You had ${cancelledCount} cancellations in the last 30 days.`,
-        action: 'Consider adding a cancellation policy or waitlist.',
+        title: 'Посмотрите на расписание',
+        description: `За 30 дней было ${cancelledCount} отмен и неявок. Это потерянные деньги.`,
+        action: 'Включите политику отмены и лист ожидания, чтобы пустые слоты заполнялись',
       },
     ];
   }

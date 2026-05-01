@@ -27,25 +27,85 @@ interface ClientStats {
   favourite_services: string[];
 }
 
-const SYSTEM_PROMPT = `Ты — деловой ассистент мастера услуг. На вход тебе дают
-сырые числа поведения одного клиента. Твоя работа — выдать короткий, конкретный
-отчёт на русском, который мастер сможет прочитать за 30 секунд.
+const SYSTEM_PROMPT = `Ты — деловой ассистент мастера услуг. На вход дают
+числа поведения одного клиента. Твоя работа — короткий конкретный отчёт
+на русском.
 
-ТРЕБОВАНИЯ К ОТВЕТУ:
-- Только валидный JSON. Никаких markdown-обёрток, никаких комментариев.
-- Поля строго:
-  {
-    "risk_level": "low" | "medium" | "high",
-    "vip_readiness": "yes" | "maybe" | "no",
-    "summary": "одно-два предложения, как у живого человека, без воды",
-    "recommendations": ["рекомендация 1", "рекомендация 2", "рекомендация 3"]
+КРИТИЧНО ВАЖНО: ответь ТОЛЬКО валидным JSON-объектом. Никакого текста до
+JSON, никакого после. Никаких \`\`\`-блоков. Никаких пояснений. Сразу { ... }.
+
+Точный шаблон ответа:
+{"risk_level":"low","vip_readiness":"no","summary":"одно-два предложения","recommendations":["действие 1","действие 2","действие 3"]}
+
+Допустимые значения:
+- risk_level: "low" | "medium" | "high"
+- vip_readiness: "yes" | "maybe" | "no"
+- recommendations: массив из 2-4 строк, каждая — конкретное действие
+
+Логика оценки:
+- risk_level "high" если визитов >= 2 и от последнего прошло > 2× среднего интервала, или отмен > 25%, или есть пропуски визитов
+- risk_level "low" если последний визит свежий и отмен мало
+- vip_readiness "yes" если visits_total >= 6 И avg_check >= 1500 И не пропускал визиты
+- recommendations — конкретные действия (написать клиенту X, дать промокод Y, предложить услугу Z), без воды
+
+Внутри строк используй только обычные кавычки (никаких "ёлочек" «»). Не ставь запятые после последнего элемента массива или объекта.`;
+
+interface ParsedAnalysis {
+  risk_level: 'low' | 'medium' | 'high';
+  vip_readiness: 'yes' | 'maybe' | 'no';
+  summary: string;
+  recommendations: string[];
+}
+
+function ruleBasedFallback(stats: ClientStats): ParsedAnalysis {
+  const recs: string[] = [];
+
+  // risk
+  let risk: ParsedAnalysis['risk_level'] = 'low';
+  if (stats.no_show_total >= 1 || (stats.cancelled_total / Math.max(1, stats.visits_total + stats.cancelled_total)) > 0.25) {
+    risk = 'high';
+  } else if (
+    stats.visits_total >= 2 && stats.avg_interval_days &&
+    stats.days_since_last_visit && stats.days_since_last_visit > stats.avg_interval_days * 2
+  ) {
+    risk = 'high';
+  } else if (stats.days_since_last_visit && stats.days_since_last_visit > 60) {
+    risk = 'medium';
   }
 
-ПРАВИЛА ОЦЕНКИ:
-- risk_level "high" — если визитов >= 2 и от последнего прошло > 2× среднего интервала, или cancel rate > 25%, или no-show >= 1.
-- risk_level "low" — если последний визит свежий (< среднего интервала) и cancel rate <= 10%.
-- vip_readiness "yes" — visits_total >= 6 И avg_check выше типичного (свыше 1500 ₴) И no-show = 0.
-- recommendations — обязательно конкретные действия (написать с предложением, дать промокод, предложить новую услугу), без общих слов.`;
+  // vip
+  const vip: ParsedAnalysis['vip_readiness'] =
+    stats.visits_total >= 6 && stats.avg_check >= 1500 && stats.no_show_total === 0 ? 'yes'
+    : stats.visits_total >= 4 && stats.avg_check >= 800 ? 'maybe'
+    : 'no';
+
+  // summary
+  let summary = `Визитов: ${stats.visits_total}, средний чек ${stats.avg_check} ₴.`;
+  if (stats.days_since_last_visit !== null) {
+    summary += ` Последний визит ${stats.days_since_last_visit} дн. назад.`;
+  }
+  if (stats.no_show_total > 0) summary += ` Не приходил: ${stats.no_show_total}.`;
+
+  // recommendations
+  if (risk === 'high') {
+    recs.push('Напишите клиенту лично — спросите, всё ли в порядке, и предложите удобное время');
+    recs.push('Дайте небольшую скидку или бонус, чтобы вернуть его');
+  } else if (vip === 'yes' || vip === 'maybe') {
+    recs.push('Предложите VIP-условия: приоритетный слот или повышенный кэшбек');
+    if (stats.favourite_services.length > 0) {
+      recs.push(`Расскажите о новой услуге, дополняющей «${stats.favourite_services[0]}»`);
+    }
+  } else if (stats.visits_total === 0) {
+    recs.push('Отправьте приветственное сообщение со списком услуг и ценами');
+  } else {
+    recs.push('Напомните о себе через 1-2 недели — короткое сообщение с предложением записи');
+    if (stats.favourite_services.length > 0) {
+      recs.push(`Предложите попробовать что-то ещё, кроме «${stats.favourite_services[0]}»`);
+    }
+  }
+
+  return { risk_level: risk, vip_readiness: vip, summary, recommendations: recs };
+}
 
 export async function POST(
   _req: Request,
@@ -152,31 +212,33 @@ export async function POST(
     });
   }
 
-  // ask AI
+  // ask AI. Если AI не дал валидный JSON — используем rule-based fallback,
+  // чтобы пользователь всегда получал содержательный ответ (мастеру важно
+  // увидеть оценку, а не «попробуйте позже»).
   const userMessage = `Имя клиента: ${client.full_name ?? '—'}\n` +
     `Метрики:\n${JSON.stringify(stats, null, 2)}`;
 
   try {
     const res = await textToJSON({ systemPrompt: SYSTEM_PROMPT, userMessage });
-    const parsed = extractJSON<{
-      risk_level: 'low' | 'medium' | 'high';
-      vip_readiness: 'yes' | 'maybe' | 'no';
-      summary: string;
-      recommendations: string[];
-    }>(res.data);
-    if (!parsed) {
-      return NextResponse.json({
-        error: 'ai_parse_failed',
-        raw: res.data,
-        stats,
-      }, { status: 502 });
+    const parsed = extractJSON<ParsedAnalysis>(res.data);
+    if (parsed && typeof parsed.summary === 'string' && Array.isArray(parsed.recommendations)) {
+      return NextResponse.json({ stats, analysis: parsed, ai_used: true, model: res.model });
     }
-    return NextResponse.json({ stats, analysis: parsed, ai_used: true, model: res.model });
-  } catch (e) {
+    // AI ответил мусором — отдаём rule-based анализ (без обмана пользователя:
+    // ai_used=false показывает что это не AI-вывод)
     return NextResponse.json({
-      error: 'ai_unavailable',
-      detail: (e as Error).message,
       stats,
-    }, { status: 502 });
+      analysis: ruleBasedFallback(stats),
+      ai_used: false,
+      ai_fallback_reason: 'parse_failed',
+    });
+  } catch (e) {
+    // AI вообще не ответил (rate limit, network) — тоже идём в fallback
+    return NextResponse.json({
+      stats,
+      analysis: ruleBasedFallback(stats),
+      ai_used: false,
+      ai_fallback_reason: (e as Error).message,
+    });
   }
 }
