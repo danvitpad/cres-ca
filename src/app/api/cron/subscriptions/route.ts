@@ -10,11 +10,12 @@
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { sendMessage } from '@/lib/telegram/bot';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function notifyTg(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: any,
   profileId: string,
   title: string,
   body: string,
@@ -48,7 +49,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  // Service role — иначе RLS блокирует UPDATE subscriptions и INSERT notifications.
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
   const now = new Date();
   const nowIso = now.toISOString();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -100,8 +106,11 @@ export async function GET(request: Request) {
       : 'Подписка скоро продлится автоматически. Если способ оплаты сменился — обнови в Биллинге.';
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
-      type: 'subscription', title, body, link: '/settings/billing',
-      data: { sub_warn_kind: 'sub_3day' },
+      channel: 'in_app',
+      status: 'sent',
+      scheduled_for: now.toISOString(),
+      title, body,
+      data: { kind: 'subscription', link: '/settings/billing', sub_warn_kind: 'sub_3day' },
     });
     await notifyTg(supabase, sub.profile_id, title, body);
     result.warned_3day += 1;
@@ -123,8 +132,11 @@ export async function GET(request: Request) {
       : 'Проверь карту в Биллинге — если она удалена / просрочена, подписка перейдёт в просрочку.';
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
-      type: 'subscription', title, body, link: '/settings/billing',
-      data: { sub_warn_kind: 'sub_1day' },
+      channel: 'in_app',
+      status: 'sent',
+      scheduled_for: now.toISOString(),
+      title, body,
+      data: { kind: 'subscription', link: '/settings/billing', sub_warn_kind: 'sub_1day' },
     });
     await notifyTg(supabase, sub.profile_id, title, body);
     result.warned_1day += 1;
@@ -145,7 +157,11 @@ export async function GET(request: Request) {
     await supabase.from('subscriptions').update({ status: 'past_due' }).eq('id', sub.id);
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
-      type: 'subscription', title, body, link: '/settings/billing',
+      channel: 'in_app',
+      status: 'sent',
+      scheduled_for: now.toISOString(),
+      title, body,
+      data: { kind: 'subscription', link: '/settings/billing', sub_warn_kind: 'trial_ended' },
     });
     await notifyTg(supabase, sub.profile_id, title, body);
     result.trial_to_past_due += 1;
@@ -165,7 +181,11 @@ export async function GET(request: Request) {
     await supabase.from('subscriptions').update({ status: 'past_due' }).eq('id', sub.id);
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
-      type: 'subscription', title, body, link: '/settings/billing',
+      channel: 'in_app',
+      status: 'sent',
+      scheduled_for: now.toISOString(),
+      title, body,
+      data: { kind: 'subscription', link: '/settings/billing', sub_warn_kind: 'past_due' },
     });
     await notifyTg(supabase, sub.profile_id, title, body);
     result.active_to_past_due += 1;
@@ -188,7 +208,11 @@ export async function GET(request: Request) {
       .eq('id', sub.id);
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
-      type: 'subscription', title, body, link: '/settings/billing',
+      channel: 'in_app',
+      status: 'sent',
+      scheduled_for: now.toISOString(),
+      title, body,
+      data: { kind: 'subscription', link: '/settings/billing', sub_warn_kind: 'expired' },
     });
     await notifyTg(supabase, sub.profile_id, title, body);
     result.past_due_to_expired += 1;
