@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { sendMessage } from '@/lib/telegram/bot';
-import { parseVoiceIntent, downloadTelegramFile, type VoiceIntent } from '@/lib/ai/gemini-voice';
+import { parseVoiceIntent, parseTextIntent, downloadTelegramFile, type VoiceIntent } from '@/lib/ai/gemini-voice';
 import { notifySuperadmin } from '@/lib/notifications/superadmin-notify';
 
 function createServiceClient() {
@@ -243,14 +243,74 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Fallback — text messages can also be parsed as commands
-  await sendMessage(chatId, '🎤 Отправь голосовое сообщение — я пойму и выполню.\n\nИли нажми /help для списка команд.', {
+  // Fallback — try parsing the text as a natural-language command
+  // («напомни попить кофе через 2 минуты», «потратил 500 на краску», ...)
+  if (text && text.trim().length >= 4) {
+    await handleTextIntent(chatId, text.trim());
+    return NextResponse.json({ ok: true });
+  }
+
+  await sendMessage(chatId, '🎤 Отправь голосовое или напиши текстом — я пойму и выполню.\n\nИли нажми /help для списка команд.', {
     reply_markup: {
       inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
     },
   });
 
   return NextResponse.json({ ok: true });
+}
+
+/* ─── Text Intent Handler ─── */
+
+async function handleTextIntent(chatId: number, text: string) {
+  const supabase = createServiceClient();
+
+  // Find CRES-CA account via telegram_sessions
+  const { data: session } = await supabase
+    .from('telegram_sessions')
+    .select('profile_id')
+    .eq('chat_id', chatId)
+    .single();
+
+  if (!session) {
+    await sendMessage(chatId, '❌ Сначала войди в CRES-CA через Mini App, чтобы я понимал команды.', {
+      reply_markup: {
+        inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
+      },
+    });
+    return;
+  }
+
+  // Master-only flow (clients use voice for feedback only)
+  const { data: master } = await supabase
+    .from('masters')
+    .select('id')
+    .eq('profile_id', session.profile_id)
+    .maybeSingle();
+
+  // If user is a client (no master row) — treat text as feedback
+  if (!master) {
+    await saveFeedbackAndNotify(session.profile_id, text, 'telegram_bot');
+    await sendMessage(chatId, FEEDBACK_THANKS);
+    return;
+  }
+
+  // Processing indicator
+  await sendMessage(chatId, '⌛ Думаю...');
+
+  try {
+    const intent = await parseTextIntent(text);
+    await routeVoiceAction(chatId, master.id, intent, supabase);
+  } catch (err) {
+    const msg = (err as Error)?.message ?? '';
+    console.error('Text intent processing error:', err);
+    let userMsg = '❌ Не понял команду. Попробуй переформулировать или /help для списка.';
+    if (msg.includes('All Gemini') || msg.includes('Gemini unavailable')) {
+      userMsg = '❌ AI временно перегружен. Попробуй через 10-20 секунд.';
+    } else if (msg.includes('unparseable')) {
+      userMsg = '❌ AI не понял команду. Опиши конкретнее: «напомни ...», «запиши ... на ...», «потратил ... на ...».';
+    }
+    await sendMessage(chatId, userMsg);
+  }
 }
 
 /* ─── Voice Message Handler ─── */
