@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendingUp, ChevronRight, Sparkles, Send, Trash2, MailOpen } from 'lucide-react';
+import { TrendingUp, ChevronRight, Sparkles, Send, Trash2, MailOpen, ListTodo } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
@@ -231,6 +231,50 @@ export default function MasterMiniAppHome() {
             <ChevronRight size={18} color="var(--color-accent-hover)" />
           </Link>
         )}
+
+        {/* Tasks quick link — todo / reminders */}
+        <Link
+          href="/telegram/m/tasks"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            margin: `0 ${PAGE_PADDING_X}px`,
+            padding: 16,
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.md,
+            textDecoration: 'none',
+            color: T.text,
+            boxShadow: SHADOW.card,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                flexShrink: 0,
+                borderRadius: 12,
+                background: T.accentSoft,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ListTodo size={20} color={T.accent} strokeWidth={2.4} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.accent, margin: 0 }}>
+                Задачи и напоминания
+              </p>
+              <p style={{ ...TYPE.h3, color: T.text, marginTop: 4 }}>
+                Не забудь главное
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={18} color={T.textTertiary} />
+        </Link>
 
         {/* Finance quick link — premium card */}
         <Link

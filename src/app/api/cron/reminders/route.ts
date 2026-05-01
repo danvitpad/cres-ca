@@ -26,7 +26,16 @@ interface TemplateRow {
 }
 
 const DEFAULT_OFFSETS = [1440, 120]; // 24h + 2h
-const WINDOW_MINUTES = 10;            // ±10 min tolerance
+// Minute-precision firing: when this cron runs every minute via cron-job.org,
+// each reminder fires exactly once (dedup) within a tight ±0.5 min lead-in
+// window. We allow late catch-up up to 0.5 min past target, but never AFTER
+// the appointment itself to avoid retroactive «remember 2h before» pings.
+const EARLY_WINDOW = 0.5;             // fire up to 30 sec before target
+const LATE_WINDOW = 0.5;              // and up to 30 sec late (cron jitter)
+
+function shouldFire(minutesUntil: number, off: number): boolean {
+  return minutesUntil <= off + EARLY_WINDOW && minutesUntil >= off - LATE_WINDOW;
+}
 
 /* Локализованные fallback-шаблоны напоминаний. Применяются когда мастер не задал
    свой message_template — выбираются по masters.public_language.
@@ -381,7 +390,7 @@ export async function GET(request: Request) {
     };
 
     // Auto-release unconfirmed booking at the 2h mark
-    if (Math.abs(minutesUntil - 120) <= WINDOW_MINUTES
+    if (shouldFire(minutesUntil, 120)
         && apt.status === 'booked'
         && isEnabled(automationSettings, apt.master_id, 'auto_release')) {
       await supabase.from('appointments').update({ status: 'cancelled_by_client' }).eq('id', apt.id);
@@ -407,7 +416,7 @@ export async function GET(request: Request) {
       const fbBodyGen = buildFallbackBody(lang, t.reminderGeneric(reminderCtx), reminderCtx);
 
       for (const off of offsets) {
-        if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
+        if (!shouldFire(minutesUntil, off)) continue;
         let title: string;
         let body: string;
         if (off === 1440) {
@@ -436,7 +445,7 @@ export async function GET(request: Request) {
       const masterPrefs = getPrefs(master.profile_id);
       if (masterPrefs.enabled) {
         for (const off of masterPrefs.offsets) {
-          if (Math.abs(minutesUntil - off) > WINDOW_MINUTES) continue;
+          if (!shouldFire(minutesUntil, off)) continue;
           let title: string;
           if (off === 1440) title = '📅 Завтра запись клиента';
           else if (off === 120) title = '⏰ Через 2 часа';
@@ -468,8 +477,10 @@ export async function GET(request: Request) {
       'id, starts_at, status, master_id, clients(full_name, notes, allergies, has_health_alert, last_visit_at, total_visits), services(name), masters(profile_id)',
     )
     .in('status', ['booked', 'confirmed'])
-    .gte('starts_at', new Date(now.getTime() + (30 - WINDOW_MINUTES) * 60 * 1000).toISOString())
-    .lte('starts_at', new Date(now.getTime() + (30 + WINDOW_MINUTES) * 60 * 1000).toISOString());
+    // Pre-visit fires at the 30-min-before mark — query appointments starting
+    // in [29.5, 30.5] min and dedup by appointment_id.
+    .gte('starts_at', new Date(now.getTime() + (30 - LATE_WINDOW) * 60 * 1000).toISOString())
+    .lte('starts_at', new Date(now.getTime() + (30 + EARLY_WINDOW) * 60 * 1000).toISOString());
   const preVisit = (preVisitRes.data ?? []) as unknown as PreVisitRow[];
 
   const pvMasterIds = Array.from(new Set(preVisit.map((a) => a.master_id)));
