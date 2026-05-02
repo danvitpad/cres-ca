@@ -71,7 +71,7 @@ function formatLabel(m: number): string {
   return parts.join(' ') || '0';
 }
 
-export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'light' | 'dark' }) {
+export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'light' | 'dark' | 'miniapp' }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [enabled, setEnabled] = useState(true);
@@ -81,6 +81,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
   const [draft, setDraft] = useState<DraftInput>({ days: '', hours: '2', minutes: '' });
 
   const isDark = theme === 'dark';
+  const isMini = theme === 'miniapp';
 
   useEffect(() => {
     (async () => {
@@ -166,18 +167,29 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
   if (loading) {
     return (
       <div className="flex items-center justify-center p-10">
-        <Loader2 className={`size-6 animate-spin ${isDark ? 'text-white/60' : 'text-muted-foreground'}`} />
+        <Loader2 className={`size-6 animate-spin ${isDark ? 'text-white/60' : isMini ? 'text-neutral-400' : 'text-muted-foreground'}`} />
       </div>
     );
   }
 
   const cardCls = isDark
     ? 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'
-    : 'rounded-2xl border border-border bg-card p-4';
+    : isMini
+      ? 'rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm'
+      : 'rounded-2xl border border-border bg-card p-4';
   const inputCls = isDark
     ? 'h-10 w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-teal-400/50'
-    : 'h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary';
-  const textMuted = isDark ? 'text-white/55' : 'text-muted-foreground';
+    : isMini
+      ? 'h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-teal-500'
+      : 'h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary';
+  const textMuted = isDark ? 'text-white/55' : isMini ? 'text-neutral-500' : 'text-muted-foreground';
+  const offsetRowBg = isDark ? 'bg-white/[0.04]' : isMini ? 'bg-neutral-50' : 'bg-muted/40';
+  const dashedBorder = isDark ? 'border-white/15' : isMini ? 'border-neutral-300' : 'border-border';
+  const trashCls = isDark
+    ? 'text-white/50 hover:bg-white/10 hover:text-white'
+    : isMini
+      ? 'text-neutral-400 hover:bg-rose-50 hover:text-rose-600'
+      : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive';
 
   return (
     <div className="space-y-4">
@@ -214,9 +226,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
             {offsets.map((o, i) => (
               <li
                 key={i}
-                className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${
-                  isDark ? 'bg-white/[0.04]' : 'bg-muted/40'
-                }`}
+                className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 ${offsetRowBg}`}
               >
                 <span className="flex items-center gap-2 text-sm">
                   <Bell className="size-3.5 text-teal-500" />
@@ -224,7 +234,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
                 </span>
                 <button
                   onClick={() => removeOffset(i)}
-                  className={`grid size-7 place-items-center rounded-md ${isDark ? 'text-white/50 hover:bg-white/10 hover:text-white' : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive'}`}
+                  className={`grid size-7 place-items-center rounded-md ${trashCls}`}
                   aria-label="Удалить"
                 >
                   <Trash2 className="size-3.5" />
@@ -236,7 +246,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
 
         {/* Add form */}
         {offsets.length < 10 && (
-          <div className={`rounded-xl border border-dashed p-3 ${isDark ? 'border-white/15' : 'border-border'}`}>
+          <div className={`rounded-xl border border-dashed p-3 ${dashedBorder}`}>
             <p className={`mb-2 text-[11px] uppercase tracking-wider ${textMuted}`}>Добавить напоминание — за</p>
             <div className="grid grid-cols-3 gap-2">
               <div>

@@ -40,7 +40,7 @@ export default function MiniAppNotificationsPage() {
         </div>
       </div>
 
-      <NotificationPreferencesEditor theme="light" />
+      <NotificationPreferencesEditor theme="miniapp" />
     </motion.div>
   );
 }
