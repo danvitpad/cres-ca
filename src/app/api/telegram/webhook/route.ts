@@ -807,47 +807,10 @@ async function routeVoiceAction(
       await sendMessage(chatId, `✅ <b>Запись создана</b>\n\n👤 ${client.full_name}\n${serviceLine}\n⏰ ${dateStr}\n\nКлиент получит уведомление.`, { parse_mode: 'HTML' });
 
       // Notify client (in-app + Telegram if linked)
-      if (client.profile_id) {
-        // In-app notification (channel=in_app)
-        await supabase.from('notifications').insert({
-          profile_id: client.profile_id,
-          channel: 'in_app',
-          title: 'Новая запись',
-          body: `${service?.name || 'Услуга'} — ${dateStr}`,
-          scheduled_for: new Date().toISOString(),
-          status: 'pending',
-          data: { appointment_id: created?.id, master_id: masterId, type: 'appointment_created' },
-        });
-
-        // Telegram: if client has telegram_id
-        const { data: clientProfile } = await supabase
-          .from('profiles')
-          .select('telegram_id, full_name')
-          .eq('id', client.profile_id)
-          .single();
-
-        if (clientProfile?.telegram_id) {
-          const clientMsg = `📅 <b>Вам записали визит</b>\n\n💇 ${service?.name || intent.service_name || 'Услуга'}\n⏰ ${dateStr}`;
-          try {
-            await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: clientProfile.telegram_id,
-                text: clientMsg,
-                parse_mode: 'HTML',
-                reply_markup: {
-                  inline_keyboard: [
-                    [{ text: '❌ Отменить запись', callback_data: `cancel_appt:${created?.id}` }],
-                  ],
-                },
-              }),
-            });
-          } catch (e) {
-            console.error('Failed to send client TG notification:', e);
-          }
-        }
-      }
+      // Client notification (in-app + TG) is sent by the DB trigger
+      // trg_booking_created → dispatch_booking_notification('created') in
+      // migration 00093 + 00096 — using a single canonical "Вас записали
+      // на визит" template. Don't duplicate here.
       break;
     }
 
