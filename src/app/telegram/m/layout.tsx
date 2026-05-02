@@ -170,11 +170,12 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         <main
           style={{
             paddingTop: 'var(--tg-content-top, 0px)',
-            // 128px (вместо 96) чтобы последний блок не заходил под
-            // floating bottom nav pill — юзер видит весь контент с воздухом.
+            // 81px = nav bottom (12) + nav height (~64) + 5px воздуха.
+            // Раньше было 128px — слишком большой пустой отступ между
+            // последним блоком и nav (юзер сказал «слишком много пустого»).
             paddingBottom: isFullscreen
               ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
-              : 'calc(128px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+              : 'calc(81px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           {children}

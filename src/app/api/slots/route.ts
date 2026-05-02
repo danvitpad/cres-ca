@@ -144,21 +144,19 @@ export async function GET(request: NextRequest) {
   const breakStart = workingHours.break_start ? timeToMinutes(workingHours.break_start) : null;
   const breakEnd = workingHours.break_end ? timeToMinutes(workingHours.break_end) : null;
 
-  // For today, hide slots that already started — клиент не должен видеть
-  // прошедшее время. Считаем по локальной дате сервера, поэтому в граничных
-  // часовых поясах возможна 1ч погрешность; для большинства пользователей
-  // в UA/EU попадание в today одинаково.
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const isToday = date === todayStr;
-  const nowMin = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
+  // For today, mark slots that already started as disabled. Раньше скрывали —
+  // пользователь не понимал куда делось «10:00» когда смотрит расписание днём.
+  // Теперь возвращаем прошедшие слоты в `pastSlots`, клиент рисует их серыми
+  // и не даёт нажать. 5-минутный буфер — чтобы не успел нажать «через минуту».
+  // Считаем по локальному времени Киева (UA-проект), не зависим от UTC сервера.
+  const kyivNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Kiev' }));
+  const kyivTodayStr = `${kyivNow.getFullYear()}-${String(kyivNow.getMonth() + 1).padStart(2, '0')}-${String(kyivNow.getDate()).padStart(2, '0')}`;
+  const isToday = date === kyivTodayStr;
+  const nowMin = isToday ? kyivNow.getHours() * 60 + kyivNow.getMinutes() : -1;
 
   const slots: string[] = [];
+  const pastSlots: string[] = [];
   for (let t = startMin; t + duration <= endMin; t += 30) {
-    // Past-time filter — for today, drop slots that already started.
-    // 5-минутный буфер чтобы клиент не успел нажать «через минуту».
-    if (isToday && t <= nowMin + 5) continue;
-
     // Check break overlap
     if (breakStart !== null && breakEnd !== null) {
       if (t < breakEnd && t + duration > breakStart) continue;
@@ -170,10 +168,15 @@ export async function GET(request: NextRequest) {
     );
     if (hasConflict) continue;
 
-    slots.push(minutesToTime(t));
+    const time = minutesToTime(t);
+    if (isToday && t <= nowMin + 5) {
+      pastSlots.push(time);
+    } else {
+      slots.push(time);
+    }
   }
 
-  return NextResponse.json({ slots });
+  return NextResponse.json({ slots, pastSlots });
 }
 
 function timeToMinutes(time: string): number {

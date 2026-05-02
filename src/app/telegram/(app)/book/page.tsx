@@ -148,6 +148,17 @@ function generateDateRange(startDate: Date, days: number): Date[] {
   return result;
 }
 
+/** YYYY-MM-DD из ЛОКАЛЬНЫХ компонент даты. Нельзя использовать
+ *  date.toISOString().split('T')[0] — оно конвертит в UTC и для UA (UTC+3)
+ *  суббота 2 мая 00:00 локально → пятница 1 мая 21:00 UTC → "2026-05-01".
+ *  Из-за этого клиент видел запись на 2 мая, а в БД летело 1 мая. */
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 /* ─────────────────── Animation Variants ─────────────────── */
 
 const pageVariants = {
@@ -198,6 +209,7 @@ export default function MiniAppBookPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
+  const [pastSlots, setPastSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -323,15 +335,18 @@ export default function MiniAppBookPage() {
     setSlotsLoading(true);
     setNextAvailableDate(null);
     setSlots([]);
+    setPastSlots([]);
 
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(date);
     // Use the first selected service for slot calculation (total duration matters)
     const res = await fetch(
       `/api/slots?master_id=${masterId}&date=${dateStr}&service_id=${selectedServices[0].id}`,
     );
     const data = await res.json();
     const fetchedSlots = data.slots ?? [];
+    const fetchedPast = data.pastSlots ?? [];
     setSlots(fetchedSlots);
+    setPastSlots(fetchedPast);
 
     // If no slots, find next available date
     if (fetchedSlots.length === 0) {
@@ -339,7 +354,7 @@ export default function MiniAppBookPage() {
         const next = new Date(date);
         next.setDate(next.getDate() + i);
         if (isDayOff(next)) continue;
-        const nextStr = next.toISOString().split('T')[0];
+        const nextStr = toLocalDateStr(next);
         const nextRes = await fetch(
           `/api/slots?master_id=${masterId}&date=${nextStr}&service_id=${selectedServices[0].id}`,
         );
@@ -442,7 +457,7 @@ export default function MiniAppBookPage() {
     })();
     if (!initData) { haptic('error'); setSubmitting(false); return; }
 
-    const dateStr = selectedDate.toISOString().split('T')[0];
+    const dateStr = toLocalDateStr(selectedDate);
 
     // Build appointments list (stacked sequentially)
     let currentStart = selectedTime;
@@ -900,7 +915,7 @@ export default function MiniAppBookPage() {
                           <div key={i} className="h-12 animate-pulse rounded-xl bg-white border-neutral-200" />
                         ))}
                       </div>
-                    ) : slots.length === 0 ? (
+                    ) : slots.length === 0 && pastSlots.length === 0 ? (
                       <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
                         <CalendarIcon className="mx-auto mb-2 size-7 text-neutral-900/20" />
                         <p className="text-[13px] font-medium text-neutral-500">
@@ -917,12 +932,28 @@ export default function MiniAppBookPage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
+                        {/* Past slots — disabled grey, для прозрачности «вот это
+                            время уже прошло, нельзя записаться». Не нажимаются. */}
+                        {pastSlots.map((time, i) => (
+                          <motion.div
+                            key={`past-${time}`}
+                            custom={i}
+                            variants={cardVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="flex items-center justify-center rounded-xl border border-neutral-100 bg-neutral-50 py-3 text-[15px] font-semibold text-neutral-300 line-through cursor-not-allowed select-none"
+                            aria-disabled="true"
+                            title="Это время уже прошло"
+                          >
+                            {time}
+                          </motion.div>
+                        ))}
                         {slots.map((time, i) => {
                           const isSelected = selectedTime === time;
                           return (
                             <motion.button
                               key={time}
-                              custom={i}
+                              custom={pastSlots.length + i}
                               variants={cardVariants}
                               initial="hidden"
                               animate="visible"
@@ -937,6 +968,12 @@ export default function MiniAppBookPage() {
                             </motion.button>
                           );
                         })}
+                      </div>
+                    )}
+                    {/* Только прошедшие слоты — показываем подсказку выбрать другой день */}
+                    {!slotsLoading && slots.length === 0 && pastSlots.length > 0 && (
+                      <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-[12px] text-neutral-500">
+                        Сегодня все слоты уже прошли. Выберите другой день выше.
                       </div>
                     )}
                   </motion.div>
