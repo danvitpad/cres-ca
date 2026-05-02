@@ -1,34 +1,21 @@
 /** --- YAML
  * name: MiniAppTheme
- * description: Единая тема (light/dark) для всех Mini App ролей. Резолвит:
- *              1) profile.ui_theme (если задано пользователем явно)
- *              2) Telegram.WebApp.colorScheme (когда внутри TG)
- *              3) prefers-color-scheme (когда вне TG, например DAKI Chrome)
- *              Светит data-theme=dark на корневой div, под который подвешены
+ * description: Тема Mini App следует ТОЛЬКО за Telegram.WebApp.colorScheme
+ *              (или prefers-color-scheme когда открыто в браузере вне TG).
+ *              Никаких ручных переключателей и DB-overrides — пользователь
+ *              сам решает в настройках своего Telegram.
+ *              Ставит data-theme=dark на корневой div, под который подвешены
  *              CSS-переменные с тёмной палитрой (см. globals.css). Все T.* токены
  *              в design.ts автоматически переключаются.
  * created: 2026-04-26
+ * updated: 2026-05-02
  * --- */
 
 'use client';
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useAuthStore } from '@/stores/auth-store';
 
 type Theme = 'light' | 'dark';
-
-async function readProfileTheme(userId: string | null): Promise<Theme | null> {
-  if (!userId) return null;
-  const supabase = createClient();
-  const { data } = await supabase
-    .from('profiles')
-    .select('ui_theme')
-    .eq('id', userId)
-    .maybeSingle();
-  const v = (data as { ui_theme: string | null } | null)?.ui_theme;
-  return v === 'dark' ? 'dark' : v === 'light' ? 'light' : null;
-}
 
 function readSystemTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
@@ -46,27 +33,16 @@ interface Props {
 }
 
 export function MiniAppThemeProvider({ children, style, className }: Props) {
-  const userId = useAuthStore((s) => s.userId);
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const explicit = await readProfileTheme(userId);
-      if (cancelled) return;
-      setTheme(explicit ?? readSystemTheme());
-    })();
-    return () => { cancelled = true; };
-  }, [userId]);
+    setTheme(readSystemTheme());
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => {
-      readProfileTheme(userId).then((explicit) => {
-        if (!explicit) setTheme(readSystemTheme());
-      });
-    };
+    const onChange = () => setTheme(readSystemTheme());
     mql.addEventListener('change', onChange);
     type TG = { WebApp?: { onEvent?: (e: string, cb: () => void) => void; offEvent?: (e: string, cb: () => void) => void } };
     const tg = (window as { Telegram?: TG }).Telegram?.WebApp;
@@ -75,7 +51,7 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
       mql.removeEventListener('change', onChange);
       tg?.offEvent?.('themeChanged', onChange);
     };
-  }, [userId]);
+  }, []);
 
   return (
     <div data-theme={theme} className={className} style={style}>

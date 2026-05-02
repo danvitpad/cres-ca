@@ -81,9 +81,12 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       webapp.ready();
       webapp.expand();
       try { webapp.disableVerticalSwipes(); } catch {}
-      try { webapp.setHeaderColor('#ffffff'); } catch {}
-      try { webapp.setBackgroundColor('#ffffff'); } catch {}
-      try { webapp.setBottomBarColor('#ffffff'); } catch {}
+      // Use Telegram's own theme keywords so the chrome (header/bottom bar)
+      // matches the user's current Telegram color scheme automatically.
+      // 'bg_color' resolves to whatever bg the user's TG is using right now.
+      try { webapp.setHeaderColor('bg_color'); } catch {}
+      try { webapp.setBackgroundColor('bg_color'); } catch {}
+      try { webapp.setBottomBarColor('bg_color'); } catch {}
 
       syncSafeArea(webapp);
       syncTheme(webapp);

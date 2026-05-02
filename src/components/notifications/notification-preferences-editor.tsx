@@ -191,23 +191,26 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
     );
   }
 
+  // For Mini App use CSS variables from design.ts that switch automatically
+  // via data-theme=dark on the parent provider div — single component handles
+  // both light & dark Telegram themes without inline conditionals.
   const cardCls = isDark
     ? 'rounded-2xl border border-white/10 bg-white/[0.03] p-4'
     : isMini
-      ? 'rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm'
+      ? 'rounded-2xl border border-[var(--m-border-subtle)] bg-[var(--m-surface)] p-4 shadow-sm'
       : 'rounded-2xl border border-border bg-card p-4';
   const inputCls = isDark
     ? 'h-10 w-full rounded-xl border border-white/15 bg-white/[0.05] px-3 text-sm text-white outline-none focus:border-teal-400/50'
     : isMini
-      ? 'h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-teal-500'
+      ? 'h-10 w-full rounded-xl border border-[var(--m-border-subtle)] bg-[var(--m-bg)] px-3 text-sm text-[var(--m-text)] outline-none focus:border-[var(--m-accent)]'
       : 'h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary';
-  const textMuted = isDark ? 'text-white/55' : isMini ? 'text-neutral-500' : 'text-muted-foreground';
-  const offsetRowBg = isDark ? 'bg-white/[0.04]' : isMini ? 'bg-neutral-50' : 'bg-muted/40';
-  const dashedBorder = isDark ? 'border-white/15' : isMini ? 'border-neutral-300' : 'border-border';
+  const textMuted = isDark ? 'text-white/55' : isMini ? 'text-[var(--m-text-tertiary)]' : 'text-muted-foreground';
+  const offsetRowBg = isDark ? 'bg-white/[0.04]' : isMini ? 'bg-[var(--m-bg-subtle)]' : 'bg-muted/40';
+  const dashedBorder = isDark ? 'border-white/15' : isMini ? 'border-[var(--m-border)]' : 'border-border';
   const trashCls = isDark
     ? 'text-white/50 hover:bg-white/10 hover:text-white'
     : isMini
-      ? 'text-neutral-400 hover:bg-rose-50 hover:text-rose-600'
+      ? 'text-[var(--m-text-tertiary)] hover:bg-[var(--m-danger-soft)] hover:text-[var(--m-danger)]'
       : 'text-muted-foreground hover:bg-destructive/10 hover:text-destructive';
 
   return (
