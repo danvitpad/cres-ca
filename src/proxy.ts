@@ -104,7 +104,30 @@ export async function proxy(request: NextRequest) {
     // 'profile', 'book', 'settings' — конфликтуют с dashboard, не стрипаем
   ]);
 
+  // Десктопные dashboard-роуты — мобильному пользователю их не показываем,
+  // вместо этого перекидываем на mini-app entry. Совпадает с протекторами
+  // дашборда (today, calendar, clients и т.д.), плюс мини-апповый дашборд.
+  // /m/[handle] и /s/[id] — публичные страницы, их НЕ трогаем.
+  const DASHBOARD_ROOTS = new Set([
+    'today', 'calendar', 'clients', 'services', 'finance', 'marketing',
+    'inventory', 'portfolio', 'guilds', 'partners', 'recommend', 'referral',
+    'salon', 'stats', 'supplier-orders', 'voice-assistant', 'before-after',
+    'queue', 'integrations', 'help', 'dashboard', 'addons', 'network',
+    // dashboard /settings, /book, /profile тоже сюда — конфликт с mini-app
+    // решается тем что mini-app идёт через /telegram/m/settings и т.д.
+    'settings', 'book', 'profile', 'feed', 'history', 'wallet',
+    'my-calendar', 'my-masters', 'account-settings',
+  ]);
+
   if (isMobile) {
+    // (d) Десктопный dashboard на мобильном → /telegram (mini-app entry)
+    const firstSegRaw = pathname.split('/')[1] ?? '';
+    if (DASHBOARD_ROOTS.has(firstSegRaw)) {
+      const u = request.nextUrl.clone();
+      u.pathname = '/telegram';
+      return NextResponse.redirect(u);
+    }
+
     // (a) /telegram/<rest> → /<rest>  (кроме /telegram/m/*)
     if (pathname === '/telegram') {
       const u = request.nextUrl.clone();
