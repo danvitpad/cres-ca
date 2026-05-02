@@ -59,7 +59,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
             // 128px чтобы был видимый воздух между последним блоком и nav.
             paddingBottom: isFullscreen
               ? 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))'
-              : 'calc(128px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
+              : 'calc(92px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
           {children}

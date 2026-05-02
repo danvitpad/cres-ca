@@ -55,6 +55,8 @@ interface ReviewItem {
 type WorkingHoursEntry = { start: string; end: string } | null;
 type WorkingHoursMap = Record<string, WorkingHoursEntry>;
 
+type WorkingDay = NonNullable<WorkingHoursEntry>;
+
 interface MasterDetail {
   id: string;
   display_name: string | null;
@@ -88,7 +90,7 @@ const TAB_ITEMS = [
   { key: 'services', label: 'Услуги' },
   { key: 'portfolio', label: 'Портфолио' },
   { key: 'reviews', label: 'Отзывы' },
-  { key: 'about', label: 'О нас' },
+  { key: 'about', label: 'Обо мне' },
 ] as const;
 
 type TabKey = (typeof TAB_ITEMS)[number]['key'];
@@ -365,6 +367,12 @@ export default function MiniAppMasterDetailPage() {
     return master ? getOpenStatus(master.working_hours) : { isOpen: false, label: '' };
   }, [master]);
 
+  /* ─── schedule presence: any non-null day means master has set hours ─── */
+  const hasSchedule = useMemo(() => {
+    if (!master?.working_hours) return false;
+    return DAYS_ORDER.some((d) => Boolean(master.working_hours?.[d]));
+  }, [master]);
+
   const todayKey = JS_DAY_TO_KEY[new Date().getDay()];
 
   /* ─── loading ─── */
@@ -410,26 +418,23 @@ export default function MiniAppMasterDetailPage() {
 
   return (
     <div ref={scrollContainerRef} className="relative min-h-screen pb-28">
-      {/* ━━━ HERO ━━━ */}
-      <div ref={heroRef} className="relative h-[200px] overflow-hidden">
-        {/* Background */}
+      {/* ━━━ HERO BANNER ━━━ */}
+      <div ref={heroRef} className="relative h-[170px] overflow-hidden">
         {master.avatar_url ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={master.avatar_url}
               alt=""
-              className="absolute inset-0 size-full object-cover scale-110 blur-sm brightness-50"
+              className="absolute inset-0 size-full object-cover scale-110 blur-md brightness-75"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-rose-500">
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/60" />
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-rose-400" />
         )}
 
-        {/* Overlay buttons */}
+        {/* Top action row */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -444,31 +449,13 @@ export default function MiniAppMasterDetailPage() {
           >
             <ArrowLeft className="size-[18px] text-neutral-900" />
           </button>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={toggleFollow}
-              disabled={followBusy}
-              className={`flex size-10 items-center justify-center rounded-full shadow-md active:scale-90 transition-transform disabled:opacity-60 ${
-                following ? 'bg-rose-500 text-white' : 'bg-white text-rose-500'
-              }`}
-              aria-label={following ? 'Убрать из контактов' : 'В контакты'}
-            >
-              {followBusy ? (
-                <Loader2 className="size-[18px] animate-spin" />
-              ) : following ? (
-                <HeartOff className="size-[18px]" />
-              ) : (
-                <Heart className="size-[18px]" />
-              )}
-            </button>
-            <button
-              onClick={handleShare}
-              className="flex size-10 items-center justify-center rounded-full bg-white shadow-md active:scale-90 transition-transform"
-              aria-label="Поделиться"
-            >
-              <Share2 className="size-[18px] text-neutral-900" />
-            </button>
-          </div>
+          <button
+            onClick={handleShare}
+            className="flex size-10 items-center justify-center rounded-full bg-white shadow-md active:scale-90 transition-transform"
+            aria-label="Поделиться"
+          >
+            <Share2 className="size-[18px] text-neutral-900" />
+          </button>
         </motion.div>
       </div>
 
@@ -477,28 +464,28 @@ export default function MiniAppMasterDetailPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="relative z-10 -mt-10 px-5"
+        className="relative z-10 -mt-12 px-5"
       >
-        {/* Avatar */}
-        <div className="flex items-end gap-4">
-          <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-rose-500 text-2xl font-bold ring-4 ring-[#121212] shadow-2xl">
-            {master.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={master.avatar_url} alt={name} className="size-full object-cover" />
-            ) : (
-              <span className="text-neutral-900">{name[0]?.toUpperCase() ?? 'M'}</span>
-            )}
-          </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate text-xl font-bold leading-tight text-neutral-900">{name}</h1>
-            {master.specialization && (
-              <p className="mt-0.5 truncate text-[13px] text-neutral-600">{master.specialization}</p>
-            )}
-          </div>
+        {/* Avatar — round, centered above name, ring matches page bg */}
+        <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-3xl font-bold ring-4 ring-white shadow-xl">
+          {master.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={master.avatar_url} alt={name} className="size-full object-cover" />
+          ) : (
+            <span className="text-white">{name[0]?.toUpperCase() ?? 'M'}</span>
+          )}
         </div>
 
-        {/* Meta row */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]">
+        {/* Name + spec — well below banner */}
+        <div className="mt-3">
+          <h1 className="text-[22px] font-bold leading-tight text-neutral-900">{name}</h1>
+          {master.specialization && (
+            <p className="mt-1 text-[13px] text-neutral-500">{master.specialization}</p>
+          )}
+        </div>
+
+        {/* Meta row — rating, city, open status only when there is a schedule */}
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]">
           {master.rating > 0 && (
             <div className="flex items-center gap-1 text-neutral-800">
               <Star className="size-3.5 fill-amber-400 text-amber-400" />
@@ -507,28 +494,66 @@ export default function MiniAppMasterDetailPage() {
             </div>
           )}
           {master.city && (
-            <div className="flex items-center gap-1 text-neutral-600">
+            <div className="flex items-center gap-1 text-neutral-500">
               <MapPin className="size-3" />
               <span className="truncate">{master.city}</span>
             </div>
           )}
-          <div className={`flex items-center gap-1.5 ${openStatus.isOpen ? 'text-emerald-400' : 'text-neutral-400'}`}>
-            <div className={`size-1.5 rounded-full ${openStatus.isOpen ? 'bg-emerald-400' : 'bg-white/30'}`} />
-            <span className="text-[11px] font-medium">{openStatus.label}</span>
-          </div>
+          {hasSchedule && (
+            <div className={`flex items-center gap-1.5 ${openStatus.isOpen ? 'text-emerald-600' : 'text-neutral-400'}`}>
+              <div className={`size-1.5 rounded-full ${openStatus.isOpen ? 'bg-emerald-500' : 'bg-neutral-300'}`} />
+              <span className="text-[11px] font-medium">{openStatus.label}</span>
+            </div>
+          )}
         </div>
+
+        {/* Subscribe button — explicit text, replaces heart */}
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={toggleFollow}
+            disabled={followBusy}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 ${
+              following
+                ? 'border border-neutral-300 bg-white text-neutral-700 active:bg-neutral-50'
+                : 'bg-neutral-900 text-white active:bg-neutral-800'
+            }`}
+          >
+            {followBusy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : following ? (
+              <>
+                <HeartOff className="size-4" />
+                Отписаться
+              </>
+            ) : (
+              <>
+                <Heart className="size-4" />
+                Подписаться
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Bio — directly under the head, above tabs/services */}
+        {master.bio && (
+          <p className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-neutral-700">
+            {master.bio}
+          </p>
+        )}
       </motion.div>
 
-      {/* ━━━ TAB BAR (sticky) ━━━ */}
+      {/* ━━━ TAB BAR (sticky, light) ━━━ */}
       <div
         ref={tabBarRef}
-        className="sticky top-0 z-30 mt-5 border-b border-neutral-200 bg-[#121212]/95 backdrop-blur-xl"
+        className="sticky top-0 z-30 mt-5 border-b border-neutral-200 bg-white/95 backdrop-blur-xl"
       >
         <div className="flex gap-0 px-5">
           {TAB_ITEMS.map((tab) => {
-            // Hide portfolio/reviews tabs if empty
+            // Hide tabs with no content
             if (tab.key === 'portfolio' && master.portfolio.length === 0) return null;
             if (tab.key === 'reviews' && master.reviews.length === 0) return null;
+            // Hide "Обо мне" tab if no bio AND no schedule AND no address
+            if (tab.key === 'about' && !master.bio && !hasSchedule && !master.city && !master.address) return null;
 
             const isActive = activeTab === tab.key;
             return (
@@ -543,7 +568,7 @@ export default function MiniAppMasterDetailPage() {
                 {isActive && (
                   <motion.div
                     layoutId="tab-underline"
-                    className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-white"
+                    className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-neutral-900"
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -617,16 +642,8 @@ export default function MiniAppMasterDetailPage() {
                     <div className="group rounded-2xl border border-neutral-200 bg-white p-4 transition-colors hover:bg-neutral-50">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          {/* Color dot + name */}
-                          <div className="flex items-center gap-2">
-                            {s.color && (
-                              <div
-                                className="size-2 shrink-0 rounded-full"
-                                style={{ backgroundColor: s.color }}
-                              />
-                            )}
-                            <p className="truncate text-[14px] font-semibold text-neutral-900">{s.name}</p>
-                          </div>
+                          {/* Service name (no color dot — that's master-only metadata) */}
+                          <p className="truncate text-[14px] font-semibold text-neutral-900">{s.name}</p>
 
                           {/* Duration */}
                           <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-neutral-500">
@@ -808,27 +825,29 @@ export default function MiniAppMasterDetailPage() {
           </div>
         )}
 
-        {/* ── About ── */}
+        {/* ── About me ── */}
+        {(master.bio || hasSchedule || master.city || master.address) && (
         <div
           ref={(el) => { sectionRefs.current.about = el; }}
           data-section="about"
         >
-          <h2 className="mb-3 text-[15px] font-bold text-neutral-900">О нас</h2>
+          <h2 className="mb-3 text-[15px] font-bold text-neutral-900">Обо мне</h2>
 
-          {/* Bio */}
+          {/* Bio in this section is duplicated above the tab bar — keep here too
+              for users who scroll past hero straight to the About anchor. */}
           {master.bio && (
             <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
-              <p className="text-[13px] leading-relaxed text-neutral-700">{master.bio}</p>
+              <p className="whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{master.bio}</p>
             </div>
           )}
 
-          {/* Working hours */}
-          {master.working_hours && (
+          {/* Working hours — only render if at least one day has a schedule */}
+          {hasSchedule && (
             <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
               <h3 className="mb-3 text-[13px] font-semibold text-neutral-800">Часы работы</h3>
               <ul className="space-y-2">
-                {DAYS_ORDER.map((day) => {
-                  const h = master.working_hours?.[day];
+                {DAYS_ORDER.filter((day) => Boolean(master.working_hours?.[day])).map((day) => {
+                  const h = master.working_hours?.[day] as WorkingDay;
                   const isToday = day === todayKey;
                   return (
                     <li
@@ -838,25 +857,13 @@ export default function MiniAppMasterDetailPage() {
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <div
-                          className={`size-2 rounded-full ${
-                            h ? 'bg-emerald-500' : 'bg-white/20'
-                          }`}
-                        />
+                        <div className="size-2 rounded-full bg-emerald-500" />
                         <span className={isToday ? 'text-neutral-900' : 'text-neutral-600'}>
                           {DAY_NAMES_FULL[day]}
                         </span>
                       </div>
-                      <span
-                        className={
-                          h
-                            ? isToday
-                              ? 'text-neutral-900 font-bold'
-                              : 'text-neutral-700 font-medium'
-                            : 'text-neutral-400'
-                        }
-                      >
-                        {h ? `${h.start} — ${h.end}` : 'Выходной'}
+                      <span className={isToday ? 'text-neutral-900 font-bold' : 'text-neutral-700 font-medium'}>
+                        {`${h.start} — ${h.end}`}
                       </span>
                     </li>
                   );
@@ -891,6 +898,7 @@ export default function MiniAppMasterDetailPage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ━━━ STICKY BOTTOM BAR ━━━ */}

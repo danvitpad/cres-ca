@@ -75,7 +75,7 @@ export default function ClientPrivacyPage() {
       transition={{ duration: 0.25 }}
       style={{
         ...FONT_BASE,
-        padding: `16px ${PAGE_PADDING_X}px 100px`,
+        padding: `16px ${PAGE_PADDING_X}px 16px`,
         background: T.bg,
         minHeight: '100dvh',
       }}

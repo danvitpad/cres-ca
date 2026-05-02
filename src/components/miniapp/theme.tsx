@@ -84,6 +84,34 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
 
   const theme = override ?? systemTheme;
 
+  // Когда override активен — Telegram chrome (header/background/bottom bar) надо
+  // принудительно красить нашим hex'ом, иначе он остаётся в системной теме TG
+  // и шапка остаётся белой при ручном переключении на тёмную.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    type TG = { WebApp?: {
+      setHeaderColor?: (c: string) => void;
+      setBackgroundColor?: (c: string) => void;
+      setBottomBarColor?: (c: string) => void;
+    }};
+    const w = window as { Telegram?: TG };
+    const wa = w.Telegram?.WebApp;
+    if (!wa) return;
+
+    if (override) {
+      // Hex-цвета, идентичные --m-bg / --m-surface для светлой и тёмной темы
+      const hex = override === 'dark' ? '#0f0f0f' : '#ffffff';
+      try { wa.setHeaderColor?.(hex); } catch {}
+      try { wa.setBackgroundColor?.(hex); } catch {}
+      try { wa.setBottomBarColor?.(hex); } catch {}
+    } else {
+      // Override снят — отдаём управление Telegram через keyword
+      try { wa.setHeaderColor?.('bg_color'); } catch {}
+      try { wa.setBackgroundColor?.('bg_color'); } catch {}
+      try { wa.setBottomBarColor?.('bg_color'); } catch {}
+    }
+  }, [override]);
+
   return (
     <ThemeContext.Provider value={{ theme, override, setOverride }}>
       <div data-theme={theme} className={className} style={style}>

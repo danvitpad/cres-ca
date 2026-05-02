@@ -241,7 +241,7 @@ export default function MiniAppSettingsPage() {
           display: 'flex',
           flexDirection: 'column',
           gap: 20,
-          padding: `16px ${PAGE_PADDING_X}px 100px`,
+          padding: `16px ${PAGE_PADDING_X}px 16px`,
         }}
       >
         {/* Header */}

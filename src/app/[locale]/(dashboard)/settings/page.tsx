@@ -356,7 +356,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
   async function handleSave() {
     setSaving(true);
     const supabase = createClient();
-    const fullName = [lastName, firstName, middleName].filter(Boolean).join(' ').trim();
+    const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ').trim();
 
     const [profileRes, masterRes] = await Promise.all([
       supabase.from('profiles').update({
