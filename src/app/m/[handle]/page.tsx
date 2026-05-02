@@ -32,6 +32,7 @@ import { InlineBioBlock } from '@/components/master/inline/bio-block';
 import { InlineHoursBlock } from '@/components/master/inline/hours-block';
 import { InlineAddressBlock } from '@/components/master/inline/address-block';
 import { OwnerInlineQuickSettings } from '@/components/master/inline/quick-settings-panel';
+import { OwnerPortfolioPanel } from '@/components/master/inline/owner-portfolio-panel';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
@@ -68,6 +69,7 @@ interface MasterRow {
   // Customization (migration 00104)
   theme_primary_color: string | null;
   theme_background_color: string | null;
+  theme_background_image_url: string | null;
   banner_position_y: number | null;
   phone: string | null;
   email: string | null;
@@ -150,7 +152,7 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
   const cols =
     'id, profile_id, display_name, specialization, bio, address, city, rating, total_reviews, avatar_url, cover_url, ' +
     'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
-    'theme_primary_color, theme_background_color, banner_position_y, ' +
+    'theme_primary_color, theme_background_color, theme_background_image_url, banner_position_y, ' +
     'phone_public, email_public, dob_public, interests, social_links, page_type, works_online, ' +
     'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
     'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth, deleted_at)';
@@ -467,11 +469,22 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   if (hasReviews) navSections.push({ id: 'reviews', label: 'Отзывы' });
   if (hasAddress) navSections.push({ id: 'address', label: 'Адрес' });
 
+  // Если мастер загрузил картинку фона — она перекрывает цвет.
+  // Цвет используется как fallback пока картинка грузится / если её нет.
+  const bgImageUrl = master.theme_background_image_url;
+
   return (
     <div
       className="min-h-screen text-neutral-900"
       style={{
         backgroundColor: pageBg,
+        ...(bgImageUrl ? {
+          backgroundImage: `url(${bgImageUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed',
+          backgroundRepeat: 'no-repeat',
+        } : {}),
         ['--page-accent' as string]: accent,
       }}
     >
@@ -597,9 +610,22 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               </section>
             )}
 
-            {/* Portfolio */}
+            {/* Portfolio — owner панель управления (видна только владельцу,
+                рендерит null для остальных) показывается ВСЕГДА, чтобы можно
+                было добавить первую работу. Сама секция «Работы» (PortfolioGrid)
+                остаётся условной — для пустого списка её прячем. */}
+            <section id="portfolio" className="scroll-mt-24">
+              <OwnerPortfolioPanel
+                masterProfileId={master.profile_id}
+                initialItems={portfolio.map((p) => ({
+                  id: p.id,
+                  image_url: p.image_url,
+                  caption: p.caption,
+                }))}
+              />
+            </section>
             {hasPortfolio && (
-              <section id="portfolio" className="scroll-mt-24">
+              <section className="scroll-mt-24">
                 <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Работы</h2>
                 {portfolio.length > 0 && <PortfolioGrid items={portfolio} />}
                 {beforeAfter.length > 0 && (

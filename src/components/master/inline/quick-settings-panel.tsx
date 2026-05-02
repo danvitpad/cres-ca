@@ -13,8 +13,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Globe, Wifi, Settings as SettingsIcon, Check, X, Palette } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Globe, Wifi, Settings as SettingsIcon, Check, X, Palette, ImagePlus, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
@@ -26,6 +26,7 @@ interface MasterRow {
   works_online: boolean | null;
   theme_primary_color: string | null;
   theme_background_color: string | null;
+  theme_background_image_url: string | null;
 }
 
 const BG_PRESETS: { label: string; value: string | null; sample: string }[] = [
@@ -58,6 +59,8 @@ export function OwnerInlineQuickSettings({
   const [draftSlug, setDraftSlug] = useState('');
   const [slugError, setSlugError] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<string | null>(null);
+  const [bgImageUploading, setBgImageUploading] = useState(false);
+  const bgFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!masterProfileId) return;
@@ -67,7 +70,7 @@ export function OwnerInlineQuickSettings({
       setIsOwner(true);
       const { data: row } = await supabase
         .from('masters')
-        .select('id, profile_id, slug, is_public, works_online, theme_primary_color, theme_background_color')
+        .select('id, profile_id, slug, is_public, works_online, theme_primary_color, theme_background_color, theme_background_image_url')
         .eq('profile_id', masterProfileId)
         .maybeSingle();
       if (row) {
@@ -97,6 +100,34 @@ export function OwnerInlineQuickSettings({
     } finally {
       setSavingField(null);
     }
+  }
+
+  async function uploadBgImage(file: File) {
+    if (!masterProfileId) return;
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('Файл больше 8 MB');
+      return;
+    }
+    setBgImageUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const path = `${masterProfileId}/bg-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
+        cacheControl: '3600', upsert: false,
+      });
+      if (upErr) { toast.error(`Загрузка: ${upErr.message}`); return; }
+      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+      const ok = await patch('theme_background_image_url', pub.publicUrl);
+      if (ok) toast.success('Фон обновлён');
+    } finally {
+      setBgImageUploading(false);
+    }
+  }
+
+  async function clearBgImage() {
+    const ok = await patch('theme_background_image_url', null);
+    if (ok) toast.success('Фон-картинка убрана');
   }
 
   async function saveSlug() {
@@ -198,11 +229,71 @@ export function OwnerInlineQuickSettings({
         {slugError && <p className="mt-1 text-[11px] text-rose-500">{slugError}</p>}
       </div>
 
-      {/* Background presets */}
+      {/* Background image uploader */}
+      <div className="mt-4 border-t border-neutral-100 pt-3">
+        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-neutral-700">
+          <ImagePlus className="size-3.5" />
+          Картинка фона
+        </div>
+        {master.theme_background_image_url ? (
+          <div className="flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={master.theme_background_image_url}
+              alt=""
+              className="size-12 rounded-md object-cover ring-1 ring-black/10"
+            />
+            <button
+              type="button"
+              onClick={() => bgFileRef.current?.click()}
+              disabled={bgImageUploading}
+              className="flex-1 rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            >
+              {bgImageUploading ? 'Загрузка…' : 'Заменить'}
+            </button>
+            <button
+              type="button"
+              onClick={clearBgImage}
+              disabled={bgImageUploading || savingField === 'theme_background_image_url'}
+              className="rounded-md border border-neutral-200 bg-white p-1.5 text-rose-500 hover:bg-rose-50 disabled:opacity-50"
+              title="Убрать фон-картинку"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => bgFileRef.current?.click()}
+            disabled={bgImageUploading}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-neutral-300 bg-neutral-50 py-3 text-[11px] font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
+          >
+            {bgImageUploading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <ImagePlus className="size-4" />
+            )}
+            {bgImageUploading ? 'Загрузка…' : 'Загрузить свою картинку фона'}
+          </button>
+        )}
+        <input
+          ref={bgFileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) uploadBgImage(f);
+            e.target.value = '';
+          }}
+        />
+      </div>
+
+      {/* Background color presets (используется когда нет картинки) */}
       <div className="mt-4 border-t border-neutral-100 pt-3">
         <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-neutral-700">
           <Palette className="size-3.5" />
-          Фон
+          {master.theme_background_image_url ? 'Цвет фона (под картинкой)' : 'Фон'}
         </div>
         <div className="grid grid-cols-5 gap-1.5">
           {BG_PRESETS.map((p) => {

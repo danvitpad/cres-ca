@@ -76,6 +76,12 @@ export async function PATCH(req: Request) {
     if (body.theme_background_color === null) update.theme_background_color = null;
     else if (isHexColor(body.theme_background_color)) update.theme_background_color = body.theme_background_color;
   }
+  if ('theme_background_image_url' in body) {
+    update.theme_background_image_url =
+      typeof body.theme_background_image_url === 'string' || body.theme_background_image_url === null
+        ? body.theme_background_image_url
+        : undefined;
+  }
   if ('banner_position_y' in body) {
     const n = Number(body.banner_position_y);
     if (Number.isFinite(n) && n >= 0 && n <= 100) update.banner_position_y = Math.round(n);
