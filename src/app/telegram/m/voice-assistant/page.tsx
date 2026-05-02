@@ -22,7 +22,7 @@ import {
   UserPlus,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
+  Bot,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -121,7 +121,7 @@ export default function VoiceAssistantMiniApp() {
 
       <section className="mb-6">
         <div className="mb-2 flex items-center gap-2">
-          <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+          <Bot className="w-3.5 h-3.5 text-violet-600" />
           <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">Что я умею</h2>
         </div>
         <div className="grid grid-cols-1 gap-2">

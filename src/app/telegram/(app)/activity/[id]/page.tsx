@@ -21,7 +21,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Phone,
-  Sparkles,
+  CalendarClock,
   Loader2,
   X,
 } from 'lucide-react';
@@ -432,7 +432,7 @@ export default function MiniAppAppointmentDetail() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
             style={{ minHeight: 44 }}
           >
-            <Sparkles className="size-5" /> Перенести
+            <CalendarClock className="size-5" /> Перенести
           </button>
         )}
         {canCancel && (

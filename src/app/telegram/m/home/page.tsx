@@ -13,7 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendingUp, ChevronRight, Sparkles, Send, Trash2, MailOpen, ListTodo } from 'lucide-react';
+import { TrendingUp, ChevronRight, Bot, Send, Trash2, MailOpen, ListTodo } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
@@ -341,7 +341,7 @@ export default function MasterMiniAppHome() {
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={14} color={T.accent} fill={T.accent} />
+              <Bot size={14} color={T.accent} />
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.accent, margin: 0 }}>
                 AI-помощник
               </p>

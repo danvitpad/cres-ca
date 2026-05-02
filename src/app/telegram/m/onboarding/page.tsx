@@ -28,7 +28,7 @@ import {
   Scissors, Stethoscope, Dumbbell, Palette, PawPrint,
   Car, PartyPopper, GraduationCap, Hammer, MoreHorizontal,
   // Workplace icons
-  Home, MapPin, Sparkles,
+  Home, MapPin, Building,
 } from 'lucide-react';
 import { T as THEME, R, FONT_BASE, SHADOW, SPRING } from '@/components/miniapp/design';
 import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
@@ -142,7 +142,7 @@ const VERTICALS: Array<{
 const WORKPLACES: Array<{ key: WorkMode; Icon: IconCmp }> = [
   { key: 'cabinet', Icon: Home },
   { key: 'mobile',  Icon: MapPin },
-  { key: 'both',    Icon: Sparkles },
+  { key: 'both',    Icon: Building },
 ];
 
 // ─── Service item with local state ───────────────────────────────────────────

@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, Sparkles, Clock, Star, ChevronRight } from 'lucide-react';
+import { Calendar, Bot, Clock, Star, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
@@ -241,7 +241,7 @@ export default function MiniAppHomePage() {
               }}
               aria-label="AI-консьерж"
             >
-              <Sparkles size={20} strokeWidth={2.2} />
+              <Bot size={20} strokeWidth={2.2} />
             </button>
           }
         />

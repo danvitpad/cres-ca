@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, Phone, Calendar, AlertTriangle, FileText,
-  Loader2, Crown, BarChart3, Sparkles, Send, Pencil, Trash2,
+  Loader2, Crown, BarChart3, Bot, Send, Pencil, Trash2,
   Plus, Check, X, User as UserIcon, Heart, Mic,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
@@ -593,7 +593,7 @@ function ClientAiChat({
   return (
     <div className="flex items-end gap-2">
       <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/5 px-3 py-2">
-        <Sparkles className="size-3.5 shrink-0 text-violet-600" />
+        <Bot className="size-3.5 shrink-0 text-violet-600" />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}

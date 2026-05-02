@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, Sparkles, UserMinus } from 'lucide-react';
+import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, UserMinus } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -234,7 +234,7 @@ export default function MiniAppContactsPage() {
               {!slotsLoading && nextSlots.length > 0 && (
                 <div className="mb-4 rounded-2xl border border-neutral-200 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 p-3">
                   <div className="mb-2 flex items-center gap-1.5 px-1">
-                    <Sparkles className="size-3.5 text-violet-600" />
+                    <Clock className="size-3.5 text-violet-600" />
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-700/80">
                       Ближайшие окна
                     </p>

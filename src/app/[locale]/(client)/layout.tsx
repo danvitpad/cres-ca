@@ -25,7 +25,7 @@ import {
   MapPin,
   Clock,
   ChevronDown,
-  Sparkles,
+  Tag,
   UserPlus,
   Bell,
   X as XIcon,
@@ -70,14 +70,14 @@ const mobileTabs = [
 ] as const;
 
 const headerCategories = [
-  { key: 'allServices', icon: Sparkles },
-  { key: 'beauty', icon: Sparkles },
-  { key: 'health', icon: Sparkles },
-  { key: 'wellness', icon: Sparkles },
-  { key: 'home', icon: Sparkles },
-  { key: 'auto', icon: Sparkles },
-  { key: 'fitness', icon: Sparkles },
-  { key: 'education', icon: Sparkles },
+  { key: 'allServices', icon: Tag },
+  { key: 'beauty', icon: Tag },
+  { key: 'health', icon: Tag },
+  { key: 'wellness', icon: Tag },
+  { key: 'home', icon: Tag },
+  { key: 'auto', icon: Tag },
+  { key: 'fitness', icon: Tag },
+  { key: 'education', icon: Tag },
 ] as const;
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -750,11 +750,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar — on /feed reserve 320px so expanded panel fits inside. On other routes reserve only 72px and let hover-expand overlay the centered margin. No divider either way. */}
-        <div className={cn('hidden lg:block relative shrink-0', isFeedRoute ? 'w-[320px]' : 'w-[72px]')}>
-          <aside className={cn(
-            'group/sb absolute inset-y-0 left-0 z-20 w-[72px] bg-background transition-[width] duration-200 ease-out overflow-hidden',
-            isFeedRoute ? 'hover:w-[320px]' : 'hover:w-[240px] hover:shadow-[var(--shadow-elevated)]',
-          )}>
+        <div className="hidden lg:block relative shrink-0 w-[72px]">
+          <aside className="group/sb absolute inset-y-0 left-0 z-20 w-[72px] bg-background transition-[width] duration-200 ease-out overflow-hidden hover:w-[240px] hover:shadow-[var(--shadow-elevated)]">
             <div className="sticky top-0 flex h-[calc(100dvh-72px)] flex-col justify-center">
               <nav className="px-3 space-y-1.5">
                 {sidebarNav.map(({ key, icon: Icon, href }) => {
@@ -803,7 +800,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             className={cn(
               'py-6 lg:py-10',
               isFeedRoute
-                ? 'pl-4 lg:pl-10 pr-0' // feed: flush right so the rail mirrors the left sidebar
+                ? 'mx-auto max-w-[1200px] px-4 lg:px-10'
                 : isAccountRoute
                   ? 'mx-auto max-w-[960px] px-4 lg:px-10'
                   : 'mx-auto max-w-[1200px] px-4 lg:px-10',

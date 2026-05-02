@@ -16,7 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  User,
   Globe,
   Shield,
   HelpCircle,
@@ -265,18 +264,6 @@ export default function MiniAppSettingsPage() {
           <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>Настройки</h1>
         </div>
 
-        {/* Account */}
-        <div style={cardStyle}>
-          <Link href="/telegram/profile?edit=true" onClick={() => haptic('light')} style={rowStyle}>
-            <div style={iconBox}><User size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Аккаунт</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Имя, CRES-ID, био</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </Link>
-        </div>
-
         {/* Contact info */}
         <div style={cardStyle}>
           <button type="button" onClick={openContactEdit} style={rowStyle}>
@@ -320,8 +307,8 @@ export default function MiniAppSettingsPage() {
         {/* General */}
         <div style={cardStyle}>
           <Link href="/telegram/settings/notifications" onClick={() => haptic('light')} style={rowStyle}>
-            <div style={{ ...iconBox, borderColor: 'rgba(139,92,246,0.2)', background: 'rgba(139,92,246,0.08)' }}>
-              <Bell size={16} color="#8b5cf6" />
+            <div style={iconBox}>
+              <Bell size={16} color={T.text} />
             </div>
             <div style={{ flex: 1 }}>
               <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Напоминания</p>

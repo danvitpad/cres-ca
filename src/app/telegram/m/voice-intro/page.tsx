@@ -10,7 +10,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Mic, Calendar, Receipt, NotebookPen, Clock, UserPlus, Sparkles } from 'lucide-react';
+import { Mic, Calendar, Receipt, NotebookPen, Clock, UserPlus, Bot } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R } from '@/components/miniapp/design';
 
@@ -96,7 +96,7 @@ export default function VoiceAssistantIntro() {
         />
         <div className="pl-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4" style={{ color: T.accent }} />
+            <Bot className="size-4" style={{ color: T.accent }} />
             <p
               className="text-[11px] font-semibold uppercase tracking-wide"
               style={{ color: T.accent }}

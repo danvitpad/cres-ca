@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Copy, Check, Share2 } from 'lucide-react';
+import { Gift, Copy, Check, Share2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -165,7 +165,7 @@ export default function MiniAppBonusesPage() {
             <p className="mt-1 text-[11px] text-neutral-600">1 балл = 1 ₴ скидки у мастера, который начислил</p>
           </div>
           <div className="flex size-12 items-center justify-center rounded-2xl border border-neutral-200 bg-white">
-            <Sparkles className="size-6 text-amber-600" />
+            <Gift className="size-6 text-amber-600" />
           </div>
         </div>
       </div>

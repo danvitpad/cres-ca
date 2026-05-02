@@ -36,7 +36,7 @@ import {
   type MasterRef,
   type SalonRef,
 } from '@/lib/client/display-mode';
-import { Sparkles, ArrowDown } from 'lucide-react';
+import { Bot, ArrowDown } from 'lucide-react';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
 import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
@@ -517,7 +517,7 @@ export default function MiniAppSearchPage() {
                 }}
                 aria-label="AI-консьерж"
               >
-                <Sparkles size={16} strokeWidth={2.4} />
+                <Bot size={16} strokeWidth={2.4} />
               </button>
             )}
           </div>
@@ -598,7 +598,7 @@ export default function MiniAppSearchPage() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <Sparkles size={13} />
+                  <Bot size={13} />
                   {prompt}
                 </button>
               ))}

@@ -14,7 +14,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, Loader2, Sparkles, Send, Pencil, Trash2, Plus,
+  ArrowLeft, Loader2, Bot, Send, Pencil, Trash2, Plus,
   Check, X, FileText, Handshake, Megaphone, Percent, TicketPercent,
   User as UserIcon, Users, BarChart3,
 } from 'lucide-react';
@@ -638,7 +638,7 @@ function PartnerAiChat({
   return (
     <div className="flex items-end gap-2">
       <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/5 px-3 py-2">
-        <Sparkles className="size-3.5 shrink-0 text-violet-600" />
+        <Bot className="size-3.5 shrink-0 text-violet-600" />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
