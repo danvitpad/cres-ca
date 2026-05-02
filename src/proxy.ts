@@ -43,6 +43,19 @@ function isProtectedPath(pathname: string): boolean {
   return protectedPatterns.some((pat) => p === pat || p.startsWith(pat + '/'));
 }
 
+/**
+ * Лёгкая проверка мобильного user-agent. Покрывает iOS / Android / iPad.
+ * iPad-OS 13+ маскируется под Mac; ловим его по Touch + платформе.
+ */
+function isMobileUA(ua: string): boolean {
+  if (!ua) return false;
+  // Стандартные мобильные строки
+  if (/Android|iPhone|iPod|Mobile|Opera Mini|IEMobile|BlackBerry|webOS|Mini/i.test(ua)) return true;
+  // iPadOS 13+: Safari выдаёт "Macintosh ..." — ловим через "iPad"
+  if (/iPad/i.test(ua)) return true;
+  return false;
+}
+
 export async function proxy(request: NextRequest) {
   // Run intl middleware first (sets locale cookie, rewrites)
   const response = intlMiddleware(request);
@@ -60,6 +73,21 @@ export async function proxy(request: NextRequest) {
     const cb = new URL('/api/auth/callback', request.url);
     cb.searchParams.set('code', oauthCode);
     return NextResponse.redirect(cb);
+  }
+
+  // Мобильный user-agent + корень → редиректим в Mini App-визуал /telegram.
+  // Так клиент открывает cres-ca.com с телефона/планшета и попадает сразу в
+  // mini-app UX без необходимости дописывать /telegram руками. Десктоп
+  // остаётся на обычном лэндинге. Cookie cres:no-redirect=1 даёт обойти
+  // редирект (на случай если пользователь хочет посмотреть «настольную
+  // версию» с телефона). Можно поставить через UI-ссылку в будущем.
+  if (isRoot && !pathname.startsWith('/telegram')) {
+    const ua = request.headers.get('user-agent') ?? '';
+    const skip = request.cookies.get('cres:no-redirect')?.value === '1';
+    if (!skip && isMobileUA(ua)) {
+      const url = new URL('/telegram', request.url);
+      return NextResponse.redirect(url);
+    }
   }
 
   // Skip DB calls entirely if not root and not protected
