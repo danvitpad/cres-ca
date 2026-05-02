@@ -75,19 +75,62 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(cb);
   }
 
-  // Мобильный user-agent + корень → REWRITE (не redirect) в Mini App-визуал.
-  // URL в адресной строке остаётся cres-ca.com (без /telegram), контент
-  // отдаём из роутов /telegram. Сайт открывается в самом Chrome / Safari
-  // — никуда не перекидывает на мессенджер. Десктоп остаётся на обычном
-  // лэндинге. Cookie cres:no-redirect=1 даёт обойти rewrite (для «покажи
-  // мне настольную версию с телефона» через будущий UI-toggle).
-  if (isRoot && !pathname.startsWith('/telegram')) {
-    const ua = request.headers.get('user-agent') ?? '';
-    const skip = request.cookies.get('cres:no-redirect')?.value === '1';
-    if (!skip && isMobileUA(ua)) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/telegram';
-      return NextResponse.rewrite(url);
+  // ─── Mobile «clean URL» mode ──────────────────────────────────────────
+  // Цель: на мобильном Chrome/Safari пользователь видит cres-ca.com/home,
+  // /activity и т.д. (без /telegram). Mini App-роуты внутри Next живут под
+  // /telegram/*, но мы скрываем этот префикс на уровне middleware.
+  //
+  // Двусторонняя схема (без правок в <Link>):
+  //   a) Внутренние ссылки ведут на /telegram/<route>. Mobile UA — REDIRECT
+  //      на /<route> (URL в браузере очищается).
+  //   b) Mobile UA, обращение к /<route> (route ∈ MINI_APP_ROOTS) — REWRITE
+  //      на /telegram/<route> (Next рендерит mini-app страницу).
+  //   c) Mobile UA, корень / — REWRITE на /telegram (entry mini-app).
+  //
+  // Исключение: /telegram/m/* (master mini-app) НЕ стрипается, иначе
+  // конфликт с /m/{handle} (публичная страница мастера).
+  // Cookie cres:no-redirect=1 — escape hatch если пользователь хочет
+  // настольную версию с телефона (для будущего toggle в UI).
+  const ua = request.headers.get('user-agent') ?? '';
+  const skipMobile = request.cookies.get('cres:no-redirect')?.value === '1';
+  const isMobile = !skipMobile && isMobileUA(ua);
+
+  // Список первых сегментов, которые ТОЛЬКО mini-app (нет конфликта с
+  // десктопным dashboard, public /m, public /s, /api, /_next и т.п.).
+  const MINI_APP_ROOTS = new Set([
+    'home', 'activity', 'search', 'salon', 'welcome', 'register',
+    'login', 'notifications', 'bonuses', 'connections', 'map', 'u',
+    'voice-assistant',
+    // 'profile', 'book', 'settings' — конфликтуют с dashboard, не стрипаем
+  ]);
+
+  if (isMobile) {
+    // (a) /telegram/<rest> → /<rest>  (кроме /telegram/m/*)
+    if (pathname === '/telegram') {
+      const u = request.nextUrl.clone();
+      u.pathname = '/';
+      return NextResponse.redirect(u);
+    }
+    if (pathname.startsWith('/telegram/') && !pathname.startsWith('/telegram/m')) {
+      const stripped = pathname.replace(/^\/telegram/, '');
+      const u = request.nextUrl.clone();
+      u.pathname = stripped || '/';
+      return NextResponse.redirect(u);
+    }
+
+    // (c) Корень / → /telegram (entry)
+    if (isRoot && !pathname.startsWith('/telegram')) {
+      const u = request.nextUrl.clone();
+      u.pathname = '/telegram';
+      return NextResponse.rewrite(u);
+    }
+
+    // (b) /<route> → /telegram/<route> для известных mini-app сегментов
+    const firstSeg = pathname.split('/')[1] ?? '';
+    if (MINI_APP_ROOTS.has(firstSeg)) {
+      const u = request.nextUrl.clone();
+      u.pathname = '/telegram' + pathname;
+      return NextResponse.rewrite(u);
     }
   }
 
