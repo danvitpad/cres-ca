@@ -90,11 +90,18 @@ export function InlineAvatarEdit({ masterProfileId, initialUrl, name, className 
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className="absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full border-2 border-white bg-neutral-900 text-white shadow-md transition-transform hover:scale-105 disabled:opacity-60"
+            // Заметная кнопка (раньше была 36px чёрная и сливалась с фото).
+            // Теперь 44px, акцентный teal, белая обводка, тень — сразу
+            // видно что это активный элемент управления.
+            className="absolute -bottom-2 -right-2 z-20 flex size-11 items-center justify-center rounded-full border-[3px] border-white shadow-lg transition-transform hover:scale-110 active:scale-95 disabled:opacity-60"
+            style={{
+              background: 'var(--ds-accent, #14b8a6)',
+              color: 'white',
+            }}
             aria-label="Сменить аватар"
             title="Сменить аватар"
           >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+            {busy ? <Loader2 className="size-5 animate-spin" /> : <Camera className="size-5" />}
           </button>
           <ImageCropDialog
             open={!!cropSrc}

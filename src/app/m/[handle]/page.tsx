@@ -541,7 +541,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               } : null}
               worksOnline={worksOnline}
             />
-            <FollowMasterButton masterId={master.id} />
+            {/* Кнопка «Подписаться» теперь живёт внутри PublicHeroCard,
+                чтобы скроллиться вместе со sticky-карточкой. */}
           </div>
 
           {/* ─── RIGHT col (scroll content) ─── */}

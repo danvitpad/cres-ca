@@ -12,6 +12,7 @@
 import { Star, MapPin, Building2, Users, Phone, Mail } from 'lucide-react';
 import { ShareStoryButton } from './share-story-button';
 import { BookingCTA } from './booking/booking-cta';
+import { FollowMasterButton } from './follow-master-button';
 import { InlineAvatarEdit } from './inline/avatar-edit';
 import { getVerticalCopy } from '@/lib/verticals/copy';
 
@@ -91,19 +92,21 @@ export function PublicHeroCard({
 
       {/* Avatar (centered, large) — inline-editable for owner.
           Бейдж «Online» в левом верхнем углу аватара если мастер
-          принимает онлайн (works_online = true). */}
+          принимает онлайн (works_online = true).
+          ВАЖНО: не оборачиваем InlineAvatarEdit в overflow-hidden —
+          иначе кнопка «Сменить аватар» (которая стоит -bottom-1 -right-1)
+          обрезается. Скругление и фон даём САМ InlineAvatarEdit через
+          MasterAvatar. */}
       <div className="relative mx-auto mt-2 size-40">
-        <div className="size-full overflow-hidden rounded-full bg-neutral-200 ring-1 ring-black/5">
-          <InlineAvatarEdit
-            masterProfileId={masterProfileId}
-            initialUrl={avatarUrl}
-            name={displayName}
-            className="size-full"
-          />
-        </div>
+        <InlineAvatarEdit
+          masterProfileId={masterProfileId}
+          initialUrl={avatarUrl}
+          name={displayName}
+          className="size-full"
+        />
         {worksOnline && (
           <span
-            className="absolute -left-1 top-1 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg ring-2 ring-white"
+            className="pointer-events-none absolute -left-1 top-1 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg ring-2 ring-white"
             title="Принимает онлайн"
           >
             <span className="size-1.5 rounded-full bg-white" />
@@ -152,6 +155,11 @@ export function PublicHeroCard({
 
       {/* Main CTA — opens BookingDrawer via context */}
       <BookingCTA variant="hero">Записаться</BookingCTA>
+
+      {/* Follow / Subscribe — теперь живёт ВНУТРИ sticky hero card.
+          Раньше кнопка была отдельным элементом под карточкой и при
+          скролле уезжала под верхний бейдж. */}
+      <FollowMasterButton masterId={masterId} />
 
       {/* Divider */}
       <div className="border-t border-neutral-200" />
