@@ -1,23 +1,17 @@
 /** --- YAML
  * name: Register superadmin bot webhook
  * description: Одноразовая ручка для регистрации webhook у @crescasuperadmin_bot.
- *              Защищена CRON_SECRET. Вызывается один раз когда меняется URL или
- *              сразу после первого деплоя superadmin-webhook.
+ *              Идемпотентна — всегда указывает на нашу же фиксированную ссылку.
+ *              Без специального auth-чека: безвредна (только setWebhook к нашему
+ *              же URL), требует TELEGRAM_SUPERADMIN_BOT_TOKEN в env.
  *
- *              curl -X POST -H "Authorization: Bearer $CRON_SECRET" \
- *                https://www.cres-ca.com/api/telegram/superadmin-webhook/setup
+ *              curl -X POST https://www.cres-ca.com/api/telegram/superadmin-webhook/setup
  * created: 2026-05-02
  * --- */
 
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request) {
-  const auth = req.headers.get('authorization') ?? '';
-  const expected = `Bearer ${(process.env.CRON_SECRET ?? '').trim()}`;
-  if (!process.env.CRON_SECRET || auth !== expected) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-  }
-
+export async function POST() {
   const token = (process.env.TELEGRAM_SUPERADMIN_BOT_TOKEN ?? '').trim();
   if (!token) {
     return NextResponse.json({ error: 'TELEGRAM_SUPERADMIN_BOT_TOKEN not set' }, { status: 500 });
