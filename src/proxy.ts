@@ -56,6 +56,22 @@ function isMobileUA(ua: string): boolean {
   return false;
 }
 
+/**
+ * Запрос пришёл изнутри Telegram WebApp (Mini App). UA содержит "Telegram"
+ * или sec-fetch-dest: document с TG-referer. Для таких запросов НЕ применяем
+ * mobile-rewrite (стрип /telegram, редирект dashboard) — пути должны
+ * оставаться как есть, иначе ломается welcome / register / навигация
+ * внутри Telegram.
+ */
+function isTelegramWebView(ua: string, request: NextRequest): boolean {
+  if (/Telegram/i.test(ua)) return true;
+  // Hash в URL содержит tgWebAppData — но middleware не видит hash. Fallback:
+  // referer от t.me / web.telegram.org.
+  const ref = request.headers.get('referer') ?? '';
+  if (/t\.me|telegram\.org/i.test(ref)) return true;
+  return false;
+}
+
 export async function proxy(request: NextRequest) {
   // Run intl middleware first (sets locale cookie, rewrites)
   const response = intlMiddleware(request);
@@ -93,7 +109,10 @@ export async function proxy(request: NextRequest) {
   // настольную версию с телефона (для будущего toggle в UI).
   const ua = request.headers.get('user-agent') ?? '';
   const skipMobile = request.cookies.get('cres:no-redirect')?.value === '1';
-  const isMobile = !skipMobile && isMobileUA(ua);
+  // Внутри Telegram WebApp пользователь УЖЕ в /telegram/* и переход к
+  // чистым URL только всё ломает (welcome ужимается, register сбоит).
+  // Только обычный мобильный Chrome/Safari должен получать стрип.
+  const isMobile = !skipMobile && isMobileUA(ua) && !isTelegramWebView(ua, request);
 
   // Список первых сегментов, которые ТОЛЬКО mini-app (нет конфликта с
   // десктопным dashboard, public /m, public /s, /api, /_next и т.п.).
