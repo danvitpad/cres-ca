@@ -7,20 +7,14 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 export async function POST(request: Request) {
-  const { initData } = await request.json().catch(() => ({}));
-  if (!initData) {
-    return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
+  const userId = await resolveUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const result = validateInitData(initData);
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
-
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -30,7 +24,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select('id, full_name, first_name, last_name, avatar_url')
-    .eq('telegram_id', tg.id)
+    .eq('id', userId)
     .maybeSingle();
   if (!profile) {
     return NextResponse.json({ master: null, profile: null, subscription: null, stats: null });
