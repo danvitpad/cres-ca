@@ -296,7 +296,8 @@ function MasterMiniAppQuickBookingInner() {
                 const [y, m, d] = e.target.value.split('-').map(Number);
                 setDay(new Date(y, m - 1, d));
               }}
-              className="mt-2 w-full rounded-xl border border-neutral-200 bg-neutral-900/40 px-3 py-2.5 text-[14px] outline-none focus:border-neutral-300 [color-scheme:dark]"
+              className="mt-2 block w-full appearance-none border-0 bg-transparent p-0 text-[18px] font-semibold text-neutral-900 outline-none"
+              style={{ minWidth: 0 }}
             />
           </div>
 
@@ -306,7 +307,8 @@ function MasterMiniAppQuickBookingInner() {
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-neutral-200 bg-neutral-900/40 px-3 py-2.5 text-[14px] outline-none focus:border-neutral-300 [color-scheme:dark]"
+              className="mt-2 block w-full appearance-none border-0 bg-transparent p-0 text-[18px] font-semibold text-neutral-900 outline-none"
+              style={{ minWidth: 0 }}
             />
             <p className="mt-2 text-[11px] text-neutral-500">
               Закончится в {(() => {
@@ -318,7 +320,7 @@ function MasterMiniAppQuickBookingInner() {
           </div>
 
           {error && (
-            <div className="relative overflow-hidden rounded-2xl border border-neutral-200 bg-white p-3 pl-5 text-[12px] text-rose-600">
+            <div className="relative overflow-hidden rounded-2xl border border-rose-200 bg-rose-50 p-3 pl-5 text-[12px] text-rose-600">
               <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-rose-500" />
               {error}
             </div>
@@ -326,7 +328,7 @@ function MasterMiniAppQuickBookingInner() {
 
           <button
             onClick={save}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-500 py-4 text-[15px] font-semibold text-white shadow-md shadow-teal-500/20 active:scale-[0.98] active:bg-teal-600 transition-all"
           >
             <Check className="size-4" /> Создать запись · {Number(selectedService.price).toFixed(0)} ₴
           </button>
