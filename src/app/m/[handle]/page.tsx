@@ -31,6 +31,7 @@ import { InlineCoverBanner } from '@/components/master/inline/cover-banner';
 import { InlineBioBlock } from '@/components/master/inline/bio-block';
 import { InlineHoursBlock } from '@/components/master/inline/hours-block';
 import { InlineAddressBlock } from '@/components/master/inline/address-block';
+import { InlineSocialBlock } from '@/components/master/inline/social-block';
 import { OwnerInlineQuickSettings } from '@/components/master/inline/quick-settings-panel';
 import { OwnerPortfolioPanel } from '@/components/master/inline/owner-portfolio-panel';
 import { GuildPartnersSection } from '@/components/master/guild-partners-section';
@@ -774,6 +775,18 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 </div>
               )}
             </section>
+
+            {/* Соцсети / мессенджеры — inline-редактор. Якорь #inline-social
+                нужен, чтобы кнопка «Соцсети / мессенджеры» из премиум-чеклиста
+                скроллила сюда. Виден владельцу всегда (CTA если пусто), клиенту —
+                только когда заполнено. */}
+            <div id="inline-social" className="scroll-mt-24">
+              <InlineSocialBlock
+                masterId={master.id}
+                masterProfileId={master.profile_id}
+                initialSocialLinks={(master.social_links ?? null) as ({ telegram?: string; instagram?: string; whatsapp?: string; viber?: string; tiktok?: string; youtube?: string; facebook?: string; website?: string } | null)}
+              />
+            </div>
 
             {/* Workplace photos (только если есть отдельные фото — иначе уже в карте) */}
             {hasWorkplace && (salon?.cover_url || master.workplace_photo_url) && (
