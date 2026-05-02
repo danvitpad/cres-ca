@@ -84,7 +84,14 @@ export function PublicHeroCard({
   })();
 
   return (
-    <aside className="relative flex flex-col gap-5 rounded-[20px] border border-neutral-200 bg-[#f7f7f7] p-6">
+    <aside
+      className="relative flex flex-col gap-5 rounded-[20px] border p-6"
+      style={{
+        background: 'var(--m-surface)',
+        borderColor: 'var(--m-border)',
+        color: 'var(--m-text)',
+      }}
+    >
       {/* Top-left: маленькая зелёная точка «Online» когда мастер принимает онлайн.
           Раньше была подписью на аватаре — теперь компактнее, прямо на углу
           карточки напротив кнопки «Поделиться». */}

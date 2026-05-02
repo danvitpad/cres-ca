@@ -90,8 +90,8 @@ export function FollowMasterButton({ masterId, accent = 'var(--ds-accent, var(--
       className="flex w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] border px-5 py-3 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
       style={
         isFollowing
-          ? { background: accent, borderColor: accent, color: 'white' }
-          : { background: 'white', borderColor: '#e5e7eb', color: '#374151' }
+          ? { background: 'var(--m-accent)', borderColor: 'var(--m-accent)', color: 'var(--m-accent-text)' }
+          : { background: 'var(--m-bg)', borderColor: 'var(--m-border)', color: 'var(--m-text)' }
       }
     >
       <Heart

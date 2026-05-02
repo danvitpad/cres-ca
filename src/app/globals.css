@@ -276,6 +276,36 @@
   --m-danger-soft: rgba(248, 113, 113, 0.16);
 }
 
+/* Публичная страница мастера и любые другие страницы без явного
+   data-theme override автоматически следуют за системной темой клиента
+   (prefers-color-scheme: dark). Mini App в Telegram перебивает это
+   через data-theme на theme-provider'е, поэтому media-query применяется
+   ТОЛЬКО когда data-theme не задан вообще. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --m-bg: #141417;
+    --m-bg-subtle: #18181b;
+    --m-surface: #1a1a1d;
+    --m-surface-elevated: #1f1f22;
+    --m-border: #2a2a2e;
+    --m-border-subtle: #1f1f22;
+    --m-text: #fafafa;
+    --m-text-secondary: #c1c5cd;
+    --m-text-tertiary: #828791;
+    --m-text-disabled: #4b5260;
+    --m-accent: #2dd4bf;
+    --m-accent-hover: #5eead4;
+    --m-accent-soft: rgba(45, 212, 191, 0.18);
+    --m-accent-text: #0a0a0a;
+    --m-success: #34d399;
+    --m-success-soft: rgba(52, 211, 153, 0.16);
+    --m-warning: #fbbf24;
+    --m-warning-soft: rgba(251, 191, 36, 0.16);
+    --m-danger: #f87171;
+    --m-danger-soft: rgba(248, 113, 113, 0.16);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

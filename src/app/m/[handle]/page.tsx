@@ -485,22 +485,17 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   if (hasReviews) navSections.push({ id: 'reviews', label: 'Отзывы' });
   if (hasAddress) navSections.push({ id: 'address', label: 'Адрес' });
 
-  // Если мастер загрузил картинку фона — она перекрывает цвет.
-  // Цвет используется как fallback пока картинка грузится / если её нет.
-  const bgImageUrl = master.theme_background_image_url;
-
+  // Тема публички следует ТОЛЬКО за системной темой пользователя
+  // (prefers-color-scheme). Никаких master-настроек фона/картинки —
+  // bg=var(--m-bg) и text=var(--m-text), которые автоматически
+  // инвертируются через media-query в globals.css. Фон-картинка и
+  // hex-цвет от мастера игнорируются (поля остаются в DB но не рендерятся).
   return (
     <div
-      className="min-h-screen text-neutral-900"
+      className="min-h-screen"
       style={{
-        backgroundColor: pageBg,
-        ...(bgImageUrl ? {
-          backgroundImage: `url(${bgImageUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundAttachment: 'fixed',
-          backgroundRepeat: 'no-repeat',
-        } : {}),
+        backgroundColor: 'var(--m-bg)',
+        color: 'var(--m-text)',
         ['--page-accent' as string]: accent,
       }}
     >
@@ -547,10 +542,11 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       >
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
-          {/* ─── LEFT col — sticky на desktop. Hero-card + панель управления
-               скроллятся ВМЕСТЕ как один sticky-блок: при скролле основной
-               страницы они не уезжают друг под друга. ─── */}
-          <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:pr-1">
+          {/* ─── LEFT col — обычный скролл вместе со страницей.
+               Раньше был sticky с собственным внутренним скроллом — выглядело
+               как два независимых скролл-стека. Теперь всё едет одной
+               страницей. ─── */}
+          <div className="lg:col-span-4 space-y-4">
             <PublicHeroCard
               masterId={master.id}
               masterProfileId={master.profile_id}
@@ -594,13 +590,20 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
             {/* Sticky tab nav — only when there's something to navigate to */}
             {navSections.length > 1 && (
-              <div className="sticky top-0 z-30 -mx-4 border-b border-neutral-200 bg-white/95 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+              <div
+                className="sticky top-0 z-30 -mx-4 border-b px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+                style={{
+                  background: 'color-mix(in oklab, var(--m-bg) 95%, transparent)',
+                  borderColor: 'var(--m-border)',
+                }}
+              >
                 <nav className="flex gap-2 overflow-x-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {navSections.map((s) => (
                     <a
                       key={s.id}
                       href={`#${s.id}`}
-                      className="whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                      className="whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-semibold transition-colors"
+                      style={{ color: 'var(--m-text-secondary)' }}
                     >
                       {s.label}
                     </a>
@@ -851,7 +854,13 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       </div>
 
       {/* Mobile sticky bottom CTA — visible while scrolling on phones */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur p-3 lg:hidden">
+      <div
+        className="fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur p-3 lg:hidden"
+        style={{
+          background: 'color-mix(in oklab, var(--m-bg) 95%, transparent)',
+          borderColor: 'var(--m-border)',
+        }}
+      >
         <BookingCTA variant="sticky">
           Записаться{hasServices && ` · от ${formatMoney(minPrice, currency)}`}
         </BookingCTA>

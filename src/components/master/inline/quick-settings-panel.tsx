@@ -14,7 +14,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Globe, Wifi, Check, Sun, Moon } from 'lucide-react';
+import { Globe, Wifi, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
@@ -24,15 +24,12 @@ interface MasterRow {
   slug: string | null;
   is_public: boolean | null;
   works_online: boolean | null;
-  theme_background_color: string | null;
 }
 
-// Только две темы: светлая (null) и тёмная (полночь). Никаких цветных пресетов
-// и кастомных картинок — текст должен быть читаем на любом фоне.
-const THEMES: { key: 'light' | 'dark'; label: string; bg: string | null; sample: string; icon: typeof Sun }[] = [
-  { key: 'light', label: 'Светлая', bg: null, sample: '#ffffff', icon: Sun },
-  { key: 'dark',  label: 'Тёмная',  bg: '#0f172a', sample: '#0f172a', icon: Moon },
-];
+// Тема публички больше НЕ выбирается мастером — она автоматически
+// следует за prefers-color-scheme пользователя. Раньше тут был
+// выбор «Светлая/Тёмная»; убран по запросу: страница должна
+// инвертироваться сама в зависимости от темы клиента.
 
 export function OwnerInlineQuickSettings({
   masterProfileId,
@@ -53,7 +50,7 @@ export function OwnerInlineQuickSettings({
       setIsOwner(true);
       const { data: row } = await supabase
         .from('masters')
-        .select('id, profile_id, slug, is_public, works_online, theme_background_color')
+        .select('id, profile_id, slug, is_public, works_online')
         .eq('profile_id', masterProfileId)
         .maybeSingle();
       if (row) {
@@ -116,14 +113,17 @@ export function OwnerInlineQuickSettings({
     }
   }
 
-  // Determine current theme — null/light bg → light; dark hex → dark
-  const currentTheme: 'light' | 'dark' =
-    master.theme_background_color && /^#0/.test(master.theme_background_color) ? 'dark' : 'light';
-
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <div
+      className="rounded-2xl border p-4 shadow-sm"
+      style={{
+        background: 'var(--m-surface)',
+        borderColor: 'var(--m-border)',
+        color: 'var(--m-text)',
+      }}
+    >
       <div className="mb-3">
-        <h3 className="text-sm font-bold text-neutral-900">Управление страницей</h3>
+        <h3 className="text-sm font-bold" style={{ color: 'var(--m-text)' }}>Управление страницей</h3>
       </div>
 
       {/* Toggles */}
@@ -178,32 +178,8 @@ export function OwnerInlineQuickSettings({
         {slugError && <p className="mt-1 text-[11px] text-rose-500">{slugError}</p>}
       </div>
 
-      {/* Theme — только Светлая / Тёмная */}
-      <div className="mt-4 border-t border-neutral-100 pt-3">
-        <div className="mb-1.5 text-xs font-semibold text-neutral-700">Тема страницы</div>
-        <div className="grid grid-cols-2 gap-2">
-          {THEMES.map((t) => {
-            const Icon = t.icon;
-            const active = currentTheme === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => patch('theme_background_color', t.bg)}
-                disabled={savingField === 'theme_background_color'}
-                className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold transition ${
-                  active
-                    ? 'border-[var(--ds-accent,#14b8a6)] bg-[var(--ds-accent,#14b8a6)]/10 text-[var(--ds-accent,#14b8a6)]'
-                    : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
-                }`}
-              >
-                <Icon className="size-3.5" />
-                {t.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Тема страницы больше не выбирается — следует за prefers-color-scheme
+          пользователя. См. /m/[handle]/page.tsx комментарий о теме. */}
     </div>
   );
 }
