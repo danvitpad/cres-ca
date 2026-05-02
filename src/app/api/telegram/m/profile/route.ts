@@ -68,18 +68,12 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   const body = await request.json().catch(() => ({})) as {
-    initData?: string;
     first_name?: string;
     last_name?: string;
   };
-  if (!body.initData) {
-    return NextResponse.json({ error: "missing_init_data" }, { status: 400 });
-  }
-  const result = validateInitData(body.initData);
-  if ("error" in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
-  const tg = result.user;
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
   const firstName = (body.first_name ?? "").trim();
   const lastName = (body.last_name ?? "").trim();
   if (!firstName) {
@@ -95,7 +89,7 @@ export async function PATCH(request: Request) {
   const { error } = await admin
     .from("profiles")
     .update({ first_name: firstName, last_name: lastName || null, full_name: fullName })
-    .eq("telegram_id", tg.id);
+    .eq("id", userId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, full_name: fullName });
 }
