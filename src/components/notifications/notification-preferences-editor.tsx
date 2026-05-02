@@ -140,12 +140,31 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
 
   const save = async () => {
     setSaving(true);
+
+    // Auto-include unsaved draft if it represents a real offset.
+    // User often types "5" in minutes and forgets to press "+ Добавить",
+    // expecting Save alone to capture the new value.
+    const draftOffset: Offset = {
+      days: clampNumber(draft.days, 0, 30),
+      hours: clampNumber(draft.hours, 0, 23),
+      minutes: clampNumber(draft.minutes, 0, 59),
+    };
+    const draftMins = offsetToMinutes(draftOffset);
+    const userTouchedDraft = draft.days !== '' || draft.minutes !== '' || (draft.hours !== '' && draft.hours !== '2');
+    const finalOffsets = [...offsets];
+    if (userTouchedDraft && draftMins > 0 && !finalOffsets.some((o) => offsetToMinutes(o) === draftMins) && finalOffsets.length < 10) {
+      finalOffsets.push(draftOffset);
+      finalOffsets.sort((a, b) => offsetToMinutes(b) - offsetToMinutes(a));
+      setOffsets(finalOffsets);
+      setDraft({ days: '', hours: '', minutes: '' });
+    }
+
     try {
       const res = await fetch('/api/me/notification-preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
-          offsets_minutes: offsets.map(offsetToMinutes),
+          offsets_minutes: finalOffsets.map(offsetToMinutes),
           enabled,
           quiet_hours_start: quietStart === '' ? null : Number(quietStart),
           quiet_hours_end: quietEnd === '' ? null : Number(quietEnd),
