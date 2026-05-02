@@ -200,7 +200,12 @@ export function SessionNavBar({
   function NavItem({ item }: { item: SidebarNavItem }) {
     if (item.href) {
       return (
-        <Link href={item.href} onClick={item.onClick} className="block">
+        // prefetch={true} — Next.js делает prefetch для viewport-видимых
+        // Link'ов в production, но в свернутом sidebar (hover-collapsed)
+        // ссылки могут быть display:hidden до раскрытия. Явный prefetch
+        // гарантирует что bundle уже готов к моменту клика — переходы
+        // становятся «мгновенными» (без задержки на загрузку JS chunk'а).
+        <Link href={item.href} onClick={item.onClick} prefetch className="block">
           <NavItemContent item={item} />
         </Link>
       );

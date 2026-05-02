@@ -53,6 +53,33 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
         ],
       },
+      {
+        // Публичные страницы мастеров /m/{handle} — кешируем 60 секунд на edge,
+        // плюс SWR на 1 час. Это значит:
+        //  - первый клиент после обновления страницы мастера ждёт SSR
+        //  - следующие 60 секунд страница отдаётся мгновенно из edge-кеша
+        //  - после этого фоном пересобираем (stale-while-revalidate)
+        // Изменения мастера видны клиентам в худшем случае через 60 сек —
+        // приемлемо для публичной витрины. Для ускорения ощутимо сильно
+        // если страница популярна.
+        source: '/m/:handle',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=60, stale-while-revalidate=3600',
+          },
+        ],
+      },
+      {
+        // То же для салонов
+        source: '/s/:id',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, s-maxage=60, stale-while-revalidate=3600',
+          },
+        ],
+      },
     ];
   },
 };
