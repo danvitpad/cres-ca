@@ -31,6 +31,7 @@ import { InlineCoverBanner } from '@/components/master/inline/cover-banner';
 import { InlineBioBlock } from '@/components/master/inline/bio-block';
 import { InlineHoursBlock } from '@/components/master/inline/hours-block';
 import { InlineAddressBlock } from '@/components/master/inline/address-block';
+import { OwnerInlineQuickSettings } from '@/components/master/inline/quick-settings-panel';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
@@ -543,6 +544,16 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             />
             {/* Кнопка «Подписаться» теперь живёт внутри PublicHeroCard,
                 чтобы скроллиться вместе со sticky-карточкой. */}
+
+            {/* Inline-панель быстрых настроек — видна только владельцу.
+                Заменяет драйвер для рутинных переключателей. Полный редактор
+                всё ещё открывается через «Все настройки» (custom event). */}
+            <OwnerInlineQuickSettings
+              masterProfileId={master.profile_id}
+              onOpenFullEditor={() => {
+                window.dispatchEvent(new CustomEvent('cres:open-full-editor'));
+              }}
+            />
           </div>
 
           {/* ─── RIGHT col (scroll content) ─── */}

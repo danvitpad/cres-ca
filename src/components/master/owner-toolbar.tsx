@@ -57,6 +57,15 @@ export function OwnerToolbar({ masterProfileId }: { masterProfileId: string | nu
   const [open, setOpen] = useState(false);
   const [master, setMaster] = useState<MasterCfg | null>(null);
 
+  // Кастомное событие open-full-editor — дёрнут OwnerInlineQuickSettings
+  // когда юзер кликнул «Все настройки». Открываем тот же drawer что и
+  // кнопка «Настроить» в этом тулбаре.
+  useEffect(() => {
+    function onOpenFullEditor() { setOpen(true); }
+    window.addEventListener('cres:open-full-editor', onOpenFullEditor);
+    return () => window.removeEventListener('cres:open-full-editor', onOpenFullEditor);
+  }, []);
+
   useEffect(() => {
     if (!masterProfileId) return;
     const supabase = createClient();
