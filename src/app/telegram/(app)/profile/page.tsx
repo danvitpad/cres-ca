@@ -28,6 +28,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 import { mapError } from '@/lib/errors';
+import { getInitData } from '@/lib/telegram/webapp';
 import {
   MobilePage,
   PageHeader,
@@ -122,9 +123,16 @@ export default function MiniAppProfilePage() {
     setEditBusy(true);
     setEditError(null);
     try {
+      // В Mini App нет Supabase cookie-сессии — авторизуемся через
+      // Telegram initData (header X-TG-Init-Data). resolveUserId на сервере
+      // вытащит user_id по telegram_id из profiles.
+      const initData = getInitData();
       const res = await fetch('/api/profile', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
         body: JSON.stringify({
           fullName: editName.trim() || null,
           bio: editBio.trim() || null,
