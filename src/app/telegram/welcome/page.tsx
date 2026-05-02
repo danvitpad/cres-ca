@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
-  Calendar, ShieldCheck, Heart, LogIn, Loader2, Sun, Moon, Globe,
+  Calendar, ShieldCheck, Heart, LogIn, Loader2, Globe,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { mapError } from '@/lib/errors';
@@ -116,17 +116,34 @@ export default function MiniAppWelcomePage() {
     }
   }, []);
 
-  // Синхронизируем тему с Telegram при первом заходе. Если юзер ещё не выбирал
-  // тему вручную (next-themes хранит выбор в localStorage 'theme') — берём
-  // colorScheme из TG. Если в TG включена тёмная — приложение тоже тёмное.
+  // Mini App страницы строго следуют за темой Telegram пользователя — без
+  // ручных toggle, без сохранения в localStorage. Игнорируем любое прошлое
+  // значение из localStorage, всегда устанавливаем actual TG colorScheme.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const tg = (window as { Telegram?: { WebApp?: { colorScheme?: 'light' | 'dark' } } }).Telegram?.WebApp;
-    if (!tg?.colorScheme) return;
-    const stored = localStorage.getItem('theme');
-    if (!stored || stored === 'system') {
-      setTheme(tg.colorScheme);
+    const tgScheme = tg?.colorScheme;
+    if (tgScheme === 'light' || tgScheme === 'dark') {
+      setTheme(tgScheme);
+    } else if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    } else {
+      setTheme('light');
     }
+  }, [setTheme]);
+
+  // Слушаем смену темы Telegram в реальном времени — если user переключит
+  // TG в light/dark пока Mini App открыт, мы тоже мгновенно перекрасимся.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    type TG = { WebApp?: { colorScheme?: 'light' | 'dark'; onEvent?: (e: string, cb: () => void) => void; offEvent?: (e: string, cb: () => void) => void } };
+    const tg = (window as { Telegram?: TG }).Telegram?.WebApp;
+    const handler = () => {
+      const next = tg?.colorScheme;
+      if (next === 'light' || next === 'dark') setTheme(next);
+    };
+    tg?.onEvent?.('themeChanged', handler);
+    return () => { tg?.offEvent?.('themeChanged', handler); };
   }, [setTheme]);
 
   // Перекрашиваем шапку и низ TG в наш цвет фона при каждой смене темы —
@@ -164,10 +181,6 @@ export default function MiniAppWelcomePage() {
     setLang(next);
     try { localStorage.setItem('cres:locale', next); } catch {}
     try { document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000`; } catch {}
-  }
-
-  function toggleTheme() {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   }
 
   async function signIn() {
@@ -225,19 +238,6 @@ export default function MiniAppWelcomePage() {
         >
           <Globe className="size-3.5" />
           {LANG_SHORT[lang]}
-        </button>
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label="Сменить тему"
-          className="flex size-9 items-center justify-center rounded-full border active:scale-95 transition-transform"
-          style={{
-            borderColor: 'color-mix(in oklab, var(--foreground) 14%, transparent)',
-            color: 'var(--foreground)',
-            background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
-          }}
-        >
-          {mounted && resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </button>
       </div>
 
