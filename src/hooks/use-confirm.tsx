@@ -91,6 +91,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
  */
 export function useConfirm() {
   const ctx = useContext(ConfirmContext);
-  if (!ctx) throw new Error('useConfirm must be used inside <ConfirmProvider>');
-  return ctx;
+  if (ctx) return ctx;
+  // Fallback for trees that don't mount ConfirmProvider (e.g. public pages
+  // that conditionally render owner-only panels). Returns native window.confirm
+  // so destructive flows still gate, just without the themed dialog.
+  return (opts: ConfirmOptions = {}): Promise<boolean> => {
+    if (typeof window === 'undefined') return Promise.resolve(false);
+    const msg = [opts.title ?? 'Подтвердить?', opts.description].filter(Boolean).join('\n\n');
+    return Promise.resolve(window.confirm(msg));
+  };
 }

@@ -499,18 +499,9 @@ export default function FinancePage() {
         <LostRevenueCard />
       </div>
 
-      {/* AI Insight + ask-anything bubble.
-          Кликабельная подсказка превращается в строку ввода — мастер пишет
-          конкретный вопрос («проверь топ-3 расхода», «почему за апрель меньше доход»),
-          AI отвечает с контекстом 30 дней. */}
-      <FinanceAiPanel
-        insight={aiInsight}
-        loading={aiLoading}
-        C={C}
-        onApplied={() => loadData()}
-      />
-
-      {/* ↑ см. определение FinanceAiPanel в конце файла */}
+      {/* AI-помощник убран — дублировал LostRevenueCard (тоже AI-аналитика дохода).
+          Free-form Q&A доступен через TG-бот @crescacom_bot. Функция определения
+          FinanceAiPanel оставлена внизу файла на случай возврата фичи. */}
 
       {/* Tabs — Обзор / Доходы / Расходы (underline style matching dashboard) */}
       <div style={{

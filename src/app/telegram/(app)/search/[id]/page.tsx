@@ -90,7 +90,7 @@ const TAB_ITEMS = [
   { key: 'services', label: 'Услуги' },
   { key: 'portfolio', label: 'Портфолио' },
   { key: 'reviews', label: 'Отзывы' },
-  { key: 'about', label: 'Обо мне' },
+  { key: 'about', label: 'Контакты' },
 ] as const;
 
 type TabKey = (typeof TAB_ITEMS)[number]['key'];
@@ -139,6 +139,7 @@ export default function MiniAppMasterDetailPage() {
   const [portfolioOpen, setPortfolioOpen] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
+  const [bioExpanded, setBioExpanded] = useState(false);
 
   // Refs for scroll-to-section
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -534,11 +535,38 @@ export default function MiniAppMasterDetailPage() {
           </button>
         </div>
 
-        {/* Bio — directly under the head, above tabs/services */}
+        {/* Bio — directly under the head. Collapsed to 5 lines initially with
+            «Раскрыть»/«Свернуть» toggle for long texts. No header label —
+            just free-form intro from the master. */}
         {master.bio && (
-          <p className="mt-4 whitespace-pre-line text-[14px] leading-relaxed text-neutral-700">
-            {master.bio}
-          </p>
+          <div className="mt-4">
+            <p
+              className="whitespace-pre-line text-[14px] leading-relaxed text-neutral-700"
+              style={
+                bioExpanded
+                  ? undefined
+                  : {
+                      display: '-webkit-box',
+                      WebkitLineClamp: 5,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }
+              }
+            >
+              {master.bio}
+            </p>
+            {/* Show toggle only if text actually overflows 5 lines.
+                Heuristic: 5 lines × ~50 chars/line ≈ 250 chars. */}
+            {master.bio.length > 250 && (
+              <button
+                type="button"
+                onClick={() => { haptic('light'); setBioExpanded((v) => !v); }}
+                className="mt-1 text-[12px] font-semibold text-neutral-900 active:opacity-60"
+              >
+                {bioExpanded ? 'Свернуть' : 'Раскрыть'}
+              </button>
+            )}
+          </div>
         )}
       </motion.div>
 
@@ -552,8 +580,8 @@ export default function MiniAppMasterDetailPage() {
             // Hide tabs with no content
             if (tab.key === 'portfolio' && master.portfolio.length === 0) return null;
             if (tab.key === 'reviews' && master.reviews.length === 0) return null;
-            // Hide "Обо мне" tab if no bio AND no schedule AND no address
-            if (tab.key === 'about' && !master.bio && !hasSchedule && !master.city && !master.address) return null;
+            // Hide "Контакты" tab if no schedule AND no address (bio is above)
+            if (tab.key === 'about' && !hasSchedule && !master.city && !master.address) return null;
 
             const isActive = activeTab === tab.key;
             return (
@@ -825,21 +853,14 @@ export default function MiniAppMasterDetailPage() {
           </div>
         )}
 
-        {/* ── About me ── */}
-        {(master.bio || hasSchedule || master.city || master.address) && (
+        {/* ── Contacts (hours + address) ── */}
+        {(hasSchedule || master.city || master.address) && (
         <div
           ref={(el) => { sectionRefs.current.about = el; }}
           data-section="about"
         >
-          <h2 className="mb-3 text-[15px] font-bold text-neutral-900">Обо мне</h2>
-
-          {/* Bio in this section is duplicated above the tab bar — keep here too
-              for users who scroll past hero straight to the About anchor. */}
-          {master.bio && (
-            <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
-              <p className="whitespace-pre-line text-[13px] leading-relaxed text-neutral-700">{master.bio}</p>
-            </div>
-          )}
+          {/* Bio is shown above (under the avatar) — no need to duplicate here.
+              This section keeps just hours + address as a compact contact block. */}
 
           {/* Working hours — only render if at least one day has a schedule */}
           {hasSchedule && (
