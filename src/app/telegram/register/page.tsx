@@ -460,10 +460,9 @@ export default function MiniAppRegisterPage() {
           >
             {t.roleLabel}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <RoleTile active={role === 'client'} onClick={() => setRole('client')} icon={UserRound} label={t.roleClient} />
             <RoleTile active={role === 'master'} onClick={() => setRole('master')} icon={Briefcase} label={t.roleMaster} />
-            <RoleTile active={role === 'salon_admin'} onClick={() => setRole('salon_admin')} icon={Building2} label={t.roleTeam} />
           </div>
           {role === 'master' && (
             <p className="mt-2 px-1 text-[11px] leading-snug"
