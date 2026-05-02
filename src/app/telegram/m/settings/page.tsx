@@ -23,6 +23,7 @@ import {
   Mic,
   HelpCircle,
   MessageCircle,
+  Moon,
   LogOut,
   ChevronRight,
   ArrowLeft,
@@ -32,6 +33,7 @@ import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppTheme } from '@/components/miniapp/theme';
 
 interface SettingsItem {
   key: string;
@@ -55,6 +57,7 @@ const ITEMS: SettingsItem[] = [
 export default function MasterMiniAppSettings() {
   const { haptic } = useTelegram();
   const router = useRouter();
+  const { theme, override, setOverride } = useMiniAppTheme();
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
@@ -168,6 +171,58 @@ export default function MasterMiniAppSettings() {
           })}
         </div>
 
+        {/* Theme toggle */}
+        <div
+          style={{
+            background: T.surface,
+            borderRadius: R.lg,
+            border: `1px solid ${T.borderSubtle}`,
+            boxShadow: SHADOW.card,
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 16px',
+              background: 'transparent',
+              border: 'none',
+              width: '100%',
+              textAlign: 'left',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: T.text,
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: T.accentSoft,
+                color: T.accent,
+                flexShrink: 0,
+              }}
+            >
+              <Moon size={18} strokeWidth={2} />
+            </span>
+            <span style={{ flex: 1 }}>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: T.text }}>Тёмная тема</span>
+              <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 1 }}>
+                {override ? 'Вручную' : 'Как в Telegram'}
+              </span>
+            </span>
+            <MiniToggle on={theme === 'dark'} />
+          </button>
+        </div>
+
         {/* Web-only actions notice */}
         <div
           style={{
@@ -226,6 +281,36 @@ export default function MasterMiniAppSettings() {
           {loggingOut ? 'Выходим…' : 'Выйти'}
         </button>
       </div>
+    </div>
+  );
+}
+
+function MiniToggle({ on }: { on: boolean }) {
+  return (
+    <div
+      style={{
+        width: 44,
+        height: 26,
+        borderRadius: 13,
+        background: on ? T.accent : T.borderSubtle,
+        position: 'relative',
+        transition: 'background 0.2s',
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 3,
+          left: on ? 21 : 3,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          transition: 'left 0.2s',
+        }}
+      />
     </div>
   );
 }

@@ -18,9 +18,9 @@ import {
   LogOut,
   Globe,
   Shield,
-  HelpCircle,
   Heart,
   Bell,
+  Moon,
   Loader2,
   Mail,
   Phone as PhoneIcon,
@@ -33,11 +33,13 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
+import { useMiniAppTheme } from '@/components/miniapp/theme';
 
 export default function MiniAppSettingsPage() {
   const router = useRouter();
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const { theme, override, setOverride } = useMiniAppTheme();
   const [signingOut, setSigningOut] = useState(false);
 
   // Contact info
@@ -317,11 +319,25 @@ export default function MiniAppSettingsPage() {
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
           <div style={divider} />
-          <SettingsRow icon={Globe} label="Язык" hint="Русский" onClick={() => haptic('light')} />
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
+            style={{ ...rowStyle, justifyContent: 'flex-start' }}
+          >
+            <div style={iconBox}><Moon size={16} color={T.text} /></div>
+            <div style={{ flex: 1 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Тёмная тема</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>
+                {override ? 'Вручную' : 'Как в Telegram'}
+              </p>
+            </div>
+            <ToggleSwitch on={theme === 'dark'} />
+          </button>
           <div style={divider} />
-          <SettingsRow icon={Shield} label="Приватность" hint="Видимость профиля" onClick={() => haptic('light')} />
+          <SettingsRow icon={Globe} label="Язык" hint="Скоро" onClick={() => haptic('light')} />
           <div style={divider} />
-          <SettingsRow icon={HelpCircle} label="Помощь" hint="FAQ и поддержка" onClick={() => haptic('light')} />
+          <SettingsRow icon={Shield} label="Приватность" hint="Скоро" onClick={() => haptic('light')} />
           <div style={divider} />
           <Link href="/telegram/settings/feedback" onClick={() => haptic('light')} style={rowStyle}>
             <div style={{ ...iconBox, borderColor: 'rgba(244,63,94,0.2)', background: 'rgba(244,63,94,0.08)' }}>
@@ -333,6 +349,32 @@ export default function MiniAppSettingsPage() {
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
+        </div>
+
+        {/* Support note */}
+        <div
+          style={{
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.lg,
+            padding: '14px 16px',
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: T.textSecondary,
+            boxShadow: SHADOW.card,
+          }}
+        >
+          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, marginBottom: 4 }}>Нужна помощь?</p>
+          Напишите в{' '}
+          <a
+            href="https://t.me/crescacom_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: T.accent, fontWeight: 600, textDecoration: 'none' }}
+          >
+            Telegram-бот
+          </a>{' '}
+          или отправьте голосовое сообщение — поддержка ответит прямо через бот.
         </div>
 
         {/* Web-only actions notice */}
@@ -708,6 +750,36 @@ export default function MiniAppSettingsPage() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+function ToggleSwitch({ on }: { on: boolean }) {
+  return (
+    <div
+      style={{
+        width: 44,
+        height: 26,
+        borderRadius: 13,
+        background: on ? T.accent : T.borderSubtle,
+        position: 'relative',
+        transition: 'background 0.2s',
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          top: 3,
+          left: on ? 21 : 3,
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          transition: 'left 0.2s',
+        }}
+      />
+    </div>
   );
 }
 

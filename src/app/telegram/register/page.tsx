@@ -145,7 +145,7 @@ export default function MiniAppRegisterPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [stash, setStash] = useState<Stash | null>(null);
-  const [lang, setLang] = useState<Lang>('ru');
+  const [lang, setLang] = useState<Lang>('uk');
 
   const [role, setRole] = useState<'client' | 'master' | 'salon_admin'>('client');
   const [firstName, setFirstName] = useState('');
@@ -227,7 +227,7 @@ export default function MiniAppRegisterPage() {
     setErrorMsg(null);
     setSubmitting(true);
 
-    const personalFullName = [lastName.trim(), firstName.trim()].filter(Boolean).join(' ');
+    const personalFullName = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
     const normalizedPhone = normalizePhone(phone)!;
 
     try {

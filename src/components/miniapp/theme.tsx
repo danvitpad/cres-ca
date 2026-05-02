@@ -1,21 +1,28 @@
 /** --- YAML
  * name: MiniAppTheme
- * description: Тема Mini App следует ТОЛЬКО за Telegram.WebApp.colorScheme
- *              (или prefers-color-scheme когда открыто в браузере вне TG).
- *              Никаких ручных переключателей и DB-overrides — пользователь
- *              сам решает в настройках своего Telegram.
- *              Ставит data-theme=dark на корневой div, под который подвешены
- *              CSS-переменные с тёмной палитрой (см. globals.css). Все T.* токены
- *              в design.ts автоматически переключаются.
+ * description: Тема Mini App. Приоритеты: (1) localStorage 'cres:theme-override' (ручной
+ *              переключатель в настройках), (2) Telegram.WebApp.colorScheme, (3) prefers-color-scheme.
+ *              Ставит data-theme=dark на корневой div — CSS var(--m-*) переключаются автоматически.
+ *              Экспортирует useMiniAppTheme() для чтения/записи override из настроек.
  * created: 2026-04-26
- * updated: 2026-05-02
+ * updated: 2026-05-07
  * --- */
 
 'use client';
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
+const STORAGE_KEY = 'cres:theme-override';
+
+function readStoredOverride(): Theme | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v === 'dark' || v === 'light') return v;
+  } catch { /* ignore */ }
+  return null;
+}
 
 function readSystemTheme(): Theme {
   if (typeof window === 'undefined') return 'light';
@@ -26,6 +33,18 @@ function readSystemTheme(): Theme {
   return 'light';
 }
 
+interface ThemeCtx {
+  theme: Theme;
+  override: Theme | null;
+  setOverride: (t: Theme | null) => void;
+}
+
+const ThemeContext = createContext<ThemeCtx>({ theme: 'light', override: null, setOverride: () => {} });
+
+export function useMiniAppTheme() {
+  return useContext(ThemeContext);
+}
+
 interface Props {
   children: ReactNode;
   style?: CSSProperties;
@@ -33,16 +52,18 @@ interface Props {
 }
 
 export function MiniAppThemeProvider({ children, style, className }: Props) {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [override, setOverrideState] = useState<Theme | null>(null);
+  const [systemTheme, setSystemTheme] = useState<Theme>('light');
 
   useEffect(() => {
-    setTheme(readSystemTheme());
+    setOverrideState(readStoredOverride());
+    setSystemTheme(readSystemTheme());
   }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mql = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => setTheme(readSystemTheme());
+    const onChange = () => setSystemTheme(readSystemTheme());
     mql.addEventListener('change', onChange);
     type TG = { WebApp?: { onEvent?: (e: string, cb: () => void) => void; offEvent?: (e: string, cb: () => void) => void } };
     const tg = (window as { Telegram?: TG }).Telegram?.WebApp;
@@ -53,9 +74,21 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
     };
   }, []);
 
+  const setOverride = useCallback((t: Theme | null) => {
+    try {
+      if (t) localStorage.setItem(STORAGE_KEY, t);
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch { /* ignore */ }
+    setOverrideState(t);
+  }, []);
+
+  const theme = override ?? systemTheme;
+
   return (
-    <div data-theme={theme} className={className} style={style}>
-      {children}
-    </div>
+    <ThemeContext.Provider value={{ theme, override, setOverride }}>
+      <div data-theme={theme} className={className} style={style}>
+        {children}
+      </div>
+    </ThemeContext.Provider>
   );
 }

@@ -54,7 +54,7 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
     .from('masters')
     .select(
       'id, slug, specialization, city, latitude, longitude, headline, profile_id, ' +
-      'profile:profiles!masters_profile_id_fkey(full_name, first_name, avatar_url)',
+      'profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, avatar_url)',
     )
     .eq('is_public', true)
     .eq('is_active', true)
@@ -77,7 +77,7 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
     longitude: number | null;
     headline: string | null;
     profile_id: string;
-    profile: { full_name: string | null; first_name: string | null; avatar_url: string | null } | null;
+    profile: { full_name: string | null; first_name: string | null; last_name: string | null; avatar_url: string | null } | null;
   };
   let rows = (masters as unknown as MRow[]).slice(0, limit);
 
@@ -144,8 +144,10 @@ export async function searchMasters(params: SearchParams): Promise<MasterCard[]>
   }
 
   let cards: MasterCard[] = rows.map((r) => {
-    const fullName = r.profile?.full_name ?? r.profile?.first_name ?? 'Мастер';
-    const firstName = r.profile?.first_name ?? fullName.split(' ')[0] ?? 'Мастер';
+    const fn = r.profile?.first_name ?? '';
+    const ln = r.profile?.last_name ?? '';
+    const fullName = [fn, ln].filter(Boolean).join(' ') || r.profile?.full_name || 'Мастер';
+    const firstName = fn || fullName.split(' ')[0] || 'Мастер';
     const rating = ratingMap.get(r.id);
     const card: MasterCard = {
       id: r.id,

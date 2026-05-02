@@ -28,7 +28,7 @@ import {
   Scissors, Stethoscope, Dumbbell, Palette, PawPrint,
   Car, PartyPopper, GraduationCap, Hammer, MoreHorizontal,
   // Workplace icons
-  Home, MapPin, Building,
+  Home, MapPin, Globe,
 } from 'lucide-react';
 import { T as THEME, R, FONT_BASE, SHADOW, SPRING } from '@/components/miniapp/design';
 import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
@@ -37,7 +37,7 @@ import { useAuthStore } from '@/stores/auth-store';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 type Lang = 'uk' | 'ru' | 'en';
-type WorkMode = 'cabinet' | 'mobile' | 'both';
+type WorkMode = 'cabinet' | 'mobile' | 'online';
 
 const T = {
   uk: {
@@ -49,7 +49,7 @@ const T = {
     step3Sub: 'Клієнти приходять до вас чи ви виїжджаєте?',
     step3Cabinet: 'У своєму кабінеті', step3CabinetSub: 'Клієнти приходять за моєю адресою',
     step3Mobile:  'На виїзді', step3MobileSub:  'Я їжджу до клієнтів',
-    step3Both:    'І так, і так', step3BothSub:    'Залежно від послуги',
+    step3Online:  'Онлайн', step3OnlineSub:  'Працюю дистанційно / онлайн',
     addressTitle: 'Де знаходиться ваш кабінет?',
     addressPlaceholder: 'Введіть адресу…',
     addressHint: 'Перетягніть маркер, щоб уточнити',
@@ -74,7 +74,7 @@ const T = {
     step3Sub: 'Клиенты приходят к вам или вы выезжаете?',
     step3Cabinet: 'В своём кабинете', step3CabinetSub: 'Клиенты приходят по моему адресу',
     step3Mobile:  'На выезде', step3MobileSub:  'Я езжу к клиентам',
-    step3Both:    'И так, и так', step3BothSub:    'Зависит от услуги',
+    step3Online:  'Онлайн', step3OnlineSub:  'Работаю дистанционно / онлайн',
     addressTitle: 'Где находится ваш кабинет?',
     addressPlaceholder: 'Введите адрес…',
     addressHint: 'Перетащите маркер, чтобы уточнить',
@@ -99,7 +99,7 @@ const T = {
     step3Sub: 'Do clients come to you or do you travel?',
     step3Cabinet: 'At my place', step3CabinetSub: 'Clients come to my address',
     step3Mobile:  'On the go', step3MobileSub:  'I travel to clients',
-    step3Both:    'Both', step3BothSub:    'Depends on the service',
+    step3Online:  'Online', step3OnlineSub:  'I work remotely / online',
     addressTitle: 'Where is your studio?',
     addressPlaceholder: 'Search address…',
     addressHint: 'Drag the pin to fine-tune the location',
@@ -142,7 +142,7 @@ const VERTICALS: Array<{
 const WORKPLACES: Array<{ key: WorkMode; Icon: IconCmp }> = [
   { key: 'cabinet', Icon: Home },
   { key: 'mobile',  Icon: MapPin },
-  { key: 'both',    Icon: Building },
+  { key: 'online',  Icon: Globe },
 ];
 
 // ─── Service item with local state ───────────────────────────────────────────
@@ -183,7 +183,7 @@ export default function MasterOnboardingPage() {
   const userId = useAuthStore((s) => s.userId);
   const role   = useAuthStore((s) => s.role);
 
-  const [lang, setLang] = useState<Lang>('ru');
+  const [lang, setLang] = useState<Lang>('uk');
   const [step, setStep] = useState<Step>(1);
   const [direction, setDirection] = useState(1);
 
@@ -275,13 +275,17 @@ export default function MasterOnboardingPage() {
   async function finish(skipServices = false) {
     if (!userId) return;
     setSaving(true);
+    const isOnlineEducation = vertical === 'education' && workMode === 'online';
     const selected = skipServices
       ? []
-      : services.filter((s) => s.enabled).map((s) => ({
-          name: s.name,
-          duration_minutes: s.duration_minutes,
-          price: s.price,
-        }));
+      : services
+          .filter((s) => s.enabled)
+          .filter((s) => !(isOnlineEducation && s.name === 'Онлайн-урок'))
+          .map((s) => ({
+            name: s.name,
+            duration_minutes: s.duration_minutes,
+            price: s.price,
+          }));
 
     try {
       await fetch('/api/telegram/master-setup', {
@@ -462,7 +466,11 @@ export default function MasterOnboardingPage() {
             >
               <Step4Services
                 t={t}
-                services={services}
+                services={
+                  vertical === 'education' && workMode === 'online'
+                    ? services.filter((s) => s.name !== 'Онлайн-урок')
+                    : services
+                }
                 onChange={setServices}
                 onFinish={() => finish(false)}
                 onSkip={() => finish(true)}
@@ -668,7 +676,7 @@ function Step3Workplace({
   onCoordsChange: (c: { lat: number; lng: number } | null) => void;
   onNext: () => void;
 }) {
-  const needsAddress = selected === 'cabinet' || selected === 'both';
+  const needsAddress = selected === 'cabinet';
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<NominatimResult[]>([]);
@@ -732,7 +740,7 @@ function Step3Workplace({
   const labels: Record<WorkMode, { title: string; sub: string }> = {
     cabinet: { title: t.step3Cabinet, sub: t.step3CabinetSub },
     mobile:  { title: t.step3Mobile,  sub: t.step3MobileSub },
-    both:    { title: t.step3Both,    sub: t.step3BothSub },
+    online:  { title: t.step3Online,  sub: t.step3OnlineSub },
   };
 
   return (

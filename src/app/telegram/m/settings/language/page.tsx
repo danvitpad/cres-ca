@@ -24,7 +24,7 @@ const LANGS: { code: Lang; label: string; flag: string }[] = [
 
 export default function MiniAppLanguagePage() {
   const { haptic } = useTelegram();
-  const [current, setCurrent] = useState<Lang>('ru');
+  const [current, setCurrent] = useState<Lang>('uk');
   const [busy, setBusy] = useState(false);
 
   // Подтягиваем сохранённое значение из БД, чтобы переключатель показал

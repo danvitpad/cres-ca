@@ -400,7 +400,7 @@ export default function MiniAppHomePage() {
                   return (
                     <Link
                       key={m.id}
-                      href={`/m/${m.slug}`}
+                      href={`/telegram/search/${m.id}`}
                       onClick={() => haptic('light')}
                       style={{
                         flexShrink: 0,
