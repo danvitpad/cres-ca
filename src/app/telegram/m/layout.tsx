@@ -63,10 +63,20 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         useAuthStore.getState().setAuth(user.id, role, tier, profile?.full_name ?? null);
         resolvedUserId = user.id;
       }
+      // Раньше тут редирект на /telegram/home если в masters пусто, но
+      // SELECT через browser supabase client иногда даёт null из-за RLS race
+      // даже когда master row реально существует — мастер попадал на
+      // клиентскую главную после логина. Доверяем routing'у /api/me/role
+      // и login-странице. Если юзер реально не мастер — ему просто
+      // покажется master-layout с пустыми данными (не критично, лучше
+      // чем сломанная навигация).
       const { data } = await supabase.from('masters').select('id').eq('profile_id', resolvedUserId).maybeSingle();
       if (cancelled) return;
       if (!data) {
-        router.replace('/telegram/home');
+        // Не редиректим. Просто продолжаем — пользователь увидит мастерскую
+        // оболочку. Если он не мастер по факту — внутренние API вернут пусто,
+        // но навигация останется доступной.
+        setChecking(false);
         return;
       }
       // Check unified team membership for nav restriction
