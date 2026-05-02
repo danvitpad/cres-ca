@@ -6,20 +6,15 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 export async function POST(request: Request) {
-  const { initData } = await request.json().catch(() => ({}));
-  if (!initData) {
-    return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
+  // Принимаем оба варианта auth: cookie session (browser) или TG initData.
+  const userId = await resolveUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
-  const result = validateInitData(initData);
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
-
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -29,7 +24,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select('id, full_name, first_name, last_name')
-    .eq('telegram_id', tg.id)
+    .eq('id', userId)
     .maybeSingle();
   if (!profile) {
     return NextResponse.json({ master: null, profile: null });
@@ -85,34 +80,23 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const { initData, is_busy } = await request.json().catch(() => ({}));
-  if (!initData || typeof is_busy !== 'boolean') {
+  const { is_busy } = await request.json().catch(() => ({}));
+  if (typeof is_busy !== 'boolean') {
     return NextResponse.json({ error: 'missing_params' }, { status: 400 });
   }
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const result = validateInitData(initData);
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
-
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('telegram_id', tg.id)
-    .maybeSingle();
-  if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 403 });
-
   const { error } = await admin
     .from('masters')
     .update({ is_busy })
-    .eq('profile_id', profile.id);
+    .eq('profile_id', userId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

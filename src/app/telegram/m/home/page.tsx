@@ -79,7 +79,7 @@ export default function MasterMiniAppHome() {
     if (!userId) return;
     (async () => {
       const initData = getInitData();
-      if (!initData) { setLoading(false); return; }
+      // initData не обязателен — для browser users API использует cookie session
 
       const ctxRes = await fetch('/api/telegram/m/home', {
         method: 'POST',
