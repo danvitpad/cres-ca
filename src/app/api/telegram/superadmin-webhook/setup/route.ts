@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server';
 
-export async function POST() {
+async function registerWebhook() {
   const token = (process.env.TELEGRAM_SUPERADMIN_BOT_TOKEN ?? '').trim();
   if (!token) {
     return NextResponse.json({ error: 'TELEGRAM_SUPERADMIN_BOT_TOKEN not set' }, { status: 500 });
@@ -31,3 +31,6 @@ export async function POST() {
   const body = await res.json().catch(() => ({}));
   return NextResponse.json({ ok: res.ok, status: res.status, webhookUrl, body });
 }
+
+export async function POST() { return registerWebhook(); }
+export async function GET() { return registerWebhook(); }
