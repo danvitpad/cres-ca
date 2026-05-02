@@ -11,8 +11,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, Sparkles, ChevronRight, Loader2, Search } from 'lucide-react';
+import { Calendar, Clock, MapPin, Sparkles, ChevronRight, Loader2, Search, Users, Wallet } from 'lucide-react';
 import { FeaturedMastersStrip } from '@/components/client/featured-masters-strip';
+import { createClient } from '@/lib/supabase/client';
 
 interface SalonEmbed {
   id: string;
@@ -51,6 +52,8 @@ export default function ClientFeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [city, setCity] = useState<string | undefined>(undefined);
+  const [firstName, setFirstName] = useState<string>('');
+  const [stats, setStats] = useState<{ totalVisits: number; bonusBalance: number; followingCount: number } | null>(null);
   const [regulars, setRegulars] = useState<Array<{
     master_id: string; master_name: string; master_slug: string;
     service_id: string; service_name: string;
@@ -90,14 +93,93 @@ export default function ClientFeedPage() {
         }
       } catch {}
     })();
+
+    // Загружаем имя + базовая статистика для приветствия
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, full_name, bonus_balance, following_count')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile) {
+          const p = profile as { first_name?: string | null; full_name?: string | null; bonus_balance?: number | null; following_count?: number | null };
+          setFirstName((p.first_name || p.full_name?.split(' ')[0] || '').trim());
+          // Считаем визиты — клиент мог быть в нескольких clients-карточках разных мастеров
+          const { data: clientRows } = await supabase
+            .from('clients')
+            .select('total_visits')
+            .eq('profile_id', user.id);
+          const totalVisits = (clientRows ?? []).reduce((s, r) => s + Number((r as { total_visits?: number }).total_visits ?? 0), 0);
+          setStats({
+            totalVisits,
+            bonusBalance: Number(p.bonus_balance ?? 0),
+            followingCount: Number(p.following_count ?? 0),
+          });
+        }
+      } catch { /* best-effort */ }
+    })();
   }, []);
+
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 5) return 'Доброй ночи';
+    if (h < 12) return 'Доброе утро';
+    if (h < 18) return 'Добрый день';
+    return 'Добрый вечер';
+  })();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
-      <header className="mb-6">
-        <h1 className="text-[26px] font-bold tracking-tight">Свободные окна</h1>
-        <p className="mt-1 text-[14px] text-neutral-500">
-          Ближайшие открытые часы у твоих контактов — мастеров, салонов и команд.
+      {/* Hero — приветствие по имени + краткая статистика клиента.
+          Если человек не залогинен — приветствие без имени, stats скрыты. */}
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6 rounded-2xl border border-border/40 bg-gradient-to-br from-[var(--ds-accent-soft,rgba(20,184,166,0.10))] to-transparent p-5"
+      >
+        <h1 className="text-[26px] font-bold tracking-tight">
+          {greeting}{firstName ? `, ${firstName}` : ''} 👋
+        </h1>
+        <p className="mt-1 text-[14px] text-muted-foreground">
+          Ближайшие свободные окна, твои постоянные мастера и быстрые действия — всё на одном экране.
+        </p>
+        {stats && (
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Link href="/history" className="rounded-xl bg-card/60 p-3 transition-colors hover:bg-card">
+              <div className="text-[18px] font-bold tabular-nums text-foreground">{stats.totalVisits}</div>
+              <div className="text-[11px] text-muted-foreground">визитов</div>
+            </Link>
+            <Link href="/wallet" className="rounded-xl bg-card/60 p-3 transition-colors hover:bg-card">
+              <div className="text-[18px] font-bold tabular-nums text-[var(--ds-accent,#14b8a6)]">{stats.bonusBalance}</div>
+              <div className="text-[11px] text-muted-foreground">бонусов</div>
+            </Link>
+            <Link href="/my-masters" className="rounded-xl bg-card/60 p-3 transition-colors hover:bg-card">
+              <div className="text-[18px] font-bold tabular-nums text-foreground">{stats.followingCount}</div>
+              <div className="text-[11px] text-muted-foreground">подписок</div>
+            </Link>
+          </div>
+        )}
+      </motion.header>
+
+      {/* Quick actions — 4 крупные карточки.
+          Раньше клиент попадал на /feed и видел только пустой список.
+          Теперь сразу понятно куда ткнуть: Найти мастера / Семья /
+          Мои записи / Кошелёк. */}
+      <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <QuickAction href="/search" icon={<Search className="size-5" />} label="Найти мастера" accent="#14b8a6" />
+        <QuickAction href="/family" icon={<Users className="size-5" />} label="Моя семья" accent="#3b82f6" />
+        <QuickAction href="/appointments" icon={<Calendar className="size-5" />} label="Мои записи" accent="#f97316" />
+        <QuickAction href="/wallet" icon={<Wallet className="size-5" />} label="Кошелёк" accent="#a855f7" />
+      </section>
+
+      <header className="mb-4">
+        <h2 className="text-[18px] font-bold tracking-tight">Свободные окна</h2>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">
+          У твоих контактов — мастеров, салонов и команд.
         </p>
       </header>
 
@@ -160,6 +242,30 @@ export default function ClientFeedPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+function QuickAction({
+  href, icon, label, accent,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  accent: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex flex-col items-center gap-2 rounded-2xl border border-border/40 bg-card p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <span
+        className="flex size-10 items-center justify-center rounded-full text-white transition-transform group-hover:scale-110"
+        style={{ background: accent }}
+      >
+        {icon}
+      </span>
+      <span className="text-[12px] font-semibold leading-tight text-foreground">{label}</span>
+    </Link>
   );
 }
 
