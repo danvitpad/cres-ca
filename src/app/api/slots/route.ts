@@ -156,27 +156,35 @@ export async function GET(request: NextRequest) {
 
   const slots: string[] = [];
   const pastSlots: string[] = [];
+  const bookedSlots: string[] = [];
   for (let t = startMin; t + duration <= endMin; t += 30) {
-    // Check break overlap
+    // Check break overlap — ломаное время скрываем полностью (это не «занято»,
+    // а просто выходное окно), не показываем серым.
     if (breakStart !== null && breakEnd !== null) {
       if (t < breakEnd && t + duration > breakStart) continue;
     }
 
-    // Check appointment overlap
+    const time = minutesToTime(t);
+
+    // Past-time
+    if (isToday && t <= nowMin + 5) {
+      pastSlots.push(time);
+      continue;
+    }
+
+    // Booked by another client
     const hasConflict = busySlots.some(
       (busy) => t < busy.end && t + duration > busy.start,
     );
-    if (hasConflict) continue;
-
-    const time = minutesToTime(t);
-    if (isToday && t <= nowMin + 5) {
-      pastSlots.push(time);
-    } else {
-      slots.push(time);
+    if (hasConflict) {
+      bookedSlots.push(time);
+      continue;
     }
+
+    slots.push(time);
   }
 
-  return NextResponse.json({ slots, pastSlots });
+  return NextResponse.json({ slots, pastSlots, bookedSlots });
 }
 
 function timeToMinutes(time: string): number {

@@ -245,8 +245,10 @@ export default function MiniAppAppointmentDetail() {
     row.status !== 'cancelled_by_client' &&
     row.status !== 'completed' &&
     row.status !== 'no_show';
-  // Перенести имеет смысл только для будущих записей — иначе двигать некуда.
-  const canReschedule = canCancel && hoursUntilStart > 0;
+  // Перенести показываем всегда вместе с «Отменить» — даже если запись в
+  // прошлом, клиент может перенести её на будущую дату (это и есть запасной
+  // вариант для no-show — не отмена с штрафом, а перенос).
+  const canReschedule = canCancel;
   const isCompleted = row.status === 'completed';
   const statusInfo = statusLabels[row.status] ?? statusLabels.booked;
 
@@ -364,24 +366,48 @@ export default function MiniAppAppointmentDetail() {
         </div>
       )}
 
-      {/* Contact — звонок мастеру. Telegram WebView иногда игнорирует <a tel:>,
-          поэтому дублируем onClick → window.location, чтобы точно открылся
-          нативный диалер. */}
+      {/* Contact — звонок мастеру. В Telegram Mini App нативный <a href="tel:">
+          часто блокируется WebView, поэтому используем Telegram.WebApp.openLink
+          (умеет open tel:/mailto: вне приложения), а на десктопе/браузере —
+          обычный <a>. Плюс кнопка «Скопировать» как страховка. */}
       {row.master?.profile?.phone && (
-        <a
-          href={`tel:${row.master.profile.phone}`}
-          onClick={(e) => {
-            const phone = row.master?.profile?.phone;
-            if (!phone) return;
-            haptic('light');
-            // Force navigation в случае если TG WebView перехватывает клик
-            e.preventDefault();
-            window.location.href = `tel:${phone}`;
-          }}
-          className="flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
-        >
-          <Phone className="size-4" /> Позвонить мастеру · {row.master.profile.phone}
-        </a>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              const phone = row.master?.profile?.phone;
+              if (!phone) return;
+              haptic('light');
+              const tg = (window as { Telegram?: { WebApp?: { openLink?: (u: string, opts?: { try_instant_view?: boolean }) => void } } }).Telegram?.WebApp;
+              if (tg?.openLink) {
+                try { tg.openLink(`tel:${phone}`); return; } catch { /* fallback */ }
+              }
+              // Fallback for browsers / when openLink fails
+              window.location.href = `tel:${phone}`;
+            }}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
+          >
+            <Phone className="size-4" /> {row.master.profile.phone}
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              const phone = row.master?.profile?.phone;
+              if (!phone) return;
+              haptic('light');
+              try {
+                await navigator.clipboard.writeText(phone);
+                toast(`Номер скопирован: ${phone}`);
+              } catch {
+                toast(phone);
+              }
+            }}
+            className="rounded-2xl border border-neutral-200 bg-white/5 px-3 py-3 text-xs font-semibold text-neutral-600 active:scale-[0.98] transition-transform"
+            title="Скопировать номер"
+          >
+            Копировать
+          </button>
+        </div>
       )}
 
       {/* Notes */}
@@ -469,7 +495,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end bg-neutral-900/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-end bg-neutral-900/70 backdrop-blur-sm"
             onClick={() => !busy && setCancelOpen(false)}
           >
             <motion.div
@@ -478,7 +504,9 @@ export default function MiniAppAppointmentDetail() {
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
               className="w-full space-y-4 rounded-t-[32px] border-t border-neutral-200 bg-white p-6"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+              // Padding снизу клирит floating bottom-nav (12px bottom + 64px высота
+              // + safe-area). Иначе кнопки «Назад/Отменить» уезжают под nav.
+              style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}
             >
               <div className="flex items-start justify-between">
                 <div>
@@ -541,7 +569,7 @@ export default function MiniAppAppointmentDetail() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end bg-neutral-900/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-end bg-neutral-900/70 backdrop-blur-sm"
             onClick={() => !busy && setRatingOpen(false)}
           >
             <motion.div
@@ -550,7 +578,7 @@ export default function MiniAppAppointmentDetail() {
               exit={{ y: 40, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
               className="w-full space-y-4 rounded-t-[32px] border-t border-neutral-200 bg-white p-6"
-              style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+              style={{ paddingBottom: 'calc(96px + env(safe-area-inset-bottom))' }}
             >
               <div className="flex items-start justify-between">
                 <div>

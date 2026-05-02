@@ -210,6 +210,7 @@ export default function MiniAppBookPage() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
   const [pastSlots, setPastSlots] = useState<string[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -336,6 +337,7 @@ export default function MiniAppBookPage() {
     setNextAvailableDate(null);
     setSlots([]);
     setPastSlots([]);
+    setBookedSlots([]);
 
     const dateStr = toLocalDateStr(date);
     // Use the first selected service for slot calculation (total duration matters)
@@ -345,8 +347,10 @@ export default function MiniAppBookPage() {
     const data = await res.json();
     const fetchedSlots = data.slots ?? [];
     const fetchedPast = data.pastSlots ?? [];
+    const fetchedBooked = data.bookedSlots ?? [];
     setSlots(fetchedSlots);
     setPastSlots(fetchedPast);
+    setBookedSlots(fetchedBooked);
 
     // If no slots, find next available date
     if (fetchedSlots.length === 0) {
@@ -915,7 +919,7 @@ export default function MiniAppBookPage() {
                           <div key={i} className="h-12 animate-pulse rounded-xl bg-white border-neutral-200" />
                         ))}
                       </div>
-                    ) : slots.length === 0 && pastSlots.length === 0 ? (
+                    ) : slots.length === 0 && pastSlots.length === 0 && bookedSlots.length === 0 ? (
                       <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
                         <CalendarIcon className="mx-auto mb-2 size-7 text-neutral-900/20" />
                         <p className="text-[13px] font-medium text-neutral-500">
@@ -932,42 +936,54 @@ export default function MiniAppBookPage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-3 gap-2">
-                        {/* Past slots — disabled grey, для прозрачности «вот это
-                            время уже прошло, нельзя записаться». Не нажимаются. */}
-                        {pastSlots.map((time, i) => (
-                          <motion.div
-                            key={`past-${time}`}
-                            custom={i}
-                            variants={cardVariants}
-                            initial="hidden"
-                            animate="visible"
-                            className="flex items-center justify-center rounded-xl border border-neutral-100 bg-neutral-50 py-3 text-[15px] font-semibold text-neutral-300 line-through cursor-not-allowed select-none"
-                            aria-disabled="true"
-                            title="Это время уже прошло"
-                          >
-                            {time}
-                          </motion.div>
-                        ))}
-                        {slots.map((time, i) => {
-                          const isSelected = selectedTime === time;
-                          return (
-                            <motion.button
-                              key={time}
-                              custom={pastSlots.length + i}
-                              variants={cardVariants}
-                              initial="hidden"
-                              animate="visible"
-                              onClick={() => handleSelectTime(time)}
-                              className={`flex items-center justify-center rounded-xl border py-3 text-[15px] font-semibold transition-colors ${
-                                isSelected
-                                  ? 'border-neutral-300 bg-white text-black'
-                                  : 'border-neutral-200 bg-white text-neutral-900 active:bg-neutral-50'
-                              }`}
-                            >
-                              {time}
-                            </motion.button>
-                          );
-                        })}
+                        {/* Все слоты в одной сетке, отсортированные по времени.
+                            Прошедшие и занятые рисуем серыми, не нажимаются. */}
+                        {(() => {
+                          type Slot = { time: string; state: 'free' | 'past' | 'booked' };
+                          const all: Slot[] = [
+                            ...pastSlots.map((t) => ({ time: t, state: 'past' as const })),
+                            ...bookedSlots.map((t) => ({ time: t, state: 'booked' as const })),
+                            ...slots.map((t) => ({ time: t, state: 'free' as const })),
+                          ].sort((a, b) => a.time.localeCompare(b.time));
+                          return all.map((s, i) => {
+                            if (s.state === 'free') {
+                              const isSelected = selectedTime === s.time;
+                              return (
+                                <motion.button
+                                  key={`free-${s.time}`}
+                                  custom={i}
+                                  variants={cardVariants}
+                                  initial="hidden"
+                                  animate="visible"
+                                  onClick={() => handleSelectTime(s.time)}
+                                  className={`flex items-center justify-center rounded-xl border py-3 text-[15px] font-semibold transition-colors ${
+                                    isSelected
+                                      ? 'border-neutral-300 bg-white text-black'
+                                      : 'border-neutral-200 bg-white text-neutral-900 active:bg-neutral-50'
+                                  }`}
+                                >
+                                  {s.time}
+                                </motion.button>
+                              );
+                            }
+                            // Past or booked — both render as grey disabled with subtle differences
+                            const tooltip = s.state === 'past' ? 'Это время уже прошло' : 'Это время уже занято';
+                            return (
+                              <motion.div
+                                key={`${s.state}-${s.time}`}
+                                custom={i}
+                                variants={cardVariants}
+                                initial="hidden"
+                                animate="visible"
+                                className={`flex items-center justify-center rounded-xl border border-neutral-100 bg-neutral-50 py-3 text-[15px] font-semibold text-neutral-300 cursor-not-allowed select-none ${s.state === 'past' ? 'line-through' : ''}`}
+                                aria-disabled="true"
+                                title={tooltip}
+                              >
+                                {s.time}
+                              </motion.div>
+                            );
+                          });
+                        })()}
                       </div>
                     )}
                     {/* Только прошедшие слоты — показываем подсказку выбрать другой день */}

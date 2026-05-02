@@ -2,19 +2,19 @@
  * name: OwnerInlineQuickSettings
  * description: Компактная панель быстрых настроек публичной страницы,
  *              отображается ТОЛЬКО владельцу прямо на /m/{handle} (под
- *              hero-card). Содержит самые часто используемые toggle:
- *              «Опубликована», «Принимаю онлайн». Плюс inline-поле
- *              CRES-CA ID, шорткат к выбору фона/акцента и кнопка
- *              «Все настройки» открывает полный drawer (PublicPageCustomizer)
- *              для редких полей (соцсети, языки, интересы…).
- *              Удаляет необходимость открывать drawer для рутины.
+ *              hero-card). Содержит: toggle «Опубликована» / «Принимаю
+ *              онлайн», CRES-CA ID, переключатель светлая/тёмная тема.
+ *              Картинка фона / акцентный цвет / drawer «Все настройки» —
+ *              удалены по запросу пользователя (упрощение, ничего не
+ *              конфликтует с текстом).
  * created: 2026-05-02
+ * updated: 2026-05-02
  * --- */
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Globe, Wifi, Settings as SettingsIcon, Check, X, Palette, ImagePlus, Trash2, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Globe, Wifi, Check, Sun, Moon } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
@@ -24,27 +24,14 @@ interface MasterRow {
   slug: string | null;
   is_public: boolean | null;
   works_online: boolean | null;
-  theme_primary_color: string | null;
   theme_background_color: string | null;
-  theme_background_image_url: string | null;
 }
 
-const BG_PRESETS: { label: string; value: string | null; sample: string }[] = [
-  { label: 'Светлый', value: null, sample: '#ffffff' },
-  { label: 'Молочный', value: '#fafaf7', sample: '#fafaf7' },
-  { label: 'Серый', value: '#f3f4f6', sample: '#f3f4f6' },
-  { label: 'Песок', value: '#fef9f0', sample: '#fef9f0' },
-  { label: 'Розовый', value: '#fdf2f8', sample: '#fdf2f8' },
-  { label: 'Мятный', value: '#ecfdf5', sample: '#ecfdf5' },
-  { label: 'Голубой', value: '#eff6ff', sample: '#eff6ff' },
-  { label: 'Лавандовый', value: '#f5f3ff', sample: '#f5f3ff' },
-  { label: 'Графит', value: '#1f2937', sample: '#1f2937' },
-  { label: 'Полночь', value: '#0f172a', sample: '#0f172a' },
-];
-
-const ACCENT_PRESETS = [
-  '#14b8a6', '#3b82f6', '#10b981', '#eab308',
-  '#f97316', '#ef4444', '#ec4899', '#6366f1',
+// Только две темы: светлая (null) и тёмная (полночь). Никаких цветных пресетов
+// и кастомных картинок — текст должен быть читаем на любом фоне.
+const THEMES: { key: 'light' | 'dark'; label: string; bg: string | null; sample: string; icon: typeof Sun }[] = [
+  { key: 'light', label: 'Светлая', bg: null, sample: '#ffffff', icon: Sun },
+  { key: 'dark',  label: 'Тёмная',  bg: '#0f172a', sample: '#0f172a', icon: Moon },
 ];
 
 export function OwnerInlineQuickSettings({
@@ -52,19 +39,11 @@ export function OwnerInlineQuickSettings({
 }: {
   masterProfileId: string | null;
 }) {
-  // Открытие полного редактора — через window event, не через prop-callback,
-  // потому что этот компонент рендерится из Server Component (page.tsx),
-  // и передача функций как props через серверную границу запрещена в Next.js.
-  function openFullEditor() {
-    window.dispatchEvent(new CustomEvent('cres:open-full-editor'));
-  }
   const [isOwner, setIsOwner] = useState(false);
   const [master, setMaster] = useState<MasterRow | null>(null);
   const [draftSlug, setDraftSlug] = useState('');
   const [slugError, setSlugError] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<string | null>(null);
-  const [bgImageUploading, setBgImageUploading] = useState(false);
-  const bgFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!masterProfileId) return;
@@ -74,7 +53,7 @@ export function OwnerInlineQuickSettings({
       setIsOwner(true);
       const { data: row } = await supabase
         .from('masters')
-        .select('id, profile_id, slug, is_public, works_online, theme_primary_color, theme_background_color, theme_background_image_url')
+        .select('id, profile_id, slug, is_public, works_online, theme_background_color')
         .eq('profile_id', masterProfileId)
         .maybeSingle();
       if (row) {
@@ -106,41 +85,13 @@ export function OwnerInlineQuickSettings({
     }
   }
 
-  async function uploadBgImage(file: File) {
-    if (!masterProfileId) return;
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Файл больше 8 MB');
-      return;
-    }
-    setBgImageUploading(true);
-    try {
-      const supabase = createClient();
-      const ext = file.name.split('.').pop() ?? 'jpg';
-      const path = `${masterProfileId}/bg-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
-        cacheControl: '3600', upsert: false,
-      });
-      if (upErr) { toast.error(`Загрузка: ${upErr.message}`); return; }
-      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      const ok = await patch('theme_background_image_url', pub.publicUrl);
-      if (ok) toast.success('Фон обновлён');
-    } finally {
-      setBgImageUploading(false);
-    }
-  }
-
-  async function clearBgImage() {
-    const ok = await patch('theme_background_image_url', null);
-    if (ok) toast.success('Фон-картинка убрана');
-  }
-
   async function saveSlug() {
     setSlugError(null);
     if (!draftSlug.trim()) {
       setSlugError('Введите CRES-CA ID');
       return;
     }
-    if (draftSlug === master?.slug) return; // ничего не поменялось
+    if (draftSlug === master?.slug) return;
     setSavingField('slug');
     try {
       const res = await fetch('/api/me/master-customization', {
@@ -159,26 +110,20 @@ export function OwnerInlineQuickSettings({
         return;
       }
       toast.success('CRES-CA ID обновлён. Обновите ссылку у клиентов!');
-      // Перезагружаем страницу — URL сменился, новый slug в адресной строке
       setTimeout(() => { window.location.href = `/m/${draftSlug.trim().toLowerCase()}`; }, 500);
     } finally {
       setSavingField(null);
     }
   }
 
+  // Determine current theme — null/light bg → light; dark hex → dark
+  const currentTheme: 'light' | 'dark' =
+    master.theme_background_color && /^#0/.test(master.theme_background_color) ? 'dark' : 'light';
+
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3">
         <h3 className="text-sm font-bold text-neutral-900">Управление страницей</h3>
-        <button
-          type="button"
-          onClick={openFullEditor}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
-          title="Открыть все настройки"
-        >
-          <SettingsIcon className="size-3.5" />
-          Все настройки
-        </button>
       </div>
 
       {/* Toggles */}
@@ -194,20 +139,20 @@ export function OwnerInlineQuickSettings({
         <ToggleRow
           icon={<Wifi className="size-4" />}
           label="Принимаю онлайн"
-          hint="Бейдж «Online» на аватаре + блок адреса можно скрыть"
+          hint="Зелёный значок «Online» рядом с аватаром"
           checked={master.works_online ?? false}
           loading={savingField === 'works_online'}
           onChange={(v) => patch('works_online', v)}
         />
       </div>
 
-      {/* CRES-CA ID */}
+      {/* CRES-CA ID — одна строка, вертикальная компоновка чтобы не сжимался */}
       <div className="mt-4 border-t border-neutral-100 pt-3">
         <div className="mb-1.5 text-xs font-semibold text-neutral-700">CRES-CA ID</div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-md bg-neutral-100 px-2 py-1.5 text-xs font-mono text-neutral-500">
-            cres-ca.com/m/
-          </span>
+        <div className="rounded-md bg-neutral-100 px-2 py-1.5 text-[11px] font-mono text-neutral-500 truncate">
+          cres-ca.com/m/<span className="text-neutral-900">{master.slug ?? '...'}</span>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
           <input
             type="text"
             value={draftSlug}
@@ -215,9 +160,9 @@ export function OwnerInlineQuickSettings({
               setDraftSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
               setSlugError(null);
             }}
-            placeholder={master.slug ?? 'твой-id'}
+            placeholder="ваш-id"
             maxLength={32}
-            className="flex-1 rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs font-mono outline-none focus:border-[var(--ds-accent,#14b8a6)]"
+            className="flex-1 min-w-0 rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs font-mono outline-none focus:border-[var(--ds-accent,#14b8a6)]"
             style={slugError ? { borderColor: '#ef4444' } : undefined}
           />
           <button
@@ -233,117 +178,32 @@ export function OwnerInlineQuickSettings({
         {slugError && <p className="mt-1 text-[11px] text-rose-500">{slugError}</p>}
       </div>
 
-      {/* Background image uploader */}
+      {/* Theme — только Светлая / Тёмная */}
       <div className="mt-4 border-t border-neutral-100 pt-3">
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-neutral-700">
-          <ImagePlus className="size-3.5" />
-          Картинка фона
-        </div>
-        {master.theme_background_image_url ? (
-          <div className="flex items-center gap-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={master.theme_background_image_url}
-              alt=""
-              className="size-12 rounded-md object-cover ring-1 ring-black/10"
-            />
-            <button
-              type="button"
-              onClick={() => bgFileRef.current?.click()}
-              disabled={bgImageUploading}
-              className="flex-1 rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-            >
-              {bgImageUploading ? 'Загрузка…' : 'Заменить'}
-            </button>
-            <button
-              type="button"
-              onClick={clearBgImage}
-              disabled={bgImageUploading || savingField === 'theme_background_image_url'}
-              className="rounded-md border border-neutral-200 bg-white p-1.5 text-rose-500 hover:bg-rose-50 disabled:opacity-50"
-              title="Убрать фон-картинку"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => bgFileRef.current?.click()}
-            disabled={bgImageUploading}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-neutral-300 bg-neutral-50 py-3 text-[11px] font-medium text-neutral-600 hover:bg-neutral-100 disabled:opacity-50"
-          >
-            {bgImageUploading ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <ImagePlus className="size-4" />
-            )}
-            {bgImageUploading ? 'Загрузка…' : 'Загрузить свою картинку фона'}
-          </button>
-        )}
-        <input
-          ref={bgFileRef}
-          type="file"
-          accept="image/*"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) uploadBgImage(f);
-            e.target.value = '';
-          }}
-        />
-      </div>
-
-      {/* Background color presets (используется когда нет картинки) */}
-      <div className="mt-4 border-t border-neutral-100 pt-3">
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-neutral-700">
-          <Palette className="size-3.5" />
-          {master.theme_background_image_url ? 'Цвет фона (под картинкой)' : 'Фон'}
-        </div>
-        <div className="grid grid-cols-5 gap-1.5">
-          {BG_PRESETS.map((p) => {
-            const active = (master.theme_background_color ?? null) === p.value;
+        <div className="mb-1.5 text-xs font-semibold text-neutral-700">Тема страницы</div>
+        <div className="grid grid-cols-2 gap-2">
+          {THEMES.map((t) => {
+            const Icon = t.icon;
+            const active = currentTheme === t.key;
             return (
               <button
-                key={p.label}
+                key={t.key}
                 type="button"
-                onClick={() => patch('theme_background_color', p.value)}
+                onClick={() => patch('theme_background_color', t.bg)}
                 disabled={savingField === 'theme_background_color'}
-                className={`group flex flex-col items-center gap-1 rounded-md border p-1 transition ${active ? 'border-[var(--ds-accent,#14b8a6)] ring-1 ring-[var(--ds-accent,#14b8a6)]' : 'border-neutral-200 hover:border-neutral-300'}`}
-                title={p.label}
+                className={`flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-semibold transition ${
+                  active
+                    ? 'border-[var(--ds-accent,#14b8a6)] bg-[var(--ds-accent,#14b8a6)]/10 text-[var(--ds-accent,#14b8a6)]'
+                    : 'border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                }`}
               >
-                <span className="h-5 w-full rounded border border-black/5" style={{ background: p.sample }} />
-                <span className="text-[9px] text-neutral-500 group-hover:text-neutral-900">{p.label}</span>
+                <Icon className="size-3.5" />
+                {t.label}
               </button>
             );
           })}
         </div>
       </div>
-
-      {/* Accent color */}
-      <div className="mt-4 border-t border-neutral-100 pt-3">
-        <div className="mb-1.5 text-xs font-semibold text-neutral-700">Акцентный цвет</div>
-        <div className="flex flex-wrap gap-1.5">
-          {ACCENT_PRESETS.map((c) => {
-            const active = (master.theme_primary_color ?? '') === c;
-            return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => patch('theme_primary_color', c)}
-                disabled={savingField === 'theme_primary_color'}
-                className={`size-7 rounded-full transition ${active ? 'ring-2 ring-offset-1 ring-neutral-900' : 'ring-1 ring-black/10'}`}
-                style={{ background: c }}
-                title={c}
-              />
-            );
-          })}
-        </div>
-      </div>
-
-      <p className="mt-3 text-[10px] leading-relaxed text-neutral-500">
-        Изменения применяются сразу. Закрытые настройки (соцсети, языки, тип
-        страницы…) — в полном редакторе через «Все настройки».
-      </p>
     </div>
   );
 }
@@ -388,12 +248,6 @@ function ToggleRow({
         disabled={loading}
         onChange={(e) => onChange(e.target.checked)}
       />
-      {loading && (
-        <X
-          className="size-3.5 animate-spin text-neutral-400"
-          style={{ animation: 'spin 1s linear infinite' }}
-        />
-      )}
     </label>
   );
 }

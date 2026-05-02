@@ -63,41 +63,11 @@ export async function POST(request: Request) {
       .eq('id', appointment_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    // Notify master via TG direct (bypass daily cron)
-    const { data: masterRow } = await admin
-      .from('masters')
-      .select('profile_id, profile:profiles!masters_profile_id_fkey(telegram_id)')
-      .eq('id', apt.master_id)
-      .maybeSingle();
-    const masterProfileId = masterRow?.profile_id;
-    const masterTg = (masterRow as { profile?: { telegram_id?: number | null } | null } | null)?.profile?.telegram_id;
-    const svc = Array.isArray(apt.service) ? apt.service[0] : apt.service;
-    // Указываем timeZone — на сервере по умолчанию UTC, без явной зоны
-    // время записи рендерилось как 07:00 вместо 10:00 (Киев).
-    const whenStr = new Date(apt.starts_at).toLocaleString('ru', {
-      timeZone: 'Europe/Kyiv',
-      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-    });
-    if (masterTg) {
-      const { sendMessage } = await import('@/lib/telegram/bot');
-      try {
-        await sendMessage(masterTg as unknown as number,
-          `<b>❌ Запись отменена клиентом</b>\n\n${svc?.name ?? 'Услуга'}\n${whenStr}`,
-          { parse_mode: 'HTML' },
-        );
-      } catch { /* ignore */ }
-    }
-    if (masterProfileId) {
-      await admin.from('notifications').insert({
-        profile_id: masterProfileId,
-        channel: 'telegram',
-        title: '❌ Запись отменена',
-        body: `${svc?.name ?? 'Услуга'} — ${whenStr}`,
-        status: masterTg ? 'sent' : 'pending',
-        sent_at: masterTg ? new Date().toISOString() : null,
-        data: { type: 'appointment_cancelled', appointment_id, action_url: '/calendar' },
-      });
-    }
+    // Уведомление мастеру шлёт DB-триггер trg_booking_updated через
+    // dispatch_booking_notification('cancelled', ...) — один канонический
+    // формат «Клиент отменил запись» с полным контекстом. Раньше тут был
+    // ещё и прямой sendMessage + ручная вставка в notifications — это
+    // приводило к дублям у мастера. Убрано.
     return NextResponse.json({ ok: true });
   }
 
