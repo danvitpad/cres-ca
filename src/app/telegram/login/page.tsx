@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { Loader2, Mail, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
+import { MiniAppThemeProvider } from '@/components/miniapp/theme';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import type { UserRole, SubscriptionTier } from '@/types';
 
@@ -56,7 +57,7 @@ export default function MiniAppLoginPage() {
     try {
       const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         password,
       });
       if (error) {
@@ -91,6 +92,14 @@ export default function MiniAppLoginPage() {
   }
 
   return (
+    <MiniAppThemeProvider
+      style={{
+        ...FONT_BASE,
+        minHeight: '100dvh',
+        background: T.bg,
+        color: T.text,
+      }}
+    >
     <div
       style={{
         ...FONT_BASE,
@@ -270,5 +279,6 @@ export default function MiniAppLoginPage() {
         {' '}в Telegram
       </div>
     </div>
+    </MiniAppThemeProvider>
   );
 }
