@@ -75,18 +75,19 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(cb);
   }
 
-  // Мобильный user-agent + корень → редиректим в Mini App-визуал /telegram.
-  // Так клиент открывает cres-ca.com с телефона/планшета и попадает сразу в
-  // mini-app UX без необходимости дописывать /telegram руками. Десктоп
-  // остаётся на обычном лэндинге. Cookie cres:no-redirect=1 даёт обойти
-  // редирект (на случай если пользователь хочет посмотреть «настольную
-  // версию» с телефона). Можно поставить через UI-ссылку в будущем.
+  // Мобильный user-agent + корень → REWRITE (не redirect) в Mini App-визуал.
+  // URL в адресной строке остаётся cres-ca.com (без /telegram), контент
+  // отдаём из роутов /telegram. Сайт открывается в самом Chrome / Safari
+  // — никуда не перекидывает на мессенджер. Десктоп остаётся на обычном
+  // лэндинге. Cookie cres:no-redirect=1 даёт обойти rewrite (для «покажи
+  // мне настольную версию с телефона» через будущий UI-toggle).
   if (isRoot && !pathname.startsWith('/telegram')) {
     const ua = request.headers.get('user-agent') ?? '';
     const skip = request.cookies.get('cres:no-redirect')?.value === '1';
     if (!skip && isMobileUA(ua)) {
-      const url = new URL('/telegram', request.url);
-      return NextResponse.redirect(url);
+      const url = request.nextUrl.clone();
+      url.pathname = '/telegram';
+      return NextResponse.rewrite(url);
     }
   }
 
