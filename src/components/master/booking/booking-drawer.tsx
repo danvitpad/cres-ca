@@ -280,7 +280,12 @@ export function BookingDrawer({ master, services, open, onClose, defaultServiceI
             role="dialog"
             aria-modal="true"
             aria-label="Бронирование"
-            className="fixed inset-x-0 bottom-0 top-4 z-[101] flex flex-col overflow-hidden rounded-t-[24px] bg-white shadow-2xl sm:inset-y-4 sm:right-4 sm:left-auto sm:top-4 sm:bottom-4 sm:w-[min(960px,calc(100vw-32px))] sm:rounded-[24px]"
+            // На мобильном — bottom-sheet (полная ширина снизу), на десктопе
+            // центрированный modal — НЕ прижат к правому краю как раньше.
+            // 720px вместо 960 + центрирование через mx-auto.
+            // На sm: убираем left/right edges, ставим w-fit + mx-auto через
+            // обёртку (см. родителя).
+            className="fixed inset-x-0 bottom-0 top-4 z-[101] flex flex-col overflow-hidden rounded-t-[24px] bg-white shadow-2xl sm:inset-y-4 sm:inset-x-0 sm:mx-auto sm:max-h-[calc(100vh-32px)] sm:w-[min(720px,calc(100vw-32px))] sm:rounded-[24px]"
           >
             {/* Top bar */}
             <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-3 sm:px-6">

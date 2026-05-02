@@ -1113,7 +1113,15 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
   const defaults = DEFAULT_FEATURES[vertical];
   const featureKeys = Object.keys(FEATURE_LABELS) as (keyof VerticalFeatures)[];
 
+  // Optimistic state: тумблер меняется мгновенно при клике, а БД-апдейт
+  // идёт фоном. Раньше юзер видел задержку (тумблер «скакал» во время
+  // refetch'а master). Если update в БД упал — откатываем + показываем
+  // ошибку.
+  const [optimistic, setOptimistic] = useState<Partial<Record<keyof VerticalFeatures, boolean>>>({});
+
   async function toggleFeature(key: keyof VerticalFeatures, value: boolean) {
+    // 1) сразу пишем optimistic state — UI обновляется без задержки
+    setOptimistic((prev) => ({ ...prev, [key]: value }));
     setSaving(true);
     const overrides = { ...(master.feature_overrides || {}) };
     if (defaults[key] === value) {
@@ -1124,8 +1132,28 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
     const supabase = createClient();
     const { error } = await supabase.from('masters').update({ feature_overrides: overrides }).eq('id', master.id);
     setSaving(false);
-    if (error) { toast.error(humanizeError(error)); return; }
+    if (error) {
+      // Откат optimistic + сообщение
+      setOptimistic((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      toast.error(humanizeError(error));
+      return;
+    }
+    // refetch master в фоне; локальный optimistic очистится когда
+    // useFeatures() вернёт уже обновлённое значение через 1 рендер.
     onSaved();
+    // через 800ms убираем optimistic — к этому времени useFeatures
+    // уже точно подхватил новое значение
+    setTimeout(() => {
+      setOptimistic((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }, 800);
   }
 
   return (
@@ -1137,7 +1165,8 @@ function FeaturesTab({ master, onSaved }: { master: NonNullable<ReturnType<typeo
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {featureKeys.map((key, idx) => {
           const meta = FEATURE_LABELS[key];
-          const active = features[key];
+          // Если есть optimistic значение — берём его, иначе из useFeatures()
+          const active = optimistic[key] !== undefined ? optimistic[key]! : features[key];
           const isDefault = defaults[key] === active;
           return (
             <div

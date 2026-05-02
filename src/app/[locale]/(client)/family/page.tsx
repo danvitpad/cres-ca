@@ -270,8 +270,13 @@ export default function ClientFamilyPage() {
                     {' · '}{t('spent')}: {(budgetByMember.get(member.id) ?? 0).toFixed(0)}
                   </p>
                 </div>
+                {/* Раньше эта ссылка вела на /book?for=... — но без выбранного
+                    мастера /book не знает к кому записывать (юзер видел
+                    пустую страницу + ошибки в консоли). Теперь ведём на
+                    поиск мастера; query for сохранится и подхватится при
+                    выборе мастера → /book?master=...&for=... */}
                 <Link
-                  href={`/book?for=${member.id}`}
+                  href={`/search?for=${member.id}&for_name=${encodeURIComponent(member.member_name)}`}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[var(--ds-accent-hover)]"
                 >
                   <Calendar className="size-3.5" />
