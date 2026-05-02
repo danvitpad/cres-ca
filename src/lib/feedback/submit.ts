@@ -10,7 +10,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { notifySuperadmin } from '@/lib/notifications/superadmin-notify';
-import { appendFeedbackRow } from '@/lib/integrations/google-sheets';
 
 export type FeedbackSource = 'web_settings' | 'telegram_bot' | 'telegram_voice' | 'mobile';
 export type FeedbackCategory = 'bug' | 'feature' | 'question' | 'praise' | 'other';
@@ -141,22 +140,10 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
     buttons: buildFeedbackButtons({ feedbackId: row.id, tgUsername: tgUser, hasChatId: !!resolvedChatId }),
   });
 
-  const sheetOk = await appendFeedbackRow([
-    new Date(row.created_at).toISOString(),
-    profileName,
-    profileRole ?? '',
-    tgUser ? `@${tgUser}` : '',
-    source,
-    CATEGORY_LABELS[category],
-    cleaned,
-    originalText,
-    voiceFileUrl ?? '',
-  ]);
-  if (sheetOk) {
-    await supabase.from('feedback').update({ sheet_synced_at: new Date().toISOString() }).eq('id', row.id);
-  }
-
-  return { id: row.id, cleaned, category, sheetSynced: sheetOk };
+  // Google Sheets интеграция отключена по решению пользователя — фидбек
+  // приходит только в @crescasuperadmin_bot. Этого достаточно: inline-кнопки
+  // позволяют ответить клиенту через бот, голос приходит отдельным аудио-файлом.
+  return { id: row.id, cleaned, category, sheetSynced: false };
 }
 
 /** Унифицированный формат уведомления Данилу — без шумовых полей (id, source). */

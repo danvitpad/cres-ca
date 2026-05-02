@@ -159,6 +159,17 @@ function toLocalDateStr(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** UTC ISO timestamp из (Date, "HH:MM") локального настенного времени.
+ *  Постгрес-колонка timestamptz парсит ISO без суффикса как UTC, поэтому
+ *  "2026-05-02T14:00:00" в UA (UTC+3) трактовалось как 14:00 UTC = 17:00 Kyiv.
+ *  Клиент бронировал 14:00, а в карточке отображалось 17:00. */
+function toUtcIsoFromLocal(date: Date, hhmm: string): string {
+  const [hh, mm] = hhmm.split(':').map(Number);
+  const d = new Date(date);
+  d.setHours(hh, mm, 0, 0);
+  return d.toISOString();
+}
+
 /* ─────────────────── Animation Variants ─────────────────── */
 
 const pageVariants = {
@@ -461,8 +472,6 @@ export default function MiniAppBookPage() {
     })();
     if (!initData) { haptic('error'); setSubmitting(false); return; }
 
-    const dateStr = toLocalDateStr(selectedDate);
-
     // Build appointments list (stacked sequentially)
     let currentStart = selectedTime;
     const appointments: Array<{
@@ -473,9 +482,9 @@ export default function MiniAppBookPage() {
       currency: string;
     }> = [];
     for (const service of selectedServices) {
-      const startsAt = `${dateStr}T${currentStart}:00`;
+      const startsAt = toUtcIsoFromLocal(selectedDate, currentStart);
       const endTime = addMinutesToTime(currentStart, service.duration_minutes);
-      const endsAt = `${dateStr}T${endTime}:00`;
+      const endsAt = toUtcIsoFromLocal(selectedDate, endTime);
       appointments.push({
         service_id: service.id,
         starts_at: startsAt,

@@ -73,7 +73,20 @@ export async function GET(req: Request) {
 
   const masterIds: string[] = (links as { master_id: string }[]).map((l) => l.master_id);
   const now = new Date();
+  // Время мастеров и working_hours живут в Europe/Kiev. Сервер по умолчанию
+  // в UTC — getHours() сместит на -3ч и слот «11:00 Kyiv» в 13:40 Kyiv =
+  // 10:40 UTC ошибочно считался ещё актуальным. Перепривязываемся к Kyiv.
+  const kyivNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Kiev' }));
   const horizon = new Date(now.getTime() + LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+
+  function toKyivDateStr(d: Date): string {
+    const k = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Kiev' }));
+    return `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, '0')}-${String(k.getDate()).padStart(2, '0')}`;
+  }
+  function toKyivHm(d: Date): { hh: number; mm: number; weekday: number } {
+    const k = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Kiev' }));
+    return { hh: k.getHours(), mm: k.getMinutes(), weekday: k.getDay() };
+  }
 
   const [apptRes, blockRes] = await Promise.all([
     supabase
@@ -97,19 +110,23 @@ export async function GET(req: Request) {
     if (['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'].includes(a.status)) continue;
     const s = new Date(a.starts_at);
     const e = new Date(a.ends_at);
+    const sk = toKyivHm(s);
+    const ek = toKyivHm(e);
     busyByMaster.get(a.master_id)?.push({
-      date: s.toISOString().slice(0, 10),
-      start: s.getHours() * 60 + s.getMinutes(),
-      end: e.getHours() * 60 + e.getMinutes(),
+      date: toKyivDateStr(s),
+      start: sk.hh * 60 + sk.mm,
+      end: ek.hh * 60 + ek.mm,
     });
   }
   for (const b of (blockRes.data ?? []) as { master_id: string; starts_at: string; ends_at: string }[]) {
     const s = new Date(b.starts_at);
     const e = new Date(b.ends_at);
+    const sk = toKyivHm(s);
+    const ek = toKyivHm(e);
     busyByMaster.get(b.master_id)?.push({
-      date: s.toISOString().slice(0, 10),
-      start: s.getHours() * 60 + s.getMinutes(),
-      end: e.getHours() * 60 + e.getMinutes(),
+      date: toKyivDateStr(s),
+      start: sk.hh * 60 + sk.mm,
+      end: ek.hh * 60 + ek.mm,
     });
   }
 
@@ -137,10 +154,11 @@ export async function GET(req: Request) {
     let found: MasterSlot | null = null;
     for (let d = 0; d < LOOKAHEAD_DAYS && !found; d++) {
       const day = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
-      const dateStr = day.toISOString().slice(0, 10);
-      if (busyActive && busyUntil && busyUntil.toISOString().slice(0, 10) >= dateStr) continue;
+      const dateStr = toKyivDateStr(day);
+      if (busyActive && busyUntil && toKyivDateStr(busyUntil) >= dateStr) continue;
 
-      const weekday = WEEKDAYS[day.getDay()];
+      const dayKyiv = toKyivHm(day);
+      const weekday = WEEKDAYS[dayKyiv.weekday];
       const hours = wh[weekday] ?? DEFAULT_WH[weekday];
       if (!hours) continue;
 
@@ -149,7 +167,10 @@ export async function GET(req: Request) {
       const breakS = hours.break_start ? t2m(hours.break_start) : null;
       const breakE = hours.break_end ? t2m(hours.break_end) : null;
 
-      const earliestMin = d === 0 ? Math.max(startMin, day.getHours() * 60 + day.getMinutes() + 15) : startMin;
+      // Сегодня — отсекаем уже прошедшее время по Kyiv-локальному часу,
+      // плюс 15-минутный буфер чтобы клиент не пытался успеть «впритык».
+      const nowKyivMin = kyivNow.getHours() * 60 + kyivNow.getMinutes();
+      const earliestMin = d === 0 ? Math.max(startMin, nowKyivMin + 15) : startMin;
 
       const busyList = (busyByMaster.get(link.master_id) ?? [])
         .filter((x) => x.date === dateStr)
@@ -160,8 +181,10 @@ export async function GET(req: Request) {
         const conflict = busyList.some((bs) => t < bs.end && t + SLOT_DURATION_MIN > bs.start);
         if (conflict) continue;
         const time = m2t(t);
-        const isoDate = new Date(day);
-        isoDate.setHours(Math.floor(t / 60), t % 60, 0, 0);
+        // ISO timestamp — собираем как Kyiv local → UTC, чтобы клиент при
+        // показе через toLocaleString('Europe/Kiev') увидел тот же time.
+        const [yy, mo, dd] = dateStr.split('-').map(Number);
+        const isoDate = new Date(yy, mo - 1, dd, Math.floor(t / 60), t % 60, 0, 0);
         found = {
           masterId: link.master_id,
           name: m.display_name ?? profile?.full_name ?? null,

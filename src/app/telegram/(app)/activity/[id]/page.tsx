@@ -366,48 +366,30 @@ export default function MiniAppAppointmentDetail() {
         </div>
       )}
 
-      {/* Contact — звонок мастеру. В Telegram Mini App нативный <a href="tel:">
-          часто блокируется WebView, поэтому используем Telegram.WebApp.openLink
-          (умеет open tel:/mailto: вне приложения), а на десктопе/браузере —
-          обычный <a>. Плюс кнопка «Скопировать» как страховка. */}
+      {/* Phone of the master — кнопка «Скопировать номер». tel:-навигация
+          в Telegram WebView ненадёжна (несколько раз пробовали разные подходы,
+          у юзера всё равно не открывался диалер), поэтому даём только копию
+          номера и сам номер крупно — клиент копирует и набирает в нативном
+          приложении телефона. */}
       {row.master?.profile?.phone && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const phone = row.master?.profile?.phone;
-              if (!phone) return;
-              haptic('light');
-              const tg = (window as { Telegram?: { WebApp?: { openLink?: (u: string, opts?: { try_instant_view?: boolean }) => void } } }).Telegram?.WebApp;
-              if (tg?.openLink) {
-                try { tg.openLink(`tel:${phone}`); return; } catch { /* fallback */ }
-              }
-              // Fallback for browsers / when openLink fails
-              window.location.href = `tel:${phone}`;
-            }}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
-          >
-            <Phone className="size-4" /> {row.master.profile.phone}
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              const phone = row.master?.profile?.phone;
-              if (!phone) return;
-              haptic('light');
-              try {
-                await navigator.clipboard.writeText(phone);
-                toast(`Номер скопирован: ${phone}`);
-              } catch {
-                toast(phone);
-              }
-            }}
-            className="rounded-2xl border border-neutral-200 bg-white/5 px-3 py-3 text-xs font-semibold text-neutral-600 active:scale-[0.98] transition-transform"
-            title="Скопировать номер"
-          >
-            Копировать
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            const phone = row.master?.profile?.phone;
+            if (!phone) return;
+            haptic('light');
+            try {
+              await navigator.clipboard.writeText(phone);
+              toast(`Номер скопирован: ${phone}`);
+            } catch {
+              toast(phone);
+            }
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
+          title="Скопировать номер"
+        >
+          <Phone className="size-4" /> {row.master.profile.phone} · Скопировать
+        </button>
       )}
 
       {/* Notes */}

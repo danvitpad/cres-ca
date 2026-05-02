@@ -1844,7 +1844,6 @@ async function saveFeedbackAndNotify(
 
   const { analyzeFeedback, formatFeedbackNotification, buildFeedbackButtons } = await import('@/lib/feedback/submit');
   const { notifySuperadmin, sendVoiceToSuperadmin } = await import('@/lib/notifications/superadmin-notify');
-  const { appendFeedbackRow } = await import('@/lib/integrations/google-sheets');
 
   const { cleaned, category } = await analyzeFeedback(transcript);
 
@@ -1897,19 +1896,7 @@ async function saveFeedbackAndNotify(
     await sendVoiceToSuperadmin(opts.voiceBuffer, opts.voiceMime, `Голос к отзыву от ${escapeHtml(profileName)}`);
   }
 
-  // Sheets sync (best-effort)
-  const sheetOk = await appendFeedbackRow([
-    new Date(row.created_at).toISOString(),
-    profileName,
-    profileRole ?? '',
-    tgUser ? `@${tgUser}` : '',
-    source,
-    cleaned,
-    transcript,
-  ]);
-  if (sheetOk) {
-    await supabase.from('feedback').update({ sheet_synced_at: new Date().toISOString() }).eq('id', row.id);
-  }
+  // Google Sheets sync отключён — фидбек приходит только через бота.
 }
 
 function escapeHtml(s: string): string {
