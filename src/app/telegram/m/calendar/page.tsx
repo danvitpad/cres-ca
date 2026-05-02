@@ -568,7 +568,19 @@ export default function MasterMiniAppCalendar() {
                       {active.client_phone && (
                         <a
                           href={`tel:${active.client_phone}`}
-                          onClick={() => haptic('selection')}
+                          onClick={(e) => {
+                            haptic('selection');
+                            // В TG WebView обычные tel: ссылки могут блокироваться.
+                            // Используем Telegram.WebApp.openLink если есть — он
+                            // отдаёт URL в системе iOS/Android и открывает Phone app.
+                            // Fallback на default behavior через href.
+                            const w = window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } };
+                            const openLink = w.Telegram?.WebApp?.openLink;
+                            if (openLink) {
+                              e.preventDefault();
+                              try { openLink(`tel:${active.client_phone}`); } catch { window.location.href = `tel:${active.client_phone}`; }
+                            }
+                          }}
                           style={{
                             flex: 1,
                             display: 'inline-flex',
@@ -623,56 +635,16 @@ export default function MasterMiniAppCalendar() {
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {(active.status === 'booked' || active.status === 'confirmed') && (
-                      <button
-                        type="button"
-                        disabled={acting}
-                        onClick={() => updateStatus(active.id, 'in_progress')}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          padding: '14px',
-                          borderRadius: R.md,
-                          background: '#f59e0b',
-                          color: '#000',
-                          border: 'none',
-                          fontSize: 15,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          opacity: acting ? 0.5 : 1,
-                        }}
-                      >
-                        <PlayCircle size={16} /> Начать визит
-                      </button>
-                    )}
-                    {(active.status === 'booked' || active.status === 'confirmed' || active.status === 'in_progress') && (
-                      <button
-                        type="button"
-                        disabled={acting}
-                        onClick={() => updateStatus(active.id, 'completed')}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          padding: '14px',
-                          borderRadius: R.md,
-                          background: T.success,
-                          color: '#fff',
-                          border: 'none',
-                          fontSize: 15,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          fontFamily: 'inherit',
-                          opacity: acting ? 0.5 : 1,
-                        }}
-                      >
-                        <CheckCircle2 size={16} /> Завершить
-                      </button>
-                    )}
+                    {/* Кнопки «Начать визит» / «Завершить» убраны.
+                        С коммита 02.05 включился cron auto-complete:
+                        каждый час записи у которых ends_at прошёл ≥30 минут
+                        назад автоматически переводятся в 'completed'.
+                        Мастеру не нужно ничего нажимать вручную — если
+                        запись прошла и не была отменена/перенесена, она
+                        считается состоявшейся.
+                        Если нужно отменить уже завершённую — можно через
+                        историю записей (отмена → запись уйдёт из отчётов
+                        по доходам). */}
                     {(active.status === 'booked' || active.status === 'confirmed') && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                         <button

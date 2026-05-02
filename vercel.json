@@ -26,6 +26,7 @@
     { "path": "/api/cron/low-stock",             "schedule": "0 7 * * *"    },
     { "path": "/api/cron/daily-closeout",        "schedule": "30 0 * * *"   },
     { "path": "/api/cron/subscriptions",         "schedule": "0 0 * * *"    },
-    { "path": "/api/cron/purge-clients",         "schedule": "0 20 * * *"   }
+    { "path": "/api/cron/purge-clients",         "schedule": "0 20 * * *"   },
+    { "path": "/api/cron/auto-complete",         "schedule": "0 * * * *"    }
   ]
 }

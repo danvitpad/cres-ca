@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   // Verify appointment ownership
   const { data: apt } = await admin
     .from('appointments')
-    .select('id, master_id, service_id, price, starts_at, service:services(name), client_id')
+    .select('id, master_id, service_id, price, starts_at, status, service:services(name), client_id')
     .eq('id', appointment_id)
     .maybeSingle();
   if (!apt || !clientIds.includes(apt.client_id)) {
@@ -41,6 +41,17 @@ export async function POST(request: Request) {
   }
 
   if (action === 'cancel') {
+    // Идемпотентность: если запись уже отменена/завершена — не делаем
+    // повторный update и НЕ шлём дубль TG-уведомления мастеру.
+    // Раньше юзер мог отменить запись через TG-бот (inline-кнопка под
+    // напоминалкой) → webhook отправлял мастеру первое уведомление.
+    // Потом тот же клиент открывал Mini App → видел всё ещё активную
+    // запись (страница не успела обновиться) → нажимал «Отменить» →
+    // activity-action слал ВТОРОЕ уведомление с тем же действием.
+    if (['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'completed', 'no_show'].includes(apt.status)) {
+      return NextResponse.json({ ok: true, already_done: true });
+    }
+
     const { error } = await admin
       .from('appointments')
       .update({
@@ -61,7 +72,12 @@ export async function POST(request: Request) {
     const masterProfileId = masterRow?.profile_id;
     const masterTg = (masterRow as { profile?: { telegram_id?: number | null } | null } | null)?.profile?.telegram_id;
     const svc = Array.isArray(apt.service) ? apt.service[0] : apt.service;
-    const whenStr = new Date(apt.starts_at).toLocaleString('ru', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    // Указываем timeZone — на сервере по умолчанию UTC, без явной зоны
+    // время записи рендерилось как 07:00 вместо 10:00 (Киев).
+    const whenStr = new Date(apt.starts_at).toLocaleString('ru', {
+      timeZone: 'Europe/Kyiv',
+      day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+    });
     if (masterTg) {
       const { sendMessage } = await import('@/lib/telegram/bot');
       try {
