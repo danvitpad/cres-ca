@@ -28,7 +28,6 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 import { mapError } from '@/lib/errors';
-import { useIsKeyboardOpen } from '@/hooks/use-keyboard-open';
 import {
   MobilePage,
   PageHeader,
@@ -53,7 +52,6 @@ export default function MiniAppProfilePage() {
   const searchParams = useSearchParams();
   const { user, haptic } = useTelegram();
   const { userId, clearAuth } = useAuthStore();
-  const keyboardOpen = useIsKeyboardOpen();
   const [balance, setBalance] = useState(0);
   const [fullName, setFullName] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
@@ -407,9 +405,12 @@ export default function MiniAppProfilePage() {
                 padding: `20px ${PAGE_PADDING_X}px`,
                 paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
                 boxShadow: SHADOW.elevated,
-                // Sheet body высотой не больше viewport'а — поля можно
-                // проскроллить пальцами над клавиатурой когда она открыта.
-                maxHeight: '90vh',
+                // dvh = dynamic viewport height: автоматически ужимается когда
+                // клавиатура открыта (в отличие от vh, который остаётся
+                // фиксированным). Это значит когда юзер начинает печатать,
+                // sheet физически меньше → кнопка «Сохранить» внизу
+                // остаётся в видимой части, и юзер просто скроллит к ней.
+                maxHeight: '90dvh',
                 overflowY: 'auto',
                 overscrollBehavior: 'contain',
               }}
@@ -533,51 +534,36 @@ export default function MiniAppProfilePage() {
                   </div>
                 )}
 
-                {/* Кнопка «Сохранить» скрывается когда открыта экранная
-                    клавиатура — иначе она прижата под клавиатуру и
-                    закрывает поля ввода. Юзер сначала набирает текст,
-                    закрывает клавиатуру (тапом мимо или Done) — и тогда
-                    видит кнопку. */}
-                {!keyboardOpen && (
-                  <button
-                    type="button"
-                    onClick={saveEdit}
-                    disabled={editBusy}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 8,
-                      width: '100%',
-                      padding: '16px 24px',
-                      borderRadius: R.pill,
-                      border: 'none',
-                      background: T.text,
-                      color: T.bg,
-                      fontSize: 16,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      opacity: editBusy ? 0.6 : 1,
-                    }}
-                  >
-                    {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                    Сохранить
-                  </button>
-                )}
-                {keyboardOpen && (
-                  <p
-                    style={{
-                      ...TYPE.micro,
-                      color: T.textTertiary,
-                      textAlign: 'center',
-                      margin: 0,
-                      padding: '12px 0',
-                    }}
-                  >
-                    Закрой клавиатуру чтобы сохранить
-                  </p>
-                )}
+                {/* Кнопка «Сохранить» — всегда внизу sheet body, под полями
+                    ввода. Sheet сам сжимается через 90dvh когда клавиатура
+                    открыта; пользователь скроллит вниз пальцем, видит
+                    кнопку, нажимает. Не плавающая, не fixed — обычный
+                    inline-элемент в конце прокручиваемого контента. */}
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  disabled={editBusy}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    width: '100%',
+                    padding: '16px 24px',
+                    borderRadius: R.pill,
+                    border: 'none',
+                    background: T.text,
+                    color: T.bg,
+                    fontSize: 16,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    opacity: editBusy ? 0.6 : 1,
+                  }}
+                >
+                  {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  Сохранить
+                </button>
               </div>
             </motion.div>
           </motion.div>
