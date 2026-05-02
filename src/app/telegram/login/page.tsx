@@ -34,18 +34,22 @@ export default function MiniAppLoginPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, tier, full_name')
-        .eq('id', user.id)
-        .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
-      const role = (profile?.role ?? 'client') as string;
+      const [{ data: profile }, { data: masterRow }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('role, tier, full_name')
+          .eq('id', user.id)
+          .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>(),
+        supabase
+          .from('masters')
+          .select('id')
+          .eq('profile_id', user.id)
+          .maybeSingle<{ id: string }>(),
+      ]);
+      const isMaster = !!masterRow || profile?.role === 'master' || profile?.role === 'salon_admin';
+      const role = (isMaster ? (profile?.role ?? 'master') : (profile?.role ?? 'client')) as string;
       setAuth(user.id, role as UserRole, (profile?.tier ?? null) as SubscriptionTier | null, profile?.full_name ?? null);
-      if (role === 'master' || role === 'salon_admin') {
-        router.replace('/telegram/m/home');
-      } else {
-        router.replace('/telegram/home');
-      }
+      window.location.replace(isMaster ? '/telegram/m/home' : '/telegram/home');
     })();
   }, [router, setAuth]);
 
@@ -71,19 +75,31 @@ export default function MiniAppLoginPage() {
         setErr('Не удалось войти');
         return;
       }
-      // Determine destination by role
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role, tier, full_name')
-        .eq('id', data.user.id)
-        .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
-      const role = (profile?.role ?? 'client') as string;
+      // Determine destination by role. Дополнительно проверяем masters-таблицу
+      // напрямую — если есть запись, юзер точно мастер (даже если profiles.role
+      // случайно сбит). Это страховка от ситуации «зашёл мастером, попал на
+      // клиентскую главную».
+      const [{ data: profile }, { data: masterRow }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('role, tier, full_name')
+          .eq('id', data.user.id)
+          .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>(),
+        supabase
+          .from('masters')
+          .select('id')
+          .eq('profile_id', data.user.id)
+          .maybeSingle<{ id: string }>(),
+      ]);
+      const isMaster = !!masterRow || profile?.role === 'master' || profile?.role === 'salon_admin';
+      const role = (isMaster ? (profile?.role ?? 'master') : (profile?.role ?? 'client')) as string;
       setAuth(data.user.id, role as UserRole, (profile?.tier ?? null) as SubscriptionTier | null, profile?.full_name ?? null);
-      if (role === 'master' || role === 'salon_admin') {
-        router.replace('/telegram/m/home');
-      } else {
-        router.replace('/telegram/home');
-      }
+      // window.location.replace — полный reload, чтобы middleware и SSR
+      // увидели новую auth-cookie. router.replace внутри SPA иногда оставляет
+      // юзера на старом auth-state из zustand — отсюда «зашёл мастером, попал
+      // как клиент». Полная перезагрузка решает race condition.
+      const target = isMaster ? '/telegram/m/home' : '/telegram/home';
+      window.location.replace(target);
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Сетевая ошибка');
     } finally {
