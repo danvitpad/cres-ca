@@ -60,7 +60,7 @@ export default function PublicReviewPage({ params }: PageProps) {
     if (!masterId) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from('reviews').insert({
+    const { data: inserted, error } = await supabase.from('reviews').insert({
       appointment_id: apt_id,
       reviewer_id: user?.id ?? null,
       target_type: 'master',
@@ -69,13 +69,22 @@ export default function PublicReviewPage({ params }: PageProps) {
       comment: comment.trim() || null,
       is_published: true,
       is_anonymous: anonymous,
-    });
+    }).select('id').maybeSingle();
     if (error) {
       toast.error(humanizeError(error));
       return;
     }
     setDone(true);
     toast.success('Спасибо за отзыв!');
+
+    // При высокой оценке (≥ 4 ⭐) — асинхронно шлём клиенту рекомендацию
+    // партнёров мастера. Best-effort, не блокирует UI и не валит flow
+    // если что-то пошло не так.
+    if (score >= 4 && inserted) {
+      const reviewId = (inserted as { id: string }).id;
+      fetch(`/api/reviews/${reviewId}/notify-partners`, { method: 'POST' })
+        .catch(() => { /* silent */ });
+    }
   }
 
   if (loading) return <div className="p-10 text-center text-sm text-neutral-500">Загрузка…</div>;
