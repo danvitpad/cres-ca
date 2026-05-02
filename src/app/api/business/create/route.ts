@@ -35,6 +35,8 @@ interface Payload {
   coverUrl: string | null;
   specialization: string | null;
   specializations?: string[];
+  /** На шаге выбора локации мастер указал «онлайн» → пишем в masters.works_online */
+  worksOnline?: boolean;
 }
 
 export async function POST(req: Request) {
@@ -111,6 +113,7 @@ export async function POST(req: Request) {
     avatar_url: body.avatarUrl,
     cover_url: body.coverUrl,
     is_active: true,
+    works_online: body.worksOnline === true,
   };
   if (initialBio) masterPayload.bio = initialBio;
 

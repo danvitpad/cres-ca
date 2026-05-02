@@ -450,6 +450,9 @@ function CreateBusinessWizard() {
           latitude: selectedAddress ? parseFloat(selectedAddress.lat) : null,
           longitude: selectedAddress ? parseFloat(selectedAddress.lon) : null,
           city: null,
+          // Если на шаге 5 выбрал «онлайн» — флаг сохраняется в masters.works_online,
+          // и на публичке появляется бейдж «Online», блок адреса прячется.
+          worksOnline: locationType === 'locationOnline',
           services,
           avatarUrl,
           coverUrl,

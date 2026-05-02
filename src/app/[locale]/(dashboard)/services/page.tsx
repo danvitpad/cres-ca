@@ -144,11 +144,15 @@ function ServicesCatalogueView() {
     }
     try {
       const supabase = createClient();
+      // Сортировка стабильная: created_at + id как tiebreaker. Без второго
+      // ключа Postgres мог переставлять карточки с одинаковым created_at —
+      // юзер видел «карточка уехала вниз» после правки цвета/других полей.
       const { data } = await supabase
         .from('services')
         .select('*, category:service_categories(name, color)')
         .eq('master_id', master.id)
-        .order('created_at');
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true });
       if (data) setServices(data as unknown as ServiceRow[]);
     } finally {
       setLoading(false);
