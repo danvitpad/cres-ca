@@ -120,9 +120,11 @@ export async function proxy(request: NextRequest) {
   ]);
 
   if (isMobile) {
-    // (d) Десктопный dashboard на мобильном → /telegram (mini-app entry)
-    const firstSegRaw = pathname.split('/')[1] ?? '';
-    if (DASHBOARD_ROOTS.has(firstSegRaw)) {
+    // (d) Десктопный dashboard на мобильном → /telegram (mini-app entry).
+    // Берём ПУТЬ БЕЗ ЛОКАЛИ (strippedPath) — иначе для /uk/calendar мы бы
+    // проверяли 'uk' вместо 'calendar' и редирект бы не срабатывал.
+    const dashboardSeg = (strippedPath.startsWith('/') ? strippedPath.slice(1) : strippedPath).split('/')[0] ?? '';
+    if (DASHBOARD_ROOTS.has(dashboardSeg)) {
       const u = request.nextUrl.clone();
       u.pathname = '/telegram';
       return NextResponse.redirect(u);
