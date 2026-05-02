@@ -32,6 +32,7 @@ import { InlineBioBlock } from '@/components/master/inline/bio-block';
 import { InlineHoursBlock } from '@/components/master/inline/hours-block';
 import { InlineAddressBlock } from '@/components/master/inline/address-block';
 import { InlineSocialBlock } from '@/components/master/inline/social-block';
+import { InlineInterestsBlock } from '@/components/master/inline/interests-block';
 import { OwnerInlineQuickSettings } from '@/components/master/inline/quick-settings-panel';
 import { OwnerPortfolioPanel } from '@/components/master/inline/owner-portfolio-panel';
 import { GuildPartnersSection } from '@/components/master/guild-partners-section';
@@ -785,6 +786,15 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 masterId={master.id}
                 masterProfileId={master.profile_id}
                 initialSocialLinks={(master.social_links ?? null) as ({ telegram?: string; instagram?: string; whatsapp?: string; viber?: string; tiktok?: string; youtube?: string; facebook?: string; website?: string } | null)}
+              />
+            </div>
+
+            {/* Интересы и увлечения — inline-редактор. Хранится в masters.interests. */}
+            <div id="inline-interests" className="scroll-mt-24">
+              <InlineInterestsBlock
+                masterId={master.id}
+                masterProfileId={master.profile_id}
+                initialInterests={master.interests ?? null}
               />
             </div>
 

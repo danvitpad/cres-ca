@@ -347,6 +347,8 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
   const [bio, setBio] = useState(master.bio ?? '');
   const [address, setAddress] = useState(master.address ?? '');
   const [city, setCity] = useState(master.city ?? '');
+  const [languages, setLanguages] = useState<string[]>(((master as unknown as Record<string, unknown>).languages as string[] | null) ?? []);
+  const [languageInput, setLanguageInput] = useState('');
   // Публичный язык — на каком языке клиенты получают рассылки/напоминания
   // и на каком языке формируются PDF поставщикам. Может отличаться от UI-языка.
   const [publicLanguage, setPublicLanguage] = useState<'ru' | 'uk' | 'en'>(
@@ -370,6 +372,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
       supabase.from('masters').update({
         specialization, bio, address, city,
         public_language: publicLanguage,
+        languages: languages.length ? languages : null,
       }).eq('id', master.id),
     ]);
 
@@ -426,15 +429,85 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
         <SettingsField label="Адрес" C={C}>
           <input style={inputStyle} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ул., дом, кабинет" />
         </SettingsField>
-        <SettingsField label="О себе" C={C}>
-          <textarea
-            style={{ ...inputStyle, resize: 'vertical', minHeight: 80 }}
-            value={bio}
-            onChange={(e) => setBio(e.target.value)}
-            rows={3}
-            placeholder="Коротко о себе и услугах (публично)"
-          />
+        <SettingsField label="Языки общения" C={C}>
+          <div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                style={{ ...inputStyle, flex: 1 }}
+                value={languageInput}
+                onChange={(e) => setLanguageInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const v = languageInput.trim();
+                    if (v && !languages.includes(v) && languages.length < 6) {
+                      setLanguages([...languages, v]);
+                      setLanguageInput('');
+                    }
+                  }
+                }}
+                placeholder="Например: Українська, English, Polski"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const v = languageInput.trim();
+                  if (v && !languages.includes(v) && languages.length < 6) {
+                    setLanguages([...languages, v]);
+                    setLanguageInput('');
+                  }
+                }}
+                style={{
+                  padding: '0 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${C.border}`,
+                  background: C.surface,
+                  color: C.text,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Добавить
+              </button>
+            </div>
+            {languages.length > 0 && (
+              <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {languages.map((lang, i) => (
+                  <span
+                    key={lang}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      background: C.surface,
+                      border: `1px solid ${C.border}`,
+                      fontSize: 12,
+                      color: C.text,
+                    }}
+                  >
+                    {lang}
+                    <button
+                      type="button"
+                      onClick={() => setLanguages(languages.filter((_, idx) => idx !== i))}
+                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: C.textSecondary, padding: 0, fontSize: 14, lineHeight: 1 }}
+                      aria-label={`Убрать ${lang}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p style={{ marginTop: 6, fontSize: 11, color: C.textSecondary }}>
+              На каких языках готов общаться с клиентами. До 6 языков.
+            </p>
+          </div>
         </SettingsField>
+        {/* Поле «О себе» вынесено отсюда — редактируется прямо на публичной
+            странице мастера (/m/{handle}) inline-блоком. */}
       </SettingsBlock>
 
       <SettingsBlock

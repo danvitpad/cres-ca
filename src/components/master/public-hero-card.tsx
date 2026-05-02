@@ -199,24 +199,8 @@ export function PublicHeroCard({
         </div>
       )}
 
-      {/* Languages */}
-      {(languages?.length ?? 0) > 0 && (
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wide text-neutral-500">
-            Языки
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {languages!.map((lang) => (
-              <span
-                key={lang}
-                className="rounded-full border border-neutral-200 bg-white px-2.5 py-0.5 text-[12px] text-neutral-700"
-              >
-                {lang}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Languages — секция убрана с публички; редактируется в профиле мастера. */}
+      {void languages}
 
       {/* Менеджер салона — контактная информация владельца команды.
           Показываем только когда публичка ИМЕННО салонная и есть хоть один контакт. */}
