@@ -8,12 +8,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Truck, Plus, X, Send, Mail } from 'lucide-react';
+import { Truck, Plus, X, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, CURRENCY } from '@/lib/dashboard-theme';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
+import { OrderDispatchDialog } from '@/components/catalogue/order-dispatch-dialog';
 
 type OrderStatus = 'draft' | 'sent' | 'confirmed' | 'delivered' | 'cancelled';
 
@@ -69,7 +70,16 @@ export function SupplierOrdersTab() {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [showAllInventory, setShowAllInventory] = useState(false);
-  const [sendingId, setSendingId] = useState<string | null>(null);
+  // Поп-ап «Отправить заказ» — открывается после сохранения draft'а
+  // или при клике «Отправить» на существующем заказе.
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatchOrderId, setDispatchOrderId] = useState<string | null>(null);
+  const [dispatchSnapshot, setDispatchSnapshot] = useState<{
+    supplier: { name: string; email: string | null; telegram_id: string | null } | null;
+    items: OrderItem[];
+    total: number;
+    currency: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     if (!master?.id) return;
@@ -180,39 +190,8 @@ export function SupplierOrdersTab() {
     }
   }
 
-  async function sendOrder(orderId: string, channel: 'telegram' | 'email') {
-    setSendingId(orderId);
-    try {
-      const res = await fetch(`/api/supplier-orders/${orderId}/dispatch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel }),
-      });
-      const data = await res.json().catch(() => ({} as Record<string, unknown>));
-      if (!res.ok) {
-        const code = (data as { error?: string }).error || '';
-        const detail = (data as { detail?: string }).detail || '';
-        toast.error(code === 'no_supplier_email' ? 'У поставщика не указан email'
-                  : code === 'email_send_failed' ? `Email: ${detail || 'не удалось отправить'}`
-                  : detail || 'Не удалось отправить');
-        return;
-      }
-      if (channel === 'telegram') {
-        const shareUrl = (data as { share_url?: string }).share_url;
-        if (shareUrl) {
-          window.open(shareUrl, '_blank');
-          toast.success('Telegram открывается — выбери контакт поставщика');
-        } else {
-          toast.success('Готово');
-        }
-      } else {
-        toast.success('Email отправлен');
-      }
-      load();
-    } finally {
-      setSendingId(null);
-    }
-  }
+  // Прямая sendOrder больше не нужна — отправка идёт через
+  // OrderDispatchDialog (попап с превью + двумя кнопками TG/Email).
 
   function downloadPdf(orderId: string) {
     window.open(`/api/supplier-orders/${orderId}/pdf`, '_blank');
@@ -305,38 +284,41 @@ export function SupplierOrdersTab() {
                     PDF
                   </button>
                   {o.status === 'draft' && (
-                    <>
-                      <button
-                        onClick={() => sendOrder(o.id, 'telegram')}
-                        disabled={sendingId === o.id}
-                        title="Открыть Telegram — выберешь контакт поставщика и отправишь PDF от своего имени"
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          padding: '5px 9px', borderRadius: 6, border: 'none',
-                          background: C.accent,
-                          color: '#fff', fontSize: 11, fontWeight: 600,
-                          cursor: 'pointer',
-                          opacity: sendingId === o.id ? 0.5 : 1,
-                        }}
-                      >
-                        <Send size={11} /> TG
-                      </button>
-                      <button
-                        onClick={() => sendOrder(o.id, 'email')}
-                        disabled={sendingId === o.id || !o.supplier?.email}
-                        title={o.supplier?.email ? 'Отправить PDF на email' : 'У поставщика нет email'}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          padding: '5px 9px', borderRadius: 6, border: `1px solid ${C.border}`,
-                          background: 'transparent', color: o.supplier?.email ? C.text : C.textTertiary,
-                          fontSize: 11, fontWeight: 600,
-                          cursor: o.supplier?.email ? 'pointer' : 'not-allowed',
-                          opacity: sendingId === o.id ? 0.5 : 1,
-                        }}
-                      >
-                        <Mail size={11} /> Email
-                      </button>
-                    </>
+                    <button
+                      onClick={() => {
+                        // Открываем единый попап «Отправить» — там и TG, и Email
+                        // в одном месте с превью.
+                        const itemsForSnapshot: OrderItem[] = (Array.isArray(o.items) ? o.items : [])
+                          .map((raw) => {
+                            const r = raw as Record<string, unknown>;
+                            return {
+                              inventory_item_id: (r.inventory_item_id as string) ?? '',
+                              name: (r.name as string) ?? '—',
+                              qty: Number(r.qty ?? r.quantity ?? 0),
+                              price_per_unit: Number(r.price_per_unit ?? r.unit_price ?? 0),
+                              unit: (r.unit as string) ?? undefined,
+                            };
+                          });
+                        setDispatchOrderId(o.id);
+                        setDispatchSnapshot({
+                          supplier: o.supplier,
+                          items: itemsForSnapshot,
+                          total: Number(o.total_cost),
+                          currency: o.currency || 'UAH',
+                        });
+                        setDispatchOpen(true);
+                      }}
+                      title="Открыть окно отправки заказа"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '5px 11px', borderRadius: 6, border: 'none',
+                        background: C.accent,
+                        color: '#fff', fontSize: 11, fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <Send size={11} /> Отправить
+                    </button>
                   )}
                 </div>
               </div>
@@ -557,11 +539,33 @@ export function SupplierOrdersTab() {
                       cursor: saving || !supplierId || items.length === 0 ? 'not-allowed' : 'pointer',
                       opacity: saving || !supplierId || items.length === 0 ? 0.5 : 1,
                     }}
-                  >Сохранить черновик</button>
+                  >Сохранить как черновик</button>
                   <button
                     onClick={async () => {
+                      // Сохраняем заказ и сразу открываем диспетчер (попап с
+                      // двумя кнопками TG/Email), без открытия PDF в отдельной вкладке.
                       const newId = await saveDraft();
-                      if (newId) window.open(`/api/supplier-orders/${newId}/pdf`, '_blank');
+                      if (!newId) return;
+                      const supplier = suppliers.find((s) => s.id === supplierId);
+                      // Подтянем email/telegram_id, которых нет в SupplierOpt:
+                      const supabase = createClient();
+                      const { data: full } = await supabase
+                        .from('suppliers')
+                        .select('name, email, telegram_id')
+                        .eq('id', supplierId)
+                        .maybeSingle();
+                      setDispatchOrderId(newId);
+                      setDispatchSnapshot({
+                        supplier: full
+                          ? { name: full.name as string, email: (full.email as string) ?? null, telegram_id: (full.telegram_id as string) ?? null }
+                          : supplier
+                            ? { name: supplier.name, email: null, telegram_id: null }
+                            : null,
+                        items: [...items],
+                        total,
+                        currency: 'UAH',
+                      });
+                      setDispatchOpen(true);
                     }}
                     disabled={saving || !supplierId || items.length === 0}
                     style={{
@@ -570,13 +574,30 @@ export function SupplierOrdersTab() {
                       color: '#fff', fontSize: 13, fontWeight: 600,
                       cursor: saving || !supplierId || items.length === 0 ? 'not-allowed' : 'pointer',
                     }}
-                  >{saving ? 'Сохраняю…' : 'Сформировать PDF'}</button>
+                  >{saving ? 'Сохраняю…' : 'Готово, отправить'}</button>
                 </div>
               </>
             )}
           </div>
         </div>
       )}
+
+      {/* Поп-ап отправки заказа: появляется после "Готово, отправить" в форме
+          создания, или после клика "Отправить" на draft из списка. */}
+      <OrderDispatchDialog
+        open={dispatchOpen}
+        onOpenChange={(v) => setDispatchOpen(v)}
+        orderId={dispatchOrderId}
+        supplier={dispatchSnapshot?.supplier ?? null}
+        items={dispatchSnapshot?.items ?? []}
+        currency={dispatchSnapshot?.currency ?? 'UAH'}
+        total={dispatchSnapshot?.total ?? 0}
+        onDone={() => {
+          // Перезагружаем список после успешной отправки —
+          // статус заказа меняется на 'sent'.
+          load();
+        }}
+      />
     </>
   );
 }

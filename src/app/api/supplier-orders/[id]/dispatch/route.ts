@@ -14,6 +14,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { buildSupplierOrderPDF, safeFilename, type SupplierOrderItem } from '@/lib/pdf/supplier-order-pdf';
 import { getResend } from '@/lib/email/resend';
 import { signSupplierOrderToken } from '@/app/api/supplier-orders/[id]/pdf/route';
+import { buildSupplierOrderMessage, trySendToSupplierViaBot } from '@/lib/supplier/order-message';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -131,24 +132,67 @@ export async function POST(req: Request, { params }: RouteContext) {
     language,
   });
 
-  // Summary text for TG/email body (Cyrillic OK here)
-  const itemsText = items.map((it) => `— ${it.name} × ${it.quantity} ${it.unit}`).join('\n');
-  const summary = `Заказ #${orderNumber}\n\nОт: ${masterName}\nДля: ${supplierName}\n\n${itemsText}${order.note ? `\n\nПримечание:\n${order.note}` : ''}`;
+  // Шаблон сообщения (RU/UK/EN, единый для TG и email).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const masterPhoneRaw2 = ((mp as any)?.phone ?? null) as string | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const masterEmailRaw2 = ((mp as any)?.email ?? null) as string | null;
+
+  // Public PDF URL — нужен и для TG-share, и как fallback в email/TG-message
+  const token = signSupplierOrderToken(order.id);
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${req.headers.get('host') || 'cres-ca.com'}`;
+  const publicPdfUrl = `${baseUrl}/api/supplier-orders/${order.id}/pdf?t=${token}`;
+
+  const message = buildSupplierOrderMessage({
+    language,
+    orderNumber,
+    orderDateStr,
+    masterName,
+    masterPhone: masterPhoneRaw2,
+    masterEmail: masterEmailRaw2,
+    supplierName,
+    items,
+    currency: order.currency ?? 'UAH',
+    note: order.note ?? null,
+    publicPdfUrl,
+  });
+
   // Имя файла: <номер>_<дата>_<имя_мастера>_<телефон>.pdf
   const dateForFile = orderDateObj.toISOString().slice(0, 10);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const masterPhoneRaw = ((mp as any)?.phone ?? null) as string | null;
-  const filename = safeFilename([orderNumber, dateForFile, masterName, masterPhoneRaw]) + '.pdf';
+  const filename = safeFilename([orderNumber, dateForFile, masterName, masterPhoneRaw2]) + '.pdf';
 
   if (channel === 'telegram') {
-    // Suppliers don't use our app, so the bot can't initiate a chat (Telegram limitation).
-    // Instead we hand the master a t.me/share/url link with a public PDF. The master picks
-    // their existing contact for the supplier and forwards from their own Telegram account.
-    const token = signSupplierOrderToken(order.id);
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${req.headers.get('host') || 'cres-ca.com'}`;
-    const publicPdfUrl = `${baseUrl}/api/supplier-orders/${order.id}/pdf?t=${token}`;
-    const shareText = `${summary}\n\n${publicPdfUrl}`;
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(publicPdfUrl)}&text=${encodeURIComponent(shareText)}`;
+    // Сначала пробуем отправить ПРЯМО поставщику через нашего бота — если
+    // у него указан numeric telegram_id и он когда-либо начинал чат с
+    // @cres_ca_bot. Это лучший UX: поставщик не должен ничего делать,
+    // получит PDF и текст сразу.
+    if (supplierTg && /^-?\d+$/.test(supplierTg.trim())) {
+      const sent = await trySendToSupplierViaBot({
+        chatId: supplierTg.trim(),
+        pdfBytes,
+        pdfFilename: filename,
+        caption: message.text.slice(0, 900), // оставляем запас под caption-лимит
+      });
+      if (sent.ok) {
+        await admin.from('supplier_orders').update({
+          status: 'sent',
+          sent_via: 'telegram_bot',
+          sent_at: new Date().toISOString(),
+        }).eq('id', order.id);
+        return NextResponse.json({
+          ok: true,
+          channel: 'telegram',
+          mode: 'bot_direct',
+          message: 'Заказ отправлен поставщику в Telegram',
+        });
+      }
+      // Если бот не смог (поставщик не писал боту → 403, или другая ошибка) —
+      // отдаём дополнительный hint в ответе и переходим на share-url.
+    }
+
+    // Fallback: t.me/share/url — мастер сам пересылает PDF контакту
+    // в своём Telegram. Текст сообщения с шаблоном уже включает PDF-ссылку.
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(publicPdfUrl)}&text=${encodeURIComponent(message.text)}`;
 
     await admin.from('supplier_orders').update({
       status: 'sent',
@@ -158,8 +202,12 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({
       ok: true,
       channel: 'telegram',
+      mode: 'share_link',
       share_url: shareUrl,
       pdf_url: publicPdfUrl,
+      hint: supplierTg
+        ? 'Не удалось отправить через бота — открой Telegram и переслай заказ контакту вручную'
+        : 'У поставщика не указан Telegram chat_id для прямой отправки. Открой Telegram и перешли заказ контакту',
     });
   }
 
@@ -169,8 +217,8 @@ export async function POST(req: Request, { params }: RouteContext) {
       const { error: sendErr } = await getResend().emails.send({
         from: 'CRES-CA <noreply@cres-ca.com>',
         to: supplierEmail,
-        subject: `Заказ #${order.id.slice(0, 8).toUpperCase()} — ${masterName}`,
-        text: summary,
+        subject: message.subject,
+        text: message.text,
         attachments: [{
           filename,
           content: Buffer.from(pdfBytes),
