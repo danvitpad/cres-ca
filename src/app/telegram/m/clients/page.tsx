@@ -108,15 +108,12 @@ export default function MasterMiniAppClientsPage() {
     (async () => {
       setLoading(true);
       const initData = getInitData();
-      if (!initData) {
-        setLoading(false);
-        return;
-      }
+      // initData необязателен — API принимает и cookie session (browser users)
       try {
         const res = await fetch('/api/telegram/m/clients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData }),
+          body: JSON.stringify({ initData: initData ?? null }),
         });
         if (!res.ok) {
           setLoading(false);

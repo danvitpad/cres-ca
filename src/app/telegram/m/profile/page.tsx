@@ -173,12 +173,11 @@ export default function MasterMiniAppProfile() {
         } catch { /* ignore */ }
         return null;
       })();
-      if (!initData) { setLoading(false); return; }
-
+      // initData необязателен — API принимает и cookie session (browser users)
       const res = await fetch('/api/telegram/m/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
+        body: JSON.stringify({ initData: initData ?? null }),
       });
       if (!res.ok) { setLoading(false); return; }
       const json = await res.json();
