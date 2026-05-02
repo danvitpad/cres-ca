@@ -65,7 +65,33 @@ export default function TelegramEntryPage() {
       }
 
       if (!initData) {
-        setError('Откройте это приложение из Telegram');
+        // Не Telegram (обычный браузер). Если есть Supabase cookie session —
+        // разводим по home в зависимости от роли. Иначе — отправляем на
+        // лёгкую страницу логина /telegram/login (mini-app визуал).
+        try {
+          const { createClient } = await import('@/lib/supabase/client');
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('role, tier, full_name')
+              .eq('id', user.id)
+              .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
+            const role = (profile?.role ?? 'client') as 'master' | 'client' | 'salon_admin' | 'receptionist';
+            const tier = (profile?.tier ?? null) as 'trial' | 'starter' | 'pro' | 'business' | null;
+            setAuth(user.id, role, tier, profile?.full_name ?? null);
+            if (role === 'master' || role === 'salon_admin') {
+              router.replace('/telegram/m/home');
+            } else {
+              router.replace('/telegram/home');
+            }
+            return;
+          }
+        } catch {
+          // ignore — упадём на login
+        }
+        router.replace('/telegram/login');
         return;
       }
 

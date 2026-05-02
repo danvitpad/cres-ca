@@ -9,7 +9,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Search, CalendarDays, User } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
@@ -17,6 +17,8 @@ import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
 import { MiniAppThemeProvider } from '@/components/miniapp/theme';
 import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
+import { createClient } from '@/lib/supabase/client';
+import type { UserRole, SubscriptionTier } from '@/types';
 
 const tabs: readonly NavTab[] = [
   { key: 'home', href: '/telegram/home', icon: Home, label: 'Главная' },
@@ -29,12 +31,42 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [hydrated, setHydrated] = useState(false);
 
+  // На hard reload zustand-стор пуст. Пробуем поднять Supabase session
+  // (для browser users) перед редиректом на /telegram. Так избегаем мигания
+  // и лишнего hop'а в init-page для уже залогиненных через cookie.
   useEffect(() => {
-    if (!userId) {
-      router.replace('/telegram');
-    }
-  }, [userId, router]);
+    if (userId) { setHydrated(true); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role, tier, full_name')
+            .eq('id', user.id)
+            .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
+          if (cancelled) return;
+          setAuth(user.id, (profile?.role ?? 'client') as UserRole, (profile?.tier ?? null) as SubscriptionTier | null, profile?.full_name ?? null);
+          setHydrated(true);
+          return;
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) router.replace('/telegram');
+    })();
+    return () => { cancelled = true; };
+  }, [userId, router, setAuth]);
+
+  // Не рендерим контент пока не убедились в auth — иначе подкомпоненты
+  // делают запросы с null userId и получают пустоту.
+  if (!userId && !hydrated) {
+    return null;
+  }
 
   // Fullscreen routes — booking flow has its own sticky footer.
   const isFullscreen = pathname.startsWith('/telegram/book');

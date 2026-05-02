@@ -42,13 +42,29 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       setChecking(false);
       return;
     }
-    if (!userId) {
-      router.replace('/telegram');
-      return;
-    }
+    let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase.from('masters').select('id').eq('profile_id', userId).maybeSingle();
+      // Hydrate auth-store из Supabase session если zustand пуст
+      // (browser hard-reload, без Telegram). Иначе шлём на /telegram.
+      let resolvedUserId = userId;
+      if (!resolvedUserId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (cancelled) return;
+        if (!user) { router.replace('/telegram'); return; }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, tier, full_name')
+          .eq('id', user.id)
+          .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
+        if (cancelled) return;
+        const role = (profile?.role ?? 'client') as 'master' | 'client' | 'salon_admin' | 'receptionist';
+        const tier = (profile?.tier ?? null) as 'trial' | 'starter' | 'pro' | 'business' | null;
+        useAuthStore.getState().setAuth(user.id, role, tier, profile?.full_name ?? null);
+        resolvedUserId = user.id;
+      }
+      const { data } = await supabase.from('masters').select('id').eq('profile_id', resolvedUserId).maybeSingle();
+      if (cancelled) return;
       if (!data) {
         router.replace('/telegram/home');
         return;
@@ -57,13 +73,15 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       const { data: member } = await supabase
         .from('salon_members')
         .select('role, salon:salons(team_mode)')
-        .eq('profile_id', userId)
+        .eq('profile_id', resolvedUserId)
         .eq('is_active', true)
         .maybeSingle();
+      if (cancelled) return;
       const teamMode = (member?.salon as { team_mode?: string } | null)?.team_mode;
       setUnifiedTeamLimited(teamMode === 'unified' && member?.role === 'master');
       setChecking(false);
     })();
+    return () => { cancelled = true; };
   }, [userId, router, isSalonContext]);
 
   useEffect(() => {
