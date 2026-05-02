@@ -236,13 +236,17 @@ export default function MiniAppAppointmentDetail() {
   const masterAvatar = row.master?.avatar_url || row.master?.profile?.avatar_url || null;
   const starts = new Date(row.starts_at);
   const ends = new Date(row.ends_at);
+  // Buttons stay visible for any non-terminal status. Past-time cancellation
+  // policy/fees are explained in the cancel sheet (`cancelCost`); we don't
+  // hide the controls just because the appointment is in the past — the user
+  // still needs a way to formally cancel a no-show.
   const canCancel =
     row.status !== 'cancelled' &&
     row.status !== 'cancelled_by_client' &&
     row.status !== 'completed' &&
-    row.status !== 'no_show' &&
-    hoursUntilStart > 0;
-  const canReschedule = canCancel;
+    row.status !== 'no_show';
+  // Перенести имеет смысл только для будущих записей — иначе двигать некуда.
+  const canReschedule = canCancel && hoursUntilStart > 0;
   const isCompleted = row.status === 'completed';
   const statusInfo = statusLabels[row.status] ?? statusLabels.booked;
 
@@ -360,13 +364,23 @@ export default function MiniAppAppointmentDetail() {
         </div>
       )}
 
-      {/* Contact */}
+      {/* Contact — звонок мастеру. Telegram WebView иногда игнорирует <a tel:>,
+          поэтому дублируем onClick → window.location, чтобы точно открылся
+          нативный диалер. */}
       {row.master?.profile?.phone && (
         <a
           href={`tel:${row.master.profile.phone}`}
+          onClick={(e) => {
+            const phone = row.master?.profile?.phone;
+            if (!phone) return;
+            haptic('light');
+            // Force navigation в случае если TG WebView перехватывает клик
+            e.preventDefault();
+            window.location.href = `tel:${phone}`;
+          }}
           className="flex items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm font-semibold active:scale-[0.98] transition-transform"
         >
-          <Phone className="size-4" /> Позвонить мастеру
+          <Phone className="size-4" /> Позвонить мастеру · {row.master.profile.phone}
         </a>
       )}
 

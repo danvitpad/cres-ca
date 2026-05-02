@@ -144,8 +144,21 @@ export async function GET(request: NextRequest) {
   const breakStart = workingHours.break_start ? timeToMinutes(workingHours.break_start) : null;
   const breakEnd = workingHours.break_end ? timeToMinutes(workingHours.break_end) : null;
 
+  // For today, hide slots that already started — клиент не должен видеть
+  // прошедшее время. Считаем по локальной дате сервера, поэтому в граничных
+  // часовых поясах возможна 1ч погрешность; для большинства пользователей
+  // в UA/EU попадание в today одинаково.
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const isToday = date === todayStr;
+  const nowMin = isToday ? now.getHours() * 60 + now.getMinutes() : -1;
+
   const slots: string[] = [];
   for (let t = startMin; t + duration <= endMin; t += 30) {
+    // Past-time filter — for today, drop slots that already started.
+    // 5-минутный буфер чтобы клиент не успел нажать «через минуту».
+    if (isToday && t <= nowMin + 5) continue;
+
     // Check break overlap
     if (breakStart !== null && breakEnd !== null) {
       if (t < breakEnd && t + duration > breakStart) continue;
