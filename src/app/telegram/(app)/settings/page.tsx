@@ -335,9 +335,23 @@ export default function MiniAppSettingsPage() {
             <ToggleSwitch on={theme === 'dark'} />
           </button>
           <div style={divider} />
-          <SettingsRow icon={Globe} label="Язык" hint="Скоро" onClick={() => haptic('light')} />
+          <Link href="/telegram/settings/language" onClick={() => haptic('light')} style={rowStyle}>
+            <div style={iconBox}><Globe size={16} color={T.text} /></div>
+            <div style={{ flex: 1 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Язык</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Українська · Русский · English</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </Link>
           <div style={divider} />
-          <SettingsRow icon={Shield} label="Приватность" hint="Скоро" onClick={() => haptic('light')} />
+          <Link href="/telegram/settings/privacy" onClick={() => haptic('light')} style={rowStyle}>
+            <div style={iconBox}><Shield size={16} color={T.text} /></div>
+            <div style={{ flex: 1 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Приватность</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Что видят мастера и команды</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </Link>
           <div style={divider} />
           <Link href="/telegram/settings/feedback" onClick={() => haptic('light')} style={rowStyle}>
             <div style={{ ...iconBox, borderColor: 'rgba(244,63,94,0.2)', background: 'rgba(244,63,94,0.08)' }}>

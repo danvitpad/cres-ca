@@ -159,7 +159,7 @@ export default function MiniAppMasterDetailPage() {
       const [masterRes, portfolioRes, reviewsRes, categoriesRes] = await Promise.all([
         supabase
           .from('masters')
-          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, profile:profiles!masters_profile_id_fkey(full_name, avatar_url), services(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
+          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, profile:profiles!masters_profile_id_fkey(first_name, last_name, full_name, avatar_url), services!services_master_id_fkey(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
           .eq('id', params.id)
           .eq('is_active', true)
           .maybeSingle(),

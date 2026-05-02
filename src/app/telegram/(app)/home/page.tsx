@@ -65,21 +65,73 @@ interface FeaturedMaster {
   topServices: Array<{ name: string; price: number; currency: string }>;
 }
 
+type Lang = 'uk' | 'ru' | 'en';
+
+const I18N: Record<Lang, {
+  title: string;
+  morningHi: string; dayHi: string; eveningHi: string; nightHi: string;
+  upcoming: string; details: string;
+  regulars: string; atMaster: string;
+  freeSlots: string; allContacts: string;
+  recommended: string; viewAll: string; from: string;
+  explore: string; topCats: string;
+  cat: { beauty: string; health: string; pets: string; fitness: string; auto: string; home: string };
+  topcat: { hair: string; massage: string; trainer: string; grooming: string; repair: string };
+  today: string; tomorrow: string;
+}> = {
+  uk: {
+    title: 'Для вас',
+    morningHi: 'Доброго ранку', dayHi: 'Доброго дня', eveningHi: 'Доброго вечора', nightHi: 'Доброї ночі',
+    upcoming: 'Найближчий запис', details: 'Детальніше',
+    regulars: 'Твої постійні', atMaster: 'у',
+    freeSlots: 'Вільні вікна', allContacts: 'Усі контакти',
+    recommended: 'Рекомендовані', viewAll: 'Дивитися всі', from: 'від',
+    explore: 'Огляд', topCats: 'Топ категорії',
+    cat: { beauty: 'Краса', health: "Здоров'я", pets: 'Тварини', fitness: 'Фітнес', auto: 'Авто', home: 'Дім' },
+    topcat: { hair: 'Стрижка та укладка', massage: 'Масаж', trainer: 'Тренер', grooming: 'Грумінг', repair: 'Ремонт' },
+    today: 'Сьогодні', tomorrow: 'Завтра',
+  },
+  ru: {
+    title: 'Для вас',
+    morningHi: 'Доброе утро', dayHi: 'Добрый день', eveningHi: 'Добрый вечер', nightHi: 'Доброй ночи',
+    upcoming: 'Ближайшая запись', details: 'Подробнее',
+    regulars: 'Твои постоянные', atMaster: 'у',
+    freeSlots: 'Свободные окна', allContacts: 'Все контакты',
+    recommended: 'Рекомендуемые', viewAll: 'Посмотреть все', from: 'от',
+    explore: 'Explore', topCats: 'Топ категории',
+    cat: { beauty: 'Красота', health: 'Здоровье', pets: 'Питомцы', fitness: 'Фитнес', auto: 'Авто', home: 'Дом' },
+    topcat: { hair: 'Стрижка и укладка', massage: 'Массаж', trainer: 'Тренер', grooming: 'Груминг', repair: 'Ремонт' },
+    today: 'Сегодня', tomorrow: 'Завтра',
+  },
+  en: {
+    title: 'For you',
+    morningHi: 'Good morning', dayHi: 'Good afternoon', eveningHi: 'Good evening', nightHi: 'Good night',
+    upcoming: 'Next appointment', details: 'View details',
+    regulars: 'Your regulars', atMaster: 'at',
+    freeSlots: 'Open slots', allContacts: 'All contacts',
+    recommended: 'Recommended', viewAll: 'See all', from: 'from',
+    explore: 'Explore', topCats: 'Top categories',
+    cat: { beauty: 'Beauty', health: 'Health', pets: 'Pets', fitness: 'Fitness', auto: 'Auto', home: 'Home' },
+    topcat: { hair: 'Hair & styling', massage: 'Massage', trainer: 'Trainer', grooming: 'Grooming', repair: 'Repair' },
+    today: 'Today', tomorrow: 'Tomorrow',
+  },
+};
+
 const CATEGORY_TILES = [
-  { key: 'beauty', label: 'Красота', q: 'красота', bg: '#f4b740', emoji: '💇' },
-  { key: 'health', label: 'Здоровье', q: 'здоровье', bg: '#3b82f6', emoji: '🩺' },
-  { key: 'pets', label: 'Питомцы', q: 'груминг', bg: '#14b8a6', emoji: '🐾' },
-  { key: 'fitness', label: 'Фитнес', q: 'тренер', bg: '#ec4899', emoji: '💪' },
-  { key: 'auto', label: 'Авто', q: 'авто', bg: '#f97316', emoji: '🚗' },
-  { key: 'home', label: 'Дом', q: 'ремонт', bg: '#84cc16', emoji: '🔧' },
+  { key: 'beauty', q: 'красота', bg: '#f4b740', emoji: '💇' },
+  { key: 'health', q: 'здоровье', bg: '#3b82f6', emoji: '🩺' },
+  { key: 'pets', q: 'груминг', bg: '#14b8a6', emoji: '🐾' },
+  { key: 'fitness', q: 'тренер', bg: '#ec4899', emoji: '💪' },
+  { key: 'auto', q: 'авто', bg: '#f97316', emoji: '🚗' },
+  { key: 'home', q: 'ремонт', bg: '#84cc16', emoji: '🔧' },
 ] as const;
 
 const TOP_CATEGORIES = [
-  { key: 'hair', label: 'Стрижка и укладка', q: 'стрижка' },
-  { key: 'massage', label: 'Массаж', q: 'массаж' },
-  { key: 'trainer', label: 'Тренер', q: 'тренер' },
-  { key: 'grooming', label: 'Груминг', q: 'груминг' },
-  { key: 'repair', label: 'Ремонт', q: 'ремонт' },
+  { key: 'hair', q: 'стрижка' },
+  { key: 'massage', q: 'массаж' },
+  { key: 'trainer', q: 'тренер' },
+  { key: 'grooming', q: 'груминг' },
+  { key: 'repair', q: 'ремонт' },
 ] as const;
 
 export default function MiniAppHomePage() {
@@ -94,8 +146,18 @@ export default function MiniAppHomePage() {
     service_id: string; service_name: string; service_duration: number | null;
     service_price: number | null; service_currency: string | null; visit_count: number;
   }>>([]);
-  const [, setLoading] = useState(true);
+  const [featuredLoading, setFeaturedLoading] = useState(true);
   const [aiOpen, setAiOpen] = useState(false);
+  const [lang, setLang] = useState<Lang>('uk');
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('cres:locale') as Lang | null;
+      if (stored && ['uk', 'ru', 'en'].includes(stored)) setLang(stored);
+    } catch {}
+  }, []);
+
+  const t = I18N[lang];
 
   useEffect(() => {
     if (!userId) return;
@@ -187,6 +249,7 @@ export default function MiniAppHomePage() {
           setFeatured(Array.isArray(j.items) ? j.items : []);
         }
       } catch { /* ignore */ }
+      setFeaturedLoading(false);
 
       // Regular services (≥3 completed visits at the same master+service)
       try {
@@ -196,18 +259,16 @@ export default function MiniAppHomePage() {
           setRegulars(Array.isArray(j.items) ? j.items : []);
         }
       } catch { /* ignore */ }
-
-      setLoading(false);
     })();
   }, [userId]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
-    if (h < 6) return 'Доброй ночи';
-    if (h < 12) return 'Доброе утро';
-    if (h < 18) return 'Добрый день';
-    return 'Добрый вечер';
-  }, []);
+    if (h < 6) return t.nightHi;
+    if (h < 12) return t.morningHi;
+    if (h < 18) return t.dayHi;
+    return t.eveningHi;
+  }, [t]);
 
   return (
     <MobilePage>
@@ -218,7 +279,7 @@ export default function MiniAppHomePage() {
         style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
       >
         <PageHeader
-          title="Для вас"
+          title={t.title}
           subtitle={greeting}
           right={
             <button
@@ -263,7 +324,7 @@ export default function MiniAppHomePage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <Calendar size={13} /> Ближайшая запись
+              <Calendar size={13} /> {t.upcoming}
             </div>
             <p style={{ fontSize: 22, fontWeight: 800, marginTop: 8, marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
               {next.service_name}
@@ -277,7 +338,7 @@ export default function MiniAppHomePage() {
               </p>
             )}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 14, fontSize: 13, fontWeight: 700 }}>
-              Подробнее <ChevronRight size={14} />
+              {t.details} <ChevronRight size={14} />
             </div>
           </Link>
         ) : null}
@@ -285,7 +346,7 @@ export default function MiniAppHomePage() {
         {/* Твои постоянные — мастер+услуга где было ≥3 визитов */}
         {regulars.length > 0 && (
           <div style={{ marginTop: 12 }}>
-            <SectionHeader title="Твои постоянные" rightLabel="" />
+            <SectionHeader title={t.regulars} rightLabel="" />
             <div
               style={{
                 display: 'flex',
@@ -318,7 +379,7 @@ export default function MiniAppHomePage() {
                   }}
                 >
                   <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.service_name}</div>
-                  <div style={{ marginTop: 2, fontSize: 12, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>у {r.master_name}</div>
+                  <div style={{ marginTop: 2, fontSize: 12, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.atMaster} {r.master_name}</div>
                   <div style={{ marginTop: 8, fontSize: 12, color: T.success, fontWeight: 700 }}>
                     {formatMoney(r.service_price, 'UAH')}
                     {r.service_duration ? ` · ${r.service_duration} мин` : ''}
@@ -332,7 +393,7 @@ export default function MiniAppHomePage() {
         {/* Свободные окна у моих контактов */}
         {slots.length > 0 && (
           <div>
-            <SectionHeader title="Свободные окна" href="/telegram/connections" rightLabel="Все контакты" />
+            <SectionHeader title={t.freeSlots} href="/telegram/connections" rightLabel={t.allContacts} />
             <ul
               style={{
                 listStyle: 'none',
@@ -379,9 +440,9 @@ export default function MiniAppHomePage() {
         )}
 
         {/* Рекомендуемые — Fresha "Recommended" */}
-        {featured.length > 0 && (
+        {(featuredLoading || featured.length > 0) && (
           <div>
-            <SectionHeader title="Рекомендуемые" href="/telegram/search" />
+            <SectionHeader title={t.recommended} href="/telegram/search" rightLabel={t.viewAll} />
             <div
               style={{
                 display: 'flex',
@@ -393,8 +454,31 @@ export default function MiniAppHomePage() {
             >
               <style>{`
                 .featured-row::-webkit-scrollbar { display: none; }
+                @keyframes cresPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
               `}</style>
               <div className="featured-row" style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
+                {featuredLoading && featured.length === 0 ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={`skel-${i}`}
+                      style={{
+                        flexShrink: 0,
+                        width: 220,
+                        background: T.surface,
+                        border: `1px solid ${T.borderSubtle}`,
+                        borderRadius: R.md,
+                        overflow: 'hidden',
+                        boxShadow: SHADOW.card,
+                      }}
+                    >
+                      <div style={{ aspectRatio: '4/3', background: T.bgSubtle, animation: 'cresPulse 1.4s ease-in-out infinite' }} />
+                      <div style={{ padding: 12 }}>
+                        <div style={{ height: 14, width: '70%', background: T.bgSubtle, borderRadius: 4, animation: 'cresPulse 1.4s ease-in-out infinite' }} />
+                        <div style={{ height: 11, width: '50%', background: T.bgSubtle, borderRadius: 4, marginTop: 8, animation: 'cresPulse 1.4s ease-in-out infinite' }} />
+                      </div>
+                    </div>
+                  ))
+                ) : null}
                 {featured.map((m) => {
                   const cheapest = m.topServices[0];
                   return (
@@ -499,7 +583,7 @@ export default function MiniAppHomePage() {
                           <span style={{ ...TYPE.micro }}>{m.city ?? ''}</span>
                           {cheapest && (
                             <span style={{ ...TYPE.bodyStrong, fontSize: 13 }}>
-                              от {formatMoney(cheapest.price, cheapest.currency)}
+                              {t.from} {formatMoney(cheapest.price, cheapest.currency)}
                             </span>
                           )}
                         </div>
@@ -514,7 +598,7 @@ export default function MiniAppHomePage() {
 
         {/* Explore — colored category tiles (Fresha "Explore") */}
         <div>
-          <SectionHeader title="Explore" href="/telegram/search" />
+          <SectionHeader title={t.explore} href="/telegram/search" rightLabel={t.viewAll} />
           <div
             style={{
               display: 'grid',
@@ -557,7 +641,7 @@ export default function MiniAppHomePage() {
                 >
                   {c.emoji}
                 </span>
-                {c.label}
+                {t.cat[c.key as keyof typeof t.cat]}
               </Link>
             ))}
           </div>
@@ -565,7 +649,7 @@ export default function MiniAppHomePage() {
 
         {/* Top categories — circular avatars */}
         <div>
-          <SectionHeader title="Топ категории" href="/telegram/search" />
+          <SectionHeader title={t.topCats} href="/telegram/search" rightLabel={t.viewAll} />
           <div
             style={{
               display: 'flex',
@@ -616,7 +700,7 @@ export default function MiniAppHomePage() {
                       lineHeight: 1.2,
                     }}
                   >
-                    {c.label}
+                    {t.topcat[c.key as keyof typeof t.topcat]}
                   </span>
                 </Link>
               ))}
