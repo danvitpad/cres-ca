@@ -87,7 +87,7 @@ export function FollowMasterButton({ masterId, accent = 'var(--ds-accent, var(--
       onClick={onClick}
       disabled={isFollowing === null || pending}
       aria-pressed={!!isFollowing}
-      className="inline-flex items-center gap-2 rounded-[var(--brand-radius-lg)] border px-5 py-3 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] border px-5 py-3 text-sm font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
       style={
         isFollowing
           ? { background: accent, borderColor: accent, color: 'white' }

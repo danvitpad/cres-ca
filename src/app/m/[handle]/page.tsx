@@ -156,15 +156,21 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     'theme_primary_color, theme_background_color, theme_background_image_url, banner_position_y, ' +
     'phone_public, email_public, dob_public, interests, social_links, page_type, works_online, ' +
     'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
-    'profile:profiles!masters_profile_id_fkey(phone, email, date_of_birth, deleted_at)';
+    'profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, phone, email, date_of_birth, deleted_at)';
 
   const flatten = (row: Record<string, unknown> | null): MasterRow | null => {
     if (!row) return null;
-    const profile = (row.profile ?? null) as { phone: string | null; email: string | null; date_of_birth: string | null; deleted_at: string | null } | null;
+    const profile = (row.profile ?? null) as { full_name: string | null; first_name: string | null; last_name: string | null; phone: string | null; email: string | null; date_of_birth: string | null; deleted_at: string | null } | null;
     // Если аккаунт мастера помечен на удаление — публичная страница недоступна.
     if (profile?.deleted_at) return null;
+    // Имя мастера: display_name (если задано отдельно для публички) → first+last → full_name из профиля.
+    const fromParts = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ').trim() || null;
+    const masterRow = row as unknown as MasterRow & { display_name: string | null };
+    if (!masterRow.display_name) {
+      masterRow.display_name = fromParts || profile?.full_name || null;
+    }
     return {
-      ...(row as unknown as Omit<MasterRow, 'phone' | 'email' | 'date_of_birth'>),
+      ...(masterRow as unknown as Omit<MasterRow, 'phone' | 'email' | 'date_of_birth'>),
       phone: profile?.phone ?? null,
       email: profile?.email ?? null,
       date_of_birth: profile?.date_of_birth ?? null,
@@ -396,7 +402,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     loadSalon(master.salon_id),
     loadOwnedSalonContext(master.profile_id),
   ]);
-  const displayName = master.display_name ?? 'Master';
+  const displayName = master.display_name ?? 'Мастер';
   const rating = Number(master.rating ?? 0);
   const reviews = master.total_reviews ?? 0;
 
@@ -508,12 +514,14 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       {/* Cover banner — inline-editable для owner. Если cover_url пуст и
           текущий пользователь — owner, показывается dashed-CTA «Добавь обложку».
           Иначе для клиента — image либо ничего. */}
-      <InlineCoverBanner
-        masterId={master.id}
-        masterProfileId={master.profile_id}
-        initialCoverUrl={master.cover_url}
-        initialBannerY={master.banner_position_y}
-      />
+      <div id="inline-cover" className="scroll-mt-24">
+        <InlineCoverBanner
+          masterId={master.id}
+          masterProfileId={master.profile_id}
+          initialCoverUrl={master.cover_url}
+          initialBannerY={master.banner_position_y}
+        />
+      </div>
 
       <BookingDrawerProvider
         master={{
@@ -537,8 +545,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       >
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
-          {/* ─── LEFT col (Hero card) — sticky on desktop, normal on mobile ─── */}
-          <div className="lg:col-span-4 space-y-4">
+          {/* ─── LEFT col — sticky на desktop. Hero-card + панель управления
+               скроллятся ВМЕСТЕ как один sticky-блок: при скролле основной
+               страницы они не уезжают друг под друга. ─── */}
+          <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:pr-1">
             <PublicHeroCard
               masterId={master.id}
               masterProfileId={master.profile_id}
@@ -599,11 +609,13 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
             {/* Bio — inline-editable. Скрыто для клиента если пусто; для owner —
                 CTA «Добавь описание». */}
-            <InlineBioBlock
-              masterId={master.id}
-              masterProfileId={master.profile_id}
-              initialBio={master.bio}
-            />
+            <div id="inline-bio" className="scroll-mt-24">
+              <InlineBioBlock
+                masterId={master.id}
+                masterProfileId={master.profile_id}
+                initialBio={master.bio}
+              />
+            </div>
             {void hasBio /* legacy var, rendering moved to InlineBioBlock */}
 
             {/* Services */}
@@ -728,19 +740,23 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               </h2>
               <div className={showAddressBlock ? 'grid gap-5 sm:grid-cols-2' : ''}>
                 {showAddressBlock && (
-                  <InlineAddressBlock
+                  <div id="inline-address" className="scroll-mt-24">
+                    <InlineAddressBlock
+                      masterId={master.id}
+                      masterProfileId={master.profile_id}
+                      initialCity={master.city}
+                      initialAddress={master.address}
+                      workplaceName={salon?.name ?? master.workplace_name ?? null}
+                    />
+                  </div>
+                )}
+                <div id="inline-hours" className="scroll-mt-24">
+                  <InlineHoursBlock
                     masterId={master.id}
                     masterProfileId={master.profile_id}
-                    initialCity={master.city}
-                    initialAddress={master.address}
-                    workplaceName={salon?.name ?? master.workplace_name ?? null}
+                    initialHours={master.working_hours}
                   />
-                )}
-                <InlineHoursBlock
-                  masterId={master.id}
-                  masterProfileId={master.profile_id}
-                  initialHours={master.working_hours}
-                />
+                </div>
               </div>
               {master.booking_important_info && master.booking_important_info.trim().length > 0 && (
                 <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-5">

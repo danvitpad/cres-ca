@@ -13,9 +13,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { PublicPageCustomizer } from './public-page-customizer';
 
 interface MasterCfg {
   id: string;
@@ -92,45 +91,28 @@ export function OwnerToolbar({ masterProfileId }: { masterProfileId: string | nu
     }
   }
 
+  // Кнопка «Настроить» с drawer'ом удалена — все настройки теперь inline на
+  // самой странице (быстрая панель управления слева под hero-card). Здесь
+  // оставлена только кнопка «Кабинет» для возврата мастера в Mini App / web.
+  void open; void setOpen; void master;
   return (
-    <>
-      {/* Top floating toolbar — owner-only */}
-      <div
-        className="fixed left-0 right-0 z-40 flex items-center justify-between gap-2 px-3"
-        style={{
-          top: 'max(env(safe-area-inset-top, 0px), 8px)',
-          pointerEvents: 'none',
-        }}
+    <div
+      className="fixed left-0 right-0 z-40 flex items-center justify-between gap-2 px-3"
+      style={{
+        top: 'max(env(safe-area-inset-top, 0px), 8px)',
+        pointerEvents: 'none',
+      }}
+    >
+      <button
+        type="button"
+        onClick={goBack}
+        className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-white/95 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur transition-all hover:bg-white ring-1 ring-black/5"
+        style={{ pointerEvents: 'auto' }}
+        title="Вернуться в кабинет"
       >
-        <button
-          type="button"
-          onClick={goBack}
-          className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-white/95 px-3 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur transition-all hover:bg-white ring-1 ring-black/5"
-          style={{ pointerEvents: 'auto' }}
-          title="Вернуться в кабинет"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Кабинет
-        </button>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-foreground/95 px-3 py-2 text-sm font-semibold text-background shadow-lg backdrop-blur transition-all hover:bg-foreground"
-          style={{ pointerEvents: 'auto' }}
-          title="Открыть редактор страницы"
-        >
-          <SettingsIcon className="h-4 w-4" />
-          Настроить
-        </button>
-      </div>
-      <PublicPageCustomizer
-        open={open}
-        onOpenChange={setOpen}
-        master={master}
-        onSaved={() => {
-          window.location.reload();
-        }}
-      />
-    </>
+        <ArrowLeft className="h-4 w-4" />
+        Кабинет
+      </button>
+    </div>
   );
 }

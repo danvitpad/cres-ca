@@ -85,10 +85,12 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
   if (!isOwner || !data || !counts || collapsed) return null;
 
   const inMiniApp = isInsideTelegramMiniApp();
+  // Bio / Cover / Address / Hours / Social — все редактируются inline на этой
+  // же публичной странице. Вместо ухода в /settings — скролл к якорю
+  // соответствующего inline-блока. Услуги и портфолио всё ещё имеют
+  // отдельные экраны (там много данных), туда href остаётся.
   const servicesHref = inMiniApp ? '/telegram/m/settings/services' : '/services';
-  const portfolioHref = inMiniApp ? '/telegram/m/settings' : '/portfolio';
-  const profileHref = inMiniApp ? '/telegram/m/settings' : '/settings?section=profile';
-  const scheduleHref = inMiniApp ? '/telegram/m/settings/schedule' : '/settings?section=hours';
+  const portfolioHref = '#portfolio';
 
   const items: ChecklistItem[] = [
     {
@@ -96,14 +98,14 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
       label: 'Описание о себе',
       hint: 'Расскажи в 2–3 предложениях про опыт и подход',
       done: !!data.bio && data.bio.trim().length >= 30,
-      href: profileHref,
+      href: '#inline-bio',
     },
     {
       key: 'cover',
       label: 'Обложка профиля',
       hint: 'Большое фото на шапке — лицо страницы',
       done: !!data.cover_url,
-      href: profileHref,
+      href: '#inline-cover',
     },
     {
       key: 'services',
@@ -126,21 +128,21 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
       done: !!data.working_hours && Object.values(data.working_hours).some(
         (v) => v && typeof v === 'object' && !((v as { closed?: boolean }).closed),
       ),
-      href: scheduleHref,
+      href: '#inline-hours',
     },
     {
       key: 'address',
       label: 'Адрес или район',
       hint: 'Хотя бы город — иначе клиенту не найти',
       done: !!(data.address || data.city),
-      href: profileHref,
+      href: '#inline-address',
     },
     {
       key: 'social',
       label: 'Соцсети / мессенджеры',
       hint: 'Чтобы клиент мог написать в TG/Instagram',
       done: !!data.social_links && Object.values(data.social_links).some((v) => v && typeof v === 'string' && v.length > 0),
-      href: profileHref,
+      href: '#inline-social',
     },
   ];
 

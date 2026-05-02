@@ -84,35 +84,33 @@ export function PublicHeroCard({
   })();
 
   return (
-    <aside className="relative flex flex-col gap-5 rounded-[20px] border border-neutral-200 bg-[#f7f7f7] p-6 lg:sticky lg:top-6">
+    <aside className="relative flex flex-col gap-5 rounded-[20px] border border-neutral-200 bg-[#f7f7f7] p-6">
+      {/* Top-left: маленькая зелёная точка «Online» когда мастер принимает онлайн.
+          Раньше была подписью на аватаре — теперь компактнее, прямо на углу
+          карточки напротив кнопки «Поделиться». */}
+      {worksOnline && (
+        <span
+          className="absolute left-4 top-4 z-10 inline-flex size-3 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white shadow"
+          title="Принимает онлайн"
+        />
+      )}
+
       {/* Share top-right */}
       <div className="absolute right-4 top-4 z-10">
         <ShareStoryButton masterId={masterId} masterName={displayName} />
       </div>
 
       {/* Avatar (centered, large) — inline-editable for owner.
-          Бейдж «Online» в левом верхнем углу аватара если мастер
-          принимает онлайн (works_online = true).
-          ВАЖНО: не оборачиваем InlineAvatarEdit в overflow-hidden —
-          иначе кнопка «Сменить аватар» (которая стоит -bottom-1 -right-1)
-          обрезается. Скругление и фон даём САМ InlineAvatarEdit через
-          MasterAvatar. */}
-      <div className="relative mx-auto mt-2 size-40">
+          Белая окантовка ring-4 ring-white чтобы аватар читался на любом фоне
+          карточки (светлая/тёмная тема). overflow-hidden не ставим — иначе
+          кнопка «Сменить аватар» обрезается. */}
+      <div className="relative mx-auto mt-2 size-40 rounded-full ring-4 ring-white shadow-md">
         <InlineAvatarEdit
           masterProfileId={masterProfileId}
           initialUrl={avatarUrl}
           name={displayName}
           className="size-full"
         />
-        {worksOnline && (
-          <span
-            className="pointer-events-none absolute -left-1 top-1 z-10 inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg ring-2 ring-white"
-            title="Принимает онлайн"
-          >
-            <span className="size-1.5 rounded-full bg-white" />
-            Online
-          </span>
-        )}
       </div>
 
       {/* Identity */}
