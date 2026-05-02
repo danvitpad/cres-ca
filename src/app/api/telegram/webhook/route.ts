@@ -289,7 +289,7 @@ async function handleTextIntent(chatId: number, text: string) {
 
   // If user is a client (no master row) — treat text as feedback
   if (!master) {
-    await saveFeedbackAndNotify(session.profile_id, text, 'telegram_bot');
+    await saveFeedbackAndNotify(session.profile_id, text, 'telegram_bot', { chatId });
     await sendMessage(chatId, FEEDBACK_THANKS);
     return;
   }
@@ -367,7 +367,11 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
         await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуй сказать чётче или напиши текстом командой /feedback');
         return;
       }
-      await saveFeedbackAndNotify(session.profile_id, t, 'telegram_voice');
+      await saveFeedbackAndNotify(session.profile_id, t, 'telegram_voice', {
+        chatId,
+        voiceBuffer: Buffer.from(base64, 'base64'),
+        voiceMime: mimeType,
+      });
       await sendMessage(chatId, FEEDBACK_THANKS);
     } catch (err) {
       console.error('[voice] client feedback transcription failed:', (err as Error)?.message);
@@ -385,7 +389,11 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     // Detect feedback from raw transcript (kept for masters who want to send feedback by voice)
     const transcript = (intent.raw_transcript || '').trim();
     if (isFeedbackTranscript(transcript) && transcript.length >= 4) {
-      await saveFeedbackAndNotify(session.profile_id, transcript, 'telegram_voice');
+      await saveFeedbackAndNotify(session.profile_id, transcript, 'telegram_voice', {
+        chatId,
+        voiceBuffer: Buffer.from(base64, 'base64'),
+        voiceMime: mimeType,
+      });
       await sendMessage(chatId, FEEDBACK_THANKS);
       return;
     }
@@ -1826,8 +1834,29 @@ const FEEDBACK_PROMPT = 'Запиши голосовое или напиши т�
 
 const FEEDBACK_THANKS = 'Команда CRES-CA благодарит вас за отзыв 💜\n\nМы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — мы прочитаем каждое сообщение лично!';
 
-async function saveFeedbackAndNotify(profileId: string, transcript: string, source: 'telegram_bot' | 'telegram_voice') {
+async function saveFeedbackAndNotify(
+  profileId: string,
+  transcript: string,
+  source: 'telegram_bot' | 'telegram_voice',
+  opts: { chatId?: number; voiceBuffer?: Buffer; voiceMime?: string } = {},
+) {
   const supabase = createServiceClient();
+
+  const { analyzeFeedback, formatFeedbackNotification, buildFeedbackButtons } = await import('@/lib/feedback/submit');
+  const { notifySuperadmin, sendVoiceToSuperadmin } = await import('@/lib/notifications/superadmin-notify');
+  const { appendFeedbackRow } = await import('@/lib/integrations/google-sheets');
+
+  const { cleaned, category } = await analyzeFeedback(transcript);
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name, role, telegram_username, telegram_id')
+    .eq('id', profileId)
+    .maybeSingle<{ full_name: string | null; role: string | null; telegram_username: string | null; telegram_id: number | null }>();
+  const profileName = profile?.full_name ?? 'User';
+  const profileRole = profile?.role ?? null;
+  const tgUser = profile?.telegram_username ?? null;
+  const tgChatId = opts.chatId ?? profile?.telegram_id ?? null;
 
   const { data: row } = await supabase
     .from('feedback')
@@ -1835,62 +1864,52 @@ async function saveFeedbackAndNotify(profileId: string, transcript: string, sour
       profile_id: profileId,
       source,
       original_text: transcript,
-      cleaned_text: transcript,
+      cleaned_text: cleaned,
+      category,
+      profile_name: profileName,
+      profile_role: profileRole,
+      tg_chat_id: tgChatId,
     })
-    .select('id')
+    .select('id, created_at')
     .single();
 
-  // Notify founder DM + optional team channel
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, role')
-    .eq('id', profileId)
-    .maybeSingle();
-  const profileName = profile?.full_name ?? 'User';
-  const profileRole = profile?.role ?? null;
-
-  const channelId = process.env.FEEDBACK_TG_CHANNEL_ID?.trim();
-  const adminId = process.env.SUPERADMIN_TG_CHAT_ID?.trim();
-  if (!channelId && !adminId) {
-    console.warn('[feedback] No FEEDBACK_TG_CHANNEL_ID or SUPERADMIN_TG_CHAT_ID set — feedback saved to DB only');
+  if (!row) {
+    console.error('[feedback] insert failed in webhook flow');
     return;
   }
 
-  const roleLine = profileRole ? ` (${escapeHtml(profileRole)})` : '';
-  const icon = source === 'telegram_voice' ? '🎙' : '💬';
-  const text =
-    `${icon} <b>Новый feedback</b>\n` +
-    `<b>От:</b> ${escapeHtml(profileName)}${roleLine}\n` +
-    `<b>Источник:</b> ${source}\n` +
-    (row?.id ? `<b>ID:</b> <code>${row.id}</code>\n\n` : '\n') +
-    escapeHtml(transcript);
+  const text = formatFeedbackNotification({
+    category,
+    profileName,
+    profileRole,
+    cleaned,
+    originalText: transcript,
+    tgUsername: tgUser,
+  });
 
-  const targets = new Set<string>();
-  if (channelId) targets.add(channelId);
-  if (adminId) targets.add(adminId);
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) {
-    console.error('[feedback] TELEGRAM_BOT_TOKEN missing — cannot deliver');
-    return;
+  await notifySuperadmin(text, {
+    parseMode: 'HTML',
+    buttons: buildFeedbackButtons({ feedbackId: row.id, tgUsername: tgUser, hasChatId: !!tgChatId }),
+  });
+
+  // Если был голос — пересылаем оригинальный аудио-файл Данилу для прослушивания
+  if (opts.voiceBuffer && opts.voiceMime) {
+    await sendVoiceToSuperadmin(opts.voiceBuffer, opts.voiceMime, `Голос к отзыву от ${escapeHtml(profileName)}`);
   }
 
-  await Promise.all(
-    Array.from(targets).map(async (chat) => {
-      try {
-        const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML' }),
-        });
-        if (!res.ok) {
-          const body = await res.text().catch(() => '');
-          console.error(`[feedback] Telegram sendMessage failed for chat=${chat} status=${res.status}: ${body}`);
-        }
-      } catch (e) {
-        console.error(`[feedback] Telegram sendMessage threw for chat=${chat}:`, e);
-      }
-    }),
-  );
+  // Sheets sync (best-effort)
+  const sheetOk = await appendFeedbackRow([
+    new Date(row.created_at).toISOString(),
+    profileName,
+    profileRole ?? '',
+    tgUser ? `@${tgUser}` : '',
+    source,
+    cleaned,
+    transcript,
+  ]);
+  if (sheetOk) {
+    await supabase.from('feedback').update({ sheet_synced_at: new Date().toISOString() }).eq('id', row.id);
+  }
 }
 
 function escapeHtml(s: string): string {

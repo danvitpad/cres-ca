@@ -80,6 +80,8 @@ interface SubmitOpts {
   source: FeedbackSource;
   originalText: string;
   voiceFileUrl: string | null;
+  /** Telegram chat_id для прямых ответов через бот. Опционально. */
+  tgChatId?: number | null;
 }
 
 interface SubmitResult {
@@ -91,9 +93,18 @@ interface SubmitResult {
 
 /** Главный entry: сохраняет фидбек со всеми эффектами. */
 export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | null> {
-  const { supabase, profileId, profileName, profileRole, source, originalText, voiceFileUrl } = opts;
+  const { supabase, profileId, profileName, profileRole, source, originalText, voiceFileUrl, tgChatId } = opts;
 
   const { cleaned, category } = await analyzeFeedback(originalText);
+
+  // Подтягиваем telegram_username + telegram_id для красивой ссылки + reply-flow
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('telegram_username, telegram_id')
+    .eq('id', profileId)
+    .maybeSingle<{ telegram_username: string | null; telegram_id: number | null }>();
+  const tgUser = prof?.telegram_username ?? null;
+  const resolvedChatId = tgChatId ?? prof?.telegram_id ?? null;
 
   const { data: row, error } = await supabase
     .from('feedback')
@@ -106,6 +117,7 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
       voice_file_url: voiceFileUrl,
       profile_name: profileName,
       profile_role: profileRole,
+      tg_chat_id: resolvedChatId,
     })
     .select('id, created_at')
     .single();
@@ -115,24 +127,25 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
     return null;
   }
 
-  const roleLine = profileRole ? ` (${profileRole})` : '';
-  const tgText =
-    `${CATEGORY_LABELS[category]} <b>Новый фидбек</b>\n` +
-    `<b>От:</b> ${profileName}${roleLine}\n` +
-    `<b>Источник:</b> ${source}\n` +
-    `<b>ID:</b> <code>${row.id}</code>\n\n` +
-    `<b>Суть:</b>\n${cleaned}\n\n` +
-    `<i>Оригинал:</i>\n${originalText}`;
+  const tgText = formatFeedbackNotification({
+    category,
+    profileName,
+    profileRole,
+    cleaned,
+    originalText,
+    tgUsername: tgUser,
+  });
 
-  // Только @crescasuperadmin_bot Данилу. Дублирования в общий канал не делаем —
-  // фидбек личный, не для команды.
-  await notifySuperadmin(tgText, { parseMode: 'HTML' });
+  await notifySuperadmin(tgText, {
+    parseMode: 'HTML',
+    buttons: buildFeedbackButtons({ feedbackId: row.id, tgUsername: tgUser, hasChatId: !!resolvedChatId }),
+  });
 
   const sheetOk = await appendFeedbackRow([
     new Date(row.created_at).toISOString(),
     profileName,
     profileRole ?? '',
-    profileId,
+    tgUser ? `@${tgUser}` : '',
     source,
     CATEGORY_LABELS[category],
     cleaned,
@@ -144,4 +157,47 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
   }
 
   return { id: row.id, cleaned, category, sheetSynced: sheetOk };
+}
+
+/** Унифицированный формат уведомления Данилу — без шумовых полей (id, source). */
+export function formatFeedbackNotification(input: {
+  category: FeedbackCategory;
+  profileName: string;
+  profileRole: string | null;
+  cleaned: string;
+  originalText: string;
+  tgUsername: string | null;
+}): string {
+  const { category, profileName, profileRole, cleaned, originalText, tgUsername } = input;
+  const roleLine = profileRole ? ` · ${profileRole}` : '';
+  const tgLine = tgUsername ? `\n<b>TG:</b> <a href="https://t.me/${tgUsername}">@${tgUsername}</a>` : '';
+  const sameAsCleaned = cleaned.trim() === originalText.trim();
+  const main = sameAsCleaned
+    ? `\n${cleaned}`
+    : `\n<b>Суть:</b> ${cleaned}\n\n<i>Оригинал:</i>\n${originalText}`;
+  return (
+    `${CATEGORY_LABELS[category]} <b>Новый отзыв</b>\n` +
+    `<b>От:</b> ${profileName}${roleLine}` +
+    tgLine +
+    main
+  );
+}
+
+/** Кнопки под уведомлением: ответить через бота + открыть TG напрямую. */
+export function buildFeedbackButtons(input: {
+  feedbackId: string;
+  tgUsername: string | null;
+  hasChatId: boolean;
+}): Array<Array<{ text: string; url?: string; callback_data?: string }>> {
+  const rows: Array<Array<{ text: string; url?: string; callback_data?: string }>> = [];
+  const firstRow: Array<{ text: string; url?: string; callback_data?: string }> = [];
+  if (input.hasChatId) {
+    firstRow.push({ text: '💬 Ответить', callback_data: `fb_reply:${input.feedbackId}` });
+  }
+  if (input.tgUsername) {
+    firstRow.push({ text: '👤 Открыть TG', url: `https://t.me/${input.tgUsername}` });
+  }
+  if (firstRow.length > 0) rows.push(firstRow);
+  rows.push([{ text: '✅ Готово', callback_data: `fb_done:${input.feedbackId}` }]);
+  return rows;
 }
