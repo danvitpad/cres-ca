@@ -1,8 +1,8 @@
 /** --- YAML
  * name: Guilds Page
- * description: Кабинет «Гильдии» — список моих гильдий (где я owner или
+ * description: Кабинет «Партнёрские группы» — список моих гильдий (где я owner или
  *              active member) + приглашения (где status='invited') +
- *              кнопка «Создать гильдию».
+ *              кнопка «Создать группу».
  * created: 2026-05-02
  * --- */
 
@@ -135,9 +135,9 @@ export default function GuildsPage() {
     <div style={{ ...pageContainer, color: C.text, background: C.bg, minHeight: '100%', fontFamily: FONT }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: C.text }}>Гильдии</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: C.text }}>Партнёрские группы</h1>
           <p style={{ fontSize: 14, color: C.textSecondary, marginTop: 4, marginBottom: 0 }}>
-            Группы мастеров для взаимных рекомендаций. Парикмахер → маникюрше → массажисту: рекомендуете друг друга своим клиентам.
+            Объединяйтесь с коллегами разных сфер для взаимных рекомендаций. Парикмахер → маникюрше → массажисту: рекомендуете друг друга своим клиентам.
           </p>
         </div>
         <button
@@ -150,7 +150,7 @@ export default function GuildsPage() {
           }}
         >
           <Plus size={16} />
-          Создать гильдию
+          Создать группу
         </button>
       </div>
 

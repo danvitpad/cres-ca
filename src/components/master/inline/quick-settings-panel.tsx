@@ -49,11 +49,15 @@ const ACCENT_PRESETS = [
 
 export function OwnerInlineQuickSettings({
   masterProfileId,
-  onOpenFullEditor,
 }: {
   masterProfileId: string | null;
-  onOpenFullEditor: () => void;
 }) {
+  // Открытие полного редактора — через window event, не через prop-callback,
+  // потому что этот компонент рендерится из Server Component (page.tsx),
+  // и передача функций как props через серверную границу запрещена в Next.js.
+  function openFullEditor() {
+    window.dispatchEvent(new CustomEvent('cres:open-full-editor'));
+  }
   const [isOwner, setIsOwner] = useState(false);
   const [master, setMaster] = useState<MasterRow | null>(null);
   const [draftSlug, setDraftSlug] = useState('');
@@ -168,7 +172,7 @@ export function OwnerInlineQuickSettings({
         <h3 className="text-sm font-bold text-neutral-900">Управление страницей</h3>
         <button
           type="button"
-          onClick={onOpenFullEditor}
+          onClick={openFullEditor}
           className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
           title="Открыть все настройки"
         >

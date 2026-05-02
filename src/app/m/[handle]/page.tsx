@@ -559,14 +559,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 чтобы скроллиться вместе со sticky-карточкой. */}
 
             {/* Inline-панель быстрых настроек — видна только владельцу.
-                Заменяет драйвер для рутинных переключателей. Полный редактор
-                всё ещё открывается через «Все настройки» (custom event). */}
-            <OwnerInlineQuickSettings
-              masterProfileId={master.profile_id}
-              onOpenFullEditor={() => {
-                window.dispatchEvent(new CustomEvent('cres:open-full-editor'));
-              }}
-            />
+                Полный редактор открывается изнутри через cres:open-full-editor
+                window event (этот компонент сам диспатчит). Не передаём
+                callback через server boundary. */}
+            <OwnerInlineQuickSettings masterProfileId={master.profile_id} />
           </div>
 
           {/* ─── RIGHT col (scroll content) ─── */}
