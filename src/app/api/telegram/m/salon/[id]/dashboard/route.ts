@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 interface Appointment {
   id: string;
@@ -50,25 +50,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: salonId } = await params;
-  const { initData } = await request.json().catch(() => ({}));
-  if (!initData) return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
 
-  const result = validateInitData(initData);
-  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 403 });
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
-
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('telegram_id', tg.id)
-    .maybeSingle();
-  if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 403 });
 
   const { data: salon } = await admin
     .from('salons')
@@ -77,13 +67,13 @@ export async function POST(
     .maybeSingle();
   if (!salon) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
-  let isAdmin = salon.owner_id === profile.id;
+  let isAdmin = salon.owner_id === userId;
   if (!isAdmin) {
     const { data: member } = await admin
       .from('salon_members')
       .select('role, status')
       .eq('salon_id', salonId)
-      .eq('profile_id', profile.id)
+      .eq('profile_id', userId)
       .eq('status', 'active')
       .maybeSingle();
     isAdmin = member?.role === 'admin';

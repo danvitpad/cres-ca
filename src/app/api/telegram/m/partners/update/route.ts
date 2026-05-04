@@ -8,23 +8,23 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 const ALLOWED = new Set(['note', 'contract_terms', 'commission_percent', 'promo_code', 'cross_promotion']);
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null) as
-    | { initData?: string; partnership_id?: string; field?: string; value?: unknown }
+    | { partnership_id?: string; field?: string; value?: unknown }
     | null;
-  if (!body?.initData || !body?.partnership_id || !body?.field) {
+  if (!body?.partnership_id || !body?.field) {
     return NextResponse.json({ error: 'missing_params' }, { status: 400 });
   }
   if (!ALLOWED.has(body.field)) {
     return NextResponse.json({ error: 'field_not_allowed' }, { status: 400 });
   }
 
-  const result = validateInitData(body.initData);
-  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 403 });
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -32,9 +32,7 @@ export async function POST(req: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const { data: profile } = await admin.from('profiles').select('id').eq('telegram_id', result.user.id).maybeSingle();
-  if (!profile) return NextResponse.json({ error: 'not_master' }, { status: 403 });
-  const { data: master } = await admin.from('masters').select('id').eq('profile_id', profile.id).maybeSingle();
+  const { data: master } = await admin.from('masters').select('id').eq('profile_id', userId).maybeSingle();
   if (!master) return NextResponse.json({ error: 'not_master' }, { status: 403 });
 
   const { data: row } = await admin

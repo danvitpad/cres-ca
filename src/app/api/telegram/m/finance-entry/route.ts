@@ -6,7 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 type IncomePayload = {
   kind: 'income';
@@ -30,10 +30,7 @@ export async function POST(request: Request) {
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'bad_body' }, { status: 400 });
   }
-  const { initData, entry } = body as { initData?: string; entry?: IncomePayload | ExpensePayload };
-  if (!initData) {
-    return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
-  }
+  const { entry } = body as { entry?: IncomePayload | ExpensePayload };
   if (!entry || typeof entry !== 'object') {
     return NextResponse.json({ error: 'missing_entry' }, { status: 400 });
   }
@@ -43,26 +40,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'bad_amount' }, { status: 400 });
   }
 
-  const result = validateInitData(initData);
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const { data: profile } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('telegram_id', tg.id)
-    .maybeSingle();
-  if (!profile) {
-    return NextResponse.json({ error: 'profile_not_found' }, { status: 404 });
-  }
+  const profile = { id: userId };
 
   const { data: master } = await admin
     .from('masters')

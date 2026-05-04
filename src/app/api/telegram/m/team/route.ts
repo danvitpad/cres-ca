@@ -8,11 +8,10 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 import { notifyUser } from '@/lib/notifications/notify';
 
 interface Body {
-  initData?: string;
   action?: 'status' | 'leave';
   salonId?: string;
   /** true = appointments stay with salon (cancelled, clients notified to rebook).
@@ -31,19 +30,11 @@ const ERROR_LABELS: Record<string, string> = {
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Body;
-  const initData = body.initData;
   const action = body.action ?? 'status';
 
-  if (!initData) {
-    return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
-  }
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const result = validateInitData(initData);
-  if ('error' in result) {
-    return NextResponse.json({ error: result.error }, { status: 403 });
-  }
-
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -53,7 +44,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select('id, full_name')
-    .eq('telegram_id', tg.id)
+    .eq('id', userId)
     .maybeSingle();
 
   if (!profile) {
@@ -124,7 +115,7 @@ export async function POST(request: Request) {
 
     // Уведомляем владельца команды (best-effort).
     if (result.salon_owner_id) {
-      const masterName = profile.full_name ?? tg.first_name ?? 'Мастер';
+      const masterName = profile.full_name ?? 'Мастер';
       const apsLine = result.mode === 'kept_with_salon'
         ? `Будущие записи отменены (${result.cancelled_appointments ?? 0}). Клиенты получили уведомление о выборе другого мастера.`
         : `Будущие записи (${result.moved_appointments ?? 0}) ушли с ним в соло-календарь.`;

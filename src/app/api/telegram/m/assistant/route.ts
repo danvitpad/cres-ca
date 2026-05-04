@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 import { aiChat } from '@/lib/ai/openrouter';
 
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
@@ -72,19 +72,16 @@ async function callOpenRouter(system: string, history: ChatMessage[]): Promise<{
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const { initData, message, history } = body as {
-    initData?: string;
+  const { message, history } = body as {
     message?: string;
     history?: ChatMessage[];
   };
 
-  if (!initData) return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
   if (!message || !message.trim()) return NextResponse.json({ error: 'missing_message' }, { status: 400 });
 
-  const result = validateInitData(initData);
-  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 403 });
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
-  const tg = result.user;
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -94,7 +91,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select('id, full_name')
-    .eq('telegram_id', tg.id)
+    .eq('id', userId)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 404 });
 

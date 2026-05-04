@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { validateInitData } from '@/lib/telegram/validate-init-data';
+import { resolveUserId } from '@/lib/auth/resolve-user';
 
 export async function POST(
   request: Request,
@@ -15,14 +15,11 @@ export async function POST(
 ) {
   const { id: salonId } = await params;
   const body = await request.json().catch(() => ({}));
-  const initData = body?.initData as string | undefined;
-  if (!initData) return NextResponse.json({ error: 'missing_init_data' }, { status: 400 });
   const fromParam = body?.from as string | undefined;
   const toParam = body?.to as string | undefined;
 
-  const result = validateInitData(initData);
-  if ('error' in result) return NextResponse.json({ error: result.error }, { status: 403 });
-  const tg = result.user;
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,22 +27,18 @@ export async function POST(
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  const { data: profile } = await admin
-    .from('profiles').select('id').eq('telegram_id', tg.id).maybeSingle();
-  if (!profile) return NextResponse.json({ error: 'no_profile' }, { status: 403 });
-
   const { data: salon } = await admin
     .from('salons').select('id, name, team_mode, owner_id').eq('id', salonId).maybeSingle();
   if (!salon) return NextResponse.json({ error: 'not_found' }, { status: 404 });
 
   let role: 'admin' | 'receptionist' | null = null;
-  if (salon.owner_id === profile.id) role = 'admin';
+  if (salon.owner_id === userId) role = 'admin';
   if (!role) {
     const { data: member } = await admin
       .from('salon_members')
       .select('role, status')
       .eq('salon_id', salonId)
-      .eq('profile_id', profile.id)
+      .eq('profile_id', userId)
       .eq('status', 'active')
       .maybeSingle();
     if (member?.role === 'admin') role = 'admin';
