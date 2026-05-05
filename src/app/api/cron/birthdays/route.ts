@@ -155,7 +155,10 @@ export async function GET(request: Request) {
     if (cfg?.enabled && cfg.send_tg_greeting && client.profile_id) {
       const clientMarker = `[bday:client:${client.id}:${dayKey}]`;
       if (!sentMarkers.has(clientMarker)) {
-        // Дефолтный шаблон без приветствия — работает и на «ты», и на «Вы».
+        // Правило 2026-05-05: клиентам бот всегда пишет на русском.
+        // Master.cfg.greeting_message — кастомный текст мастера, оставляем как есть
+        // (мастер сам решил так написать). Fallback — всегда ru.
+        const clientLang: Lang = 'ru';
         const DEFAULT_GREETING_BY_LANG: Record<Lang, string> = {
           ru: 'С днём рождения!\nВ подарок: {discount_text}',
           uk: 'З днем народження!\nУ подарунок: {discount_text}',
@@ -174,11 +177,11 @@ export async function GET(request: Request) {
         };
         const greetingTpl = (cfg.greeting_message && cfg.greeting_message.trim().length > 0)
           ? cfg.greeting_message
-          : DEFAULT_GREETING_BY_LANG[lang];
+          : DEFAULT_GREETING_BY_LANG[clientLang];
         const body = greetingTpl
           .replace('{client_name}', client.full_name || '')
-          .replace('{discount_text}', discountTextByLang[lang]) + ` ${clientMarker}`;
-        const title = lang === 'uk' ? '🎂 З днем народження!' : lang === 'en' ? '🎂 Happy birthday!' : '🎂 С днём рождения!';
+          .replace('{discount_text}', discountTextByLang[clientLang]) + ` ${clientMarker}`;
+        const title = '🎂 С днём рождения!';
         inserts.push({
           profile_id: client.profile_id,
           channel: 'telegram',
@@ -233,7 +236,8 @@ export async function GET(request: Request) {
     const master = masterMap.get(c.master_id);
     // Anniversaries fire only when birthday automation enabled
     if (!master?.cfg?.enabled || !master.cfg.send_tg_greeting || !c.profile_id) continue;
-    const lang = master.public_language;
+    // Правило 2026-05-05: клиентам бот всегда пишет на русском.
+    const lang: Lang = 'ru';
     const years = today.getFullYear() - new Date(c.created_at!).getFullYear();
     const marker = `[bday:anni:${c.id}:${dayKey}]`;
     if (sentMarkers.has(marker)) continue;

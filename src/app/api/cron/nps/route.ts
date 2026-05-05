@@ -89,7 +89,8 @@ export async function GET(request: Request) {
     const marker = `${c.id}:${c.total_visits}`;
     if (alreadySent.has(marker)) continue;
 
-    const lang = langByMaster.get(c.master_id) ?? 'ru';
+    // Правило 2026-05-05: клиентам бот всегда пишет на русском.
+    const lang: Lang = 'ru';
     const fb = FALLBACK_NPS[lang];
     const tpl = pickFullTemplate(tplMap.get(c.master_id), fb.body, fb.subject);
     const rendered = renderFullTemplate(tpl, {

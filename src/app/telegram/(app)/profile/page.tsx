@@ -253,28 +253,32 @@ export default function MiniAppProfilePage() {
     if (!userId || avatarBusy) return;
     setAvatarBusy(true);
     try {
-      const supabase = createClient();
-      const path = `${userId}/${Date.now()}.webp`;
-      const { error: upErr } = await supabase.storage
-        .from('avatars')
-        .upload(path, blob, { contentType: blob.type, cacheControl: '3600', upsert: true });
-      if (upErr) {
+      // Mini App-юзер аутентифицирован через Telegram initData — у него нет
+      // Supabase cookie-сессии, поэтому прямая загрузка в storage падает на
+      // RLS. Шлём через /api/profile/avatar — там service-role.
+      const initData = getInitData();
+      const form = new FormData();
+      form.append('file', blob, `avatar-${Date.now()}.webp`);
+      const res = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        headers: {
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: form,
+      });
+      if (!res.ok) {
         haptic('error');
         return;
       }
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-      const newUrl = urlData.publicUrl;
-      const res = await fetch('/api/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ avatarUrl: newUrl }),
-      });
-      if (res.ok) {
-        setAvatarUrl(newUrl);
+      const data = await res.json().catch(() => ({} as { avatarUrl?: string }));
+      if (data?.avatarUrl) {
+        setAvatarUrl(data.avatarUrl);
         haptic('success');
       } else {
         haptic('error');
       }
+    } catch {
+      haptic('error');
     } finally {
       setAvatarBusy(false);
     }

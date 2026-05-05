@@ -790,7 +790,16 @@
     "learnMore": "Learn more...",
     "showing": "Showing {count} of {total} results",
     "weekTrend": "Week trend",
-    "duration": "Duration"
+    "duration": "Duration",
+    "summary": "Summary",
+    "summaryDesc": "Income, expenses and key metrics for the selected period.",
+    "periodDay": "Day",
+    "periodWeek": "Week",
+    "periodMonth": "Month",
+    "periodQuarter": "Quarter",
+    "periodHalf": "Half year",
+    "periodYear": "Year",
+    "periodAll": "All time"
   },
   "reports": {
     "title": "Financial Reports",

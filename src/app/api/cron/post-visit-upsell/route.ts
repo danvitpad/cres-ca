@@ -124,7 +124,8 @@ export async function GET(request: Request) {
       const product = rec.products!;
       const clientName = client.full_name?.split(' ')[0] ?? 'клиент';
 
-      const lang = langByMaster.get(apt.master_id as string) ?? 'ru';
+      // Правило 2026-05-05: клиентам бот всегда пишет на русском.
+      const lang: Lang = 'ru';
       const fb = FALLBACK_UPSELL[lang];
       const body = rec.message_template
         ? rec.message_template

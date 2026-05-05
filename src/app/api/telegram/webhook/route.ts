@@ -1396,7 +1396,7 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
     .single();
 
   if (!master) {
-    await sendMessage(chatId, '❌ Master not found. The invite link may be invalid.');
+    await sendMessage(chatId, '❌ Мастер не найден. Возможно, ссылка приглашения устарела.');
     return;
   }
 
