@@ -570,6 +570,17 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {/* Кнопка «Подписаться» теперь живёт внутри PublicHeroCard,
                 чтобы скроллиться вместе со sticky-карточкой. */}
 
+            {/* Способы связи — соцсети / мессенджеры. Размещены здесь,
+                сразу под блоком «Записаться», чтобы клиент видел контакты
+                не прокручивая всю страницу. */}
+            <div id="inline-social" className="scroll-mt-24">
+              <InlineSocialBlock
+                masterId={master.id}
+                masterProfileId={master.profile_id}
+                initialSocialLinks={(master.social_links ?? null) as ({ telegram?: string; instagram?: string; whatsapp?: string; viber?: string; tiktok?: string; youtube?: string; facebook?: string; website?: string } | null)}
+              />
+            </div>
+
             {/* Inline-панель быстрых настроек — видна только владельцу.
                 Полный редактор открывается изнутри через cres:open-full-editor
                 window event (этот компонент сам диспатчит). Не передаём
@@ -605,6 +616,16 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               />
             </div>
             {void hasBio /* legacy var, rendering moved to InlineBioBlock */}
+
+            {/* Интересы и увлечения — показываем сразу под «О мастере»,
+                до блока услуг, чтобы клиент узнал мастера как личность. */}
+            <div id="inline-interests" className="scroll-mt-24">
+              <InlineInterestsBlock
+                masterId={master.id}
+                masterProfileId={master.profile_id}
+                initialInterests={master.interests ?? null}
+              />
+            </div>
 
             {/* Services */}
             {hasServices && (
@@ -757,27 +778,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 </div>
               )}
             </section>
-
-            {/* Соцсети / мессенджеры — inline-редактор. Якорь #inline-social
-                нужен, чтобы кнопка «Соцсети / мессенджеры» из премиум-чеклиста
-                скроллила сюда. Виден владельцу всегда (CTA если пусто), клиенту —
-                только когда заполнено. */}
-            <div id="inline-social" className="scroll-mt-24">
-              <InlineSocialBlock
-                masterId={master.id}
-                masterProfileId={master.profile_id}
-                initialSocialLinks={(master.social_links ?? null) as ({ telegram?: string; instagram?: string; whatsapp?: string; viber?: string; tiktok?: string; youtube?: string; facebook?: string; website?: string } | null)}
-              />
-            </div>
-
-            {/* Интересы и увлечения — inline-редактор. Хранится в masters.interests. */}
-            <div id="inline-interests" className="scroll-mt-24">
-              <InlineInterestsBlock
-                masterId={master.id}
-                masterProfileId={master.profile_id}
-                initialInterests={master.interests ?? null}
-              />
-            </div>
 
             {/* Workplace photos (только если есть отдельные фото — иначе уже в карте) */}
             {hasWorkplace && (salon?.cover_url || master.workplace_photo_url) && (
