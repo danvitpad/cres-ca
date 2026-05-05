@@ -7,25 +7,8 @@
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-
-interface WorkingDay {
-  start: string;
-  end: string;
-  break_start?: string;
-  break_end?: string;
-}
-
-const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-
-const DEFAULT_WH: Record<string, WorkingDay | null> = {
-  sunday: null,
-  monday: { start: '10:00', end: '19:00' },
-  tuesday: { start: '10:00', end: '19:00' },
-  wednesday: { start: '10:00', end: '19:00' },
-  thursday: { start: '10:00', end: '19:00' },
-  friday: { start: '10:00', end: '19:00' },
-  saturday: { start: '11:00', end: '18:00' },
-};
+import { normalizeWithDefault } from '@/lib/working-hours/normalize';
+import { WEEK_DAY_KEYS } from '@/types/working-hours';
 
 const SLOT_DURATION_MIN = 30;
 const LOOKAHEAD_DAYS = 7;
@@ -138,7 +121,7 @@ export async function GET(req: Request) {
       id: string;
       display_name: string | null;
       avatar_url: string | null;
-      working_hours: Record<string, WorkingDay | null> | null;
+      working_hours: unknown;
       is_busy: boolean | null;
       busy_until: string | null;
       profiles: { full_name: string | null; avatar_url: string | null } | { full_name: string | null; avatar_url: string | null }[] | null;
@@ -149,7 +132,7 @@ export async function GET(req: Request) {
     const profile = Array.isArray(m.profiles) ? m.profiles[0] ?? null : m.profiles;
     const busyUntil = m.busy_until ? new Date(m.busy_until) : null;
     const busyActive = m.is_busy && (!busyUntil || busyUntil > now);
-    const wh = m.working_hours ?? DEFAULT_WH;
+    const wh = normalizeWithDefault(m.working_hours);
 
     let found: MasterSlot | null = null;
     for (let d = 0; d < LOOKAHEAD_DAYS && !found; d++) {
@@ -158,42 +141,38 @@ export async function GET(req: Request) {
       if (busyActive && busyUntil && toKyivDateStr(busyUntil) >= dateStr) continue;
 
       const dayKyiv = toKyivHm(day);
-      const weekday = WEEKDAYS[dayKyiv.weekday];
-      const hours = wh[weekday] ?? DEFAULT_WH[weekday];
-      if (!hours) continue;
+      const weekday = WEEK_DAY_KEYS[(dayKyiv.weekday + 6) % 7]; // JS sunday=0 → array starts monday
+      const dayInfo = wh[weekday];
+      if (!dayInfo.enabled || !dayInfo.intervals.length) continue;
 
-      const startMin = t2m(hours.start);
-      const endMin = t2m(hours.end);
-      const breakS = hours.break_start ? t2m(hours.break_start) : null;
-      const breakE = hours.break_end ? t2m(hours.break_end) : null;
-
-      // Сегодня — отсекаем уже прошедшее время по Kyiv-локальному часу,
-      // плюс 15-минутный буфер чтобы клиент не пытался успеть «впритык».
       const nowKyivMin = kyivNow.getHours() * 60 + kyivNow.getMinutes();
-      const earliestMin = d === 0 ? Math.max(startMin, nowKyivMin + 15) : startMin;
-
       const busyList = (busyByMaster.get(link.master_id) ?? [])
         .filter((x) => x.date === dateStr)
         .sort((a, b) => a.start - b.start);
 
-      for (let t = Math.ceil(earliestMin / 30) * 30; t + SLOT_DURATION_MIN <= endMin; t += 30) {
-        if (breakS !== null && breakE !== null && t < breakE && t + SLOT_DURATION_MIN > breakS) continue;
-        const conflict = busyList.some((bs) => t < bs.end && t + SLOT_DURATION_MIN > bs.start);
-        if (conflict) continue;
-        const time = m2t(t);
-        // ISO timestamp — собираем как Kyiv local → UTC, чтобы клиент при
-        // показе через toLocaleString('Europe/Kiev') увидел тот же time.
-        const [yy, mo, dd] = dateStr.split('-').map(Number);
-        const isoDate = new Date(yy, mo - 1, dd, Math.floor(t / 60), t % 60, 0, 0);
-        found = {
-          masterId: link.master_id,
-          name: m.display_name ?? profile?.full_name ?? null,
-          avatar: m.avatar_url ?? profile?.avatar_url ?? null,
-          date: dateStr,
-          time,
-          iso: isoDate.toISOString(),
-        };
-        break;
+      // Перебираем интервалы (multi-interval) — берём первый свободный 30-мин слот.
+      for (const iv of dayInfo.intervals) {
+        if (found) break;
+        const startMin = t2m(iv.start);
+        const endMin = t2m(iv.end);
+        const earliestMin = d === 0 ? Math.max(startMin, nowKyivMin + 15) : startMin;
+
+        for (let t = Math.ceil(earliestMin / 30) * 30; t + SLOT_DURATION_MIN <= endMin; t += 30) {
+          const conflict = busyList.some((bs) => t < bs.end && t + SLOT_DURATION_MIN > bs.start);
+          if (conflict) continue;
+          const time = m2t(t);
+          const [yy, mo, dd] = dateStr.split('-').map(Number);
+          const isoDate = new Date(yy, mo - 1, dd, Math.floor(t / 60), t % 60, 0, 0);
+          found = {
+            masterId: link.master_id,
+            name: m.display_name ?? profile?.full_name ?? null,
+            avatar: m.avatar_url ?? profile?.avatar_url ?? null,
+            date: dateStr,
+            time,
+            iso: isoDate.toISOString(),
+          };
+          break;
+        }
       }
     }
     if (found) items.push(found);

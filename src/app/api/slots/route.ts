@@ -1,29 +1,13 @@
 /** --- YAML
  * name: Available Slots API
- * description: Returns available time slots for a master on a given date, accounting for working hours and existing appointments
+ * description: Returns available time slots for a master on a given date,
+ *              accounting for working hours (multi-interval) and existing
+ *              appointments. С 2026-05-05 формат working_hours — multi-interval.
  * --- */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-
-interface WorkingDay {
-  start: string;
-  end: string;
-  break_start?: string;
-  break_end?: string;
-}
-
-const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
-
-const DEFAULT_WORKING_HOURS: Record<string, WorkingDay | null> = {
-  sunday: null,
-  monday: { start: '10:00', end: '19:00' },
-  tuesday: { start: '10:00', end: '19:00' },
-  wednesday: { start: '10:00', end: '19:00' },
-  thursday: { start: '10:00', end: '19:00' },
-  friday: { start: '10:00', end: '19:00' },
-  saturday: { start: '11:00', end: '18:00' },
-};
+import { normalizeWithDefault, dayKeyFromDate } from '@/lib/working-hours/normalize';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -81,11 +65,10 @@ export async function GET(request: NextRequest) {
 
   const duration = service.duration_minutes;
   const dateObj = new Date(date + 'T00:00:00');
-  const dayName = WEEKDAYS[dateObj.getDay()];
-  const wh = (master.working_hours as Record<string, WorkingDay | null> | null) ?? DEFAULT_WORKING_HOURS;
-  const workingHours = wh[dayName] ?? DEFAULT_WORKING_HOURS[dayName];
+  const wh = normalizeWithDefault(master.working_hours);
+  const workingDay = wh[dayKeyFromDate(dateObj)];
 
-  if (!workingHours) {
+  if (!workingDay.enabled || workingDay.intervals.length === 0) {
     return NextResponse.json({ slots: [] });
   }
 
@@ -138,12 +121,6 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // Generate slots
-  const startMin = timeToMinutes(workingHours.start);
-  const endMin = timeToMinutes(workingHours.end);
-  const breakStart = workingHours.break_start ? timeToMinutes(workingHours.break_start) : null;
-  const breakEnd = workingHours.break_end ? timeToMinutes(workingHours.break_end) : null;
-
   // For today, mark slots that already started as disabled. Раньше скрывали —
   // пользователь не понимал куда делось «10:00» когда смотрит расписание днём.
   // Теперь возвращаем прошедшие слоты в `pastSlots`, клиент рисует их серыми
@@ -154,34 +131,37 @@ export async function GET(request: NextRequest) {
   const isToday = date === kyivTodayStr;
   const nowMin = isToday ? kyivNow.getHours() * 60 + kyivNow.getMinutes() : -1;
 
+  // Multi-interval: для каждого интервала генерируем слоты с шагом 30 мин.
+  // Step 30 — это шаг ПРЕДЛАГАЕМЫХ клиенту времён начала; гранулярность
+  // самого расписания мастера сейчас 5 мин (см. WorkingHoursEditor),
+  // но клиенту удобнее видеть круглые «10:00 / 10:30 / 11:00».
   const slots: string[] = [];
   const pastSlots: string[] = [];
   const bookedSlots: string[] = [];
-  for (let t = startMin; t + duration <= endMin; t += 30) {
-    // Check break overlap — ломаное время скрываем полностью (это не «занято»,
-    // а просто выходное окно), не показываем серым.
-    if (breakStart !== null && breakEnd !== null) {
-      if (t < breakEnd && t + duration > breakStart) continue;
+
+  for (const iv of workingDay.intervals) {
+    const startMin = timeToMinutes(iv.start);
+    const endMin = timeToMinutes(iv.end);
+    for (let t = startMin; t + duration <= endMin; t += 30) {
+      const time = minutesToTime(t);
+
+      // Past-time
+      if (isToday && t <= nowMin + 5) {
+        pastSlots.push(time);
+        continue;
+      }
+
+      // Booked by another client
+      const hasConflict = busySlots.some(
+        (busy) => t < busy.end && t + duration > busy.start,
+      );
+      if (hasConflict) {
+        bookedSlots.push(time);
+        continue;
+      }
+
+      slots.push(time);
     }
-
-    const time = minutesToTime(t);
-
-    // Past-time
-    if (isToday && t <= nowMin + 5) {
-      pastSlots.push(time);
-      continue;
-    }
-
-    // Booked by another client
-    const hasConflict = busySlots.some(
-      (busy) => t < busy.end && t + duration > busy.start,
-    );
-    if (hasConflict) {
-      bookedSlots.push(time);
-      continue;
-    }
-
-    slots.push(time);
   }
 
   return NextResponse.json({ slots, pastSlots, bookedSlots });

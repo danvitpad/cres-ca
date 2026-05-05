@@ -15,6 +15,7 @@ import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
 import { MiniAppBackBar } from '@/components/master/mini-app-back-bar';
+import { normalizeWorkingHours } from '@/lib/working-hours/normalize';
 import { PublicBackButton } from '@/components/master/public-back-button';
 import { OwnerCompletenessPrompt } from '@/components/master/owner-completeness-prompt';
 import { FollowMasterButton } from '@/components/master/follow-master-button';
@@ -64,7 +65,7 @@ interface MasterRow {
   og_image_url: string | null;
   badges: string[] | null;
   level: number | null;
-  working_hours: Record<string, { start: string; end: string; closed?: boolean } | null> | null;
+  working_hours: unknown; // multi-interval JSONB; нормализуется через normalizeWorkingHours
   booking_important_info: string | null;
   // Customization (migration 00104)
   theme_primary_color: string | null;
@@ -452,14 +453,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const hasPartners = partners.length > 0;
   const hasWorkplace = !!salon || !!master.workplace_name || !!master.workplace_photo_url;
 
-  const workingHoursDays: Array<[string, string]> = [
-    ['mon', 'Пн'], ['tue', 'Вт'], ['wed', 'Ср'],
-    ['thu', 'Чт'], ['fri', 'Пт'], ['sat', 'Сб'], ['sun', 'Вс'],
-  ];
-  const hasWorkingHours = !!master.working_hours && workingHoursDays.some(([k]) => {
-    const wh = master.working_hours?.[k];
-    return wh && !wh.closed && wh.start && wh.end;
-  });
+  const normalizedHours = normalizeWorkingHours(master.working_hours);
+  const hasWorkingHours = (Object.keys(normalizedHours) as Array<keyof typeof normalizedHours>).some(
+    (k) => normalizedHours[k].enabled && normalizedHours[k].intervals.length > 0,
+  );
   const hasAddress = !!(master.city || master.address || salon?.address);
   // Online-мастер: если работает онлайн и физический адрес не указан —
   // блок «Адрес и часы работы» сворачивается до одних только часов.

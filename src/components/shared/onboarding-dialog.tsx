@@ -49,47 +49,55 @@ const VERTICAL_OPTIONS: { key: VerticalKey; label: string; icon: string; hint: s
   { key: 'other',     label: 'Другое',             icon: '➕',  hint: 'Настрою сам' },
 ];
 
-/* ─── Working-hours presets ─── */
+/* ─── Working-hours presets (multi-interval format) ─── */
 type HoursPreset = 'weekdays' | 'six_days' | 'every_day' | 'custom';
-type WorkingHours = Record<string, { start: string; end: string } | null>;
+type DayBlock = { enabled: boolean; intervals: Array<{ start: string; end: string }> };
+type WorkingHours = Record<string, DayBlock>;
+
+const off: DayBlock = { enabled: false, intervals: [] };
+const on = (start: string, end: string): DayBlock => ({
+  enabled: true,
+  intervals: [{ start, end }],
+});
 
 const PRESETS: Record<HoursPreset, { label: string; desc: string; hours: WorkingHours } | null> = {
   weekdays: {
     label: 'Пн–Пт, 9:00–18:00',
     desc: 'Стандартная рабочая неделя',
     hours: {
-      monday:    { start: '09:00', end: '18:00' },
-      tuesday:   { start: '09:00', end: '18:00' },
-      wednesday: { start: '09:00', end: '18:00' },
-      thursday:  { start: '09:00', end: '18:00' },
-      friday:    { start: '09:00', end: '18:00' },
-      saturday: null, sunday: null,
+      monday: on('09:00', '18:00'),
+      tuesday: on('09:00', '18:00'),
+      wednesday: on('09:00', '18:00'),
+      thursday: on('09:00', '18:00'),
+      friday: on('09:00', '18:00'),
+      saturday: off,
+      sunday: off,
     },
   },
   six_days: {
     label: 'Пн–Сб, 10:00–20:00',
     desc: 'Выходной — воскресенье',
     hours: {
-      monday:    { start: '10:00', end: '20:00' },
-      tuesday:   { start: '10:00', end: '20:00' },
-      wednesday: { start: '10:00', end: '20:00' },
-      thursday:  { start: '10:00', end: '20:00' },
-      friday:    { start: '10:00', end: '20:00' },
-      saturday:  { start: '10:00', end: '20:00' },
-      sunday: null,
+      monday: on('10:00', '20:00'),
+      tuesday: on('10:00', '20:00'),
+      wednesday: on('10:00', '20:00'),
+      thursday: on('10:00', '20:00'),
+      friday: on('10:00', '20:00'),
+      saturday: on('10:00', '20:00'),
+      sunday: off,
     },
   },
   every_day: {
     label: 'Ежедневно, 10:00–22:00',
     desc: 'Без выходных',
     hours: {
-      monday:    { start: '10:00', end: '22:00' },
-      tuesday:   { start: '10:00', end: '22:00' },
-      wednesday: { start: '10:00', end: '22:00' },
-      thursday:  { start: '10:00', end: '22:00' },
-      friday:    { start: '10:00', end: '22:00' },
-      saturday:  { start: '10:00', end: '22:00' },
-      sunday:    { start: '10:00', end: '22:00' },
+      monday: on('10:00', '22:00'),
+      tuesday: on('10:00', '22:00'),
+      wednesday: on('10:00', '22:00'),
+      thursday: on('10:00', '22:00'),
+      friday: on('10:00', '22:00'),
+      saturday: on('10:00', '22:00'),
+      sunday: on('10:00', '22:00'),
     },
   },
   custom: null,

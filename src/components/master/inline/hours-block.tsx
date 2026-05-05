@@ -1,127 +1,54 @@
 /** --- YAML
  * name: InlineHoursBlock
- * description: Часы работы — inline-editable. Для клиента: таблица 7 дней (если есть
- *              хоть один открытый день), иначе скрыто. Для владельца: либо таблица +
- *              pencil top-right, либо dashed-CTA «+ Настрой часы работы». Edit-sheet:
- *              на каждый день — toggle (Открыт/Выходной), время начала/конца, опц.
- *              кнопка «Скопировать на всю неделю».
+ * description: Часы работы — inline-editable. Для клиента: таблица 7 дней
+ *              (если есть хоть один открытый день), иначе скрыто. Для владельца:
+ *              либо таблица + pencil top-right, либо dashed-CTA «Настрой часы
+ *              работы». Edit-sheet оборачивает универсальный
+ *              `WorkingHoursEditor` (multi-interval) и сохраняет через
+ *              /api/me/working-hours c проверкой конфликтов с будущими записями.
  * created: 2026-04-26
+ * updated: 2026-05-05
  * --- */
 
 'use client';
 
 import { useState } from 'react';
-import { Clock, Pencil, Plus, Loader2, Copy } from 'lucide-react';
-import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
+import { Clock, Pencil, Plus } from 'lucide-react';
 import { useIsOwner } from './use-is-owner';
 import { InlineEditSheet } from './inline-edit-sheet';
+import { WorkingHoursEditor } from '@/components/shared/working-hours-editor';
+import {
+  type WorkingHours,
+  WEEK_DAY_KEYS,
+  type WeekDayKey,
+} from '@/types/working-hours';
+import { normalizeWorkingHours } from '@/lib/working-hours/normalize';
 
-interface DaySchedule {
-  start: string;
-  end: string;
-  closed?: boolean;
-}
-
-type WorkingHours = Record<string, DaySchedule | null>;
-
-// Ключи совпадают с теми, что использует /settings + /api/slots (полные имена).
-// Источник правды — masters.working_hours { monday: { start, end, closed }, ... }.
-const DAYS: Array<{ key: string; label: string; short: string }> = [
-  { key: 'monday',    label: 'Понедельник', short: 'Пн' },
-  { key: 'tuesday',   label: 'Вторник',     short: 'Вт' },
-  { key: 'wednesday', label: 'Среда',       short: 'Ср' },
-  { key: 'thursday',  label: 'Четверг',     short: 'Чт' },
-  { key: 'friday',    label: 'Пятница',     short: 'Пт' },
-  { key: 'saturday',  label: 'Суббота',     short: 'Сб' },
-  { key: 'sunday',    label: 'Воскресенье', short: 'Вс' },
-];
+const DAY_LABELS: Record<WeekDayKey, string> = {
+  monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср',
+  thursday: 'Чт', friday: 'Пт', saturday: 'Сб', sunday: 'Вс',
+};
 
 interface Props {
   masterId: string;
   masterProfileId: string | null;
-  initialHours: WorkingHours | null;
+  initialHours: unknown; // jsonb из БД, любой формат — нормализуем
 }
 
-function isOpen(d: DaySchedule | null | undefined): boolean {
-  return !!d && !d.closed && !!d.start && !!d.end;
-}
-
-function defaultHours(): WorkingHours {
-  return {
-    monday:    { start: '10:00', end: '19:00' },
-    tuesday:   { start: '10:00', end: '19:00' },
-    wednesday: { start: '10:00', end: '19:00' },
-    thursday:  { start: '10:00', end: '19:00' },
-    friday:    { start: '10:00', end: '19:00' },
-    saturday:  { start: '11:00', end: '18:00', closed: true },
-    sunday:    { start: '11:00', end: '18:00', closed: true },
-  };
-}
-
-export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Props) {
+export function InlineHoursBlock({ masterProfileId, initialHours }: Props) {
   const isOwner = useIsOwner(masterProfileId);
-  const [hours, setHours] = useState<WorkingHours>(initialHours ?? {});
+  const [hours, setHours] = useState<WorkingHours>(() => normalizeWorkingHours(initialHours));
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<WorkingHours>(initialHours ?? defaultHours());
-  const [saving, setSaving] = useState(false);
 
-  const anyOpen = DAYS.some((d) => isOpen(hours?.[d.key]));
+  const anyOpen = WEEK_DAY_KEYS.some((k) => hours[k].enabled && hours[k].intervals.length > 0);
 
   function startEdit() {
-    // Если у мастера ничего не задано — стартуем с разумных дефолтов
-    const hasAny = Object.values(hours ?? {}).some((d) => isOpen(d));
-    setDraft(hasAny ? { ...hours } : defaultHours());
     setOpen(true);
   }
 
-  function toggleDay(key: string, openDay: boolean) {
-    setDraft((prev) => {
-      const cur = prev[key] ?? { start: '10:00', end: '19:00' };
-      return { ...prev, [key]: { ...cur, closed: !openDay } };
-    });
-  }
-
-  function setTime(key: string, field: 'start' | 'end', value: string) {
-    setDraft((prev) => {
-      const cur = prev[key] ?? { start: '10:00', end: '19:00' };
-      return { ...prev, [key]: { ...cur, [field]: value } };
-    });
-  }
-
-  function copyMondayToAll() {
-    const mon = draft.monday;
-    if (!mon || mon.closed) {
-      toast.error('Сначала заполни понедельник');
-      return;
-    }
-    const next: WorkingHours = { ...draft };
-    for (const d of DAYS) {
-      if (d.key === 'monday') continue;
-      next[d.key] = { start: mon.start, end: mon.end, closed: false };
-    }
-    setDraft(next);
-    toast.success('Скопировано на всю неделю');
-  }
-
-  async function save() {
-    setSaving(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('masters')
-        .update({ working_hours: draft })
-        .eq('id', masterId);
-      if (error) {
-        toast.error(error.message || 'Не удалось сохранить');
-        return;
-      }
-      setHours(draft);
-      toast.success('Часы работы сохранены');
-      setOpen(false);
-    } finally {
-      setSaving(false);
-    }
+  function handleSaved(next: WorkingHours) {
+    setHours(next);
+    setOpen(false);
   }
 
   const sheet = (
@@ -129,83 +56,17 @@ export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Pr
       open={open}
       onClose={() => setOpen(false)}
       title="Часы работы"
-      footer={
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={copyMondayToAll}
-            className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-2 text-[12px] font-semibold text-neutral-700 hover:bg-neutral-50"
-          >
-            <Copy className="size-3.5" />
-            Пн на все дни
-          </button>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setOpen(false)} className="cres-popup-btn-cancel">
-              Отмена
-            </button>
-            <button type="button" onClick={save} disabled={saving} className="cres-popup-btn-save">
-              {saving && <Loader2 className="size-3.5 animate-spin" />}
-              Сохранить
-            </button>
-          </div>
-        </div>
-      }
     >
       <p className="mb-4 text-[13px] text-neutral-500">
         Когда тебе можно записаться. Клиенты увидят свободные слоты только в эти часы.
+        Можно задать несколько окон в одном дне (например, до обеда + после).
       </p>
-      <ul className="space-y-2">
-        {DAYS.map((d) => {
-          const cur = draft[d.key];
-          const isClosed = !cur || !!cur.closed;
-          return (
-            <li
-              key={d.key}
-              className={
-                'flex items-center gap-3 rounded-2xl border p-3 transition-colors ' +
-                (isClosed ? 'border-neutral-200 bg-neutral-50' : 'border-neutral-300 bg-white')
-              }
-            >
-              <button
-                type="button"
-                onClick={() => toggleDay(d.key, isClosed)}
-                className={
-                  'relative h-6 w-11 shrink-0 rounded-full transition-colors ' +
-                  (isClosed ? 'bg-neutral-300' : 'bg-neutral-900')
-                }
-                aria-label={isClosed ? 'Открыть день' : 'Закрыть день'}
-              >
-                <span
-                  className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
-                  style={{ left: isClosed ? 2 : 22 }}
-                />
-              </button>
-              <span className="w-24 shrink-0 text-[14px] font-semibold text-neutral-900">
-                {d.label}
-              </span>
-              {isClosed ? (
-                <span className="flex-1 text-[13px] text-neutral-400">Выходной</span>
-              ) : (
-                <div className="flex flex-1 items-center gap-2">
-                  <input
-                    type="time"
-                    value={cur?.start ?? '10:00'}
-                    onChange={(e) => setTime(d.key, 'start', e.target.value)}
-                    className="rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-[13px] tabular-nums text-neutral-900 focus:border-neutral-400 focus:outline-none"
-                  />
-                  <span className="text-neutral-400">—</span>
-                  <input
-                    type="time"
-                    value={cur?.end ?? '19:00'}
-                    onChange={(e) => setTime(d.key, 'end', e.target.value)}
-                    className="rounded-lg border border-neutral-200 bg-white px-2 py-1.5 text-[13px] tabular-nums text-neutral-900 focus:border-neutral-400 focus:outline-none"
-                  />
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <WorkingHoursEditor
+        initial={hours}
+        saveEndpoint="/api/me/working-hours"
+        lang="ru"
+        onSaved={handleSaved}
+      />
     </InlineEditSheet>
   );
 
@@ -263,14 +124,15 @@ export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Pr
             )}
           </div>
           <ul className="mt-2 space-y-1.5 text-[13px]">
-            {DAYS.map((d) => {
-              const cur = hours?.[d.key];
-              const open = isOpen(cur);
+            {WEEK_DAY_KEYS.map((k) => {
+              const day = hours[k];
               return (
-                <li key={d.key} className="flex items-center justify-between">
-                  <span className="text-neutral-500">{d.short}</span>
-                  <span className={open ? 'font-medium text-neutral-900' : 'text-neutral-400'}>
-                    {open ? `${cur!.start} – ${cur!.end}` : 'Выходной'}
+                <li key={k} className="flex items-start justify-between gap-3">
+                  <span className="shrink-0 text-neutral-500">{DAY_LABELS[k]}</span>
+                  <span className={day.enabled && day.intervals.length ? 'text-right font-medium text-neutral-900' : 'text-neutral-400'}>
+                    {day.enabled && day.intervals.length
+                      ? day.intervals.map((iv) => `${iv.start} – ${iv.end}`).join(', ')
+                      : 'Выходной'}
                   </span>
                 </li>
               );
