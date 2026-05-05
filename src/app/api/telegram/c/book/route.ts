@@ -17,6 +17,23 @@ interface BookingItem {
   currency: string;
 }
 
+/** «1440» → «за день», «120» → «за 2 години», «15» → «за 15 хв». Только uk. */
+function formatOffsetLabelUk(min: number): string {
+  if (min >= 1440) {
+    const d = Math.round(min / 1440);
+    if (d === 1) return 'за день';
+    if (d >= 2 && d <= 4) return `за ${d} дні`;
+    return `за ${d} днів`;
+  }
+  if (min >= 60) {
+    const h = Math.round(min / 60);
+    if (h === 1) return 'за годину';
+    if (h >= 2 && h <= 4) return `за ${h} години`;
+    return `за ${h} годин`;
+  }
+  return `за ${min} хв`;
+}
+
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const {
@@ -209,7 +226,28 @@ export async function POST(request: Request) {
       const clientHeading = isReschedule
         ? `<b>🔄 Запис перенесено</b>`
         : `<b>✅ Запис підтверджено</b>`;
-      const clientBody = `${clientHeading}\n\nМайстер: ${masterName}\nПослуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nЧас: ${selected_time ?? '—'}\n\nНагадаємо за день та за 2 години до візиту.`;
+
+      // Подтягиваем РЕАЛЬНЫЕ напоминания клиента из notification_preferences
+      // (правило 2026-05-05: клиент в настройках задал «за 15 хв і за 2 хв»,
+      // а в подтверждении видел статичное «за день та за 2 години» — путаница).
+      let reminderTail = '';
+      try {
+        const { data: prefRow } = await admin
+          .from('notification_preferences')
+          .select('offsets_minutes, enabled')
+          .eq('profile_id', profile.id)
+          .maybeSingle<{ offsets_minutes: number[] | null; enabled: boolean | null }>();
+        const offs = (prefRow?.enabled !== false ? prefRow?.offsets_minutes : null) ?? [1440, 120];
+        const labels = offs
+          .filter((m) => Number.isFinite(m) && m > 0)
+          .sort((a, b) => b - a)
+          .map(formatOffsetLabelUk);
+        if (labels.length) {
+          reminderTail = `\n\nНагадаємо ${labels.join(' та ')} до візиту.`;
+        }
+      } catch { /* best-effort */ }
+
+      const clientBody = `${clientHeading}\n\nМайстер: ${masterName}\nПослуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nЧас: ${selected_time ?? '—'}${reminderTail}`;
 
       await sendMessage(profile.telegram_id as unknown as number, clientBody, { parse_mode: 'HTML' });
     }

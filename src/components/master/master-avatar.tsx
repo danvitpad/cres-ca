@@ -21,19 +21,25 @@ export function MasterAvatar({ url, name, className }: Props) {
 
   if (!url || failed) {
     return (
-      <div className={`flex size-full items-center justify-center text-3xl font-bold text-neutral-400 ${className ?? ''}`}>
+      <div className={`flex size-full items-center justify-center rounded-full bg-neutral-100 text-3xl font-bold text-neutral-400 ${className ?? ''}`}>
         {letter}
       </div>
     );
   }
 
+  // Аватар мастера ВСЕГДА круглый. Родительский div может управлять размером,
+  // но форма (rounded-full + overflow-hidden) — здесь, чтобы Image не вылазил
+  // углами наружу.
   return (
-    <Image
-      src={url}
-      alt={name}
-      fill
-      className={`object-cover ${className ?? ''}`}
-      onError={() => setFailed(true)}
-    />
+    <div className={`relative size-full overflow-hidden rounded-full ${className ?? ''}`}>
+      <Image
+        src={url}
+        alt={name}
+        fill
+        sizes="160px"
+        className="object-cover"
+        onError={() => setFailed(true)}
+      />
+    </div>
   );
 }
