@@ -107,8 +107,10 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     dragRef.current = null;
   }
 
-  // Non-passive wheel listener so preventDefault() actually blocks page scroll
+  // Non-passive wheel listener — вешается заново каждый раз когда попап открывается,
+  // потому что previewRef.current = null пока sheet закрыт.
   useEffect(() => {
+    if (!open) return;
     const el = previewRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
@@ -118,7 +120,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [open]);
 
   async function save() {
     setSaving(true);
@@ -181,7 +183,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
       <div
         ref={previewRef}
         className="relative mb-3 overflow-hidden rounded-2xl bg-neutral-100 select-none"
-        style={{ height: '45vh', minHeight: 160, cursor: draftUrl ? (dragRef.current ? 'grabbing' : 'grab') : 'default' }}
+        style={{ aspectRatio: '3 / 1', cursor: draftUrl ? (dragRef.current ? 'grabbing' : 'grab') : 'default' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
