@@ -31,6 +31,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { T } from '@/components/miniapp/design';
 
 /* ─────────────────── Types ─────────────────── */
 
@@ -567,7 +568,7 @@ export default function MiniAppBookPage() {
   if (!masterId) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-8 text-center">
-        <p className="text-sm text-neutral-600">Мастер не указан</p>
+        <p className="text-sm" style={{ color: T.textSecondary }}>Мастер не указан</p>
       </div>
     );
   }
@@ -590,23 +591,25 @@ export default function MiniAppBookPage() {
 
   return (
     <>
-      <div className="flex min-h-full flex-col">
+      <div className="flex min-h-full flex-col" style={{ background: T.bg, color: T.text }}>
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="sticky top-0 z-30 border-b border-neutral-200 bg-white px-4 pb-3 pt-4"
+          className="sticky top-0 z-30 px-4 pb-3 pt-4"
+          style={{ background: T.surface, borderBottom: `1px solid ${T.borderSubtle}` }}
         >
           <div className="flex items-center justify-between">
             <button
               onClick={goBack}
-              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
+              className="flex size-9 items-center justify-center rounded-full transition-colors"
+              style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
-              <ArrowLeft className="size-4 text-neutral-800" />
+              <ArrowLeft className="size-4" style={{ color: T.text }} />
             </button>
 
-            <h1 className="text-[15px] font-semibold">
+            <h1 className="text-[15px] font-semibold" style={{ color: T.text }}>
               {step === 'services' && 'Услуги'}
               {step === 'datetime' && 'Дата и время'}
               {step === 'confirm' && 'Подтверждение'}
@@ -614,9 +617,10 @@ export default function MiniAppBookPage() {
 
             <button
               onClick={handleClose}
-              className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
+              className="flex size-9 items-center justify-center rounded-full transition-colors"
+              style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
-              <X className="size-4 text-neutral-800" />
+              <X className="size-4" style={{ color: T.text }} />
             </button>
           </div>
 
@@ -628,7 +632,7 @@ export default function MiniAppBookPage() {
                 className="h-[3px] flex-1 rounded-full"
                 initial={false}
                 animate={{
-                  backgroundColor: i <= stepIndex ? VIOLET : 'rgba(255,255,255,0.08)',
+                  backgroundColor: i <= stepIndex ? VIOLET : T.borderSubtle,
                 }}
                 transition={{ duration: 0.3 }}
               />
@@ -661,11 +665,12 @@ export default function MiniAppBookPage() {
                   >
                     <button
                       onClick={() => { haptic('light'); setActiveCategory(null); }}
-                      className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
-                        !activeCategory
-                          ? 'bg-white text-black'
-                          : 'border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50'
-                      }`}
+                      className="shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors"
+                      style={{
+                        background: !activeCategory ? T.text : T.surface,
+                        color: !activeCategory ? T.surface : T.textSecondary,
+                        border: `1px solid ${T.borderSubtle}`,
+                      }}
                     >
                       Все
                     </button>
@@ -673,11 +678,12 @@ export default function MiniAppBookPage() {
                       <button
                         key={cat.id}
                         onClick={() => { haptic('light'); setActiveCategory(cat.id); }}
-                        className={`shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors ${
-                          activeCategory === cat.id
-                            ? 'bg-white text-black'
-                            : 'border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50'
-                        }`}
+                        className="shrink-0 rounded-full px-4 py-2 text-[13px] font-medium transition-colors"
+                        style={{
+                          background: activeCategory === cat.id ? T.text : T.surface,
+                          color: activeCategory === cat.id ? T.surface : T.textSecondary,
+                          border: `1px solid ${T.borderSubtle}`,
+                        }}
                       >
                         {cat.name}
                       </button>
@@ -697,39 +703,43 @@ export default function MiniAppBookPage() {
                         initial="hidden"
                         animate="visible"
                         onClick={() => toggleService(service)}
-                        className={`group relative flex w-full items-start gap-3.5 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 pl-5 text-left transition-colors active:bg-neutral-50`}
+                        className="group relative flex w-full items-start gap-3.5 overflow-hidden rounded-2xl p-4 pl-5 text-left transition-colors"
+                        style={{
+                          background: T.surface,
+                          border: `1px solid ${T.borderSubtle}`,
+                        }}
                       >
                         {isSelected && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
                         {/* Checkmark circle */}
                         <div className="mt-0.5 shrink-0">
                           <motion.div
-                            className={`flex size-7 items-center justify-center rounded-full border-[1.5px] transition-colors ${
-                              isSelected
-                                ? 'border-violet-500 bg-violet-500'
-                                : 'border-neutral-300 bg-transparent'
-                            }`}
+                            className="flex size-7 items-center justify-center rounded-full border-[1.5px] transition-colors"
+                            style={{
+                              borderColor: isSelected ? '#7c3aed' : T.borderSubtle,
+                              background: isSelected ? '#7c3aed' : 'transparent',
+                            }}
                             animate={{ scale: isSelected ? [1, 1.15, 1] : 1 }}
                             transition={{ duration: 0.25 }}
                           >
                             {isSelected ? (
-                              <Check className="size-3.5 text-neutral-900" strokeWidth={3} />
+                              <Check className="size-3.5" style={{ color: T.surface }} strokeWidth={3} />
                             ) : (
-                              <Plus className="size-3.5 text-neutral-400" strokeWidth={2} />
+                              <Plus className="size-3.5" style={{ color: T.textTertiary }} strokeWidth={2} />
                             )}
                           </motion.div>
                         </div>
 
                         {/* Service info */}
                         <div className="min-w-0 flex-1">
-                          <p className="text-[14px] font-semibold leading-tight text-neutral-900/95">
+                          <p className="text-[14px] font-semibold leading-tight" style={{ color: T.text }}>
                             {service.name}
                           </p>
                           {service.description && (
-                            <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-neutral-400">
+                            <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed" style={{ color: T.textSecondary }}>
                               {service.description}
                             </p>
                           )}
-                          <div className="mt-2 flex items-center gap-2 text-[12px] text-neutral-500">
+                          <div className="mt-2 flex items-center gap-2 text-[12px]" style={{ color: T.textSecondary }}>
                             <Clock className="size-3.5" />
                             <span>{formatDuration(service.duration_minutes)}</span>
                           </div>
@@ -737,7 +747,7 @@ export default function MiniAppBookPage() {
 
                         {/* Price */}
                         <div className="shrink-0 pt-0.5">
-                          <p className="text-[14px] font-bold text-neutral-900">
+                          <p className="text-[14px] font-bold" style={{ color: T.text }}>
                             {formatPrice(Number(service.price))} {service.currency}
                           </p>
                         </div>
@@ -748,8 +758,8 @@ export default function MiniAppBookPage() {
 
                 {services.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <AlertCircle className="mb-3 size-8 text-neutral-900/20" />
-                    <p className="text-sm text-neutral-400">У мастера пока нет активных услуг</p>
+                    <AlertCircle className="mb-3 size-8" style={{ color: T.textTertiary }} />
+                    <p className="text-sm" style={{ color: T.textSecondary }}>У мастера пока нет активных услуг</p>
                   </div>
                 )}
               </motion.div>
@@ -774,14 +784,17 @@ export default function MiniAppBookPage() {
                   animate="visible"
                   className="mb-4 flex items-center justify-between"
                 >
-                  <h2 className="text-[15px] font-semibold capitalize text-neutral-900">
+                  <h2 className="text-[15px] font-semibold capitalize" style={{ color: T.text }}>
                     {MONTH_NAMES_FULL[new Date().getMonth()]} {new Date().getFullYear()} г.
                   </h2>
                   <button
                     onClick={() => { haptic('light'); setShowFullCalendar(!showFullCalendar); }}
-                    className={`flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white transition-colors active:bg-neutral-50 ${
-                      showFullCalendar ? 'text-violet-600' : 'text-neutral-600'
-                    }`}
+                    className="flex size-9 items-center justify-center rounded-full transition-colors"
+                    style={{
+                      border: `1px solid ${T.borderSubtle}`,
+                      background: T.surface,
+                      color: showFullCalendar ? '#7c3aed' : T.textSecondary,
+                    }}
                   >
                     <CalendarIcon className="size-4" />
                   </button>
@@ -816,25 +829,24 @@ export default function MiniAppBookPage() {
                               animate="visible"
                               disabled={off}
                               onClick={() => handleSelectDate(date)}
-                              className={`flex shrink-0 flex-col items-center gap-1.5 rounded-2xl px-3 py-3 transition-colors ${
-                                isSelected
-                                  ? 'bg-violet-500'
-                                  : off
-                                    ? 'opacity-30'
-                                    : isToday
-                                      ? 'border border-neutral-300 bg-white border-neutral-200'
-                                      : 'border border-neutral-200 bg-white active:bg-neutral-50'
-                              }`}
-                              style={{ minWidth: 56 }}
+                              className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl px-3 py-3 transition-colors"
+                              style={{
+                                minWidth: 56,
+                                background: isSelected ? '#7c3aed' : T.surface,
+                                border: `1px solid ${isSelected ? '#7c3aed' : T.borderSubtle}`,
+                                opacity: off ? 0.3 : 1,
+                              }}
                             >
-                              <span className={`text-[11px] font-medium ${
-                                isSelected ? 'text-neutral-800' : 'text-neutral-400'
-                              }`}>
+                              <span
+                                className="text-[11px] font-medium"
+                                style={{ color: isSelected ? 'rgba(255,255,255,0.75)' : T.textTertiary }}
+                              >
                                 {dayName}
                               </span>
-                              <span className={`text-[18px] font-bold leading-none ${
-                                isSelected ? 'text-neutral-900' : off ? 'text-neutral-400' : 'text-neutral-900'
-                              }`}>
+                              <span
+                                className="text-[18px] font-bold leading-none"
+                                style={{ color: isSelected ? '#fff' : T.text }}
+                              >
                                 {date.getDate()}
                               </span>
                             </motion.button>
@@ -856,23 +868,25 @@ export default function MiniAppBookPage() {
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}
-                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
+                          className="flex size-8 items-center justify-center rounded-lg transition-colors"
+                          style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface, color: T.text }}
                         >
                           <ChevronLeft className="size-4" />
                         </button>
-                        <span className="text-[13px] font-semibold capitalize">
+                        <span className="text-[13px] font-semibold capitalize" style={{ color: T.text }}>
                           {MONTH_NAMES_FULL[calMonth.getMonth()]} {calMonth.getFullYear()}
                         </span>
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
-                          className="flex size-8 items-center justify-center rounded-lg border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
+                          className="flex size-8 items-center justify-center rounded-lg transition-colors"
+                          style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface, color: T.text }}
                         >
                           <ChevronRight className="size-4" />
                         </button>
                       </div>
 
                       {/* Day names */}
-                      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-neutral-400">
+                      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-medium" style={{ color: T.textTertiary }}>
                         {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((d) => (
                           <div key={d}>{d}</div>
                         ))}
@@ -890,15 +904,13 @@ export default function MiniAppBookPage() {
                               key={day.toISOString()}
                               disabled={off}
                               onClick={() => handleSelectDate(day)}
-                              className={`flex size-10 items-center justify-center rounded-xl text-[13px] font-medium transition-colors ${
-                                isSelected
-                                  ? 'bg-violet-500 text-neutral-900'
-                                  : off
-                                    ? 'text-neutral-900/15'
-                                    : isToday
-                                      ? 'border border-neutral-300 text-neutral-900'
-                                      : 'text-neutral-700 active:bg-neutral-50'
-                              }`}
+                              className="flex size-10 items-center justify-center rounded-xl text-[13px] font-medium transition-colors"
+                              style={{
+                                background: isSelected ? '#7c3aed' : 'transparent',
+                                color: isSelected ? '#fff' : off ? T.textDisabled : T.text,
+                                border: isToday && !isSelected ? `1px solid ${T.border}` : 'none',
+                                opacity: off ? 0.35 : 1,
+                              }}
                             >
                               {day.getDate()}
                             </button>
@@ -918,26 +930,27 @@ export default function MiniAppBookPage() {
                     transition={{ duration: 0.3 }}
                     className="space-y-3"
                   >
-                    <p className="text-[13px] font-medium capitalize text-neutral-600">
+                    <p className="text-[13px] font-medium capitalize" style={{ color: T.textSecondary }}>
                       {formatDateFull(selectedDate)}
                     </p>
 
                     {slotsLoading ? (
                       <div className="grid grid-cols-3 gap-2">
                         {Array.from({ length: 9 }).map((_, i) => (
-                          <div key={i} className="h-12 animate-pulse rounded-xl bg-white border-neutral-200" />
+                          <div key={i} className="h-12 animate-pulse rounded-xl" style={{ background: T.surface, border: `1px solid ${T.borderSubtle}` }} />
                         ))}
                       </div>
                     ) : slots.length === 0 && pastSlots.length === 0 && bookedSlots.length === 0 ? (
-                      <div className="rounded-2xl border border-neutral-200 bg-white p-6 text-center">
-                        <CalendarIcon className="mx-auto mb-2 size-7 text-neutral-900/20" />
-                        <p className="text-[13px] font-medium text-neutral-500">
+                      <div className="rounded-2xl p-6 text-center" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
+                        <CalendarIcon className="mx-auto mb-2 size-7" style={{ color: T.textDisabled }} />
+                        <p className="text-[13px] font-medium" style={{ color: T.textSecondary }}>
                           Нет свободных слотов
                         </p>
                         {nextAvailableDate && (
                           <button
                             onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
-                            className="mt-3 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-[12px] font-semibold text-violet-600 active:bg-neutral-50 transition-colors"
+                            className="mt-3 rounded-xl px-4 py-2 text-[12px] font-semibold text-violet-600 transition-colors"
+                            style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
                           >
                             Ближайшая: {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
                           </button>
@@ -965,11 +978,12 @@ export default function MiniAppBookPage() {
                                   initial="hidden"
                                   animate="visible"
                                   onClick={() => handleSelectTime(s.time)}
-                                  className={`flex items-center justify-center rounded-xl border py-3 text-[15px] font-semibold transition-colors ${
-                                    isSelected
-                                      ? 'border-neutral-300 bg-white text-black'
-                                      : 'border-neutral-200 bg-white text-neutral-900 active:bg-neutral-50'
-                                  }`}
+                                  className="flex items-center justify-center rounded-xl py-3 text-[15px] font-semibold transition-colors"
+                                  style={{
+                                    border: `1px solid ${isSelected ? T.border : T.borderSubtle}`,
+                                    background: isSelected ? T.surface : T.surface,
+                                    color: T.text,
+                                  }}
                                 >
                                   {s.time}
                                 </motion.button>
@@ -984,7 +998,12 @@ export default function MiniAppBookPage() {
                                 variants={cardVariants}
                                 initial="hidden"
                                 animate="visible"
-                                className={`flex items-center justify-center rounded-xl border border-neutral-100 bg-neutral-50 py-3 text-[15px] font-semibold text-neutral-300 cursor-not-allowed select-none ${s.state === 'past' ? 'line-through' : ''}`}
+                                className={`flex items-center justify-center rounded-xl py-3 text-[15px] font-semibold cursor-not-allowed select-none ${s.state === 'past' ? 'line-through' : ''}`}
+                                style={{
+                                  border: `1px solid ${T.borderSubtle}`,
+                                  background: T.bgSubtle,
+                                  color: T.textDisabled,
+                                }}
                                 aria-disabled="true"
                                 title={tooltip}
                               >
@@ -997,7 +1016,7 @@ export default function MiniAppBookPage() {
                     )}
                     {/* Только прошедшие слоты — показываем подсказку выбрать другой день */}
                     {!slotsLoading && slots.length === 0 && pastSlots.length > 0 && (
-                      <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-center text-[12px] text-neutral-500">
+                      <div className="mt-2 rounded-xl px-3 py-2 text-center text-[12px]" style={{ border: `1px solid ${T.borderSubtle}`, background: T.bgSubtle, color: T.textSecondary }}>
                         Сегодня все слоты уже прошли. Выберите другой день выше.
                       </div>
                     )}
@@ -1022,11 +1041,15 @@ export default function MiniAppBookPage() {
                   variants={fadeUp}
                   initial="hidden"
                   animate="visible"
-                  className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+                  className="overflow-hidden rounded-2xl"
+                  style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
                 >
                   {/* Master info */}
                   <div className="flex items-center gap-3.5 p-5">
-                    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-neutral-200 bg-neutral-50">
+                    <div
+                      className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full"
+                      style={{ border: `1px solid ${T.borderSubtle}`, background: T.bgSubtle }}
+                    >
                       {master?.avatar_url ? (
                         <Image
                           src={master.avatar_url}
@@ -1036,15 +1059,15 @@ export default function MiniAppBookPage() {
                           className="size-full object-cover"
                         />
                       ) : (
-                        <span className="text-[16px] font-bold text-neutral-900">
+                        <span className="text-[16px] font-bold" style={{ color: T.text }}>
                           {masterName.charAt(0).toUpperCase()}
                         </span>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold text-neutral-900/95">{masterName}</p>
+                      <p className="text-[15px] font-semibold" style={{ color: T.text }}>{masterName}</p>
                       {master?.address && (
-                        <div className="mt-0.5 flex items-center gap-1 text-[12px] text-neutral-400">
+                        <div className="mt-0.5 flex items-center gap-1 text-[12px]" style={{ color: T.textSecondary }}>
                           <MapPin className="size-3" />
                           <span className="truncate">{master.address}</span>
                         </div>
@@ -1052,35 +1075,35 @@ export default function MiniAppBookPage() {
                     </div>
                   </div>
 
-                  <div className="mx-5 h-px bg-white/10" />
+                  <div className="mx-5 h-px" style={{ background: T.borderSubtle }} />
 
                   {/* Date & Time */}
                   <div className="space-y-3 p-5">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white">
+                      <div className="flex size-9 items-center justify-center rounded-xl" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
                         <CalendarIcon className="size-4 text-violet-600" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                        <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: T.textTertiary }}>
                           Дата
                         </p>
-                        <p className="text-[14px] font-semibold capitalize text-neutral-900">
+                        <p className="text-[14px] font-semibold capitalize" style={{ color: T.text }}>
                           {formatDateFull(selectedDate)}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white">
+                      <div className="flex size-9 items-center justify-center rounded-xl" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
                         <Clock className="size-4 text-violet-600" />
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium uppercase tracking-wider text-neutral-400">
+                        <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: T.textTertiary }}>
                           Время
                         </p>
-                        <p className="text-[14px] font-semibold text-neutral-900">
+                        <p className="text-[14px] font-semibold" style={{ color: T.text }}>
                           {selectedTime}–{endTime}{' '}
-                          <span className="font-normal text-neutral-400">
+                          <span className="font-normal" style={{ color: T.textSecondary }}>
                             (длительность {formatDuration(totalDuration)})
                           </span>
                         </p>
@@ -1088,7 +1111,7 @@ export default function MiniAppBookPage() {
                     </div>
                   </div>
 
-                  <div className="mx-5 h-px bg-white/10" />
+                  <div className="mx-5 h-px" style={{ background: T.borderSubtle }} />
 
                   {/* Services breakdown */}
                   <div className="space-y-3 p-5">
@@ -1096,14 +1119,14 @@ export default function MiniAppBookPage() {
                       return (
                         <div key={service.id} className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
-                            <p className="text-[14px] font-semibold text-neutral-900">
+                            <p className="text-[14px] font-semibold" style={{ color: T.text }}>
                               {service.name}
                             </p>
-                            <p className="mt-0.5 text-[12px] text-neutral-400">
+                            <p className="mt-0.5 text-[12px]" style={{ color: T.textSecondary }}>
                               {formatDuration(service.duration_minutes)} с {masterName}
                             </p>
                           </div>
-                          <p className="shrink-0 text-[14px] font-bold text-neutral-800">
+                          <p className="shrink-0 text-[14px] font-bold" style={{ color: T.text }}>
                             {formatPrice(Number(service.price))} {service.currency}
                           </p>
                         </div>
@@ -1111,12 +1134,12 @@ export default function MiniAppBookPage() {
                     })}
                   </div>
 
-                  <div className="mx-5 h-px bg-white/10" />
+                  <div className="mx-5 h-px" style={{ background: T.borderSubtle }} />
 
                   {/* Total */}
                   <div className="flex items-center justify-between p-5">
-                    <p className="text-[14px] font-medium text-neutral-600">Всего к оплате</p>
-                    <p className="text-[20px] font-bold text-neutral-900">
+                    <p className="text-[14px] font-medium" style={{ color: T.textSecondary }}>Всего к оплате</p>
+                    <p className="text-[20px] font-bold" style={{ color: T.text }}>
                       {formatPrice(totalPrice)} {currency}
                     </p>
                   </div>
@@ -1134,8 +1157,8 @@ export default function MiniAppBookPage() {
                         <Info className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-semibold text-neutral-900">Важная информация</p>
-                        <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-neutral-700">
+                        <p className="text-[14px] font-semibold" style={{ color: T.text }}>Важная информация</p>
+                        <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed" style={{ color: T.textSecondary }}>
                           {master.booking_important_info}
                         </p>
                       </div>
@@ -1156,13 +1179,15 @@ export default function MiniAppBookPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white px-4 pb-8 pt-4"
+              className="fixed inset-x-0 bottom-0 z-40 px-4 pb-8 pt-4"
+              style={{ borderTop: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
               {selectedServices.length > 0 && (
                 <motion.p
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-3 text-center text-[13px] text-neutral-500"
+                  className="mb-3 text-center text-[13px]"
+                  style={{ color: T.textSecondary }}
                 >
                   {formatPrice(totalPrice)} {currency} · {selectedServices.length}{' '}
                   {pluralServices(selectedServices.length)} · {formatDuration(totalDuration)}
@@ -1171,11 +1196,11 @@ export default function MiniAppBookPage() {
               <button
                 onClick={proceedFromServices}
                 disabled={selectedServices.length === 0}
-                className={`flex w-full items-center justify-center rounded-2xl py-4 text-[15px] font-semibold transition-colors ${
-                  selectedServices.length > 0
-                    ? 'bg-white text-black active:bg-white/80'
-                    : 'bg-white border-neutral-200 text-neutral-900/25'
-                }`}
+                className="flex w-full items-center justify-center rounded-2xl py-4 text-[15px] font-semibold transition-colors"
+                style={{
+                  background: selectedServices.length > 0 ? T.text : T.bgSubtle,
+                  color: selectedServices.length > 0 ? T.surface : T.textDisabled,
+                }}
               >
                 Продолжить
               </button>
@@ -1189,18 +1214,20 @@ export default function MiniAppBookPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 80, opacity: 0 }}
               transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white px-4 pb-8 pt-4"
+              className="fixed inset-x-0 bottom-0 z-40 px-4 pb-8 pt-4"
+              style={{ borderTop: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[13px] text-neutral-400">К оплате в магазине</span>
-                <span className="text-[16px] font-bold text-neutral-900">
+                <span className="text-[13px]" style={{ color: T.textSecondary }}>К оплате в магазине</span>
+                <span className="text-[16px] font-bold" style={{ color: T.text }}>
                   {formatPrice(totalPrice)} {currency}
                 </span>
               </div>
               <button
                 onClick={handleConfirm}
                 disabled={submitting}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-[15px] font-semibold text-black active:bg-white/80 transition-colors disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[15px] font-semibold transition-colors disabled:opacity-60"
+                style={{ background: T.text, color: T.surface }}
               >
                 {submitting ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -1231,28 +1258,31 @@ export default function MiniAppBookPage() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ duration: 0.35, ease: 'easeOut' }}
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-neutral-200 bg-white px-5 pb-10 pt-6"
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-2xl px-5 pb-10 pt-6"
+              style={{ borderTop: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
               {/* Handle */}
-              <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-white/15" />
+              <div className="mx-auto mb-5 h-1 w-10 rounded-full" style={{ background: T.borderSubtle }} />
 
-              <h3 className="text-center text-[17px] font-bold text-neutral-900">
+              <h3 className="text-center text-[17px] font-bold" style={{ color: T.text }}>
                 Вы точно хотите прервать это бронирование?
               </h3>
-              <p className="mt-2 text-center text-[14px] text-neutral-400">
+              <p className="mt-2 text-center text-[14px]" style={{ color: T.textSecondary }}>
                 Все выбранные параметры будут сброшены.
               </p>
 
               <div className="mt-6 flex gap-3">
                 <button
                   onClick={() => { haptic('light'); setShowExitModal(false); }}
-                  className="flex-1 rounded-2xl border border-neutral-200 bg-white py-3.5 text-[14px] font-semibold text-neutral-700 active:bg-neutral-50 transition-colors"
+                  className="flex-1 rounded-2xl py-3.5 text-[14px] font-semibold transition-colors"
+                  style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface, color: T.textSecondary }}
                 >
                   Отменить
                 </button>
                 <button
                   onClick={confirmExit}
-                  className="flex-1 rounded-2xl bg-white py-3.5 text-[14px] font-semibold text-black active:bg-white/80 transition-colors"
+                  className="flex-1 rounded-2xl py-3.5 text-[14px] font-semibold transition-colors"
+                  style={{ background: T.text, color: T.surface }}
                 >
                   Выйти
                 </button>
