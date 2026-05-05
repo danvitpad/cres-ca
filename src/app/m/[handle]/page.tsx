@@ -177,13 +177,13 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
     } as MasterRow;
   };
 
-  // Try slug first (preferred, SEO-friendly). Require is_public for slug-based visits.
+  // Try slug first (preferred, SEO-friendly). Non-public pages are still
+  // accessible via direct link — they simply get noindex robots tag.
   const bySlug = await admin()
     .from('masters')
     .select(cols)
     .eq('slug', handle)
     .eq('is_active', true)
-    .eq('is_public', true)
     .maybeSingle();
   if (bySlug.data) return flatten(bySlug.data as unknown as Record<string, unknown>);
 
