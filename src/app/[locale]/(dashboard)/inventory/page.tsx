@@ -494,65 +494,77 @@ export default function InventoryPage({
               }
             />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
               <AnimatePresence>
                 {suppliers.map((s, i) => (
                   <motion.div
                     key={s.id}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
                     transition={{ delay: Math.min(i, 12) * 0.02 }}
-                    className="group relative rounded-xl border border-border/50 bg-card/80 backdrop-blur p-3 transition-all hover:shadow-md"
+                    className="group relative rounded-lg border border-border/60 bg-card p-2.5 transition-all hover:border-primary/40 hover:shadow-sm"
                   >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex size-8 items-center justify-center rounded-lg shrink-0 bg-primary/10">
-                        <Truck className="size-4 text-primary" />
+                    {/* Top row: name + actions */}
+                    <div className="flex items-start gap-2">
+                      <div className="flex size-7 items-center justify-center rounded-md shrink-0 bg-primary/10">
+                        <Truck className="size-3.5 text-primary" />
                       </div>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <h3 className="flex-1 min-w-0 text-[13px] font-semibold leading-tight truncate" title={s.name}>
+                        {s.name}
+                      </h3>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <button
                           onClick={() => openEditSupplier(s)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                          title="Редактировать"
                         >
-                          <Pencil className="size-3.5" />
+                          <Pencil className="size-3" />
                         </button>
                         <button
                           onClick={() => deleteSupplier(s.id)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                          className="p-1 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                          title="Удалить"
                         >
-                          <Trash2 className="size-3.5" />
+                          <Trash2 className="size-3" />
                         </button>
                       </div>
                     </div>
 
-                    <h3 className="text-sm font-semibold leading-tight truncate" title={s.name}>
-                      {s.name}
-                    </h3>
-
-                    <div className="mt-2 space-y-1 text-[11px] text-muted-foreground">
-                      {s.phone && (
-                        <div className="flex items-center gap-1.5">
+                    {/* Quick contact row — show first available, rest as icons */}
+                    <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      {s.phone ? (
+                        <a
+                          href={`tel:${s.phone}`}
+                          className="flex items-center gap-1 min-w-0 hover:text-foreground transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Phone className="size-3 shrink-0" />
                           <span className="truncate">{s.phone}</span>
-                        </div>
-                      )}
-                      {s.email && (
-                        <div className="flex items-center gap-1.5">
+                        </a>
+                      ) : s.email ? (
+                        <a
+                          href={`mailto:${s.email}`}
+                          className="flex items-center gap-1 min-w-0 hover:text-foreground transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <Mail className="size-3 shrink-0" />
                           <span className="truncate">{s.email}</span>
-                        </div>
-                      )}
-                      {s.telegram_id && (
-                        <div className="flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+                        </a>
+                      ) : s.telegram_id ? (
+                        <span className="flex items-center gap-1 min-w-0 text-sky-600 dark:text-sky-400">
                           <Send className="size-3 shrink-0" />
-                          <span className="truncate">{s.telegram_id}</span>
-                        </div>
+                          <span className="truncate">@{s.telegram_id.replace(/^@/, '')}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] italic text-muted-foreground/60">Без контактов</span>
                       )}
+                      {/* Secondary contact methods — dot icons */}
+                      <div className="ml-auto flex gap-1 shrink-0 text-muted-foreground/50">
+                        {s.phone && s.email && <Mail className="size-2.5" />}
+                        {(s.phone || s.email) && s.telegram_id && <Send className="size-2.5" />}
+                      </div>
                     </div>
-
-                    {s.note && (
-                      <p className="mt-2 text-[10px] text-muted-foreground/70 line-clamp-2">{s.note}</p>
-                    )}
                   </motion.div>
                 ))}
               </AnimatePresence>
