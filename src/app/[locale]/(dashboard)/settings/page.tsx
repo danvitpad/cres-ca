@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
@@ -33,6 +33,7 @@ import {
   Settings as SettingsCogIcon,
   RotateCcw,
 } from 'lucide-react';
+void ChevronLeft; // legacy import kept for potential reuse in section shell
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 import {
   SettingsBlock,
@@ -62,6 +63,14 @@ const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
 type WorkingDay = { start: string; end: string; break_start?: string; break_end?: string } | null;
 type WorkingHours = Record<string, WorkingDay>;
 
+interface SettingSection {
+  key: string;
+  icon: typeof UserCircle;
+  title: string;
+  desc?: string;
+  href?: string;
+}
+
 export default function SettingsPage() {
   const t = useTranslations('profile');
   const tc = useTranslations('common');
@@ -69,14 +78,6 @@ export default function SettingsPage() {
   const { master, loading, refetch } = useMaster();
   const { userId } = useAuthStore();
   const searchParams = useSearchParams();
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-
-  // Sync with URL ?section=... (deep-link from header dropdown).
-  // Reset to null when the param is removed so /settings always shows the home grid.
-  useEffect(() => {
-    const s = searchParams.get('section');
-    setActiveSection(s);
-  }, [searchParams]);
 
   if (loading) {
     return (
@@ -96,61 +97,99 @@ export default function SettingsPage() {
     );
   }
 
-  const settingSections: Array<{
-    key: string;
-    icon: typeof UserCircle;
-    title: string;
-    desc: string;
-    href?: string;
-  }> = [
-    { key: 'profile', icon: UserCircle, title: t('editProfile'), desc: t('profileDesc') || t('editProfile') },
-    { key: 'vertical', icon: Briefcase, title: 'Моя сфера', desc: 'Индустрия и шаблоны услуг' },
-    { key: 'features', icon: Layers, title: 'Модули', desc: 'Что включено в дашборде' },
-    { key: 'hours', icon: CalendarClock, title: t('workingHours'), desc: t('hoursDesc') || t('workingHours') },
-    { key: 'security', icon: KeyRound, title: 'Безопасность', desc: 'Email, пароль, телефон' },
-    { key: 'subscription', icon: CreditCard, title: t('subscription'), desc: t('subscriptionDesc') || t('subscription') },
-    { key: 'invite', icon: LinkIcon, title: t('inviteLink'), desc: t('inviteDesc') || t('inviteLink') },
-    { key: 'policies', icon: Shield, title: t('policies'), desc: t('policiesDesc') || t('policies') },
-    { key: 'loyalty', icon: Gift, title: 'Лояльность', desc: 'Баллы за визиты, реферал, ДР-промокод' },
-    { key: 'notifications', icon: BellRing, title: 'Уведомления', desc: 'Напоминания на сайте и в Telegram' },
-    { key: 'feedback', icon: MessageSquareHeart, title: 'Обратная связь', desc: 'Напишите команде CRES-CA', href: `/${locale}/settings/feedback` },
+  const sections: SettingSection[] = [
+    { key: 'profile', icon: UserCircle, title: t('editProfile') },
+    { key: 'vertical', icon: Briefcase, title: 'Моя сфера' },
+    { key: 'features', icon: Layers, title: 'Модули' },
+    { key: 'hours', icon: CalendarClock, title: t('workingHours') },
+    { key: 'security', icon: KeyRound, title: 'Безопасность' },
+    { key: 'notifications', icon: BellRing, title: 'Уведомления' },
+    { key: 'loyalty', icon: Gift, title: 'Лояльность' },
+    { key: 'policies', icon: Shield, title: t('policies') },
+    { key: 'subscription', icon: CreditCard, title: t('subscription') },
+    { key: 'invite', icon: LinkIcon, title: t('inviteLink') },
+    { key: 'feedback', icon: MessageSquareHeart, title: 'Обратная связь', href: `/${locale}/settings/feedback` },
   ];
 
-  if (activeSection) {
-    return (
-      <SettingsSectionShell onBack={() => setActiveSection(null)} backLabel={t('settingsTitle') || 'Настройки'}>
-        {activeSection === 'profile' && <ProfileTab master={master} userId={userId!} onSaved={refetch} />}
-        {activeSection === 'vertical' && <VerticalTab master={master} onSaved={refetch} />}
-        {activeSection === 'features' && <FeaturesTab master={master} onSaved={refetch} />}
-        {activeSection === 'hours' && <WorkingHoursTab master={master} onSaved={refetch} />}
-        {activeSection === 'security' && <SecurityTab />}
-        {activeSection === 'subscription' && <SubscriptionTab />}
-        {activeSection === 'invite' && <InviteLinkTab master={master} />}
-        {activeSection === 'policies' && <PoliciesTab master={master} onSaved={refetch} />}
-        {activeSection === 'loyalty' && <LoyaltyTab master={master} onSaved={refetch} />}
-        {activeSection === 'notifications' && <NotificationsTab master={master} onSaved={refetch} />}
-      </SettingsSectionShell>
-    );
-  }
-
-  return <SettingsHomeView sections={settingSections} onSelect={setActiveSection} />;
+  return (
+    <SettingsAllInOneView sections={sections}>
+      <SettingsAnchor id="profile" title={t('editProfile')} icon={UserCircle}>
+        <ProfileTab master={master} userId={userId!} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="vertical" title="Моя сфера" icon={Briefcase}>
+        <VerticalTab master={master} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="features" title="Модули" icon={Layers}>
+        <FeaturesTab master={master} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="hours" title={t('workingHours')} icon={CalendarClock}>
+        <WorkingHoursTab master={master} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="security" title="Безопасность" icon={KeyRound}>
+        <SecurityTab />
+      </SettingsAnchor>
+      <SettingsAnchor id="notifications" title="Уведомления" icon={BellRing}>
+        <NotificationsTab master={master} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="loyalty" title="Лояльность" icon={Gift}>
+        <LoyaltyTab master={master} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="policies" title={t('policies')} icon={Shield}>
+        <PoliciesTab master={master} onSaved={refetch} />
+      </SettingsAnchor>
+      <SettingsAnchor id="subscription" title={t('subscription')} icon={CreditCard}>
+        <SubscriptionTab />
+      </SettingsAnchor>
+      <SettingsAnchor id="invite" title={t('inviteLink')} icon={LinkIcon}>
+        <InviteLinkTab master={master} />
+      </SettingsAnchor>
+      {/* searchParams используется чтобы при ?section=foo страница сразу
+          скроллилась к нужному якорю — see SettingsAllInOneView */}
+      <SettingsScrollOnLoad searchParams={searchParams} />
+    </SettingsAllInOneView>
+  );
 }
 
-/* ── Help-styled outer shell for the settings home page ─────────────── */
-function SettingsHomeView({
+/* ── New all-in-one settings layout: sticky sidebar of anchors + content ── */
+function SettingsAllInOneView({
   sections,
-  onSelect,
+  children,
 }: {
-  sections: Array<{
-    key: string;
-    icon: typeof UserCircle;
-    title: string;
-    desc: string;
-    href?: string;
-  }>;
-  onSelect: (key: string) => void;
+  sections: SettingSection[];
+  children: React.ReactNode;
 }) {
   const { C, mounted } = usePageTheme();
+  const [active, setActive] = useState<string>(sections[0]?.key ?? 'profile');
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // IntersectionObserver — подсвечивает текущий якорь в sidebar
+  // когда соответствующая секция в зоне видимости.
+  useEffect(() => {
+    if (!mounted) return;
+    if (observerRef.current) observerRef.current.disconnect();
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) setActive((e.target as HTMLElement).id);
+        }
+      },
+      { rootMargin: '-30% 0px -55% 0px' },
+    );
+    sections.forEach((s) => {
+      const el = document.getElementById(s.key);
+      if (el) obs.observe(el);
+    });
+    observerRef.current = obs;
+    return () => obs.disconnect();
+  }, [sections, mounted]);
+
+  const scrollTo = useCallback((key: string) => {
+    const el = document.getElementById(key);
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 88;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, []);
+
   if (!mounted) return null;
 
   return (
@@ -163,15 +202,15 @@ function SettingsHomeView({
       fontFamily: FONT,
       fontFeatureSettings: FONT_FEATURES,
     }}>
-      {/* Hero — same shape as /help */}
+      {/* Hero — те же шрифты/цвета что были */}
       <motion.div
         initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
         style={{
           background: C.accentSoft,
           border: `1px solid ${C.aiBorder}`,
           borderRadius: 16,
-          padding: '28px 32px',
-          marginBottom: 28,
+          padding: '24px 28px',
+          marginBottom: 24,
         }}
       >
         <h1 style={{
@@ -182,150 +221,202 @@ function SettingsHomeView({
           Настройки
         </h1>
         <p style={{ fontSize: 14, color: C.textSecondary, margin: '6px 0 0', lineHeight: 1.5 }}>
-          Здесь собрано всё про твой аккаунт, рабочее пространство и подписку. Каждый раздел — отдельный экран с подробными настройками.
+          Слева — оглавление. Кликни по разделу — страница плавно прокрутится к нему.
         </p>
       </motion.div>
 
-      {/* Grid — same minmax(320, 1fr) as /help */}
+      {/* Two-column: sidebar + content */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-        gap: 14,
+        gridTemplateColumns: 'minmax(0, 240px) minmax(0, 1fr)',
+        gap: 32,
+        alignItems: 'start',
       }}>
-        {sections.map((section, i) => {
-          const Icon = section.icon;
-          const inner = (
-            <div style={{
+        {/* Sidebar — sticky, скрывается на мобиле */}
+        <aside
+          style={{
+            position: 'sticky',
+            top: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2,
+          }}
+          className="hidden md:flex"
+        >
+          {sections.map((s) => {
+            const Icon = s.icon;
+            const isActive = active === s.key;
+            const baseStyle: React.CSSProperties = {
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: C.accentSoft, color: C.accent,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Icon size={16} />
-              </div>
-              <div style={{ minWidth: 0, textAlign: 'left' }}>
-                <div style={{ fontSize: 14, fontWeight: 650, color: C.text, lineHeight: 1.2 }}>{section.title}</div>
-                <div style={{ fontSize: 11, color: C.textTertiary, marginTop: 3 }}>{section.desc}</div>
-              </div>
-            </div>
-          );
-          const cardStyle: React.CSSProperties = {
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 14,
-            padding: 18,
-            cursor: 'pointer',
-            textDecoration: 'none',
-            display: 'block',
-            transition: 'border-color 0.15s, transform 0.15s',
-          };
-          if (section.href) {
-            return (
-              <motion.div
-                key={section.key}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-              >
-                <Link href={section.href} style={cardStyle}>
-                  {inner}
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: isActive ? C.accentSoft : 'transparent',
+              color: isActive ? C.accent : C.textSecondary,
+              fontSize: 13,
+              fontWeight: isActive ? 600 : 500,
+              fontFamily: FONT,
+              fontFeatureSettings: FONT_FEATURES,
+              textAlign: 'left',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'background 0.12s, color 0.12s',
+            };
+            if (s.href) {
+              return (
+                <Link key={s.key} href={s.href} style={baseStyle}>
+                  <Icon size={15} />
+                  <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
                 </Link>
-              </motion.div>
+              );
+            }
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => scrollTo(s.key)}
+                style={baseStyle}
+              >
+                <Icon size={15} />
+                <span style={{ flex: 1, minWidth: 0 }}>{s.title}</span>
+              </button>
             );
-          }
-          return (
-            <motion.button
-              key={section.key}
-              type="button"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              onClick={() => onSelect(section.key)}
-              style={{ ...cardStyle, width: '100%', font: 'inherit' }}
-            >
-              {inner}
-            </motion.button>
-          );
-        })}
-      </div>
+          })}
+          {/* Replay onboarding tour */}
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await fetch('/api/account/tour-reset', { method: 'POST' });
+                window.location.href = `/${window.location.pathname.split('/')[1]}/welcome`;
+              } catch {}
+            }}
+            style={{
+              marginTop: 16,
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 12px',
+              background: 'transparent', border: `1px solid ${C.border}`,
+              borderRadius: 10, color: C.textSecondary,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
+            }}
+          >
+            <RotateCcw size={13} />
+            Пройти обучение заново
+          </button>
+        </aside>
 
-      {/* Replay onboarding tour */}
-      <button
-        type="button"
-        onClick={async () => {
-          try {
-            await fetch('/api/account/tour-reset', { method: 'POST' });
-            window.location.href = `/${window.location.pathname.split('/')[1]}/welcome`;
-          } catch {}
-        }}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          margin: '28px auto 0', padding: '10px 20px',
-          background: 'transparent', border: `1px solid ${C.border}`,
-          borderRadius: 10, color: C.textSecondary,
-          fontSize: 13, fontWeight: 500, cursor: 'pointer',
-          fontFamily: FONT, fontFeatureSettings: FONT_FEATURES,
-          transition: 'border-color 0.15s',
-        }}
-      >
-        <RotateCcw size={14} />
-        Пройти обучение заново
-      </button>
+        {/* Mobile: top scroll-pills вместо sidebar */}
+        <div
+          className="md:hidden"
+          style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            padding: '4px 0',
+            marginBottom: 12,
+            gridColumn: '1 / -1',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {sections.map((s) => {
+            const isActive = active === s.key;
+            const baseStyle: React.CSSProperties = {
+              flexShrink: 0,
+              padding: '7px 14px',
+              borderRadius: 999,
+              border: `1px solid ${isActive ? C.accent : C.border}`,
+              background: isActive ? C.accentSoft : C.surface,
+              color: isActive ? C.accent : C.text,
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: FONT,
+              cursor: 'pointer',
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            };
+            if (s.href) {
+              return <Link key={s.key} href={s.href} style={baseStyle}>{s.title}</Link>;
+            }
+            return (
+              <button key={s.key} type="button" onClick={() => scrollTo(s.key)} style={baseStyle}>
+                {s.title}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Content — все секции подряд */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
 
-/* ── Section page wrapper (back button + centered max-width) ───────── */
-function SettingsSectionShell({
-  onBack,
-  backLabel,
-  children,
+/* ── Anchor wrapper for each section ──────────────────────────────────── */
+function SettingsAnchor({
+  id, title, icon: Icon, children,
 }: {
-  onBack: () => void;
-  backLabel: string;
+  id: string;
+  title: string;
+  icon: typeof UserCircle;
   children: React.ReactNode;
 }) {
   const { C, mounted } = usePageTheme();
   if (!mounted) return null;
-
   return (
-    <div style={{
-      ...pageContainer,
-      color: C.text,
-      background: C.bg,
-      minHeight: '100%',
-      paddingBottom: 96,
-      fontFamily: FONT,
-      fontFeatureSettings: FONT_FEATURES,
-    }}>
-      <button
-        onClick={onBack}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          color: C.textSecondary,
-          fontSize: 13,
-          cursor: 'pointer',
-          padding: 0,
-          marginBottom: 16,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontFamily: FONT,
-        }}
-      >
-        <ChevronLeft size={14} />
-        {backLabel}
-      </button>
-      <div className="space-y-5">{children}</div>
-    </div>
+    <section id={id} style={{ scrollMarginTop: 88 }}>
+      <header style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: 14,
+        paddingBottom: 10,
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        <div style={{
+          width: 30, height: 30, borderRadius: 8,
+          background: C.accentSoft, color: C.accent,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <Icon size={15} />
+        </div>
+        <h2 style={{
+          fontSize: 18, fontWeight: 650, color: C.text, letterSpacing: '-0.3px',
+          margin: 0,
+        }}>
+          {title}
+        </h2>
+      </header>
+      {children}
+    </section>
   );
 }
+
+/* ── Auto-scroll to ?section=key on load (deep-link) ───────────────────── */
+function SettingsScrollOnLoad({ searchParams }: { searchParams: ReturnType<typeof useSearchParams> }) {
+  useEffect(() => {
+    const s = searchParams.get('section');
+    if (!s) return;
+    // wait one frame so layout has anchor positions
+    requestAnimationFrame(() => {
+      const el = document.getElementById(s);
+      if (!el) return;
+      const top = el.getBoundingClientRect().top + window.scrollY - 88;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
+  }, [searchParams]);
+  return null;
+}
+
+/* SettingsHomeView и SettingsSectionShell удалены — заменены на
+   SettingsAllInOneView (выше). Все секции теперь рендерятся подряд
+   на одной странице с боковой панелью якорей. */
 
 function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnType<typeof useMaster>['master']>; userId: string; onSaved: () => void }) {
   const t = useTranslations('profile');
@@ -427,7 +518,21 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
           </SettingsField>
         </div>
         <SettingsField label="Адрес" C={C}>
-          <input style={inputStyle} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ул., дом, кабинет" />
+          {/* textarea с auto-wrap — длинные адреса (с областью / районом / индексом)
+              переносятся на 2-3 строки вместо горизонтального скролла. */}
+          <textarea
+            style={{
+              ...inputStyle,
+              minHeight: 60,
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              lineHeight: 1.45,
+            }}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Город, улица, дом, кабинет"
+            rows={2}
+          />
         </SettingsField>
         <SettingsField label="Языки общения" C={C}>
           <div>
