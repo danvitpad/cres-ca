@@ -11,7 +11,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Star, MapPin, Sparkles, Calendar, Clock, Phone, Mail, Cake } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
-import { PortfolioGrid } from '@/components/master/portfolio-grid';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
@@ -114,6 +113,9 @@ interface PortfolioItem {
   tags: string[];
   service_id: string | null;
   service_name: string | null;
+  item_x: number | null;
+  item_y: number | null;
+  item_scale: number | null;
 }
 
 interface PortfolioRow {
@@ -123,6 +125,9 @@ interface PortfolioRow {
   tags: string[];
   service_id: string | null;
   service: { name: string | null } | { name: string | null }[] | null;
+  item_x: number | null;
+  item_y: number | null;
+  item_scale: number | null;
 }
 
 interface BeforeAfterItem {
@@ -229,7 +234,7 @@ async function loadReviews(masterId: string): Promise<ReviewRow[]> {
 async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
   const { data } = await admin()
     .from('master_portfolio')
-    .select('id, image_url, caption, tags, service_id, service:services(name)')
+    .select('id, image_url, caption, tags, service_id, service:services(name), item_x, item_y, item_scale')
     .eq('master_id', masterId)
     .eq('is_published', true)
     .order('sort_order', { ascending: false })
@@ -244,6 +249,9 @@ async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
       tags: r.tags ?? [],
       service_id: r.service_id,
       service_name: svc?.name ?? null,
+      item_x: r.item_x,
+      item_y: r.item_y,
+      item_scale: r.item_scale,
     };
   });
 }
@@ -639,43 +647,40 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               </section>
             )}
 
-            {/* Portfolio — owner панель управления (видна только владельцу,
-                рендерит null для остальных) показывается ВСЕГДА, чтобы можно
-                было добавить первую работу. Сама секция «Работы» (PortfolioGrid)
-                остаётся условной — для пустого списка её прячем. */}
+            {/* Portfolio — единый блок: владелец видит кнопку добавления,
+                все видят сетку с лайтбоксом. OwnerPortfolioPanel рендерит null
+                если не владелец и нет работ. */}
             <section id="portfolio" className="scroll-mt-24">
               <OwnerPortfolioPanel
                 masterProfileId={master.profile_id}
+                masterId={master.id}
                 initialItems={portfolio.map((p) => ({
                   id: p.id,
                   image_url: p.image_url,
                   caption: p.caption,
+                  item_x: p.item_x,
+                  item_y: p.item_y,
+                  item_scale: p.item_scale,
                 }))}
               />
-            </section>
-            {hasPortfolio && (
-              <section className="scroll-mt-24">
-                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Работы</h2>
-                {portfolio.length > 0 && <PortfolioGrid items={portfolio} />}
-                {beforeAfter.length > 0 && (
-                  <div className={portfolio.length > 0 ? 'mt-6' : ''}>
-                    <p className="mb-3 text-sm text-neutral-500">
-                      Перетащите разделитель, чтобы сравнить «до» и «после».
-                    </p>
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      {beforeAfter.map((pair) => (
-                        <BeforeAfterSlider
-                          key={pair.id}
-                          beforeUrl={pair.before_url}
-                          afterUrl={pair.after_url}
-                          caption={pair.caption}
-                        />
-                      ))}
-                    </div>
+              {beforeAfter.length > 0 && (
+                <div className={portfolio.length > 0 ? 'mt-6' : ''}>
+                  <p className="mb-3 text-sm text-neutral-500">
+                    Перетащите разделитель, чтобы сравнить «до» и «после».
+                  </p>
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    {beforeAfter.map((pair) => (
+                      <BeforeAfterSlider
+                        key={pair.id}
+                        beforeUrl={pair.before_url}
+                        afterUrl={pair.after_url}
+                        caption={pair.caption}
+                      />
+                    ))}
                   </div>
-                )}
-              </section>
-            )}
+                </div>
+              )}
+            </section>
 
             {/* Reviews */}
             {hasReviews && (
