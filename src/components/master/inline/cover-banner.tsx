@@ -105,6 +105,21 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     setDraftUrl(null);
   }
 
+  // Кроп-диалог вынесен НАРУЖУ из InlineEditSheet — иначе он закрывается
+  // вместе со шторкой (React размонтирует детей при AnimatePresence exit).
+  const cropDialog = (
+    <ImageCropDialog
+      open={!!cropSrc}
+      src={cropSrc}
+      onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
+      onCropped={onCropApplied}
+      title="Обложка профиля"
+      aspect={16 / 9}
+      shape="rect"
+      outputSize={1600}
+    />
+  );
+
   const sheet = (
     <InlineEditSheet
       open={open}
@@ -132,16 +147,6 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         accept="image/*"
         hidden
         onChange={(e) => { onFilePicked(e.target.files?.[0] ?? null); e.target.value = ''; }}
-      />
-      <ImageCropDialog
-        open={!!cropSrc}
-        src={cropSrc}
-        onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
-        onCropped={onCropApplied}
-        title="Обложка профиля"
-        aspect={16 / 9}
-        shape="rect"
-        outputSize={1600}
       />
 
       {/* Preview */}
@@ -231,6 +236,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
           <span className="text-[14px] font-semibold">Добавь обложку</span>
         </button>
         {sheet}
+        {cropDialog}
       </>
     );
   }
@@ -259,6 +265,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         </button>
       )}
       {sheet}
+      {cropDialog}
     </div>
   );
 }
