@@ -40,6 +40,18 @@ export async function GET(request: Request) {
   let sent = 0;
 
   for (const r of reminders) {
+    // Atomic claim: пометить completed=true ТОЛЬКО если ещё не обработан другим
+    // cron-источником (pg_cron + cron-job.org работают параллельно). Если update
+    // вернул 0 строк — другая инстанция уже взяла; пропускаем без отправки TG.
+    const { data: claimed } = await supabase
+      .from('reminders')
+      .update({ completed: true, completed_at: new Date().toISOString() })
+      .eq('id', r.id)
+      .eq('completed', false)
+      .select('id')
+      .maybeSingle();
+    if (!claimed) continue;
+
     const master = r.master as unknown as { profile_id: string; notify_telegram: boolean };
 
     // Send to Telegram only if enabled
@@ -85,12 +97,7 @@ export async function GET(request: Request) {
         sent++;
       }
     }
-
-    // Mark as completed
-    await supabase
-      .from('reminders')
-      .update({ completed: true, completed_at: new Date().toISOString() })
-      .eq('id', r.id);
+    // completed=true уже выставлен выше атомарным claim'ом — повторно не пишем.
   }
 
   return NextResponse.json({ ok: true, sent });

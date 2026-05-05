@@ -2,8 +2,10 @@
  * name: resolveUserId
  * description: Универсальный резолвер ID пользователя для API.
  *              Cookie session → initData (header X-TG-Init-Data | query ?tg=).
- *              Возвращает userId или null.
+ *              Возвращает userId или null. Banned profiles (platform_blacklist)
+ *              никогда не резолвятся — API уровень тоже блокирует забаненных.
  * created: 2026-04-29
+ * updated: 2026-05-05
  * --- */
 
 import { createClient } from '@/lib/supabase/server';
@@ -18,11 +20,20 @@ function admin() {
   );
 }
 
+async function isBanned(profileId: string): Promise<boolean> {
+  const adm = admin();
+  const { data } = await adm.rpc('is_profile_banned', { p_profile_id: profileId });
+  return data === true;
+}
+
 export async function resolveUserId(req: Request): Promise<string | null> {
   // 1. Cookie session
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (user) return user.id;
+  if (user) {
+    if (await isBanned(user.id)) return null;
+    return user.id;
+  }
 
   // 2. Telegram initData — header preferred, query as fallback
   const url = new URL(req.url);
@@ -50,5 +61,7 @@ export async function resolveUserId(req: Request): Promise<string | null> {
     .select('id')
     .eq('telegram_id', v.user.id)
     .maybeSingle();
-  return profile?.id ?? null;
+  if (!profile?.id) return null;
+  if (await isBanned(profile.id)) return null;
+  return profile.id;
 }

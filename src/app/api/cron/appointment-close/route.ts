@@ -106,6 +106,18 @@ export async function GET(request: Request) {
     // Case 2: confirm mode
     // 2a: Haven't sent prompt yet → send it
     if (!row.close_pending_sent_at) {
+      // Atomic claim: pg_cron + cron-job.org работают параллельно, защищаемся
+      // от дублей. Update проходит ТОЛЬКО если close_pending_sent_at всё ещё NULL.
+      // Если другая инстанция уже взяла — update вернёт 0 строк, пропускаем.
+      const { data: claimed } = await supabase
+        .from('appointments')
+        .update({ close_pending_sent_at: nowIso })
+        .eq('id', row.id)
+        .is('close_pending_sent_at', null)
+        .select('id')
+        .maybeSingle();
+      if (!claimed) continue;
+
       // Find master's TG session
       const { data: session } = await supabase
         .from('telegram_sessions')
@@ -135,11 +147,7 @@ export async function GET(request: Request) {
         );
         prompted++;
       }
-
-      // Mark prompt sent regardless (avoid spam if no TG session)
-      await supabase.from('appointments')
-        .update({ close_pending_sent_at: nowIso })
-        .eq('id', row.id);
+      // close_pending_sent_at уже выставлен выше атомарным claim'ом.
       continue;
     }
 

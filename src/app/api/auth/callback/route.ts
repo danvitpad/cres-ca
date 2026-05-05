@@ -91,8 +91,6 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) return redirectAndClear(`${origin}/login?error=auth`);
 
-  if (next) return redirectAndClear(`${origin}${next}`);
-
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirectAndClear(`${origin}/login?error=auth`);
 
@@ -102,10 +100,8 @@ export async function GET(request: Request) {
   const justCreated = !!createdAt && Date.now() - createdAt.getTime() < 60_000;
 
   // ── Бета-гейт для OAuth (Google и т.п.) ───────────────────────────────
-  // Если аккаунт ТОЛЬКО ЧТО создан через OAuth — проверяем разрешение через
-  // is_signup_allowed. Если public_signup закрыт И почты нет в одобренной бете —
-  // удаляем созданный auth.user и кидаем на /beta-closed.
-  // Существующие юзеры (не justCreated) — пропускаем как обычно.
+  // Должен идти РАНЬШЕ обработки ?next= — иначе новый OAuth-аккаунт может
+  // обойти бета-список, передав ?next=/feed в URL callback.
   if (justCreated && user.email) {
     const admin = adminDb();
     const { data: gateData } = await admin.rpc('is_signup_allowed', {
@@ -120,6 +116,19 @@ export async function GET(request: Request) {
       } catch { /* noop — даже если admin delete не получился, сессию мы уже выгнали */ }
       return redirectAndClear(`${origin}/beta-closed`);
     }
+  }
+
+  // Существующие OAuth-аккаунты (не justCreated): просим бан-проверку и пускаем
+  // на ?next=, если он был. Бан проверяется централизованно в middleware и
+  // resolveUserId — здесь дополнительно блокируем редирект для забаненных.
+  if (next) {
+    const admin = adminDb();
+    const { data: banned } = await admin.rpc('is_profile_banned', { p_profile_id: user.id });
+    if (banned === true) {
+      try { await supabase.auth.signOut(); } catch { /* noop */ }
+      return redirectAndClear(`${origin}/banned`);
+    }
+    return redirectAndClear(`${origin}${next}`);
   }
 
   // Режим «Войти»: если только что создался — пользователь имел в виду логин,

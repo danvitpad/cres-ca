@@ -1,18 +1,22 @@
 /** --- YAML
  * name: 2FA Send Code API
  * description: Phase 2.5 — generates a 6-digit code, stores SHA-256 hash in tg_2fa_codes, sends plaintext via @crescacom_bot sendMessage to the user's linked telegram_id. Called from (1) login after password success when tg_2fa_enabled, and (2) Security tab when user opts in (verifies delivery).
+ *              profile_id is taken from the active Supabase session (NOT request body) — only the signed-in user can request a code for themselves.
  * created: 2026-04-19
+ * updated: 2026-05-05
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createHash, randomInt } from 'node:crypto';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { sendMessage } from '@/lib/telegram/bot';
+import { createClient } from '@/lib/supabase/server';
 
-export async function POST(request: Request) {
-  const { profile_id } = await request.json().catch(() => ({}));
-  if (!profile_id || typeof profile_id !== 'string') {
-    return NextResponse.json({ error: 'profile_id required' }, { status: 400 });
+export async function POST() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
   }
 
   const admin = createAdminClient(
@@ -24,7 +28,7 @@ export async function POST(request: Request) {
   const { data: profile } = await admin
     .from('profiles')
     .select('id, telegram_id, first_name')
-    .eq('id', profile_id)
+    .eq('id', user.id)
     .maybeSingle();
   if (!profile) return NextResponse.json({ error: 'profile_not_found' }, { status: 404 });
   if (!profile.telegram_id) {
