@@ -639,10 +639,9 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               />
             </div>
 
-            {/* Services */}
+            {/* Services — заголовок «Услуги» + кнопка «Показать все» внутри компонента */}
             {hasServices && (
               <section id="services" className="scroll-mt-24">
-                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Услуги</h2>
                 <PublicServicesList services={services} masterId={master.id} locale="ru" />
               </section>
             )}
