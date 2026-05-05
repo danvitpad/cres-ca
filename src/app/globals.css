@@ -598,27 +598,29 @@ html.dark {
  * выглядели одинаково на любой теме.
  * ═══════════════════════════════════════════════════════════ */
 
-/* Inputs и textareas — Fresha-style: prominent border, читаемый текст */
+/* Inputs и textareas — чёткие обводки, объём */
 .cres-popup input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
 .cres-popup textarea {
-  background-color: var(--m-surface) !important;
+  background-color: var(--m-bg) !important;
   color: var(--m-text) !important;
-  border: 1px solid var(--m-border) !important;
+  border: 1.5px solid #c4c4c9 !important;
   border-radius: 12px !important;
   padding: 10px 14px !important;
   font-size: 14px !important;
   font-family: inherit !important;
   outline: none !important;
-  transition: border-color 0.15s !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
   box-sizing: border-box !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
 }
 .cres-popup input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
 .cres-popup textarea:focus {
   border-color: var(--m-text) !important;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.06) !important;
 }
 .cres-popup input::placeholder,
 .cres-popup textarea::placeholder {
-  color: var(--m-text-tertiary) !important;
+  color: #9ca3af !important;
   opacity: 1 !important;
 }
 
@@ -657,37 +659,67 @@ html.dark {
 
 /* Footer-кнопки модалки — Отмена outline, Сохранить solid invert */
 .cres-popup .cres-popup-btn-cancel {
-  background: transparent;
-  border: 1px solid var(--m-border);
-  color: var(--m-text);
-  border-radius: 9999px;
-  padding: 9px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
+  background: transparent !important;
+  border: 1.5px solid #c4c4c9 !important;
+  color: var(--m-text) !important;
+  border-radius: 9999px !important;
+  padding: 10px 24px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background 0.15s, border-color 0.15s !important;
 }
 .cres-popup .cres-popup-btn-cancel:hover {
-  background: var(--m-bg-subtle);
+  background: var(--m-bg-subtle) !important;
+  border-color: #a1a1aa !important;
 }
 .cres-popup .cres-popup-btn-save {
-  background: var(--m-text);
-  color: var(--m-bg);
-  border: none;
-  border-radius: 9999px;
-  padding: 9px 22px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  background: #0a0a0a !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  padding: 10px 28px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: opacity 0.15s !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 .cres-popup .cres-popup-btn-save:hover {
-  opacity: 0.9;
+  opacity: 0.88 !important;
 }
 .cres-popup .cres-popup-btn-save:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+}
+
+/* Dark theme buttons */
+html.dark .cres-popup .cres-popup-btn-cancel {
+  border-color: #3f3f46 !important;
+}
+html.dark .cres-popup .cres-popup-btn-save {
+  background: #fafafa !important;
+  color: #0a0a0a !important;
+}
+html.dark .cres-popup input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+html.dark .cres-popup textarea {
+  border-color: #3f3f46 !important;
+  background-color: var(--m-surface) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .cres-popup .cres-popup-btn-cancel {
+    border-color: #3f3f46 !important;
+  }
+  :root:not(.light) .cres-popup .cres-popup-btn-save {
+    background: #fafafa !important;
+    color: #0a0a0a !important;
+  }
+  :root:not(.light) .cres-popup input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+  :root:not(.light) .cres-popup textarea {
+    border-color: #3f3f46 !important;
+    background-color: var(--m-surface) !important;
+  }
 }

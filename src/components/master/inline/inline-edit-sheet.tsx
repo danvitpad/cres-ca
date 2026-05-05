@@ -46,8 +46,13 @@ export function InlineEditSheet({ open, onClose, title, children, footer }: Prop
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="cres-popup fixed inset-x-0 bottom-0 z-[201] flex max-h-[90dvh] flex-col rounded-t-[24px] shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[80vh] sm:w-[min(560px,calc(100vw-32px))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[20px]"
-            style={{ background: 'var(--m-surface)', color: 'var(--m-text)' }}
+            className="cres-popup fixed inset-x-0 bottom-0 z-[201] flex max-h-[90dvh] flex-col rounded-t-[24px] sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[80vh] sm:w-[min(560px,calc(100vw-32px))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[20px]"
+            style={{
+              background: 'var(--m-surface)',
+              color: 'var(--m-text)',
+              border: '1px solid var(--m-border)',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+            }}
           >
             <div
               className="flex items-center justify-between px-5 py-4"

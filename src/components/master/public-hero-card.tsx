@@ -88,6 +88,8 @@ export function PublicHeroCard({
       style={{
         background: 'var(--m-surface)',
         color: 'var(--m-text)',
+        border: '1px solid var(--m-border)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.07)',
       }}
     >
       {/* Top-left: маленькая зелёная точка «Online» когда мастер принимает онлайн.
@@ -107,7 +109,7 @@ export function PublicHeroCard({
           обводки, только мягкая тень снизу. */}
       <div
         className="relative mx-auto mt-2 size-40 rounded-full"
-        style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.10)' }}
+        style={{ boxShadow: '0 0 0 3px var(--m-surface), 0 4px 20px rgba(0,0,0,0.14)' }}
       >
         <InlineAvatarEdit
           masterProfileId={masterProfileId}
