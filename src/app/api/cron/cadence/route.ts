@@ -234,8 +234,8 @@ export async function GET(request: Request) {
     // Most common day of week (locale-aware below)
     const daysOfWeek = timestamps.map((d) => d.getDay());
     const topDay = mode(daysOfWeek);
-    // Правило 2026-05-05: клиентам бот всегда пишет на русском.
-    const lang: Lang = 'ru';
+    // Правило 2026-05-05: клиентам бот всегда пишет на украинском.
+    const lang: Lang = 'uk';
     const dayName = topDay !== undefined ? DAY_NAMES[lang][topDay] : undefined;
 
     // Most common time (snapped to 30-min)

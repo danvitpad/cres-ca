@@ -155,10 +155,10 @@ export async function GET(request: Request) {
     if (cfg?.enabled && cfg.send_tg_greeting && client.profile_id) {
       const clientMarker = `[bday:client:${client.id}:${dayKey}]`;
       if (!sentMarkers.has(clientMarker)) {
-        // Правило 2026-05-05: клиентам бот всегда пишет на русском.
+        // Правило 2026-05-05: клиентам бот всегда пишет на украинском.
         // Master.cfg.greeting_message — кастомный текст мастера, оставляем как есть
-        // (мастер сам решил так написать). Fallback — всегда ru.
-        const clientLang: Lang = 'ru';
+        // (мастер сам решил так написать). Fallback — всегда uk.
+        const clientLang: Lang = 'uk';
         const DEFAULT_GREETING_BY_LANG: Record<Lang, string> = {
           ru: 'С днём рождения!\nВ подарок: {discount_text}',
           uk: 'З днем народження!\nУ подарунок: {discount_text}',
@@ -181,7 +181,7 @@ export async function GET(request: Request) {
         const body = greetingTpl
           .replace('{client_name}', client.full_name || '')
           .replace('{discount_text}', discountTextByLang[clientLang]) + ` ${clientMarker}`;
-        const title = '🎂 С днём рождения!';
+        const title = '🎂 З днем народження!';
         inserts.push({
           profile_id: client.profile_id,
           channel: 'telegram',
@@ -236,8 +236,8 @@ export async function GET(request: Request) {
     const master = masterMap.get(c.master_id);
     // Anniversaries fire only when birthday automation enabled
     if (!master?.cfg?.enabled || !master.cfg.send_tg_greeting || !c.profile_id) continue;
-    // Правило 2026-05-05: клиентам бот всегда пишет на русском.
-    const lang: Lang = 'ru';
+    // Правило 2026-05-05: клиентам бот всегда пишет на украинском.
+    const lang: Lang = 'uk';
     const years = today.getFullYear() - new Date(c.created_at!).getFullYear();
     const marker = `[bday:anni:${c.id}:${dayKey}]`;
     if (sentMarkers.has(marker)) continue;

@@ -350,10 +350,10 @@ export async function GET(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://cres-ca.com';
     // ALWAYS Europe/Kyiv — server timezone is UTC, but our users are in Ukraine.
     const time = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
-    // ВСЕ исходящие клиентам — на русском (правило 2026-05-05).
-    // Дату форматируем на ru-RU независимо от masters.public_language.
+    // ВСЕ исходящие клиентам — на украинском (правило 2026-05-05).
+    // Дату форматируем на uk-UA независимо от masters.public_language.
     const localeMap: Record<Lang, string> = { ru: 'ru-RU', uk: 'uk-UA', en: 'en-US' };
-    const date = startsAt.toLocaleDateString(localeMap.ru, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' });
+    const date = startsAt.toLocaleDateString(localeMap.uk, { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' });
 
     // Стоимость берём с appointment.price (snapshot на момент бронирования) — fallback на service.price
     const priceVal = apt.price && apt.price > 0 ? apt.price : (service?.price ?? null);
@@ -407,11 +407,11 @@ export async function GET(request: Request) {
     // CLIENT REMINDERS — derived offsets (client prefs explicit OR master fallback)
     if (client?.profile_id) {
       const { offsets } = getClientOffsets(client.profile_id, apt.master_id);
-      // Правило 2026-05-05: клиентам бот всегда пишет на русском.
+      // Правило 2026-05-05: клиентам бот всегда пишет на украинском.
       // Мастеровский master.public_language игнорируем для клиентских fallback'ов.
       // Если мастер задал свой message_template — он по-прежнему побеждает (его текст,
-      // как мастер написал), но системные fallback'и — всегда ru.
-      const lang: Lang = 'ru';
+      // как мастер написал), но системные fallback'и — всегда uk.
+      const lang: Lang = 'uk';
       const t = L10N[lang];
       // Прекомпилируем дефолтные тела (без приветствия, на ты+вы нейтрально)
       const fbBody24 = buildFallbackBody(lang, t.reminder24h, reminderCtx);

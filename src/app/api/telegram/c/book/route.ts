@@ -205,10 +205,11 @@ export async function POST(request: Request) {
       const masterRow = masterProfileFetch.data as { display_name: string | null; profile: { full_name: string | null } | null } | null;
       const masterName = masterRow?.profile?.full_name ?? masterRow?.display_name ?? 'мастер';
 
+      // Клиенту бот всегда пишет на украинском (правило 2026-05-05).
       const clientHeading = isReschedule
-        ? `<b>🔄 Запись перенесена</b>`
-        : `<b>✅ Запись подтверждена</b>`;
-      const clientBody = `${clientHeading}\n\nМастер: ${masterName}\nУслуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nВремя: ${selected_time ?? '—'}\n\nНапомним за день и за 2 часа до визита.`;
+        ? `<b>🔄 Запис перенесено</b>`
+        : `<b>✅ Запис підтверджено</b>`;
+      const clientBody = `${clientHeading}\n\nМайстер: ${masterName}\nПослуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nЧас: ${selected_time ?? '—'}\n\nНагадаємо за день та за 2 години до візиту.`;
 
       await sendMessage(profile.telegram_id as unknown as number, clientBody, { parse_mode: 'HTML' });
     }

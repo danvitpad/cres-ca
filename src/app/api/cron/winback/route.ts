@@ -102,9 +102,9 @@ export async function GET(request: Request) {
     const daysSince = Math.round(
       (now.getTime() - new Date(c.last_visit_at!).getTime()) / (24 * 60 * 60 * 1000),
     );
-    // Правило 2026-05-05: клиентам бот всегда пишет на русском.
-    // Master template (если задан) — побеждает, fallback — всегда ru.
-    const lang: Lang = 'ru';
+    // Правило 2026-05-05: клиентам бот всегда пишет на украинском.
+    // Master template (если задан) — побеждает, fallback — всегда uk.
+    const lang: Lang = 'uk';
     const fb = FALLBACK_WINBACK[lang];
     const tpl = pickFullTemplate(tplMap.get(c.master_id), fb.body, fb.subject);
     const rendered = renderFullTemplate(tpl, {

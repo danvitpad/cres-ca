@@ -109,8 +109,8 @@ export async function GET(request: Request) {
     const master = apt.masters as unknown as { display_name: string | null; public_language: string | null; profiles: { full_name: string | null } | null } | null;
     const masterName = master?.display_name ?? master?.profiles?.full_name ?? 'мастер';
     const serviceName = service?.name ?? 'визит';
-    // Правило 2026-05-05: клиентам бот всегда пишет на русском.
-    const lang: Lang = 'ru';
+    // Правило 2026-05-05: клиентам бот всегда пишет на украинском.
+    const lang: Lang = 'uk';
     const fb = FALLBACK_REVIEW[lang];
 
     const tpl = pickFullTemplate(tplMap.get(apt.master_id), fb.body, fb.subject);
