@@ -19,13 +19,13 @@ import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole, SubscriptionTier } from '@/types';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
-const tabs: readonly NavTab[] = [
-  { key: 'home', href: '/telegram/home', icon: Home, label: 'Главная' },
-  { key: 'search', href: '/telegram/search', icon: Search, label: 'Поиск' },
-  { key: 'activity', href: '/telegram/activity', icon: CalendarDays, label: 'Записи' },
-  { key: 'profile', href: '/telegram/profile', icon: User, label: 'Профиль' },
-];
+const NAV_LABELS: Record<'uk' | 'ru' | 'en', readonly [string, string, string, string]> = {
+  uk: ['Головна', 'Пошук', 'Записи', 'Профіль'],
+  ru: ['Главная', 'Поиск', 'Записи', 'Профиль'],
+  en: ['Home', 'Search', 'Activity', 'Profile'],
+};
 
 export default function MiniAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,6 +33,8 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
   const userId = useAuthStore((s) => s.userId);
   const setAuth = useAuthStore((s) => s.setAuth);
   const [hydrated, setHydrated] = useState(false);
+  const lang = useMiniAppLocale();
+  const [home, search, activity, profile] = NAV_LABELS[lang];
 
   // На hard reload zustand-стор пуст. Пробуем поднять Supabase session
   // (для browser users) перед редиректом на /telegram. Так избегаем мигания
@@ -96,7 +98,15 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
         >
           {children}
         </main>
-        <MiniAppBottomNav tabs={tabs} hidden={isFullscreen} />
+        <MiniAppBottomNav
+          tabs={[
+            { key: 'home', href: '/telegram/home', icon: Home, label: home },
+            { key: 'search', href: '/telegram/search', icon: Search, label: search },
+            { key: 'activity', href: '/telegram/activity', icon: CalendarDays, label: activity },
+            { key: 'profile', href: '/telegram/profile', icon: User, label: profile },
+          ] satisfies readonly NavTab[]}
+          hidden={isFullscreen}
+        />
       </MiniAppThemeProvider>
     </TelegramProvider>
   );

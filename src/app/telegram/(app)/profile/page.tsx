@@ -37,6 +37,58 @@ import {
   type MenuItem,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X, SHADOW } from '@/components/miniapp/design';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+
+type Lang = 'uk' | 'ru' | 'en';
+
+const I18N: Record<Lang, {
+  subtitle: string;
+  menuProfile: string; menuContacts: string; menuSettings: string; menuSupport: string;
+  logout: string; loggingOut: string;
+  editTitle: string; save: string;
+  fieldName: string; fieldSlug: string; fieldBio: string;
+  slugHint: string; bioCount: string;
+  followers: string; following: string;
+  masterBadge: string; empty: string; user: string;
+  close: string; avatarLabel: string;
+}> = {
+  uk: {
+    subtitle: 'Особистий профіль',
+    menuProfile: 'Профіль', menuContacts: 'Контакти', menuSettings: 'Налаштування', menuSupport: 'Підтримка',
+    logout: 'Вийти', loggingOut: 'Виходимо...',
+    editTitle: 'Редагувати профіль', save: 'Зберегти',
+    fieldName: 'Ім\'я', fieldSlug: 'Ім\'я посилання (slug)', fieldBio: 'Про себе',
+    slugHint: '3–32 символи: латиниця, цифри, крапка, дефіс, підкреслення',
+    bioCount: '/280',
+    followers: 'Підписники', following: 'Обрані',
+    masterBadge: ' · Майстер', empty: 'Порожньо', user: 'Користувач',
+    close: 'Закрити', avatarLabel: 'Змінити аватар',
+  },
+  ru: {
+    subtitle: 'Личный профиль',
+    menuProfile: 'Профиль', menuContacts: 'Контакты', menuSettings: 'Настройки', menuSupport: 'Поддержка',
+    logout: 'Выйти', loggingOut: 'Выходим...',
+    editTitle: 'Редактировать профиль', save: 'Сохранить',
+    fieldName: 'Имя', fieldSlug: 'Имя ссылки (slug)', fieldBio: 'О себе',
+    slugHint: '3–32 символа: латиница, цифры, точка, дефис, подчёркивание',
+    bioCount: '/280',
+    followers: 'Подписчики', following: 'Избранное',
+    masterBadge: ' · Мастер', empty: 'Пусто', user: 'Пользователь',
+    close: 'Закрыть', avatarLabel: 'Изменить аватар',
+  },
+  en: {
+    subtitle: 'Personal profile',
+    menuProfile: 'Profile', menuContacts: 'Contacts', menuSettings: 'Settings', menuSupport: 'Support',
+    logout: 'Sign out', loggingOut: 'Signing out...',
+    editTitle: 'Edit profile', save: 'Save',
+    fieldName: 'Name', fieldSlug: 'Link name (slug)', fieldBio: 'About',
+    slugHint: '3–32 chars: latin letters, numbers, dot, dash, underscore',
+    bioCount: '/280',
+    followers: 'Followers', following: 'Saved',
+    masterBadge: ' · Master', empty: 'Empty', user: 'User',
+    close: 'Close', avatarLabel: 'Change avatar',
+  },
+};
 
 interface FollowListEntry {
   id: string;
@@ -52,6 +104,8 @@ export default function MiniAppProfilePage() {
   const searchParams = useSearchParams();
   const { user, haptic } = useTelegram();
   const { userId, clearAuth } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   // balance removed — loyalty/bonuses temporarily hidden
   const [fullName, setFullName] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
@@ -242,14 +296,14 @@ export default function MiniAppProfilePage() {
     {
       key: 'profile',
       icon: <UserIcon size={22} strokeWidth={1.8} />,
-      label: 'Профиль',
+      label: t.menuProfile,
       onClick: openEdit,
       rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
     {
       key: 'contacts',
       icon: <Users size={22} strokeWidth={1.8} />,
-      label: 'Контакты',
+      label: t.menuContacts,
       href: '/telegram/connections',
       rightSlot: (
         <>
@@ -263,7 +317,7 @@ export default function MiniAppProfilePage() {
     {
       key: 'settings',
       icon: <Settings size={22} strokeWidth={1.8} />,
-      label: 'Настройки',
+      label: t.menuSettings,
       href: '/telegram/settings',
       rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
@@ -273,7 +327,7 @@ export default function MiniAppProfilePage() {
     {
       key: 'support',
       icon: <MessageCircle size={22} strokeWidth={1.8} />,
-      label: 'Поддержка',
+      label: t.menuSupport,
       onClick: () => window.open('https://t.me/crescacom_bot?start=support', '_blank'),
       rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
     },
@@ -283,7 +337,7 @@ export default function MiniAppProfilePage() {
     {
       key: 'logout',
       icon: <LogOut size={22} strokeWidth={1.8} />,
-      label: signingOut ? 'Выходим...' : 'Выйти',
+      label: signingOut ? t.loggingOut : t.logout,
       onClick: signOut,
       danger: true,
     },
@@ -299,7 +353,7 @@ export default function MiniAppProfilePage() {
       >
         <PageHeader
           title={displayName || ' '}
-          subtitle="Личный профиль"
+          subtitle={t.subtitle}
           right={
             <button
               type="button"
@@ -316,7 +370,7 @@ export default function MiniAppProfilePage() {
                 cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent',
               }}
-              aria-label="Изменить аватар"
+              aria-label={t.avatarLabel}
             >
               <AvatarCircle url={avatarUrl} name={displayName} size={64} />
               {avatarBusy && (
@@ -428,7 +482,7 @@ export default function MiniAppProfilePage() {
                   marginBottom: 16,
                 }}
               >
-                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Редактировать профиль</h3>
+                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.editTitle}</h3>
                 <button
                   type="button"
                   onClick={() => setEditOpen(false)}
@@ -443,18 +497,18 @@ export default function MiniAppProfilePage() {
                     justifyContent: 'center',
                     cursor: 'pointer',
                   }}
-                  aria-label="Закрыть"
+                  aria-label={t.close}
                 >
                   <X size={18} color={T.textSecondary} />
                 </button>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <FieldBox label="Имя">
+                <FieldBox label={t.fieldName}>
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value.slice(0, 80))}
-                    placeholder="Как вас зовут"
+                    placeholder={t.fieldName}
                     style={{
                       width: '100%',
                       background: 'transparent',
@@ -467,7 +521,7 @@ export default function MiniAppProfilePage() {
                   />
                 </FieldBox>
 
-                <FieldBox label="Имя ссылки (slug)">
+                <FieldBox label={t.fieldSlug}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ color: T.textTertiary }}>@</span>
                     <input
@@ -489,15 +543,15 @@ export default function MiniAppProfilePage() {
                     />
                   </div>
                   <p style={{ ...TYPE.micro, marginTop: 6 }}>
-                    3–32 символа: латиница, цифры, точка, дефис, подчёркивание
+                    {t.slugHint}
                   </p>
                 </FieldBox>
 
-                <FieldBox label="О себе">
+                <FieldBox label={t.fieldBio}>
                   <textarea
                     value={editBio}
                     onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
-                    placeholder="Пара слов о вас"
+                    placeholder={t.fieldBio}
                     rows={4}
                     style={{
                       width: '100%',
@@ -512,7 +566,7 @@ export default function MiniAppProfilePage() {
                     }}
                   />
                   <p style={{ ...TYPE.micro, marginTop: 6, textAlign: 'right' }}>
-                    {editBio.length}/280
+                    {editBio.length}{t.bioCount}
                   </p>
                 </FieldBox>
 
@@ -558,7 +612,7 @@ export default function MiniAppProfilePage() {
                   }}
                 >
                   {editBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                  Сохранить
+                  {t.save}
                 </button>
               </div>
             </motion.div>
@@ -611,7 +665,7 @@ export default function MiniAppProfilePage() {
                 }}
               />
               <h3 style={{ ...TYPE.h3, color: T.text, margin: 0, padding: `0 ${PAGE_PADDING_X}px 12px` }}>
-                {listType === 'followers' ? 'Подписчики' : 'Избранное'}
+                {listType === 'followers' ? t.followers : t.following}
               </h3>
               <div style={{ maxHeight: '60dvh', overflowY: 'auto', padding: `0 ${PAGE_PADDING_X}px 16px` }}>
                 {listLoading ? (
@@ -620,7 +674,7 @@ export default function MiniAppProfilePage() {
                   </div>
                 ) : listEntries.length === 0 ? (
                   <p style={{ ...TYPE.caption, textAlign: 'center', padding: '32px 0' }}>
-                    Пусто
+                    {t.empty}
                   </p>
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -648,11 +702,11 @@ export default function MiniAppProfilePage() {
                           <AvatarCircle url={e.avatar_url} name={e.full_name ?? '?'} size={44} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>
-                              {e.full_name ?? 'Пользователь'}
+                              {e.full_name ?? t.user}
                             </p>
                             <p style={{ ...TYPE.micro }}>
                               {e.slug ? `@${e.slug}` : e.public_id ?? ''}
-                              {e.role === 'master' && ' · Мастер'}
+                              {e.role === 'master' && t.masterBadge}
                             </p>
                           </div>
                           <ChevronRight size={18} color={T.textTertiary} />

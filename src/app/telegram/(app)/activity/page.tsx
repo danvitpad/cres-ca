@@ -32,12 +32,69 @@ import {
   AvatarCircle,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
-const MINIAPP_CARD_LABELS = {
-  masterPlaceholder: 'Мастер',
-  salonPlaceholder: 'Салон',
-  managerAssigned: 'Мастер будет назначен администратором',
+type Lang = 'uk' | 'ru' | 'en';
+
+const I18N: Record<Lang, {
+  title: string;
+  tabAll: string; tabUpcoming: string; tabGiftCards: string; tabMemberships: string; tabPast: string;
+  noGiftCards: string; noMemberships: string; noGiftCardsDesc: string; noMembershipsDesc: string;
+  noActivity: string; noActivityDesc: string;
+  searchMasters: string; searchVenues: string;
+  status: Record<string, string>;
+}> = {
+  uk: {
+    title: 'Активність',
+    tabAll: 'Всі', tabUpcoming: 'Записи', tabGiftCards: 'Подарункові карти',
+    tabMemberships: 'Абонементи', tabPast: 'Історія',
+    noGiftCards: 'Немає подарункових карт', noMemberships: 'Немає абонементів',
+    noGiftCardsDesc: 'Куплені та отримані подарункові карти відображатимуться тут',
+    noMembershipsDesc: 'Активні абонементи у майстрів відображатимуться тут',
+    noActivity: 'Немає активності',
+    noActivityDesc: 'Ваші зустрічі, покупки та підписки відображатимуться тут',
+    searchMasters: 'Пошук майстрів', searchVenues: 'Пошук закладів',
+    status: {
+      booked: 'Записано', confirmed: 'Підтверджено', in_progress: 'Йде',
+      completed: 'Завершено', cancelled: 'Скасовано', cancelled_by_client: 'Скасовано',
+      cancelled_by_master: 'Скасовано', no_show: 'Не з\'явився',
+    },
+  },
+  ru: {
+    title: 'Действие',
+    tabAll: 'Все', tabUpcoming: 'Записи', tabGiftCards: 'Подарочные карты',
+    tabMemberships: 'Абонементы', tabPast: 'История',
+    noGiftCards: 'Нет подарочных карт', noMemberships: 'Нет абонементов',
+    noGiftCardsDesc: 'Купленные и полученные подарочные карты будут отображаться здесь',
+    noMembershipsDesc: 'Активные абонементы у мастеров будут отображаться здесь',
+    noActivity: 'Нет активности',
+    noActivityDesc: 'Ваши встречи, покупки и подписки будут отображаться здесь',
+    searchMasters: 'Поиск мастеров', searchVenues: 'Поиск заведений',
+    status: {
+      booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт',
+      completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено',
+      cancelled_by_master: 'Отменено', no_show: 'Не пришёл',
+    },
+  },
+  en: {
+    title: 'Activity',
+    tabAll: 'All', tabUpcoming: 'Upcoming', tabGiftCards: 'Gift cards',
+    tabMemberships: 'Memberships', tabPast: 'History',
+    noGiftCards: 'No gift cards', noMemberships: 'No memberships',
+    noGiftCardsDesc: 'Purchased and received gift cards will appear here',
+    noMembershipsDesc: 'Active memberships with masters will appear here',
+    noActivity: 'No activity',
+    noActivityDesc: 'Your appointments, purchases and subscriptions will appear here',
+    searchMasters: 'Find masters', searchVenues: 'Find venues',
+    status: {
+      booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress',
+      completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled',
+      cancelled_by_master: 'Cancelled', no_show: 'No show',
+    },
+  },
 };
+
+// Card labels are derived from the locale in the component
 
 type SalonEmbed =
   | { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null }
@@ -68,17 +125,23 @@ interface AppointmentRow {
 
 type Tab = 'all' | 'upcoming' | 'past' | 'gift_cards' | 'memberships';
 
-const TAB_OPTIONS: { value: Tab; label: string }[] = [
-  { value: 'all', label: 'Все' },
-  { value: 'upcoming', label: 'Записи' },
-  { value: 'gift_cards', label: 'Подарочные карты' },
-  { value: 'memberships', label: 'Абонементы' },
-  { value: 'past', label: 'История' },
-];
-
 export default function MiniAppActivityPage() {
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
+  const tabOptions: { value: Tab; label: string }[] = [
+    { value: 'all', label: t.tabAll },
+    { value: 'upcoming', label: t.tabUpcoming },
+    { value: 'gift_cards', label: t.tabGiftCards },
+    { value: 'memberships', label: t.tabMemberships },
+    { value: 'past', label: t.tabPast },
+  ];
+  const cardLabels = {
+    masterPlaceholder: lang === 'en' ? 'Master' : lang === 'uk' ? 'Майстер' : 'Мастер',
+    salonPlaceholder: lang === 'en' ? 'Salon' : lang === 'uk' ? 'Салон' : 'Салон',
+    managerAssigned: lang === 'en' ? 'Master will be assigned by admin' : lang === 'uk' ? 'Майстра призначить адміністратор' : 'Мастер будет назначен администратором',
+  };
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [tab, setTab] = useState<Tab>('all');
   const [loading, setLoading] = useState(true);
@@ -203,7 +266,7 @@ export default function MiniAppActivityPage() {
         transition={{ duration: 0.3 }}
         style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
       >
-        <PageHeader title="Действие" />
+        <PageHeader title={t.title} />
 
         <TabPills
           value={tab}
@@ -211,7 +274,7 @@ export default function MiniAppActivityPage() {
             setTab(v);
             haptic('selection');
           }}
-          options={TAB_OPTIONS}
+          options={tabOptions}
           accent="#0a0a0c"
         />
 
@@ -238,23 +301,17 @@ export default function MiniAppActivityPage() {
                   {tab === 'gift_cards' ? '🎁' : '🎫'}
                 </span>
               }
-              title={tab === 'gift_cards' ? 'Нет подарочных карт' : 'Нет абонементов'}
-              desc={
-                tab === 'gift_cards'
-                  ? 'Купленные и полученные подарочные карты будут отображаться здесь'
-                  : 'Активные абонементы у мастеров будут отображаться здесь'
-              }
-              ctaLabel="Поиск мастеров"
+              title={tab === 'gift_cards' ? t.noGiftCards : t.noMemberships}
+              desc={tab === 'gift_cards' ? t.noGiftCardsDesc : t.noMembershipsDesc}
+              ctaLabel={t.searchMasters}
               ctaHref="/telegram/search"
             />
           ) : visible.length === 0 ? (
             <EmptyState
-              icon={
-                <CalendarDaysIcon />
-              }
-              title="Нет активности"
-              desc="Ваши встречи, покупки и подписки будут отображаться здесь"
-              ctaLabel="Поиск заведений"
+              icon={<CalendarDaysIcon />}
+              title={t.noActivity}
+              desc={t.noActivityDesc}
+              ctaLabel={t.searchVenues}
               ctaHref="/telegram/search"
             />
           ) : (
@@ -269,8 +326,9 @@ export default function MiniAppActivityPage() {
                       salon_id: a.master_salon_id,
                     }
                   : null;
-                const d = resolveCardDisplay(masterRef, a.salon, MINIAPP_CARD_LABELS);
-                const date = new Date(a.starts_at).toLocaleString('ru', {
+                const d = resolveCardDisplay(masterRef, a.salon, cardLabels);
+                const dateLocale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
+                const date = new Date(a.starts_at).toLocaleString(dateLocale, {
                   day: 'numeric',
                   month: 'short',
                   hour: '2-digit',
@@ -336,7 +394,7 @@ export default function MiniAppActivityPage() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        <StatusChip status={a.status} />
+                        <StatusChip status={a.status} labels={t.status} />
                         <ChevronRight size={18} color={T.textTertiary} />
                       </div>
                     </Link>
@@ -370,18 +428,19 @@ function CalendarDaysIcon() {
   );
 }
 
-function StatusChip({ status }: { status: string }) {
-  const map: Record<string, { label: string; bg: string; color: string; icon: React.ElementType }> = {
-    booked: { label: 'Записан', bg: '#dbeafe', color: '#1d4ed8', icon: Clock3 },
-    confirmed: { label: 'Подтверждено', bg: T.successSoft, color: T.success, icon: CheckCircle2 },
-    in_progress: { label: 'Идёт', bg: T.accentSoft, color: T.accent, icon: Clock3 },
-    completed: { label: 'Завершено', bg: T.successSoft, color: T.success, icon: CheckCircle2 },
-    cancelled: { label: 'Отменено', bg: T.dangerSoft, color: T.danger, icon: XCircle },
-    cancelled_by_client: { label: 'Отменено', bg: T.dangerSoft, color: T.danger, icon: XCircle },
-    cancelled_by_master: { label: 'Отменено', bg: T.dangerSoft, color: T.danger, icon: XCircle },
-    no_show: { label: 'Не пришёл', bg: T.warningSoft, color: T.warning, icon: XCircle },
+function StatusChip({ status, labels }: { status: string; labels: Record<string, string> }) {
+  const baseMap: Record<string, { bg: string; color: string; icon: React.ElementType }> = {
+    booked: { bg: '#dbeafe', color: '#1d4ed8', icon: Clock3 },
+    confirmed: { bg: T.successSoft, color: T.success, icon: CheckCircle2 },
+    in_progress: { bg: T.accentSoft, color: T.accent, icon: Clock3 },
+    completed: { bg: T.successSoft, color: T.success, icon: CheckCircle2 },
+    cancelled: { bg: T.dangerSoft, color: T.danger, icon: XCircle },
+    cancelled_by_client: { bg: T.dangerSoft, color: T.danger, icon: XCircle },
+    cancelled_by_master: { bg: T.dangerSoft, color: T.danger, icon: XCircle },
+    no_show: { bg: T.warningSoft, color: T.warning, icon: XCircle },
   };
-  const info = map[status] ?? map.booked;
+  const base = baseMap[status] ?? baseMap.booked;
+  const info = { ...base, label: labels[status] ?? labels.booked ?? status };
   const Icon = info.icon;
   return (
     <span

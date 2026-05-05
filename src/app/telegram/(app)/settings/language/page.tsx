@@ -1,19 +1,21 @@
 /** --- YAML
  * name: ClientMiniAppSettings/Language
  * description: Выбор UI-языка для клиента. Пишет в profiles.ui_language через
- *              /api/me/ui-prefs и cookie NEXT_LOCALE для немедленного применения
- *              на web. Также сохраняет в localStorage cres:locale.
+ *              /api/me/ui-prefs, cookie NEXT_LOCALE и localStorage cres:locale.
+ *              После выбора делает hard-navigation обратно на /telegram/settings
+ *              чтобы вся Mini App перезагрузилась с новым языком.
  * created: 2026-05-02
+ * updated: 2026-05-05
  * --- */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'uk' | 'ru' | 'en';
 
@@ -23,39 +25,45 @@ const LANGS: { code: Lang; label: string; flag: string }[] = [
   { code: 'en', label: 'English', flag: '🇬🇧' },
 ];
 
+const I18N: Record<Lang, { title: string; subtitle: string; back: string; saved: string }> = {
+  uk: { title: 'Мова', subtitle: 'Мова інтерфейсу Mini App', back: 'Назад', saved: 'Збережено' },
+  ru: { title: 'Язык', subtitle: 'Язык интерфейса Mini App', back: 'Назад', saved: 'Сохранено' },
+  en: { title: 'Language', subtitle: 'Mini App interface language', back: 'Back', saved: 'Saved' },
+};
+
 export default function ClientLanguagePage() {
   const { haptic } = useTelegram();
-  const [current, setCurrent] = useState<Lang>('uk');
+  const lang = useMiniAppLocale();
+  const [current, setCurrent] = useState<Lang>(lang);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('cres:locale') as Lang | null;
-      if (stored && ['uk', 'ru', 'en'].includes(stored)) setCurrent(stored);
-    } catch {}
-    fetch('/api/me/ui-prefs')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { ui_language?: Lang } | null) => {
-        if (data?.ui_language) setCurrent(data.ui_language);
-      })
-      .catch(() => {});
-  }, []);
+  // Sync current selection with locale once localStorage is read
+  useEffect(() => { setCurrent(lang); }, [lang]);
+
+  const t = I18N[current];
 
   async function pick(code: Lang) {
     if (code === current || busy) return;
     haptic('selection');
     setBusy(true);
     setCurrent(code);
-    try {
-      await fetch('/api/me/ui-prefs', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ui_language: code }),
-      });
-    } catch {}
+
+    // 1. Persist immediately (synchronous writes first so reload sees new value)
     try { localStorage.setItem('cres:locale', code); } catch {}
     document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=${60 * 60 * 24 * 365}`;
-    setBusy(false);
+
+    // 2. Fire DB save in background (best-effort, don't block navigation)
+    fetch('/api/me/ui-prefs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ui_language: code }),
+    }).catch(() => {});
+
+    // 3. Small delay so the checkmark is visible, then hard-navigate back.
+    //    Hard navigation (not router.back) forces a full page reload which
+    //    makes useMiniAppLocale() re-read localStorage in every component.
+    await new Promise((r) => setTimeout(r, 400));
+    window.location.href = '/telegram/settings';
   }
 
   return (
@@ -70,9 +78,10 @@ export default function ClientLanguagePage() {
         minHeight: '100dvh',
       }}
     >
-      <Link
-        href="/telegram/settings"
-        onClick={() => haptic('light')}
+      <button
+        type="button"
+        onClick={() => { haptic('light'); window.history.back(); }}
+        disabled={busy}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -83,19 +92,21 @@ export default function ClientLanguagePage() {
           background: T.surface,
           color: T.text,
           fontSize: 12,
-          textDecoration: 'none',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
           marginBottom: 16,
+          opacity: busy ? 0.5 : 1,
         }}
       >
         <ArrowLeft size={14} strokeWidth={2.4} />
-        Назад
-      </Link>
+        {t.back}
+      </button>
 
       <h1 style={{ fontSize: 24, fontWeight: 800, color: T.text, margin: 0, letterSpacing: '-0.02em' }}>
-        Язык
+        {t.title}
       </h1>
       <p style={{ fontSize: 13, color: T.textSecondary, marginTop: 6 }}>
-        Синхронизируется с веб-кабинетом
+        {t.subtitle}
       </p>
 
       <ul
@@ -125,23 +136,30 @@ export default function ClientLanguagePage() {
                 background: 'transparent',
                 border: 'none',
                 borderTop: i === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
-                cursor: 'pointer',
+                cursor: busy ? 'wait' : 'pointer',
                 fontFamily: 'inherit',
                 color: T.text,
-                opacity: busy ? 0.6 : 1,
+                opacity: busy && current !== l.code ? 0.4 : 1,
                 textAlign: 'left',
+                transition: 'opacity 0.15s',
               }}
             >
               <span style={{ fontSize: 22 }}>{l.flag}</span>
               <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{l.label}</span>
-              {current === l.code && <Check size={16} color={T.accent} strokeWidth={2.5} />}
+              {current === l.code && (
+                busy
+                  ? <Loader2 size={16} color={T.accent} className="animate-spin" />
+                  : <Check size={16} color={T.accent} strokeWidth={2.5} />
+              )}
             </button>
           </li>
         ))}
       </ul>
 
       <p style={{ fontSize: 11, color: T.textTertiary, marginTop: 12, paddingLeft: 8 }}>
-        Влияет на язык интерфейса в Mini App и веб-кабинете.
+        {current === 'uk' && 'Застосовується до Mini App та веб-кабінету.'}
+        {current === 'ru' && 'Применяется к Mini App и веб-кабинету.'}
+        {current === 'en' && 'Applies to Mini App and web cabinet.'}
       </p>
     </motion.div>
   );

@@ -34,12 +34,93 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+
+type Lang = 'uk' | 'ru' | 'en';
+
+const I18N: Record<Lang, {
+  title: string; back: string;
+  emailLabel: string; phoneLabel: string; notSet: string;
+  changePassword: string; reminders: string; reminderDesc: string;
+  darkTheme: string; darkManual: string; darkAuto: string;
+  language: string; langOptions: string;
+  privacy: string; privacyDesc: string;
+  feedback: string; feedbackDesc: string;
+  helpTitle: string; helpDesc: string; helpLink: string;
+  accountTitle: string; accountDesc: string;
+  signOut: string; signingOut: string;
+  contactSheet: string; save: string;
+  pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
+  pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
+  emailConfirm: string;
+  close: string;
+}> = {
+  uk: {
+    title: 'Налаштування', back: 'Назад',
+    emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не вказано',
+    changePassword: 'Змінити пароль', reminders: 'Нагадування', reminderDesc: 'Коли і як часто нагадувати про візит',
+    darkTheme: 'Темна тема', darkManual: 'Вручну', darkAuto: 'Як у Telegram',
+    language: 'Мова', langOptions: 'Українська · Русский · English',
+    privacy: 'Приватність', privacyDesc: 'Що бачать майстри та команди',
+    feedback: 'Зворотній зв\'язок', feedbackDesc: 'Напишіть або запишіть голосом',
+    helpTitle: 'Потрібна допомога?', helpDesc: 'Напишіть у', helpLink: 'Telegram-бот',
+    accountTitle: 'Дії з обліковим записом', accountDesc: 'Експорт даних та видалення облікового запису доступні у веб-версії:',
+    signOut: 'Вийти з акаунту', signingOut: 'Виходимо...',
+    contactSheet: 'Контактні дані', save: 'Зберегти',
+    pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
+    pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
+    pwNewPlaceholder: 'Мінімум 6 символів', pwRepeatPlaceholder: 'Ще раз',
+    pwSaved: 'Пароль оновлено',
+    emailConfirm: 'Листа з підтвердженням надіслано. Відкрийте його, щоб завершити зміну email.',
+    close: 'Закрити',
+  },
+  ru: {
+    title: 'Настройки', back: 'Назад',
+    emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не указан',
+    changePassword: 'Сменить пароль', reminders: 'Напоминания', reminderDesc: 'Когда и как часто напоминать о визите',
+    darkTheme: 'Тёмная тема', darkManual: 'Вручную', darkAuto: 'Как в Telegram',
+    language: 'Язык', langOptions: 'Українська · Русский · English',
+    privacy: 'Приватность', privacyDesc: 'Что видят мастера и команды',
+    feedback: 'Обратная связь', feedbackDesc: 'Напишите или запишите голосом',
+    helpTitle: 'Нужна помощь?', helpDesc: 'Напишите в', helpLink: 'Telegram-бот',
+    accountTitle: 'Действия с учётной записью', accountDesc: 'Экспорт данных и удаление учётной записи доступны в веб-версии:',
+    signOut: 'Выйти из аккаунта', signingOut: 'Выходим...',
+    contactSheet: 'Контактные данные', save: 'Сохранить',
+    pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
+    pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
+    pwNewPlaceholder: 'Минимум 6 символов', pwRepeatPlaceholder: 'Ещё раз',
+    pwSaved: 'Пароль обновлён',
+    emailConfirm: 'Письмо с подтверждением отправлено. Откройте его, чтобы завершить смену email.',
+    close: 'Закрыть',
+  },
+  en: {
+    title: 'Settings', back: 'Back',
+    emailLabel: 'Email', phoneLabel: 'Phone', notSet: 'Not set',
+    changePassword: 'Change password', reminders: 'Reminders', reminderDesc: 'When and how often to remind about appointments',
+    darkTheme: 'Dark theme', darkManual: 'Manual', darkAuto: 'Follow Telegram',
+    language: 'Language', langOptions: 'Українська · Русский · English',
+    privacy: 'Privacy', privacyDesc: 'What masters and teams see',
+    feedback: 'Feedback', feedbackDesc: 'Write or record a voice message',
+    helpTitle: 'Need help?', helpDesc: 'Message us in', helpLink: 'Telegram bot',
+    accountTitle: 'Account actions', accountDesc: 'Data export and account deletion are available in the web version:',
+    signOut: 'Sign out', signingOut: 'Signing out...',
+    contactSheet: 'Contact info', save: 'Save',
+    pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
+    pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
+    pwNewPlaceholder: 'Minimum 6 characters', pwRepeatPlaceholder: 'Once more',
+    pwSaved: 'Password updated',
+    emailConfirm: 'A confirmation email has been sent. Open it to finish changing your email.',
+    close: 'Close',
+  },
+};
 
 export default function MiniAppSettingsPage() {
   const router = useRouter();
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
   const { theme, override, setOverride } = useMiniAppTheme();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [signingOut, setSigningOut] = useState(false);
 
   // Contact info
@@ -130,11 +211,11 @@ export default function MiniAppSettingsPage() {
     if (pwBusy) return;
     setPwError(null);
     if (pwNew.length < 8) {
-      setPwError('Пароль должен быть не короче 8 символов');
+      setPwError(t.pwMinLen);
       return;
     }
     if (pwNew !== pwConfirm) {
-      setPwError('Пароли не совпадают');
+      setPwError(t.pwMismatch);
       return;
     }
     setPwBusy(true);
@@ -263,7 +344,7 @@ export default function MiniAppSettingsPage() {
           >
             <ChevronLeft size={20} color={T.text} />
           </button>
-          <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>Настройки</h1>
+          <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.title}</h1>
         </div>
 
         {/* Contact info */}
@@ -271,8 +352,8 @@ export default function MiniAppSettingsPage() {
           <button type="button" onClick={openContactEdit} style={rowStyle}>
             <div style={iconBox}><Mail size={16} color={T.text} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Email</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? 'Не указан'}</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </button>
@@ -280,8 +361,8 @@ export default function MiniAppSettingsPage() {
           <button type="button" onClick={openContactEdit} style={rowStyle}>
             <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Телефон</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? 'Не указан'}</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </button>
@@ -300,7 +381,7 @@ export default function MiniAppSettingsPage() {
           >
             <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
             <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Сменить пароль</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </button>
@@ -313,8 +394,8 @@ export default function MiniAppSettingsPage() {
               <Bell size={16} color={T.text} />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Напоминания</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Когда и как часто напоминать о визите</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.reminders}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.reminderDesc}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
@@ -327,9 +408,9 @@ export default function MiniAppSettingsPage() {
           >
             <div style={iconBox}><Moon size={16} color={T.text} /></div>
             <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Тёмная тема</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.darkTheme}</p>
               <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>
-                {override ? 'Вручную' : 'Как в Telegram'}
+                {override ? t.darkManual : t.darkAuto}
               </p>
             </div>
             <ToggleSwitch on={theme === 'dark'} />
@@ -338,8 +419,8 @@ export default function MiniAppSettingsPage() {
           <Link href="/telegram/settings/language" onClick={() => haptic('light')} style={rowStyle}>
             <div style={iconBox}><Globe size={16} color={T.text} /></div>
             <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Язык</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Українська · Русский · English</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.language}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.langOptions}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
@@ -347,8 +428,8 @@ export default function MiniAppSettingsPage() {
           <Link href="/telegram/settings/privacy" onClick={() => haptic('light')} style={rowStyle}>
             <div style={iconBox}><Shield size={16} color={T.text} /></div>
             <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Приватность</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Что видят мастера и команды</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.privacy}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.privacyDesc}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
@@ -358,8 +439,8 @@ export default function MiniAppSettingsPage() {
               <Heart size={16} color="#f43f5e" />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Обратная связь</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>Напишите или запишите голосом</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.feedback}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.feedbackDesc}</p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
@@ -378,17 +459,16 @@ export default function MiniAppSettingsPage() {
             boxShadow: SHADOW.card,
           }}
         >
-          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, marginBottom: 4 }}>Нужна помощь?</p>
-          Напишите в{' '}
+          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, marginBottom: 4 }}>{t.helpTitle}</p>
+          {t.helpDesc}{' '}
           <a
             href="https://t.me/crescacom_bot"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: T.accent, fontWeight: 600, textDecoration: 'none' }}
           >
-            Telegram-бот
-          </a>{' '}
-          или отправьте голосовое сообщение — поддержка ответит прямо через бот.
+            {t.helpLink}
+          </a>.
         </div>
 
         {/* Web-only actions notice */}
@@ -405,9 +485,9 @@ export default function MiniAppSettingsPage() {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
-            Действия с учётной записью
+            {t.accountTitle}
           </div>
-          Экспорт данных и удаление учётной записи доступны в веб-версии:&nbsp;
+          {t.accountDesc}&nbsp;
           <a
             href="https://cres-ca.com/ru/account-settings"
             target="_blank"
@@ -446,7 +526,7 @@ export default function MiniAppSettingsPage() {
         >
           <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: T.danger }} />
           {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
-          Выйти из аккаунта
+          {signingOut ? t.signingOut : t.signOut}
         </button>
       </motion.div>
 
@@ -485,7 +565,7 @@ export default function MiniAppSettingsPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Контактные данные</h3>
+                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.contactSheet}</h3>
                 <button
                   type="button"
                   onClick={() => !contactBusy && setContactOpen(false)}
@@ -500,6 +580,7 @@ export default function MiniAppSettingsPage() {
                     justifyContent: 'center',
                     cursor: 'pointer',
                   }}
+                  aria-label={t.close}
                 >
                   <X size={16} color={T.text} />
                 </button>
@@ -527,7 +608,7 @@ export default function MiniAppSettingsPage() {
                   />
                   {emailConfirmSent && (
                     <p style={{ ...TYPE.micro, color: T.success, marginTop: 8 }}>
-                      Письмо с подтверждением отправлено. Откройте его, чтобы завершить смену email.
+                      {t.emailConfirm}
                     </p>
                   )}
                 </div>
@@ -594,7 +675,7 @@ export default function MiniAppSettingsPage() {
                   }}
                 >
                   {contactBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                  Сохранить
+                  {t.save}
                 </button>
               </div>
             </motion.div>
@@ -637,7 +718,7 @@ export default function MiniAppSettingsPage() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Сменить пароль</h3>
+                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.pwSheet}</h3>
                 <button
                   type="button"
                   onClick={() => !pwBusy && setPwOpen(false)}
@@ -652,6 +733,7 @@ export default function MiniAppSettingsPage() {
                     justifyContent: 'center',
                     cursor: 'pointer',
                   }}
+                  aria-label={t.close}
                 >
                   <X size={16} color={T.text} />
                 </button>
@@ -659,12 +741,12 @@ export default function MiniAppSettingsPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 16 }}>
-                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Новый пароль</label>
+                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t.pwNew}</label>
                   <input
                     type="password"
                     value={pwNew}
                     onChange={(e) => setPwNew(e.target.value.slice(0, 72))}
-                    placeholder="Минимум 6 символов"
+                    placeholder={t.pwNewPlaceholder}
                     autoComplete="new-password"
                     style={{
                       display: 'block',
@@ -681,12 +763,12 @@ export default function MiniAppSettingsPage() {
                 </div>
 
                 <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 16 }}>
-                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Повторите пароль</label>
+                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t.pwRepeat}</label>
                   <input
                     type="password"
                     value={pwConfirm}
                     onChange={(e) => setPwConfirm(e.target.value.slice(0, 72))}
-                    placeholder="Ещё раз"
+                    placeholder={t.pwRepeatPlaceholder}
                     autoComplete="new-password"
                     style={{
                       display: 'block',
@@ -729,7 +811,7 @@ export default function MiniAppSettingsPage() {
                     overflow: 'hidden',
                   }}>
                     <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: T.success }} />
-                    Пароль обновлён
+                    {t.pwSaved}
                   </div>
                 )}
 
@@ -756,7 +838,7 @@ export default function MiniAppSettingsPage() {
                   }}
                 >
                   {pwBusy ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
-                  Сохранить пароль
+                  {t.save}
                 </button>
               </div>
             </motion.div>
