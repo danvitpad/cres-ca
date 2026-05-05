@@ -32,6 +32,7 @@ import {
   BarChart3, Phone, Mail, Cake,
   Calendar as CalendarIcon, FileText, Heart, User as UserIcon,
   Pencil, Trash2, Plus, Check, X, Sparkles, Send, Star,
+  Pin, PinOff,
 } from 'lucide-react';
 import {
   FONT, FONT_FEATURES, CURRENCY,
@@ -635,11 +636,13 @@ interface NoteEntry {
   date: string | null;
   category: NoteCategory;
   body: string;
+  pinned: boolean;
   raw: string;
 }
 
-/** Формат строки notes: `[<DD.MM.YYYY>|<category>] body` либо `[<DD.MM.YYYY>] body` (легаси).
- *  Если категория не задана — попадает в `other`. */
+/** Формат строки notes: `[<DD.MM.YYYY>|<category>|<flags?>] body`.
+ *  flags может содержать `pin` — заметка закреплена. Старый формат
+ *  `[<DD.MM.YYYY>] body` тоже поддерживается. */
 function parseNotes(notes: string | null): NoteEntry[] {
   if (!notes) return [];
   return notes
@@ -650,12 +653,17 @@ function parseNotes(notes: string | null): NoteEntry[] {
       const m = raw.match(/^\[([^\]]+)\]\s*(.*)$/);
       let date: string | null = null;
       let category: NoteCategory = 'other';
+      let pinned = false;
       if (m) {
         const headParts = m[1]!.split('|').map((s) => s.trim());
         date = headParts[0] || null;
-        const catRaw = headParts[1] as string | undefined;
-        if (catRaw && NOTE_CATEGORIES.some((c) => c.key === catRaw)) {
-          category = catRaw as NoteCategory;
+        for (let i = 1; i < headParts.length; i++) {
+          const part = headParts[i];
+          if (!part) continue;
+          if (part === 'pin') pinned = true;
+          else if (NOTE_CATEGORIES.some((c) => c.key === part)) {
+            category = part as NoteCategory;
+          }
         }
       }
       return {
@@ -663,10 +671,21 @@ function parseNotes(notes: string | null): NoteEntry[] {
         date,
         category,
         body: m ? m[2]! : raw,
+        pinned,
         raw,
       };
     })
     .filter((x): x is NoteEntry => x !== null);
+}
+
+/** Перестраивает префикс `[date|category|pin]` обратно в строку. */
+function buildNoteLine(entry: { date: string | null; category: NoteCategory; pinned: boolean; body: string }): string {
+  const parts: string[] = [];
+  if (entry.date) parts.push(entry.date);
+  if (entry.category && entry.category !== 'other') parts.push(entry.category);
+  if (entry.pinned) parts.push('pin');
+  const head = parts.length ? `[${parts.join('|')}] ` : '';
+  return `${head}${entry.body.trim()}`;
 }
 
 function NotesBlock({
@@ -726,6 +745,18 @@ function NotesBlock({
     lines.splice(entry.index, 1);
     const ok = await persist(lines);
     if (ok) toast.success('Удалено');
+  }
+
+  async function togglePin(entry: NoteEntry) {
+    const lines = (client.notes ?? '').split('\n');
+    lines[entry.index] = buildNoteLine({
+      date: entry.date,
+      category: entry.category,
+      pinned: !entry.pinned,
+      body: entry.body,
+    });
+    const ok = await persist(lines);
+    if (ok) toast.success(entry.pinned ? 'Откреплено' : 'Закреплено');
   }
 
   async function addNew() {
@@ -809,126 +840,164 @@ function NotesBlock({
         </div>
       )}
 
-      {/* List grouped by category */}
+      {/* List: closed-pinned (top) + grouped by category */}
       {entries.length === 0 && !adding ? (
         <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, lineHeight: 1.5 }}>
           Пусто. Нажми «AI заметка» сверху над карточкой — AI разнесёт по категориям.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 380, overflowY: 'auto', paddingRight: 4 }}>
-          {NOTE_CATEGORIES
-            .map((cat) => ({ ...cat, items: entries.filter((e) => e.category === cat.key) }))
-            .filter((g) => g.items.length > 0)
-            .map((group) => (
-              <div key={group.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
-                  textTransform: 'uppercase', color: C.textTertiary,
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  padding: '2px 0',
-                }}>
-                  <span style={{ fontSize: 12 }}>{group.emoji}</span>
-                  {group.label}
-                  <span style={{ color: C.textTertiary, fontWeight: 500 }}>· {group.items.length}</span>
-                </div>
-                {group.items.map((entry) => {
-            const isEditing = editingIndex === entry.index;
-            return (
-              <div
-                key={entry.index}
-                style={{
-                  padding: '8px 10px', borderRadius: 8,
-                  background: C.surfaceElevated, border: `1px solid ${C.border}`,
-                  display: 'flex', flexDirection: 'column', gap: 4,
-                }}
-              >
-                {isEditing ? (
-                  <>
-                    <textarea
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      rows={2}
-                      autoFocus
-                      style={{
-                        width: '100%', padding: 8, borderRadius: 6,
-                        border: `1px solid ${C.border}`, background: C.surface,
-                        color: C.text, fontSize: 13, fontFamily: 'inherit', resize: 'vertical',
-                        outline: 'none', boxSizing: 'border-box',
-                      }}
-                    />
-                    <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => { setEditingIndex(null); setDraft(''); }}
-                        title="Отмена"
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 420, overflowY: 'auto', paddingRight: 4 }}>
+          {(() => {
+            const pinned = entries.filter((e) => e.pinned);
+            const unpinnedGroups = NOTE_CATEGORIES
+              .map((cat) => ({ ...cat, items: entries.filter((e) => !e.pinned && e.category === cat.key) }))
+              .filter((g) => g.items.length > 0);
+
+            const renderEntry = (entry: NoteEntry) => {
+              const isEditing = editingIndex === entry.index;
+              return (
+                <div
+                  key={entry.index}
+                  style={{
+                    padding: '8px 10px', borderRadius: 8,
+                    background: entry.pinned ? C.accentSoft : C.surfaceElevated,
+                    border: `1px solid ${entry.pinned ? C.accent : C.border}`,
+                    display: 'flex', flexDirection: 'column', gap: 4,
+                  }}
+                >
+                  {isEditing ? (
+                    <>
+                      <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        rows={2}
+                        autoFocus
                         style={{
-                          padding: '4px 8px', borderRadius: 6, border: 'none',
-                          background: 'transparent', color: C.textSecondary, cursor: 'pointer',
-                          display: 'inline-flex', alignItems: 'center',
+                          width: '100%', padding: 8, borderRadius: 6,
+                          border: `1px solid ${C.border}`, background: C.surface,
+                          color: C.text, fontSize: 13, fontFamily: 'inherit', resize: 'vertical',
+                          outline: 'none', boxSizing: 'border-box',
                         }}
-                      >
-                        <X size={13} />
-                      </button>
-                      <button
-                        onClick={saveEdit}
-                        disabled={busy || !draft.trim()}
-                        title="Сохранить"
-                        style={{
-                          padding: '4px 8px', borderRadius: 6, border: 'none',
-                          background: C.accent, color: '#fff', cursor: 'pointer',
-                          display: 'inline-flex', alignItems: 'center',
-                          opacity: busy || !draft.trim() ? 0.5 : 1,
-                        }}
-                      >
-                        <Check size={13} />
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {entry.date && (
-                        <div style={{
-                          fontSize: 10, color: C.textTertiary, marginBottom: 2,
-                          letterSpacing: '0.04em',
-                        }}>
-                          {entry.date}
+                      />
+                      <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => { setEditingIndex(null); setDraft(''); }}
+                          title="Отмена"
+                          style={{
+                            padding: '4px 8px', borderRadius: 6, border: 'none',
+                            background: 'transparent', color: C.textSecondary, cursor: 'pointer',
+                            display: 'inline-flex', alignItems: 'center',
+                          }}
+                        >
+                          <X size={13} />
+                        </button>
+                        <button
+                          onClick={saveEdit}
+                          disabled={busy || !draft.trim()}
+                          title="Сохранить"
+                          style={{
+                            padding: '4px 8px', borderRadius: 6, border: 'none',
+                            background: C.accent, color: '#fff', cursor: 'pointer',
+                            display: 'inline-flex', alignItems: 'center',
+                            opacity: busy || !draft.trim() ? 0.5 : 1,
+                          }}
+                        >
+                          <Check size={13} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {entry.date && (
+                          <div style={{
+                            fontSize: 10, color: C.textTertiary, marginBottom: 2,
+                            letterSpacing: '0.04em',
+                          }}>
+                            {entry.date}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 13, color: C.text, lineHeight: 1.45, wordBreak: 'break-word' }}>
+                          {entry.body}
                         </div>
-                      )}
-                      <div style={{ fontSize: 13, color: C.text, lineHeight: 1.45, wordBreak: 'break-word' }}>
-                        {entry.body}
+                      </div>
+                      <div style={{ display: 'flex', gap: 2, flexShrink: 0, opacity: 0.85 }}>
+                        <button
+                          onClick={() => togglePin(entry)}
+                          title={entry.pinned ? 'Открепить' : 'Закрепить'}
+                          style={{
+                            padding: 4, borderRadius: 6, border: 'none',
+                            background: 'transparent',
+                            color: entry.pinned ? C.accent : C.textSecondary,
+                            cursor: 'pointer', display: 'inline-flex',
+                          }}
+                        >
+                          {entry.pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                        </button>
+                        <button
+                          onClick={() => startEdit(entry)}
+                          title="Редактировать"
+                          style={{
+                            padding: 4, borderRadius: 6, border: 'none',
+                            background: 'transparent', color: C.textSecondary, cursor: 'pointer',
+                            display: 'inline-flex',
+                          }}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          onClick={() => deleteEntry(entry)}
+                          title="Удалить"
+                          style={{
+                            padding: 4, borderRadius: 6, border: 'none',
+                            background: 'transparent', color: C.danger, cursor: 'pointer',
+                            display: 'inline-flex',
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 2, flexShrink: 0, opacity: 0.7 }}>
-                      <button
-                        onClick={() => startEdit(entry)}
-                        title="Редактировать"
-                        style={{
-                          padding: 4, borderRadius: 6, border: 'none',
-                          background: 'transparent', color: C.textSecondary, cursor: 'pointer',
-                          display: 'inline-flex',
-                        }}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={() => deleteEntry(entry)}
-                        title="Удалить"
-                        style={{
-                          padding: 4, borderRadius: 6, border: 'none',
-                          background: 'transparent', color: C.danger, cursor: 'pointer',
-                          display: 'inline-flex',
-                        }}
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <>
+                {pinned.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                      textTransform: 'uppercase', color: C.accent,
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '2px 0',
+                    }}>
+                      <Pin size={11} />
+                      Закреплённые
+                      <span style={{ color: C.textTertiary, fontWeight: 500 }}>· {pinned.length}</span>
                     </div>
+                    {pinned.map(renderEntry)}
                   </div>
                 )}
-              </div>
+                {unpinnedGroups.map((group) => (
+                  <div key={group.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <div style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                      textTransform: 'uppercase', color: C.textTertiary,
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '2px 0',
+                    }}>
+                      <span style={{ fontSize: 12 }}>{group.emoji}</span>
+                      {group.label}
+                      <span style={{ color: C.textTertiary, fontWeight: 500 }}>· {group.items.length}</span>
+                    </div>
+                    {group.items.map(renderEntry)}
+                  </div>
+                ))}
+              </>
             );
-          })}
-              </div>
-            ))}
+          })()}
         </div>
       )}
     </BlockFrame>
