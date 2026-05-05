@@ -125,7 +125,10 @@ export function OwnerPortfolioPanel({
   }
 
   return (
-    <section className="rounded-2xl border border-dashed border-neutral-300 bg-white p-4">
+    <section
+      className="rounded-2xl p-4"
+      style={{ background: 'var(--m-surface)', border: '1px solid var(--m-border)' }}
+    >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold text-neutral-900">
           Управление портфолио
@@ -163,7 +166,11 @@ export function OwnerPortfolioPanel({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="relative block h-32 w-full overflow-hidden rounded-lg border border-dashed border-neutral-300 bg-white transition-colors hover:border-[var(--ds-accent,#14b8a6)]"
+            className="relative block h-32 w-full overflow-hidden rounded-lg transition-colors"
+            style={{
+              background: 'var(--m-bg-subtle)',
+              border: '1px dashed var(--m-border)',
+            }}
           >
             {preview ? (
               // eslint-disable-next-line @next/next/no-img-element

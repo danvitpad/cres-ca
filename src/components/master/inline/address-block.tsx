@@ -149,7 +149,8 @@ export function InlineAddressBlock({
         <button
           type="button"
           onClick={startEdit}
-          className="group flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-neutral-300 bg-white p-5 text-left transition-colors hover:border-neutral-900 hover:bg-neutral-50"
+          className="group flex w-full items-center gap-3 rounded-2xl p-5 text-left transition-colors"
+          style={{ background: 'var(--m-bg-subtle)', border: '1px solid var(--m-border)' }}
         >
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 group-hover:bg-neutral-900 group-hover:text-white">
             <Plus className="size-5" />

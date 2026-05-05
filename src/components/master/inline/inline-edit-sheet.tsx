@@ -46,21 +46,32 @@ export function InlineEditSheet({ open, onClose, title, children, footer }: Prop
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="fixed inset-x-0 bottom-0 z-[201] flex max-h-[90dvh] flex-col rounded-t-[24px] bg-white shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[80vh] sm:w-[min(560px,calc(100vw-32px))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[20px]"
+            className="fixed inset-x-0 bottom-0 z-[201] flex max-h-[90dvh] flex-col rounded-t-[24px] shadow-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[80vh] sm:w-[min(560px,calc(100vw-32px))] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[20px]"
+            style={{ background: 'var(--m-surface)', color: 'var(--m-text)' }}
           >
-            <div className="flex items-center justify-between border-b border-neutral-100 px-5 py-4">
-              <h2 className="text-[16px] font-bold text-neutral-900">{title}</h2>
+            <div
+              className="flex items-center justify-between px-5 py-4"
+              style={{ borderBottom: '1px solid var(--m-border)' }}
+            >
+              <h2 className="text-[16px] font-bold" style={{ color: 'var(--m-text)' }}>{title}</h2>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex size-8 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100"
+                className="flex size-8 items-center justify-center rounded-full transition-colors"
+                style={{ color: 'var(--m-text-tertiary)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--m-bg-subtle)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 aria-label="Закрыть"
               >
                 <X className="size-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5">{children}</div>
-            {footer && <div className="border-t border-neutral-100 p-4">{footer}</div>}
+            {footer && (
+              <div className="p-4" style={{ borderTop: '1px solid var(--m-border)' }}>
+                {footer}
+              </div>
+            )}
           </motion.div>
         </>
       )}

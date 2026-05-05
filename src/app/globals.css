@@ -586,3 +586,27 @@ html.dark {
 .public-master-scope .hover\:bg-white:hover,
 .public-master-scope .hover\:bg-neutral-50:hover,
 .public-master-scope .hover\:bg-neutral-100:hover { background-color: var(--m-surface-elevated) !important; }
+
+/* Inputs / textareas внутри публичной (включая inline-модалки редактирования)
+   — прозрачный фон + var-обводка + var-текст, чтобы поля читались на любой
+   теме модалки. Иначе bg-white модалки + bg-white input = слипается. */
+.public-master-scope input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+.public-master-scope textarea {
+  background-color: transparent !important;
+  color: var(--m-text) !important;
+  border-color: var(--m-border) !important;
+}
+.public-master-scope input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+.public-master-scope textarea:focus {
+  border-color: var(--m-text) !important;
+  outline: none;
+}
+.public-master-scope input::placeholder,
+.public-master-scope textarea::placeholder {
+  color: var(--m-text-tertiary) !important;
+  opacity: 1 !important;
+}
+
+/* bg-neutral-100 (hover backgrounds, иконки в кружочках на CTA) — у нас
+   светло-серый в светлой теме, чуть темнее в тёмной. */
+.public-master-scope .bg-neutral-100 { background-color: var(--m-bg-subtle) !important; }
