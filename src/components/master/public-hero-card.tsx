@@ -84,10 +84,9 @@ export function PublicHeroCard({
 
   return (
     <aside
-      className="relative flex flex-col gap-5 rounded-[20px] border p-6"
+      className="relative flex flex-col gap-5 rounded-[20px] p-6"
       style={{
         background: 'var(--m-surface)',
-        borderColor: 'var(--m-border)',
         color: 'var(--m-text)',
       }}
     >
@@ -104,12 +103,11 @@ export function PublicHeroCard({
 
       {/* Share button удалён по запросу — CRES-CA ID показывается ниже карточки */}
 
-      {/* Avatar (centered, large) — inline-editable for owner.
-          Окантовка через var(--m-surface) — на светлой теме белая, на
-          тёмной серая, всегда читается на фоне страницы. */}
+      {/* Avatar (centered, large) — Fresha-style: фото впритык, без явной
+          обводки, только мягкая тень снизу. */}
       <div
-        className="relative mx-auto mt-2 size-40 rounded-full shadow-md"
-        style={{ boxShadow: '0 0 0 4px var(--m-surface), 0 4px 12px rgba(0,0,0,0.08)' }}
+        className="relative mx-auto mt-2 size-40 rounded-full"
+        style={{ boxShadow: '0 6px 20px rgba(0,0,0,0.10)' }}
       >
         <InlineAvatarEdit
           masterProfileId={masterProfileId}
@@ -128,7 +126,10 @@ export function PublicHeroCard({
             {teamLabel}
           </div>
         )}
-        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-neutral-900">
+        <h1
+          className="text-[28px] font-bold leading-[1.15] tracking-tight"
+          style={{ color: 'var(--m-text)', letterSpacing: '-0.02em' }}
+        >
           {displayName}
         </h1>
         {salonContext ? (

@@ -228,7 +228,13 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         <button
           type="button"
           onClick={startEdit}
-          className="group flex h-32 w-full items-center justify-center gap-3 border-y-2 border-dashed border-neutral-300 bg-neutral-50 text-neutral-700 transition-colors hover:border-neutral-900 hover:bg-neutral-100 sm:h-44"
+          className="group flex h-32 w-full items-center justify-center gap-3 transition-colors sm:h-44"
+          style={{
+            background: 'var(--m-bg-subtle)',
+            color: 'var(--m-text-secondary)',
+            borderTop: '1px solid var(--m-border)',
+            borderBottom: '1px solid var(--m-border)',
+          }}
         >
           <Plus className="size-5" />
           <span className="text-[14px] font-semibold">Добавь обложку</span>

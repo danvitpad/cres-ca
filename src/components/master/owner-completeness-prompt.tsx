@@ -155,41 +155,61 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
   const todo = items.filter((i) => !i.done);
 
   return (
-    <div className="mt-6 overflow-hidden rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-emerald-50 dark:border-teal-500/30 dark:from-teal-500/[0.06] dark:via-transparent dark:to-emerald-500/[0.04]">
+    <div
+      className="mt-6 overflow-hidden rounded-2xl border"
+      style={{
+        background: 'var(--m-surface)',
+        borderColor: 'var(--m-border)',
+      }}
+    >
       <div className="flex items-start justify-between gap-3 px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-teal-600 dark:text-teal-300" />
-            <p className="text-sm font-bold text-neutral-900">Сделай страницу премиум · {pct}%</p>
+            <Sparkles className="size-4" style={{ color: 'var(--m-text-secondary)' }} />
+            <p className="text-sm font-bold" style={{ color: 'var(--m-text)' }}>
+              Сделай страницу премиум · {pct}%
+            </p>
           </div>
-          <p className="mt-1 text-xs text-neutral-600">
+          <p className="mt-1 text-xs" style={{ color: 'var(--m-text-tertiary)' }}>
             Заполни {todo.length === 1 ? 'последний пункт' : `ещё ${todo.length} ${todo.length < 5 ? 'пункта' : 'пунктов'}`} — клиенты доверяют заполненной странице.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setCollapsed(true)}
-          className="shrink-0 rounded-md px-2 py-1 text-xs text-neutral-500 hover:bg-white/50 hover:text-neutral-900"
+          className="shrink-0 rounded-md px-2 py-1 text-xs transition-colors"
+          style={{ color: 'var(--m-text-tertiary)' }}
         >
           Скрыть
         </button>
       </div>
-      <div className="h-1 bg-teal-100 dark:bg-teal-500/15">
-        <div className="h-full bg-teal-500 transition-all" style={{ width: `${pct}%` }} />
+      {/* Прогресс-бар тонкий, нейтральный — без яркого teal */}
+      <div className="h-[3px]" style={{ background: 'var(--m-border-subtle)' }}>
+        <div
+          className="h-full transition-all"
+          style={{ width: `${pct}%`, background: 'var(--m-text)' }}
+        />
       </div>
-      <ul className="divide-y divide-teal-100 dark:divide-teal-500/15">
-        {todo.map((item) => (
-          <li key={item.key}>
+      <ul>
+        {todo.map((item, idx) => (
+          <li
+            key={item.key}
+            style={idx > 0 ? { borderTop: '1px solid var(--m-border)' } : undefined}
+          >
             <Link
               href={item.href}
-              className="group flex items-center gap-3 px-5 py-3 hover:bg-white/60"
+              className="group flex items-center gap-3 px-5 py-3 transition-colors"
             >
-              <CheckCircle2 className="size-5 shrink-0 text-neutral-300 group-hover:text-teal-500" strokeWidth={2.2} />
+              <CheckCircle2
+                className="size-5 shrink-0"
+                strokeWidth={2.2}
+                style={{ color: 'var(--m-text-disabled)' }}
+              />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-neutral-900">{item.label}</p>
-                <p className="mt-0.5 text-xs text-neutral-500">{item.hint}</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--m-text)' }}>{item.label}</p>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--m-text-tertiary)' }}>{item.hint}</p>
               </div>
-              <ChevronRight className="size-4 shrink-0 text-neutral-400 group-hover:text-teal-600" />
+              <ChevronRight className="size-4 shrink-0" style={{ color: 'var(--m-text-tertiary)' }} />
             </Link>
           </li>
         ))}
