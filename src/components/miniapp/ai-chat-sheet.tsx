@@ -18,6 +18,76 @@ import { AvatarCircle } from './shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from './design';
 import { useAuthStore } from '@/stores/auth-store';
 import { formatMoney } from '@/lib/format/money';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+// ─────────── i18n словарь UI чата ───────────
+const I18N: Record<MiniAppLang, {
+  title: string;
+  thinking: string; ready: string;
+  clear: string; close: string;
+  placeholder: string;
+  send: string; record: string; recording: string;
+  welcomeTitle: string; welcomeBody: string;
+  prompts: string[];
+  upcoming: string; cancelled: string;
+  todayAt: string; tomorrowAt: string;
+  cancelLabel: string; cancellingLabel: string; confirmCancel: string;
+  cancelFailed: string; networkError: string; replyFailed: string; connectionLost: string;
+  micFailed: string;
+  monthsShort: string;
+}> = {
+  uk: {
+    title: 'AI-консьєрж',
+    thinking: 'Думаю…', ready: 'Готовий допомогти',
+    clear: 'Очистити', close: 'Закрити',
+    placeholder: 'Запитати про запис, майстра, послугу…',
+    send: 'Надіслати', record: 'Натисни і говори', recording: 'Йде запис',
+    welcomeTitle: 'Чим можу допомогти?',
+    welcomeBody: 'Допоможу знайти спеціаліста, записатись, підкажу як готуватись до візиту і не тільки.',
+    prompts: ['Знайди вчителя англійської', 'Коли в мене запис?', 'Що взяти з собою?', 'Перенеси візит'],
+    upcoming: 'Найближчий запис', cancelled: 'Скасовано',
+    todayAt: 'Сьогодні о', tomorrowAt: 'Завтра о',
+    cancelLabel: 'Скасувати запис', cancellingLabel: 'Скасовуємо…', confirmCancel: 'Скасувати цей запис?',
+    cancelFailed: 'Не вдалось скасувати', networkError: 'Помилка мережі',
+    replyFailed: 'Не вдалось відповісти', connectionLost: 'Зʼєднання обірвалось. Спробуй ще раз.',
+    micFailed: 'Не вдалось отримати доступ до мікрофона',
+    monthsShort: 'uk-UA',
+  },
+  ru: {
+    title: 'AI-консьерж',
+    thinking: 'Думаю…', ready: 'Готов помочь',
+    clear: 'Очистить', close: 'Закрыть',
+    placeholder: 'Спросить о записи, мастере, услуге…',
+    send: 'Отправить', record: 'Зажми и говори', recording: 'Идёт запись',
+    welcomeTitle: 'Чем могу помочь?',
+    welcomeBody: 'Помогу найти специалиста, записаться, подскажу как готовиться к визиту и больше.',
+    prompts: ['Найди учителя английского', 'Когда у меня запись?', 'Что взять с собой?', 'Перенеси визит'],
+    upcoming: 'Ближайшая запись', cancelled: 'Отменено',
+    todayAt: 'Сегодня в', tomorrowAt: 'Завтра в',
+    cancelLabel: 'Отменить запись', cancellingLabel: 'Отменяем…', confirmCancel: 'Отменить эту запись?',
+    cancelFailed: 'Не удалось отменить', networkError: 'Сетевая ошибка',
+    replyFailed: 'Не удалось ответить', connectionLost: 'Соединение прервалось. Попробуй ещё раз.',
+    micFailed: 'Не удалось получить доступ к микрофону',
+    monthsShort: 'ru-RU',
+  },
+  en: {
+    title: 'AI Concierge',
+    thinking: 'Thinking…', ready: 'Ready to help',
+    clear: 'Clear', close: 'Close',
+    placeholder: 'Ask about a booking, master, or service…',
+    send: 'Send', record: 'Hold to talk', recording: 'Recording',
+    welcomeTitle: 'How can I help?',
+    welcomeBody: 'I can help you find a specialist, make a booking, or explain how to prepare for a visit.',
+    prompts: ['Find an English tutor', 'When is my appointment?', 'What should I bring?', 'Reschedule visit'],
+    upcoming: 'Upcoming', cancelled: 'Cancelled',
+    todayAt: 'Today at', tomorrowAt: 'Tomorrow at',
+    cancelLabel: 'Cancel booking', cancellingLabel: 'Cancelling…', confirmCancel: 'Cancel this booking?',
+    cancelFailed: 'Could not cancel', networkError: 'Network error',
+    replyFailed: 'Failed to respond', connectionLost: 'Connection lost. Try again.',
+    micFailed: 'Could not access microphone',
+    monthsShort: 'en-GB',
+  },
+};
 
 interface ActionCard {
   type: 'master' | 'appointment' | 'time-slot';
@@ -45,6 +115,8 @@ const STORAGE_KEY = 'cres-ai-chat-history';
 export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -119,7 +191,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
       setRecording(true);
       haptic('medium');
     } catch {
-      alert('Не удалось получить доступ к микрофону');
+      alert(t.micFailed);
     }
   }
 
@@ -178,13 +250,14 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
           message: trimmed,
           history,
           userId,
+          locale: lang,
         }),
       });
       const data = await res.json();
       const reply: ChatMsg = {
         id: `a-${Date.now()}`,
         role: 'assistant',
-        content: data.reply ?? data.message ?? 'Не удалось ответить',
+        content: data.reply ?? data.message ?? t.replyFailed,
         actions: data.actions ?? [],
         suggestions: data.suggestions ?? [],
         ts: Date.now(),
@@ -197,7 +270,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
         {
           id: `a-${Date.now()}`,
           role: 'assistant',
-          content: 'Соединение прервалось. Попробуй ещё раз.',
+          content: t.connectionLost,
           ts: Date.now(),
         },
       ]);
@@ -294,8 +367,8 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                   <Sparkles size={18} color={T.accent} strokeWidth={2.2} />
                 </div>
                 <div>
-                  <h3 style={{ ...TYPE.h3, fontSize: 16, color: T.text, margin: 0 }}>AI-консьерж</h3>
-                  <p style={{ ...TYPE.micro, margin: 0 }}>{sending ? 'Думаю…' : 'Готов помочь'}</p>
+                  <h3 style={{ ...TYPE.h3, fontSize: 16, color: T.text, margin: 0 }}>{t.title}</h3>
+                  <p style={{ ...TYPE.micro, margin: 0 }}>{sending ? t.thinking : t.ready}</p>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -315,7 +388,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                       fontFamily: 'inherit',
                     }}
                   >
-                    Очистить
+                    {t.clear}
                   </button>
                 )}
                 <button
@@ -332,7 +405,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                     justifyContent: 'center',
                     cursor: 'pointer',
                   }}
-                  aria-label="Закрыть"
+                  aria-label={t.close}
                 >
                   <X size={18} color={T.textSecondary} />
                 </button>
@@ -352,10 +425,10 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
               }}
             >
               {messages.length === 0 && (
-                <Welcome onPrompt={(p) => sendNow(p)} />
+                <Welcome onPrompt={(p) => sendNow(p)} t={t} />
               )}
               {messages.map((m) => (
-                <Bubble key={m.id} msg={m} onSuggestion={(s) => sendNow(s)} />
+                <Bubble key={m.id} msg={m} onSuggestion={(s) => sendNow(s)} t={t} />
               ))}
               {sending && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px' }}>
@@ -384,7 +457,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Спросить о записи, мастере, услуге…"
+                placeholder={t.placeholder}
                 style={{
                   flex: 1,
                   padding: '12px 16px',
@@ -436,8 +509,8 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                     boxShadow: recording ? `0 0 0 6px ${T.danger}33` : 'none',
                     opacity: transcribing ? 0.5 : 1,
                   }}
-                  aria-label={recording ? 'Идёт запись' : 'Записать голосом'}
-                  title="Зажми и говори"
+                  aria-label={recording ? t.recording : t.record}
+                  title={t.record}
                 >
                   <Mic size={18} strokeWidth={2.4} />
                 </button>
@@ -460,7 +533,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                   flexShrink: 0,
                   transition: 'background 200ms ease',
                 }}
-                aria-label="Отправить"
+                aria-label={t.send}
               >
                 <Send size={18} />
               </button>
@@ -473,13 +546,8 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
   );
 }
 
-function Welcome({ onPrompt }: { onPrompt: (p: string) => void }) {
-  const prompts = [
-    'Найди маникюр на завтра',
-    'Когда у меня запись?',
-    'Что взять с собой?',
-    'Перенеси визит',
-  ];
+function Welcome({ onPrompt, t }: { onPrompt: (p: string) => void; t: typeof I18N[MiniAppLang] }) {
+  const prompts = t.prompts;
   return (
     <div style={{ padding: '20px 0', textAlign: 'center' }}>
       <div
@@ -496,9 +564,9 @@ function Welcome({ onPrompt }: { onPrompt: (p: string) => void }) {
       >
         <Sparkles size={28} color="#fff" strokeWidth={2} />
       </div>
-      <h2 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>Чем могу помочь?</h2>
+      <h2 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.welcomeTitle}</h2>
       <p style={{ ...TYPE.body, color: T.textSecondary, marginTop: 6, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
-        Я помогу найти мастера, записаться, подскажу как готовиться к визиту и больше.
+        {t.welcomeBody}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 24 }}>
         {prompts.map((p) => (
@@ -531,7 +599,7 @@ function Welcome({ onPrompt }: { onPrompt: (p: string) => void }) {
   );
 }
 
-function Bubble({ msg, onSuggestion }: { msg: ChatMsg; onSuggestion: (s: string) => void }) {
+function Bubble({ msg, onSuggestion, t }: { msg: ChatMsg; onSuggestion: (s: string) => void; t: typeof I18N[MiniAppLang] }) {
   const isUser = msg.role === 'user';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
@@ -555,7 +623,7 @@ function Bubble({ msg, onSuggestion }: { msg: ChatMsg; onSuggestion: (s: string)
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', maxWidth: '85%' }}>
           {msg.actions.map((a, i) => {
             if (a.type === 'master') return <MasterActionCard key={i} data={a.data as unknown as MasterCardData} />;
-            if (a.type === 'appointment') return <AppointmentActionCard key={i} data={a.data as unknown as AppointmentCardData} />;
+            if (a.type === 'appointment') return <AppointmentActionCard key={i} data={a.data as unknown as AppointmentCardData} t={t} />;
             return null;
           })}
         </div>
@@ -653,7 +721,7 @@ interface AppointmentCardData {
   currency: string | null;
 }
 
-function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
+function AppointmentActionCard({ data, t }: { data: AppointmentCardData; t: typeof I18N[MiniAppLang] }) {
   const [cancelling, setCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
 
@@ -664,15 +732,15 @@ function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
   target.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 86400000);
   const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  let dateLabel = `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} в ${time}`;
-  if (target.getTime() === today.getTime()) dateLabel = `Сегодня в ${time}`;
-  else if (target.getTime() === tomorrow.getTime()) dateLabel = `Завтра в ${time}`;
+  let dateLabel = `${d.toLocaleDateString(t.monthsShort, { day: 'numeric', month: 'short' })} ${time}`;
+  if (target.getTime() === today.getTime()) dateLabel = `${t.todayAt} ${time}`;
+  else if (target.getTime() === tomorrow.getTime()) dateLabel = `${t.tomorrowAt} ${time}`;
 
   async function handleCancel(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (cancelling || cancelled) return;
-    if (!confirm('Отменить эту запись?')) return;
+    if (!confirm(t.confirmCancel)) return;
     setCancelling(true);
     try {
       const res = await fetch('/api/ai/client-action', {
@@ -682,9 +750,9 @@ function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
       });
       const j = await res.json();
       if (j.ok) setCancelled(true);
-      else alert(j.message || j.error || 'Не удалось отменить');
+      else alert(j.message || j.error || t.cancelFailed);
     } catch {
-      alert('Сетевая ошибка');
+      alert(t.networkError);
     } finally {
       setCancelling(false);
     }
@@ -715,7 +783,7 @@ function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.accent, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          <Calendar size={12} /> {cancelled ? 'Отменено' : 'Ближайшая запись'}
+          <Calendar size={12} /> {cancelled ? t.cancelled : t.upcoming}
         </div>
         <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{data.service_name}</p>
         <p style={{ ...TYPE.caption }}>
@@ -746,7 +814,7 @@ function AppointmentActionCard({ data }: { data: AppointmentCardData }) {
             opacity: cancelling ? 0.6 : 1,
           }}
         >
-          {cancelling ? 'Отменяем…' : 'Отменить запись'}
+          {cancelling ? t.cancellingLabel : t.cancelLabel}
         </button>
       )}
     </div>
