@@ -96,7 +96,8 @@ export function PublicHeroCard({
           карточки напротив кнопки «Поделиться». */}
       {worksOnline && (
         <span
-          className="absolute left-4 top-4 z-10 inline-flex size-3 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-white shadow"
+          className="absolute left-4 top-4 z-10 inline-flex size-3 items-center justify-center rounded-full bg-emerald-500 shadow"
+          style={{ boxShadow: '0 0 0 2px var(--m-surface)' }}
           title="Принимает онлайн"
         />
       )}
@@ -104,10 +105,12 @@ export function PublicHeroCard({
       {/* Share button удалён по запросу — CRES-CA ID показывается ниже карточки */}
 
       {/* Avatar (centered, large) — inline-editable for owner.
-          Белая окантовка ring-4 ring-white чтобы аватар читался на любом фоне
-          карточки (светлая/тёмная тема). overflow-hidden не ставим — иначе
-          кнопка «Сменить аватар» обрезается. */}
-      <div className="relative mx-auto mt-2 size-40 rounded-full ring-4 ring-white shadow-md">
+          Окантовка через var(--m-surface) — на светлой теме белая, на
+          тёмной серая, всегда читается на фоне страницы. */}
+      <div
+        className="relative mx-auto mt-2 size-40 rounded-full shadow-md"
+        style={{ boxShadow: '0 0 0 4px var(--m-surface), 0 4px 12px rgba(0,0,0,0.08)' }}
+      >
         <InlineAvatarEdit
           masterProfileId={masterProfileId}
           initialUrl={avatarUrl}

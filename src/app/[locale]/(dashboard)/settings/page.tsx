@@ -186,8 +186,11 @@ function SettingsAllInOneView({
   const scrollTo = useCallback((key: string) => {
     const el = document.getElementById(key);
     if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY - 88;
-    window.scrollTo({ top, behavior: 'smooth' });
+    // Нативный scrollIntoView надёжнее ручного getBoundingClientRect —
+    // работает и в overflow:scroll контейнерах. scrollMarginTop: 88 на
+    // section даёт верхний отступ под sticky-хедер.
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setActive(key);
   }, []);
 
   if (!mounted) return null;
@@ -340,7 +343,10 @@ function SettingsAllInOneView({
   );
 }
 
-/* ── Anchor wrapper for each section ──────────────────────────────────── */
+/* ── Anchor wrapper for each section ──────────────────────────────────────
+ * Важно: НЕ возвращаем null до mount — иначе getElementById не находит
+ * якоря и клики в sidebar не работают. Стили подтягиваем когда тема
+ * известна, заголовок рендерится сразу. */
 function SettingsAnchor({
   id, title, icon: Icon, children,
 }: {
@@ -350,7 +356,6 @@ function SettingsAnchor({
   children: React.ReactNode;
 }) {
   const { C, mounted } = usePageTheme();
-  if (!mounted) return null;
   return (
     <section id={id} style={{ scrollMarginTop: 88 }}>
       <header style={{
@@ -359,18 +364,21 @@ function SettingsAnchor({
         gap: 10,
         marginBottom: 14,
         paddingBottom: 10,
-        borderBottom: `1px solid ${C.border}`,
+        borderBottom: `1px solid ${mounted ? C.border : 'transparent'}`,
       }}>
         <div style={{
           width: 30, height: 30, borderRadius: 8,
-          background: C.accentSoft, color: C.accent,
+          background: mounted ? C.accentSoft : 'transparent',
+          color: mounted ? C.accent : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0,
         }}>
           <Icon size={15} />
         </div>
         <h2 style={{
-          fontSize: 18, fontWeight: 650, color: C.text, letterSpacing: '-0.3px',
+          fontSize: 18, fontWeight: 650,
+          color: mounted ? C.text : 'transparent',
+          letterSpacing: '-0.3px',
           margin: 0,
         }}>
           {title}

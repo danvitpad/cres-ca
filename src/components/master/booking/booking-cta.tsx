@@ -24,21 +24,59 @@ interface Props {
 export function BookingCTA({ variant = 'hero', serviceId, children, className }: Props) {
   const { open } = useBookingDrawer();
 
-  const cls =
-    variant === 'hero'
-      ? 'inline-flex h-12 w-full items-center justify-center rounded-[var(--brand-radius-lg)] border border-neutral-900 bg-white text-[15px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-50 active:scale-[0.99]'
-      : variant === 'service'
-      ? 'shrink-0 rounded-[var(--brand-radius-lg)] border border-neutral-900 px-5 py-2 text-[13px] font-semibold text-neutral-900 transition-colors hover:bg-neutral-900 hover:text-white active:scale-[0.98]'
-      : 'flex h-12 w-full items-center justify-center gap-2 rounded-[var(--brand-radius-lg)] bg-neutral-900 text-[15px] font-semibold text-white transition-opacity hover:opacity-95 active:scale-[0.99]';
+  // Fresha-style: главная CTA — solid контрастная (text-color → bg-color
+  // инверсия). В светлой теме = чёрная кнопка с белым текстом, в тёмной =
+  // светлая с тёмным. Через CSS-переменные публичной темы.
+  const baseCls = (className ? className + ' ' : '') +
+    'inline-flex items-center justify-center font-semibold transition-opacity active:scale-[0.99]';
 
+  if (variant === 'hero') {
+    return (
+      <button
+        type="button"
+        onClick={() => open(serviceId ?? null)}
+        className={`${baseCls} h-12 w-full rounded-[var(--brand-radius-lg)] text-[15px] hover:opacity-90`}
+        style={{
+          background: 'var(--m-text)',
+          color: 'var(--m-bg)',
+          border: 'none',
+        }}
+      >
+        <Calendar className="mr-2 size-4" />
+        {children ?? 'Записаться'}
+      </button>
+    );
+  }
+
+  if (variant === 'sticky') {
+    return (
+      <button
+        type="button"
+        onClick={() => open(serviceId ?? null)}
+        className={`${baseCls} h-12 w-full gap-2 rounded-[var(--brand-radius-lg)] text-[15px] hover:opacity-90`}
+        style={{
+          background: 'var(--m-text)',
+          color: 'var(--m-bg)',
+        }}
+      >
+        <Calendar className="size-4" />
+        {children ?? 'Записаться'}
+      </button>
+    );
+  }
+
+  // service-row CTA — компактная outline pill, наводя — заливается
   return (
     <button
       type="button"
       onClick={() => open(serviceId ?? null)}
-      className={(className ? className + ' ' : '') + cls}
+      className={`${baseCls} shrink-0 rounded-[var(--brand-radius-lg)] px-5 py-2 text-[13px] hover:opacity-90`}
+      style={{
+        background: 'transparent',
+        color: 'var(--m-text)',
+        border: '1px solid var(--m-text)',
+      }}
     >
-      {variant === 'hero' && <Calendar className="mr-2 size-4" />}
-      {variant === 'sticky' && <Calendar className="size-4" />}
       {children ?? 'Записаться'}
     </button>
   );
