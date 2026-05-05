@@ -105,17 +105,16 @@ const FIELDS: Array<{
   label: string;
   placeholder: string;
   Icon: IconFC;
-  bg: string;
   href: (v: string) => string;
 }> = [
-  { key: 'telegram',  label: 'Telegram',  placeholder: '@username',         Icon: IconTelegram,  bg: '#2AABEE', href: (v) => `https://t.me/${v.replace(/^@/, '')}` },
-  { key: 'instagram', label: 'Instagram', placeholder: '@username',         Icon: IconInstagram, bg: '#E1306C', href: (v) => `https://instagram.com/${v.replace(/^@/, '')}` },
-  { key: 'whatsapp',  label: 'WhatsApp',  placeholder: '+380...',           Icon: IconWhatsApp,  bg: '#25D366', href: (v) => `https://wa.me/${v.replace(/[^\d]/g, '')}` },
-  { key: 'viber',     label: 'Viber',     placeholder: '+380...',           Icon: IconViber,     bg: '#7360F2', href: (v) => `viber://chat?number=${encodeURIComponent(v)}` },
-  { key: 'tiktok',    label: 'TikTok',    placeholder: '@username',         Icon: IconTikTok,    bg: '#010101', href: (v) => `https://tiktok.com/@${v.replace(/^@/, '')}` },
-  { key: 'youtube',   label: 'YouTube',   placeholder: 'Ссылка на канал',   Icon: IconYouTube,   bg: '#FF0000', href: (v) => v.startsWith('http') ? v : `https://youtube.com/@${v.replace(/^@/, '')}` },
-  { key: 'facebook',  label: 'Facebook',  placeholder: 'Ссылка на профиль', Icon: IconFacebook,  bg: '#1877F2', href: (v) => v.startsWith('http') ? v : `https://facebook.com/${v}` },
-  { key: 'website',   label: 'Сайт',      placeholder: 'https://...',       Icon: Globe as unknown as IconFC, bg: '#6B7280', href: (v) => v.startsWith('http') ? v : `https://${v}` },
+  { key: 'telegram',  label: 'Telegram',  placeholder: '@username',         Icon: IconTelegram,  href: (v) => `https://t.me/${v.replace(/^@/, '')}` },
+  { key: 'instagram', label: 'Instagram', placeholder: '@username',         Icon: IconInstagram, href: (v) => `https://instagram.com/${v.replace(/^@/, '')}` },
+  { key: 'whatsapp',  label: 'WhatsApp',  placeholder: '+380...',           Icon: IconWhatsApp,  href: (v) => `https://wa.me/${v.replace(/[^\d]/g, '')}` },
+  { key: 'viber',     label: 'Viber',     placeholder: '+380...',           Icon: IconViber,     href: (v) => `viber://chat?number=${encodeURIComponent(v)}` },
+  { key: 'tiktok',    label: 'TikTok',    placeholder: '@username',         Icon: IconTikTok,    href: (v) => `https://tiktok.com/@${v.replace(/^@/, '')}` },
+  { key: 'youtube',   label: 'YouTube',   placeholder: 'Ссылка на канал',   Icon: IconYouTube,   href: (v) => v.startsWith('http') ? v : `https://youtube.com/@${v.replace(/^@/, '')}` },
+  { key: 'facebook',  label: 'Facebook',  placeholder: 'Ссылка на профиль', Icon: IconFacebook,  href: (v) => v.startsWith('http') ? v : `https://facebook.com/${v}` },
+  { key: 'website',   label: 'Сайт',      placeholder: 'https://...',       Icon: Globe as unknown as IconFC, href: (v) => v.startsWith('http') ? v : `https://${v}` },
 ];
 
 /* ─── Component ──────────────────────────────────────────────────────────── */
@@ -217,10 +216,7 @@ export function InlineSocialBlock({ masterId, masterProfileId, initialSocialLink
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 transition-colors hover:bg-neutral-50"
               >
-                <span
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full text-white"
-                  style={{ background: f.bg }}
-                >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
                   <Icon className="size-[18px]" />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -273,10 +269,7 @@ function SocialSheet({
           return (
             <div key={f.key}>
               <label className="mb-1.5 flex items-center gap-2 text-[12px] font-semibold text-neutral-700">
-                <span
-                  className="flex size-5 shrink-0 items-center justify-center rounded-full text-white"
-                  style={{ background: f.bg }}
-                >
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
                   <Icon className="size-3" />
                 </span>
                 {f.label}
