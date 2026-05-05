@@ -62,7 +62,6 @@ const CATEGORIES = [
   { key: 'all', label: 'Все' },
   { key: 'beauty', label: 'Красота' },
   { key: 'health', label: 'Здоровье' },
-  { key: 'wellness', label: 'Велнес' },
   { key: 'home', label: 'Дом' },
   { key: 'auto', label: 'Авто' },
   { key: 'fitness', label: 'Фитнес' },
