@@ -592,28 +592,15 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 всё заполнено. Сразу под навигацией, чтобы было заметно. */}
             <OwnerCompletenessPrompt masterProfileId={master.profile_id} />
 
-            {/* Sticky tab nav — only when there's something to navigate to */}
+            {/* Sticky tab nav — Fresha underline-style. accent=var(--m-text)
+                чтобы активный таб и подчёркивающая линия были чёрными в светлой
+                теме / белыми в тёмной (как у Fresha). */}
             {navSections.length > 1 && (
-              <div
-                className="sticky top-0 z-30 -mx-4 border-b px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-                style={{
-                  background: 'color-mix(in oklab, var(--m-bg) 95%, transparent)',
-                  borderColor: 'var(--m-border)',
-                }}
-              >
-                <nav className="flex gap-2 overflow-x-auto py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {navSections.map((s) => (
-                    <a
-                      key={s.id}
-                      href={`#${s.id}`}
-                      className="whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] font-semibold transition-colors"
-                      style={{ color: 'var(--m-text-secondary)' }}
-                    >
-                      {s.label}
-                    </a>
-                  ))}
-                </nav>
-              </div>
+              <MasterPageSectionTabs
+                sections={navSections}
+                accent="var(--m-text)"
+                topOffset={64}
+              />
             )}
 
             {/* Bio — inline-editable. Скрыто для клиента если пусто; для owner —

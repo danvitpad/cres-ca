@@ -574,6 +574,9 @@ html.dark {
 .public-master-scope .text-neutral-400,
 .public-master-scope .text-muted-foreground { color: var(--m-text-tertiary) !important; }
 .public-master-scope .text-neutral-300 { color: var(--m-text-disabled) !important; }
+/* text-white в invert-кнопках/pills (active state) — на тёмной теме
+   должен стать тёмным, иначе белое на белом не читается */
+.public-master-scope .text-white { color: var(--m-bg) !important; }
 
 .public-master-scope .border-border,
 .public-master-scope .border-neutral-100,

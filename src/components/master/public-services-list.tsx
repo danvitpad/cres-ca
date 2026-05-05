@@ -81,12 +81,12 @@ export function PublicServicesList({ services, masterId, locale = 'ru' }: Props)
                 key={g.name}
                 type="button"
                 onClick={() => jumpTo(g.name)}
-                className={
-                  'whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-semibold transition-colors ' +
-                  (isActive
-                    ? 'border-neutral-900 bg-neutral-900 text-white'
-                    : 'border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
-                }
+                className="whitespace-nowrap rounded-full border px-4 py-1.5 text-[13px] font-semibold transition-colors"
+                style={{
+                  background: isActive ? 'var(--m-text)' : 'var(--m-surface)',
+                  color: isActive ? 'var(--m-bg)' : 'var(--m-text-secondary)',
+                  borderColor: isActive ? 'var(--m-text)' : 'var(--m-border)',
+                }}
               >
                 {g.name}
               </button>
@@ -104,12 +104,21 @@ export function PublicServicesList({ services, masterId, locale = 'ru' }: Props)
             }}
           >
             {showPills && (
-              <h3 className="mb-3 text-[15px] font-bold text-neutral-900">{g.name}</h3>
+              <h3 className="mb-3 text-[15px] font-bold" style={{ color: 'var(--m-text)' }}>{g.name}</h3>
             )}
 
-            <ul className="divide-y divide-neutral-200 overflow-hidden rounded-[16px] border border-neutral-200 bg-white">
-              {g.items.map((s) => (
-                <li key={s.id}>
+            <ul
+              className="overflow-hidden rounded-[16px] border"
+              style={{
+                background: 'var(--m-surface)',
+                borderColor: 'var(--m-border)',
+              }}
+            >
+              {g.items.map((s, idx) => (
+                <li
+                  key={s.id}
+                  style={idx > 0 ? { borderTop: '1px solid var(--m-border)' } : undefined}
+                >
                   <ServiceRow service={s} masterId={masterId} locale={locale} />
                 </li>
               ))}
@@ -133,9 +142,9 @@ function ServiceRow({ service, masterId, locale }: { service: Service; masterId:
   return (
     <div className="flex items-start gap-4 px-5 py-5">
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-[15px] font-semibold leading-snug text-neutral-900">{name}</p>
+        <p className="text-[15px] font-semibold leading-snug" style={{ color: 'var(--m-text)' }}>{name}</p>
         {(duration || service.description) && (
-          <p className="flex items-center gap-1.5 text-[13px] text-neutral-500">
+          <p className="flex items-center gap-1.5 text-[13px]" style={{ color: 'var(--m-text-tertiary)' }}>
             {duration && (
               <span className="inline-flex items-center gap-1">
                 <Clock className="size-3.5" />
@@ -151,7 +160,7 @@ function ServiceRow({ service, masterId, locale }: { service: Service; masterId:
           </p>
         )}
         {priceStr && (
-          <p className="pt-1 text-[15px] font-bold text-neutral-900">{priceStr}</p>
+          <p className="pt-1 text-[15px] font-bold" style={{ color: 'var(--m-text)' }}>{priceStr}</p>
         )}
       </div>
       <BookingCTA variant="service" serviceId={service.id}>Записаться</BookingCTA>

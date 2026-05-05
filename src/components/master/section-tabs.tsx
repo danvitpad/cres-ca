@@ -72,8 +72,12 @@ export function MasterPageSectionTabs({ sections, accent = 'var(--color-accent)'
 
   return (
     <div
-      className="sticky top-0 z-30 -mx-4 mt-8 border-b border-neutral-200 bg-white/90 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
-      style={{ ['--page-accent' as string]: accent }}
+      className="sticky top-0 z-30 -mx-4 mt-8 border-b px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      style={{
+        background: 'color-mix(in oklab, var(--m-bg) 90%, transparent)',
+        borderColor: 'var(--m-border)',
+        ['--page-accent' as string]: accent,
+      }}
     >
       <div
         ref={railRef}
@@ -87,15 +91,15 @@ export function MasterPageSectionTabs({ sections, accent = 'var(--color-accent)'
               type="button"
               data-section={s.id}
               onClick={() => go(s.id)}
-              className="relative whitespace-nowrap px-3 py-3 text-sm font-medium transition-colors"
+              className="relative whitespace-nowrap px-4 py-3.5 text-[14px] font-semibold transition-colors"
               style={{
-                color: isActive ? accent : 'rgb(115 115 115)',
+                color: isActive ? accent : 'var(--m-text-tertiary)',
               }}
             >
               {s.label}
               {isActive && (
                 <span
-                  className="absolute inset-x-2 bottom-0 h-0.5 rounded-full"
+                  className="absolute inset-x-2 bottom-0 h-[2px] rounded-full"
                   style={{ background: accent }}
                 />
               )}
