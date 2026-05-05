@@ -72,6 +72,8 @@ interface MasterRow {
   theme_background_color: string | null;
   theme_background_image_url: string | null;
   banner_position_y: number | null;
+  banner_position_x: number | null;
+  banner_scale: number | null;
   phone: string | null;
   email: string | null;
   date_of_birth: string | null;
@@ -153,7 +155,7 @@ async function loadMaster(handle: string): Promise<MasterRow | null> {
   const cols =
     'id, profile_id, display_name, specialization, bio, address, city, rating, total_reviews, avatar_url, cover_url, ' +
     'invite_code, slug, is_active, is_public, headline, meta_title, meta_description, og_image_url, badges, level, working_hours, booking_important_info, ' +
-    'theme_primary_color, theme_background_color, theme_background_image_url, banner_position_y, ' +
+    'theme_primary_color, theme_background_color, theme_background_image_url, banner_position_y, banner_position_x, banner_scale, ' +
     'phone_public, email_public, dob_public, interests, social_links, page_type, works_online, ' +
     'completed_appointments_count, served_clients_count, languages, workplace_photo_url, workplace_name, salon_id, ' +
     'profile:profiles!masters_profile_id_fkey(full_name, first_name, last_name, phone, email, date_of_birth, deleted_at)';
@@ -507,6 +509,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           masterProfileId={master.profile_id}
           initialCoverUrl={master.cover_url}
           initialBannerY={master.banner_position_y}
+          initialBannerX={master.banner_position_x}
+          initialBannerScale={master.banner_scale}
         />
       </div>
 
