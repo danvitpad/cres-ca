@@ -3,8 +3,10 @@
  * description: Cover-баннер сверху публичной страницы. Для клиента: image cover если
  *              есть, иначе ничего не рендерится. Для владельца: image + pencil + slider
  *              позиции Y; если cover пуст — большая dashed-CTA «+ Добавь обложку».
- *              Загрузка в Supabase storage `avatars` → public URL.
+ *              Загрузка в Supabase storage `avatars` → public URL. Без отдельного
+ *              кроп-диалога — превью сразу в попапе, слайдер кадрирует позицию.
  * created: 2026-04-26
+ * updated: 2026-05-05
  * --- */
 
 'use client';
@@ -16,7 +18,6 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useIsOwner } from './use-is-owner';
 import { InlineEditSheet } from './inline-edit-sheet';
-import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
 
 interface Props {
   masterId: string;
@@ -34,7 +35,6 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
   const [draftUrl, setDraftUrl] = useState<string | null>(coverUrl);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function startEdit() {
@@ -43,13 +43,14 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     setOpen(true);
   }
 
-  async function uploadBlob(blob: Blob): Promise<string | null> {
+  async function uploadFile(file: File): Promise<string | null> {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const path = `${user.id}/cover-${Date.now()}.webp`;
-    const { error } = await supabase.storage.from('avatars').upload(path, blob, {
-      contentType: blob.type,
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/gif' ? 'gif' : 'jpg';
+    const path = `${user.id}/cover-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('avatars').upload(path, file, {
+      contentType: file.type,
       cacheControl: '3600',
       upsert: false,
     });
@@ -60,20 +61,16 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
   }
 
-  function onFilePicked(file: File | null) {
+  async function onFilePicked(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith('image/')) return;
     if (file.size > 8 * 1024 * 1024) { toast.error('Файл больше 8 MB'); return; }
-    setCropSrc(URL.createObjectURL(file));
-  }
-
-  async function onCropApplied(blob: Blob) {
     setUploading(true);
-    const url = await uploadBlob(blob);
+    const url = await uploadFile(file);
     setUploading(false);
     if (url) {
       setDraftUrl(url);
-      setDraftY(50); // после кропа фото уже идеально кадрировано — обнуляем slider
+      setDraftY(50);
     }
   }
 
@@ -101,25 +98,6 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     }
   }
 
-  async function removeCover() {
-    setDraftUrl(null);
-  }
-
-  // Кроп-диалог вынесен НАРУЖУ из InlineEditSheet — иначе он закрывается
-  // вместе со шторкой (React размонтирует детей при AnimatePresence exit).
-  const cropDialog = (
-    <ImageCropDialog
-      open={!!cropSrc}
-      src={cropSrc}
-      onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
-      onCropped={onCropApplied}
-      title="Обложка профиля"
-      aspect={16 / 9}
-      shape="rect"
-      outputSize={1600}
-    />
-  );
-
   const sheet = (
     <InlineEditSheet
       open={open}
@@ -130,7 +108,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
           <button type="button" onClick={() => setOpen(false)} className="cres-popup-btn-cancel">
             Отмена
           </button>
-          <button type="button" onClick={save} disabled={saving} className="cres-popup-btn-save">
+          <button type="button" onClick={save} disabled={saving || uploading} className="cres-popup-btn-save">
             {saving && <Loader2 className="size-3.5 animate-spin" />}
             Сохранить
           </button>
@@ -146,7 +124,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         type="file"
         accept="image/*"
         hidden
-        onChange={(e) => { onFilePicked(e.target.files?.[0] ?? null); e.target.value = ''; }}
+        onChange={(e) => { void onFilePicked(e.target.files?.[0] ?? null); e.target.value = ''; }}
       />
 
       {/* Preview */}
@@ -185,7 +163,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         {draftUrl && (
           <button
             type="button"
-            onClick={removeCover}
+            onClick={() => setDraftUrl(null)}
             className="inline-flex items-center justify-center gap-1.5 rounded-full border border-neutral-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-rose-700 hover:bg-rose-50"
           >
             <Trash2 className="size-4" />
@@ -236,7 +214,6 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
           <span className="text-[14px] font-semibold">Добавь обложку</span>
         </button>
         {sheet}
-        {cropDialog}
       </>
     );
   }
@@ -265,7 +242,6 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         </button>
       )}
       {sheet}
-      {cropDialog}
     </div>
   );
 }
