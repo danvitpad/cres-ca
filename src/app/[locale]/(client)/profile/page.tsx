@@ -12,7 +12,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { Camera, Sparkles, Calendar, UserPlus, ImageIcon, ChevronRight } from 'lucide-react';
+import { Camera, Calendar, UserPlus, ImageIcon, ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -260,12 +260,7 @@ export default function ProfilePage() {
               label={t('statsMasters')}
               value={stats.masters}
             />
-            <StatCell
-              icon={<Sparkles className="size-4" />}
-              label={t('statsBonuses')}
-              value={stats.bonuses}
-              accent
-            />
+            {/* Bonus stat — HIDDEN: loyalty/bonuses temporarily disabled */}
           </div>
         </div>
       </motion.div>

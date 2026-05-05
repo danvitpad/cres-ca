@@ -148,15 +148,12 @@ export default function ClientFeedPage() {
           Ближайшие свободные окна, твои постоянные мастера и быстрые действия — всё на одном экране.
         </p>
         {stats && (
-          <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="mt-4 grid grid-cols-2 gap-2">
             <Link href="/history" className="rounded-xl bg-card/60 p-3 transition-colors hover:bg-card">
               <div className="text-[18px] font-bold tabular-nums text-foreground">{stats.totalVisits}</div>
               <div className="text-[11px] text-muted-foreground">визитов</div>
             </Link>
-            <Link href="/wallet" className="rounded-xl bg-card/60 p-3 transition-colors hover:bg-card">
-              <div className="text-[18px] font-bold tabular-nums text-[var(--ds-accent,#14b8a6)]">{stats.bonusBalance}</div>
-              <div className="text-[11px] text-muted-foreground">бонусов</div>
-            </Link>
+            {/* Bonus card — HIDDEN: loyalty/bonuses temporarily disabled */}
             <Link href="/my-masters" className="rounded-xl bg-card/60 p-3 transition-colors hover:bg-card">
               <div className="text-[18px] font-bold tabular-nums text-foreground">{stats.followingCount}</div>
               <div className="text-[11px] text-muted-foreground">подписок</div>

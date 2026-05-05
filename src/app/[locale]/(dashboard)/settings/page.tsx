@@ -29,7 +29,7 @@ import {
   KeyRound,
   Briefcase,
   MessageSquareHeart,
-  Gift,
+  // Gift, // HIDDEN: loyalty tab temporarily disabled
   Settings as SettingsCogIcon,
   RotateCcw,
 } from 'lucide-react';
@@ -104,7 +104,7 @@ export default function SettingsPage() {
     { key: 'hours', icon: CalendarClock, title: t('workingHours') },
     { key: 'security', icon: KeyRound, title: 'Безопасность' },
     { key: 'notifications', icon: BellRing, title: 'Уведомления' },
-    { key: 'loyalty', icon: Gift, title: 'Лояльность' },
+    // { key: 'loyalty', icon: Gift, title: 'Лояльность' }, // HIDDEN: temporarily disabled
     { key: 'policies', icon: Shield, title: t('policies') },
     { key: 'subscription', icon: CreditCard, title: t('subscription') },
     { key: 'invite', icon: LinkIcon, title: t('inviteLink') },
@@ -131,9 +131,7 @@ export default function SettingsPage() {
       <SettingsAnchor id="notifications" title="Уведомления" icon={BellRing}>
         <NotificationsTab master={master} onSaved={refetch} />
       </SettingsAnchor>
-      <SettingsAnchor id="loyalty" title="Лояльность" icon={Gift}>
-        <LoyaltyTab master={master} onSaved={refetch} />
-      </SettingsAnchor>
+      {/* LoyaltyTab — HIDDEN: temporarily disabled */}
       <SettingsAnchor id="policies" title={t('policies')} icon={Shield}>
         <PoliciesTab master={master} onSaved={refetch} />
       </SettingsAnchor>

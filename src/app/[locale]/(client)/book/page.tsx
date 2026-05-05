@@ -1001,61 +1001,7 @@ export default function BookPage() {
                 <span className="text-sm text-muted-foreground">{t('duration')}</span>
                 <span className="text-sm font-medium">{totalDuration} {t('min')}</span>
               </div>
-              {bonusPoints > 0 && (() => {
-                const allowed = redeemQuote?.allowed ?? 0;
-                const reason = redeemQuote?.reason;
-                if (Number(allowed) > 0) {
-                  // Можно списать — показываем тумблер с явным лимитом
-                  const willApply = Math.min(Number(allowed), Math.floor(basePrice));
-                  return (
-                    <div className="space-y-1 pt-1">
-                      <label className="flex items-center gap-3 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={useBonuses}
-                          onChange={(e) => setUseBonuses(e.target.checked)}
-                          className="size-4 rounded border-input accent-primary"
-                        />
-                        <span className="flex-1 text-sm">
-                          Списать {willApply} {willApply === 1 ? 'балл' : willApply < 5 ? 'балла' : 'баллов'} в счёт оплаты
-                        </span>
-                      </label>
-                      <p className="text-[11px] text-muted-foreground pl-7">
-                        У тебя {bonusPoints} баллов у этого мастера · максимум за визит: {Number(allowed)} баллов
-                      </p>
-                    </div>
-                  );
-                }
-                // Списание заблокировано — показываем причину человеческим текстом
-                let msg = '';
-                if (reason === 'redeem_disabled_by_master') {
-                  msg = 'Мастер пока не разрешает тратить баллы у себя. Накапливай — может разрешит позже.';
-                } else if (reason === 'min_visits_not_met') {
-                  const need = redeemQuote?.visits_required ?? 1;
-                  const done = redeemQuote?.visits_done ?? 0;
-                  msg = `Списать баллы можно после ${need} выполненного визита у этого мастера. У тебя выполнено: ${done}.`;
-                } else {
-                  msg = 'Сейчас баллы списать нельзя. Они продолжают копиться на твоём счёте у мастера.';
-                }
-                return (
-                  <div className="rounded-md border border-neutral-200 bg-neutral-50 dark:bg-neutral-900/40 dark:border-neutral-700 px-2.5 py-1.5 text-[11px] text-neutral-600 dark:text-neutral-400">
-                    💎 У тебя {bonusPoints} {bonusPoints === 1 ? 'балл' : bonusPoints < 5 ? 'балла' : 'баллов'}, но {msg.toLowerCase()}
-                  </div>
-                );
-              })()}
-              {bonusPreview > 0 && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Скидка бонусами</span>
-                  <span className="text-sm font-medium text-emerald-600 dark:text-emerald-300">−{formatMoney(bonusPreview, selectedService.currency)}</span>
-                </div>
-              )}
-              {showStackingHint && (
-                <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 px-2.5 py-1.5 text-[11px] text-amber-700 dark:text-amber-300">
-                  {bonusWinsPreview
-                    ? 'Применены бонусы — они выгоднее промокода. Промокод сохранится для другой записи.'
-                    : 'Применён промокод — он выгоднее бонусов. Бонусы останутся на счёте.'}
-                </div>
-              )}
+              {/* Bonus redemption — HIDDEN: loyalty/bonuses temporarily disabled */}
 
               {/* Promo code field */}
               <div className="space-y-1.5 pt-1 border-t">

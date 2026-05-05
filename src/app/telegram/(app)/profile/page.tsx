@@ -32,7 +32,6 @@ import { getInitData } from '@/lib/telegram/webapp';
 import {
   MobilePage,
   PageHeader,
-  GradientHeroCard,
   MenuList,
   AvatarCircle,
   type MenuItem,
@@ -53,7 +52,7 @@ export default function MiniAppProfilePage() {
   const searchParams = useSearchParams();
   const { user, haptic } = useTelegram();
   const { userId, clearAuth } = useAuthStore();
-  const [balance, setBalance] = useState(0);
+  // balance removed — loyalty/bonuses temporarily hidden
   const [fullName, setFullName] = useState<string | null>(null);
   const [bio, setBio] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(null);
@@ -96,7 +95,6 @@ export default function MiniAppProfilePage() {
         });
         if (res.ok) {
           const { profile: data } = await res.json();
-          setBalance(Number(data.bonus_balance ?? 0));
           setFullName(data.full_name ?? null);
           setBio(data.bio ?? null);
           setSlug(data.slug ?? null);
@@ -240,11 +238,6 @@ export default function MiniAppProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoaded]);
 
-  const balanceFmt = balance.toLocaleString('ru-RU', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
   const mainMenu: MenuItem[] = [
     {
       key: 'profile',
@@ -367,12 +360,7 @@ export default function MiniAppProfilePage() {
           outputSize={512}
         />
 
-        <GradientHeroCard
-          label="Баланс кошелька"
-          value={`${balanceFmt} ₴`}
-          cta="Открыть кошелёк"
-          onCta={() => router.push('/telegram/bonuses')}
-        />
+        {/* GradientHeroCard (wallet balance) — hidden: loyalty/bonuses temporarily disabled */}
 
         <MenuList items={mainMenu} />
         <MenuList items={supportMenu} />

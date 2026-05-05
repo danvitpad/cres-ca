@@ -19,7 +19,7 @@ import {
   Users,
   User,
   LogOut,
-  Wallet,
+  // Wallet, // HIDDEN: loyalty/bonuses temporarily disabled
   Settings,
   Search,
   MapPin,
@@ -50,7 +50,7 @@ const sidebarNav = [
   { key: 'appointments', icon: CalendarDays, href: '/appointments' },
   { key: 'myMasters', icon: UserPlus, href: '/my-masters' },
   { key: 'family', icon: Users, href: '/family' },
-  { key: 'wallet', icon: Wallet, href: '/wallet' },
+  // { key: 'wallet', icon: Wallet, href: '/wallet' }, // HIDDEN: loyalty/bonuses temporarily disabled
   { key: 'accountSettings', icon: Settings, href: '/account-settings' },
 ] as const;
 
