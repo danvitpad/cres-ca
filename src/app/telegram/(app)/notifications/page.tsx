@@ -62,13 +62,26 @@ function groupByDay(items: Notif[]) {
   });
 }
 
+function getLocale(): 'uk' | 'ru' | 'en' {
+  if (typeof window === 'undefined') return 'uk';
+  try {
+    const stored = localStorage.getItem('cres:locale');
+    if (stored === 'ru' || stored === 'en' || stored === 'uk') return stored;
+  } catch {}
+  return 'uk';
+}
+
 function formatDay(d: Date) {
+  const lang = getLocale();
+  const TODAY: Record<string, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
+  const YEST: Record<string, string> = { uk: 'Вчора', ru: 'Вчера', en: 'Yesterday' };
+  const LOC: Record<string, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
   const today = new Date();
   const y = new Date(today);
   y.setDate(y.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Сегодня';
-  if (d.toDateString() === y.toDateString()) return 'Вчера';
-  return d.toLocaleDateString('ru', { day: 'numeric', month: 'long' });
+  if (d.toDateString() === today.toDateString()) return TODAY[lang];
+  if (d.toDateString() === y.toDateString()) return YEST[lang];
+  return d.toLocaleDateString(LOC[lang], { day: 'numeric', month: 'long' });
 }
 
 const NOTIF_ICONS: Record<string, typeof Bell> = {

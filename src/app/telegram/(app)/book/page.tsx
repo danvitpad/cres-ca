@@ -76,20 +76,66 @@ const DAY_NAMES_SHORT: Record<string, string> = {
   thursday: 'Чт', friday: 'Пт', saturday: 'Сб',
 };
 
-const DAY_NAMES_FULL: Record<number, string> = {
-  0: 'воскресенье', 1: 'понедельник', 2: 'вторник', 3: 'среда',
-  4: 'четверг', 5: 'пятница', 6: 'суббота',
+type BookLang = 'uk' | 'ru' | 'en';
+
+function getBookLocale(): BookLang {
+  if (typeof window === 'undefined') return 'uk';
+  try {
+    const stored = localStorage.getItem('cres:locale');
+    if (stored === 'ru' || stored === 'en' || stored === 'uk') return stored;
+  } catch {}
+  return 'uk';
+}
+
+const DAY_NAMES_FULL_BY_LANG: Record<BookLang, Record<number, string>> = {
+  uk: {
+    0: 'неділя', 1: 'понеділок', 2: 'вівторок', 3: 'середа',
+    4: 'четвер', 5: 'пʼятниця', 6: 'субота',
+  },
+  ru: {
+    0: 'воскресенье', 1: 'понедельник', 2: 'вторник', 3: 'среда',
+    4: 'четверг', 5: 'пятница', 6: 'суббота',
+  },
+  en: {
+    0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday',
+    4: 'Thursday', 5: 'Friday', 6: 'Saturday',
+  },
 };
 
-const MONTH_NAMES_GENITIVE = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
-];
+const MONTH_NAMES_GENITIVE_BY_LANG: Record<BookLang, string[]> = {
+  uk: ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
+       'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'],
+  ru: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+       'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June',
+       'July', 'August', 'September', 'October', 'November', 'December'],
+};
 
-const MONTH_NAMES_FULL = [
-  'январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
-  'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь',
-];
+const MONTH_NAMES_FULL_BY_LANG: Record<BookLang, string[]> = {
+  uk: ['січень', 'лютий', 'березень', 'квітень', 'травень', 'червень',
+       'липень', 'серпень', 'вересень', 'жовтень', 'листопад', 'грудень'],
+  ru: ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+       'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June',
+       'July', 'August', 'September', 'October', 'November', 'December'],
+};
+
+// Backward-compat single accessors — выбирают по текущему языку из localStorage.
+const DAY_NAMES_FULL: Record<number, string> = new Proxy({} as Record<number, string>, {
+  get(_t, p) { return DAY_NAMES_FULL_BY_LANG[getBookLocale()][Number(p)]; },
+});
+const MONTH_NAMES_GENITIVE: string[] = new Proxy([] as string[], {
+  get(_t, p) {
+    if (p === 'length') return 12;
+    return MONTH_NAMES_GENITIVE_BY_LANG[getBookLocale()][Number(p)];
+  },
+});
+const MONTH_NAMES_FULL: string[] = new Proxy([] as string[], {
+  get(_t, p) {
+    if (p === 'length') return 12;
+    return MONTH_NAMES_FULL_BY_LANG[getBookLocale()][Number(p)];
+  },
+});
 
 const VIOLET = '#2dd4bf';
 const _VIOLET_DARK = 'var(--color-accent)';
@@ -107,21 +153,34 @@ const DEFAULT_WORKING_HOURS: NonNullable<MasterInfo['working_hours']> = {
 /* ─────────────────── Helpers ─────────────────── */
 
 function formatDuration(mins: number): string {
-  if (mins < 60) return `${mins} мин`;
+  const lang = getBookLocale();
+  const HOUR: Record<BookLang, string> = { uk: 'год', ru: 'ч', en: 'h' };
+  const MIN: Record<BookLang, string> = { uk: 'хв', ru: 'мин', en: 'min' };
+  if (mins < 60) return `${mins} ${MIN[lang]}`;
   const h = Math.floor(mins / 60);
   const m = mins % 60;
-  if (m === 0) return `${h} ч`;
-  return `${h} ч ${m} мин`;
+  if (m === 0) return `${h} ${HOUR[lang]}`;
+  return `${h} ${HOUR[lang]} ${m} ${MIN[lang]}`;
 }
 
 function formatPrice(price: number): string {
-  return Number(price).toLocaleString('ru-RU');
+  const lang = getBookLocale();
+  const LOC: Record<BookLang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
+  return Number(price).toLocaleString(LOC[lang]);
 }
 
 function pluralServices(count: number): string {
-  if (count === 1) return 'услуга';
-  if (count >= 2 && count <= 4) return 'услуги';
-  return 'услуг';
+  const lang = getBookLocale();
+  if (lang === 'en') return count === 1 ? 'service' : 'services';
+  // Both ru and uk use Slavic plurals: 1 → одна, 2-4 → две, 5+ → много
+  // Грамматически совпадают для услуга/послуга.
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return lang === 'uk' ? 'послуга' : 'услуга';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return lang === 'uk' ? 'послуги' : 'услуги';
+  }
+  return lang === 'uk' ? 'послуг' : 'услуг';
 }
 
 function formatDateFull(date: Date): string {

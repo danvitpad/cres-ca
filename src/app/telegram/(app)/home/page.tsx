@@ -330,7 +330,7 @@ export default function MiniAppHomePage() {
               {next.service_name}
             </p>
             <p style={{ fontSize: 14, opacity: 0.95, margin: 0 }}>
-              {formatDateTime(next.starts_at)} · {next.master_name}
+              {formatDateTime(next.starts_at, lang)} · {next.master_name}
             </p>
             {next.salon?.name && (
               <p style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
@@ -428,7 +428,7 @@ export default function MiniAppHomePage() {
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, ...TYPE.caption }}>
                         <Clock size={13} />
-                        {formatSlotDate(s.date, s.time)}
+                        {formatSlotDate(s.date, s.time, lang)}
                       </div>
                     </div>
                     <ChevronRight size={18} color={T.textTertiary} />
@@ -716,7 +716,11 @@ export default function MiniAppHomePage() {
   );
 }
 
-function formatDateTime(iso: string): string {
+const LOCALE_MAP: Record<Lang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
+const TODAY_LABEL: Record<Lang, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
+const TOMORROW_LABEL: Record<Lang, string> = { uk: 'Завтра', ru: 'Завтра', en: 'Tomorrow' };
+
+function formatDateTime(iso: string, lang: Lang): string {
   const d = new Date(iso);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -724,17 +728,17 @@ function formatDateTime(iso: string): string {
   target.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 86400000);
   const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  if (target.getTime() === today.getTime()) return `Сегодня ${time}`;
-  if (target.getTime() === tomorrow.getTime()) return `Завтра ${time}`;
-  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} ${time}`;
+  if (target.getTime() === today.getTime()) return `${TODAY_LABEL[lang]} ${time}`;
+  if (target.getTime() === tomorrow.getTime()) return `${TOMORROW_LABEL[lang]} ${time}`;
+  return `${d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'short' })} ${time}`;
 }
 
-function formatSlotDate(dateStr: string, time: string): string {
+function formatSlotDate(dateStr: string, time: string, lang: Lang): string {
   const d = new Date(dateStr + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 86400000);
-  if (d.getTime() === today.getTime()) return `Сегодня ${time}`;
-  if (d.getTime() === tomorrow.getTime()) return `Завтра ${time}`;
-  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} ${time}`;
+  if (d.getTime() === today.getTime()) return `${TODAY_LABEL[lang]} ${time}`;
+  if (d.getTime() === tomorrow.getTime()) return `${TOMORROW_LABEL[lang]} ${time}`;
+  return `${d.toLocaleDateString(LOCALE_MAP[lang], { day: 'numeric', month: 'short' })} ${time}`;
 }

@@ -439,14 +439,27 @@ function TabBtn({
   );
 }
 
+function getLocale(): 'uk' | 'ru' | 'en' {
+  if (typeof window === 'undefined') return 'uk';
+  try {
+    const stored = localStorage.getItem('cres:locale');
+    if (stored === 'ru' || stored === 'en' || stored === 'uk') return stored;
+  } catch {}
+  return 'uk';
+}
+
 function formatSlotDate(dateStr: string, time: string): string {
+  const lang = getLocale();
+  const TODAY: Record<string, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
+  const TOMORROW: Record<string, string> = { uk: 'Завтра', ru: 'Завтра', en: 'Tomorrow' };
+  const LOC: Record<string, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
   const d = new Date(dateStr + 'T00:00:00');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today.getTime() + 86400000);
-  if (d.getTime() === today.getTime()) return `Сегодня ${time}`;
-  if (d.getTime() === tomorrow.getTime()) return `Завтра ${time}`;
-  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} ${time}`;
+  if (d.getTime() === today.getTime()) return `${TODAY[lang]} ${time}`;
+  if (d.getTime() === tomorrow.getTime()) return `${TOMORROW[lang]} ${time}`;
+  return `${d.toLocaleDateString(LOC[lang], { day: 'numeric', month: 'short' })} ${time}`;
 }
 
 function Avatar({ src, name }: { src: string | null; name: string | null }) {
