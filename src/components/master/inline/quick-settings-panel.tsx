@@ -76,6 +76,9 @@ export function OwnerInlineQuickSettings({
         return false;
       }
       setMaster((m) => (m ? { ...m, [field]: value } : m));
+      if (field === 'works_online') {
+        window.dispatchEvent(new CustomEvent('master:online_changed', { detail: { value } }));
+      }
       return true;
     } finally {
       setSavingField(null);

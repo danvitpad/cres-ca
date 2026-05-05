@@ -13,6 +13,7 @@ import { Star, MapPin, Building2, Users, Phone, Mail } from 'lucide-react';
 import { BookingCTA } from './booking/booking-cta';
 import { FollowMasterButton } from './follow-master-button';
 import { InlineAvatarEdit } from './inline/avatar-edit';
+import { OnlineBadge } from './online-badge';
 import { getVerticalCopy } from '@/lib/verticals/copy';
 
 /** Если эта публичка — на самом деле страница КОМАНДЫ (мастер сам владеет
@@ -92,16 +93,9 @@ export function PublicHeroCard({
         boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.07)',
       }}
     >
-      {/* Top-left: маленькая зелёная точка «Online» когда мастер принимает онлайн.
-          Раньше была подписью на аватаре — теперь компактнее, прямо на углу
-          карточки напротив кнопки «Поделиться». */}
-      {worksOnline && (
-        <span
-          className="absolute left-4 top-4 z-10 inline-flex size-3 items-center justify-center rounded-full bg-emerald-500 shadow"
-          style={{ boxShadow: '0 0 0 2px var(--m-surface)' }}
-          title="Принимает онлайн"
-        />
-      )}
+      {/* Top-left: зелёная точка «Online». OnlineBadge — client component,
+          реагирует на custom event master:online_changed от quick-settings-panel. */}
+      <OnlineBadge initialOnline={worksOnline} />
 
       {/* Share button удалён по запросу — CRES-CA ID показывается ниже карточки */}
 
