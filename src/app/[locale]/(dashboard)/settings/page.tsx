@@ -225,23 +225,46 @@ function SettingsAllInOneView({
         </p>
       </motion.div>
 
-      {/* Two-column: sidebar + content */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 240px) minmax(0, 1fr)',
-        gap: 32,
-        alignItems: 'start',
-      }}>
-        {/* Sidebar — sticky, скрывается на мобиле */}
+      {/* Mobile: pills сверху (только <md). Без grid-trick'ов чтобы не
+          ломать раскладку. */}
+      <div
+        className="md:hidden flex gap-2 overflow-x-auto pb-2 mb-3"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {sections.map((s) => {
+          const isActive = active === s.key;
+          const baseStyle: React.CSSProperties = {
+            flexShrink: 0,
+            padding: '7px 14px',
+            borderRadius: 999,
+            border: `1px solid ${isActive ? C.accent : C.border}`,
+            background: isActive ? C.accentSoft : C.surface,
+            color: isActive ? C.accent : C.text,
+            fontSize: 12,
+            fontWeight: 600,
+            fontFamily: FONT,
+            cursor: 'pointer',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          };
+          if (s.href) {
+            return <Link key={s.key} href={s.href} style={baseStyle}>{s.title}</Link>;
+          }
+          return (
+            <button key={s.key} type="button" onClick={() => scrollTo(s.key)} style={baseStyle}>
+              {s.title}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desktop: flex row [sidebar 240px | content 1fr]. На <md sidebar
+          скрыт, контент занимает всю ширину. */}
+      <div className="flex flex-col md:flex-row md:gap-8 md:items-start">
+        {/* Sidebar — sticky на десктопе */}
         <aside
-          style={{
-            position: 'sticky',
-            top: 24,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-          }}
-          className="hidden md:flex"
+          className="hidden md:flex md:flex-col md:gap-0.5 md:w-[240px] md:flex-shrink-0 md:sticky md:self-start"
+          style={{ top: 24 }}
         >
           {sections.map((s) => {
             const Icon = s.icon;
@@ -263,6 +286,7 @@ function SettingsAllInOneView({
               cursor: 'pointer',
               textDecoration: 'none',
               transition: 'background 0.12s, color 0.12s',
+              width: '100%',
             };
             if (s.href) {
               return (
@@ -284,7 +308,6 @@ function SettingsAllInOneView({
               </button>
             );
           })}
-          {/* Replay onboarding tour */}
           <button
             type="button"
             onClick={async () => {
@@ -308,48 +331,8 @@ function SettingsAllInOneView({
           </button>
         </aside>
 
-        {/* Mobile: top scroll-pills вместо sidebar */}
-        <div
-          className="md:hidden"
-          style={{
-            display: 'flex',
-            gap: 8,
-            overflowX: 'auto',
-            padding: '4px 0',
-            marginBottom: 12,
-            gridColumn: '1 / -1',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {sections.map((s) => {
-            const isActive = active === s.key;
-            const baseStyle: React.CSSProperties = {
-              flexShrink: 0,
-              padding: '7px 14px',
-              borderRadius: 999,
-              border: `1px solid ${isActive ? C.accent : C.border}`,
-              background: isActive ? C.accentSoft : C.surface,
-              color: isActive ? C.accent : C.text,
-              fontSize: 12,
-              fontWeight: 600,
-              fontFamily: FONT,
-              cursor: 'pointer',
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            };
-            if (s.href) {
-              return <Link key={s.key} href={s.href} style={baseStyle}>{s.title}</Link>;
-            }
-            return (
-              <button key={s.key} type="button" onClick={() => scrollTo(s.key)} style={baseStyle}>
-                {s.title}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Content — все секции подряд */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 }}>
+        <div className="flex-1 min-w-0 flex flex-col" style={{ gap: 28 }}>
           {children}
         </div>
       </div>

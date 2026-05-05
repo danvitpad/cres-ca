@@ -12,7 +12,6 @@ import Image from 'next/image';
 import { Star, MapPin, Sparkles, Calendar, Clock, Phone, Mail, Cake } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { PortfolioGrid } from '@/components/master/portfolio-grid';
-import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
@@ -23,6 +22,7 @@ import { FollowMasterButton } from '@/components/master/follow-master-button';
 import { MasterPageSectionTabs } from '@/components/master/section-tabs';
 import { ServicesByCategory } from '@/components/master/services-by-category';
 import { PublicHeroCard } from '@/components/master/public-hero-card';
+import { PublicCresIdBadge } from '@/components/master/public-cres-id';
 import { PublicServicesList } from '@/components/master/public-services-list';
 import { BookingDrawerProvider } from '@/components/master/booking/booking-provider';
 import { BookingCTA } from '@/components/master/booking/booking-cta';
@@ -569,6 +569,12 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               } : null}
               worksOnline={worksOnline}
             />
+            {/* CRES-CA ID — публичный handle, клик копирует ссылку */}
+            {(master.slug || master.invite_code) && (
+              <div className="flex justify-center">
+                <PublicCresIdBadge handle={master.slug || master.invite_code!} />
+              </div>
+            )}
             {/* Кнопка «Подписаться» теперь живёт внутри PublicHeroCard,
                 чтобы скроллиться вместе со sticky-карточкой. */}
 

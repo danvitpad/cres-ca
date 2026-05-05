@@ -10,7 +10,6 @@
  * --- */
 
 import { Star, MapPin, Building2, Users, Phone, Mail } from 'lucide-react';
-import { ShareStoryButton } from './share-story-button';
 import { BookingCTA } from './booking/booking-cta';
 import { FollowMasterButton } from './follow-master-button';
 import { InlineAvatarEdit } from './inline/avatar-edit';
@@ -102,10 +101,7 @@ export function PublicHeroCard({
         />
       )}
 
-      {/* Share top-right */}
-      <div className="absolute right-4 top-4 z-10">
-        <ShareStoryButton masterId={masterId} masterName={displayName} />
-      </div>
+      {/* Share button удалён по запросу — CRES-CA ID показывается ниже карточки */}
 
       {/* Avatar (centered, large) — inline-editable for owner.
           Белая окантовка ring-4 ring-white чтобы аватар читался на любом фоне
