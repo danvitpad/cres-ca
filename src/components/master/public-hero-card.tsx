@@ -10,10 +10,9 @@
  * --- */
 
 import { Star, MapPin, Building2, Users, Phone, Mail } from 'lucide-react';
-import { BookingCTA } from './booking/booking-cta';
-import { FollowMasterButton } from './follow-master-button';
 import { InlineAvatarEdit } from './inline/avatar-edit';
 import { OnlineBadge } from './online-badge';
+import { OwnerHiddenCTAs } from './owner-hidden-ctas';
 import { getVerticalCopy } from '@/lib/verticals/copy';
 
 /** Если эта публичка — на самом деле страница КОМАНДЫ (мастер сам владеет
@@ -154,13 +153,9 @@ export function PublicHeroCard({
         </div>
       </div>
 
-      {/* Main CTA — opens BookingDrawer via context */}
-      <BookingCTA variant="hero">Записаться</BookingCTA>
-
-      {/* Follow / Subscribe — теперь живёт ВНУТРИ sticky hero card.
-          Раньше кнопка была отдельным элементом под карточкой и при
-          скролле уезжала под верхний бейдж. */}
-      <FollowMasterButton masterId={masterId} />
+      {/* Кнопки «Записаться» и «Подписаться» скрыты для владельца страницы —
+          OwnerHiddenCTAs проверяет сессию на клиенте и рендерит null для owner. */}
+      <OwnerHiddenCTAs masterId={masterId} masterProfileId={masterProfileId} />
 
       {/* Divider */}
       <div className="border-t border-neutral-200" />
