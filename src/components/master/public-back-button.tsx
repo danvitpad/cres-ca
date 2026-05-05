@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 // /m/[handle] живёт вне /[locale] segment — там нет NextIntlClientProvider,
 // поэтому useLocale() падает с 500. Локаль читаем вручную из cookie/URL,
@@ -28,23 +29,58 @@ function detectLocale(): string {
   return 'ru';
 }
 
-export function PublicBackButton() {
+function isInsideTelegramMiniApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  if (w.Telegram?.WebApp?.initData) return true;
+  try {
+    if (sessionStorage.getItem('cres:tg')) return true;
+  } catch { /* ignore */ }
+  return false;
+}
+
+/**
+ * Единая кнопка «Назад» в левом верхнем углу публичной страницы.
+ *
+ * Поведение:
+ *  - В Telegram Mini App не рендерится (там встроенный BackButton).
+ *  - Для владельца страницы (auth.user.id === master.profile_id) — уводит в кабинет
+ *    (`/telegram/m/profile` если внутри TG, иначе `/calendar`).
+ *  - Для гостя — `router.back()` или fallback на `/feed`.
+ *
+ * Важно: если на странице есть `OwnerToolbar` со своей кнопкой «Кабинет» — она
+ * скрыта, чтобы не дублировать UI. Эта кнопка — единственная.
+ */
+export function PublicBackButton({ masterProfileId }: { masterProfileId?: string | null }) {
   const router = useRouter();
   const [show, setShow] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    // В Mini App за back уже отвечает Telegram WebApp BackButton — здесь
-    // лишний крестик только запутает. Скрываем если внутри TG.
-    const isTg = typeof window !== 'undefined'
-      && !!(window as { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp;
-    setShow(!isTg);
+    setShow(!isInsideTelegramMiniApp());
   }, []);
+
+  useEffect(() => {
+    if (!masterProfileId) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.id === masterProfileId) setIsOwner(true);
+    });
+  }, [masterProfileId]);
 
   if (!show) return null;
 
   function onClick() {
-    // history.length включает и текущую страницу — поэтому > 1 значит «есть
-    // куда возвращаться». Если ровно 1 (прямой переход) — уходим на feed.
+    // Владелец → возврат в кабинет
+    if (isOwner) {
+      if (isInsideTelegramMiniApp()) {
+        window.location.href = '/telegram/m/profile';
+      } else {
+        window.location.href = '/calendar';
+      }
+      return;
+    }
+    // Гость → router.back() или feed
     if (typeof window !== 'undefined' && window.history.length > 1) {
       router.back();
     } else {
@@ -52,24 +88,27 @@ export function PublicBackButton() {
     }
   }
 
+  // Цвета через CSS-переменные публичной темы — чтобы кнопка читалась и в
+  // светлой, и в тёмной теме мастера / системы.
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Назад"
+      aria-label={isOwner ? 'Вернуться в кабинет' : 'Назад'}
+      title={isOwner ? 'Вернуться в кабинет' : 'Назад'}
       style={{
         position: 'fixed',
-        top: 16,
-        left: 16,
+        top: 'max(env(safe-area-inset-top, 0px), 12px)',
+        left: 12,
         zIndex: 50,
         width: 40,
         height: 40,
         borderRadius: 999,
-        border: '1px solid rgba(0,0,0,0.08)',
-        background: 'rgba(255,255,255,0.94)',
+        border: '1px solid var(--m-border, rgba(0,0,0,0.08))',
+        background: 'var(--m-surface, rgba(255,255,255,0.94))',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        color: '#111',
+        color: 'var(--m-text, #111)',
         boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
         display: 'inline-flex',
         alignItems: 'center',

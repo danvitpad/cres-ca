@@ -202,15 +202,20 @@ export default function TodayPage() {
   );
 
   const upcomingBirthdays = useMemo(() => {
-    return birthdays
+    const all = birthdays
       .map((c) => {
         const next = nextBirthday(c.date_of_birth);
         const daysUntil = differenceInDays(startOfDay(next), todayStart);
         return { ...c, daysUntil };
       })
-      .filter((c) => c.daysUntil >= 0 && c.daysUntil <= 30)
-      .sort((a, b) => a.daysUntil - b.daysUntil)
-      .slice(0, 5);
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+    // 1) Сначала смотрим 90-дневное окно — мастер может подготовиться заранее.
+    const inWindow = all.filter((c) => c.daysUntil >= 0 && c.daysUntil <= 90).slice(0, 5);
+    if (inWindow.length > 0) return inWindow;
+    // 2) Если пусто — показываем самый ближайший ДР (даже если через полгода),
+    // чтобы виджет был полезен и не казался сломанным.
+    const nextOne = all.find((c) => c.daysUntil >= 0);
+    return nextOne ? [nextOne] : [];
   }, [birthdays, todayStart]);
 
   const activeReminders = useMemo(() => reminders.slice(0, 5), [reminders]);
@@ -480,8 +485,8 @@ export default function TodayPage() {
           {upcomingBirthdays.length === 0 ? (
             <EmptyState
               icon={<Cake className="w-5 h-5" />}
-              title="Нет ближайших ДР"
-              description="В ближайшие 30 дней — никого."
+              title="Нет дат рождения"
+              description="Добавь дату рождения клиенту в его карточке — здесь появятся ближайшие ДР."
             />
           ) : (
             <ul className="space-y-2">

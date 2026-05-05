@@ -521,3 +521,40 @@
 .miniapp-scope .hover\:bg-white:hover { background-color: var(--m-surface-elevated) !important; }
 .miniapp-scope .hover\:bg-neutral-50:hover,
 .miniapp-scope .hover\:bg-neutral-100:hover { background-color: var(--m-surface-elevated) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+ * PUBLIC MASTER PAGE SCOPE — те же переопределения для /m/[handle].
+ * Тема страницы следует за системой посетителя (prefers-color-scheme),
+ * никаких ручных тогглов в БД. Карточки услуг / часы работы / контакты —
+ * единый светлый или тёмный фон.
+ * ═══════════════════════════════════════════════════════════ */
+
+.public-master-scope .bg-white,
+.public-master-scope .bg-card { background-color: var(--m-surface) !important; }
+.public-master-scope .bg-neutral-50  { background-color: var(--m-bg-subtle) !important; }
+.public-master-scope .bg-neutral-100 { background-color: var(--m-bg-subtle) !important; }
+.public-master-scope .bg-neutral-200 { background-color: var(--m-surface-elevated) !important; }
+.public-master-scope .bg-muted,
+.public-master-scope .bg-muted\/30,
+.public-master-scope .bg-muted\/40,
+.public-master-scope .bg-muted\/50 { background-color: var(--m-bg-subtle) !important; }
+
+.public-master-scope .text-black,
+.public-master-scope .text-card-foreground,
+.public-master-scope .text-neutral-900,
+.public-master-scope .text-neutral-800 { color: var(--m-text) !important; }
+.public-master-scope .text-neutral-700,
+.public-master-scope .text-neutral-600 { color: var(--m-text-secondary) !important; }
+.public-master-scope .text-neutral-500,
+.public-master-scope .text-neutral-400,
+.public-master-scope .text-muted-foreground { color: var(--m-text-tertiary) !important; }
+.public-master-scope .text-neutral-300 { color: var(--m-text-disabled) !important; }
+
+.public-master-scope .border-border,
+.public-master-scope .border-neutral-100,
+.public-master-scope .border-neutral-200,
+.public-master-scope .border-neutral-300 { border-color: var(--m-border) !important; }
+
+.public-master-scope .hover\:bg-white:hover,
+.public-master-scope .hover\:bg-neutral-50:hover,
+.public-master-scope .hover\:bg-neutral-100:hover { background-color: var(--m-surface-elevated) !important; }

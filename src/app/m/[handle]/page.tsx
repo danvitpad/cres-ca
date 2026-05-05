@@ -16,7 +16,6 @@ import { ShareStoryButton } from '@/components/master/share-story-button';
 import { RefCapture } from '@/components/master/ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
-import { OwnerToolbar } from '@/components/master/owner-toolbar';
 import { MiniAppBackBar } from '@/components/master/mini-app-back-bar';
 import { PublicBackButton } from '@/components/master/public-back-button';
 import { OwnerCompletenessPrompt } from '@/components/master/owner-completeness-prompt';
@@ -492,7 +491,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   // hex-цвет от мастера игнорируются (поля остаются в DB но не рендерятся).
   return (
     <div
-      className="min-h-screen"
+      className="public-master-scope min-h-screen"
       style={{
         backgroundColor: 'var(--m-bg)',
         color: 'var(--m-text)',
@@ -500,8 +499,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       }}
     >
       <MiniAppBackBar />
-      <PublicBackButton />
-      <OwnerToolbar masterProfileId={master.profile_id} />
+      <PublicBackButton masterProfileId={master.profile_id} />
       <RefCapture />
       <script
         type="application/ld+json"
