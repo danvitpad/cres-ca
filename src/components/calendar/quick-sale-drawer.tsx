@@ -184,7 +184,10 @@ export function QuickSaleDrawer({ open, onClose, theme = 'light', services, appo
     try {
       const productItems = cart.filter((i) => i.type === 'product');
 
-      // Create payment record
+      // Create payment record. payment_method берём из настроек мастера
+      // (default_payment_method) — иначе в Финансах будет «—» в колонке «Тип».
+      // Конкретную запись потом всегда можно поправить вручную.
+      const defaultMethod = (master as unknown as { default_payment_method?: string | null }).default_payment_method ?? 'cash';
       const { error: payError } = await supabase.from('payments').insert({
         master_id: master.id,
         appointment_id: appointmentId || null,
@@ -193,6 +196,7 @@ export function QuickSaleDrawer({ open, onClose, theme = 'light', services, appo
         currency: '₴',
         type: 'full',
         status: 'completed',
+        payment_method: defaultMethod,
         description: `[PRODUCT] ${cart.map((i) => `${i.name} x${i.quantity}`).join(', ')}`,
       });
       if (payError) throw payError;

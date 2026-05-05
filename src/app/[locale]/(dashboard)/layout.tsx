@@ -130,7 +130,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { key: 'contacts', icon: FreshaPerson, href: '/clients', label: t('nav.contacts') },
       { key: 'catalogue', icon: FreshaBook, href: '/services', label: t('nav.catalogue') },
       { key: 'marketing', icon: FreshaMegaphone, href: '/marketing', label: t('nav.messaging') },
-      { key: 'guilds', icon: FreshaPerson, href: '/guilds', label: 'Партнёры' },
+      { key: 'partners', icon: FreshaPerson, href: '/partners', label: 'Партнёры' },
       { key: 'stats', icon: BarChart3, href: '/stats', label: 'Статистика' },
     ];
   }, [t, ownedSalonId, unifiedTeamLimited]);

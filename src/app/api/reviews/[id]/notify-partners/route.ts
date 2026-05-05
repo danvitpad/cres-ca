@@ -51,23 +51,20 @@ export async function POST(_req: Request, { params }: RouteContext) {
   const recipientProfileId = r.reviewer_id || user?.id;
   if (!recipientProfileId) return NextResponse.json({ ok: true, skipped: 'no_recipient' });
 
-  // Найти все active группы этого мастера
-  const { data: groups } = await db
-    .from('guild_members')
-    .select('guild_id')
-    .eq('master_id', r.target_id)
-    .eq('status', 'active');
-  const guildIds = (groups ?? []).map((g) => (g as { guild_id: string }).guild_id);
-  if (guildIds.length === 0) return NextResponse.json({ ok: true, skipped: 'no_guilds' });
-
-  // Active партнёры — все active member'ы тех же групп, кроме самого мастера
+  // Найти всех активных bilateral-партнёров этого мастера через
+  // master_partnerships (status='accepted'). Гильдии больше не используются.
   const { data: partnerRows } = await db
-    .from('guild_members')
-    .select('master_id')
-    .in('guild_id', guildIds)
-    .eq('status', 'active')
-    .neq('master_id', r.target_id);
-  const partnerIds = Array.from(new Set((partnerRows ?? []).map((p) => (p as { master_id: string }).master_id)));
+    .from('master_partnerships')
+    .select('master_id, partner_id, cross_promotion')
+    .or(`master_id.eq.${r.target_id},partner_id.eq.${r.target_id}`)
+    .eq('status', 'accepted')
+    .eq('cross_promotion', true);
+  const partnerIds = Array.from(new Set(
+    (partnerRows ?? []).map((row) => {
+      const p = row as { master_id: string; partner_id: string };
+      return p.master_id === r.target_id ? p.partner_id : p.master_id;
+    }),
+  ));
   if (partnerIds.length === 0) return NextResponse.json({ ok: true, skipped: 'no_partners' });
 
   const { data: partners } = await db

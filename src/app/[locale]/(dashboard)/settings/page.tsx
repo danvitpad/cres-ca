@@ -436,6 +436,11 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
   const [publicLanguage, setPublicLanguage] = useState<'ru' | 'uk' | 'en'>(
     (((master as unknown as Record<string, unknown>).public_language as string | undefined) ?? 'ru') as 'ru' | 'uk' | 'en',
   );
+  // Способ оплаты по умолчанию — подставляется в авто-доходы от завершённых
+  // записей когда payment_method не указан вручную.
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<'cash' | 'card' | 'transfer'>(
+    (((master as unknown as Record<string, unknown>).default_payment_method as string | undefined) ?? 'cash') as 'cash' | 'card' | 'transfer',
+  );
 
   async function handleSave() {
     setSaving(true);
@@ -454,6 +459,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
       supabase.from('masters').update({
         specialization, bio, address, city,
         public_language: publicLanguage,
+        default_payment_method: defaultPaymentMethod,
         languages: languages.length ? languages : null,
       }).eq('id', master.id),
     ]);
@@ -626,6 +632,23 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
             { value: 'ru', label: 'Русский' },
             { value: 'uk', label: 'Українська' },
             { value: 'en', label: 'English' },
+          ]}
+          C={C}
+        />
+      </SettingsBlock>
+
+      <SettingsBlock
+        title="Способ оплаты по умолчанию"
+        subtitle="Когда клиент завершает запись, доход автоматически появляется в Финансах. Здесь — каким способом считать оплату по умолчанию. Конкретную запись всегда можно поправить вручную."
+        C={C}
+      >
+        <SettingsSegmented
+          value={defaultPaymentMethod}
+          onChange={setDefaultPaymentMethod}
+          options={[
+            { value: 'cash', label: 'Наличные' },
+            { value: 'card', label: 'Карта' },
+            { value: 'transfer', label: 'Перевод' },
           ]}
           C={C}
         />

@@ -129,7 +129,7 @@ export async function proxy(request: NextRequest) {
   // /m/[handle] и /s/[id] — публичные страницы, их НЕ трогаем.
   const DASHBOARD_ROOTS = new Set([
     'today', 'calendar', 'clients', 'services', 'finance', 'marketing',
-    'inventory', 'portfolio', 'guilds', 'partners', 'recommend', 'referral',
+    'inventory', 'portfolio', 'partners', 'recommend', 'referral',
     'salon', 'stats', 'supplier-orders', 'voice-assistant', 'before-after',
     'queue', 'integrations', 'help', 'dashboard', 'addons', 'network',
     // dashboard /settings, /book, /profile тоже сюда — конфликт с mini-app

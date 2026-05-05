@@ -34,7 +34,6 @@ import { InlineSocialBlock } from '@/components/master/inline/social-block';
 import { InlineInterestsBlock } from '@/components/master/inline/interests-block';
 import { OwnerInlineQuickSettings } from '@/components/master/inline/quick-settings-panel';
 import { OwnerPortfolioPanel } from '@/components/master/inline/owner-portfolio-panel';
-import { GuildPartnersSection } from '@/components/master/guild-partners-section';
 import { AddressMiniMap } from '@/components/shared/address-mini-map';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress, composeAddress } from '@/lib/format/address';
@@ -471,16 +470,9 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const bookHref = `/ru/book?master=${master.id}`;
 
   // Sticky tab nav — show only when there's >1 section to jump to
-  // Проверяем — есть ли у мастера партнёры из ГРУПП (active members
-  // в его guild-группах). Если есть — добавляем якорь в sticky-tab nav.
-  const { getMasterPartners } = await import('@/components/master/guild-partners-section');
-  const guildPartnersList = await getMasterPartners(master.id);
-  const hasGuildPartners = guildPartnersList.length > 0;
-
   const navSections: { id: string; label: string }[] = [];
   if (hasServices) navSections.push({ id: 'services', label: 'Услуги' });
   if (hasPortfolio) navSections.push({ id: 'portfolio', label: 'Работы' });
-  if (hasGuildPartners) navSections.push({ id: 'partners', label: 'Партнёры' });
   if (hasReviews) navSections.push({ id: 'reviews', label: 'Отзывы' });
   if (hasAddress) navSections.push({ id: 'address', label: 'Адрес' });
 
@@ -659,11 +651,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 )}
               </section>
             )}
-
-            {/* Партнёры из групп — только для активных member'ов хотя бы
-                одной группы. Показывает карточки коллег с переходом на их
-                публичные страницы. Для мастера-одиночки секция не рендерится. */}
-            <GuildPartnersSection masterId={master.id} />
 
             {/* Reviews */}
             {hasReviews && (

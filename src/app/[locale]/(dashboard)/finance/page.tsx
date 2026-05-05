@@ -410,6 +410,11 @@ export default function FinancePage() {
       const apt = p.appointment as { id?: string } | null | undefined;
       if (apt?.id) paidApptIds.add(apt.id);
     }
+    // Авто-доход (запись завершена, но мастер не создал явный payment) —
+    // подставляем default_payment_method из настроек мастера, чтобы в
+    // колонке «Тип» не было прочерка. Если настройка не задана — fallback
+    // на 'cash' (наличные = самый распространённый случай).
+    const masterDefaultMethod = ((master as unknown as { default_payment_method?: string | null } | null)?.default_payment_method) ?? 'cash';
     const apptRows = lastAppointments
       .filter((a) => a.status === 'completed' && !paidApptIds.has(a.id) && Number(a.price ?? 0) > 0)
       .map((a) => ({
@@ -418,13 +423,13 @@ export default function FinancePage() {
         amount: Number(a.price ?? 0),
         title: (a.services as { name?: string } | null)?.name || 'Услуга',
         subtitle: (a.clients as { full_name?: string } | null)?.full_name || '—',
-        paymentMethod: null as string | null,
+        paymentMethod: masterDefaultMethod as string,
         source: 'appointment' as const,
       }));
     return [...paymentRows, ...manualRows, ...apptRows].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-  }, [payments, manualIncomes, lastAppointments]);
+  }, [payments, manualIncomes, lastAppointments, master]);
 
   const PAYMENT_LABELS: Record<string, string> = {
     cash: 'Наличные',
