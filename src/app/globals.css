@@ -587,26 +587,107 @@ html.dark {
 .public-master-scope .hover\:bg-neutral-50:hover,
 .public-master-scope .hover\:bg-neutral-100:hover { background-color: var(--m-surface-elevated) !important; }
 
-/* Inputs / textareas внутри публичной (включая inline-модалки редактирования)
-   — прозрачный фон + var-обводка + var-текст, чтобы поля читались на любой
-   теме модалки. Иначе bg-white модалки + bg-white input = слипается. */
-.public-master-scope input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
-.public-master-scope textarea {
-  background-color: transparent !important;
+/* bg-neutral-100 — светло-серый фон (иконки в кружочках, hover overlay). */
+.public-master-scope .bg-neutral-100 { background-color: var(--m-bg-subtle) !important; }
+
+/* ═══════════════════════════════════════════════════════════
+ * UNIFIED POPUP STYLES — единый дизайн для всех модалок публички.
+ * Применяется к InlineEditSheet (часы / способы связи / интересы /
+ * адрес / о себе / обложка). Один класс .cres-popup задаёт правила
+ * для input/textarea/тумблеров/кнопок-футера, чтобы все попапы
+ * выглядели одинаково на любой теме.
+ * ═══════════════════════════════════════════════════════════ */
+
+/* Inputs и textareas — Fresha-style: prominent border, читаемый текст */
+.cres-popup input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+.cres-popup textarea {
+  background-color: var(--m-surface) !important;
   color: var(--m-text) !important;
-  border-color: var(--m-border) !important;
+  border: 1px solid var(--m-border) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  outline: none !important;
+  transition: border-color 0.15s !important;
+  box-sizing: border-box !important;
 }
-.public-master-scope input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
-.public-master-scope textarea:focus {
+.cres-popup input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+.cres-popup textarea:focus {
   border-color: var(--m-text) !important;
-  outline: none;
 }
-.public-master-scope input::placeholder,
-.public-master-scope textarea::placeholder {
+.cres-popup input::placeholder,
+.cres-popup textarea::placeholder {
   color: var(--m-text-tertiary) !important;
   opacity: 1 !important;
 }
 
-/* bg-neutral-100 (hover backgrounds, иконки в кружочках на CTA) — у нас
-   светло-серый в светлой теме, чуть темнее в тёмной. */
-.public-master-scope .bg-neutral-100 { background-color: var(--m-bg-subtle) !important; }
+/* Тумблеры внутри модалок — стандартный switch h-6 w-11, кружок 20px */
+.cres-popup [role="checkbox"] {
+  position: relative;
+  display: inline-flex;
+  width: 44px !important;
+  height: 24px !important;
+  flex-shrink: 0 !important;
+  cursor: pointer !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.18s !important;
+}
+.cres-popup [role="checkbox"][aria-checked="false"] {
+  background: var(--m-border) !important;
+}
+.cres-popup [role="checkbox"][aria-checked="true"] {
+  background: var(--m-text) !important;
+}
+.cres-popup [role="checkbox"] > span {
+  position: absolute !important;
+  top: 2px !important;
+  left: 2px !important;
+  width: 20px !important;
+  height: 20px !important;
+  background: var(--m-bg) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15) !important;
+  transition: transform 0.18s !important;
+  transform: translateX(0) !important;
+}
+.cres-popup [role="checkbox"][aria-checked="true"] > span {
+  transform: translateX(20px) !important;
+}
+
+/* Footer-кнопки модалки — Отмена outline, Сохранить solid invert */
+.cres-popup .cres-popup-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--m-border);
+  color: var(--m-text);
+  border-radius: 9999px;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cres-popup .cres-popup-btn-cancel:hover {
+  background: var(--m-bg-subtle);
+}
+.cres-popup .cres-popup-btn-save {
+  background: var(--m-text);
+  color: var(--m-bg);
+  border: none;
+  border-radius: 9999px;
+  padding: 9px 22px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cres-popup .cres-popup-btn-save:hover {
+  opacity: 0.9;
+}
+.cres-popup .cres-popup-btn-save:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

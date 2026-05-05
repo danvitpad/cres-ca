@@ -140,19 +140,10 @@ export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Pr
             Пн на все дни
           </button>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="rounded-full border border-neutral-200 px-5 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50"
-            >
+            <button type="button" onClick={() => setOpen(false)} className="cres-popup-btn-cancel">
               Отмена
             </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
-            >
+            <button type="button" onClick={save} disabled={saving} className="cres-popup-btn-save">
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               Сохранить
             </button>
@@ -229,7 +220,10 @@ export function InlineHoursBlock({ masterId, masterProfileId, initialHours }: Pr
           type="button"
           onClick={startEdit}
           className="group flex w-full items-center gap-3 rounded-2xl p-5 text-left transition-colors"
-          style={{ background: 'var(--m-bg-subtle)', border: '1px solid var(--m-border)' }}
+          style={{
+            background: 'var(--m-accent-soft)',
+            border: '1.5px solid color-mix(in oklab, var(--m-accent) 30%, transparent)',
+          }}
         >
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 group-hover:bg-neutral-900 group-hover:text-white">
             <Plus className="size-5" />

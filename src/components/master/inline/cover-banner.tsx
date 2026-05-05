@@ -112,19 +112,10 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
       title="Обложка профиля"
       footer={
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="rounded-full border border-neutral-200 px-5 py-2 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50"
-          >
+          <button type="button" onClick={() => setOpen(false)} className="cres-popup-btn-cancel">
             Отмена
           </button>
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-5 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
-          >
+          <button type="button" onClick={save} disabled={saving} className="cres-popup-btn-save">
             {saving && <Loader2 className="size-3.5 animate-spin" />}
             Сохранить
           </button>
