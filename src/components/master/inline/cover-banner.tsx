@@ -11,7 +11,7 @@
 
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { Pencil, Plus, Loader2, Trash2, ImagePlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -107,11 +107,18 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
     dragRef.current = null;
   }
 
-  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.08 : 0.08;
-    setDraftScale(s => Math.max(1, Math.min(4, s + delta)));
-  }
+  // Non-passive wheel listener so preventDefault() actually blocks page scroll
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      setDraftScale(s => Math.max(1, Math.min(4, s + delta)));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   async function save() {
     setSaving(true);
@@ -170,16 +177,15 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
         onChange={(e) => { void onFilePicked(e.target.files?.[0] ?? null); e.target.value = ''; }}
       />
 
-      {/* Preview — aspect ratio ~4:1 как реальный баннер. Drag для пан, scroll для зума. */}
+      {/* Preview — высота ~45vh как реальный баннер. Drag для пан, scroll для зума. */}
       <div
         ref={previewRef}
         className="relative mb-3 overflow-hidden rounded-2xl bg-neutral-100 select-none"
-        style={{ aspectRatio: '4 / 1', cursor: draftUrl ? (dragRef.current ? 'grabbing' : 'grab') : 'default' }}
+        style={{ height: '45vh', minHeight: 160, cursor: draftUrl ? (dragRef.current ? 'grabbing' : 'grab') : 'default' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
-        onWheel={handleWheel}
       >
         {draftUrl ? (
           <Image
@@ -203,11 +209,6 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
           <div className="absolute inset-0 flex items-center justify-center bg-white/70">
             <Loader2 className="size-6 animate-spin text-neutral-700" />
           </div>
-        )}
-        {draftUrl && !uploading && (
-          <p className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/50 px-3 py-1 text-[11px] text-white backdrop-blur-sm pointer-events-none">
-            Потяни · Скролл для зума · {Math.round(draftScale * 100)}%
-          </p>
         )}
       </div>
 
