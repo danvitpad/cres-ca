@@ -1,8 +1,11 @@
 /** --- YAML
- * name: Voice Reminders Cron
- * description: Sends Telegram notifications for due reminders. Looks up all linked Telegram chats via telegram_sessions.
+ * name: Master Reminders Cron
+ * description: Каждую минуту (Supabase pg_cron + cron-job.org redundancy) шлёт мастеру
+ *              напоминания, у которых наступило время (due_at <= now() AND completed=false).
+ *              Текст с временем, источником, inline-кнопкой «✓ Готово» (callback в webhook).
+ *              Помечает completed=true сразу после отправки чтобы не дублировать.
  * created: 2026-04-16
- * updated: 2026-04-16
+ * updated: 2026-05-05
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -24,7 +27,7 @@ export async function GET(request: Request) {
   // Find due reminders (due_at <= now, not completed)
   const { data: reminders, error } = await supabase
     .from('reminders')
-    .select('id, text, due_at, master_id, master:masters!inner(profile_id, notify_telegram)')
+    .select('id, text, due_at, source, master_id, master:masters!inner(profile_id, notify_telegram)')
     .eq('completed', false)
     .not('due_at', 'is', null)
     .lte('due_at', new Date().toISOString())
@@ -47,12 +50,37 @@ export async function GET(request: Request) {
         .eq('profile_id', master.profile_id);
 
       if (sessions?.length) {
+        // Время в Киевской зоне — мастер видит понятную локальную метку
+        const dueDate = r.due_at ? new Date(r.due_at) : null;
+        const timeLabel = dueDate
+          ? dueDate.toLocaleTimeString('ru-RU', {
+              timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit',
+            })
+          : '';
+        const sourceLabel = r.source === 'voice'
+          ? '🎤 голосом'
+          : r.source === 'text'
+            ? '💬 текстом'
+            : '';
+        const headerLine = timeLabel
+          ? `🔔 <b>Напоминание · ${timeLabel}</b>`
+          : '🔔 <b>Напоминание</b>';
+        const footer = sourceLabel ? `\n\n<i>${sourceLabel}</i>` : '';
+        const text = `${headerLine}\n\n${r.text}${footer}`;
+
         for (const s of sessions) {
-          await sendMessage(
-            s.chat_id,
-            `🔔 <b>Напоминание</b>\n\n${r.text}`,
-            { parse_mode: 'HTML' },
-          );
+          // Inline-кнопка «✓ Готово» — webhook ловит callback `done_reminder|<id>`
+          // и пишет completed_at = now() (виджет на /today сразу обновится).
+          await sendMessage(s.chat_id, text, {
+            parse_mode: 'HTML',
+            disable_notification: false,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: '✓ Готово', callback_data: `done_reminder|${r.id}` },
+                { text: '↻ Через 1 час', callback_data: `snooze_reminder|${r.id}|60` },
+              ]],
+            },
+          });
         }
         sent++;
       }

@@ -1443,6 +1443,94 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
     });
   } catch {}
 
+  // done_reminder|<id> — мастер нажал «✓ Готово» под напоминанием. Помечаем
+  // completed_at = now() и убираем кнопки из сообщения. Reminder уже completed
+  // (cron ставит completed=true сразу после отправки), но мы можем обновить
+  // completed_at для точной отметки времени когда мастер подтвердил.
+  if (data.startsWith('done_reminder|')) {
+    const id = data.split('|')[1];
+    if (!id) return;
+    const { data: profile } = await supabase
+      .from('profiles').select('id').eq('telegram_id', telegramId).single();
+    if (!profile) {
+      await sendMessage(chatId, '⚠️ Профиль не найден.');
+      return;
+    }
+    // Verify the reminder belongs to this profile's master
+    const { data: rem } = await supabase
+      .from('reminders')
+      .select('id, master_id, master:masters!inner(profile_id)')
+      .eq('id', id)
+      .maybeSingle();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const remMaster = rem?.master as any;
+    if (!rem || remMaster?.profile_id !== profile.id) {
+      await sendMessage(chatId, '⚠️ Напоминание не найдено.');
+      return;
+    }
+    await supabase.from('reminders')
+      .update({ completed: true, completed_at: new Date().toISOString() })
+      .eq('id', id);
+    try {
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: cb.message.message_id,
+          reply_markup: { inline_keyboard: [[{ text: '✓ Выполнено', callback_data: 'noop' }]] },
+        }),
+      });
+    } catch {}
+    return;
+  }
+
+  // snooze_reminder|<id>|<minutes> — отложить напоминание. Создаём новый
+  // reminder с due_at = now()+minutes, прежний остаётся completed (cron уже
+  // отметил при отправке).
+  if (data.startsWith('snooze_reminder|')) {
+    const parts = data.split('|');
+    const id = parts[1];
+    const minutes = Number(parts[2]) || 60;
+    if (!id) return;
+    const { data: profile } = await supabase
+      .from('profiles').select('id').eq('telegram_id', telegramId).single();
+    if (!profile) return;
+    const { data: rem } = await supabase
+      .from('reminders')
+      .select('id, text, master_id, master:masters!inner(profile_id)')
+      .eq('id', id)
+      .maybeSingle();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const remMaster = rem?.master as any;
+    if (!rem || remMaster?.profile_id !== profile.id) return;
+    const newDue = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    await supabase.from('reminders').insert({
+      master_id: rem.master_id,
+      text: rem.text,
+      due_at: newDue,
+      source: 'snooze',
+    });
+    const newTime = new Date(newDue).toLocaleTimeString('ru-RU', {
+      timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit',
+    });
+    try {
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageReplyMarkup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: cb.message.message_id,
+          reply_markup: { inline_keyboard: [[{ text: `↻ Отложено до ${newTime}`, callback_data: 'noop' }]] },
+        }),
+      });
+    } catch {}
+    return;
+  }
+
+  // noop — для уже-обработанных кнопок (acknowledge не нужен, кнопка не вызывает действия)
+  if (data === 'noop') return;
+
   // review:<apt_id>:<stars>  — native TG rating without a web round-trip
   if (data.startsWith('review:')) {
     const parts = data.split(':');

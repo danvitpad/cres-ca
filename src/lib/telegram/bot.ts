@@ -9,6 +9,8 @@ const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
 interface SendMessageOptions {
   parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
   reply_markup?: object;
+  disable_notification?: boolean;
+  disable_web_page_preview?: boolean;
 }
 
 export async function sendMessage(chatId: string | number, text: string, options?: SendMessageOptions) {
