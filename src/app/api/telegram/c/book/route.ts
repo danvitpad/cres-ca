@@ -44,6 +44,7 @@ export async function POST(request: Request) {
     service_names,
     date_formatted,
     selected_time,
+    partner_ref_master_id,
   } = body as {
     initData?: string;
     master_id?: string;
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     service_names?: string;
     date_formatted?: string;
     selected_time?: string;
+    partner_ref_master_id?: string;
   };
 
   if (!initData || !master_id || !Array.isArray(appointments) || appointments.length === 0) {
@@ -91,6 +93,19 @@ export async function POST(request: Request) {
   if (existingRows && existingRows.length > 0) {
     clientId = existingRows[0].id;
   } else {
+    // Партнёрская реф-атрибуция: если клиент перешёл с публичной страницы
+    // другого мастера через ?from=<id>, и тот мастер действительно — активный
+    // партнёр текущего, сохраняем referrer_master_id в новом client row.
+    let validRefMasterId: string | null = null;
+    if (partner_ref_master_id && partner_ref_master_id !== master_id) {
+      const { data: pp } = await admin
+        .from('master_partnerships')
+        .select('id')
+        .or(`and(master_id.eq.${master_id},partner_id.eq.${partner_ref_master_id}),and(master_id.eq.${partner_ref_master_id},partner_id.eq.${master_id})`)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (pp) validRefMasterId = partner_ref_master_id;
+    }
     const { data: created, error } = await admin
       .from('clients')
       .insert({
@@ -98,6 +113,7 @@ export async function POST(request: Request) {
         master_id,
         full_name: profile.full_name ?? '',
         phone: profile.phone ?? null,
+        referrer_master_id: validRefMasterId,
       })
       .select('id')
       .single();

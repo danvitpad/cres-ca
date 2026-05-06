@@ -666,6 +666,13 @@ export default function MiniAppBookPage() {
     const localeMap: Record<BookLang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
     const dateFormatted = selectedDate.toLocaleDateString(localeMap[lang], { day: 'numeric', month: 'short' });
 
+    // Партнёрский ref: если клиент перешёл с другой публичной страницы через
+    // ?from=<master_id>, PartnerRefCapture сохранил его в sessionStorage.
+    // Бэкенд проверит активность партнёрства и проставит referrer_master_id.
+    const partnerRef = (() => {
+      try { return window.sessionStorage.getItem('cres_partner_ref'); } catch { return null; }
+    })();
+
     const res = await fetch('/api/telegram/c/book', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -677,6 +684,7 @@ export default function MiniAppBookPage() {
         service_names: serviceNames,
         date_formatted: dateFormatted,
         selected_time: selectedTime,
+        partner_ref_master_id: partnerRef ?? undefined,
       }),
     });
     if (!res.ok) {

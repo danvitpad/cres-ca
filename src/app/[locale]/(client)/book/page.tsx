@@ -475,6 +475,23 @@ export default function BookPage() {
         .select('full_name, phone')
         .eq('id', userId)
         .single();
+      // Партнёр-ref: если клиент перешёл со страницы партнёра-мастера
+      // (?from=<other_master_id>), сохраняем в новом client row для
+      // отображения «Пришёл от X» в карточке клиента у этого мастера.
+      // Действительно только если другой мастер — активный партнёр текущего.
+      let partnerRefMasterId: string | null = null;
+      if (typeof window !== 'undefined') {
+        const fromMaster = window.sessionStorage.getItem('cres_partner_ref');
+        if (fromMaster && fromMaster !== preselectedMasterId) {
+          const { data: pp } = await supabase
+            .from('master_partnerships')
+            .select('id')
+            .or(`and(master_id.eq.${preselectedMasterId},partner_id.eq.${fromMaster}),and(master_id.eq.${fromMaster},partner_id.eq.${preselectedMasterId})`)
+            .eq('status', 'active')
+            .maybeSingle();
+          if (pp) partnerRefMasterId = fromMaster;
+        }
+      }
       const { data: newClient } = await supabase
         .from('clients')
         .insert({
@@ -483,6 +500,7 @@ export default function BookPage() {
           family_link_id: bookingFor?.id ?? null,
           full_name: bookingFor?.member_name ?? profile?.full_name ?? '',
           phone: bookingFor ? null : (profile?.phone ?? null),
+          referrer_master_id: partnerRefMasterId,
         })
         .select('id')
         .single();

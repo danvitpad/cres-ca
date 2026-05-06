@@ -139,9 +139,30 @@ export function PublicHeroCard({
         ) : null}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[14px] text-neutral-700">
           {reviewsCount > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <span className="font-semibold tabular-nums text-neutral-900">{rating.toFixed(1)}</span>
-              <Star className="size-4 fill-amber-400 text-amber-400" strokeWidth={0} />
+            <span className="inline-flex items-center gap-1.5">
+              <span className="font-semibold tabular-nums text-neutral-900">
+                {rating.toFixed(1).replace('.', ',')}
+              </span>
+              <span className="inline-flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((i) => {
+                  // Половинка считается ≥ i-0.5 но < i. Полная — ≥ i.
+                  const full = rating >= i - 0.25;
+                  const half = !full && rating >= i - 0.75;
+                  return (
+                    <span key={i} className="relative inline-block size-4">
+                      <Star className="absolute inset-0 size-4 fill-neutral-200 text-neutral-200" strokeWidth={0} />
+                      {(full || half) && (
+                        <span
+                          className="absolute inset-0 overflow-hidden"
+                          style={{ width: full ? '100%' : '50%' }}
+                        >
+                          <Star className="size-4 fill-amber-400 text-amber-400" strokeWidth={0} />
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </span>
               <span className="text-neutral-500">({reviewsCount})</span>
             </span>
           )}
@@ -161,7 +182,7 @@ export function PublicHeroCard({
       <div className="border-t border-neutral-200" />
 
       {/* Stats — only render when actually has visits/clients */}
-      {(completedAppointmentsCount > 0 || servedClientsCount > 0 || reviewsCount > 0) && (
+      {(completedAppointmentsCount > 0 || servedClientsCount > 0) && (
         <dl className="space-y-2 text-[14px]">
           {completedAppointmentsCount > 0 && (
             <div className="flex items-center justify-between">
@@ -176,23 +197,6 @@ export function PublicHeroCard({
               <dt className="text-neutral-700">Обслужено клиентов</dt>
               <dd className="font-semibold tabular-nums text-neutral-900">
                 {servedClientsCount.toLocaleString('ru-RU')}
-              </dd>
-            </div>
-          )}
-          {reviewsCount > 0 && (
-            <div className="flex items-center justify-between">
-              <dt className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star
-                    key={i}
-                    className={`size-4 ${i <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'fill-neutral-200 text-neutral-200'}`}
-                    strokeWidth={0}
-                  />
-                ))}
-                <span className="ml-1 text-neutral-500 text-[12px]">({reviewsCount})</span>
-              </dt>
-              <dd className="font-semibold tabular-nums text-neutral-900">
-                {rating.toFixed(1).replace('.', ',')}
               </dd>
             </div>
           )}

@@ -70,6 +70,8 @@ interface ClientDetail {
   late_cancellation_count: number;
   master_cancellation_count: number;
   no_show_count: number;
+  /** Если клиент пришёл с публичной страницы партнёра-мастера. Партнёрская атрибуция. */
+  referrer_master_id: string | null;
 }
 
 interface AppointmentRow {
@@ -101,6 +103,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
   const [blacklist, setBlacklist] = useState<{ warning: boolean; total: number } | null>(null);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [referrerMasterName, setReferrerMasterName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadClient = useCallback(async () => {
@@ -120,6 +123,18 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         } catch { /* ignore */ }
       } else {
         setBlacklist(null);
+      }
+      // Подтягиваем имя партнёра-источника, если клиент пришёл по реф-ссылке.
+      if (c.referrer_master_id) {
+        const { data: rm } = await supabase
+          .from('masters')
+          .select('display_name, profile:profiles!masters_profile_id_fkey(full_name)')
+          .eq('id', c.referrer_master_id)
+          .maybeSingle();
+        const profile = rm ? (Array.isArray(rm.profile) ? rm.profile[0] : rm.profile) : null;
+        setReferrerMasterName(rm?.display_name ?? profile?.full_name ?? null);
+      } else {
+        setReferrerMasterName(null);
       }
     }
     setLoading(false);
@@ -293,6 +308,11 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               <a href={`mailto:${client.email}`} style={{ color: C.textSecondary, textDecoration: 'none' }}>
                 <Mail size={11} style={{ display: 'inline', marginRight: 3, color: C.textTertiary }} />{client.email}
               </a>
+            )}
+            {referrerMasterName && (
+              <span title="Клиент пришёл с публичной страницы партнёра-мастера" style={{ color: C.accent, fontWeight: 500 }}>
+                🤝 Пришёл от {referrerMasterName}
+              </span>
             )}
           </div>
         </div>

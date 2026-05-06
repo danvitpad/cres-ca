@@ -13,6 +13,7 @@ import Image from 'next/image';
 import { Star, MapPin, Sparkles, Calendar, Clock, Phone, Mail, Cake } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { RefCapture } from '@/components/master/ref-capture';
+import { PartnerRefCapture } from '@/components/master/partner-ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
 import { MasterAvatar } from '@/components/master/master-avatar';
 import { MiniAppBackBar } from '@/components/master/mini-app-back-bar';
@@ -381,12 +382,16 @@ interface PartnerRow {
 }
 
 async function loadPartners(masterId: string): Promise<PartnerRow[]> {
-  // Active partnerships (either direction)
+  // Active partnerships (either direction). Сортировка по display_order ASC
+  // (для подписки tier 3+) с фолбэком на accepted_at DESC — чтобы недавние
+  // партнёрства показывались первыми когда display_order не задан.
   const { data: rows } = await admin()
     .from('master_partnerships')
-    .select('master_id, partner_id')
+    .select('master_id, partner_id, display_order, accepted_at')
     .or(`master_id.eq.${masterId},partner_id.eq.${masterId}`)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .order('display_order', { ascending: true })
+    .order('accepted_at', { ascending: false });
   if (!rows?.length) return [];
 
   const otherIds = rows.map(r => r.master_id === masterId ? r.partner_id : r.master_id);
@@ -395,7 +400,11 @@ async function loadPartners(masterId: string): Promise<PartnerRow[]> {
     .select('id, display_name, specialization, city, avatar_url, invite_code')
     .in('id', otherIds)
     .eq('is_active', true);
-  return (partners as PartnerRow[] | null) ?? [];
+  if (!partners) return [];
+  // Сохраняем порядок rows (по display_order/accepted_at), а partners пришли
+  // через `.in()` без гарантии порядка. Восстанавливаем по otherIds.
+  const byId = new Map((partners as PartnerRow[]).map((p) => [p.id, p]));
+  return otherIds.map((id) => byId.get(id)).filter((x): x is PartnerRow => !!x);
 }
 
 interface SalonInfo {
@@ -598,6 +607,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       <MiniAppBackBar />
       <PublicBackButton masterProfileId={master.profile_id} />
       <RefCapture />
+      <PartnerRefCapture />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -931,7 +941,11 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   {partners.map((p) => (
                     <Link
                       key={p.id}
-                      href={p.invite_code ? `/m/${p.invite_code}` : '#'}
+                      // ?from=<master.id> — атрибуция партнёрской рекомендации.
+                      // PartnerRefCapture на странице партнёра запишет это в
+                      // sessionStorage cres_partner_ref. При следующей записи
+                      // у партнёра новый client row получит referrer_master_id.
+                      href={p.invite_code ? `/m/${p.invite_code}?from=${master.id}` : '#'}
                       className="group flex flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-4 text-center transition hover:border-neutral-300 hover:shadow-sm"
                     >
                       {p.avatar_url ? (
