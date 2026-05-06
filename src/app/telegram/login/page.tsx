@@ -14,7 +14,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Loader2, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -34,6 +33,11 @@ const I18N: Record<MiniAppLang, {
   resetSent: string; resetSentDesc: string;
   invalidCreds: string; loginFailed: string; networkError: string;
   fasterTg: string;
+  signupTitle: string; signupSubtitle: string;
+  signupBtn: string; signupSent: string; signupSentDesc: string;
+  haveAccount: string; signIn: string;
+  passwordTooShort: string; emailTaken: string;
+  fullNamePh: string;
 }> = {
   uk: {
     brandSubtitle: 'Увійдіть до свого акаунту',
@@ -49,6 +53,15 @@ const I18N: Record<MiniAppLang, {
     invalidCreds: 'Невірна пошта або пароль',
     loginFailed: 'Не вдалось увійти', networkError: 'Помилка мережі',
     fasterTg: 'Щоб швидше — відкрийте бот',
+    signupTitle: 'Реєстрація',
+    signupSubtitle: 'Створіть акаунт — пошта і пароль, цього достатньо.',
+    signupBtn: 'Створити акаунт',
+    signupSent: 'Майже готово',
+    signupSentDesc: 'Перевірте пошту — підтвердіть посилання, і повертайтесь сюди.',
+    haveAccount: 'Вже маєте акаунт?', signIn: 'Увійти',
+    passwordTooShort: 'Мінімум 6 символів',
+    emailTaken: 'Цей email вже зареєстровано — спробуйте увійти',
+    fullNamePh: 'Як вас звати',
   },
   ru: {
     brandSubtitle: 'Войдите в свой аккаунт',
@@ -64,6 +77,15 @@ const I18N: Record<MiniAppLang, {
     invalidCreds: 'Неверная почта или пароль',
     loginFailed: 'Не удалось войти', networkError: 'Сетевая ошибка',
     fasterTg: 'Чтобы быстрее — откройте бот',
+    signupTitle: 'Регистрация',
+    signupSubtitle: 'Создайте аккаунт — почта и пароль, этого достаточно.',
+    signupBtn: 'Создать аккаунт',
+    signupSent: 'Почти готово',
+    signupSentDesc: 'Проверьте почту — подтвердите ссылку и возвращайтесь сюда.',
+    haveAccount: 'Уже есть аккаунт?', signIn: 'Войти',
+    passwordTooShort: 'Минимум 6 символов',
+    emailTaken: 'Этот email уже зарегистрирован — попробуйте войти',
+    fullNamePh: 'Как вас зовут',
   },
   en: {
     brandSubtitle: 'Sign in to your account',
@@ -79,10 +101,19 @@ const I18N: Record<MiniAppLang, {
     invalidCreds: 'Invalid email or password',
     loginFailed: 'Sign in failed', networkError: 'Network error',
     fasterTg: 'Faster way — open the bot',
+    signupTitle: 'Sign up',
+    signupSubtitle: 'Create an account — email and password is enough.',
+    signupBtn: 'Create account',
+    signupSent: 'Almost there',
+    signupSentDesc: 'Check your inbox — confirm the link and come back here.',
+    haveAccount: 'Already have an account?', signIn: 'Sign in',
+    passwordTooShort: 'Minimum 6 characters',
+    emailTaken: 'This email is already registered — try signing in',
+    fullNamePh: 'Your name',
   },
 };
 
-type Mode = 'login' | 'forgot' | 'sent';
+type Mode = 'login' | 'forgot' | 'sent' | 'signup' | 'signupSent';
 
 export default function MiniAppLoginPage() {
   const router = useRouter();
@@ -92,6 +123,7 @@ export default function MiniAppLoginPage() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -166,6 +198,47 @@ export default function MiniAppLoginPage() {
     }
   }
 
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    if (password.length < 6) {
+      setErr(t.passwordTooShort);
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: { full_name: fullName.trim() || null },
+          emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/telegram/login` : undefined,
+        },
+      });
+      if (error) {
+        const msg = error.message.toLowerCase().includes('already')
+          ? t.emailTaken
+          : error.message;
+        setErr(msg);
+        return;
+      }
+      // Если email confirmation отключён в Supabase — пользователь сразу залогинен.
+      if (data.session && data.user) {
+        setAuth(data.user.id, 'client' as UserRole, null, fullName.trim() || null);
+        window.location.replace('/telegram/home');
+        return;
+      }
+      // Иначе — нужно подтверждение по email.
+      setMode('signupSent');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.networkError);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleForgot(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -222,7 +295,11 @@ export default function MiniAppLoginPage() {
           CRES-CA
         </h1>
         <p style={{ marginTop: 8, fontSize: 14, color: T.textSecondary }}>
-          {mode === 'login' ? t.brandSubtitle : mode === 'forgot' ? t.forgotTitle : t.resetSent}
+          {mode === 'login' ? t.brandSubtitle
+            : mode === 'forgot' ? t.forgotTitle
+            : mode === 'sent' ? t.resetSent
+            : mode === 'signup' ? t.signupTitle
+            : t.signupSent}
         </p>
       </div>
 
@@ -431,6 +508,180 @@ export default function MiniAppLoginPage() {
         </div>
       )}
 
+      {mode === 'signup' && (
+        <form
+          onSubmit={handleSignup}
+          style={{
+            padding: `0 ${PAGE_PADDING_X}px`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <p
+            style={{
+              fontSize: 13,
+              color: T.textSecondary,
+              margin: 0,
+              padding: '0 4px 6px',
+              lineHeight: 1.4,
+            }}
+          >
+            {t.signupSubtitle}
+          </p>
+
+          <EmailField value={email} onChange={setEmail} placeholder={t.emailPh} />
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 14px',
+              borderRadius: R.md,
+              border: `1.5px solid ${T.border}`,
+              background: T.surface,
+            }}
+          >
+            <input
+              type="text"
+              autoComplete="name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder={t.fullNamePh}
+              style={{
+                flex: 1,
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontSize: 15,
+                color: T.text,
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 14px',
+              borderRadius: R.md,
+              border: `1.5px solid ${T.border}`,
+              background: T.surface,
+            }}
+          >
+            <Lock size={16} color={T.textTertiary} style={{ flexShrink: 0 }} />
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t.passwordPh}
+              required
+              minLength={6}
+              style={{
+                flex: 1,
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
+                fontSize: 15,
+                color: T.text,
+                fontFamily: 'inherit',
+              }}
+            />
+          </div>
+
+          {err && <ErrorBox text={err} />}
+
+          <button
+            type="submit"
+            disabled={busy || !email.trim() || password.length < 6}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '14px 0',
+              borderRadius: R.lg,
+              background: T.accent,
+              color: '#fff',
+              fontSize: 16,
+              fontWeight: 700,
+              border: 'none',
+              cursor: busy ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+              opacity: busy || !email.trim() || password.length < 6 ? 0.6 : 1,
+              boxShadow: SHADOW.card,
+              marginTop: 4,
+            }}
+          >
+            {busy && <Loader2 size={16} className="animate-spin" />}
+            {t.signupBtn}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setErr(null); setMode('login'); }}
+            style={{
+              alignSelf: 'center',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 12px',
+              marginTop: 4,
+              border: 'none',
+              background: 'transparent',
+              color: T.textSecondary,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <ArrowLeft size={14} /> {t.back}
+          </button>
+        </form>
+      )}
+
+      {mode === 'signupSent' && (
+        <div
+          style={{
+            padding: `0 ${PAGE_PADDING_X}px`,
+            textAlign: 'center',
+            fontSize: 14,
+            color: T.textSecondary,
+            lineHeight: 1.5,
+            maxWidth: 320,
+            margin: '0 auto',
+          }}
+        >
+          {t.signupSentDesc}
+          <button
+            type="button"
+            onClick={() => { setErr(null); setMode('login'); }}
+            style={{
+              display: 'block',
+              margin: '24px auto 0',
+              padding: '10px 18px',
+              border: `1px solid ${T.border}`,
+              borderRadius: R.pill,
+              background: T.surface,
+              color: T.text,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            <ArrowLeft size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
+            {t.back}
+          </button>
+        </div>
+      )}
+
       {mode === 'login' && (
         <div
           style={{
@@ -442,12 +693,22 @@ export default function MiniAppLoginPage() {
           }}
         >
           {t.noAccount}{' '}
-          <Link
-            href={`/${lang}/login?mode=signup`}
-            style={{ color: T.accent, fontWeight: 600, textDecoration: 'none' }}
+          <button
+            type="button"
+            onClick={() => { setErr(null); setMode('signup'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              color: T.accent,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+            }}
           >
             {t.signUp}
-          </Link>
+          </button>
         </div>
       )}
 

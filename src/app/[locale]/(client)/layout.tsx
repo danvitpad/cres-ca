@@ -41,6 +41,7 @@ import { ClientOnboardingWizard } from '@/components/client/onboarding-wizard';
 import { InactivityLogout } from '@/components/auth/inactivity-logout';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { WelcomeGate } from '@/components/shared/welcome-gate';
+import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { cn } from '@/lib/utils';
 
 // IG-style sidebar — hover to expand.
@@ -685,6 +686,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           )}
           </AnimatePresence>
         </div>
+
+        {/* Language picker — выбор интерфейсного языка (ru/uk/en). */}
+        <LanguageSwitcher className="hidden md:block mr-1" />
 
         {/* Notifications bell — dropdown with 5 latest + view-all link */}
         <Popover open={notifOpen} onOpenChange={setNotifOpen}>

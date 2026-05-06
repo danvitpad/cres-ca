@@ -150,14 +150,15 @@ export async function GET(req: Request) {
         .filter((x) => x.date === dateStr)
         .sort((a, b) => a.start - b.start);
 
-      // Перебираем интервалы (multi-interval) — берём первый свободный 30-мин слот.
+      // Перебираем интервалы (multi-interval) — берём первый свободный 15-мин слот.
+      // Шаг 15 мин совместим с адаптивным шагом /api/slots для услуг ≥ 15 мин.
       for (const iv of dayInfo.intervals) {
         if (found) break;
         const startMin = t2m(iv.start);
         const endMin = t2m(iv.end);
         const earliestMin = d === 0 ? Math.max(startMin, nowKyivMin + 15) : startMin;
 
-        for (let t = Math.ceil(earliestMin / 30) * 30; t + SLOT_DURATION_MIN <= endMin; t += 30) {
+        for (let t = Math.ceil(earliestMin / 15) * 15; t + SLOT_DURATION_MIN <= endMin; t += 15) {
           const conflict = busyList.some((bs) => t < bs.end && t + SLOT_DURATION_MIN > bs.start);
           if (conflict) continue;
           const time = m2t(t);

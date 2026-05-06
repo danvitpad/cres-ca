@@ -30,6 +30,7 @@ import { CommandPalette, useCommandPalette } from '@/components/shared/primitive
 import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { WelcomeGate } from '@/components/shared/welcome-gate';
 import { TourOverlay } from '@/components/shared/tour-overlay';
+import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { ConfirmProvider } from '@/hooks/use-confirm';
 import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, BarChart3 } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
@@ -189,8 +190,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </div>
 
-          {/* Right: search + notifications bell */}
+          {/* Right: language + search + notifications bell */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexShrink: 0 }}>
+            {/* Language picker — выбор интерфейсного языка (ru/uk/en). Раньше веб
+                не имел видимой кнопки переключения, locale читался только из cookie. */}
+            <LanguageSwitcher />
             <button
               onClick={() => setCmdOpen(true)}
               style={{
