@@ -13,7 +13,7 @@
  * --- */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabase } from '@supabase/supabase-js';
 import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
 
@@ -169,7 +169,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  // КРИТИЧНО: cron вызывается без user-сессии (Bearer CRON_SECRET).
+  // Если использовать ssr-клиент с ANON_KEY — RLS на appointments / clients
+  // возвращает 0 строк (auth.uid() = null), и reminder никогда не создаётся.
+  // Service role обходит RLS, как в appointment-close cron. (Баг 2026-05-06)
+  const supabase = createSupabase(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
   const now = new Date();
   let created = 0;
 
