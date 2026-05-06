@@ -78,6 +78,7 @@ const I18N: Record<Lang, {
   cat: { beauty: string; health: string; pets: string; fitness: string; auto: string; home: string };
   topcat: { hair: string; massage: string; trainer: string; grooming: string; repair: string };
   today: string; tomorrow: string;
+  aiConcierge: string; minSuffix: string; masterFallback: string;
 }> = {
   uk: {
     title: 'Для вас',
@@ -90,6 +91,7 @@ const I18N: Record<Lang, {
     cat: { beauty: 'Краса', health: "Здоров'я", pets: 'Тварини', fitness: 'Фітнес', auto: 'Авто', home: 'Дім' },
     topcat: { hair: 'Стрижка та укладка', massage: 'Масаж', trainer: 'Тренер', grooming: 'Грумінг', repair: 'Ремонт' },
     today: 'Сьогодні', tomorrow: 'Завтра',
+    aiConcierge: 'AI-консьєрж', minSuffix: 'хв', masterFallback: 'Майстер',
   },
   ru: {
     title: 'Для вас',
@@ -102,6 +104,7 @@ const I18N: Record<Lang, {
     cat: { beauty: 'Красота', health: 'Здоровье', pets: 'Питомцы', fitness: 'Фитнес', auto: 'Авто', home: 'Дом' },
     topcat: { hair: 'Стрижка и укладка', massage: 'Массаж', trainer: 'Тренер', grooming: 'Груминг', repair: 'Ремонт' },
     today: 'Сегодня', tomorrow: 'Завтра',
+    aiConcierge: 'AI-консьерж', minSuffix: 'мин', masterFallback: 'Мастер',
   },
   en: {
     title: 'For you',
@@ -114,6 +117,7 @@ const I18N: Record<Lang, {
     cat: { beauty: 'Beauty', health: 'Health', pets: 'Pets', fitness: 'Fitness', auto: 'Auto', home: 'Home' },
     topcat: { hair: 'Hair & styling', massage: 'Massage', trainer: 'Trainer', grooming: 'Grooming', repair: 'Repair' },
     today: 'Today', tomorrow: 'Tomorrow',
+    aiConcierge: 'AI concierge', minSuffix: 'min', masterFallback: 'Master',
   },
 };
 
@@ -300,7 +304,7 @@ export default function MiniAppHomePage() {
                 justifyContent: 'center',
                 cursor: 'pointer',
               }}
-              aria-label="AI-консьерж"
+              aria-label={t.aiConcierge}
             >
               <Bot size={20} strokeWidth={2.2} />
             </button>
@@ -382,7 +386,7 @@ export default function MiniAppHomePage() {
                   <div style={{ marginTop: 2, fontSize: 12, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.atMaster} {r.master_name}</div>
                   <div style={{ marginTop: 8, fontSize: 12, color: T.success, fontWeight: 700 }}>
                     {formatMoney(r.service_price, 'UAH')}
-                    {r.service_duration ? ` · ${r.service_duration} мин` : ''}
+                    {r.service_duration ? ` · ${r.service_duration} ${t.minSuffix}` : ''}
                   </div>
                 </button>
               ))}
@@ -421,10 +425,10 @@ export default function MiniAppHomePage() {
                       color: T.text,
                     }}
                   >
-                    <AvatarCircle url={s.avatar} name={s.name ?? 'Мастер'} size={44} />
+                    <AvatarCircle url={s.avatar} name={s.name ?? t.masterFallback} size={44} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {s.name ?? 'Мастер'}
+                        {s.name ?? t.masterFallback}
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, ...TYPE.caption }}>
                         <Clock size={13} />

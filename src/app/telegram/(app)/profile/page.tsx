@@ -51,6 +51,7 @@ const I18N: Record<Lang, {
   followers: string; following: string;
   masterBadge: string; empty: string; user: string;
   close: string; avatarLabel: string;
+  saveError: string; avatarTitle: string; guest: string;
 }> = {
   uk: {
     subtitle: 'Особистий профіль',
@@ -59,6 +60,7 @@ const I18N: Record<Lang, {
     editTitle: 'Редагувати профіль', save: 'Зберегти',
     fieldName: 'Ім\'я', fieldSlug: 'Ім\'я посилання (slug)', fieldBio: 'Про себе',
     slugHint: '3–32 символи: латиниця, цифри, крапка, дефіс, підкреслення',
+    saveError: 'Не вдалось зберегти', avatarTitle: 'Аватар', guest: 'Гість',
     bioCount: '/280',
     followers: 'Підписники', following: 'Обрані',
     masterBadge: ' · Майстер', empty: 'Порожньо', user: 'Користувач',
@@ -71,6 +73,7 @@ const I18N: Record<Lang, {
     editTitle: 'Редактировать профиль', save: 'Сохранить',
     fieldName: 'Имя', fieldSlug: 'Имя ссылки (slug)', fieldBio: 'О себе',
     slugHint: '3–32 символа: латиница, цифры, точка, дефис, подчёркивание',
+    saveError: 'Не удалось сохранить', avatarTitle: 'Аватар', guest: 'Гость',
     bioCount: '/280',
     followers: 'Подписчики', following: 'Избранное',
     masterBadge: ' · Мастер', empty: 'Пусто', user: 'Пользователь',
@@ -87,6 +90,7 @@ const I18N: Record<Lang, {
     followers: 'Followers', following: 'Saved',
     masterBadge: ' · Master', empty: 'Empty', user: 'User',
     close: 'Close', avatarLabel: 'Change avatar',
+    saveError: 'Failed to save', avatarTitle: 'Avatar', guest: 'Guest',
   },
 };
 
@@ -193,7 +197,7 @@ export default function MiniAppProfilePage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setEditError(mapError(data.error, 'Не удалось сохранить'));
+        setEditError(mapError(data.error, t.saveError));
         haptic('error');
         return;
       }
@@ -285,7 +289,7 @@ export default function MiniAppProfilePage() {
   }
 
   const tgFullName = user ? `${user.first_name}${user.last_name ? ' ' + user.last_name : ''}` : '';
-  const displayName = profileLoaded ? (fullName ?? tgFullName ?? 'Гость') : '';
+  const displayName = profileLoaded ? (fullName ?? tgFullName ?? t.guest) : '';
 
   // Auto-open edit modal when navigated from settings with ?edit=true
   useEffect(() => {
@@ -412,7 +416,7 @@ export default function MiniAppProfilePage() {
           src={cropSrc}
           onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
           onCropped={onAvatarCropped}
-          title="Аватар"
+          title={t.avatarTitle}
           aspect={1}
           shape="round"
           outputSize={512}

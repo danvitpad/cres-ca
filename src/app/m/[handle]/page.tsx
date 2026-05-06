@@ -7,6 +7,7 @@
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { cookies, headers } from 'next/headers';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Star, MapPin, Sparkles, Calendar, Clock, Phone, Mail, Cake } from 'lucide-react';
@@ -42,6 +43,94 @@ void ServicesByCategory; // legacy import retained while Fresha rewrite settles
 interface PageProps {
   params: Promise<{ handle: string }>;
 }
+
+type Lang = 'uk' | 'ru' | 'en';
+
+async function getServerLocale(): Promise<Lang> {
+  try {
+    const c = await cookies();
+    const fromCookie = c.get('NEXT_LOCALE')?.value;
+    if (fromCookie === 'uk' || fromCookie === 'ru' || fromCookie === 'en') return fromCookie;
+  } catch {}
+  try {
+    const h = await headers();
+    const al = (h.get('accept-language') ?? '').toLowerCase();
+    if (al.startsWith('uk')) return 'uk';
+    if (al.startsWith('ru')) return 'ru';
+    if (al.startsWith('en')) return 'en';
+  } catch {}
+  return 'uk';
+}
+
+const STR: Record<Lang, {
+  bookVerb: Record<string, string>;
+  inCity: (c: string) => string;
+  masterFallback: string;
+  ratingDateLocale: string;
+  navServices: string; navPortfolio: string; navReviews: string; navAddress: string;
+  reviewsHeading: string;
+  beforeAfterHint: string;
+  addressAndHours: string; hoursOnly: string;
+  importantInfo: string;
+  workplace: string;
+  partners: string; partnersDesc: string;
+  bookCta: string; from: string;
+}> = {
+  uk: {
+    bookVerb: {
+      master: 'Записатися до', salon: 'Записатися в', clinic: 'Записатися в',
+      workshop: 'Замовити в', auto_service: 'Записатися в автосервіс',
+      fitness: 'Записатися в студію', other: 'Записатися до',
+    },
+    inCity: (c) => ` у місті ${c}`,
+    masterFallback: 'Майстер',
+    ratingDateLocale: 'uk-UA',
+    navServices: 'Послуги', navPortfolio: 'Роботи', navReviews: 'Відгуки', navAddress: 'Адреса',
+    reviewsHeading: 'Відгуки',
+    beforeAfterHint: 'Перетягніть роздільник, щоб порівняти «до» і «після».',
+    addressAndHours: 'Адреса та години роботи', hoursOnly: 'Години роботи',
+    importantInfo: 'Важлива інформація',
+    workplace: 'Де приймаю',
+    partners: 'Рекомендую', partnersDesc: 'Майстри, з якими я працюю і кому довіряю.',
+    bookCta: 'Записатися', from: 'від',
+  },
+  ru: {
+    bookVerb: {
+      master: 'Записаться к', salon: 'Записаться в', clinic: 'Записаться в',
+      workshop: 'Заказать в', auto_service: 'Записаться в автосервис',
+      fitness: 'Записаться в студию', other: 'Записаться к',
+    },
+    inCity: (c) => ` в городе ${c}`,
+    masterFallback: 'Мастер',
+    ratingDateLocale: 'ru-RU',
+    navServices: 'Услуги', navPortfolio: 'Работы', navReviews: 'Отзывы', navAddress: 'Адрес',
+    reviewsHeading: 'Отзывы',
+    beforeAfterHint: 'Перетащите разделитель, чтобы сравнить «до» и «после».',
+    addressAndHours: 'Адрес и часы работы', hoursOnly: 'Часы работы',
+    importantInfo: 'Важная информация',
+    workplace: 'Где принимаю',
+    partners: 'Рекомендую', partnersDesc: 'Мастера, с которыми я работаю и доверяю.',
+    bookCta: 'Записаться', from: 'от',
+  },
+  en: {
+    bookVerb: {
+      master: 'Book with', salon: 'Book at', clinic: 'Book at',
+      workshop: 'Order at', auto_service: 'Book auto service',
+      fitness: 'Book studio', other: 'Book with',
+    },
+    inCity: (c) => ` in ${c}`,
+    masterFallback: 'Master',
+    ratingDateLocale: 'en-US',
+    navServices: 'Services', navPortfolio: 'Portfolio', navReviews: 'Reviews', navAddress: 'Address',
+    reviewsHeading: 'Reviews',
+    beforeAfterHint: 'Drag the divider to compare “before” and “after”.',
+    addressAndHours: 'Address and hours', hoursOnly: 'Hours',
+    importantInfo: 'Important info',
+    workplace: 'Where I work',
+    partners: 'Recommended', partnersDesc: 'Masters I work with and trust.',
+    bookCta: 'Book', from: 'from',
+  },
+};
 
 interface MasterRow {
   id: string;
@@ -352,30 +441,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { handle } = await params;
   const master = await loadMaster(handle);
   if (!master) return { title: 'Master not found · CRES-CA' };
-  const name = master.display_name ?? 'Master';
+  const lang = await getServerLocale();
+  const tt = STR[lang];
+  const name = master.display_name ?? tt.masterFallback;
   const title =
     master.meta_title ??
     (master.specialization
       ? `${name} — ${master.specialization} · CRES-CA`
       : `${name} · CRES-CA`);
-  // Page-type-aware default copy. Lets us index a clinic page as «Записаться в
-  // клинику» rather than the master-only phrasing.
-  const ptVerb: Record<string, string> = {
-    master:        'Записаться к',
-    salon:         'Записаться в',
-    clinic:        'Записаться в',
-    workshop:      'Заказать в',
-    auto_service:  'Записаться в автосервис',
-    fitness:       'Записаться в студию',
-    other:         'Записаться к',
-  };
-  const verb = ptVerb[master.page_type ?? 'master'] ?? 'Записаться к';
+  const verb = tt.bookVerb[master.page_type ?? 'master'] ?? tt.bookVerb.master;
   const description =
     master.meta_description ??
     master.headline ??
     (master.bio
       ? master.bio.slice(0, 160)
-      : `${verb} ${name}${master.city ? ` в городе ${master.city}` : ''} онлайн · CRES-CA`);
+      : `${verb} ${name}${master.city ? tt.inCity(master.city) : ''} · CRES-CA`);
   const ogImage = master.og_image_url ?? master.cover_url ?? master.avatar_url ?? undefined;
   const canonicalPath = master.slug ? `/m/${master.slug}` : undefined;
   return {
@@ -404,6 +484,9 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
+  const lang = await getServerLocale();
+  const tt = STR[lang];
+
   const [services, portfolio, beforeAfter, reviewsList, partners, salon, ownedSalon] = await Promise.all([
     loadServices(master.id),
     loadPortfolio(master.id),
@@ -413,7 +496,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     loadSalon(master.salon_id),
     loadOwnedSalonContext(master.profile_id),
   ]);
-  const displayName = master.display_name ?? 'Мастер';
+  const displayName = master.display_name ?? tt.masterFallback;
   const rating = Number(master.rating ?? 0);
   const reviews = master.total_reviews ?? 0;
 
@@ -474,14 +557,14 @@ export default async function MasterShowcasePage({ params }: PageProps) {
     : 0;
   const currency = services[0]?.currency ?? 'UAH';
 
-  const bookHref = `/ru/book?master=${master.id}`;
+  const bookHref = `/${lang}/book?master=${master.id}`;
 
   // Sticky tab nav — show only when there's >1 section to jump to
   const navSections: { id: string; label: string }[] = [];
-  if (hasServices) navSections.push({ id: 'services', label: 'Услуги' });
-  if (hasPortfolio) navSections.push({ id: 'portfolio', label: 'Работы' });
-  if (hasReviews) navSections.push({ id: 'reviews', label: 'Отзывы' });
-  if (hasAddress) navSections.push({ id: 'address', label: 'Адрес' });
+  if (hasServices) navSections.push({ id: 'services', label: tt.navServices });
+  if (hasPortfolio) navSections.push({ id: 'portfolio', label: tt.navPortfolio });
+  if (hasReviews) navSections.push({ id: 'reviews', label: tt.navReviews });
+  if (hasAddress) navSections.push({ id: 'address', label: tt.navAddress });
 
   // Тема публички следует ТОЛЬКО за системной темой пользователя
   // (prefers-color-scheme). Никаких master-настроек фона/картинки —
@@ -662,7 +745,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               {beforeAfter.length > 0 && (
                 <div className={portfolio.length > 0 ? 'mt-6' : ''}>
                   <p className="mb-3 text-sm text-neutral-500">
-                    Перетащите разделитель, чтобы сравнить «до» и «после».
+                    {tt.beforeAfterHint}
                   </p>
                   <div className="grid gap-5 sm:grid-cols-2">
                     {beforeAfter.map((pair) => (
@@ -682,7 +765,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {hasReviews && (
               <section id="reviews" className="scroll-mt-24">
                 <div className="mb-4 flex items-baseline gap-2">
-                  <h2 className="text-[22px] font-bold text-neutral-900">Отзывы</h2>
+                  <h2 className="text-[22px] font-bold text-neutral-900">{tt.reviewsHeading}</h2>
                   <span className="text-[14px] text-neutral-500">{reviews}</span>
                 </div>
                 {reviews > 0 && (
@@ -713,7 +796,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                           />
                         ))}
                         <span className="ml-2 text-[12px] text-neutral-500">
-                          {new Date(r.created_at).toLocaleDateString('ru-RU')}
+                          {new Date(r.created_at).toLocaleDateString(tt.ratingDateLocale)}
                         </span>
                       </div>
                       {r.comment && (
@@ -745,7 +828,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 часы остаются на всю ширину. */}
             <section id="address" className="scroll-mt-24">
               <h2 className="mb-4 text-[22px] font-bold text-neutral-900">
-                {showAddressBlock ? 'Адрес и часы работы' : 'Часы работы'}
+                {showAddressBlock ? tt.addressAndHours : tt.hoursOnly}
               </h2>
               <div className={showAddressBlock ? 'grid gap-5 sm:grid-cols-2' : ''}>
                 {showAddressBlock && (
@@ -774,7 +857,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                       <Phone className="size-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[14px] font-semibold text-amber-900">Важная информация</p>
+                      <p className="text-[14px] font-semibold text-amber-900">{tt.importantInfo}</p>
                       <p className="mt-1 whitespace-pre-wrap text-[14px] leading-relaxed text-amber-900/80">
                         {master.booking_important_info}
                       </p>
@@ -787,7 +870,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {/* Workplace photos (только если есть отдельные фото — иначе уже в карте) */}
             {hasWorkplace && (salon?.cover_url || master.workplace_photo_url) && (
               <section id="workplace">
-                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">Где принимаю</h2>
+                <h2 className="mb-4 text-[22px] font-bold text-neutral-900">{tt.workplace}</h2>
                 <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
                   <div className="relative h-48 w-full bg-neutral-100 sm:h-64">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -804,8 +887,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {/* Partners */}
             {hasPartners && (
               <section id="partners">
-                <h2 className="mb-2 text-[22px] font-bold text-neutral-900">Рекомендую</h2>
-                <p className="mb-4 text-[14px] text-neutral-500">Мастера, с которыми я работаю и доверяю.</p>
+                <h2 className="mb-2 text-[22px] font-bold text-neutral-900">{tt.partners}</h2>
+                <p className="mb-4 text-[14px] text-neutral-500">{tt.partnersDesc}</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {partners.map((p) => (
                     <Link
@@ -822,7 +905,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                         </div>
                       )}
                       <div className="text-[14px] font-semibold leading-tight text-neutral-900">
-                        {p.display_name || 'Мастер'}
+                        {p.display_name || tt.masterFallback}
                       </div>
                       {p.specialization && (
                         <div className="text-[12px] text-neutral-500">{p.specialization}</div>
@@ -845,7 +928,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         }}
       >
         <BookingCTA variant="sticky">
-          Записаться{hasServices && ` · от ${formatMoney(minPrice, currency)}`}
+          {tt.bookCta}{hasServices && ` · ${tt.from} ${formatMoney(minPrice, currency)}`}
         </BookingCTA>
       </div>
       <div className="h-20 lg:hidden" />

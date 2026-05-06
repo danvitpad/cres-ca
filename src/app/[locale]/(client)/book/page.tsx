@@ -162,7 +162,7 @@ export default function BookPage() {
       if (mId) {
         router.replace(`/book?master_id=${mId}`);
       } else {
-        toast.error('В этом салоне нет активных мастеров');
+        toast.error(t('noActiveMastersInSalon'));
       }
     })();
   }, [salonId, preselectedMasterId, router]);
@@ -713,15 +713,15 @@ export default function BookPage() {
       const json = await res.json().catch(() => ({} as { error?: string }));
       if (!res.ok) {
         const errMap: Record<string, string> = {
-          not_found: 'Такого промокода нет',
-          inactive: 'Промокод выключен',
-          expired: 'Срок действия истёк',
-          not_started: 'Промокод ещё не активен',
-          max_uses_reached: 'Лимит использований исчерпан',
-          service_not_applicable: 'Этот промокод не действует на выбранную услугу',
-          wrong_master: 'Промокод от другого мастера',
+          not_found: t('promoErrNotFound'),
+          inactive: t('promoErrInactive'),
+          expired: t('promoErrExpired'),
+          not_started: t('promoErrNotStarted'),
+          max_uses_reached: t('promoErrMaxUsesReached'),
+          service_not_applicable: t('promoErrServiceNotApplicable'),
+          wrong_master: t('promoErrWrongMaster'),
         };
-        setPromoError(errMap[json.error ?? ''] ?? 'Не удалось применить');
+        setPromoError(errMap[json.error ?? ''] ?? t('promoErrFallback'));
         return;
       }
       setAppliedPromo(json as typeof appliedPromo extends infer T ? NonNullable<T> : never);
@@ -754,11 +754,11 @@ export default function BookPage() {
       {/* Step indicator — Fresha-style breadcrumb */}
       {(() => {
         const labels: Record<Step, string> = {
-          service: 'Услуги',
-          date: 'Дата',
-          time: 'Время',
-          consent: 'Согласие',
-          confirm: 'Подтверждение',
+          service: t('stepService'),
+          date: t('stepDate'),
+          time: t('stepTime'),
+          consent: t('stepConsent'),
+          confirm: t('stepConfirm'),
         };
         const allSteps: Step[] = consentRequired
           ? ['service', 'date', 'time', 'consent', 'confirm']
@@ -1016,18 +1016,18 @@ export default function BookPage() {
                       onClick={clearPromo}
                       className="text-xs text-muted-foreground hover:text-foreground underline"
                     >
-                      убрать
+                      {t('remove')}
                     </button>
                   </div>
                 ) : (
                   <>
-                    <label className="text-xs text-muted-foreground">Промокод</label>
+                    <label className="text-xs text-muted-foreground">{t('promoLabel')}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={promoCode}
                         onChange={(e) => { setPromoCode(e.target.value); setPromoError(null); }}
-                        placeholder="Введите код"
+                        placeholder={t('promoPlaceholder')}
                         className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm uppercase outline-none focus:border-primary"
                         maxLength={32}
                       />
@@ -1037,7 +1037,7 @@ export default function BookPage() {
                         disabled={promoBusy || !promoCode.trim()}
                         className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                       >
-                        {promoBusy ? '...' : 'Применить'}
+                        {promoBusy ? '...' : t('promoApply')}
                       </button>
                     </div>
                     {promoError && (
@@ -1064,7 +1064,7 @@ export default function BookPage() {
                     <Info className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold">Важная информация</h3>
+                    <h3 className="text-sm font-semibold">{t('importantInfo')}</h3>
                     <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
                       {master.booking_important_info}
                     </p>
