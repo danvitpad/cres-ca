@@ -207,12 +207,22 @@ interface SelectTriggerProps
   icon?: LucideIcon;
   placeholder?: string;
   error?: string;
+  /**
+   * Forced display string for the selected value. Используется когда labelMap
+   * не может быть заполнен (например, items SelectContent ещё не примонтированы
+   * пока dropdown закрыт, или value был установлен извне до загрузки items).
+   * Без этого Trigger fallback'нул бы на raw value (UUID). (Фикс 2026-05-06.)
+   */
+  displayValue?: string;
 }
 
 const SelectTrigger = forwardRef<HTMLButtonElement, SelectTriggerProps>(
-  ({ className, variant, icon: Icon, placeholder = 'Выберите…', error, ...props }, ref) => {
+  ({ className, variant, icon: Icon, placeholder = 'Выберите…', error, displayValue, ...props }, ref) => {
     const { value, open, setOpen, disabled, triggerRef, labelMap } = useSelectContext();
-    const label = value ? labelMap.current.get(value) ?? value : undefined;
+    // Приоритет: явный displayValue от родителя → labelMap (после монтирования
+    // items) → fallback на placeholder (НЕ на raw UUID, иначе клиент видит
+    // строку id вместо названия).
+    const label = displayValue ?? (value ? labelMap.current.get(value) : undefined);
 
     return (
       <div className="flex flex-col gap-1">

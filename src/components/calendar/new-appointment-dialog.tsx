@@ -250,7 +250,15 @@ export function NewAppointmentDialog({
           <div className="space-y-2">
             <Label>{tb('selectService')}</Label>
             <Select value={serviceId} onValueChange={setServiceId}>
-              <SelectTrigger placeholder={tb('selectService')} />
+              {(() => {
+                const selected = services.find((s) => s.id === serviceId);
+                return (
+                  <SelectTrigger
+                    placeholder={tb('selectService')}
+                    displayValue={selected ? `${selected.name} · ${selected.duration_minutes} мин · ${selected.price} ${selected.currency}` : undefined}
+                  />
+                );
+              })()}
               <SelectContent>
                 {services.map((s, i) => (
                   <SelectItem key={s.id} index={i} value={s.id}>

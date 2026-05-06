@@ -7,6 +7,36 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdmin } from '@supabase/supabase-js';
+import { notifyUser } from '@/lib/notifications/notify';
+
+async function notifyInitiator(initiatorMasterId: string, responderMasterId: string, accepted: boolean) {
+  try {
+    const admin = createAdmin(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const { data: initiator } = await admin
+      .from('masters').select('profile_id').eq('id', initiatorMasterId).maybeSingle();
+    if (!initiator?.profile_id) return;
+    const { data: responder } = await admin
+      .from('masters')
+      .select('display_name, profile:profiles!masters_profile_id_fkey(full_name)')
+      .eq('id', responderMasterId).maybeSingle();
+    const responderProfile = responder ? (Array.isArray(responder.profile) ? responder.profile[0] : responder.profile) : null;
+    const responderName = responder?.display_name ?? responderProfile?.full_name ?? 'Мастер';
+    await notifyUser(admin, {
+      profileId: initiator.profile_id,
+      title: accepted ? '✅ Партнёрство принято' : '❌ Партнёрство отклонено',
+      body: accepted
+        ? `${responderName} принял ваш запрос в партнёры. Теперь вы можете рекомендовать друг друга на публичных страницах.`
+        : `${responderName} отклонил ваш запрос в партнёры.`,
+      data: { type: 'partner_response', accepted, master_id: responderMasterId },
+      deepLinkPath: '/telegram/m/clients?tab=partners',
+      deepLinkLabel: 'Открыть',
+    });
+  } catch { /* best-effort */ }
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -41,6 +71,7 @@ export async function POST(request: Request) {
       status: 'active',
       accepted_at: new Date().toISOString(),
     }).eq('id', id);
+    void notifyInitiator(row.master_id, me.id, true);
     return NextResponse.json({ ok: true, status: 'active' });
   }
 
@@ -51,6 +82,7 @@ export async function POST(request: Request) {
       status: 'declined',
       ended_at: new Date().toISOString(),
     }).eq('id', id);
+    void notifyInitiator(row.master_id, me.id, false);
     return NextResponse.json({ ok: true, status: 'declined' });
   }
 
