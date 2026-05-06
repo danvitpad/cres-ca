@@ -13,7 +13,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, X, AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -75,6 +75,7 @@ export function WorkingHoursEditor({
   onChange,
 }: Props) {
   const [hours, setHours] = useState<WorkingHours>(() => initial ?? emptyWorkingHours());
+  const [savedHours, setSavedHours] = useState<WorkingHours>(() => initial ?? emptyWorkingHours());
   const [editing, setEditing] = useState<{
     day: WeekDayKey;
     index: number; // -1 = новый
@@ -86,8 +87,17 @@ export function WorkingHoursEditor({
   const [savedToast, setSavedToast] = useState(false);
 
   useEffect(() => {
-    if (initial) setHours(initial);
+    if (initial) {
+      setHours(initial);
+      setSavedHours(initial);
+    }
   }, [initial]);
+
+  // dirty = есть локальные изменения, не отправленные в БД
+  const dirty = useMemo(
+    () => JSON.stringify(hours) !== JSON.stringify(savedHours),
+    [hours, savedHours],
+  );
 
   function patch(next: WorkingHours) {
     setHours(next);
@@ -115,6 +125,17 @@ export function WorkingHoursEditor({
     const cur = hours[d];
     const next = cur.intervals.filter((_, i) => i !== idx);
     patch({ ...hours, [d]: { enabled: next.length > 0, intervals: next } });
+  }
+
+  /** Создаёт новый слот в дне через drag (start/end в формате "HH:MM"). */
+  function commitDragSlot(d: WeekDayKey, start: string, end: string) {
+    const cur = hours[d];
+    const draft = [...cur.intervals, { start, end }];
+    const sane = sanitizeIntervals(draft);
+    patch({
+      ...hours,
+      [d]: { enabled: sane.length > 0, intervals: sane },
+    });
   }
 
   function applyEditing() {
@@ -160,6 +181,7 @@ export function WorkingHoursEditor({
         alert(data?.message ?? data?.error ?? 'Не удалось сохранить');
         return;
       }
+      setSavedHours(hours); // зафиксировали как сохранённые → dirty=false
       onSaved?.(hours);
       setSavedToast(true);
       setTimeout(() => setSavedToast(false), 2000);
@@ -173,6 +195,7 @@ export function WorkingHoursEditor({
       return {
         addSlot: 'Додати',
         save: 'Зберегти', saving: 'Зберігаємо…', saved: 'Збережено',
+        unsaved: 'Не збережено',
         weekend: 'Вихідний',
         from: 'Від', to: 'До',
         cancel: 'Скасувати', apply: 'Готово', remove: 'Видалити',
@@ -181,12 +204,14 @@ export function WorkingHoursEditor({
         conflictHint: 'Ці записи опиняться поза робочим часом. Перенесіть або скасуйте їх:',
         close: 'Закрити',
         scrollHint: 'Прокрути вліво/вправо, щоб побачити всі дні',
+        dragHint: 'Затисни і потягни вниз, щоб виділити робочий слот',
       };
     }
     if (lang === 'en') {
       return {
         addSlot: 'Add',
         save: 'Save', saving: 'Saving…', saved: 'Saved',
+        unsaved: 'Unsaved',
         weekend: 'Off',
         from: 'From', to: 'To',
         cancel: 'Cancel', apply: 'Apply', remove: 'Delete',
@@ -195,11 +220,13 @@ export function WorkingHoursEditor({
         conflictHint: 'These bookings would fall outside working hours:',
         close: 'Close',
         scrollHint: 'Scroll horizontally to see all days',
+        dragHint: 'Press and drag down to select a working slot',
       };
     }
     return {
       addSlot: 'Добавить',
       save: 'Сохранить', saving: 'Сохраняем…', saved: 'Сохранено',
+      unsaved: 'Не сохранено',
       weekend: 'Выходной',
       from: 'С', to: 'До',
       cancel: 'Отмена', apply: 'Готово', remove: 'Удалить',
@@ -208,6 +235,7 @@ export function WorkingHoursEditor({
       conflictHint: 'Эти записи окажутся в нерабочее время:',
       close: 'Закрыть',
       scrollHint: 'Прокрути влево/вправо, чтобы увидеть все дни',
+      dragHint: 'Зажми и протяни вниз, чтобы выделить рабочий слот',
     };
   }, [lang]);
 
@@ -252,24 +280,39 @@ export function WorkingHoursEditor({
               onAdd={() => openAdd(d)}
               onEdit={(i) => openEdit(d, i)}
               onDelete={(i) => deleteInterval(d, i)}
+              onDragCommit={(start, end) => commitDragSlot(d, start, end)}
             />
           ))}
         </div>
       </div>
 
       {saveEndpoint && (
-        <button
-          type="button"
-          onClick={save}
-          disabled={busy}
-          className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-bold text-white transition disabled:opacity-50"
-        >
-          {busy
-            ? <><Loader2 size={16} className="animate-spin" /> {labels.saving}</>
-            : savedToast
-              ? <><Check size={16} /> {labels.saved}</>
-              : labels.save}
-        </button>
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy || !dirty}
+            className={`flex-1 inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold text-white transition disabled:opacity-50 ${
+              dirty
+                ? 'bg-emerald-500 ring-2 ring-emerald-400/40 animate-pulse-soft'
+                : 'bg-emerald-500'
+            }`}
+            style={dirty ? { boxShadow: '0 0 0 4px rgba(16, 185, 129, 0.18)' } : undefined}
+          >
+            {busy
+              ? <><Loader2 size={16} className="animate-spin" /> {labels.saving}</>
+              : savedToast
+                ? <><Check size={16} /> {labels.saved}</>
+                : dirty
+                  ? <><AlertTriangle size={14} /> {labels.save}</>
+                  : labels.save}
+          </button>
+          {dirty && (
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+              {labels.unsaved}
+            </span>
+          )}
+        </div>
       )}
 
       <AnimatePresence>
@@ -308,7 +351,7 @@ export function WorkingHoursEditor({
 
 function DayColumn({
   dayShort, info, addLabel, weekendLabel,
-  onToggle, onAdd, onEdit, onDelete,
+  onToggle, onAdd, onEdit, onDelete, onDragCommit,
 }: {
   day: WeekDayKey;
   dayShort: string;
@@ -319,8 +362,63 @@ function DayColumn({
   onAdd: () => void;
   onEdit: (idx: number) => void;
   onDelete: (idx: number) => void;
+  onDragCommit: (start: string, end: string) => void;
 }) {
   const enabled = info.enabled;
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  // Состояние drag-выделения. minutes — точные минуты от начала суток с
+  // привязкой к 5-минутной сетке. start ≤ end. Активно с pointerdown
+  // на пустой части колонки до pointerup.
+  const [drag, setDrag] = useState<{ startMin: number; endMin: number } | null>(null);
+
+  function pixelToMinutes(clientY: number): number {
+    const grid = gridRef.current;
+    if (!grid) return 0;
+    const rect = grid.getBoundingClientRect();
+    const px = Math.max(0, Math.min(TOTAL_PX, clientY - rect.top));
+    const min = (px / HOUR_PX) * 60;
+    // Snap to 5-min grid
+    return Math.max(0, Math.min(24 * 60, Math.round(min / 5) * 5));
+  }
+
+  function minToHHMM(min: number): string {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!enabled) return;
+    // Если клик попал на существующий блок (.btn) или его × — не начинаем drag
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+    e.preventDefault();
+    const min = pixelToMinutes(e.clientY);
+    setDrag({ startMin: min, endMin: min });
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!drag) return;
+    const min = pixelToMinutes(e.clientY);
+    setDrag({ ...drag, endMin: min });
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!drag) return;
+    const a = Math.min(drag.startMin, drag.endMin);
+    const b = Math.max(drag.startMin, drag.endMin);
+    setDrag(null);
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    // Если drag меньше 15 мин — считаем кликом, а не выделением
+    if (b - a < 15) return;
+    onDragCommit(minToHHMM(a), minToHHMM(b));
+  }
+
+  // Расчёт превью drag-блока
+  const previewTop = drag ? m2y(Math.min(drag.startMin, drag.endMin)) : 0;
+  const previewHeight = drag ? Math.max(2, m2y(Math.abs(drag.endMin - drag.startMin))) : 0;
+
   return (
     <div className="flex flex-1 flex-col border-r border-neutral-200 last:border-r-0 dark:border-neutral-800">
       {/* Header: day short + checkbox */}
@@ -339,8 +437,13 @@ function DayColumn({
 
       {/* Time grid + intervals */}
       <div
-        className={`relative ${enabled ? 'bg-white dark:bg-neutral-900' : 'bg-neutral-50 dark:bg-neutral-900/60'}`}
+        ref={gridRef}
+        className={`relative ${enabled ? 'bg-white dark:bg-neutral-900 cursor-crosshair touch-none' : 'bg-neutral-50 dark:bg-neutral-900/60'}`}
         style={{ height: TOTAL_PX }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         {/* Hour grid lines */}
         {Array.from({ length: 25 }, (_, h) => (
@@ -358,6 +461,18 @@ function DayColumn({
               background: `repeating-linear-gradient(45deg, transparent 0 6px, rgba(120,120,120,0.15) 6px 12px)`,
             }}
           />
+        )}
+        {/* Drag preview — пока тянем палец */}
+        {drag && (
+          <div
+            className="absolute left-1 right-1 rounded-md border-2 border-dashed border-emerald-600 bg-emerald-200/60 pointer-events-none"
+            style={{ top: previewTop, height: previewHeight }}
+          >
+            <div className="flex items-start justify-between px-1.5 pt-1 text-[10px] font-bold text-emerald-800 leading-tight">
+              <span className="tabular-nums">{minToHHMM(Math.min(drag.startMin, drag.endMin))}</span>
+              <span className="tabular-nums">{minToHHMM(Math.max(drag.startMin, drag.endMin))}</span>
+            </div>
+          </div>
         )}
         {/* Working interval blocks */}
         {enabled && info.intervals.map((iv, i) => {
