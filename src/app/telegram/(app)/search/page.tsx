@@ -40,33 +40,6 @@ import { Bot, ArrowDown } from 'lucide-react';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
 import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
-import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
-
-// AI-чипы. Все 4 варианта реально срабатывают:
-//   1) find_slots (book) — найти свободные слоты + кликабельные карточки
-//   2) find_master — поиск мастера по запросу
-//   3) next_due — когда мне пора на повторный визит (по моей истории)
-//   4) prep — советы по подготовке к визиту
-const AI_PROMPTS_BY_LANG: Record<'uk' | 'ru' | 'en', readonly string[]> = {
-  uk: [
-    'Запиши на манікюр завтра',
-    'Знайди майстра поруч',
-    'Коли мені знову на корекцію?',
-    'Що взяти з собою на візит?',
-  ],
-  ru: [
-    'Запиши на маникюр завтра',
-    'Найди мастера рядом',
-    'Когда мне на коррекцию?',
-    'Что взять с собой на визит?',
-  ],
-  en: [
-    'Book me a manicure for tomorrow',
-    'Find a master nearby',
-    'When is my next touch-up?',
-    'What should I bring to the visit?',
-  ],
-};
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
@@ -218,9 +191,6 @@ export default function MiniAppSearchPage() {
   // AI consierge state
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
-  // Локаль Mini App — для локализованных AI-чипов и интерфейса.
-  const lang = useMiniAppLocale();
-  const aiPrompts = AI_PROMPTS_BY_LANG[lang];
 
   // Follow state — what user already added to contacts (mastersById, salonsById)
   const [followedMasters, setFollowedMasters] = useState<Set<string>>(new Set());
@@ -589,44 +559,9 @@ export default function MiniAppSearchPage() {
           </button>
         </div>
 
-        {/* AI prompt chips — нативное общение с консьержем */}
-        {!query && (
-          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', margin: `0 -${PAGE_PADDING_X}px`, padding: `0 ${PAGE_PADDING_X}px` }}>
-            <style>{`.ai-prompts::-webkit-scrollbar { display: none; }`}</style>
-            <div className="ai-prompts" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              {aiPrompts.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => {
-                    haptic('light');
-                    setAiPrompt(prompt);
-                    setAiOpen(true);
-                  }}
-                  style={{
-                    flexShrink: 0,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 14px',
-                    borderRadius: R.pill,
-                    background: T.accentSoft,
-                    border: 'none',
-                    color: T.accent,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <Bot size={13} />
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* AI prompt chips удалены по запросу Данила (2026-05-06).
+            Клиент сам пишет что хочет — иконка бота слева в поле поиска
+            открывает AI-консьерж с пустым окном ввода. */}
 
         {/* List/Map switcher — текстовый pill */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

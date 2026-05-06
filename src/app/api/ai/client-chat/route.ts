@@ -702,10 +702,16 @@ async function findMasters(
     })
     .filter((x) => x.score >= 0);
 
-  // Если keywords заданы — оставляем только мастеров со score>0
-  // (требуем хотя бы одно совпадение). Если keywords пусты — все.
+  // Если keywords заданы — требуем РЕАЛЬНОЕ совпадение по ключевому слову
+  // или vertical-бонус. Без этого мастер с рейтингом 5.0 проходил фильтр
+  // (rating-бонус 0.5 даёт score>0) даже когда ни одно слово запроса
+  // не совпадает с его профилем — клиент просил «маникюр», а получал
+  // преподавателя языков. Вычитаем rating-бонус из score и требуем ≥1.
   const filtered = keywords.length
-    ? scored.filter((x) => x.score > 0)
+    ? scored.filter((x) => {
+        const ratingBonus = (x.m.rating ?? 0) * 0.1;
+        return x.score - ratingBonus >= 1;
+      })
     : scored;
 
   // Сортируем по score desc, rating desc
