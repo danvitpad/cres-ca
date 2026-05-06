@@ -15,15 +15,15 @@ type Lang = 'ru' | 'uk' | 'en';
 const FALLBACK_REVIEW: Record<Lang, { subject: string; body: string }> = {
   ru: {
     subject: '⭐ Оцените визит',
-    body: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста, кнопкой ниже. После — можно оставить комментарий.',
+    body: 'Как прошёл визит {visit_when}?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста, кнопкой ниже. После — можно оставить комментарий.',
   },
   uk: {
     subject: '⭐ Оцініть візит',
-    body: 'Як пройшов візит?\nПослуга: {service_name}\nМайстер: {master_name}\n\nОцініть, будь ласка, кнопкою нижче. Потім — можна залишити коментар.',
+    body: 'Як пройшов візит {visit_when}?\nПослуга: {service_name}\nМайстер: {master_name}\n\nОцініть, будь ласка, кнопкою нижче. Потім — можна залишити коментар.',
   },
   en: {
     subject: '⭐ Rate your visit',
-    body: 'How was the visit?\nService: {service_name}\nMaster: {master_name}\n\nPlease rate using the buttons below. After — you can add a comment.',
+    body: 'How was the visit {visit_when}?\nService: {service_name}\nMaster: {master_name}\n\nPlease rate using the buttons below. After — you can add a comment.',
   },
 };
 
@@ -123,12 +123,20 @@ export async function GET(request: Request) {
     const lang: Lang = 'uk';
     const fb = FALLBACK_REVIEW[lang];
 
+    // Дата+время визита — чтобы клиент понимал какую из нескольких записей
+    // он оценивает (если их несколько в один день).
+    const endsAt = new Date(apt.ends_at);
+    const dayLabel = endsAt.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', timeZone: 'Europe/Kyiv' });
+    const timeLabel = endsAt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' });
+    const visitWhen = `${dayLabel} о ${timeLabel}`;
+
     const tpl = pickFullTemplate(tplMap.get(apt.master_id), fb.body, fb.subject);
     const rendered = renderFullTemplate(tpl, {
       client_name: client.full_name ?? 'клиент',
       service_name: serviceName,
       master_name: masterName,
       apt_id: apt.id,
+      visit_when: visitWhen,
     });
     // Очищаем body от старого маркера [review:apt_id], если шаблон мастера его
     // содержит — мы больше не показываем технический apt_id клиенту.

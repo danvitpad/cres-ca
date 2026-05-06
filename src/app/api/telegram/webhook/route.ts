@@ -134,6 +134,11 @@ export async function POST(request: Request) {
   // Теперь callback handler сохраняет message_id prompt'а в reviews.tg_prompt_message_id,
   // а здесь ищем review по reply_to_message.message_id. Без видимых меток.
   const replyToMsgId = update.message.reply_to_message?.message_id;
+  const replyToText = update.message.reply_to_message?.text ?? '';
+  // Признак review-prompt'а — текст содержит «коментар» (uk/ru: «комментарий»).
+  // Используем чтобы НЕ дать reply'ю на review-prompt утечь в feedback handler
+  // даже если самой review-row нет (например, prompt был создан вручную через SQL).
+  const isReplyToReviewPrompt = !!replyToMsgId && /коментар|комментарий|відгук|отзыв/i.test(replyToText);
   if (replyToMsgId) {
     const supabase = createServiceClient();
     const { data: profile } = await supabase
@@ -150,7 +155,26 @@ export async function POST(request: Request) {
         await sendMessage(chatId, '✅ Дякуємо! Коментар збережено.');
         return NextResponse.json({ ok: true });
       }
-      // Не нашли — этот reply не связан с review-prompt'ом, fall through.
+      // Review row не нашли. Если оригинал — review-prompt (по тексту),
+      // ищем последний неоценённый review этого клиента и пишем коммент туда.
+      // Иначе reply просто проглатываем чтобы текст не уехал в superadmin feedback.
+      if (isReplyToReviewPrompt) {
+        const { data: lastReview } = await supabase
+          .from('reviews')
+          .select('id, comment')
+          .eq('reviewer_id', profile.id)
+          .eq('target_type', 'master')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (lastReview && !lastReview.comment) {
+          await supabase.from('reviews').update({ comment: text.slice(0, 2000) }).eq('id', lastReview.id);
+          await sendMessage(chatId, '✅ Дякуємо! Коментар збережено.');
+        } else {
+          await sendMessage(chatId, 'Дякуємо!');
+        }
+        return NextResponse.json({ ok: true });
+      }
     }
   }
 
