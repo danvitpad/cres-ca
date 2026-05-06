@@ -419,17 +419,19 @@ export function OwnerPortfolioPanel({
             </>
           )}
           <div
-            className="relative max-h-[90vh] max-w-[90vw]"
+            className="relative flex max-h-[90vh] max-w-[90vw] flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={activeItem.image_url}
               alt={activeItem.caption ?? ''}
-              className="max-h-[88vh] max-w-[88vw] rounded-xl object-contain shadow-2xl"
+              className="min-h-0 max-w-[88vw] flex-1 rounded-xl object-contain shadow-2xl"
             />
             {activeItem.caption && (
-              <div className="mt-3 text-center text-sm text-white">{activeItem.caption}</div>
+              <div className="mt-3 max-w-[88vw] whitespace-pre-line text-center text-[15px] leading-relaxed text-white">
+                {activeItem.caption}
+              </div>
             )}
             {items.length > 1 && (
               <div className="mt-2 text-center text-xs text-white/50">
