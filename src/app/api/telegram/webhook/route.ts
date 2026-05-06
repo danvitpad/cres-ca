@@ -1593,7 +1593,7 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
         body: JSON.stringify({
           chat_id: chatId,
           message_id: cb.message.message_id,
-          text: `<b>Дякуємо за оцінку!</b>\nВи поставили ${stars}⭐\n\nЯк опублікувати відгук?`,
+          text: `<b>Дякуємо за оцінку!</b>\n\nЯк опублікувати відгук?`,
           parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [[
@@ -1645,7 +1645,7 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
         body: JSON.stringify({
           chat_id: chatId,
           message_id: cb.message.message_id,
-          text: `<b>Дякуємо за оцінку!</b>\nВи поставили ${review.score}⭐\n\nОпубліковано ${isAnonymous ? 'анонімно' : 'з вашим імʼям'}.`,
+          text: `<b>Дякуємо за оцінку!</b>\n\nОпубліковано ${isAnonymous ? 'анонімно' : 'з вашим імʼям'}.`,
           parse_mode: 'HTML',
         }),
       });
