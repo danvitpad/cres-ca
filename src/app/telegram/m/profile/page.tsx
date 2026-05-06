@@ -19,6 +19,59 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  notFound: string; defaultName: string;
+  trial: string; tierStarter: string; tierPro: string; tierBusiness: string; tierFree: string;
+  changeAvatar: string; settings: string; editName: string;
+  statsWorks: string; statsClients: string; statsRating: string; statsReviews: (n: number) => string;
+  share: string; myPage: string;
+  avatarTitle: string;
+  fileTooLarge: string;
+  nameSheetTitle: string; firstName: string; lastName: string; saving: string; saveBtn: string;
+  firstNamePh: string; lastNamePh: string;
+}> = {
+  uk: {
+    notFound: 'Профіль майстра не знайдено.', defaultName: 'Майстер',
+    trial: 'Тріал', tierStarter: 'Старт', tierPro: 'Про', tierBusiness: 'Бізнес', tierFree: 'Free',
+    changeAvatar: 'Змінити аватар', settings: 'Налаштування', editName: 'Змінити імʼя',
+    statsWorks: 'Робіт', statsClients: 'Клієнтів', statsRating: 'Рейтинг',
+    statsReviews: (n) => `${n} відгуків`,
+    share: 'Поділитись', myPage: 'Моя сторінка',
+    avatarTitle: 'Аватар',
+    fileTooLarge: 'Файл більший за 8 МБ',
+    nameSheetTitle: 'Імʼя та прізвище', firstName: 'Імʼя', lastName: 'Прізвище',
+    saving: 'Зберігаємо…', saveBtn: 'Зберегти',
+    firstNamePh: 'Даніїл', lastNamePh: 'Падалко',
+  },
+  ru: {
+    notFound: 'Профиль мастера не найден.', defaultName: 'Мастер',
+    trial: 'Триал', tierStarter: 'Старт', tierPro: 'Про', tierBusiness: 'Бизнес', tierFree: 'Free',
+    changeAvatar: 'Сменить аватар', settings: 'Настройки', editName: 'Изменить имя',
+    statsWorks: 'Работ', statsClients: 'Клиентов', statsRating: 'Рейтинг',
+    statsReviews: (n) => `${n} отзывов`,
+    share: 'Поделиться', myPage: 'Моя страница',
+    avatarTitle: 'Аватар',
+    fileTooLarge: 'Файл больше 8 МБ',
+    nameSheetTitle: 'Имя и фамилия', firstName: 'Имя', lastName: 'Фамилия',
+    saving: 'Сохраняем…', saveBtn: 'Сохранить',
+    firstNamePh: 'Даниил', lastNamePh: 'Падалко',
+  },
+  en: {
+    notFound: 'Master profile not found.', defaultName: 'Master',
+    trial: 'Trial', tierStarter: 'Starter', tierPro: 'Pro', tierBusiness: 'Business', tierFree: 'Free',
+    changeAvatar: 'Change avatar', settings: 'Settings', editName: 'Edit name',
+    statsWorks: 'Visits', statsClients: 'Clients', statsRating: 'Rating',
+    statsReviews: (n) => `${n} reviews`,
+    share: 'Share', myPage: 'My page',
+    avatarTitle: 'Avatar',
+    fileTooLarge: 'File over 8 MB',
+    nameSheetTitle: 'First & last name', firstName: 'First name', lastName: 'Last name',
+    saving: 'Saving…', saveBtn: 'Save',
+    firstNamePh: 'Daniel', lastNamePh: 'Padalko',
+  },
+};
 
 interface MasterSelf {
   id: string;
@@ -53,17 +106,23 @@ interface TeamMembership {
   is_owner?: boolean;
 }
 
-const TIER_LABEL: Record<string, string> = {
-  trial: 'Триал',
-  starter: 'Старт',
-  pro: 'Про',
-  business: 'Бизнес',
-  free: 'Free',
-};
+function tierLabelFor(tier: string | null | undefined, t: typeof I18N['ru']): string | null {
+  if (!tier) return null;
+  switch (tier) {
+    case 'trial':    return t.trial;
+    case 'starter':  return t.tierStarter;
+    case 'pro':      return t.tierPro;
+    case 'business': return t.tierBusiness;
+    case 'free':     return t.tierFree;
+    default:         return tier;
+  }
+}
 
 export default function MasterMiniAppProfile() {
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [master, setMaster] = useState<MasterSelf | null>(null);
   const [profileFullName, setProfileFullName] = useState<string>('');
   const [profileFirstName, setProfileFirstName] = useState<string>('');
@@ -217,16 +276,16 @@ export default function MasterMiniAppProfile() {
     return (
       <MobilePage>
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <p style={{ ...TYPE.body, color: T.textSecondary }}>Профиль мастера не найден.</p>
+          <p style={{ ...TYPE.body, color: T.textSecondary }}>{t.notFound}</p>
         </div>
       </MobilePage>
     );
   }
 
-  const displayName = profileFullName || master.display_name || 'Мастер';
+  const displayName = profileFullName || master.display_name || t.defaultName;
   const avatar = profileAvatar || master.avatar_url;
   const isTrial = sub?.status === 'trialing' || sub?.tier === 'trial';
-  const tierLabel = isTrial ? 'Триал' : sub?.tier ? TIER_LABEL[sub.tier] ?? sub.tier : null;
+  const tierLabel = isTrial ? t.trial : tierLabelFor(sub?.tier, t);
 
   function shareLink() {
     if (!master?.invite_code) return;
@@ -265,7 +324,7 @@ export default function MasterMiniAppProfile() {
               cursor: 'pointer',
               borderRadius: '50%',
             }}
-            aria-label="Сменить аватар"
+            aria-label={t.changeAvatar}
           >
             <AvatarCircle url={avatar} name={displayName} size={80} />
             {avatarBusy && (
@@ -293,7 +352,7 @@ export default function MasterMiniAppProfile() {
               const f = e.target.files?.[0];
               if (!f) return;
               if (!f.type.startsWith('image/')) return;
-              if (f.size > 8 * 1024 * 1024) { alert('Файл больше 8 MB'); return; }
+              if (f.size > 8 * 1024 * 1024) { alert(t.fileTooLarge); return; }
               setCropSrc(URL.createObjectURL(f));
               e.target.value = '';
             }}
@@ -303,7 +362,7 @@ export default function MasterMiniAppProfile() {
             src={cropSrc}
             onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
             onCropped={uploadCroppedAvatar}
-            title="Аватар"
+            title={t.avatarTitle}
             aspect={1}
             shape="round"
             outputSize={512}
@@ -337,7 +396,7 @@ export default function MasterMiniAppProfile() {
                   color: T.textTertiary,
                   flexShrink: 0,
                 }}
-                aria-label="Изменить имя"
+                aria-label={t.editName}
               >
                 <Pencil size={14} />
               </button>
@@ -393,7 +452,7 @@ export default function MasterMiniAppProfile() {
               color: T.text,
               textDecoration: 'none',
             }}
-            aria-label="Настройки"
+            aria-label={t.settings}
           >
             <Settings size={20} strokeWidth={2} />
           </Link>
@@ -401,11 +460,11 @@ export default function MasterMiniAppProfile() {
 
         {/* Stats grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
-          <StatItem value={stats?.appointments ?? 0} label="Работ" />
-          <StatItem value={stats?.clients ?? 0} label="Клиентов" />
+          <StatItem value={stats?.appointments ?? 0} label={t.statsWorks} />
+          <StatItem value={stats?.clients ?? 0} label={t.statsClients} />
           <StatItem
             value={master.rating > 0 ? master.rating.toFixed(1) : '—'}
-            label={master.total_reviews > 0 ? `${master.total_reviews} отзывов` : 'Рейтинг'}
+            label={master.total_reviews > 0 ? t.statsReviews(master.total_reviews) : t.statsRating}
             withStar={master.rating > 0}
           />
         </div>
@@ -451,7 +510,7 @@ export default function MasterMiniAppProfile() {
             }}
           >
             <Share2 size={16} strokeWidth={2.2} />
-            Поделиться
+            {t.share}
           </button>
           {master.invite_code ? (
             <Link
@@ -474,7 +533,7 @@ export default function MasterMiniAppProfile() {
               }}
             >
               <ExternalLink size={16} strokeWidth={2.2} />
-              Моя страница
+              {t.myPage}
             </Link>
           ) : (
             <button
@@ -498,7 +557,7 @@ export default function MasterMiniAppProfile() {
               }}
             >
               <ExternalLink size={16} strokeWidth={2.2} />
-              Моя страница
+              {t.myPage}
             </button>
           )}
         </div>
@@ -506,6 +565,7 @@ export default function MasterMiniAppProfile() {
 
       {nameEditOpen && (
         <NameEditSheet
+          t={t}
           initialFirstName={profileFirstName}
           initialLastName={profileLastName}
           saving={nameSaving}
@@ -537,8 +597,9 @@ export default function MasterMiniAppProfile() {
 }
 
 function NameEditSheet({
-  initialFirstName, initialLastName, saving, onClose, onSave,
+  t, initialFirstName, initialLastName, saving, onClose, onSave,
 }: {
+  t: typeof I18N['ru'];
   initialFirstName: string;
   initialLastName: string;
   saving: boolean;
@@ -558,7 +619,7 @@ function NameEditSheet({
         style={{ width: '100%', background: T.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32, boxShadow: SHADOW.elevated }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Имя и фамилия</h2>
+          <h2 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.nameSheetTitle}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -569,21 +630,21 @@ function NameEditSheet({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
-            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 4px 4px' }}>Имя</p>
+            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 4px 4px' }}>{t.firstName}</p>
             <input
               autoFocus
               value={fn}
               onChange={(e) => setFn(e.target.value)}
-              placeholder="Даниил"
+              placeholder={t.firstNamePh}
               style={{ width: '100%', padding: '12px 14px', borderRadius: R.md, border: `1px solid ${T.border}`, background: T.surfaceElevated, fontSize: 14, color: T.text, fontFamily: 'inherit', outline: 'none' }}
             />
           </div>
           <div>
-            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 4px 4px' }}>Фамилия</p>
+            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 4px 4px' }}>{t.lastName}</p>
             <input
               value={ln}
               onChange={(e) => setLn(e.target.value)}
-              placeholder="Падалко"
+              placeholder={t.lastNamePh}
               style={{ width: '100%', padding: '12px 14px', borderRadius: R.md, border: `1px solid ${T.border}`, background: T.surfaceElevated, fontSize: 14, color: T.text, fontFamily: 'inherit', outline: 'none' }}
             />
           </div>
@@ -593,7 +654,7 @@ function NameEditSheet({
             disabled={saving || !fn.trim()}
             style={{ marginTop: 6, padding: '14px 16px', borderRadius: R.pill, border: 'none', background: T.text, color: T.bg, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: saving || !fn.trim() ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
           >
-            {saving && <Loader2 size={14} className="animate-spin" />} Сохранить
+            {saving && <Loader2 size={14} className="animate-spin" />} {saving ? t.saving : t.saveBtn}
           </button>
         </div>
       </div>

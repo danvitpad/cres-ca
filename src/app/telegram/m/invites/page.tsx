@@ -17,6 +17,69 @@ import { toast } from 'sonner';
 import { MobilePage, PageHeader, EmptyState } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  title: string;
+  awaiting: (n: number) => string;
+  emptySubtitle: string;
+  emptyTitle: string;
+  emptyDesc: string;
+  active: string;
+  history: string;
+  statusAccepted: string; statusDeclined: string; statusCancelled: string; statusExpired: string;
+  acceptBtn: string; declineBtn: string;
+  toastNowInTeam: (n: string) => string;
+  toastAccepted: string; toastDeclined: string;
+  toastFailed: string;
+  openSalonPage: string;
+}> = {
+  uk: {
+    title: 'Запрошення',
+    awaiting: (n) => `Чекають твоєї відповіді: ${n}`,
+    emptySubtitle: 'Тут зʼявляться запрошення від адміністраторів салонів',
+    emptyTitle: 'Немає запрошень',
+    emptyDesc: 'Коли адмін салону покличе тебе в команду — запрошення зʼявиться тут.',
+    active: 'Активні', history: 'Історія',
+    statusAccepted: 'Прийнято', statusDeclined: 'Відхилено',
+    statusCancelled: 'Відкликано адміном', statusExpired: 'Прострочено',
+    acceptBtn: 'Прийняти', declineBtn: 'Відхилити',
+    toastNowInTeam: (n) => `Тепер у команді «${n}»`,
+    toastAccepted: 'Прийнято', toastDeclined: 'Відхилено',
+    toastFailed: 'Не вдалося',
+    openSalonPage: 'Відкрити сторінку салону',
+  },
+  ru: {
+    title: 'Приглашения',
+    awaiting: (n) => `Ждут твоего ответа: ${n}`,
+    emptySubtitle: 'Здесь появятся приглашения от админов салонов',
+    emptyTitle: 'Нет приглашений',
+    emptyDesc: 'Когда админ салона позовёт тебя в команду, приглашение появится здесь.',
+    active: 'Активные', history: 'История',
+    statusAccepted: 'Принято', statusDeclined: 'Отклонено',
+    statusCancelled: 'Отозвано админом', statusExpired: 'Истекло',
+    acceptBtn: 'Принять', declineBtn: 'Отклонить',
+    toastNowInTeam: (n) => `Теперь в команде «${n}»`,
+    toastAccepted: 'Принято', toastDeclined: 'Отклонено',
+    toastFailed: 'Не получилось',
+    openSalonPage: 'Открыть страницу салона',
+  },
+  en: {
+    title: 'Invitations',
+    awaiting: (n) => `Waiting for your answer: ${n}`,
+    emptySubtitle: 'Salon admin invitations will appear here',
+    emptyTitle: 'No invitations',
+    emptyDesc: 'When a salon admin invites you to the team, the invitation appears here.',
+    active: 'Active', history: 'History',
+    statusAccepted: 'Accepted', statusDeclined: 'Declined',
+    statusCancelled: 'Withdrawn by admin', statusExpired: 'Expired',
+    acceptBtn: 'Accept', declineBtn: 'Decline',
+    toastNowInTeam: (n) => `Now on the «${n}» team`,
+    toastAccepted: 'Accepted', toastDeclined: 'Declined',
+    toastFailed: 'Failed',
+    openSalonPage: 'Open salon page',
+  },
+};
 
 interface Invite {
   id: string;
@@ -38,6 +101,8 @@ interface Invite {
 export default function MasterMiniAppInvites() {
   const router = useRouter();
   const { ready, haptic } = useTelegram();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [invites, setInvites] = useState<Invite[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -68,15 +133,15 @@ export default function MasterMiniAppInvites() {
       const res = await fetch(`/api/master-invites/${invite.id}/${action}`, { method: 'POST' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error((json as { error?: string }).error || 'Не получилось');
+        toast.error((json as { error?: string }).error || t.toastFailed);
         return;
       }
       const salonObj = Array.isArray(invite.salon) ? invite.salon[0] : invite.salon;
       if (action === 'accept' && salonObj) {
-        toast.success(`Теперь в команде «${salonObj.name}»`);
+        toast.success(t.toastNowInTeam(salonObj.name));
         router.replace(`/telegram/m/salon/${salonObj.id}/dashboard`);
       } else {
-        toast.success(action === 'accept' ? 'Принято' : 'Отклонено');
+        toast.success(action === 'accept' ? t.toastAccepted : t.toastDeclined);
         await load();
       }
     } finally {
@@ -87,7 +152,7 @@ export default function MasterMiniAppInvites() {
   if (loading) {
     return (
       <MobilePage>
-        <PageHeader title="Приглашения" />
+        <PageHeader title={t.title} />
         <div style={{ padding: PAGE_PADDING_X }}>
           <div style={{ height: 96, background: T.surface, borderRadius: R.md, opacity: 0.5 }} />
         </div>
@@ -101,27 +166,28 @@ export default function MasterMiniAppInvites() {
   return (
     <MobilePage>
       <PageHeader
-        title="Приглашения"
-        subtitle={pending.length > 0 ? `Ждут твоего ответа: ${pending.length}` : 'Здесь появятся приглашения от админов салонов'}
+        title={t.title}
+        subtitle={pending.length > 0 ? t.awaiting(pending.length) : t.emptySubtitle}
       />
 
       {invites.length === 0 ? (
         <EmptyState
           icon={<Inbox size={42} color={T.textSecondary} strokeWidth={1.5} />}
-          title="Нет приглашений"
-          desc="Когда админ салона позовёт тебя в команду, приглашение появится здесь."
+          title={t.emptyTitle}
+          desc={t.emptyDesc}
         />
       ) : (
         <div style={{ padding: `8px ${PAGE_PADDING_X}px 24px`, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {pending.length > 0 && (
             <section>
               <h2 style={{ ...TYPE.caption, color: T.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
-                Активные
+                {t.active}
               </h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {pending.map((i) => (
                   <InviteCard
                     key={i.id}
+                    t={t}
                     invite={i}
                     busy={busy}
                     onAccept={() => decide(i, 'accept')}
@@ -135,11 +201,11 @@ export default function MasterMiniAppInvites() {
           {decided.length > 0 && (
             <section>
               <h2 style={{ ...TYPE.caption, color: T.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
-                История
+                {t.history}
               </h2>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {decided.map((i) => (
-                  <InviteCard key={i.id} invite={i} readonly />
+                  <InviteCard key={i.id} t={t} invite={i} readonly />
                 ))}
               </ul>
             </section>
@@ -151,12 +217,14 @@ export default function MasterMiniAppInvites() {
 }
 
 function InviteCard({
+  t,
   invite,
   busy,
   onAccept,
   onDecline,
   readonly,
 }: {
+  t: typeof I18N['ru'];
   invite: Invite;
   busy?: string | null;
   onAccept?: () => void;
@@ -172,19 +240,19 @@ function InviteCard({
   const statusBadge =
     invite.status === 'accepted' ? (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600, background: '#dcfce7', color: '#15803d', borderRadius: R.pill }}>
-        <Check size={12} /> Принято
+        <Check size={12} /> {t.statusAccepted}
       </span>
     ) : invite.status === 'declined' ? (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', fontSize: 11, fontWeight: 600, background: '#fee2e2', color: '#b91c1c', borderRadius: R.pill }}>
-        <X size={12} /> Отклонено
+        <X size={12} /> {t.statusDeclined}
       </span>
     ) : invite.status === 'cancelled' ? (
       <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, background: T.bgSubtle, color: T.textSecondary, borderRadius: R.pill }}>
-        Отозвано админом
+        {t.statusCancelled}
       </span>
     ) : invite.status === 'expired' ? (
       <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, background: T.bgSubtle, color: T.textSecondary, borderRadius: R.pill }}>
-        Истекло
+        {t.statusExpired}
       </span>
     ) : null;
 
@@ -259,7 +327,7 @@ function InviteCard({
           textDecoration: 'none',
         }}
       >
-        Открыть страницу салона
+        {t.openSalonPage}
         <ExternalLink size={12} />
       </Link>
 
@@ -288,7 +356,7 @@ function InviteCard({
             }}
           >
             {declineBusy ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <X size={14} />}
-            Отклонить
+            {t.declineBtn}
           </button>
           <button
             type="button"
@@ -313,7 +381,7 @@ function InviteCard({
             }}
           >
             {acceptBusy ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={14} />}
-            Принять
+            {t.acceptBtn}
           </button>
         </div>
       )}
