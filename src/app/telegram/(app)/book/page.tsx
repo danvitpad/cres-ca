@@ -282,6 +282,7 @@ export default function MiniAppBookPage() {
   const [slots, setSlots] = useState<string[]>([]);
   const [pastSlots, setPastSlots] = useState<string[]>([]);
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [tooShortSlots, setTooShortSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -409,6 +410,7 @@ export default function MiniAppBookPage() {
     setSlots([]);
     setPastSlots([]);
     setBookedSlots([]);
+    setTooShortSlots([]);
 
     const dateStr = toLocalDateStr(date);
     // Use the first selected service for slot calculation (total duration matters)
@@ -419,9 +421,11 @@ export default function MiniAppBookPage() {
     const fetchedSlots = data.slots ?? [];
     const fetchedPast = data.pastSlots ?? [];
     const fetchedBooked = data.bookedSlots ?? [];
+    const fetchedTooShort = data.tooShortSlots ?? [];
     setSlots(fetchedSlots);
     setPastSlots(fetchedPast);
     setBookedSlots(fetchedBooked);
+    setTooShortSlots(fetchedTooShort);
 
     // If no slots, find next available date
     if (fetchedSlots.length === 0) {
@@ -999,7 +1003,7 @@ export default function MiniAppBookPage() {
                           <div key={i} className="h-12 animate-pulse rounded-xl" style={{ background: T.surface, border: `1px solid ${T.borderSubtle}` }} />
                         ))}
                       </div>
-                    ) : slots.length === 0 && pastSlots.length === 0 && bookedSlots.length === 0 ? (
+                    ) : slots.length === 0 && pastSlots.length === 0 && bookedSlots.length === 0 && tooShortSlots.length === 0 ? (
                       <div className="rounded-2xl p-6 text-center" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
                         <CalendarIcon className="mx-auto mb-2 size-7" style={{ color: T.textDisabled }} />
                         <p className="text-[13px] font-medium" style={{ color: T.textSecondary }}>
@@ -1020,10 +1024,11 @@ export default function MiniAppBookPage() {
                         {/* Все слоты в одной сетке, отсортированные по времени.
                             Прошедшие и занятые рисуем серыми, не нажимаются. */}
                         {(() => {
-                          type Slot = { time: string; state: 'free' | 'past' | 'booked' };
+                          type Slot = { time: string; state: 'free' | 'past' | 'booked' | 'tooShort' };
                           const all: Slot[] = [
                             ...pastSlots.map((t) => ({ time: t, state: 'past' as const })),
                             ...bookedSlots.map((t) => ({ time: t, state: 'booked' as const })),
+                            ...tooShortSlots.map((t) => ({ time: t, state: 'tooShort' as const })),
                             ...slots.map((t) => ({ time: t, state: 'free' as const })),
                           ].sort((a, b) => a.time.localeCompare(b.time));
                           return all.map((s, i) => {
@@ -1048,8 +1053,13 @@ export default function MiniAppBookPage() {
                                 </motion.button>
                               );
                             }
-                            // Past or booked — both render as grey disabled with subtle differences
-                            const tooltip = s.state === 'past' ? 'Это время уже прошло' : 'Это время уже занято';
+                            // Past / booked / tooShort — все рисуем серыми disabled, разница в подсказке.
+                            const tooltip =
+                              s.state === 'past'
+                                ? 'Это время уже прошло'
+                                : s.state === 'booked'
+                                  ? 'Это время уже занято'
+                                  : 'Услуга не помещается в это время';
                             return (
                               <motion.div
                                 key={`${s.state}-${s.time}`}

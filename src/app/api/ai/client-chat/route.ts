@@ -82,6 +82,43 @@ ${cityHint}
 Иначе suggestions = [].`;
 }
 
+const SURFACE = 'client_concierge';
+const HISTORY_LIMIT = 10;
+
+async function loadHistory(profileId: string): Promise<ChatMessage[]> {
+  const db = admin();
+  const { data } = await db
+    .from('ai_messages')
+    .select('role, content')
+    .eq('profile_id', profileId)
+    .eq('surface', SURFACE)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_LIMIT);
+  if (!data) return [];
+  // DESC → reverse в хронологический порядок
+  return (data as Array<{ role: 'user' | 'assistant'; content: string }>)
+    .reverse()
+    .map((m) => ({ role: m.role, content: m.content }));
+}
+
+async function saveMessage(
+  profileId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  intent?: string | null,
+  data?: Record<string, unknown> | null,
+): Promise<void> {
+  const db = admin();
+  await db.from('ai_messages').insert({
+    profile_id: profileId,
+    surface: SURFACE,
+    role,
+    content,
+    intent: intent ?? null,
+    data: data ?? null,
+  });
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json().catch(() => null)) as
@@ -103,8 +140,15 @@ export async function POST(req: Request) {
       '',
     ).trim() || null;
 
-    const history: ChatMessage[] = (body.history ?? []).slice(-10);
-    history.push({ role: 'user', content: body.message.trim() });
+    // История: если есть userId — берём из БД (persistent), иначе из тела
+    // (legacy sessionStorage path). Новые чаты пишутся в БД, старые сессии
+    // donьше пользоваться body.history до релогина.
+    const userMessage = body.message.trim();
+    const dbHistory = body.userId ? await loadHistory(body.userId) : [];
+    const history: ChatMessage[] = dbHistory.length > 0
+      ? dbHistory
+      : (body.history ?? []).slice(-HISTORY_LIMIT);
+    history.push({ role: 'user', content: userMessage });
 
     const result = await chatCompletion({
       systemPrompt: buildSystemPrompt(locale, headerCity),
@@ -120,15 +164,21 @@ export async function POST(req: Request) {
     }>(result.data);
 
     if (!parsed) {
+      const fallbackReply =
+        result.data?.slice(0, 600) ??
+        (locale === 'uk'
+          ? 'Не впевнений що зрозумів. Спробуй переформулювати.'
+          : locale === 'en'
+          ? "Not sure I understood. Could you rephrase?"
+          : 'Не уверен что понял. Попробуй переформулировать.');
+      // Persist даже невалидные ответы — модель такое тоже использует как контекст.
+      if (body.userId) {
+        await saveMessage(body.userId, 'user', userMessage);
+        await saveMessage(body.userId, 'assistant', fallbackReply, 'smalltalk');
+      }
       return NextResponse.json({
         intent: 'smalltalk',
-        reply:
-          result.data?.slice(0, 600) ??
-          (locale === 'uk'
-            ? 'Не впевнений що зрозумів. Спробуй переформулювати.'
-            : locale === 'en'
-            ? "Not sure I understood. Could you rephrase?"
-            : 'Не уверен что понял. Попробуй переформулировать.'),
+        reply: fallbackReply,
         suggestions: [],
         actions: [],
       });
@@ -151,6 +201,16 @@ export async function POST(req: Request) {
     if (parsed.intent === 'status' && body.userId) {
       const next = await getNextAppointment(body.userId);
       if (next) actions = [next];
+    }
+
+    // Persist в ai_messages — после успешного ответа модели.
+    if (body.userId) {
+      await saveMessage(body.userId, 'user', userMessage);
+      await saveMessage(
+        body.userId, 'assistant', parsed.reply,
+        parsed.intent,
+        { params: parsed.params, actions },
+      );
     }
 
     return NextResponse.json({

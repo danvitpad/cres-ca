@@ -135,19 +135,36 @@ export async function GET(request: NextRequest) {
   // Step 30 — это шаг ПРЕДЛАГАЕМЫХ клиенту времён начала; гранулярность
   // самого расписания мастера сейчас 5 мин (см. WorkingHoursEditor),
   // но клиенту удобнее видеть круглые «10:00 / 10:30 / 11:00».
+  //
+  // 4 категории на ответ:
+  //   slots         — свободно, клиент может выбрать
+  //   pastSlots     — уже прошло (только для текущего дня)
+  //   bookedSlots   — пересекается с другой записью / блокировкой
+  //   tooShortSlots — слот в рабочем окне, но услуга в него не помещается
+  //                   (пример: окно 10-13, услуга 90 мин → 12:00 не помещается).
+  //                   UI рисует серым «как нерабочее время».
   const slots: string[] = [];
   const pastSlots: string[] = [];
   const bookedSlots: string[] = [];
+  const tooShortSlots: string[] = [];
 
   for (const iv of workingDay.intervals) {
     const startMin = timeToMinutes(iv.start);
     const endMin = timeToMinutes(iv.end);
-    for (let t = startMin; t + duration <= endMin; t += 30) {
+    // Идём до КОНЦА интервала (не до endMin - duration), чтобы захватить также
+    // слоты внутри окна, в которые услуга не помещается, и пометить их.
+    for (let t = startMin; t < endMin; t += 30) {
       const time = minutesToTime(t);
 
-      // Past-time
+      // Past-time приоритетнее всего — клиент должен видеть «эта дата прошла»
       if (isToday && t <= nowMin + 5) {
         pastSlots.push(time);
+        continue;
+      }
+
+      // Не помещается в рабочее окно
+      if (t + duration > endMin) {
+        tooShortSlots.push(time);
         continue;
       }
 
@@ -164,7 +181,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ slots, pastSlots, bookedSlots });
+  return NextResponse.json({ slots, pastSlots, bookedSlots, tooShortSlots });
 }
 
 function timeToMinutes(time: string): number {
