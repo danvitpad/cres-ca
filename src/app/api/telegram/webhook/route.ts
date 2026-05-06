@@ -178,6 +178,35 @@ export async function POST(request: Request) {
     }
   }
 
+  // ── Recent-review fallback (без reply) ──
+  // Клиент часто отправляет коммент НЕ как reply (свайпом), а как обычное
+  // следующее сообщение в чате. Чтобы это не уехало в superadmin feedback —
+  // если у профиля есть свежий review (≤ 30 мин) без comment, считаем что
+  // эта реплика и есть коммент.
+  {
+    const supabase = createServiceClient();
+    const { data: profile } = await supabase
+      .from('profiles').select('id').eq('telegram_id', telegramId).maybeSingle();
+    if (profile) {
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recent } = await supabase
+        .from('reviews')
+        .select('id, comment, created_at')
+        .eq('reviewer_id', profile.id)
+        .eq('target_type', 'master')
+        .is('comment', null)
+        .gte('created_at', cutoff)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (recent) {
+        await supabase.from('reviews').update({ comment: text.slice(0, 2000) }).eq('id', recent.id);
+        await sendMessage(chatId, '✅ Дякуємо! Коментар збережено.');
+        return NextResponse.json({ ok: true });
+      }
+    }
+  }
+
   const appUrl = `${process.env.NEXT_PUBLIC_APP_URL}/telegram`;
 
   // /start [param]

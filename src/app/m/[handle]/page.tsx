@@ -9,9 +9,9 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { cookies, headers } from 'next/headers';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Star, MapPin, Sparkles, Calendar, Clock, Phone, Mail, Cake } from 'lucide-react';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { RefCapture } from '@/components/master/ref-capture';
 import { PartnerRefCapture } from '@/components/master/partner-ref-capture';
 import { BeforeAfterSlider } from '@/components/shared/before-after-slider';
@@ -26,6 +26,7 @@ import { ServicesByCategory } from '@/components/master/services-by-category';
 import { PublicHeroCard } from '@/components/master/public-hero-card';
 import { PublicCresIdBadge } from '@/components/master/public-cres-id';
 import { PublicServicesList } from '@/components/master/public-services-list';
+import { PublicReviewsList } from '@/components/master/public-reviews-list';
 import { BookingDrawerProvider } from '@/components/master/booking/booking-provider';
 import { BookingCTA } from '@/components/master/booking/booking-cta';
 import { InlineCoverBanner } from '@/components/master/inline/cover-banner';
@@ -47,7 +48,12 @@ interface PageProps {
 
 type Lang = 'uk' | 'ru' | 'en';
 
-async function getServerLocale(): Promise<Lang> {
+async function getServerLocale(isOwner: boolean): Promise<Lang> {
+  // Правило 2026-05-06: публичная страница мастера всем посетителям
+  // показывается ТОЛЬКО на украинском. В других языках её видит лишь сам
+  // владелец (когда залогинен и зашёл на свою страницу) — тогда учитываются
+  // его cookie/accept-language.
+  if (!isOwner) return 'uk';
   try {
     const c = await cookies();
     const fromCookie = c.get('NEXT_LOCALE')?.value;
@@ -61,6 +67,17 @@ async function getServerLocale(): Promise<Lang> {
     if (al.startsWith('en')) return 'en';
   } catch {}
   return 'uk';
+}
+
+async function isViewerOwner(masterProfileId: string | null): Promise<boolean> {
+  if (!masterProfileId) return false;
+  try {
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    return !!user && user.id === masterProfileId;
+  } catch {
+    return false;
+  }
 }
 
 const STR: Record<Lang, {
@@ -77,6 +94,7 @@ const STR: Record<Lang, {
   partners: string; partnersDesc: string;
   bookCta: string; from: string;
   anonymousLabel: string;
+  showAllReviews: string; collapseReviews: string;
 }> = {
   uk: {
     bookVerb: {
@@ -96,6 +114,7 @@ const STR: Record<Lang, {
     partners: 'Рекомендую', partnersDesc: 'Майстри, з якими я працюю і кому довіряю.',
     bookCta: 'Записатися', from: 'від',
     anonymousLabel: 'Анонімний клієнт',
+    showAllReviews: 'Показати всі відгуки', collapseReviews: 'Згорнути',
   },
   ru: {
     bookVerb: {
@@ -115,6 +134,7 @@ const STR: Record<Lang, {
     partners: 'Рекомендую', partnersDesc: 'Мастера, с которыми я работаю и доверяю.',
     bookCta: 'Записаться', from: 'от',
     anonymousLabel: 'Анонимный клиент',
+    showAllReviews: 'Показать все отзывы', collapseReviews: 'Свернуть',
   },
   en: {
     bookVerb: {
@@ -134,6 +154,7 @@ const STR: Record<Lang, {
     partners: 'Recommended', partnersDesc: 'Masters I work with and trust.',
     bookCta: 'Book', from: 'from',
     anonymousLabel: 'Anonymous client',
+    showAllReviews: 'Show all reviews', collapseReviews: 'Collapse',
   },
 };
 
@@ -324,17 +345,8 @@ async function loadReviews(masterId: string): Promise<ReviewRow[]> {
     .eq('target_id', masterId)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
-    .limit(20);
+    .limit(100);
   return (data as unknown as ReviewRow[]) ?? [];
-}
-
-// Стабильный выбор «звериного» аватара по review.id для анонимных отзывов.
-// Один и тот же отзыв всегда показывает одну и ту же эмодзи.
-const ANIMAL_EMOJIS = ['🦊', '🐱', '🐶', '🐼', '🦁', '🐻', '🐨', '🐰', '🦉', '🐯', '🐸', '🦄', '🐧', '🦝', '🐹'] as const;
-function pickAnonymousEmoji(reviewId: string): string {
-  let h = 0;
-  for (let i = 0; i < reviewId.length; i++) h = ((h << 5) - h + reviewId.charCodeAt(i)) | 0;
-  return ANIMAL_EMOJIS[Math.abs(h) % ANIMAL_EMOJIS.length];
 }
 
 async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
@@ -465,7 +477,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { handle } = await params;
   const master = await loadMaster(handle);
   if (!master) return { title: 'Master not found · CRES-CA' };
-  const lang = await getServerLocale();
+  const lang = await getServerLocale(await isViewerOwner(master.profile_id));
   const tt = STR[lang];
   const name = master.display_name ?? tt.masterFallback;
   const title =
@@ -508,7 +520,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   const master = await loadMaster(handle);
   if (!master) notFound();
 
-  const lang = await getServerLocale();
+  const lang = await getServerLocale(await isViewerOwner(master.profile_id));
   const tt = STR[lang];
 
   const [services, portfolio, beforeAfter, reviewsList, partners, salon, ownedSalon] = await Promise.all([
@@ -589,6 +601,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   if (hasPortfolio) navSections.push({ id: 'portfolio', label: tt.navPortfolio });
   if (hasReviews) navSections.push({ id: 'reviews', label: tt.navReviews });
   if (hasAddress) navSections.push({ id: 'address', label: tt.navAddress });
+  if (hasPartners) navSections.push({ id: 'partners', label: tt.partners });
 
   // Тема публички следует ТОЛЬКО за системной темой пользователя
   // (prefers-color-scheme). Никаких master-настроек фона/картинки —
@@ -806,67 +819,14 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                     <span className="text-[14px] text-neutral-500">({reviews})</span>
                   </div>
                 )}
-                <ul className="grid gap-4 sm:grid-cols-2">
-                  {reviewsList.slice(0, 6).map((r) => {
-                    const anon = r.is_anonymous;
-                    const displayName = anon ? tt.anonymousLabel : (r.reviewer?.full_name ?? tt.anonymousLabel);
-                    const avatarEmoji = anon ? pickAnonymousEmoji(r.id) : null;
-                    return (
-                    <li
-                      key={r.id}
-                      className="rounded-2xl border border-neutral-200 bg-white p-5"
-                    >
-                      {/* Автор — имя или эмодзи-зверушка для анонимного. */}
-                      <div className="mb-2 flex items-center gap-2">
-                        {avatarEmoji ? (
-                          <div className="flex size-9 items-center justify-center rounded-full bg-amber-50 text-[20px]">
-                            {avatarEmoji}
-                          </div>
-                        ) : r.reviewer?.avatar_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={r.reviewer.avatar_url} alt="" className="size-9 rounded-full object-cover" />
-                        ) : (
-                          <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-[14px] font-semibold text-neutral-600">
-                            {displayName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="truncate text-[13px] font-semibold text-neutral-900">{displayName}</p>
-                          <p className="text-[11px] text-neutral-500">
-                            {new Date(r.created_at).toLocaleDateString(tt.ratingDateLocale)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mb-1 flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`size-4 ${i < r.score ? 'fill-amber-400 text-amber-400' : 'text-neutral-200'}`}
-                            strokeWidth={0}
-                          />
-                        ))}
-                      </div>
-                      {r.comment && (
-                        <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-800">
-                          {r.comment}
-                        </p>
-                      )}
-                      {r.photos && r.photos.length > 0 && (
-                        <div className="mt-3 grid grid-cols-3 gap-2">
-                          {r.photos.map((url, i) => (
-                            <div
-                              key={`${r.id}-${i}`}
-                              className="relative aspect-square overflow-hidden rounded-lg bg-neutral-100"
-                            >
-                              <Image src={url} alt="" fill className="object-cover" />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </li>
-                    );
-                  })}
-                </ul>
+                <PublicReviewsList
+                  reviews={reviewsList}
+                  anonymousLabel={tt.anonymousLabel}
+                  dateLocale={tt.ratingDateLocale}
+                  initialCount={4}
+                  showAllLabel={tt.showAllReviews}
+                  collapseLabel={tt.collapseReviews}
+                />
               </section>
             )}
 
@@ -934,7 +894,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
 
             {/* Partners */}
             {hasPartners && (
-              <section id="partners">
+              <section id="partners" className="scroll-mt-24">
                 <h2 className="mb-2 text-[22px] font-bold text-neutral-900">{tt.partners}</h2>
                 <p className="mb-4 text-[14px] text-neutral-500">{tt.partnersDesc}</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
