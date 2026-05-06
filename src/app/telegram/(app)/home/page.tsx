@@ -133,6 +133,10 @@ export default function MiniAppHomePage() {
     service_id: string; service_name: string; service_duration: number | null;
     service_price: number | null; service_currency: string | null; visit_count: number;
   }>>([]);
+  // Флаг «все три fetch'а отработали» — без него empty-state мигает между
+  // монтированием компонента и приходом данных (видно у клиента: сначала
+  // «Поки що порожньо», через секунду — реальные слоты).
+  const [loaded, setLoaded] = useState(false);
   const [lang, setLang] = useState<Lang>('uk');
 
   useEffect(() => {
@@ -229,6 +233,8 @@ export default function MiniAppHomePage() {
           setRegulars(Array.isArray(j.items) ? j.items : []);
         }
       } catch { /* ignore */ }
+
+      setLoaded(true);
     })();
   }, [userId]);
 
@@ -387,9 +393,10 @@ export default function MiniAppHomePage() {
           </div>
         )}
 
-        {/* Empty state — клиент пустой: ни next, ни постоянных, ни слотов
-            у мастеров. Аккуратный CTA в Tab «Найти», без агрессивного маркетинга. */}
-        {!next && regulars.length === 0 && slots.length === 0 && (
+        {/* Empty state — показываем ТОЛЬКО когда все три fetch'а уже
+            отработали и реально нечего показать. Без флага loaded
+            empty-state мигает в первую секунду до прихода данных. */}
+        {loaded && !next && regulars.length === 0 && slots.length === 0 && (
           <Link
             href="/telegram/search"
             onClick={() => haptic('light')}
