@@ -802,7 +802,7 @@ export default function MiniAppMasterDetailPage() {
                         <img src={item.image_url} alt={item.caption ?? ''} className="max-h-[80vh] object-contain" />
                         {item.caption && (
                           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-8">
-                            <p className="text-[13px] text-neutral-900">{item.caption}</p>
+                            <p className="whitespace-pre-line text-[14px] leading-relaxed text-white">{item.caption}</p>
                           </div>
                         )}
                       </motion.div>

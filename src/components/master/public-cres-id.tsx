@@ -184,11 +184,80 @@ export function PublicCresIdBadge({
   }
 
   // ─── VIEW MODE ───
+  // Гость: вся пилюля — кнопка «копировать ссылку».
+  // Владелец: вся пилюля копирует, и плюс справа отдельная иконка-карандаш
+  // открывает редактирование — обе функции доступны.
+  if (isOwner) {
+    return (
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0,
+          borderRadius: 999,
+          border: '1px solid var(--m-border)',
+          background: 'var(--m-surface)',
+          fontFamily: 'inherit',
+          overflow: 'hidden',
+        }}
+      >
+        <button
+          type="button"
+          onClick={copyUrl}
+          title="Скопировать ссылку"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px 6px 12px',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--m-text-secondary)',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          <span style={{ color: 'var(--m-text-tertiary)' }}>CRES-CA ID:</span>
+          <span style={{ fontWeight: 600, color: 'var(--m-text)' }}>{handle}</span>
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+        </button>
+        <span
+          aria-hidden
+          style={{
+            width: 1,
+            height: 16,
+            background: 'var(--m-border)',
+          }}
+        />
+        <button
+          type="button"
+          onClick={startEdit}
+          title="Изменить CRES-CA ID"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 28,
+            height: 28,
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--m-text-secondary)',
+            cursor: 'pointer',
+          }}
+        >
+          <Pencil size={12} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
-      onClick={isOwner ? startEdit : copyUrl}
-      title={isOwner ? 'Изменить CRES-CA ID' : 'Скопировать ссылку'}
+      onClick={copyUrl}
+      title="Скопировать ссылку"
       style={{
         display: 'inline-flex',
         alignItems: 'center',
@@ -215,7 +284,7 @@ export function PublicCresIdBadge({
     >
       <span style={{ color: 'var(--m-text-tertiary)' }}>CRES-CA ID:</span>
       <span style={{ fontWeight: 600 }}>{handle}</span>
-      {isOwner ? <Pencil size={12} /> : copied ? <Check size={12} /> : <Copy size={12} />}
+      {copied ? <Check size={12} /> : <Copy size={12} />}
     </button>
   );
 }
