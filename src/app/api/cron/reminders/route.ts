@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { createClient as createSupabase } from '@supabase/supabase-js';
 import { pickFullTemplate, renderFullTemplate } from '@/lib/messaging/render-template';
 import { loadAutomationSettings, isEnabled } from '@/lib/messaging/automation-settings';
+import { cleanAddress } from '@/lib/format/address';
 
 interface TemplateRow {
   master_id: string;
@@ -133,7 +134,12 @@ function fmtPrice(price: number | null | undefined, currency: string | null | un
 function fmtAddress(address: string | null | undefined, city: string | null | undefined, workplace: string | null | undefined): string {
   // workplace name + city + street → "AURA простір краси, Київ, вул. Європейська 27/24".
   // Каждый компонент опционален. Пробелы — через ', '.
-  const parts = [workplace, city, address]
+  // ВАЖНО: Nominatim reverse-geocode часто возвращает в master.address огромный
+  // мусор-стринг типа "25, улица Амосова, 625-й микрорайон, Салтовка, Немышлянский
+  // район, Харьков, ..., Украина". Применяем cleanAddress чтобы выкинуть страну/
+  // район/индекс/громаду — оставить только улицу+дом. (Фикс 2026-05-06.)
+  const cleanedStreet = cleanAddress(address ?? '');
+  const parts = [workplace, city, cleanedStreet]
     .map((s) => (s ?? '').trim())
     .filter(Boolean);
   return parts.join(', ');
@@ -360,7 +366,8 @@ export async function GET(request: Request) {
     const minutesUntil = (startsAt.getTime() - now.getTime()) / 60000;
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://cres-ca.com';
     // ALWAYS Europe/Kyiv — server timezone is UTC, but our users are in Ukraine.
-    const time = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
+    // hour12: false — иначе при server-locale в en-US получится "12:57 PM" вместо "12:57"
+    const time = startsAt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' });
     // ВСЕ исходящие клиентам — на украинском (правило 2026-05-05).
     // Дату форматируем на uk-UA независимо от masters.public_language.
     const localeMap: Record<Lang, string> = { ru: 'ru-RU', uk: 'uk-UA', en: 'en-US' };
@@ -507,7 +514,7 @@ export async function GET(request: Request) {
     const master = apt.masters;
     if (!master?.profile_id) continue;
 
-    const time = new Date(apt.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = new Date(apt.starts_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' });
     const parts: string[] = [`${client?.full_name ?? 'Клиент'} — ${service?.name ?? 'услуга'} в ${time}`];
     if (client?.has_health_alert) parts.push('⚠️ Health alert — проверь карту клиента');
     if (client?.allergies?.length) parts.push(`Аллергии: ${client.allergies.join(', ')}`);
