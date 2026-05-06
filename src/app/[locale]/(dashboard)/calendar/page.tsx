@@ -1151,7 +1151,7 @@ export default function CalendarPage() {
           open={activeDrawer === 'workingHours'}
           onClose={() => setActiveDrawer(null)}
           title="Часы работы"
-          width={420}
+          width={760}
           theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
         >
           <div style={{ padding: 20 }}>

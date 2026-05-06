@@ -1,12 +1,14 @@
 /** --- YAML
  * name: WorkingHoursEditor
- * description: Multi-interval редактор расписания мастера. На каждый день —
- *              чекбокс «работаю», список интервалов (карточки), «+ Добавить
- *              слот» открывает модалку с двумя time-input'ами. Шаг 5 минут.
- *              Используется в onboarding / settings / inline edit на публичной
- *              странице мастера. Сохраняет через /api/me/working-hours;
- *              отдельно показывает 409-конфликты с будущими записями.
+ * description: Multi-interval редактор расписания мастера.
+ *              Колоночная вёрстка: слева шкала часов (00-24), справа 7 колонок
+ *              дней пн-вс. В каждой колонке — чекбокс «работаю», рабочие окна
+ *              цветными прямоугольниками поверх часовой сетки, тап → редактирование,
+ *              кнопка «+» снизу колонки добавляет слот.
+ *              Шаг 5 минут. Сохранение через /api/me/working-hours c проверкой
+ *              конфликтов с будущими записями.
  * created: 2026-05-05
+ * updated: 2026-05-06
  * --- */
 
 'use client';
@@ -24,20 +26,28 @@ import {
 } from '@/types/working-hours';
 import { sanitizeIntervals } from '@/lib/working-hours/normalize';
 
-const DAY_NAMES_RU: Record<WeekDayKey, string> = {
-  monday: 'Понедельник', tuesday: 'Вторник', wednesday: 'Среда',
-  thursday: 'Четверг', friday: 'Пятница', saturday: 'Суббота', sunday: 'Воскресенье',
+const SHORT_RU: Record<WeekDayKey, string> = {
+  monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср',
+  thursday: 'Чт', friday: 'Пт', saturday: 'Сб', sunday: 'Вс',
 };
-const DAY_NAMES_UK: Record<WeekDayKey, string> = {
-  monday: 'Понеділок', tuesday: 'Вівторок', wednesday: 'Середа',
-  thursday: 'Четвер', friday: 'Пʼятниця', saturday: 'Субота', sunday: 'Неділя',
+const SHORT_UK: Record<WeekDayKey, string> = {
+  monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср',
+  thursday: 'Чт', friday: 'Пт', saturday: 'Сб', sunday: 'Нд',
+};
+const SHORT_EN: Record<WeekDayKey, string> = {
+  monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed',
+  thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun',
 };
 
-function dayName(k: WeekDayKey, lang: 'ru' | 'uk' | 'en'): string {
-  if (lang === 'uk') return DAY_NAMES_UK[k];
-  if (lang === 'en') return k.charAt(0).toUpperCase() + k.slice(1);
-  return DAY_NAMES_RU[k];
-}
+// Высота 1 часа в пикселях. Для 24h получаем 24*HOUR_PX высоты сетки.
+const HOUR_PX = 36;
+const TOTAL_PX = 24 * HOUR_PX;
+
+const t2m = (t: string) => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+const m2y = (min: number) => (min / 60) * HOUR_PX;
 
 interface ConflictAppointment {
   id: string;
@@ -49,11 +59,7 @@ interface ConflictAppointment {
 
 interface Props {
   initial?: WorkingHours | null;
-  /** Куда сохранять. Если опущено — компонент только локально хранит и
-   *  отдаёт onChange; родитель сам сохранит как захочет (например, в
-   *  onboarding wizard где сохранение в конце). */
   saveEndpoint?: string;
-  /** Telegram initData header для авторизации Mini App-юзера. */
   initData?: string | null;
   lang?: 'ru' | 'uk' | 'en';
   onSaved?: (wh: WorkingHours) => void;
@@ -165,61 +171,91 @@ export function WorkingHoursEditor({
   const labels = useMemo(() => {
     if (lang === 'uk') {
       return {
-        addSlot: '+ Додати слот',
-        save: 'Зберегти',
-        saving: 'Зберігаємо…',
-        saved: 'Збережено',
+        addSlot: 'Додати',
+        save: 'Зберегти', saving: 'Зберігаємо…', saved: 'Збережено',
         weekend: 'Вихідний',
         from: 'Від', to: 'До',
         cancel: 'Скасувати', apply: 'Готово', remove: 'Видалити',
         editTitle: 'Робочий слот',
         conflictTitle: 'Не вдається зберегти',
-        conflictHint: 'Ці записи опиняться поза робочим часом. Перенесіть або скасуйте їх, потім спробуйте знову:',
+        conflictHint: 'Ці записи опиняться поза робочим часом. Перенесіть або скасуйте їх:',
         close: 'Закрити',
+        scrollHint: 'Прокрути вліво/вправо, щоб побачити всі дні',
       };
     }
     if (lang === 'en') {
       return {
-        addSlot: '+ Add slot',
+        addSlot: 'Add',
         save: 'Save', saving: 'Saving…', saved: 'Saved',
-        weekend: 'Day off',
+        weekend: 'Off',
         from: 'From', to: 'To',
         cancel: 'Cancel', apply: 'Apply', remove: 'Delete',
         editTitle: 'Working slot',
         conflictTitle: 'Can’t save',
-        conflictHint: 'These bookings would fall outside working hours. Reschedule or cancel them and try again:',
+        conflictHint: 'These bookings would fall outside working hours:',
         close: 'Close',
+        scrollHint: 'Scroll horizontally to see all days',
       };
     }
     return {
-      addSlot: '+ Добавить слот',
+      addSlot: 'Добавить',
       save: 'Сохранить', saving: 'Сохраняем…', saved: 'Сохранено',
       weekend: 'Выходной',
       from: 'С', to: 'До',
       cancel: 'Отмена', apply: 'Готово', remove: 'Удалить',
       editTitle: 'Рабочий слот',
       conflictTitle: 'Не получилось сохранить',
-      conflictHint: 'Эти записи окажутся в нерабочее время. Перенеси или отмени их, потом сохраняй заново:',
+      conflictHint: 'Эти записи окажутся в нерабочее время:',
       close: 'Закрыть',
+      scrollHint: 'Прокрути влево/вправо, чтобы увидеть все дни',
     };
   }, [lang]);
 
+  const dayShort = lang === 'uk' ? SHORT_UK : lang === 'en' ? SHORT_EN : SHORT_RU;
+
   return (
     <div className="flex flex-col gap-3">
-      {WEEK_DAY_KEYS.map((d) => (
-        <DayRow
-          key={d}
-          day={d}
-          name={dayName(d, lang)}
-          info={hours[d]}
-          weekendLabel={labels.weekend}
-          addLabel={labels.addSlot}
-          onToggle={() => toggleDay(d)}
-          onAdd={() => openAdd(d)}
-          onEdit={(i) => openEdit(d, i)}
-          onDelete={(i) => deleteInterval(d, i)}
-        />
-      ))}
+      {/* Сетка: hour rail + 7 columns. Горизонтальный скролл на узких. */}
+      <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex min-w-[640px]">
+          {/* Hour rail */}
+          <div
+            className="sticky left-0 z-10 shrink-0 border-r border-neutral-200 bg-white text-[10px] font-medium text-neutral-400 dark:border-neutral-800 dark:bg-neutral-900"
+            style={{ width: 36 }}
+          >
+            {/* Spacer для шапки колонок (50px = 28 чекбокс + 22 padding) */}
+            <div style={{ height: 50 }} />
+            <div className="relative" style={{ height: TOTAL_PX }}>
+              {Array.from({ length: 25 }, (_, h) => (
+                <div
+                  key={h}
+                  className="absolute right-1 -translate-y-1/2 select-none tabular-nums"
+                  style={{ top: h * HOUR_PX }}
+                >
+                  {String(h).padStart(2, '0')}
+                </div>
+              ))}
+            </div>
+            <div style={{ height: 44 }} /> {/* footer + button row */}
+          </div>
+
+          {/* 7 day columns */}
+          {WEEK_DAY_KEYS.map((d) => (
+            <DayColumn
+              key={d}
+              day={d}
+              dayShort={dayShort[d]}
+              info={hours[d]}
+              addLabel={labels.addSlot}
+              weekendLabel={labels.weekend}
+              onToggle={() => toggleDay(d)}
+              onAdd={() => openAdd(d)}
+              onEdit={(i) => openEdit(d, i)}
+              onDelete={(i) => deleteInterval(d, i)}
+            />
+          ))}
+        </div>
+      </div>
 
       {saveEndpoint && (
         <button
@@ -270,71 +306,108 @@ export function WorkingHoursEditor({
   );
 }
 
-function DayRow({
-  day, name, info, weekendLabel, addLabel,
+function DayColumn({
+  dayShort, info, addLabel, weekendLabel,
   onToggle, onAdd, onEdit, onDelete,
 }: {
   day: WeekDayKey;
-  name: string;
+  dayShort: string;
   info: WorkingDay;
-  weekendLabel: string;
   addLabel: string;
+  weekendLabel: string;
   onToggle: () => void;
   onAdd: () => void;
   onEdit: (idx: number) => void;
   onDelete: (idx: number) => void;
 }) {
+  const enabled = info.enabled;
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-      <label className="flex items-center gap-3 cursor-pointer select-none">
+    <div className="flex flex-1 flex-col border-r border-neutral-200 last:border-r-0 dark:border-neutral-800">
+      {/* Header: day short + checkbox */}
+      <div className="flex flex-col items-center justify-center gap-1 border-b border-neutral-200 py-1.5 dark:border-neutral-800" style={{ height: 50 }}>
+        <span className={`text-[11px] font-bold uppercase tracking-wider ${enabled ? 'text-neutral-900 dark:text-neutral-100' : 'text-neutral-400'}`}>
+          {dayShort}
+        </span>
         <input
           type="checkbox"
-          checked={info.enabled}
+          checked={enabled}
           onChange={onToggle}
-          className="size-5 cursor-pointer accent-emerald-500"
-          aria-label={`${day} working`}
+          className="size-4 cursor-pointer accent-emerald-500"
+          aria-label={`Toggle ${dayShort}`}
         />
-        <span className="flex-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
-          {name}
-        </span>
-        {!info.enabled && (
-          <span className="text-xs text-neutral-400">{weekendLabel}</span>
-        )}
-      </label>
+      </div>
 
-      {info.enabled && (
-        <div className="mt-3 flex flex-col gap-2">
-          {info.intervals.length === 0 && (
-            <p className="text-xs text-neutral-400 px-1">—</p>
-          )}
-          {info.intervals.map((iv, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onEdit(i)}
-                className="flex-1 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-left text-sm font-mono text-neutral-900 transition hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
-              >
-                {iv.start} — {iv.end}
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(i)}
-                className="rounded-full p-2 text-neutral-400 transition hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-950"
-                aria-label="delete interval"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          ))}
+      {/* Time grid + intervals */}
+      <div
+        className={`relative ${enabled ? 'bg-white dark:bg-neutral-900' : 'bg-neutral-50 dark:bg-neutral-900/60'}`}
+        style={{ height: TOTAL_PX }}
+      >
+        {/* Hour grid lines */}
+        {Array.from({ length: 25 }, (_, h) => (
+          <div
+            key={h}
+            className="absolute left-0 right-0 border-t border-neutral-100 dark:border-neutral-800"
+            style={{ top: h * HOUR_PX }}
+          />
+        ))}
+        {/* Striped pattern для нерабочего дня */}
+        {!enabled && (
+          <div
+            className="absolute inset-0 opacity-30 pointer-events-none"
+            style={{
+              background: `repeating-linear-gradient(45deg, transparent 0 6px, rgba(120,120,120,0.15) 6px 12px)`,
+            }}
+          />
+        )}
+        {/* Working interval blocks */}
+        {enabled && info.intervals.map((iv, i) => {
+          const top = m2y(t2m(iv.start));
+          const height = Math.max(20, m2y(t2m(iv.end) - t2m(iv.start)));
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onEdit(i)}
+              className="absolute left-1 right-1 flex flex-col items-stretch overflow-hidden rounded-md bg-emerald-500 text-left text-[10px] font-semibold text-white shadow-sm transition hover:bg-emerald-600"
+              style={{ top, height }}
+              title={`${iv.start} – ${iv.end}`}
+            >
+              <div className="flex items-start justify-between px-1.5 pt-1 leading-tight">
+                <span className="tabular-nums">{iv.start}</span>
+                <span
+                  role="button"
+                  onClick={(e) => { e.stopPropagation(); onDelete(i); }}
+                  className="ml-1 -mr-0.5 cursor-pointer rounded-sm p-0.5 hover:bg-emerald-700"
+                >
+                  <X size={10} strokeWidth={3} />
+                </span>
+              </div>
+              {height > 28 && (
+                <div className="px-1.5 pb-1 text-[9px] opacity-80 tabular-nums">
+                  {iv.end}
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Footer: + add slot */}
+      <div className="flex items-center justify-center border-t border-neutral-200 p-1 dark:border-neutral-800" style={{ height: 44 }}>
+        {enabled ? (
           <button
             type="button"
             onClick={onAdd}
-            className="mt-1 inline-flex items-center justify-center gap-1 rounded-xl border border-dashed border-emerald-400 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+            className="inline-flex items-center justify-center gap-0.5 rounded-md border border-dashed border-emerald-400 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+            title={addLabel}
           >
-            <Plus size={14} /> {addLabel.replace(/^\+\s*/, '')}
+            <Plus size={12} />
+            <span className="hidden sm:inline">{addLabel}</span>
           </button>
-        </div>
-      )}
+        ) : (
+          <span className="text-[10px] text-neutral-400">{weekendLabel}</span>
+        )}
+      </div>
     </div>
   );
 }
