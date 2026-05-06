@@ -14,6 +14,9 @@ interface BottomSheetProps {
   snapPoints?: number[];
   children: React.ReactNode;
   className?: string;
+  /** Inline-стили для самой шторки — нужно для Mini App, чтобы не
+   *  наследовать shadcn `bg-card` (тёмный в системной dark). */
+  sheetStyle?: React.CSSProperties;
 }
 
 export function BottomSheet({
@@ -22,6 +25,7 @@ export function BottomSheet({
   snapPoints = [0.5, 0.9],
   children,
   className,
+  sheetStyle,
 }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({ startY: 0, startHeight: 0, dragging: false });
@@ -88,6 +92,7 @@ export function BottomSheet({
         style={{
           height: `${heightPercent * 100}vh`,
           transition: dragRef.current.dragging ? 'none' : undefined,
+          ...sheetStyle,
         }}
       >
         <div

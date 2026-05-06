@@ -89,6 +89,12 @@ const VIEW_LABELS: Record<Lang, { list: string; map: string; route: string }> = 
   en: { list: 'List', map: 'Map', route: '🗺 Route to master' },
 };
 
+const CARD_LABELS: Record<Lang, { add: string; added: string }> = {
+  uk: { add: '+ У контакти', added: '✓ У контактах' },
+  ru: { add: '+ В контакты', added: '✓ В контактах' },
+  en: { add: '+ Add', added: '✓ Added' },
+};
+
 interface ApiMasterRow {
   id: string;
   specialization: string | null;
@@ -712,6 +718,7 @@ export default function MiniAppSearchPage() {
                       isAdded={followedMasters.has(m.id)}
                       addBusy={followBusy.has(m.id)}
                       onAdd={() => toggleFollowMaster(m.id)}
+                      labels={CARD_LABELS[lang]}
                     />
                   </motion.div>
                 ))}
@@ -736,6 +743,7 @@ export default function MiniAppSearchPage() {
                       isAdded={followedSalons.has(s.id)}
                       addBusy={followBusy.has(s.id)}
                       onAdd={() => toggleFollowSalon(s.id)}
+                      labels={CARD_LABELS[lang]}
                     />
                   </motion.div>
                 ))}
@@ -912,9 +920,56 @@ export default function MiniAppSearchPage() {
         </div>
       )}
 
-      <BottomSheet open={filtersOpen} onClose={() => setFiltersOpen(false)}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '4px 0 24px', color: T.text }}>
-          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{tFilter.title}</h3>
+      <BottomSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        /* Поднимаем дефолтную высоту до 70% — иначе нижние кнопки
+           «Скинути / Показати» обрезались за плавающим bottom-nav и
+           клиент не видел способа применить выбор (см. скрин 2026-05-06). */
+        snapPoints={[0.7, 0.95]}
+        /* Перебиваем shadcn bg-card (тёмный в системной dark) на
+           Mini App-токен — чтобы шторка визуально была частью клиентского
+           Mini App, а не торчала чёрным блоком на белом фоне. */
+        sheetStyle={{
+          background: T.bg,
+          color: T.text,
+          border: `1px solid ${T.borderSubtle}`,
+          borderBottom: 'none',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            /* +96px снизу чтобы action-кнопки не залезали под floating nav. */
+            padding: '4px 0 96px',
+            color: T.text,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{tFilter.title}</h3>
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setFiltersOpen(false); }}
+              aria-label="Close"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                border: 'none',
+                background: T.bgSubtle,
+                color: T.textSecondary,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
 
           <div>
             <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.category}</p>
@@ -1041,9 +1096,10 @@ interface MiniResultCardProps {
   isAdded?: boolean;
   addBusy?: boolean;
   onAdd?: () => void;
+  labels: { add: string; added: string };
 }
 
-function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd }: MiniResultCardProps) {
+function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, labels }: MiniResultCardProps) {
   const d = resolveCardDisplay(master, salon, MINIAPP_CARD_LABELS);
   const Icon = d.mode === 'solo' ? UserIcon : Building2;
   return (
@@ -1111,8 +1167,8 @@ function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd }: Min
           }}
         >
           {addBusy ? <Loader2 size={12} className="animate-spin" />
-            : isAdded ? '✓ В контактах'
-            : '+ В контакты'}
+            : isAdded ? labels.added
+            : labels.add}
         </button>
       ) : (
         <ChevronRight size={18} color={T.textTertiary} />
