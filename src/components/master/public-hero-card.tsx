@@ -161,7 +161,7 @@ export function PublicHeroCard({
       <div className="border-t border-neutral-200" />
 
       {/* Stats — only render when actually has visits/clients */}
-      {(completedAppointmentsCount > 0 || servedClientsCount > 0) && (
+      {(completedAppointmentsCount > 0 || servedClientsCount > 0 || reviewsCount > 0) && (
         <dl className="space-y-2 text-[14px]">
           {completedAppointmentsCount > 0 && (
             <div className="flex items-center justify-between">
@@ -176,6 +176,23 @@ export function PublicHeroCard({
               <dt className="text-neutral-700">Обслужено клиентов</dt>
               <dd className="font-semibold tabular-nums text-neutral-900">
                 {servedClientsCount.toLocaleString('ru-RU')}
+              </dd>
+            </div>
+          )}
+          {reviewsCount > 0 && (
+            <div className="flex items-center justify-between">
+              <dt className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star
+                    key={i}
+                    className={`size-4 ${i <= Math.round(rating) ? 'fill-amber-400 text-amber-400' : 'fill-neutral-200 text-neutral-200'}`}
+                    strokeWidth={0}
+                  />
+                ))}
+                <span className="ml-1 text-neutral-500 text-[12px]">({reviewsCount})</span>
+              </dt>
+              <dd className="font-semibold tabular-nums text-neutral-900">
+                {rating.toFixed(1).replace('.', ',')}
               </dd>
             </div>
           )}

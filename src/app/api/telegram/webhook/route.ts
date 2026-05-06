@@ -1584,7 +1584,8 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
       });
     }
 
-    // Replace the rating message with a thank-you and remove the keyboard
+    // Replace the rating message with a thank-you AND ask publish-mode (з ім'ям / анонімно).
+    // is_anonymous пишется на следующем шаге через callback `review_pub:<apt>:<mode>`.
     try {
       await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
         method: 'POST',
@@ -1592,17 +1593,65 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
         body: JSON.stringify({
           chat_id: chatId,
           message_id: cb.message.message_id,
-          text: `<b>Дякуємо за оцінку!</b>\nВи поставили ${stars}⭐`,
+          text: `<b>Дякуємо за оцінку!</b>\nВи поставили ${stars}⭐\n\nЯк опублікувати відгук?`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '👤 З моїм імʼям', callback_data: `review_pub:${apptId}:public` },
+              { text: '🦊 Анонімно', callback_data: `review_pub:${apptId}:anon` },
+            ]],
+          },
+        }),
+      });
+    } catch {}
+    return;
+  }
+
+  // review_pub:<apt_id>:<public|anon> — клиент выбрал, публиковать с именем
+  // или анонимно. После этого спрашиваем коммент через force_reply.
+  if (data.startsWith('review_pub:')) {
+    const parts = data.split(':');
+    const apptId = parts[1];
+    const mode = parts[2];
+    if (!apptId || (mode !== 'public' && mode !== 'anon')) {
+      await sendMessage(chatId, '⚠️ Не вдалось обробити вибір.');
+      return;
+    }
+    const isAnonymous = mode === 'anon';
+    const { data: profile } = await supabase
+      .from('profiles').select('id').eq('telegram_id', telegramId).single();
+    if (!profile) {
+      await sendMessage(chatId, '⚠️ Профіль не знайдено.');
+      return;
+    }
+    const { data: review } = await supabase
+      .from('reviews')
+      .select('id, score')
+      .eq('appointment_id', apptId)
+      .eq('target_type', 'master')
+      .eq('reviewer_id', profile.id)
+      .maybeSingle();
+    if (!review) {
+      await sendMessage(chatId, '⚠️ Відгук не знайдено. Поставте, будь ласка, оцінку спочатку.');
+      return;
+    }
+    await supabase.from('reviews').update({ is_anonymous: isAnonymous }).eq('id', review.id);
+
+    // Edit message to confirm choice and remove inline keyboard.
+    try {
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: cb.message.message_id,
+          text: `<b>Дякуємо за оцінку!</b>\nВи поставили ${review.score}⭐\n\nОпубліковано ${isAnonymous ? 'анонімно' : 'з вашим імʼям'}.`,
           parse_mode: 'HTML',
         }),
       });
     } catch {}
 
-    // Ask for an optional text comment via force_reply. Раньше в текст вшивали
-    // маркер «[review:<apt_id>]» — клиенту это было видно, некрасиво.
-    // Теперь сохраняем message_id force_reply prompt'а в reviews.tg_prompt_message_id,
-    // и при reply ищем review row по этому полю — без видимых хэш-меток.
-    // Клиент бот всегда на украинском (правило 2026-05-05).
+    // Force_reply: попросить коммент. Связь reply ↔ review через tg_prompt_message_id.
     const promptResponse = await sendMessage(
       chatId,
       'Хочеш залишити коментар? Просто дай відповідь на це повідомлення текстом.',
@@ -1613,16 +1662,7 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
     );
     const promptMsgId = (promptResponse as { ok?: boolean; result?: { message_id?: number } } | null)?.result?.message_id;
     if (promptMsgId) {
-      const reviewId = existing?.id ?? (await supabase
-        .from('reviews')
-        .select('id')
-        .eq('appointment_id', apptId)
-        .eq('target_type', 'master')
-        .eq('reviewer_id', profile.id)
-        .maybeSingle()).data?.id;
-      if (reviewId) {
-        await supabase.from('reviews').update({ tg_prompt_message_id: promptMsgId }).eq('id', reviewId);
-      }
+      await supabase.from('reviews').update({ tg_prompt_message_id: promptMsgId }).eq('id', review.id);
     }
     return;
   }

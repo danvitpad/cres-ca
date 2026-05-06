@@ -75,6 +75,7 @@ const STR: Record<Lang, {
   workplace: string;
   partners: string; partnersDesc: string;
   bookCta: string; from: string;
+  anonymousLabel: string;
 }> = {
   uk: {
     bookVerb: {
@@ -93,6 +94,7 @@ const STR: Record<Lang, {
     workplace: 'Де приймаю',
     partners: 'Рекомендую', partnersDesc: 'Майстри, з якими я працюю і кому довіряю.',
     bookCta: 'Записатися', from: 'від',
+    anonymousLabel: 'Анонімний клієнт',
   },
   ru: {
     bookVerb: {
@@ -111,6 +113,7 @@ const STR: Record<Lang, {
     workplace: 'Где принимаю',
     partners: 'Рекомендую', partnersDesc: 'Мастера, с которыми я работаю и доверяю.',
     bookCta: 'Записаться', from: 'от',
+    anonymousLabel: 'Анонимный клиент',
   },
   en: {
     bookVerb: {
@@ -129,6 +132,7 @@ const STR: Record<Lang, {
     workplace: 'Where I work',
     partners: 'Recommended', partnersDesc: 'Masters I work with and trust.',
     bookCta: 'Book', from: 'from',
+    anonymousLabel: 'Anonymous client',
   },
 };
 
@@ -233,6 +237,8 @@ interface ReviewRow {
   comment: string | null;
   photos: string[] | null;
   created_at: string;
+  is_anonymous: boolean;
+  reviewer: { full_name: string | null; avatar_url: string | null } | null;
 }
 
 function admin() {
@@ -312,13 +318,22 @@ async function loadServices(masterId: string): Promise<ServiceRow[]> {
 async function loadReviews(masterId: string): Promise<ReviewRow[]> {
   const { data } = await admin()
     .from('reviews')
-    .select('id, score, comment, photos, created_at')
+    .select('id, score, comment, photos, created_at, is_anonymous, reviewer:profiles!reviews_reviewer_id_fkey(full_name, avatar_url)')
     .eq('target_type', 'master')
     .eq('target_id', masterId)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
     .limit(20);
-  return (data as ReviewRow[]) ?? [];
+  return (data as unknown as ReviewRow[]) ?? [];
+}
+
+// Стабильный выбор «звериного» аватара по review.id для анонимных отзывов.
+// Один и тот же отзыв всегда показывает одну и ту же эмодзи.
+const ANIMAL_EMOJIS = ['🦊', '🐱', '🐶', '🐼', '🦁', '🐻', '🐨', '🐰', '🦉', '🐯', '🐸', '🦄', '🐧', '🦝', '🐹'] as const;
+function pickAnonymousEmoji(reviewId: string): string {
+  let h = 0;
+  for (let i = 0; i < reviewId.length; i++) h = ((h << 5) - h + reviewId.charCodeAt(i)) | 0;
+  return ANIMAL_EMOJIS[Math.abs(h) % ANIMAL_EMOJIS.length];
 }
 
 async function loadPortfolio(masterId: string): Promise<PortfolioItem[]> {
@@ -782,11 +797,36 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                   </div>
                 )}
                 <ul className="grid gap-4 sm:grid-cols-2">
-                  {reviewsList.slice(0, 6).map((r) => (
+                  {reviewsList.slice(0, 6).map((r) => {
+                    const anon = r.is_anonymous;
+                    const displayName = anon ? tt.anonymousLabel : (r.reviewer?.full_name ?? tt.anonymousLabel);
+                    const avatarEmoji = anon ? pickAnonymousEmoji(r.id) : null;
+                    return (
                     <li
                       key={r.id}
                       className="rounded-2xl border border-neutral-200 bg-white p-5"
                     >
+                      {/* Автор — имя или эмодзи-зверушка для анонимного. */}
+                      <div className="mb-2 flex items-center gap-2">
+                        {avatarEmoji ? (
+                          <div className="flex size-9 items-center justify-center rounded-full bg-amber-50 text-[20px]">
+                            {avatarEmoji}
+                          </div>
+                        ) : r.reviewer?.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.reviewer.avatar_url} alt="" className="size-9 rounded-full object-cover" />
+                        ) : (
+                          <div className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-[14px] font-semibold text-neutral-600">
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-[13px] font-semibold text-neutral-900">{displayName}</p>
+                          <p className="text-[11px] text-neutral-500">
+                            {new Date(r.created_at).toLocaleDateString(tt.ratingDateLocale)}
+                          </p>
+                        </div>
+                      </div>
                       <div className="mb-1 flex items-center gap-1">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Star
@@ -795,9 +835,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                             strokeWidth={0}
                           />
                         ))}
-                        <span className="ml-2 text-[12px] text-neutral-500">
-                          {new Date(r.created_at).toLocaleDateString(tt.ratingDateLocale)}
-                        </span>
                       </div>
                       {r.comment && (
                         <p className="mt-1 whitespace-pre-line text-[14px] leading-relaxed text-neutral-800">
@@ -817,7 +854,8 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                         </div>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </section>
             )}
