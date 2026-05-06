@@ -81,39 +81,39 @@ const I18N: Record<Lang, {
   aiConcierge: string; minSuffix: string; masterFallback: string;
 }> = {
   uk: {
-    title: 'Для вас',
+    title: 'Привіт',
     morningHi: 'Доброго ранку', dayHi: 'Доброго дня', eveningHi: 'Доброго вечора', nightHi: 'Доброї ночі',
     upcoming: 'Найближчий запис', details: 'Детальніше',
     regulars: 'Твої постійні', atMaster: 'у',
-    freeSlots: 'Вільні вікна', allContacts: 'Усі контакти',
-    recommended: 'Рекомендовані', viewAll: 'Дивитися всі', from: 'від',
-    explore: 'Огляд', topCats: 'Топ категорії',
+    freeSlots: 'Вільні слоти твоїх майстрів', allContacts: 'Мої майстри',
+    recommended: 'Рекомендуємо', viewAll: 'Дивитися всі', from: 'від',
+    explore: 'Категорії', topCats: 'Популярне',
     cat: { beauty: 'Краса', health: "Здоров'я", pets: 'Тварини', fitness: 'Фітнес', auto: 'Авто', home: 'Дім' },
     topcat: { hair: 'Стрижка та укладка', massage: 'Масаж', trainer: 'Тренер', grooming: 'Грумінг', repair: 'Ремонт' },
     today: 'Сьогодні', tomorrow: 'Завтра',
     aiConcierge: 'AI-консьєрж', minSuffix: 'хв', masterFallback: 'Майстер',
   },
   ru: {
-    title: 'Для вас',
+    title: 'Привет',
     morningHi: 'Доброе утро', dayHi: 'Добрый день', eveningHi: 'Добрый вечер', nightHi: 'Доброй ночи',
     upcoming: 'Ближайшая запись', details: 'Подробнее',
     regulars: 'Твои постоянные', atMaster: 'у',
-    freeSlots: 'Свободные окна', allContacts: 'Все контакты',
-    recommended: 'Рекомендуемые', viewAll: 'Посмотреть все', from: 'от',
-    explore: 'Explore', topCats: 'Топ категории',
+    freeSlots: 'Свободные слоты твоих мастеров', allContacts: 'Мои мастера',
+    recommended: 'Рекомендуем', viewAll: 'Посмотреть все', from: 'от',
+    explore: 'Категории', topCats: 'Популярное',
     cat: { beauty: 'Красота', health: 'Здоровье', pets: 'Питомцы', fitness: 'Фитнес', auto: 'Авто', home: 'Дом' },
     topcat: { hair: 'Стрижка и укладка', massage: 'Массаж', trainer: 'Тренер', grooming: 'Груминг', repair: 'Ремонт' },
     today: 'Сегодня', tomorrow: 'Завтра',
     aiConcierge: 'AI-консьерж', minSuffix: 'мин', masterFallback: 'Мастер',
   },
   en: {
-    title: 'For you',
+    title: 'Hi',
     morningHi: 'Good morning', dayHi: 'Good afternoon', eveningHi: 'Good evening', nightHi: 'Good night',
     upcoming: 'Next appointment', details: 'View details',
     regulars: 'Your regulars', atMaster: 'at',
-    freeSlots: 'Open slots', allContacts: 'All contacts',
+    freeSlots: 'Open slots from your masters', allContacts: 'My masters',
     recommended: 'Recommended', viewAll: 'See all', from: 'from',
-    explore: 'Explore', topCats: 'Top categories',
+    explore: 'Categories', topCats: 'Popular',
     cat: { beauty: 'Beauty', health: 'Health', pets: 'Pets', fitness: 'Fitness', auto: 'Auto', home: 'Home' },
     topcat: { hair: 'Hair & styling', massage: 'Massage', trainer: 'Trainer', grooming: 'Grooming', repair: 'Repair' },
     today: 'Today', tomorrow: 'Tomorrow',
@@ -141,7 +141,10 @@ const TOP_CATEGORIES = [
 export default function MiniAppHomePage() {
   const { haptic } = useTelegram();
   const router = useRouter();
-  const { userId } = useAuthStore();
+  const { userId, fullName } = useAuthStore();
+  // Имя для приветствия — берём первую часть full_name (первое имя).
+  // Если профиль ещё не подгрузился — приветствие останется без имени.
+  const firstName = fullName?.trim().split(/\s+/)[0] ?? '';
   const [next, setNext] = useState<NextAppointment | null>(null);
   const [slots, setSlots] = useState<SlotItem[]>([]);
   const [featured, setFeatured] = useState<FeaturedMaster[]>([]);
@@ -283,7 +286,7 @@ export default function MiniAppHomePage() {
         style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
       >
         <PageHeader
-          title={t.title}
+          title={firstName ? `${t.title}, ${firstName}` : t.title}
           subtitle={greeting}
           right={
             <button

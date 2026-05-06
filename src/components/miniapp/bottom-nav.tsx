@@ -77,8 +77,8 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  height: 48,
-                  borderRadius: R.pill,
+                  height: 52,
+                  borderRadius: 18,
                   textDecoration: 'none',
                   color: active ? accent : T.textTertiary,
                   transition: 'color 200ms ease',
@@ -92,17 +92,41 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                     style={{
                       position: 'absolute',
                       inset: 4,
-                      borderRadius: R.pill,
+                      borderRadius: 18,
                       background: `${accent}1a`,
                     }}
                   />
                 )}
-                <Icon
-                  size={24}
-                  strokeWidth={active ? 2.4 : 2}
-                  fill="none"
-                  style={{ position: 'relative', zIndex: 1 }}
-                />
+                {/* Иконка + текстовая подпись под ней — клиенту понятнее
+                    что за раздел, без расшифровки иконки. Подпись короткая,
+                    оставляем pill-фоном за спиной. */}
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
+                  <Icon
+                    size={20}
+                    strokeWidth={active ? 2.4 : 2}
+                    fill="none"
+                  />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: active ? 700 : 500,
+                      lineHeight: 1,
+                      letterSpacing: '0.01em',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tab.label}
+                  </span>
+                </div>
               </Link>
             </li>
           );
