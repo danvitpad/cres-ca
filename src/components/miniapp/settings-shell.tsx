@@ -10,6 +10,11 @@ import Link from 'next/link';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { motion } from 'framer-motion';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+
+const BACK_LABEL: Record<'uk' | 'ru' | 'en', string> = {
+  uk: 'Назад', ru: 'Назад', en: 'Back',
+};
 
 export function SettingsShell({
   title,
@@ -23,6 +28,7 @@ export function SettingsShell({
   back?: string;
 }) {
   const { haptic } = useTelegram();
+  const lang = useMiniAppLocale();
   return (
     <motion.div
       initial={{ opacity: 0, x: 16 }}
@@ -36,7 +42,7 @@ export function SettingsShell({
         className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] text-neutral-700 active:bg-neutral-50 transition-colors"
       >
         <ArrowLeft size={13} weight="bold" />
-        Назад
+        {BACK_LABEL[lang]}
       </Link>
       <h1 className="text-[22px] font-bold leading-tight">{title}</h1>
       {subtitle && <p className="mt-1 text-[13px] text-neutral-500">{subtitle}</p>}

@@ -3,7 +3,9 @@
  * description: Переключатели какие TG-пуши получает САМ мастер (про ДР клиентов,
  *              визиты, новых подписчиков, платежи, AI-советы). Не путать с
  *              «Язык исходящих уведомлений» — то про сообщения ДЛЯ клиентов.
+ *              Локализован uk/ru/en через useMiniAppLocale (2026-05-06).
  * created: 2026-04-26
+ * updated: 2026-05-06
  * --- */
 
 'use client';
@@ -11,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface Prefs {
   notif_birthdays: boolean;
@@ -28,16 +31,61 @@ const DEFAULT_PREFS: Prefs = {
   notif_marketing_tips: false,
 };
 
-const ITEMS: { key: keyof Prefs; label: string; hint: string }[] = [
-  { key: 'notif_birthdays',      label: 'Дни рождения клиентов',  hint: 'Утренний пуш с ДР клиентов и партнёров' },
-  { key: 'notif_appointments',   label: 'Напоминание о визите',    hint: 'За 30 минут — кто, что, заметки' },
-  { key: 'notif_new_clients',    label: 'Новый клиент подписался', hint: 'Когда кто-то добавил тебя в избранное' },
-  { key: 'notif_payments',       label: 'Платежи и отмены',        hint: 'Новый платёж, отмена с возмещением' },
-  { key: 'notif_marketing_tips', label: 'Советы от AI',            hint: 'Раз в неделю — как заработать больше' },
+const I18N: Record<MiniAppLang, {
+  pageTitle: string; pageSubtitle: string;
+  footer: string;
+  items: Record<keyof Prefs, { label: string; hint: string }>;
+}> = {
+  uk: {
+    pageTitle: 'Сповіщення',
+    pageSubtitle: 'Що надсилати тобі в Telegram',
+    footer: 'Клієнтські розсилки та автоматизації налаштовуються окремо — у «Маркетинг → Автоматика» у веб-кабінеті.',
+    items: {
+      notif_birthdays:      { label: 'Дні народження клієнтів', hint: 'Ранковий пуш з ДН клієнтів і партнерів' },
+      notif_appointments:   { label: 'Нагадування про візит',   hint: 'За 30 хвилин — хто, що, нотатки' },
+      notif_new_clients:    { label: 'Новий підписник',         hint: 'Коли хтось додав тебе в обране' },
+      notif_payments:       { label: 'Платежі та скасування',   hint: 'Новий платіж, скасування з поверненням' },
+      notif_marketing_tips: { label: 'Поради від AI',            hint: 'Раз на тиждень — як заробити більше' },
+    },
+  },
+  ru: {
+    pageTitle: 'Уведомления',
+    pageSubtitle: 'Что присылать тебе в Telegram',
+    footer: 'Клиентские рассылки и автоматизации настраиваются отдельно — в «Маркетинг → Автоматика» в веб-кабинете.',
+    items: {
+      notif_birthdays:      { label: 'Дни рождения клиентов',  hint: 'Утренний пуш с ДР клиентов и партнёров' },
+      notif_appointments:   { label: 'Напоминание о визите',    hint: 'За 30 минут — кто, что, заметки' },
+      notif_new_clients:    { label: 'Новый клиент подписался', hint: 'Когда кто-то добавил тебя в избранное' },
+      notif_payments:       { label: 'Платежи и отмены',        hint: 'Новый платёж, отмена с возмещением' },
+      notif_marketing_tips: { label: 'Советы от AI',            hint: 'Раз в неделю — как заработать больше' },
+    },
+  },
+  en: {
+    pageTitle: 'Notifications',
+    pageSubtitle: 'What to send you in Telegram',
+    footer: 'Client broadcasts and automations are set up separately — in «Marketing → Automation» in the web cabinet.',
+    items: {
+      notif_birthdays:      { label: 'Client birthdays',     hint: 'Morning push with client/partner birthdays' },
+      notif_appointments:   { label: 'Visit reminder',       hint: '30 minutes ahead — who, what, notes' },
+      notif_new_clients:    { label: 'New follower',         hint: 'When someone adds you to favorites' },
+      notif_payments:       { label: 'Payments & cancels',   hint: 'New payment, cancel with refund' },
+      notif_marketing_tips: { label: 'AI tips',              hint: 'Weekly — how to earn more' },
+    },
+  },
+};
+
+const ITEM_ORDER: Array<keyof Prefs> = [
+  'notif_birthdays',
+  'notif_appointments',
+  'notif_new_clients',
+  'notif_payments',
+  'notif_marketing_tips',
 ];
 
 export default function MiniAppNotificationsPage() {
   const { haptic } = useTelegram();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [busy, setBusy] = useState(false);
 
@@ -68,36 +116,38 @@ export default function MiniAppNotificationsPage() {
   }
 
   return (
-    <SettingsShell title="Уведомления" subtitle="Что присылать тебе в Telegram">
+    <SettingsShell title={t.pageTitle} subtitle={t.pageSubtitle}>
       <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-200">
-        {ITEMS.map((item) => (
-          <li key={item.key} className="flex items-start gap-3 px-4 py-3.5">
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-medium leading-tight">{item.label}</p>
-              <p className="mt-1 text-[11px] text-neutral-500">{item.hint}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => toggle(item.key)}
-              disabled={busy}
-              role="switch"
-              aria-checked={prefs[item.key]}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                prefs[item.key] ? 'bg-violet-500' : 'bg-white/15'
-              }`}
-            >
-              <span
-                className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${
-                  prefs[item.key] ? 'left-6' : 'left-1'
+        {ITEM_ORDER.map((key) => {
+          const item = t.items[key];
+          return (
+            <li key={key} className="flex items-start gap-3 px-4 py-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-medium leading-tight">{item.label}</p>
+                <p className="mt-1 text-[11px] text-neutral-500">{item.hint}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggle(key)}
+                disabled={busy}
+                role="switch"
+                aria-checked={prefs[key]}
+                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                  prefs[key] ? 'bg-violet-500' : 'bg-white/15'
                 }`}
-              />
-            </button>
-          </li>
-        ))}
+              >
+                <span
+                  className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-all ${
+                    prefs[key] ? 'left-6' : 'left-1'
+                  }`}
+                />
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <p className="px-2 text-[11px] text-neutral-400">
-        Клиентские рассылки и автоматизации настраиваются отдельно — в «Маркетинг → Автоматика»
-        в веб-кабинете.
+        {t.footer}
       </p>
     </SettingsShell>
   );

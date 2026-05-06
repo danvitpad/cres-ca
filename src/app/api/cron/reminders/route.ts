@@ -26,12 +26,16 @@ interface TemplateRow {
 }
 
 const DEFAULT_OFFSETS = [1440, 120]; // 24h + 2h
-// Minute-precision firing: when this cron runs every minute via cron-job.org,
-// each reminder fires exactly once (dedup) within a tight ±0.5 min lead-in
-// window. We allow late catch-up up to 0.5 min past target, but never AFTER
-// the appointment itself to avoid retroactive «remember 2h before» pings.
-const EARLY_WINDOW = 0.5;             // fire up to 30 sec before target
-const LATE_WINDOW = 0.5;              // and up to 30 sec late (cron jitter)
+// Minute-precision firing: cron бежит каждую минуту (pg_cron + cron-job.org).
+// Окно срабатывания должно покрыть TWO задержки:
+//   1) jitter этого cron'а (~30 сек на старте/окончании)
+//   2) задержку notifications-cron, который реально шлёт в TG (тоже раз в мин)
+// Поэтому EARLY_WINDOW = 1.5 мин: запоминалка создаётся раньше нужного offset,
+// notifications-cron подбирает её через ~1 мин, клиент получает в TG ровно
+// около заданного offset (включая короткие 2-мин/5-мин напоминания).
+// Дедуп через sentKeys гарантирует, что повторное создание в окне = no-op.
+const EARLY_WINDOW = 1.5;             // fire до 1.5 мин до target — компенсация задержки
+const LATE_WINDOW = 0.5;              // tolerance jitter cron'а в обратную сторону
 
 function shouldFire(minutesUntil: number, off: number): boolean {
   return minutesUntil <= off + EARLY_WINDOW && minutesUntil >= off - LATE_WINDOW;

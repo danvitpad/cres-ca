@@ -34,30 +34,73 @@ import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  back: string;
+  profile: string; services: string; schedule: string; billing: string;
+  notifications: string; language: string; voice: string; help: string; feedback: string;
+  themeDark: string; themeManual: string; themeAsTelegram: string;
+  accountSection: string; accountHint: string;
+  loggingOut: string; logout: string;
+}> = {
+  uk: {
+    back: 'Назад',
+    profile: 'Профіль та портфоліо', services: 'Послуги та ціни', schedule: 'Графік роботи',
+    billing: 'Тариф та платежі', notifications: 'Сповіщення', language: 'Мова',
+    voice: 'Голосовий помічник', help: 'Допомога', feedback: 'Зворотний зв’язок',
+    themeDark: 'Темна тема', themeManual: 'Вручну', themeAsTelegram: 'Як в Telegram',
+    accountSection: 'Дії з обліковим записом',
+    accountHint: 'Експорт даних та видалення облікового запису доступні у веб-версії:',
+    loggingOut: 'Виходимо…', logout: 'Вийти',
+  },
+  ru: {
+    back: 'Назад',
+    profile: 'Профиль и портфолио', services: 'Услуги и цены', schedule: 'График работы',
+    billing: 'Тариф и платежи', notifications: 'Уведомления', language: 'Язык',
+    voice: 'Голосовой помощник', help: 'Помощь', feedback: 'Обратная связь',
+    themeDark: 'Тёмная тема', themeManual: 'Вручную', themeAsTelegram: 'Как в Telegram',
+    accountSection: 'Действия с учётной записью',
+    accountHint: 'Экспорт данных и удаление учётной записи доступны в веб-версии:',
+    loggingOut: 'Выходим…', logout: 'Выйти',
+  },
+  en: {
+    back: 'Back',
+    profile: 'Profile & portfolio', services: 'Services & prices', schedule: 'Schedule',
+    billing: 'Plan & billing', notifications: 'Notifications', language: 'Language',
+    voice: 'Voice assistant', help: 'Help', feedback: 'Feedback',
+    themeDark: 'Dark theme', themeManual: 'Manual', themeAsTelegram: 'Match Telegram',
+    accountSection: 'Account actions',
+    accountHint: 'Data export and account deletion are available in the web version:',
+    loggingOut: 'Signing out…', logout: 'Sign out',
+  },
+};
 
 interface SettingsItem {
   key: string;
   href: string;
-  label: string;
+  labelKey: keyof typeof I18N['ru'];
   Icon: LucideIcon;
 }
 
 const ITEMS: SettingsItem[] = [
-  { key: 'profile',       href: '/telegram/m/profile',                 label: 'Профиль и портфолио',  Icon: UserIcon },
-  { key: 'services',      href: '/telegram/m/settings/services',       label: 'Услуги и цены',         Icon: Scissors },
-  { key: 'schedule',      href: '/telegram/m/settings/schedule',       label: 'График работы',        Icon: CalendarCheck },
-  { key: 'billing',       href: '/telegram/m/settings/billing',        label: 'Тариф и платежи',      Icon: CreditCard },
-  { key: 'notifications', href: '/telegram/m/settings/notifications',  label: 'Уведомления',           Icon: Bell },
-  { key: 'language',      href: '/telegram/m/settings/language',       label: 'Язык',                  Icon: Globe },
-  { key: 'voice',         href: '/telegram/m/voice-assistant',         label: 'Голосовой помощник',    Icon: Mic },
-  { key: 'help',          href: '/telegram/m/settings/help',           label: 'Помощь',                Icon: HelpCircle },
-  { key: 'feedback',      href: '/telegram/m/settings/feedback',       label: 'Обратная связь',        Icon: MessageCircle },
+  { key: 'profile',       href: '/telegram/m/profile',                 labelKey: 'profile',       Icon: UserIcon },
+  { key: 'services',      href: '/telegram/m/settings/services',       labelKey: 'services',      Icon: Scissors },
+  { key: 'schedule',      href: '/telegram/m/settings/schedule',       labelKey: 'schedule',      Icon: CalendarCheck },
+  { key: 'billing',       href: '/telegram/m/settings/billing',        labelKey: 'billing',       Icon: CreditCard },
+  { key: 'notifications', href: '/telegram/m/settings/notifications',  labelKey: 'notifications', Icon: Bell },
+  { key: 'language',      href: '/telegram/m/settings/language',       labelKey: 'language',      Icon: Globe },
+  { key: 'voice',         href: '/telegram/m/voice-assistant',         labelKey: 'voice',         Icon: Mic },
+  { key: 'help',          href: '/telegram/m/settings/help',           labelKey: 'help',          Icon: HelpCircle },
+  { key: 'feedback',      href: '/telegram/m/settings/feedback',       labelKey: 'feedback',      Icon: MessageCircle },
 ];
 
 export default function MasterMiniAppSettings() {
   const { haptic } = useTelegram();
   const router = useRouter();
   const { theme, override, setOverride } = useMiniAppTheme();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
@@ -91,7 +134,7 @@ export default function MasterMiniAppSettings() {
         <button
           type="button"
           onClick={() => { haptic('light'); router.back(); }}
-          aria-label="Назад"
+          aria-label={t.back}
           style={{
             width: 40,
             height: 40,
@@ -163,7 +206,7 @@ export default function MasterMiniAppSettings() {
                   <Icon size={18} strokeWidth={2} />
                 </span>
                 <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: T.text }}>
-                  {item.label}
+                  {t[item.labelKey]}
                 </span>
                 <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} />
               </Link>
@@ -214,9 +257,9 @@ export default function MasterMiniAppSettings() {
               <Moon size={18} strokeWidth={2} />
             </span>
             <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: T.text }}>Тёмная тема</span>
+              <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: T.text }}>{t.themeDark}</span>
               <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 1 }}>
-                {override ? 'Вручную' : 'Как в Telegram'}
+                {override ? t.themeManual : t.themeAsTelegram}
               </span>
             </span>
             <MiniToggle on={theme === 'dark'} />
@@ -237,11 +280,11 @@ export default function MasterMiniAppSettings() {
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
-            Действия с учётной записью
+            {t.accountSection}
           </div>
-          Экспорт данных и удаление учётной записи доступны в веб-версии:&nbsp;
+          {t.accountHint}&nbsp;
           <a
-            href="https://cres-ca.com/ru/settings"
+            href={`https://cres-ca.com/${lang}/settings`}
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: T.accent, fontWeight: 500, textDecoration: 'none' }}
@@ -278,7 +321,7 @@ export default function MasterMiniAppSettings() {
             ? <Loader2 size={16} className="animate-spin" />
             : <LogOut size={16} strokeWidth={2.4} />
           }
-          {loggingOut ? 'Выходим…' : 'Выйти'}
+          {loggingOut ? t.loggingOut : t.logout}
         </button>
       </div>
     </div>
