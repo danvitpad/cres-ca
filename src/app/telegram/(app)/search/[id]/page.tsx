@@ -15,6 +15,7 @@ import {
   ChevronRight, Camera, MessageSquare, CalendarCheck, Heart, HeartOff,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -113,34 +114,84 @@ interface PartnerItem {
 
 /* ─── constants ─── */
 
+type Lang = 'uk' | 'ru' | 'en';
+
 const DAYS_ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-const DAY_NAMES_FULL: Record<string, string> = {
-  monday: 'Понедельник', tuesday: 'Вторник', wednesday: 'Среда', thursday: 'Четверг',
-  friday: 'Пятница', saturday: 'Суббота', sunday: 'Воскресенье',
+const DAY_NAMES_BY_LANG: Record<Lang, Record<string, string>> = {
+  uk: {
+    monday: 'Понеділок', tuesday: 'Вівторок', wednesday: 'Середа', thursday: 'Четвер',
+    friday: "П'ятниця", saturday: 'Субота', sunday: 'Неділя',
+  },
+  ru: {
+    monday: 'Понедельник', tuesday: 'Вторник', wednesday: 'Среда', thursday: 'Четверг',
+    friday: 'Пятница', saturday: 'Суббота', sunday: 'Воскресенье',
+  },
+  en: {
+    monday: 'Monday', tuesday: 'Tuesday', wednesday: 'Wednesday', thursday: 'Thursday',
+    friday: 'Friday', saturday: 'Saturday', sunday: 'Sunday',
+  },
 };
 const JS_DAY_TO_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 
-// Подписи табов синхронизированы с публичной страницей мастера /m/{handle}
-// чтобы клиент не видел два разных языка для одного и того же раздела:
-// «Работы» (не «Портфолио»), «Адрес» (не «Контакты») и т.д.
-const TAB_ITEMS = [
-  { key: 'services', label: 'Услуги' },
-  { key: 'portfolio', label: 'Работы' },
-  { key: 'reviews', label: 'Отзывы' },
-  { key: 'about', label: 'Адрес' },
-  { key: 'partners', label: 'Рекомендую' },
-] as const;
+// Ключи табов стабильные, подписи берём из i18n.
+const TAB_KEYS = ['services', 'portfolio', 'reviews', 'about', 'partners'] as const;
+type TabKey = (typeof TAB_KEYS)[number];
 
-type TabKey = (typeof TAB_ITEMS)[number]['key'];
+const TAB_LABELS_BY_LANG: Record<Lang, Record<TabKey, string>> = {
+  uk: { services: 'Послуги', portfolio: 'Роботи', reviews: 'Відгуки', about: 'Адреса', partners: 'Рекомендую' },
+  ru: { services: 'Услуги', portfolio: 'Работы', reviews: 'Отзывы', about: 'Адрес', partners: 'Рекомендую' },
+  en: { services: 'Services', portfolio: 'Portfolio', reviews: 'Reviews', about: 'Address', partners: 'Recommends' },
+};
+
+const STR_BY_LANG: Record<Lang, {
+  noSchedule: string; dayOff: string; openTill: (t: string) => string; opensAt: (t: string) => string; closed: string;
+  follow: string; following: string;
+  workHours: string; routeTo: string; reviewsCount: (n: number) => string;
+  notFound: string; back: string; book: string; servicesCount: (n: number) => string;
+  recommendTitle: string; recommendDesc: string; portfolioTitle: string;
+  reviewsTitle: string; addressTitle: string; servicesTitle: string;
+}> = {
+  uk: {
+    noSchedule: 'Графіка немає', dayOff: 'Сьогодні вихідний',
+    openTill: (t) => `Відкрито до ${t}`, opensAt: (t) => `Відкриється о ${t}`, closed: 'Зачинено',
+    follow: 'Підписатися', following: 'Ви підписані',
+    workHours: 'Години роботи', routeTo: 'Маршрут', reviewsCount: (n) => n === 1 ? '1 відгук' : `${n} відгуків`,
+    notFound: 'Майстра не знайдено', back: 'Назад', book: 'Записатися',
+    servicesCount: (n) => n === 1 ? 'послуга' : (n < 5 ? 'послуги' : 'послуг'),
+    recommendTitle: 'Рекомендую', recommendDesc: 'Майстри, з якими я працюю і кому довіряю.',
+    portfolioTitle: 'Роботи', reviewsTitle: 'Відгуки', addressTitle: 'Адреса', servicesTitle: 'Послуги',
+  },
+  ru: {
+    noSchedule: 'Нет расписания', dayOff: 'Сегодня выходной',
+    openTill: (t) => `Открыто до ${t}`, opensAt: (t) => `Откроется в ${t}`, closed: 'Закрыто',
+    follow: 'Подписаться', following: 'Вы подписаны',
+    workHours: 'Часы работы', routeTo: 'Маршрут', reviewsCount: (n) => n === 1 ? '1 отзыв' : `${n} отзывов`,
+    notFound: 'Мастер не найден', back: 'Назад', book: 'Записаться',
+    servicesCount: (n) => n === 1 ? 'услуга' : (n < 5 ? 'услуги' : 'услуг'),
+    recommendTitle: 'Рекомендую', recommendDesc: 'Мастера, с которыми я работаю и кому доверяю.',
+    portfolioTitle: 'Работы', reviewsTitle: 'Отзывы', addressTitle: 'Адрес', servicesTitle: 'Услуги',
+  },
+  en: {
+    noSchedule: 'No schedule', dayOff: 'Closed today',
+    openTill: (t) => `Open until ${t}`, opensAt: (t) => `Opens at ${t}`, closed: 'Closed',
+    follow: 'Follow', following: 'Following',
+    workHours: 'Hours', routeTo: 'Get directions', reviewsCount: (n) => n === 1 ? '1 review' : `${n} reviews`,
+    notFound: 'Master not found', back: 'Back', book: 'Book',
+    servicesCount: () => 'services',
+    recommendTitle: 'Recommends', recommendDesc: 'Masters I work with and trust.',
+    portfolioTitle: 'Portfolio', reviewsTitle: 'Reviews', addressTitle: 'Address', servicesTitle: 'Services',
+  },
+};
 
 /* ─── helpers ─── */
 
-function getOpenStatus(wh: WorkingHoursMap | null): { isOpen: boolean; label: string } {
-  if (!wh) return { isOpen: false, label: 'Нет расписания' };
+function getOpenStatus(wh: WorkingHoursMap | null, lang: Lang): { isOpen: boolean; label: string } {
+  const t = STR_BY_LANG[lang];
+  if (!wh) return { isOpen: false, label: t.noSchedule };
   const now = new Date();
   const dayKey = JS_DAY_TO_KEY[now.getDay()];
   const intervals = getDayIntervals(wh[dayKey]);
-  if (intervals.length === 0) return { isOpen: false, label: 'Сегодня выходной' };
+  if (intervals.length === 0) return { isOpen: false, label: t.dayOff };
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
   // Идём по интервалам по возрастанию start. Если сейчас внутри одного —
@@ -154,17 +205,18 @@ function getOpenStatus(wh: WorkingHoursMap | null): { isOpen: boolean; label: st
     const s = sh * 60 + sm;
     const e = eh * 60 + em;
     if (currentMinutes >= s && currentMinutes < e) {
-      return { isOpen: true, label: `Открыто до ${it.end}` };
+      return { isOpen: true, label: t.openTill(it.end) };
     }
     if (currentMinutes < s) {
-      return { isOpen: false, label: `Откроется в ${it.start}` };
+      return { isOpen: false, label: t.opensAt(it.start) };
     }
   }
-  return { isOpen: false, label: 'Закрыто' };
+  return { isOpen: false, label: t.closed };
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' });
+function formatDate(iso: string, lang: Lang): string {
+  const localeMap: Record<Lang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
+  return new Date(iso).toLocaleDateString(localeMap[lang], { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /* ─── component ─── */
@@ -174,6 +226,11 @@ export default function MiniAppMasterDetailPage() {
   const router = useRouter();
   const { haptic } = useTelegram();
   const userId = useAuthStore((s) => s.userId);
+  // Mini App locale — для всех подписей (табы, дни, статус, кнопки).
+  const lang = useMiniAppLocale();
+  const tStr = STR_BY_LANG[lang];
+  const tabLabels = TAB_LABELS_BY_LANG[lang];
+  const dayNames = DAY_NAMES_BY_LANG[lang];
 
   const [master, setMaster] = useState<MasterDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -456,7 +513,7 @@ export default function MiniAppMasterDetailPage() {
 
   /* ─── open status ─── */
   const openStatus = useMemo(() => {
-    return master ? getOpenStatus(master.working_hours) : { isOpen: false, label: '' };
+    return master ? getOpenStatus(master.working_hours, lang) : { isOpen: false, label: '' };
   }, [master]);
 
   /* ─── schedule presence: хотя бы у одного дня есть валидный интервал ─── */
@@ -493,13 +550,13 @@ export default function MiniAppMasterDetailPage() {
         <div className="flex size-16 items-center justify-center rounded-full bg-white/5">
           <MapPin className="size-6 text-neutral-400" />
         </div>
-        <p className="text-sm text-neutral-500">Мастер не найден</p>
+        <p className="text-sm text-neutral-500">{tStr.notFound}</p>
         <button
           onClick={() => { haptic('selection'); router.back(); }}
           className="mt-2 rounded-xl bg-white/10 px-5 py-2.5 text-sm font-medium text-neutral-800 active:scale-95 transition-transform"
           style={{ minHeight: 44 }}
         >
-          Назад
+          {tStr.back}
         </button>
       </motion.div>
     );
@@ -508,8 +565,11 @@ export default function MiniAppMasterDetailPage() {
   const name = master.display_name ?? master.full_name ?? '—';
   const activeServicesCount = master.services.length;
 
+  // pb-4 (16px) — слой layout уже добавляет padding-bottom 81px под
+  // floating bottom-nav. Раньше тут был pb-28 (112px) поверх — клиент
+  // видел ~80px белой пустоты между последним блоком и навигацией.
   return (
-    <div ref={scrollContainerRef} className="relative min-h-screen pb-28">
+    <div ref={scrollContainerRef} className="relative min-h-screen pb-4">
       {/* ━━━ HERO BANNER ━━━ */}
       <div ref={heroRef} className="relative h-[170px] overflow-hidden">
         {master.avatar_url ? (
@@ -601,26 +661,31 @@ export default function MiniAppMasterDetailPage() {
 
         {/* Subscribe button — explicit text, replaces heart */}
         <div className="mt-4 flex gap-2">
+          {/* Кнопка использует Mini App-токены (var(--m-text) / var(--m-bg))
+              чтобы корректно контрастировать и в светлой, и в тёмной теме —
+              раньше было bg-neutral-900 + text-white, и в дарк-моде кнопка
+              сливалась с фоном. */}
           <button
             onClick={toggleFollow}
             disabled={followBusy}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 ${
-              following
-                ? 'border border-neutral-300 bg-white text-neutral-700 active:bg-neutral-50'
-                : 'bg-neutral-900 text-white active:bg-neutral-800'
-            }`}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60"
+            style={{
+              background: following ? 'transparent' : 'var(--m-text)',
+              color: following ? 'var(--m-text-secondary)' : 'var(--m-bg)',
+              border: following ? '1px solid var(--m-border)' : 'none',
+            }}
           >
             {followBusy ? (
               <Loader2 className="size-4 animate-spin" />
             ) : following ? (
               <>
                 <HeartOff className="size-4" />
-                Отписаться
+                {tStr.following}
               </>
             ) : (
               <>
                 <Heart className="size-4" />
-                Подписаться
+                {tStr.follow}
               </>
             )}
           </button>
@@ -667,24 +732,24 @@ export default function MiniAppMasterDetailPage() {
         className="sticky top-0 z-30 mt-5 border-b border-neutral-200 bg-white/95 backdrop-blur-xl"
       >
         <div className="flex gap-0 px-5">
-          {TAB_ITEMS.map((tab) => {
+          {TAB_KEYS.map((key) => {
             // Hide tabs with no content
-            if (tab.key === 'portfolio' && master.portfolio.length === 0) return null;
-            if (tab.key === 'reviews' && master.reviews.length === 0) return null;
-            if (tab.key === 'partners' && master.partners.length === 0) return null;
-            // Hide "Контакты" tab if no schedule AND no address (bio is above)
-            if (tab.key === 'about' && !hasSchedule && !master.city && !master.address) return null;
+            if (key === 'portfolio' && master.portfolio.length === 0) return null;
+            if (key === 'reviews' && master.reviews.length === 0) return null;
+            if (key === 'partners' && master.partners.length === 0) return null;
+            // Hide "Адрес" tab if no schedule AND no address (bio is above)
+            if (key === 'about' && !hasSchedule && !master.city && !master.address) return null;
 
-            const isActive = activeTab === tab.key;
+            const isActive = activeTab === key;
             return (
               <button
-                key={tab.key}
-                onClick={() => scrollToSection(tab.key)}
+                key={key}
+                onClick={() => scrollToSection(key)}
                 className={`relative px-3 py-3 text-[13px] font-medium transition-colors ${
                   isActive ? 'text-neutral-900' : 'text-neutral-500'
                 }`}
               >
-                {tab.label}
+                {tabLabels[key]}
                 {isActive && (
                   <motion.div
                     layoutId="tab-underline"
@@ -811,7 +876,7 @@ export default function MiniAppMasterDetailPage() {
           >
             <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
               <Camera className="size-4 text-neutral-500" />
-              Портфолио
+              {tStr.portfolioTitle}
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
                 {master.portfolio.length}
               </span>
@@ -885,7 +950,7 @@ export default function MiniAppMasterDetailPage() {
           >
             <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
               <MessageSquare className="size-4 text-neutral-500" />
-              Отзывы
+              {tStr.reviewsTitle}
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
                 {master.total_reviews}
               </span>
@@ -903,7 +968,7 @@ export default function MiniAppMasterDetailPage() {
                     />
                   ))}
                 </div>
-                <p className="mt-1 text-[10px] text-neutral-400">{master.total_reviews} отзывов</p>
+                <p className="mt-1 text-[10px] text-neutral-400">{tStr.reviewsCount(master.total_reviews)}</p>
               </div>
             </div>
 
@@ -924,7 +989,7 @@ export default function MiniAppMasterDetailPage() {
                       </div>
                       <div>
                         <p className="text-[13px] font-semibold text-neutral-900">{r.reviewer_name ?? 'Клиент'}</p>
-                        <p className="text-[10px] text-neutral-400">{formatDate(r.created_at)}</p>
+                        <p className="text-[10px] text-neutral-400">{formatDate(r.created_at, lang)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-0.5">
@@ -953,10 +1018,10 @@ export default function MiniAppMasterDetailPage() {
           >
             <h2 className="mb-1 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
               <Heart className="size-4 text-neutral-500" />
-              Рекомендую
+              {tStr.recommendTitle}
             </h2>
             <p className="mb-3 text-[12px] text-neutral-500">
-              Мастера, с которыми я работаю и кому доверяю.
+              {tStr.recommendDesc}
             </p>
             <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
               {master.partners.map((p) => {
@@ -1016,7 +1081,7 @@ export default function MiniAppMasterDetailPage() {
           {/* Working hours — only render if at least one day has a schedule */}
           {hasSchedule && (
             <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
-              <h3 className="mb-3 text-[13px] font-semibold text-neutral-800">Часы работы</h3>
+              <h3 className="mb-3 text-[13px] font-semibold text-neutral-800">{tStr.workHours}</h3>
               <ul className="space-y-2">
                 {DAYS_ORDER.map((day) => {
                   const intervals = getDayIntervals(master.working_hours?.[day]);
@@ -1037,7 +1102,7 @@ export default function MiniAppMasterDetailPage() {
                       <div className="flex items-center gap-2.5">
                         <div className="size-2 rounded-full bg-emerald-500" />
                         <span className={isToday ? 'text-neutral-900' : 'text-neutral-600'}>
-                          {DAY_NAMES_FULL[day]}
+                          {dayNames[day]}
                         </span>
                       </div>
                       <span className={isToday ? 'text-neutral-900 font-bold' : 'text-neutral-700 font-medium'}>
@@ -1093,7 +1158,7 @@ export default function MiniAppMasterDetailPage() {
             <div className="flex items-center justify-between px-5 py-3">
               <div className="text-[13px] text-neutral-500">
                 <span className="font-semibold text-neutral-900">{activeServicesCount}</span>{' '}
-                {activeServicesCount === 1 ? 'услуга' : activeServicesCount < 5 ? 'услуги' : 'услуг'}
+                {tStr.servicesCount(activeServicesCount)}
               </div>
               <button
                 onClick={() => {
@@ -1103,7 +1168,7 @@ export default function MiniAppMasterDetailPage() {
                 className="flex items-center gap-2 rounded-2xl bg-white px-6 py-2.5 text-[14px] font-semibold text-black active:scale-[0.97] transition-transform shadow-lg shadow-white/10"
               >
                 <CalendarCheck className="size-4" />
-                Записаться
+                {tStr.book}
               </button>
             </div>
           </motion.div>
