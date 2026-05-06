@@ -187,7 +187,7 @@ export default function CalendarPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const F: TTheme = mounted && resolvedTheme === 'dark' ? TD : TL;
-  const { master, loading: masterLoading } = useMaster();
+  const { master, loading: masterLoading, refetch: refetchMaster } = useMaster();
   const [view, setView] = useState<ViewMode>('day');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [newDialogOpen, setNewDialogOpen] = useState(false);
@@ -1202,6 +1202,10 @@ export default function CalendarPage() {
               lang="ru"
               onSaved={() => {
                 setActiveDrawer(null);
+                // ВАЖНО: refetchMaster() обновляет master.working_hours в state.
+                // Без него календарь продолжает рисовать старый фон рабочих часов
+                // до полного F5 (баг 2026-05-06).
+                refetchMaster();
                 refetch();
                 refetchAll();
                 toast.success('Расписание сохранено');
