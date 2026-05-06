@@ -64,6 +64,7 @@ interface ReminderCtx {
 const L10N: Record<Lang, {
   cost: string;
   address: string;
+  master: string;
   reminder24h: string;     // header for the 24h template
   reminder2h: string;
   reminderGeneric: (ctx: ReminderCtx) => string;
@@ -75,6 +76,7 @@ const L10N: Record<Lang, {
   ru: {
     cost: 'Стоимость',
     address: 'Адрес',
+    master: 'Мастер',
     reminder24h: 'Напоминаю о записи на завтра:',
     reminder2h: 'Напоминаю — через 2 часа запись:',
     reminderGeneric: (ctx) => `Напоминаю о записи (${ctx.date}):`,
@@ -86,6 +88,7 @@ const L10N: Record<Lang, {
   uk: {
     cost: 'Вартість',
     address: 'Адреса',
+    master: 'Майстер',
     reminder24h: 'Нагадую про запис на завтра:',
     reminder2h: 'Нагадую — через 2 години запис:',
     reminderGeneric: (ctx) => `Нагадую про запис (${ctx.date}):`,
@@ -97,6 +100,7 @@ const L10N: Record<Lang, {
   en: {
     cost: 'Price',
     address: 'Address',
+    master: 'Master',
     reminder24h: 'Reminder for tomorrow:',
     reminder2h: 'Reminder — in 2 hours:',
     reminderGeneric: (ctx) => `Reminder (${ctx.date}):`,
@@ -152,6 +156,9 @@ function buildFallbackBody(
 ): string {
   const t = L10N[lang];
   const lines: string[] = [header, `${ctx.service_name} ${t.on} ${ctx.time}`];
+  // Имя мастера обязательно — у клиента может быть несколько записей у разных
+  // мастеров на одну дату, без имени непонятно к кому именно (фикс 2026-05-06).
+  if (ctx.master_name) lines.push(`${t.master}: ${ctx.master_name}`);
   if (ctx.price_label) lines.push(`${t.cost}: ${ctx.price_label}`);
   if (ctx.address_label) lines.push(`${t.address}: ${ctx.address_label}`);
   return lines.join('\n');

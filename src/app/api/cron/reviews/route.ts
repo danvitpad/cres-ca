@@ -15,15 +15,15 @@ type Lang = 'ru' | 'uk' | 'en';
 const FALLBACK_REVIEW: Record<Lang, { subject: string; body: string }> = {
   ru: {
     subject: '⭐ Оцените визит',
-    body: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОценить: https://cres.ca/review/{apt_id}\n[review:{apt_id}]',
+    body: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста, кнопкой ниже. После — можно оставить комментарий.\n[review:{apt_id}]',
   },
   uk: {
     subject: '⭐ Оцініть візит',
-    body: 'Як пройшов візит?\nПослуга: {service_name}\nМайстер: {master_name}\n\nОцінити: https://cres.ca/review/{apt_id}\n[review:{apt_id}]',
+    body: 'Як пройшов візит?\nПослуга: {service_name}\nМайстер: {master_name}\n\nОцініть, будь ласка, кнопкою нижче. Потім — можна залишити коментар.\n[review:{apt_id}]',
   },
   en: {
     subject: '⭐ Rate your visit',
-    body: 'How was the visit?\nService: {service_name}\nMaster: {master_name}\n\nRate: https://cres.ca/review/{apt_id}\n[review:{apt_id}]',
+    body: 'How was the visit?\nService: {service_name}\nMaster: {master_name}\n\nPlease rate using the buttons below. After — you can add a comment.\n[review:{apt_id}]',
   },
 };
 
@@ -146,7 +146,10 @@ export async function GET(request: Request) {
       data: {
         kind: 'review_request',
         appointment_id: apt.id,
-        inline_keyboard: inlineKeyboard,
+        // Передаём reply_markup в формате Telegram API — send_notification_via_pg_net
+        // прокинет его прямо в TG /sendMessage. Юзер видит 5 кнопок 1⭐..5⭐
+        // и оценивает прямо в чате, без редиректа на сайт. (Фикс 2026-05-06.)
+        reply_markup: { inline_keyboard: inlineKeyboard },
       },
     });
     created++;
