@@ -490,17 +490,28 @@ export default function MiniAppBookPage() {
   }, [masterId, preselectedServiceId]);
 
   /* ── Check if day is off ── */
+  // Поддерживаем оба формата working_hours: старый { start, end } и новый
+  // мульти-интервальный { enabled, intervals: [...] }. Без этого все дни
+  // рендерились как off — { enabled, intervals } truthy, но мы не учитывали
+  // enabled=false (выходной) и пустой intervals[].
   const isDayOff = useCallback(
     (date: Date) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (date < today) return true;
       const dayName = WEEKDAYS[date.getDay()];
-      // Empty {} isn't null, so ?? won't swap it — explicitly fall back when
-      // master.working_hours is missing OR empty (master hasn't configured).
-      const whRaw = master?.working_hours;
-      const wh = whRaw && Object.keys(whRaw).length > 0 ? whRaw : DEFAULT_WORKING_HOURS;
-      return !wh[dayName];
+      const whRaw = master?.working_hours as unknown as Record<string, unknown> | null | undefined;
+      const wh = whRaw && Object.keys(whRaw).length > 0 ? whRaw : (DEFAULT_WORKING_HOURS as unknown as Record<string, unknown>);
+      const entry = wh[dayName];
+      if (!entry || typeof entry !== 'object') return true;
+      const e = entry as { enabled?: boolean; intervals?: unknown[]; start?: string; end?: string };
+      // Новый формат
+      if ('intervals' in e) {
+        if (e.enabled === false) return true;
+        return !Array.isArray(e.intervals) || e.intervals.length === 0;
+      }
+      // Старый формат — start/end должны быть строками
+      return !e.start || !e.end;
     },
     [master],
   );

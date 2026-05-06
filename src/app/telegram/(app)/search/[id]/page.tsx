@@ -98,6 +98,17 @@ interface MasterDetail {
   categories: ServiceCategory[];
   portfolio: PortfolioItem[];
   reviews: ReviewItem[];
+  partners: PartnerItem[];
+}
+
+interface PartnerItem {
+  id: string;
+  display_name: string | null;
+  full_name: string | null;
+  specialization: string | null;
+  avatar_url: string | null;
+  rating: number | null;
+  total_reviews: number | null;
 }
 
 /* ─── constants ─── */
@@ -113,6 +124,7 @@ const TAB_ITEMS = [
   { key: 'services', label: 'Услуги' },
   { key: 'portfolio', label: 'Портфолио' },
   { key: 'reviews', label: 'Отзывы' },
+  { key: 'partners', label: 'Рекомендую' },
   { key: 'about', label: 'Контакты' },
 ] as const;
 
@@ -177,6 +189,7 @@ export default function MiniAppMasterDetailPage() {
     services: null,
     portfolio: null,
     reviews: null,
+    partners: null,
     about: null,
   });
   const tabBarRef = useRef<HTMLDivElement>(null);
@@ -188,7 +201,7 @@ export default function MiniAppMasterDetailPage() {
 
     (async () => {
       // Parallel fetches
-      const [masterRes, portfolioRes, reviewsRes, categoriesRes] = await Promise.all([
+      const [masterRes, portfolioRes, reviewsRes, categoriesRes, partnersRes] = await Promise.all([
         supabase
           .from('masters')
           .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, profile:profiles!masters_profile_id_fkey(first_name, last_name, full_name, avatar_url), services!services_master_id_fkey(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
@@ -215,6 +228,16 @@ export default function MiniAppMasterDetailPage() {
           .select('id, name, color, sort_order')
           .eq('master_id', params.id)
           .order('sort_order', { ascending: true }),
+        // Партнёры мастера — те, кому он рекомендует. Активные двусторонние
+        // партнёрства, отсортированные по display_order (Business tier) и
+        // дате согласия. Дальше расхлопываем по второй стороне.
+        supabase
+          .from('master_partnerships')
+          .select('master_id, partner_id, display_order, accepted_at')
+          .or(`master_id.eq.${params.id},partner_id.eq.${params.id}`)
+          .eq('status', 'active')
+          .order('display_order', { ascending: true })
+          .order('accepted_at', { ascending: false }),
       ]);
 
       if (!masterRes.data) {
@@ -259,6 +282,41 @@ export default function MiniAppMasterDetailPage() {
         };
       });
 
+      // Партнёры — тянем профили второй стороны; имя/аватар читаем из profiles
+      // (политика "Anyone can read active masters profiles" разрешает анону).
+      const partnerRows = (partnersRes.data ?? []) as Array<{ master_id: string; partner_id: string }>;
+      const otherIds = partnerRows.map((r) => (r.master_id === params.id ? r.partner_id : r.master_id));
+      let partners: PartnerItem[] = [];
+      if (otherIds.length > 0) {
+        const { data: pData } = await supabase
+          .from('masters')
+          .select('id, display_name, specialization, avatar_url, rating, total_reviews, profile:profiles!masters_profile_id_fkey(full_name)')
+          .in('id', otherIds)
+          .eq('is_active', true);
+        const byId = new Map<string, PartnerItem>();
+        for (const row of (pData ?? []) as Array<{
+          id: string;
+          display_name: string | null;
+          specialization: string | null;
+          avatar_url: string | null;
+          rating: number | null;
+          total_reviews: number | null;
+          profile: { full_name: string | null } | { full_name: string | null }[] | null;
+        }>) {
+          const pp = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+          byId.set(row.id, {
+            id: row.id,
+            display_name: row.display_name,
+            full_name: pp?.full_name ?? null,
+            specialization: row.specialization,
+            avatar_url: row.avatar_url,
+            rating: row.rating,
+            total_reviews: row.total_reviews,
+          });
+        }
+        partners = otherIds.map((id) => byId.get(id)).filter((x): x is PartnerItem => !!x);
+      }
+
       setMaster({
         id: m.id,
         display_name: m.display_name,
@@ -277,6 +335,7 @@ export default function MiniAppMasterDetailPage() {
         categories: (categoriesRes.data ?? []) as ServiceCategory[],
         portfolio: (portfolioRes.data ?? []) as PortfolioItem[],
         reviews,
+        partners,
       });
       setLoading(false);
     })();
@@ -609,6 +668,7 @@ export default function MiniAppMasterDetailPage() {
             // Hide tabs with no content
             if (tab.key === 'portfolio' && master.portfolio.length === 0) return null;
             if (tab.key === 'reviews' && master.reviews.length === 0) return null;
+            if (tab.key === 'partners' && master.partners.length === 0) return null;
             // Hide "Контакты" tab if no schedule AND no address (bio is above)
             if (tab.key === 'about' && !hasSchedule && !master.city && !master.address) return null;
 
@@ -878,6 +938,65 @@ export default function MiniAppMasterDetailPage() {
                   )}
                 </motion.li>
               ))}
+            </ul>
+          </div>
+        )}
+
+        {/* ── Partners / «Рекомендую» ── */}
+        {master.partners.length > 0 && (
+          <div
+            ref={(el) => { sectionRefs.current.partners = el; }}
+            data-section="partners"
+          >
+            <h2 className="mb-1 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
+              <Heart className="size-4 text-neutral-500" />
+              Рекомендую
+            </h2>
+            <p className="mb-3 text-[12px] text-neutral-500">
+              Мастера, с которыми я работаю и кому доверяю.
+            </p>
+            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {master.partners.map((p) => {
+                const partnerName = p.display_name ?? p.full_name ?? 'Мастер';
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptic('light');
+                        router.push(`/telegram/search/${p.id}`);
+                      }}
+                      className="flex w-full flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3 text-center transition active:scale-[0.97]"
+                    >
+                      {p.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.avatar_url}
+                          alt={partnerName}
+                          className="size-14 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-14 items-center justify-center rounded-full bg-neutral-100 text-[16px] font-semibold text-neutral-600">
+                          {partnerName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="text-[12px] font-semibold leading-tight text-neutral-900">
+                        {partnerName}
+                      </div>
+                      {p.specialization && (
+                        <div className="text-[10px] text-neutral-500 leading-tight">{p.specialization}</div>
+                      )}
+                      {(p.rating ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 text-[10px] text-neutral-500">
+                          <Star size={10} fill="#f59e0b" color="#f59e0b" />
+                          {Number(p.rating).toFixed(1)}
+                          <span>({p.total_reviews ?? 0})</span>
+                        </div>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
