@@ -219,7 +219,46 @@ export async function POST(req: Request) {
 
     if (intent === 'status' && body.userId) {
       const next = await getNextAppointment(body.userId);
-      if (next) actions = [next];
+      if (next) {
+        actions = [next];
+        // Перебиваем плейсхолдерный AI-ответ конкретикой.
+        // Карточка под reply'ем покажет всё (мастер/услуга/время),
+        // в тексте достаточно подводки.
+        serverReply = locale === 'uk'
+          ? 'Ось ваш найближчий запис:'
+          : locale === 'en'
+          ? 'Here is your next appointment:'
+          : 'Вот ваша ближайшая запись:';
+      } else {
+        serverReply = locale === 'uk'
+          ? 'У вас немає запланованих візитів.'
+          : locale === 'en'
+          ? 'You have no upcoming appointments.'
+          : 'У вас нет запланированных визитов.';
+      }
+    }
+
+    // cancel / reschedule — показываем список предстоящих записей карточками,
+    // клиент тапает на нужную и идёт в /telegram/activity/{id} где может
+    // отменить/перенести через стандартный UI.
+    if ((intent === 'cancel' || intent === 'reschedule') && body.userId) {
+      actions = await getUpcomingAppointments(body.userId, 5);
+      if (actions.length === 0) {
+        serverReply = locale === 'uk'
+          ? 'У вас немає запланованих візитів — нічого скасовувати або переносити.'
+          : locale === 'en'
+          ? 'You have no upcoming appointments to cancel or reschedule.'
+          : 'У вас нет запланированных визитов — нечего отменять или переносить.';
+      } else {
+        const verb = intent === 'cancel'
+          ? (locale === 'uk' ? 'скасувати' : locale === 'en' ? 'cancel' : 'отменить')
+          : (locale === 'uk' ? 'перенести' : locale === 'en' ? 'reschedule' : 'перенести');
+        serverReply = locale === 'uk'
+          ? `Який візит ${verb}? Виберіть зі списку:`
+          : locale === 'en'
+          ? `Which appointment to ${verb}? Pick from the list:`
+          : `Какой визит ${verb}? Выберите из списка:`;
+      }
     }
 
     if (intent === 'find_slots' && parsed.params) {
@@ -474,6 +513,20 @@ async function handleHistory(
   return `${head}\n${lines}`;
 }
 
+// Плюрализация. Раньше выводилось «4 візит(и/ів)» с явными скобками —
+// нечеловеческое словосочетание. Сейчас выбираем правильную форму.
+function pluralVisits(n: number, locale: Locale): string {
+  if (locale === 'en') return n === 1 ? 'visit' : 'visits';
+  // ru / uk: same plural rules
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return locale === 'uk' ? 'візит' : 'визит';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return locale === 'uk' ? 'візити' : 'визита';
+  }
+  return locale === 'uk' ? 'візитів' : 'визитов';
+}
+
 async function handleStats(
   profileId: string,
   params: Record<string, unknown>,
@@ -496,13 +549,14 @@ async function handleStats(
   }
 
   const total = fmtMoney(stats.totalSpent, stats.currency);
+  const visitsWord = pluralVisits(stats.visits, locale);
   const head = serviceQuery
-    ? (locale === 'uk' ? `По «${serviceQuery}»: ${stats.visits} візит(и/ів) на ${total}.`
-       : locale === 'en' ? `For "${serviceQuery}": ${stats.visits} visits, ${total} total.`
-       : `По «${serviceQuery}»: ${stats.visits} визит(а/ов) на ${total}.`)
-    : (locale === 'uk' ? `Всього: ${stats.visits} візит(и/ів) на ${total}.`
-       : locale === 'en' ? `Total: ${stats.visits} visits, ${total}.`
-       : `Всего: ${stats.visits} визит(а/ов) на ${total}.`);
+    ? (locale === 'uk' ? `По «${serviceQuery}»: ${stats.visits} ${visitsWord} на ${total}.`
+       : locale === 'en' ? `For "${serviceQuery}": ${stats.visits} ${visitsWord}, ${total} total.`
+       : `По «${serviceQuery}»: ${stats.visits} ${visitsWord} на ${total}.`)
+    : (locale === 'uk' ? `Всього: ${stats.visits} ${visitsWord} на ${total}.`
+       : locale === 'en' ? `Total: ${stats.visits} ${visitsWord}, ${total}.`
+       : `Всего: ${stats.visits} ${visitsWord} на ${total}.`);
 
   if (!stats.byService.length) return head;
   const breakdown = stats.byService
@@ -736,8 +790,24 @@ async function findMasters(
   }));
 }
 
-async function getNextAppointment(userId: string): Promise<ActionCard | null> {
+// Связка клиент-профиль ↔ appointment идёт через таблицу clients
+// (appointments.client_id → clients.id, clients.profile_id → profiles.id).
+// Раньше код фильтровал по несуществующей колонке `client_profile_id` —
+// результат всегда null → AI отвечал «запис буде показаний нижче» без карточки.
+async function getUpcomingAppointments(
+  userId: string,
+  limit: number,
+): Promise<ActionCard[]> {
   const db = admin();
+  // Сначала находим все client-row которые принадлежат этому профилю
+  // (один профиль может быть клиентом у нескольких мастеров).
+  const { data: clientRows } = await db
+    .from('clients')
+    .select('id')
+    .eq('profile_id', userId);
+  const clientIds = (clientRows ?? []).map((r) => (r as { id: string }).id);
+  if (clientIds.length === 0) return [];
+
   const { data } = await db
     .from('appointments')
     .select(
@@ -745,13 +815,13 @@ async function getNextAppointment(userId: string): Promise<ActionCard | null> {
         'service:services(name), ' +
         'master:masters(id, display_name, profile:profiles!masters_profile_id_fkey(full_name))',
     )
-    .eq('client_profile_id', userId)
+    .in('client_id', clientIds)
     .in('status', ['booked', 'confirmed'])
     .gte('starts_at', new Date().toISOString())
     .order('starts_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (!data) return null;
+    .limit(limit);
+  if (!data?.length) return [];
+
   type R = {
     id: string;
     starts_at: string;
@@ -764,19 +834,25 @@ async function getNextAppointment(userId: string): Promise<ActionCard | null> {
       | { id: string; display_name: string | null; profile: { full_name: string | null } | { full_name: string | null }[] | null }[]
       | null;
   };
-  const row = data as unknown as R;
-  const svc = Array.isArray(row.service) ? row.service[0] : row.service;
-  const master = Array.isArray(row.master) ? row.master[0] : row.master;
-  const masterProfile = master ? (Array.isArray(master.profile) ? master.profile[0] : master.profile) : null;
-  return {
-    type: 'appointment',
-    data: {
-      id: row.id,
-      starts_at: row.starts_at,
-      service_name: svc?.name ?? '—',
-      master_name: master?.display_name ?? masterProfile?.full_name ?? null,
-      price: row.price,
-      currency: row.currency ?? 'UAH',
-    },
-  };
+  return (data as unknown as R[]).map((row) => {
+    const svc = Array.isArray(row.service) ? row.service[0] : row.service;
+    const master = Array.isArray(row.master) ? row.master[0] : row.master;
+    const masterProfile = master ? (Array.isArray(master.profile) ? master.profile[0] : master.profile) : null;
+    return {
+      type: 'appointment' as const,
+      data: {
+        id: row.id,
+        starts_at: row.starts_at,
+        service_name: svc?.name ?? '—',
+        master_name: master?.display_name ?? masterProfile?.full_name ?? null,
+        price: row.price,
+        currency: row.currency ?? 'UAH',
+      },
+    };
+  });
+}
+
+async function getNextAppointment(userId: string): Promise<ActionCard | null> {
+  const list = await getUpcomingAppointments(userId, 1);
+  return list[0] ?? null;
 }
