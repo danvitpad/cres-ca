@@ -90,7 +90,7 @@ const I18N: Record<MiniAppLang, {
 };
 
 interface ActionCard {
-  type: 'master' | 'appointment' | 'time-slot';
+  type: 'master' | 'appointment' | 'time-slot' | 'slot-list';
   data: Record<string, unknown>;
 }
 
@@ -428,7 +428,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                 <Welcome onPrompt={(p) => sendNow(p)} t={t} />
               )}
               {messages.map((m) => (
-                <Bubble key={m.id} msg={m} onSuggestion={(s) => sendNow(s)} t={t} />
+                <Bubble key={m.id} msg={m} onSuggestion={(s) => sendNow(s)} t={t} lang={lang} />
               ))}
               {sending && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px' }}>
@@ -599,7 +599,7 @@ function Welcome({ onPrompt, t }: { onPrompt: (p: string) => void; t: typeof I18
   );
 }
 
-function Bubble({ msg, onSuggestion, t }: { msg: ChatMsg; onSuggestion: (s: string) => void; t: typeof I18N[MiniAppLang] }) {
+function Bubble({ msg, onSuggestion, t, lang }: { msg: ChatMsg; onSuggestion: (s: string) => void; t: typeof I18N[MiniAppLang]; lang: MiniAppLang }) {
   const isUser = msg.role === 'user';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
@@ -624,6 +624,7 @@ function Bubble({ msg, onSuggestion, t }: { msg: ChatMsg; onSuggestion: (s: stri
           {msg.actions.map((a, i) => {
             if (a.type === 'master') return <MasterActionCard key={i} data={a.data as unknown as MasterCardData} />;
             if (a.type === 'appointment') return <AppointmentActionCard key={i} data={a.data as unknown as AppointmentCardData} t={t} />;
+            if (a.type === 'slot-list') return <SlotListActionCard key={i} data={a.data as unknown as SlotListData} lang={lang} />;
             return null;
           })}
         </div>
@@ -816,6 +817,121 @@ function AppointmentActionCard({ data, t }: { data: AppointmentCardData; t: type
         >
           {cancelling ? t.cancellingLabel : t.cancelLabel}
         </button>
+      )}
+    </div>
+  );
+}
+
+interface SlotListData {
+  masterId: string;
+  serviceId: string;
+  serviceName: string;
+  durationMinutes: number;
+  date: string;        // YYYY-MM-DD
+  slots: string[];     // ["10:00", "10:30", ...]
+}
+
+function SlotListActionCard({ data, lang }: { data: SlotListData; lang: MiniAppLang }) {
+  const [bookingTime, setBookingTime] = useState<string | null>(null);
+  const [bookedTime, setBookedTime] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const dateLabel = new Date(`${data.date}T12:00:00`).toLocaleDateString(
+    lang === 'uk' ? 'uk-UA' : lang === 'en' ? 'en-GB' : 'ru-RU',
+    { day: 'numeric', month: 'long', weekday: 'short', timeZone: 'Europe/Kiev' },
+  );
+
+  async function book(time: string) {
+    if (bookingTime || bookedTime) return;
+    setBookingTime(time);
+    setError(null);
+    try {
+      // Собираем ISO как Kyiv-локальное время → UTC. Без таймзоны, ставим
+      // wall-clock и пускаем браузер привязать к локальной (Kyiv для UA-юзера).
+      const [y, m, d] = data.date.split('-').map(Number);
+      const [h, mi] = time.split(':').map(Number);
+      const starts = new Date(y, m - 1, d, h, mi, 0, 0);
+      const res = await fetch('/api/ai/client-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'book',
+          master_id: data.masterId,
+          service_id: data.serviceId,
+          starts_at: starts.toISOString(),
+        }),
+      });
+      const j = await res.json();
+      if (j.ok) {
+        setBookedTime(time);
+      } else {
+        setError(j.message || j.error || (lang === 'uk' ? 'Не вдалось записати' : lang === 'en' ? "Couldn't book" : 'Не удалось записать'));
+      }
+    } catch {
+      setError(lang === 'uk' ? 'Помилка мережі' : lang === 'en' ? 'Network error' : 'Сетевая ошибка');
+    } finally {
+      setBookingTime(null);
+    }
+  }
+
+  const headLabel = bookedTime
+    ? (lang === 'uk' ? '✅ Записано' : lang === 'en' ? '✅ Booked' : '✅ Записано')
+    : data.serviceName;
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        padding: 12,
+        background: T.surface,
+        border: `1px solid ${T.borderSubtle}`,
+        borderRadius: R.md,
+        boxShadow: SHADOW.card,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.accent, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <Calendar size={12} /> {dateLabel} · {data.durationMinutes} {lang === 'uk' ? 'хв' : lang === 'en' ? 'min' : 'мин'}
+      </div>
+      <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{headLabel}</p>
+      {!bookedTime && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {data.slots.map((s) => {
+            const isBusy = bookingTime === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                disabled={!!bookingTime}
+                onClick={() => book(s)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: R.pill,
+                  border: `1px solid ${T.border}`,
+                  background: isBusy ? T.accent : T.bgSubtle,
+                  color: isBusy ? '#fff' : T.text,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: bookingTime ? 'wait' : 'pointer',
+                  fontFamily: 'inherit',
+                  opacity: bookingTime && !isBusy ? 0.4 : 1,
+                  transition: 'background 150ms ease',
+                }}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {bookedTime && (
+        <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0 }}>
+          {lang === 'uk' ? `Час: ${bookedTime}` : lang === 'en' ? `Time: ${bookedTime}` : `Время: ${bookedTime}`}
+        </p>
+      )}
+      {error && (
+        <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{error}</p>
       )}
     </div>
   );

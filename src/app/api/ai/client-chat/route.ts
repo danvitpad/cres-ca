@@ -22,13 +22,22 @@ function admin() {
   );
 }
 
+import {
+  findFreeSlotsInDay,
+  findNextAvailableSlots,
+  getClientHistory,
+  getClientStats,
+  getNextDueEstimate,
+  resolveMaster,
+  resolveService,
+} from '@/lib/ai/concierge-tools';
+
 type Locale = 'uk' | 'ru' | 'en';
 
-const LANG_NAME: Record<Locale, string> = {
-  uk: 'Ukrainian (українська)',
-  ru: 'Russian (русский)',
-  en: 'English',
-};
+function todayKyivStr(): string {
+  const k = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Kiev' }));
+  return `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, '0')}-${String(k.getDate()).padStart(2, '0')}`;
+}
 
 function buildSystemPrompt(locale: Locale, defaultCity: string | null): string {
   const langInstruction = locale === 'uk'
@@ -48,37 +57,42 @@ ${langInstruction}
 
 ${cityHint}
 
+Сегодня: ${todayKyivStr()} (Europe/Kiev). Когда клиент говорит «завтра», «в среду», «через неделю» — переводи в YYYY-MM-DD.
+
 ЗАДАЧА — вернуть СТРОГО JSON следующего формата (без markdown-ограждений, без \`\`\`):
 {
-  "intent": "find" | "book" | "reschedule" | "cancel" | "status" | "prep" | "care" | "compare" | "remind" | "gift" | "smalltalk",
-  "reply": "человеко-читаемый ответ клиенту (2-4 коротких предложения) на нужном языке",
+  "intent": "find_master" | "find_slots" | "book" | "reschedule" | "cancel" | "status" | "history" | "stats" | "next_due" | "prep" | "care" | "compare" | "remind" | "gift" | "smalltalk",
+  "reply": "короткий ответ клиенту (1-2 предложения, нужный язык). Если intent требует данных из БД (find_slots/history/stats/next_due/status) — оставь reply короткой подводкой; точные цифры/слоты сервер допишет сам.",
   "params": {
-    "query": "учитель иностранных языков" | null,    // СВОБОДНЫЙ ТЕКСТ описание что ищет (профессия / услуга / тип специалиста)
-    "service": "маникюр" | null,                       // конкретная услуга если упомянута
-    "city": "Киев" | null,                             // только если КЛИЕНТ ЯВНО назвал город (не выдумывай)
+    "query": "учитель иностранных языков" | null,
+    "service": "маникюр" | null,
+    "master_name": "Таня" | null,
+    "city": "Киев" | null,
     "price_max": 800 | null,
-    "when": "завтра вечером" | null,
+    "date": "2026-05-08" | null,
+    "after_time": "14:00" | null,
+    "period_from": "2026-01-01" | null,
     "appointment_id": null,
     "reminder_days": null
   },
-  "suggestions": ["короткая reply 1", "короткая reply 2"]   // ИЛИ пустой массив
+  "suggestions": ["короткая reply 1", "короткая reply 2"]
 }
 
-ПРАВИЛА:
-- intent="find" — клиент ищет специалиста любой профессии: «найди маникюр», «нужен репетитор английского», «учитель иностранных языков», «массаж в центре», «парикмахер на завтра», «ветеринар», «тренер», «педикюрша». Заполняй params.query своими словами на русском (для базы поиска), а params.service — только если в сообщении явно прозвучало название услуги. params.city — ТОЛЬКО если клиент сам его назвал.
-- intent="status" — «когда у меня запись?», «что у меня на завтра» — клиент хочет узнать ближайший визит.
-- intent="prep" — «что взять с собой», «как готовиться» — инструкции по подготовке.
-- intent="care" — «как ухаживать после», «можно ли мочить» — советы после визита.
-- intent="reschedule" — «перенеси», «другое время» — клиент хочет сменить время.
-- intent="cancel" — «отмени» — отмена записи.
-- intent="remind" — «напомни через 4 недели» — создать напоминание.
-- intent="compare" — «кто лучше из этих» — сравнение.
-- intent="gift" — «нужен подарок» — подарочные карты.
-- intent="smalltalk" — приветствие, благодарность, болтовня.
+ИНТЕНТЫ:
+- "find_master" — поиск специалиста: «найди маникюр», «нужен репетитор английского», «массаж в центре». Заполняй params.query, опц. service/city/price_max.
+- "find_slots" — конкретные свободные времена у мастера на дату: «когда у Тани свободно в среду на маникюр». Обязательно: master_name + date (YYYY-MM-DD). Опц.: service, after_time («после обеда» → "14:00»).
+- "book" — клиент хочет записаться, и УЖЕ назвал мастера/услугу/время. Если чего-то не хватает (нет времени) → используй "find_slots" вместо "book", сервер покажет варианты.
+- "status" — «когда у меня запись?»: ближайший визит клиента.
+- "history" — «покажи мою историю», «что я делала в прошлом месяце»: список последних завершённых визитов.
+- "stats" — «сколько я потратила на маникюр в этом году», «сколько раз я была у Кати»: суммы и счётчики. Заполни service (что суммируем) и period_from (с какой даты, YYYY-MM-DD).
+- "next_due" — «когда мне обычно стричься», «пора ли мне на маникюр»: оценка следующей даты по медианному интервалу. Заполни service.
+- "reschedule" / "cancel" — клиент хочет перенести / отменить уже существующую запись. appointment_id обычно null — клиент скажет «мою запись на четверг».
+- "prep" / "care" — инструкции до/после визита. Серверу не нужны данные, отвечай сам коротко.
+- "compare" — «кто лучше из этих»; "gift" — «подарочная карта»; "remind" — «напомни через N дней»; "smalltalk" — болтовня.
 
-Тёплый и краткий тон, как друг-консьерж в дорогом сервисе. Без банальностей. Без приветствий («Привет!», «Здравствуй!») — клиент уже в приложении.
+Тёплый и краткий тон, как друг-консьерж в дорогом сервисе. Без приветствий — клиент уже в приложении.
 
-Если intent="find" — дай suggestions: одну фразу-уточнение (на нужном языке), например «Подобрать сейчас» / «Підібрати зараз» / «Pick now».
+Если intent="find_master" — suggestions: одна фраза-уточнение («Подобрать сейчас» / «Підібрати зараз»).
 Иначе suggestions = [].`;
 }
 
@@ -185,37 +199,58 @@ export async function POST(req: Request) {
     }
 
     let actions: ActionCard[] = [];
+    let serverReply: string | null = null;
 
-    if (parsed.intent === 'find' && parsed.params) {
-      // Если AI не прислал city, но edge-headers их дали — добавим как мягкий фильтр.
+    // Алиас find → find_master (старые сессии)
+    const intent = parsed.intent === 'find' ? 'find_master' : parsed.intent;
+
+    if (intent === 'find_master' && parsed.params) {
       const params = { ...parsed.params };
       if (!params.city && headerCity) params.city = headerCity;
       actions = await findMasters(params, locale);
-
-      // Если ничего не нашли по «строгому» с city — пробуем БЕЗ city.
       if (!actions.length && params.city) {
         actions = await findMasters({ ...params, city: null }, locale);
       }
     }
 
-    if (parsed.intent === 'status' && body.userId) {
+    if (intent === 'status' && body.userId) {
       const next = await getNextAppointment(body.userId);
       if (next) actions = [next];
     }
+
+    if (intent === 'find_slots' && parsed.params) {
+      const r = await handleFindSlots(parsed.params, body.userId ?? null, locale);
+      actions = r.actions;
+      serverReply = r.reply;
+    }
+
+    if (intent === 'history' && body.userId) {
+      serverReply = await handleHistory(body.userId, parsed.params ?? {}, locale);
+    }
+
+    if (intent === 'stats' && body.userId) {
+      serverReply = await handleStats(body.userId, parsed.params ?? {}, locale);
+    }
+
+    if (intent === 'next_due' && body.userId) {
+      serverReply = await handleNextDue(body.userId, parsed.params ?? {}, locale);
+    }
+
+    const finalReply = serverReply ?? parsed.reply;
 
     // Persist в ai_messages — после успешного ответа модели.
     if (body.userId) {
       await saveMessage(body.userId, 'user', userMessage);
       await saveMessage(
-        body.userId, 'assistant', parsed.reply,
-        parsed.intent,
+        body.userId, 'assistant', finalReply,
+        intent,
         { params: parsed.params, actions },
       );
     }
 
     return NextResponse.json({
-      intent: parsed.intent,
-      reply: parsed.reply,
+      intent,
+      reply: finalReply,
       params: parsed.params ?? {},
       suggestions: parsed.suggestions ?? [],
       actions,
@@ -236,8 +271,295 @@ export async function POST(req: Request) {
 }
 
 interface ActionCard {
-  type: 'master' | 'appointment' | 'time-slot';
+  type: 'master' | 'appointment' | 'time-slot' | 'slot-list';
   data: Record<string, unknown>;
+}
+
+/* ─────────── Intent handlers ─────────── */
+
+const fmtDateUk = (iso: string): string =>
+  new Date(iso).toLocaleDateString('uk-UA', {
+    day: 'numeric', month: 'long', timeZone: 'Europe/Kiev',
+  });
+
+const fmtMoney = (price: number, currency: string | null): string => {
+  const cur = (currency ?? 'UAH').toUpperCase();
+  const sym: Record<string, string> = { UAH: '₴', USD: '$', EUR: '€', RUB: '₽', PLN: 'zł' };
+  return `${Math.round(price)} ${sym[cur] ?? cur}`;
+};
+
+async function handleFindSlots(
+  params: Record<string, unknown>,
+  profileId: string | null,
+  locale: Locale,
+): Promise<{ reply: string; actions: ActionCard[] }> {
+  const masterName = (params.master_name as string | null)?.trim() || null;
+  const serviceQuery = (params.service as string | null)?.trim() || null;
+  const date = (params.date as string | null)?.trim() || null;
+  const afterTime = (params.after_time as string | null)?.trim() || null;
+
+  if (!masterName) {
+    return {
+      reply: locale === 'uk'
+        ? 'Підкажи, у якого майстра шукати слоти?'
+        : locale === 'en'
+        ? 'Which master should I look up slots for?'
+        : 'Подскажи, у какого мастера искать слоты?',
+      actions: [],
+    };
+  }
+
+  const db = admin();
+  const masterRes = await resolveMaster(db, { profileId, query: masterName });
+
+  if (masterRes.kind === 'none') {
+    return {
+      reply: locale === 'uk'
+        ? `Не знайшов майстра «${masterName}». Може уточниш ім’я?`
+        : locale === 'en'
+        ? `Couldn't find a master named "${masterName}". Could you clarify the name?`
+        : `Не нашёл мастера «${masterName}». Уточни имя?`,
+      actions: [],
+    };
+  }
+  if (masterRes.kind === 'choices') {
+    const list = masterRes.options.map((o) => o.name).join(', ');
+    return {
+      reply: locale === 'uk'
+        ? `Знайшов кілька майстрів з таким іменем: ${list}. Кого з них?`
+        : locale === 'en'
+        ? `Found several masters: ${list}. Which one?`
+        : `Нашёл нескольких мастеров: ${list}. Кого из них?`,
+      actions: [],
+    };
+  }
+
+  const masterId = masterRes.masterId;
+
+  // Услуга обязательна для расчёта длительности
+  if (!serviceQuery) {
+    return {
+      reply: locale === 'uk'
+        ? 'Яку послугу шукаємо? Від цього залежить тривалість слоту.'
+        : locale === 'en'
+        ? 'Which service? Slot length depends on it.'
+        : 'Какую услугу? От неё зависит длительность слота.',
+      actions: [],
+    };
+  }
+  const svcRes = await resolveService(db, { masterId, query: serviceQuery });
+  if (svcRes.kind === 'none') {
+    return {
+      reply: locale === 'uk'
+        ? `У цього майстра немає послуги «${serviceQuery}». Подивись список на його сторінці.`
+        : locale === 'en'
+        ? `This master doesn't offer "${serviceQuery}". Check their profile for the full list.`
+        : `У этого мастера нет услуги «${serviceQuery}». Посмотри список на его странице.`,
+      actions: [],
+    };
+  }
+  if (svcRes.kind === 'choices') {
+    const list = svcRes.options.map((o) => `${o.name} (${o.durationMinutes} мин, ${fmtMoney(o.price, o.currency)})`).join('; ');
+    return {
+      reply: locale === 'uk'
+        ? `Є кілька варіантів: ${list}. Яку саме?`
+        : locale === 'en'
+        ? `Several options: ${list}. Which one?`
+        : `Нашёл несколько вариантов: ${list}. Какую именно?`,
+      actions: [],
+    };
+  }
+
+  const service = svcRes;
+  const targetDate = date || todayKyivStr();
+
+  const slots = await findFreeSlotsInDay(db, {
+    masterId,
+    date: targetDate,
+    durationMinutes: service.durationMinutes,
+    afterTime,
+  });
+
+  if (slots.length > 0) {
+    const previewMax = 6;
+    const preview = slots.slice(0, previewMax);
+    const tail = slots.length > previewMax ? ` + ще ${slots.length - previewMax}` : '';
+    const dateLabel = fmtDateUk(`${targetDate}T12:00:00`);
+    const reply = locale === 'uk'
+      ? `На ${dateLabel} (${service.name}, ${service.durationMinutes} хв) вільно: ${preview.join(', ')}${tail}.`
+      : locale === 'en'
+      ? `On ${dateLabel} (${service.name}, ${service.durationMinutes} min) free: ${preview.join(', ')}${tail}.`
+      : `На ${dateLabel} (${service.name}, ${service.durationMinutes} мин) свободно: ${preview.join(', ')}${tail}.`;
+    return {
+      reply,
+      actions: [{
+        type: 'slot-list',
+        data: {
+          masterId,
+          serviceId: service.serviceId,
+          serviceName: service.name,
+          durationMinutes: service.durationMinutes,
+          date: targetDate,
+          slots: preview,
+        },
+      }],
+    };
+  }
+
+  // Нет слотов — ищем ближайшие свободные дни
+  const next = await findNextAvailableSlots(db, {
+    masterId,
+    durationMinutes: service.durationMinutes,
+  });
+
+  if (!next.length) {
+    return {
+      reply: locale === 'uk'
+        ? `На найближчі 2 тижні немає вільних вікон під ${service.name} (${service.durationMinutes} хв).`
+        : locale === 'en'
+        ? `No free windows for ${service.name} (${service.durationMinutes} min) in the next 2 weeks.`
+        : `На ближайшие 2 недели нет свободных окон под ${service.name} (${service.durationMinutes} мин).`,
+      actions: [],
+    };
+  }
+
+  const lines = next.map(
+    (n) => `${fmtDateUk(`${n.date}T12:00:00`)}: ${n.slots.join(', ')}`,
+  ).join('; ');
+  const reply = locale === 'uk'
+    ? `На ${fmtDateUk(`${targetDate}T12:00:00`)} вільних вікон під ${service.name} (${service.durationMinutes} хв) немає. Найближчі: ${lines}.`
+    : locale === 'en'
+    ? `No openings for ${service.name} (${service.durationMinutes} min) on ${fmtDateUk(`${targetDate}T12:00:00`)}. Next available: ${lines}.`
+    : `На ${fmtDateUk(`${targetDate}T12:00:00`)} нет свободных окон под ${service.name} (${service.durationMinutes} мин). Ближайшие: ${lines}.`;
+
+  return {
+    reply,
+    actions: next.flatMap((n) => [{
+      type: 'slot-list' as const,
+      data: {
+        masterId,
+        serviceId: service.serviceId,
+        serviceName: service.name,
+        durationMinutes: service.durationMinutes,
+        date: n.date,
+        slots: n.slots,
+      },
+    }]),
+  };
+}
+
+async function handleHistory(
+  profileId: string,
+  _params: Record<string, unknown>,
+  locale: Locale,
+): Promise<string> {
+  const db = admin();
+  const list = await getClientHistory(db, profileId, 7);
+  if (!list.length) {
+    return locale === 'uk' ? 'Поки що історії немає.' : locale === 'en' ? 'No visits yet.' : 'Пока историй нет.';
+  }
+  const lines = list.map((r) => {
+    const date = new Date(r.starts_at).toLocaleDateString(
+      locale === 'uk' ? 'uk-UA' : locale === 'en' ? 'en-GB' : 'ru-RU',
+      { day: 'numeric', month: 'short', timeZone: 'Europe/Kiev' },
+    );
+    const price = r.price ? ` — ${fmtMoney(r.price, r.currency)}` : '';
+    return `• ${date}: ${r.service_name ?? '—'}${r.master_name ? ` · ${r.master_name}` : ''}${price}`;
+  }).join('\n');
+  const head = locale === 'uk' ? 'Останні візити:' : locale === 'en' ? 'Recent visits:' : 'Последние визиты:';
+  return `${head}\n${lines}`;
+}
+
+async function handleStats(
+  profileId: string,
+  params: Record<string, unknown>,
+  locale: Locale,
+): Promise<string> {
+  const db = admin();
+  const periodFrom = (params.period_from as string | null)?.trim() || null;
+  const serviceQuery = (params.service as string | null)?.trim() || null;
+  const stats = await getClientStats(db, profileId, {
+    from: periodFrom ?? undefined,
+    serviceQuery,
+  });
+
+  if (stats.visits === 0) {
+    return locale === 'uk'
+      ? 'Завершених візитів за цей період не знайшов.'
+      : locale === 'en'
+      ? 'No completed visits found for this period.'
+      : 'Завершённых визитов за этот период не нашёл.';
+  }
+
+  const total = fmtMoney(stats.totalSpent, stats.currency);
+  const head = serviceQuery
+    ? (locale === 'uk' ? `По «${serviceQuery}»: ${stats.visits} візит(и/ів) на ${total}.`
+       : locale === 'en' ? `For "${serviceQuery}": ${stats.visits} visits, ${total} total.`
+       : `По «${serviceQuery}»: ${stats.visits} визит(а/ов) на ${total}.`)
+    : (locale === 'uk' ? `Всього: ${stats.visits} візит(и/ів) на ${total}.`
+       : locale === 'en' ? `Total: ${stats.visits} visits, ${total}.`
+       : `Всего: ${stats.visits} визит(а/ов) на ${total}.`);
+
+  if (!stats.byService.length) return head;
+  const breakdown = stats.byService
+    .slice(0, 3)
+    .map((b) => `${b.name} ×${b.count} — ${fmtMoney(b.spent, stats.currency)}`)
+    .join(', ');
+  return `${head}\n${breakdown}`;
+}
+
+async function handleNextDue(
+  profileId: string,
+  params: Record<string, unknown>,
+  locale: Locale,
+): Promise<string> {
+  const serviceQuery = (params.service as string | null)?.trim();
+  if (!serviceQuery) {
+    return locale === 'uk'
+      ? 'Підкажи, що саме ти зазвичай робиш — стрижка, манікюр, масаж?'
+      : locale === 'en'
+      ? 'What service do you usually book — haircut, manicure, massage?'
+      : 'Подскажи, что ты обычно делаешь — стрижка, маникюр, массаж?';
+  }
+  const db = admin();
+  const est = await getNextDueEstimate(db, profileId, serviceQuery);
+  if (!est) {
+    return locale === 'uk'
+      ? `Ще не маю достатньо візитів по «${serviceQuery}», щоб порахувати інтервал.`
+      : locale === 'en'
+      ? `Not enough visits on "${serviceQuery}" to estimate the interval yet.`
+      : `Пока недостаточно визитов по «${serviceQuery}», чтобы посчитать интервал.`;
+  }
+  if (!est.nextDue || !est.intervalDays) {
+    return locale === 'uk'
+      ? `Знайшов один візит «${serviceQuery}». Цього мало для оцінки — після другого скажу інтервал.`
+      : locale === 'en'
+      ? `Only one "${serviceQuery}" visit so far. Need another one to estimate.`
+      : `Нашёл один визит «${serviceQuery}». Этого мало для оценки — после второго скажу интервал.`;
+  }
+  const last = new Date(est.lastVisit!);
+  const next = new Date(est.nextDue);
+  const daysSince = Math.round((Date.now() - last.getTime()) / 86_400_000);
+  const overdue = daysSince - est.intervalDays;
+
+  const dateLabel = next.toLocaleDateString(
+    locale === 'uk' ? 'uk-UA' : locale === 'en' ? 'en-GB' : 'ru-RU',
+    { day: 'numeric', month: 'long', timeZone: 'Europe/Kiev' },
+  );
+
+  if (overdue > 0) {
+    return locale === 'uk'
+      ? `Зазвичай ти робиш «${serviceQuery}» раз на ${est.intervalDays} дн. Минулий візит — ${daysSince} дн тому. Уже час 🙂`
+      : locale === 'en'
+      ? `You usually book "${serviceQuery}" every ${est.intervalDays} days. Last visit was ${daysSince} days ago — time to book.`
+      : `Обычно ты делаешь «${serviceQuery}» раз в ${est.intervalDays} дн. Прошлый визит — ${daysSince} дн назад. Уже пора 🙂`;
+  }
+
+  return locale === 'uk'
+    ? `Інтервал ~${est.intervalDays} дн. Орієнтовно наступний візит: ${dateLabel}.`
+    : locale === 'en'
+    ? `Interval ~${est.intervalDays} days. Approximate next visit: ${dateLabel}.`
+    : `Интервал ~${est.intervalDays} дн. Примерно следующий визит: ${dateLabel}.`;
 }
 
 interface MasterRow {
