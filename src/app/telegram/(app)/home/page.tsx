@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Calendar, Bot, Clock, Star, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
@@ -24,7 +24,6 @@ import {
   AvatarCircle,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
-import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
 
 interface SalonRef {
   id: string;
@@ -52,19 +51,6 @@ interface SlotItem {
   time: string;
   iso: string;
 }
-interface FeaturedMaster {
-  id: string;
-  slug: string;
-  fullName: string;
-  firstName: string;
-  avatarUrl: string | null;
-  city: string | null;
-  specialization: string | null;
-  rating: number | null;
-  reviewsCount: number;
-  topServices: Array<{ name: string; price: number; currency: string }>;
-}
-
 type Lang = 'uk' | 'ru' | 'en';
 
 const I18N: Record<Lang, {
@@ -79,6 +65,8 @@ const I18N: Record<Lang, {
   topcat: { hair: string; massage: string; trainer: string; grooming: string; repair: string };
   today: string; tomorrow: string;
   aiConcierge: string; minSuffix: string; masterFallback: string;
+  // Empty state — когда у клиента нет ни записей, ни постоянных, ни слотов.
+  emptyTitle: string; emptyText: string; emptyCta: string;
 }> = {
   uk: {
     title: 'Привіт',
@@ -92,6 +80,9 @@ const I18N: Record<Lang, {
     topcat: { hair: 'Стрижка та укладка', massage: 'Масаж', trainer: 'Тренер', grooming: 'Грумінг', repair: 'Ремонт' },
     today: 'Сьогодні', tomorrow: 'Завтра',
     aiConcierge: 'AI-консьєрж', minSuffix: 'хв', masterFallback: 'Майстер',
+    emptyTitle: 'Поки що порожньо',
+    emptyText: 'У тебе ще немає записів. Знайди майстра — і запишись прямо звідси.',
+    emptyCta: 'Знайти майстра',
   },
   ru: {
     title: 'Привет',
@@ -105,6 +96,9 @@ const I18N: Record<Lang, {
     topcat: { hair: 'Стрижка и укладка', massage: 'Массаж', trainer: 'Тренер', grooming: 'Груминг', repair: 'Ремонт' },
     today: 'Сегодня', tomorrow: 'Завтра',
     aiConcierge: 'AI-консьерж', minSuffix: 'мин', masterFallback: 'Мастер',
+    emptyTitle: 'Здесь пока пусто',
+    emptyText: 'У тебя ещё нет записей. Найди мастера — и запишись прямо отсюда.',
+    emptyCta: 'Найти мастера',
   },
   en: {
     title: 'Hi',
@@ -118,25 +112,12 @@ const I18N: Record<Lang, {
     topcat: { hair: 'Hair & styling', massage: 'Massage', trainer: 'Trainer', grooming: 'Grooming', repair: 'Repair' },
     today: 'Today', tomorrow: 'Tomorrow',
     aiConcierge: 'AI concierge', minSuffix: 'min', masterFallback: 'Master',
+    emptyTitle: 'Nothing here yet',
+    emptyText: 'You don’t have any appointments yet. Find a master — and book right from here.',
+    emptyCta: 'Find a master',
   },
 };
 
-const CATEGORY_TILES = [
-  { key: 'beauty', q: 'красота', bg: '#f4b740', emoji: '💇' },
-  { key: 'health', q: 'здоровье', bg: '#3b82f6', emoji: '🩺' },
-  { key: 'pets', q: 'груминг', bg: '#14b8a6', emoji: '🐾' },
-  { key: 'fitness', q: 'тренер', bg: '#ec4899', emoji: '💪' },
-  { key: 'auto', q: 'авто', bg: '#f97316', emoji: '🚗' },
-  { key: 'home', q: 'ремонт', bg: '#84cc16', emoji: '🔧' },
-] as const;
-
-const TOP_CATEGORIES = [
-  { key: 'hair', q: 'стрижка' },
-  { key: 'massage', q: 'массаж' },
-  { key: 'trainer', q: 'тренер' },
-  { key: 'grooming', q: 'груминг' },
-  { key: 'repair', q: 'ремонт' },
-] as const;
 
 export default function MiniAppHomePage() {
   const { haptic } = useTelegram();
@@ -147,14 +128,11 @@ export default function MiniAppHomePage() {
   const firstName = fullName?.trim().split(/\s+/)[0] ?? '';
   const [next, setNext] = useState<NextAppointment | null>(null);
   const [slots, setSlots] = useState<SlotItem[]>([]);
-  const [featured, setFeatured] = useState<FeaturedMaster[]>([]);
   const [regulars, setRegulars] = useState<Array<{
     master_id: string; master_name: string; master_avatar: string | null; master_slug: string;
     service_id: string; service_name: string; service_duration: number | null;
     service_price: number | null; service_currency: string | null; visit_count: number;
   }>>([]);
-  const [featuredLoading, setFeaturedLoading] = useState(true);
-  const [aiOpen, setAiOpen] = useState(false);
   const [lang, setLang] = useState<Lang>('uk');
 
   useEffect(() => {
@@ -240,23 +218,8 @@ export default function MiniAppHomePage() {
         }
       } catch { /* ignore */ }
 
-      // Featured masters (discovery)
-      try {
-        let city: string | undefined;
-        try {
-          const c = localStorage.getItem('cres-ca-city');
-          if (c) city = c;
-        } catch { /* ignore */ }
-        const qs = new URLSearchParams();
-        if (city) qs.set('city', city);
-        qs.set('limit', '10');
-        const res = await fetch(`/api/marketplace/featured?${qs.toString()}`);
-        if (res.ok) {
-          const j = await res.json();
-          setFeatured(Array.isArray(j.items) ? j.items : []);
-        }
-      } catch { /* ignore */ }
-      setFeaturedLoading(false);
+      // Featured masters блок переехал в Tab «Найти» (Search) —
+      // на главной только личный кабинет. Поэтому здесь не грузим.
 
       // Regular services (≥3 completed visits at the same master+service)
       try {
@@ -288,30 +251,8 @@ export default function MiniAppHomePage() {
         <PageHeader
           title={firstName ? `${t.title}, ${firstName}` : t.title}
           subtitle={greeting}
-          right={
-            <button
-              type="button"
-              onClick={() => {
-                haptic('light');
-                setAiOpen(true);
-              }}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                border: 'none',
-                background: T.accentSoft,
-                color: T.accent,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-              aria-label={t.aiConcierge}
-            >
-              <Bot size={20} strokeWidth={2.2} />
-            </button>
-          }
+          /* AI-консьерж переехал в Tab «Найти» как главный CTA сверху —
+             на личной главной шапка чистая. */
         />
 
         {/* Next appointment hero — gradient when есть, обычный если нет */}
@@ -446,279 +387,38 @@ export default function MiniAppHomePage() {
           </div>
         )}
 
-        {/* Рекомендуемые — Fresha "Recommended" */}
-        {(featuredLoading || featured.length > 0) && (
-          <div>
-            <SectionHeader title={t.recommended} href="/telegram/search" rightLabel={t.viewAll} />
-            <div
-              style={{
-                display: 'flex',
-                gap: 12,
-                overflowX: 'auto',
-                padding: `0 ${PAGE_PADDING_X}px 4px`,
-                scrollbarWidth: 'none',
-              }}
-            >
-              <style>{`
-                .featured-row::-webkit-scrollbar { display: none; }
-                @keyframes cresPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 0.85; } }
-              `}</style>
-              <div className="featured-row" style={{ display: 'flex', gap: 12, flexShrink: 0 }}>
-                {featuredLoading && featured.length === 0 ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <div
-                      key={`skel-${i}`}
-                      style={{
-                        flexShrink: 0,
-                        width: 220,
-                        background: T.surface,
-                        border: `1px solid ${T.borderSubtle}`,
-                        borderRadius: R.md,
-                        overflow: 'hidden',
-                        boxShadow: SHADOW.card,
-                      }}
-                    >
-                      <div style={{ aspectRatio: '4/3', background: T.bgSubtle, animation: 'cresPulse 1.4s ease-in-out infinite' }} />
-                      <div style={{ padding: 12 }}>
-                        <div style={{ height: 14, width: '70%', background: T.bgSubtle, borderRadius: 4, animation: 'cresPulse 1.4s ease-in-out infinite' }} />
-                        <div style={{ height: 11, width: '50%', background: T.bgSubtle, borderRadius: 4, marginTop: 8, animation: 'cresPulse 1.4s ease-in-out infinite' }} />
-                      </div>
-                    </div>
-                  ))
-                ) : null}
-                {featured.map((m) => {
-                  const cheapest = m.topServices[0];
-                  return (
-                    <Link
-                      key={m.id}
-                      href={`/telegram/search/${m.id}`}
-                      onClick={() => haptic('light')}
-                      style={{
-                        flexShrink: 0,
-                        width: 220,
-                        background: T.surface,
-                        border: `1px solid ${T.borderSubtle}`,
-                        borderRadius: R.md,
-                        overflow: 'hidden',
-                        textDecoration: 'none',
-                        color: T.text,
-                        boxShadow: SHADOW.card,
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: 'relative',
-                          aspectRatio: '4/3',
-                          background: m.avatarUrl
-                            ? 'transparent'
-                            : `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {m.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={m.avatarUrl}
-                            alt={m.fullName}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          />
-                        ) : (
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '100%',
-                              height: '100%',
-                              fontSize: 56,
-                              fontWeight: 800,
-                              color: 'rgba(255,255,255,0.85)',
-                            }}
-                          >
-                            {m.firstName.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        {(m.rating ?? 0) > 0 && (
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 10,
-                              right: 10,
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              padding: '4px 9px',
-                              borderRadius: R.pill,
-                              background: 'rgba(255,255,255,0.95)',
-                              backdropFilter: 'blur(8px)',
-                              fontSize: 12,
-                              fontWeight: 700,
-                            }}
-                          >
-                            <Star size={12} fill="#f59e0b" color="#f59e0b" />
-                            {m.rating?.toFixed(1)}
-                            <span style={{ color: T.textTertiary, fontWeight: 500 }}>({m.reviewsCount})</span>
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ padding: 12 }}>
-                        <p
-                          style={{
-                            ...TYPE.bodyStrong,
-                            margin: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {m.fullName}
-                        </p>
-                        {m.specialization && (
-                          <p
-                            style={{
-                              ...TYPE.caption,
-                              marginTop: 2,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {m.specialization}
-                          </p>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                          <span style={{ ...TYPE.micro }}>{m.city ?? ''}</span>
-                          {cheapest && (
-                            <span style={{ ...TYPE.bodyStrong, fontSize: 13 }}>
-                              {t.from} {formatMoney(cheapest.price, cheapest.currency)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+        {/* Empty state — клиент пустой: ни next, ни постоянных, ни слотов
+            у мастеров. Аккуратный CTA в Tab «Найти», без агрессивного маркетинга. */}
+        {!next && regulars.length === 0 && slots.length === 0 && (
+          <Link
+            href="/telegram/search"
+            onClick={() => haptic('light')}
+            style={{
+              ...HERO_GRADIENT,
+              margin: `12px ${PAGE_PADDING_X}px 0`,
+              padding: 24,
+              borderRadius: R.lg,
+              color: '#fff',
+              boxShadow: SHADOW.elevated,
+              textDecoration: 'none',
+              display: 'block',
+            }}
+          >
+            <p style={{ fontSize: 18, fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>
+              {t.emptyTitle}
+            </p>
+            <p style={{ fontSize: 14, marginTop: 8, marginBottom: 0, opacity: 0.92, lineHeight: 1.4 }}>
+              {t.emptyText}
+            </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 14, fontSize: 13, fontWeight: 700 }}>
+              {t.emptyCta} <ChevronRight size={14} />
             </div>
-          </div>
+          </Link>
         )}
-
-        {/* Explore — colored category tiles (Fresha "Explore") */}
-        <div>
-          <SectionHeader title={t.explore} href="/telegram/search" rightLabel={t.viewAll} />
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: 10,
-              padding: `0 ${PAGE_PADDING_X}px`,
-            }}
-          >
-            {CATEGORY_TILES.map((c) => (
-              <Link
-                key={c.key}
-                href={`/telegram/search?q=${encodeURIComponent(c.q)}`}
-                onClick={() => haptic('light')}
-                style={{
-                  position: 'relative',
-                  height: 110,
-                  background: `linear-gradient(135deg, ${c.bg} 0%, ${c.bg}dd 100%)`,
-                  borderRadius: R.md,
-                  textDecoration: 'none',
-                  color: '#fff',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  padding: 12,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  letterSpacing: '-0.01em',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                }}
-              >
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    fontSize: 24,
-                    opacity: 0.95,
-                    filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
-                  }}
-                >
-                  {c.emoji}
-                </span>
-                {t.cat[c.key as keyof typeof t.cat]}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Top categories — circular avatars */}
-        <div>
-          <SectionHeader title={t.topCats} href="/telegram/search" rightLabel={t.viewAll} />
-          <div
-            style={{
-              display: 'flex',
-              gap: 16,
-              overflowX: 'auto',
-              padding: `0 ${PAGE_PADDING_X}px 4px`,
-              scrollbarWidth: 'none',
-            }}
-          >
-            <style>{`.cat-row::-webkit-scrollbar { display: none; }`}</style>
-            <div className="cat-row" style={{ display: 'flex', gap: 16, flexShrink: 0 }}>
-              {TOP_CATEGORIES.map((c, i) => (
-                <Link
-                  key={c.key}
-                  href={`/telegram/search?q=${encodeURIComponent(c.q)}`}
-                  onClick={() => haptic('light')}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                    width: 88,
-                    flexShrink: 0,
-                    textDecoration: 'none',
-                    color: T.text,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: '50%',
-                      background: `hsl(${(i * 53) % 360}, 70%, 88%)`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 32,
-                    }}
-                  >
-                    {['💇', '💆', '💪', '🐾', '🔧'][i]}
-                  </div>
-                  <span
-                    style={{
-                      ...TYPE.caption,
-                      color: T.text,
-                      fontWeight: 600,
-                      textAlign: 'center',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {t.topcat[c.key as keyof typeof t.topcat]}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
 
         <div style={{ height: 8 }} />
       </motion.div>
 
-      <AIChatSheet open={aiOpen} onClose={() => setAiOpen(false)} />
     </MobilePage>
   );
 }
