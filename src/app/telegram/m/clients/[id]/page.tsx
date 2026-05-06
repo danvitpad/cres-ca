@@ -21,6 +21,76 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  notFound: string;
+  healthBadge: string; healthAlertTitle: string;
+  kpiVisits: string; kpiTotal: string; kpiAvg: string;
+  callBtn: string; bookBtn: string;
+  numberCopied: (n: string) => string;
+  personalDataTitle: string; personalDataBadge: string;
+  fName: string; fPhone: string; fEmail: string; fDob: string;
+  healthSection: string; healthAttention: string;
+  noHealth: string; allergies: string; contraindications: string;
+  personalHint: string;
+  historyTitle: string; noVisits: string;
+  analyticsTitle: string; analyticsVisits: string; analyticsSpent: string;
+  analyticsAvg: string; analyticsLastVisit: string;
+  dateLocale: string;
+}> = {
+  uk: {
+    notFound: 'Клієнт не знайдений',
+    healthBadge: 'Здоровʼя', healthAlertTitle: 'Є алергії або протипоказання',
+    kpiVisits: 'Візитів', kpiTotal: 'Всього', kpiAvg: 'Чек',
+    callBtn: 'Зателефонувати', bookBtn: 'Записати',
+    numberCopied: (n) => `Номер скопійовано: ${n}`,
+    personalDataTitle: 'Особисті дані', personalDataBadge: 'Клієнт керує сам',
+    fName: 'Імʼя', fPhone: 'Телефон', fEmail: 'Email', fDob: 'Дата народження',
+    healthSection: 'Здоровʼя', healthAttention: 'Увага',
+    noHealth: 'Немає алергій та протипоказань.',
+    allergies: 'Алергії:', contraindications: 'Протипоказання:',
+    personalHint: 'Імʼя, телефон, e-mail та дата народження — керує клієнт. Алергії — через AI-чат знизу.',
+    historyTitle: 'Історія візитів', noVisits: 'Поки візитів немає.',
+    analyticsTitle: 'Аналітика', analyticsVisits: 'Візитів', analyticsSpent: 'Витрачено',
+    analyticsAvg: 'Середній чек', analyticsLastVisit: 'Останній візит',
+    dateLocale: 'uk-UA',
+  },
+  ru: {
+    notFound: 'Клиент не найден',
+    healthBadge: 'Здоровье', healthAlertTitle: 'Есть аллергии или противопоказания',
+    kpiVisits: 'Визитов', kpiTotal: 'Всего', kpiAvg: 'Чек',
+    callBtn: 'Позвонить', bookBtn: 'Записать',
+    numberCopied: (n) => `Номер скопирован: ${n}`,
+    personalDataTitle: 'Личные данные', personalDataBadge: 'Клиент управляет сам',
+    fName: 'Имя', fPhone: 'Телефон', fEmail: 'Email', fDob: 'Дата рождения',
+    healthSection: 'Здоровье', healthAttention: 'Внимание',
+    noHealth: 'Нет аллергий и противопоказаний.',
+    allergies: 'Аллергии:', contraindications: 'Противопоказания:',
+    personalHint: 'Имя, телефон, e-mail и дата рождения — управляет клиент. Аллергии — через AI-чат снизу.',
+    historyTitle: 'История посещений', noVisits: 'Пока визитов нет.',
+    analyticsTitle: 'Аналитика', analyticsVisits: 'Визитов', analyticsSpent: 'Потрачено',
+    analyticsAvg: 'Средний чек', analyticsLastVisit: 'Последний визит',
+    dateLocale: 'ru-RU',
+  },
+  en: {
+    notFound: 'Client not found',
+    healthBadge: 'Health', healthAlertTitle: 'Has allergies or contraindications',
+    kpiVisits: 'Visits', kpiTotal: 'Total', kpiAvg: 'Avg',
+    callBtn: 'Call', bookBtn: 'Book',
+    numberCopied: (n) => `Number copied: ${n}`,
+    personalDataTitle: 'Personal data', personalDataBadge: 'Client manages',
+    fName: 'Name', fPhone: 'Phone', fEmail: 'Email', fDob: 'Date of birth',
+    healthSection: 'Health', healthAttention: 'Attention',
+    noHealth: 'No allergies or contraindications.',
+    allergies: 'Allergies:', contraindications: 'Contraindications:',
+    personalHint: 'Name, phone, email and birthday — managed by the client. Allergies — via AI chat below.',
+    historyTitle: 'Visit history', noVisits: 'No visits yet.',
+    analyticsTitle: 'Analytics', analyticsVisits: 'Visits', analyticsSpent: 'Spent',
+    analyticsAvg: 'Avg check', analyticsLastVisit: 'Last visit',
+    dateLocale: 'en-US',
+  },
+};
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -89,6 +159,8 @@ export default function MasterMiniAppClientCard() {
   const router = useRouter();
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [client, setClient] = useState<ClientFull | null>(null);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +215,7 @@ export default function MasterMiniAppClientCard() {
   if (!client) {
     return (
       <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-neutral-600">Клиент не найден</p>
+        <p className="text-sm text-neutral-600">{t.notFound}</p>
       </div>
     );
   }
@@ -181,12 +253,12 @@ export default function MasterMiniAppClientCard() {
               <button
                 type="button"
                 onClick={() => haptic('light')}
-                title="Есть аллергии или противопоказания"
-                aria-label="Есть аллергии или противопоказания"
+                title={t.healthAlertTitle}
+                aria-label={t.healthAlertTitle}
                 className="inline-flex items-center gap-1 rounded-full border border-rose-300 bg-rose-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-rose-600"
               >
                 <AlertTriangle className="size-3" />
-                Здоровье
+                {t.healthBadge}
               </button>
             )}
           </div>
@@ -196,9 +268,9 @@ export default function MasterMiniAppClientCard() {
 
       {/* KPI row */}
       <div className="grid grid-cols-3 gap-2">
-        <KPI value={String(client.total_visits)} label="Визитов" />
-        <KPI value={`${Number(client.total_spent).toFixed(0)}₴`} label="Всего" />
-        <KPI value={`${Number(client.avg_check).toFixed(0)}₴`} label="Чек" />
+        <KPI value={String(client.total_visits)} label={t.kpiVisits} />
+        <KPI value={`${Number(client.total_spent).toFixed(0)}₴`} label={t.kpiTotal} />
+        <KPI value={`${Number(client.avg_check).toFixed(0)}₴`} label={t.kpiAvg} />
       </div>
 
       {/* Quick actions. tel:-ссылка не всегда открывается из TG WebApp напрямую,
@@ -225,7 +297,7 @@ export default function MasterMiniAppClientCard() {
                 // Final fallback — clipboard + alert
                 try {
                   await navigator.clipboard.writeText(phone);
-                  alert(`Номер скопирован: ${phone}`);
+                  alert(t.numberCopied(phone));
                 } catch {
                   alert(phone);
                 }
@@ -233,7 +305,7 @@ export default function MasterMiniAppClientCard() {
             }}
             className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-[12px] font-semibold active:scale-[0.98] transition-transform"
           >
-            <Phone className="size-3.5" /> Позвонить
+            <Phone className="size-3.5" /> {t.callBtn}
           </button>
         ) : <div />}
         <Link
@@ -241,44 +313,44 @@ export default function MasterMiniAppClientCard() {
           onClick={() => haptic('light')}
           className="flex items-center justify-center gap-2 rounded-xl bg-white py-2.5 text-[12px] font-semibold text-black active:scale-[0.98] transition-transform"
         >
-          <Calendar className="size-3.5" /> Записать
+          <Calendar className="size-3.5" /> {t.bookBtn}
         </Link>
       </div>
 
       {/* 1. Personal data + Health */}
-      <Block icon={<UserIcon className="size-3.5" />} title="Личные данные" badge="Клиент управляет сам">
+      <Block icon={<UserIcon className="size-3.5" />} title={t.personalDataTitle} badge={t.personalDataBadge}>
         <div className="grid grid-cols-2 gap-3 text-[12px]">
-          <Field label="Имя" value={client.full_name} />
-          <Field label="Телефон" value={client.phone || '—'} />
-          <Field label="Email" value={client.email || '—'} />
+          <Field label={t.fName} value={client.full_name} />
+          <Field label={t.fPhone} value={client.phone || '—'} />
+          <Field label={t.fEmail} value={client.email || '—'} />
           <Field
-            label="Дата рождения"
-            value={client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+            label={t.fDob}
+            value={client.date_of_birth ? new Date(client.date_of_birth).toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
           />
         </div>
         <div className="mt-3 border-t border-neutral-200 pt-3">
           <div className="flex items-center gap-1.5">
             <Heart className={`size-3 ${client.has_health_alert ? 'text-rose-400' : 'text-neutral-400'}`} />
-            <span className="text-[10px] uppercase tracking-wide text-neutral-500">Здоровье</span>
+            <span className="text-[10px] uppercase tracking-wide text-neutral-500">{t.healthSection}</span>
             {client.has_health_alert && (
-              <span className="ml-auto rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-semibold text-rose-600">Внимание</span>
+              <span className="ml-auto rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] font-semibold text-rose-600">{t.healthAttention}</span>
             )}
           </div>
           {(allergies.length === 0 && contraindications.length === 0) ? (
-            <p className="mt-1.5 text-[11px] text-neutral-500">Нет аллергий и противопоказаний.</p>
+            <p className="mt-1.5 text-[11px] text-neutral-500">{t.noHealth}</p>
           ) : (
             <div className="mt-1.5 space-y-1 text-[12px]">
               {allergies.length > 0 && (
-                <p><span className="text-neutral-400">Аллергии:</span> <span className="text-rose-600">{allergies.join(', ')}</span></p>
+                <p><span className="text-neutral-400">{t.allergies}</span> <span className="text-rose-600">{allergies.join(', ')}</span></p>
               )}
               {contraindications.length > 0 && (
-                <p><span className="text-neutral-400">Противопоказания:</span> {contraindications.join(', ')}</p>
+                <p><span className="text-neutral-400">{t.contraindications}</span> {contraindications.join(', ')}</p>
               )}
             </div>
           )}
         </div>
         <p className="mt-2 border-t border-neutral-200 pt-2 text-[10px] text-neutral-400 leading-relaxed">
-          Имя, телефон, e-mail и дата рождения — управляет клиент. Аллергии — через AI-чат снизу.
+          {t.personalHint}
         </p>
       </Block>
 
@@ -291,9 +363,9 @@ export default function MasterMiniAppClientCard() {
       />
 
       {/* 3. History */}
-      <Block icon={<Calendar className="size-3.5" />} title="История посещений">
+      <Block icon={<Calendar className="size-3.5" />} title={t.historyTitle}>
         {visits.length === 0 ? (
-          <p className="text-[11px] text-neutral-500">Пока визитов нет.</p>
+          <p className="text-[11px] text-neutral-500">{t.noVisits}</p>
         ) : (
           <ul className="space-y-1.5">
             {visits.slice(0, 8).map((v) => (
@@ -304,7 +376,7 @@ export default function MasterMiniAppClientCard() {
                     {v.voice_transcript && <Mic className="size-2.5 text-violet-600" />}
                   </div>
                   <p className="mt-0.5 text-[10px] text-neutral-500">
-                    {new Date(v.starts_at).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
+                    {new Date(v.starts_at).toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short' })}
                     {' · '}{v.status}
                   </p>
                 </div>
@@ -316,14 +388,14 @@ export default function MasterMiniAppClientCard() {
       </Block>
 
       {/* 4. Analytics */}
-      <Block icon={<BarChart3 className="size-3.5" />} title="Аналитика">
+      <Block icon={<BarChart3 className="size-3.5" />} title={t.analyticsTitle}>
         <div className="grid grid-cols-2 gap-2 text-[12px]">
-          <AnalyticTile label="Визитов" value={client.total_visits} />
-          <AnalyticTile label="Потрачено" value={`${Number(client.total_spent).toFixed(0)} ₴`} />
-          <AnalyticTile label="Средний чек" value={`${Number(client.avg_check).toFixed(0)} ₴`} />
+          <AnalyticTile label={t.analyticsVisits} value={client.total_visits} />
+          <AnalyticTile label={t.analyticsSpent} value={`${Number(client.total_spent).toFixed(0)} ₴`} />
+          <AnalyticTile label={t.analyticsAvg} value={`${Number(client.avg_check).toFixed(0)} ₴`} />
           <AnalyticTile
-            label="Последний визит"
-            value={client.last_visit_at ? new Date(client.last_visit_at).toLocaleDateString('ru', { day: '2-digit', month: '2-digit' }) : '—'}
+            label={t.analyticsLastVisit}
+            value={client.last_visit_at ? new Date(client.last_visit_at).toLocaleDateString(t.dateLocale, { day: '2-digit', month: '2-digit' }) : '—'}
           />
         </div>
       </Block>

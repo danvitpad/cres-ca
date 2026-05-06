@@ -252,13 +252,13 @@ export default function MasterMiniAppStats() {
             onClick={() => { haptic('selection'); setSheetOpen('income'); }}
             className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 py-3 text-[13px] font-semibold text-emerald-700 active:bg-emerald-100 transition-colors"
           >
-            <Plus className="size-4" /> Доход
+            <Plus className="size-4" /> {t.income}
           </button>
           <button
             onClick={() => { haptic('selection'); setSheetOpen('expense'); }}
             className="flex items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 py-3 text-[13px] font-semibold text-rose-700 active:bg-rose-100 transition-colors"
           >
-            <Minus className="size-4" /> Расход
+            <Minus className="size-4" /> {t.expense}
           </button>
         </div>
 
@@ -270,15 +270,15 @@ export default function MasterMiniAppStats() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-2">
-              <StatCard icon={TrendingUp} label="Выручка" value={`${kpi.revenue.toFixed(0)}₴`} accent="emerald" />
-              <StatCard icon={Calendar} label="Записей" value={kpi.total.toString()} accent="violet" />
-              <StatCard icon={Target} label="Средний чек" value={`${kpi.avg.toFixed(0)}₴`} accent="amber" />
+              <StatCard icon={TrendingUp} label={t.kpiRevenue} value={`${kpi.revenue.toFixed(0)}₴`} accent="emerald" />
+              <StatCard icon={Calendar} label={t.kpiBookings} value={kpi.total.toString()} accent="violet" />
+              <StatCard icon={Target} label={t.kpiAvgCheck} value={`${kpi.avg.toFixed(0)}₴`} accent="amber" />
               <StatCard
                 icon={Award}
-                label="Выполнено"
+                label={t.kpiCompleted}
                 value={`${kpi.completionRate}%`}
                 accent="sky"
-                sub={`${kpi.completed} из ${kpi.total}`}
+                sub={t.kpiCompletedSub(kpi.completed, kpi.total)}
               />
             </div>
 
@@ -287,15 +287,15 @@ export default function MasterMiniAppStats() {
                 <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-rose-500" />
                 <XCircle className="size-5 text-rose-600" />
                 <div>
-                  <p className="text-[13px] font-semibold">{kpi.noShow} не пришло</p>
-                  <p className="text-[11px] text-neutral-500">Попробуй требовать предоплату для новых клиентов</p>
+                  <p className="text-[13px] font-semibold">{t.noShowText(kpi.noShow)}</p>
+                  <p className="text-[11px] text-neutral-500">{t.noShowHint}</p>
                 </div>
               </div>
             )}
 
             {topServices.length > 0 && (
               <div>
-                <h2 className="mb-3 text-sm font-semibold">Топ-услуги</h2>
+                <h2 className="mb-3 text-sm font-semibold">{t.topServices}</h2>
                 <ul className="space-y-3">
                   {topServices.map((s) => (
                     <li key={s.name}>
@@ -321,8 +321,8 @@ export default function MasterMiniAppStats() {
 
             {rows.length === 0 && (
               <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-8 text-center">
-                <p className="text-sm font-semibold">Ещё нет данных</p>
-                <p className="mt-1 text-xs text-neutral-500">Начни принимать клиентов — статистика появится автоматически</p>
+                <p className="text-sm font-semibold">{t.noData}</p>
+                <p className="mt-1 text-xs text-neutral-500">{t.noDataHint}</p>
               </div>
             )}
           </>
@@ -332,7 +332,7 @@ export default function MasterMiniAppStats() {
       <MiniBottomSheet
         open={sheetOpen === 'income'}
         onClose={() => setSheetOpen(null)}
-        title="Новый доход"
+        title={t.newIncome}
       >
         <FinanceEntryForm
           kind="income"
@@ -343,7 +343,7 @@ export default function MasterMiniAppStats() {
       <MiniBottomSheet
         open={sheetOpen === 'expense'}
         onClose={() => setSheetOpen(null)}
-        title="Новый расход"
+        title={t.newExpense}
       >
         <FinanceEntryForm
           kind="expense"
@@ -426,18 +426,18 @@ function FinanceEntryForm({
     setError(null);
     const num = Number(amount.replace(',', '.'));
     if (!Number.isFinite(num) || num <= 0) {
-      setError('Введи корректную сумму');
+      setError(tForm.errInvalidAmount);
       return;
     }
     const initData = getInitData();
     if (!initData) {
-      setError('Нет initData');
+      setError(tForm.errNoInitData);
       return;
     }
     setSaving(true);
     const entry = kind === 'income'
       ? { kind: 'income' as const, amount: num, client_name: a, service_name: b, payment_method: c, note: d }
-      : { kind: 'expense' as const, amount: num, category: a || 'Другое', description: b, vendor: c };
+      : { kind: 'expense' as const, amount: num, category: a || tForm.defaultExpenseCat, description: b, vendor: c };
     try {
       const res = await fetch('/api/telegram/m/finance-entry', {
         method: 'POST',
@@ -452,7 +452,7 @@ function FinanceEntryForm({
       onSuccess();
     } catch (err) {
       haptic('error');
-      setError(err instanceof Error ? err.message : 'Ошибка');
+      setError(err instanceof Error ? err.message : tForm.errGeneric);
     } finally {
       setSaving(false);
     }
@@ -461,14 +461,14 @@ function FinanceEntryForm({
   return (
     <form onSubmit={submit} className="space-y-3 pt-2">
       <div>
-        <label className="text-[11px] uppercase tracking-wide text-neutral-400">Сумма, ₴</label>
+        <label className="text-[11px] uppercase tracking-wide text-neutral-400">{tForm.amountLabel}</label>
         <input
           type="text"
           inputMode="decimal"
           autoFocus
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="0"
+          placeholder={tForm.amountPh}
           className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-lg font-bold outline-none focus:border-neutral-300 tabular-nums"
         />
       </div>
@@ -476,10 +476,10 @@ function FinanceEntryForm({
       {kind === 'income' ? (
         <>
           <Autocomplete
-            label="Клиент (опционально)"
+            label={tForm.clientLabel}
             value={a}
             onChange={setA}
-            placeholder="Начни печатать имя"
+            placeholder={tForm.clientPh}
             suggestions={clients
               .filter((cl) => cl.full_name)
               .map((cl) => ({
@@ -490,7 +490,7 @@ function FinanceEntryForm({
               }))}
           />
           <Autocomplete
-            label="Услуга (опционально)"
+            label={tForm.serviceLabel}
             value={b}
             onChange={(v, picked) => {
               setB(v);
@@ -501,7 +501,7 @@ function FinanceEntryForm({
                 if (svc?.price) setAmount(String(svc.price));
               }
             }}
-            placeholder="Начни печатать название"
+            placeholder={tForm.servicePh}
             suggestions={services
               .filter((s) => s.name)
               .map((s) => ({
@@ -512,7 +512,7 @@ function FinanceEntryForm({
               }))}
           />
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-neutral-400">Способ оплаты</label>
+            <label className="text-[11px] uppercase tracking-wide text-neutral-400">{tForm.payMethodLabel}</label>
             <div className="mt-2 grid grid-cols-2 gap-2">
               {tForm.paymentMethods.map((m) => (
                 <button
@@ -526,12 +526,12 @@ function FinanceEntryForm({
               ))}
             </div>
           </div>
-          <Field label="Заметка" value={d} onChange={setD} placeholder="Напр. «постоянный клиент»" />
+          <Field label={tForm.noteLabel} value={d} onChange={setD} placeholder={tForm.notePh} />
         </>
       ) : (
         <>
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-neutral-400">Категория</label>
+            <label className="text-[11px] uppercase tracking-wide text-neutral-400">{tForm.catLabel}</label>
             <div className="mt-2 flex flex-wrap gap-2">
               {tForm.expenseCategories.map((cat) => (
                 <button
@@ -545,8 +545,8 @@ function FinanceEntryForm({
               ))}
             </div>
           </div>
-          <Field label="Описание" value={b} onChange={setB} placeholder="Что купил / за что платишь" />
-          <Field label="Поставщик (опционально)" value={c} onChange={setC} placeholder="Магазин / компания" />
+          <Field label={tForm.descLabel} value={b} onChange={setB} placeholder={tForm.descPh} />
+          <Field label={tForm.vendorLabel} value={c} onChange={setC} placeholder={tForm.vendorPh} />
         </>
       )}
 
@@ -559,7 +559,7 @@ function FinanceEntryForm({
         disabled={saving}
         className="w-full rounded-2xl bg-white py-4 text-[14px] font-bold text-black active:bg-white/90 transition-colors disabled:opacity-50"
       >
-        {saving ? 'Сохраняю…' : 'Сохранить'}
+        {saving ? tForm.saving : tForm.save}
       </button>
     </form>
   );

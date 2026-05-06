@@ -15,6 +15,133 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  pageTitle: string;
+  clientsCount: (n: number) => string;
+  visitsCount: (n: number, money: string) => string;
+  tabClients: string; tabPartners: string;
+  searchPh: string;
+  yourClients: string;
+  inCresca: string;
+  notFoundTitle: string; notFoundDesc: string;
+  emptyTitle: string; emptyDesc: string;
+  noMasterTitle: string;
+  wasLast: (text: string) => string; neverCame: string;
+  riskBadge: string;
+  inContacts: string; addBtn: string;
+  typeMaster: string; typeSalon: string; typeClient: string;
+  manualLink: string; manualHint: string;
+  manualName: string; manualPhone: string; manualEmail: string;
+  cancelBtn: string; saveBtn: string;
+  daysAgoLabels: DaysAgoLabels;
+}> = {
+  uk: {
+    pageTitle: 'Клієнти',
+    clientsCount: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'клієнт'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'клієнти' : 'клієнтів';
+      return `${n} ${w}`;
+    },
+    visitsCount: (n, m) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'візит'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'візити' : 'візитів';
+      return `${n} ${w} · ${m} ₴`;
+    },
+    tabClients: 'Клієнти', tabPartners: 'Партнери',
+    searchPh: 'Імʼя, телефон, email або cres-id',
+    yourClients: 'Твої клієнти', inCresca: 'У CRES-CA',
+    notFoundTitle: 'Нічого не знайшли',
+    notFoundDesc: 'Спробуй інший запит або запиши вручну нижче',
+    emptyTitle: 'Клієнтів поки немає',
+    emptyDesc: 'Починай шукати у рядку вище — знайдемо людей у CRES-CA',
+    noMasterTitle: 'Профіль майстра не знайдено',
+    wasLast: (s) => `Був ${s}`,
+    neverCame: 'Ще не приходив', riskBadge: 'ризик',
+    inContacts: 'У контактах', addBtn: 'Додати',
+    typeMaster: 'Майстер', typeSalon: 'Команда', typeClient: 'Клієнт',
+    manualLink: 'Цієї людини немає в CRES-CA → записати вручну',
+    manualHint: 'Записати вручну (для тих, хто не в CRES-CA)',
+    manualName: 'Імʼя', manualPhone: 'Телефон', manualEmail: 'Email',
+    cancelBtn: 'Скасувати', saveBtn: 'Записати',
+    daysAgoLabels: {
+      today: 'сьогодні', yesterday: 'вчора',
+      daysAgo: (n) => `${n} дн. тому`,
+      weeksAgo: (n) => `${n} тиж. тому`,
+      monthsAgo: (n) => `${n} міс. тому`,
+      yearsAgo: (n) => `${n} р. тому`,
+    },
+  },
+  ru: {
+    pageTitle: 'Клиенты',
+    clientsCount: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'клиент'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'клиента' : 'клиентов';
+      return `${n} ${w}`;
+    },
+    visitsCount: (n, m) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'визит'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'визита' : 'визитов';
+      return `${n} ${w} · ${m} ₴`;
+    },
+    tabClients: 'Клиенты', tabPartners: 'Партнёры',
+    searchPh: 'Имя, телефон, email или cres-id',
+    yourClients: 'Ваши клиенты', inCresca: 'В CRES-CA',
+    notFoundTitle: 'Ничего не нашли',
+    notFoundDesc: 'Попробуй другой запрос или запиши вручную ниже',
+    emptyTitle: 'Клиентов пока нет',
+    emptyDesc: 'Начни искать в строке выше — найдём людей в CRES-CA',
+    noMasterTitle: 'Профиль мастера не найден',
+    wasLast: (s) => `Был ${s}`,
+    neverCame: 'Ещё не приходил', riskBadge: 'риск',
+    inContacts: 'В контактах', addBtn: 'Добавить',
+    typeMaster: 'Мастер', typeSalon: 'Команда', typeClient: 'Клиент',
+    manualLink: 'Этого человека нет в CRES-CA → записать вручную',
+    manualHint: 'Записать вручную (для тех, кто не в CRES-CA)',
+    manualName: 'Имя', manualPhone: 'Телефон', manualEmail: 'Email',
+    cancelBtn: 'Отмена', saveBtn: 'Записать',
+    daysAgoLabels: {
+      today: 'сегодня', yesterday: 'вчера',
+      daysAgo: (n) => `${n} дн. назад`,
+      weeksAgo: (n) => `${n} нед. назад`,
+      monthsAgo: (n) => `${n} мес. назад`,
+      yearsAgo: (n) => `${n} г. назад`,
+    },
+  },
+  en: {
+    pageTitle: 'Clients',
+    clientsCount: (n) => `${n} ${n === 1 ? 'client' : 'clients'}`,
+    visitsCount: (n, m) => `${n} ${n === 1 ? 'visit' : 'visits'} · ${m} ₴`,
+    tabClients: 'Clients', tabPartners: 'Partners',
+    searchPh: 'Name, phone, email or cres-id',
+    yourClients: 'Your clients', inCresca: 'In CRES-CA',
+    notFoundTitle: 'Nothing found',
+    notFoundDesc: 'Try another query or add manually below',
+    emptyTitle: 'No clients yet',
+    emptyDesc: 'Start typing in the search above — we’ll find people on CRES-CA',
+    noMasterTitle: 'Master profile not found',
+    wasLast: (s) => `Last visit ${s}`,
+    neverCame: 'Never visited', riskBadge: 'risk',
+    inContacts: 'In contacts', addBtn: 'Add',
+    typeMaster: 'Master', typeSalon: 'Team', typeClient: 'Client',
+    manualLink: 'Person not on CRES-CA → add manually',
+    manualHint: 'Add manually (for people outside CRES-CA)',
+    manualName: 'Name', manualPhone: 'Phone', manualEmail: 'Email',
+    cancelBtn: 'Cancel', saveBtn: 'Add',
+    daysAgoLabels: {
+      today: 'today', yesterday: 'yesterday',
+      daysAgo: (n) => `${n}d ago`,
+      weeksAgo: (n) => `${n}w ago`,
+      monthsAgo: (n) => `${n}mo ago`,
+      yearsAgo: (n) => `${n}y ago`,
+    },
+  },
+};
 
 function getInitData(): string | null {
   // 1) Live initData from Telegram WebApp
@@ -54,16 +181,21 @@ function initials(name: string) {
     .join('');
 }
 
-function daysAgo(iso: string | null): string {
+type DaysAgoLabels = {
+  today: string; yesterday: string;
+  daysAgo: (n: number) => string; weeksAgo: (n: number) => string;
+  monthsAgo: (n: number) => string; yearsAgo: (n: number) => string;
+};
+function daysAgo(iso: string | null, l: DaysAgoLabels): string {
   if (!iso) return '—';
   const d = new Date(iso);
   const diff = Math.round((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff === 0) return 'сегодня';
-  if (diff === 1) return 'вчера';
-  if (diff < 7) return `${diff} дн. назад`;
-  if (diff < 30) return `${Math.round(diff / 7)} нед. назад`;
-  if (diff < 365) return `${Math.round(diff / 30)} мес. назад`;
-  return `${Math.round(diff / 365)} г. назад`;
+  if (diff === 0) return l.today;
+  if (diff === 1) return l.yesterday;
+  if (diff < 7) return l.daysAgo(diff);
+  if (diff < 30) return l.weeksAgo(Math.round(diff / 7));
+  if (diff < 365) return l.monthsAgo(Math.round(diff / 30));
+  return l.yearsAgo(Math.round(diff / 365));
 }
 
 function plural(n: number, forms: [string, string, string]): string {
@@ -76,6 +208,8 @@ function plural(n: number, forms: [string, string, string]): string {
 
 export default function MasterMiniAppClientsPage() {
   const { ready, haptic } = useTelegram();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const { userId } = useAuthStore();
   const [masterId, setMasterId] = useState<string | null>(null);
   const [rows, setRows] = useState<ClientRow[]>([]);
@@ -228,7 +362,7 @@ export default function MasterMiniAppClientsPage() {
 
   return (
     <MobilePage>
-      <PageHeader title="Клиенты" subtitle={rows.length > 0 ? `${rows.length} ${plural(rows.length, ['клиент', 'клиента', 'клиентов'])}` : undefined} />
+      <PageHeader title={t.pageTitle} subtitle={rows.length > 0 ? t.clientsCount(rows.length) : undefined} />
 
       {/* Tabs: Clients / Partners */}
       <div style={{ display: 'flex', gap: 6, padding: `8px ${PAGE_PADDING_X}px 0` }}>
@@ -248,7 +382,7 @@ export default function MasterMiniAppClientsPage() {
             fontFamily: 'inherit',
           }}
         >
-          Клиенты
+          {t.tabClients}
         </button>
         <Link
           href="/telegram/m/partners"
@@ -268,7 +402,7 @@ export default function MasterMiniAppClientsPage() {
             textDecoration: 'none',
           }}
         >
-          Партнёры
+          {t.tabPartners}
         </Link>
       </div>
 
@@ -284,7 +418,7 @@ export default function MasterMiniAppClientsPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Имя, телефон, email или cres-id"
+            placeholder={t.searchPh}
             style={{
               width: '100%',
               padding: '12px 16px 12px 42px',
@@ -321,7 +455,7 @@ export default function MasterMiniAppClientsPage() {
         ) : !masterId ? (
           <EmptyState
             icon={<span style={{ fontSize: 48 }}>👥</span>}
-            title="Профиль мастера не найден"
+            title={t.noMasterTitle}
           />
         ) : (
           <>
@@ -330,7 +464,7 @@ export default function MasterMiniAppClientsPage() {
             <>
               {query.trim().length >= 2 && (
                 <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  Ваши клиенты
+                  {t.yourClients}
                 </p>
               )}
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -394,10 +528,10 @@ export default function MasterMiniAppClientsPage() {
                         {isExcellent && <Star size={13} color="#f59e0b" fill="#f59e0b" />}
                       </div>
                       <p style={{ ...TYPE.caption, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                        {c.total_visits} {plural(c.total_visits, ['визит', 'визита', 'визитов'])} · {Number(c.total_spent).toFixed(0)} ₴
+                        {t.visitsCount(c.total_visits, Number(c.total_spent).toFixed(0))}
                       </p>
                       <p style={{ ...TYPE.micro, marginTop: 2 }}>
-                        {c.last_visit_at ? `Был ${daysAgo(c.last_visit_at)}` : 'Ещё не приходил'}
+                        {c.last_visit_at ? t.wasLast(daysAgo(c.last_visit_at, t.daysAgoLabels)) : t.neverCame}
                       </p>
                     </div>
                     {isRisky && (
@@ -415,7 +549,7 @@ export default function MasterMiniAppClientsPage() {
                           textTransform: 'uppercase',
                         }}
                       >
-                        риск
+                        {t.riskBadge}
                       </span>
                     )}
                   </Link>
@@ -430,8 +564,8 @@ export default function MasterMiniAppClientsPage() {
           {filtered.length === 0 && query.trim().length < 2 && rows.length === 0 && (
             <EmptyState
               icon={<span style={{ fontSize: 48 }}>👋</span>}
-              title="Клиентов пока нет"
-              desc="Начни искать в строке выше — найдём людей в CRES-CA"
+              title={t.emptyTitle}
+              desc={t.emptyDesc}
             />
           )}
 
@@ -439,7 +573,7 @@ export default function MasterMiniAppClientsPage() {
           {query.trim().length >= 2 && systemFiltered.length > 0 && (
             <div style={{ marginTop: filtered.length > 0 ? 24 : 0 }}>
               <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                В CRES-CA
+                {t.inCresca}
               </p>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {systemFiltered.map((c) => {
@@ -463,7 +597,7 @@ export default function MasterMiniAppClientsPage() {
                           {c.fullName}
                         </p>
                         <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '2px 0 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.type === 'master' ? 'Мастер' : c.type === 'salon' ? 'Команда' : 'Клиент'}
+                          {c.type === 'master' ? t.typeMaster : c.type === 'salon' ? t.typeSalon : t.typeClient}
                           {c.subtitle ? ` · ${c.subtitle}` : ''}
                         </p>
                       </div>
@@ -490,8 +624,8 @@ export default function MasterMiniAppClientsPage() {
                         }}
                       >
                         {isAdding ? <Loader2 size={12} className="animate-spin" />
-                          : c.isLinked ? <><Check size={12} /> В контактах</>
-                          : <><UserPlus size={12} /> Добавить</>}
+                          : c.isLinked ? <><Check size={12} /> {t.inContacts}</>
+                          : <><UserPlus size={12} /> {t.addBtn}</>}
                       </button>
                     </li>
                   );
@@ -504,8 +638,8 @@ export default function MasterMiniAppClientsPage() {
           {query.trim().length >= 2 && filtered.length === 0 && systemFiltered.length === 0 && !searching && (
             <EmptyState
               icon={<span style={{ fontSize: 48 }}>🔍</span>}
-              title="Ничего не нашли"
-              desc="Попробуй другой запрос или запиши вручную ниже"
+              title={t.notFoundTitle}
+              desc={t.notFoundDesc}
             />
           )}
 
@@ -530,26 +664,26 @@ export default function MasterMiniAppClientsPage() {
                     textAlign: 'center',
                   }}
                 >
-                  Этого человека нет в CRES-CA → записать вручную
+                  {t.manualLink}
                 </button>
               ) : (
                 <form onSubmit={submitManual} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: R.md, background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}` }}>
-                  <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0 }}>Записать вручную (для тех, кто не в CRES-CA)</p>
+                  <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0 }}>{t.manualHint}</p>
                   <input
-                    placeholder="Имя"
+                    placeholder={t.manualName}
                     value={manualName}
                     onChange={(e) => setManualName(e.target.value)}
                     style={{ padding: '10px 12px', borderRadius: R.md, border: `1px solid ${T.border}`, background: T.surface, fontSize: 13, color: T.text, fontFamily: 'inherit', outline: 'none' }}
                   />
                   <input
-                    placeholder="Телефон"
+                    placeholder={t.manualPhone}
                     value={manualPhone}
                     onChange={(e) => setManualPhone(e.target.value)}
                     inputMode="tel"
                     style={{ padding: '10px 12px', borderRadius: R.md, border: `1px solid ${T.border}`, background: T.surface, fontSize: 13, color: T.text, fontFamily: 'inherit', outline: 'none' }}
                   />
                   <input
-                    placeholder="Email"
+                    placeholder={t.manualEmail}
                     type="email"
                     value={manualEmail}
                     onChange={(e) => setManualEmail(e.target.value)}
@@ -561,14 +695,14 @@ export default function MasterMiniAppClientsPage() {
                       onClick={() => setShowManual(false)}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: R.pill, border: `1px solid ${T.border}`, background: 'transparent', color: T.text, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
-                      Отмена
+                      {t.cancelBtn}
                     </button>
                     <button
                       type="submit"
                       disabled={manualBusy || !manualName.trim()}
                       style={{ flex: 1, padding: '10px 14px', borderRadius: R.pill, border: 'none', background: T.text, color: T.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: manualBusy || !manualName.trim() ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                     >
-                      {manualBusy && <Loader2 size={14} className="animate-spin" />} Записать
+                      {manualBusy && <Loader2 size={14} className="animate-spin" />} {t.saveBtn}
                     </button>
                   </div>
                 </form>

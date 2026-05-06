@@ -18,6 +18,89 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  notFound: string; defaultName: string;
+  greet: (name: string) => string;
+  inviteLabel: string; invitesPending: (n: number) => string;
+  tasksLabel: string; tasksHint: string;
+  financeLabel: string; bookingsCount: (n: number) => string;
+  aiLabel: string; aiHint: string; aiClear: string;
+  thinking: string;
+  inputPh: string; sendBtn: string;
+  errReply: string; errNetwork: string;
+  dateLocale: string;
+}> = {
+  uk: {
+    notFound: 'Профіль майстра не знайдено', defaultName: 'майстер',
+    greet: (n) => `Привіт, ${n}`,
+    inviteLabel: 'Запрошення в команду',
+    invitesPending: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      if (m10 === 1 && m100 !== 11) return `${n} запрошення чекає відповіді`;
+      if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return `${n} запрошення чекають відповіді`;
+      return `${n} запрошень чекають відповіді`;
+    },
+    tasksLabel: 'Завдання та нагадування', tasksHint: 'Не забудь головне',
+    financeLabel: 'Фінанси · тиждень',
+    bookingsCount: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      if (m10 === 1 && m100 !== 11) return `${n} запис`;
+      if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return `${n} записи`;
+      return `${n} записів`;
+    },
+    aiLabel: 'AI-помічник',
+    aiHint: 'Запитай — запишу витрату, створю нагадування, відповім про виручку чи клієнтів. Голосом — продиктуй у TG-боті.',
+    aiClear: 'Очистити', thinking: 'думаю…',
+    inputPh: 'Запитати помічника…', sendBtn: 'Надіслати',
+    errReply: 'Не вдалось відповісти зараз, спробуй ще раз через хвилину.',
+    errNetwork: 'Помилка мережі. Перевір інтернет та повтори.',
+    dateLocale: 'uk-UA',
+  },
+  ru: {
+    notFound: 'Профиль мастера не найден', defaultName: 'мастер',
+    greet: (n) => `Привет, ${n}`,
+    inviteLabel: 'Приглашение в команду',
+    invitesPending: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      if (m10 === 1 && m100 !== 11) return `${n} приглашение ждёт ответа`;
+      if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return `${n} приглашения ждут ответа`;
+      return `${n} приглашений ждут ответа`;
+    },
+    tasksLabel: 'Задачи и напоминания', tasksHint: 'Не забудь главное',
+    financeLabel: 'Финансы · неделя',
+    bookingsCount: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      if (m10 === 1 && m100 !== 11) return `${n} запись`;
+      if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return `${n} записи`;
+      return `${n} записей`;
+    },
+    aiLabel: 'AI-помощник',
+    aiHint: 'Спроси — запишу расход, создам напоминание, отвечу про выручку или клиентов. Голосом — продиктуй в TG-боте.',
+    aiClear: 'Очистить', thinking: 'думаю…',
+    inputPh: 'Спросить помощника…', sendBtn: 'Отправить',
+    errReply: 'Не получилось ответить сейчас, попробуй ещё раз через минуту.',
+    errNetwork: 'Ошибка сети. Проверь интернет и повтори.',
+    dateLocale: 'ru-RU',
+  },
+  en: {
+    notFound: 'Master profile not found', defaultName: 'master',
+    greet: (n) => `Hi, ${n}`,
+    inviteLabel: 'Team invitation',
+    invitesPending: (n) => `${n} ${n === 1 ? 'invitation awaits' : 'invitations await'} your response`,
+    tasksLabel: 'Tasks & reminders', tasksHint: 'Don’t miss anything',
+    financeLabel: 'Finance · week',
+    bookingsCount: (n) => `${n} ${n === 1 ? 'booking' : 'bookings'}`,
+    aiLabel: 'AI assistant',
+    aiHint: 'Ask me — I’ll log an expense, set a reminder, answer about revenue or clients. Voice via TG bot.',
+    aiClear: 'Clear', thinking: 'thinking…',
+    inputPh: 'Ask the assistant…', sendBtn: 'Send',
+    errReply: 'Couldn’t reply right now, try again in a minute.',
+    errNetwork: 'Network error. Check connection and retry.',
+    dateLocale: 'en-US',
+  },
+};
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -43,6 +126,8 @@ export default function MasterMiniAppHome() {
   const { user, ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
   const router = useRouter();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [masterId, setMasterId] = useState<string | null>(null);
   const [profileName, setProfileName] = useState<string | null>(null);
   const [weekRevenue, setWeekRevenue] = useState(0);
@@ -140,13 +225,13 @@ export default function MasterMiniAppHome() {
       });
       const json = await res.json();
       if (!res.ok || !json.answer) {
-        setChat([...nextChat, { role: 'assistant', content: 'Не получилось ответить сейчас, попробуй ещё раз через минуту.' }]);
+        setChat([...nextChat, { role: 'assistant', content: t.errReply }]);
       } else {
         setChat([...nextChat, { role: 'assistant', content: json.answer }]);
         haptic('success');
       }
     } catch {
-      setChat([...nextChat, { role: 'assistant', content: 'Ошибка сети. Проверь интернет и повтори.' }]);
+      setChat([...nextChat, { role: 'assistant', content: t.errNetwork }]);
     } finally {
       setSending(false);
     }
@@ -168,14 +253,14 @@ export default function MasterMiniAppHome() {
     return (
       <MobilePage>
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <p style={{ ...TYPE.body, color: T.textSecondary }}>Профиль мастера не найден</p>
+          <p style={{ ...TYPE.body, color: T.textSecondary }}>{t.notFound}</p>
         </div>
       </MobilePage>
     );
   }
 
-  const greetingName = profileName ?? user?.first_name ?? 'мастер';
-  const dateLabel = new Date().toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' });
+  const greetingName = profileName ?? user?.first_name ?? t.defaultName;
+  const dateLabel = new Date().toLocaleDateString(t.dateLocale, { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <MobilePage>
@@ -185,7 +270,7 @@ export default function MasterMiniAppHome() {
         transition={{ duration: 0.3 }}
         style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
       >
-        <PageHeader title={`Привет, ${greetingName}`} subtitle={dateLabel} />
+        <PageHeader title={t.greet(greetingName)} subtitle={dateLabel} />
 
         {/* Приглашения в команду — временно скрыто до окончания доработки. */}
         {false && pendingInvites > 0 && (
@@ -222,10 +307,10 @@ export default function MasterMiniAppHome() {
               </div>
               <div style={{ minWidth: 0 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent-hover)', margin: 0 }}>
-                  Приглашение в команду
+                  {t.inviteLabel}
                 </p>
                 <p style={{ ...TYPE.h3, color: T.text, marginTop: 4 }}>
-                  {pendingInvites} {pluralize(pendingInvites, ['приглашение', 'приглашения', 'приглашений'])} ждут ответа
+                  {t.invitesPending(pendingInvites)}
                 </p>
               </div>
             </div>
@@ -267,10 +352,10 @@ export default function MasterMiniAppHome() {
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.accent, margin: 0 }}>
-                Задачи и напоминания
+                {t.tasksLabel}
               </p>
               <p style={{ ...TYPE.h3, color: T.text, marginTop: 4 }}>
-                Не забудь главное
+                {t.tasksHint}
               </p>
             </div>
           </div>
@@ -311,12 +396,12 @@ export default function MasterMiniAppHome() {
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.success, margin: 0 }}>
-                Финансы · неделя
+                {t.financeLabel}
               </p>
               <p style={{ ...TYPE.h3, color: T.text, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
                 {weekRevenue.toFixed(0)} ₴
                 <span style={{ marginLeft: 10, fontSize: 12, fontWeight: 500, color: T.textTertiary }}>
-                  {weekCompleted} {pluralize(weekCompleted, ['запись', 'записи', 'записей'])}
+                  {t.bookingsCount(weekCompleted)}
                 </span>
               </p>
             </div>
@@ -343,7 +428,7 @@ export default function MasterMiniAppHome() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Bot size={14} color={T.accent} />
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: T.accent, margin: 0 }}>
-                AI-помощник
+                {t.aiLabel}
               </p>
             </div>
             {chat.length > 0 && (
@@ -368,14 +453,14 @@ export default function MasterMiniAppHome() {
                 }}
               >
                 <Trash2 size={11} />
-                Очистить
+                {t.aiClear}
               </button>
             )}
           </div>
 
           {chat.length === 0 && !sending ? (
             <div style={{ padding: '4px 4px 4px', fontSize: 12.5, lineHeight: 1.45, color: T.textSecondary }}>
-              Спроси — запишу расход, создам напоминание, отвечу про выручку или клиентов. Голосом — продиктуй в TG-боте.
+              {t.aiHint}
             </div>
           ) : (
             <div style={{ maxHeight: '55vh', minHeight: 240, overflowY: 'auto', padding: '0 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -410,7 +495,7 @@ export default function MasterMiniAppHome() {
                     fontSize: 13,
                   }}
                 >
-                  думаю…
+                  {t.thinking}
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -428,7 +513,7 @@ export default function MasterMiniAppHome() {
                 }
               }}
               disabled={sending}
-              placeholder="Спросить помощника…"
+              placeholder={t.inputPh}
               style={{
                 flex: 1,
                 padding: '10px 14px',
@@ -459,7 +544,7 @@ export default function MasterMiniAppHome() {
                 cursor: input.trim() && !sending ? 'pointer' : 'not-allowed',
                 transition: 'background 200ms ease',
               }}
-              aria-label="Отправить"
+              aria-label={t.sendBtn}
             >
               <Send size={16} />
             </button>

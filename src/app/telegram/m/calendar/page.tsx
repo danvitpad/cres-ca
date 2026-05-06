@@ -29,6 +29,88 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
+
+const I18N: Record<MiniAppLang, {
+  today: string; tomorrow: string; yesterday: string;
+  dateLocale: string;
+  bookingsCount: (n: number, revenue: string) => string;
+  newBooking: string;
+  emptyTitle: string; emptyHint: string;
+  defaultClient: string;
+  clientSection: string; notesSection: string;
+  cancel: string; noShow: string;
+  exceeded: string; inProgress: string;
+  minutes: string;
+  status: Record<Status, string>;
+}> = {
+  uk: {
+    today: 'Сьогодні', tomorrow: 'Завтра', yesterday: 'Вчора',
+    dateLocale: 'uk-UA',
+    bookingsCount: (n, r) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'запис'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'записи' : 'записів';
+      return `${n} ${w} · ${r} ₴`;
+    },
+    newBooking: 'Новий запис',
+    emptyTitle: 'Записів немає',
+    emptyHint: 'Додай запис вручну або чекай онлайн-бронювання',
+    defaultClient: 'Клієнт',
+    clientSection: 'Клієнт', notesSection: 'Нотатки',
+    cancel: 'Скасувати', noShow: 'Не прийшов',
+    exceeded: 'Перевищено', inProgress: 'Йде візит',
+    minutes: 'хв',
+    status: {
+      booked: 'Заброньовано', confirmed: 'Підтверджено', in_progress: 'Йде',
+      completed: 'Виконано', cancelled: 'Скасовано',
+      cancelled_by_client: 'Скасував клієнт', no_show: 'Не прийшов',
+    },
+  },
+  ru: {
+    today: 'Сегодня', tomorrow: 'Завтра', yesterday: 'Вчера',
+    dateLocale: 'ru-RU',
+    bookingsCount: (n, r) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'запись'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'записи' : 'записей';
+      return `${n} ${w} · ${r} ₴`;
+    },
+    newBooking: 'Новая запись',
+    emptyTitle: 'Записей нет',
+    emptyHint: 'Добавь запись вручную или жди онлайн-бронирования',
+    defaultClient: 'Клиент',
+    clientSection: 'Клиент', notesSection: 'Заметки',
+    cancel: 'Отменить', noShow: 'Не пришёл',
+    exceeded: 'Превышено', inProgress: 'Идёт визит',
+    minutes: 'мин',
+    status: {
+      booked: 'Забронировано', confirmed: 'Подтверждено', in_progress: 'Идёт',
+      completed: 'Выполнено', cancelled: 'Отменено',
+      cancelled_by_client: 'Отменил клиент', no_show: 'Не пришёл',
+    },
+  },
+  en: {
+    today: 'Today', tomorrow: 'Tomorrow', yesterday: 'Yesterday',
+    dateLocale: 'en-US',
+    bookingsCount: (n, r) => `${n} ${n === 1 ? 'booking' : 'bookings'} · ${r} ₴`,
+    newBooking: 'New booking',
+    emptyTitle: 'No bookings',
+    emptyHint: 'Add a booking manually or wait for online bookings',
+    defaultClient: 'Client',
+    clientSection: 'Client', notesSection: 'Notes',
+    cancel: 'Cancel', noShow: 'No-show',
+    exceeded: 'Overtime', inProgress: 'Visit in progress',
+    minutes: 'min',
+    status: {
+      booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress',
+      completed: 'Completed', cancelled: 'Cancelled',
+      cancelled_by_client: 'Client cancelled', no_show: 'No-show',
+    },
+  },
+};
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -44,8 +126,6 @@ function getInitData(): string | null {
   } catch { /* ignore */ }
   return null;
 }
-
-type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
 interface Appointment {
   id: string;
@@ -83,22 +163,22 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatDayHeader(d: Date) {
+function formatDayHeader(d: Date, t: typeof I18N['ru']) {
   const today = new Date();
-  if (isSameDay(d, today)) return 'Сегодня';
-  if (isSameDay(d, addDays(today, 1))) return 'Завтра';
-  if (isSameDay(d, addDays(today, -1))) return 'Вчера';
-  return d.toLocaleDateString('ru', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (isSameDay(d, today)) return t.today;
+  if (isSameDay(d, addDays(today, 1))) return t.tomorrow;
+  if (isSameDay(d, addDays(today, -1))) return t.yesterday;
+  return d.toLocaleDateString(t.dateLocale, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-const STATUS_META: Record<Status, { label: string; stripBg: string; chipBg: string; chipColor: string }> = {
-  booked: { label: 'Забронировано', stripBg: '#3b82f6', chipBg: '#dbeafe', chipColor: '#1d4ed8' },
-  confirmed: { label: 'Подтверждено', stripBg: 'var(--color-accent)', chipBg: T.accentSoft, chipColor: T.accent },
-  in_progress: { label: 'Идёт', stripBg: '#f59e0b', chipBg: '#fef3c7', chipColor: '#b45309' },
-  completed: { label: 'Выполнено', stripBg: '#10b981', chipBg: T.successSoft, chipColor: T.success },
-  cancelled: { label: 'Отменено', stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },
-  cancelled_by_client: { label: 'Отменил клиент', stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },
-  no_show: { label: 'Не пришёл', stripBg: T.danger, chipBg: T.dangerSoft, chipColor: T.danger },
+const STATUS_META_STYLES: Record<Status, { stripBg: string; chipBg: string; chipColor: string }> = {
+  booked: { stripBg: '#3b82f6', chipBg: '#dbeafe', chipColor: '#1d4ed8' },
+  confirmed: { stripBg: 'var(--color-accent)', chipBg: T.accentSoft, chipColor: T.accent },
+  in_progress: { stripBg: '#f59e0b', chipBg: '#fef3c7', chipColor: '#b45309' },
+  completed: { stripBg: '#10b981', chipBg: T.successSoft, chipColor: T.success },
+  cancelled: { stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },
+  cancelled_by_client: { stripBg: T.border, chipBg: T.bgSubtle, chipColor: T.textTertiary },
+  no_show: { stripBg: T.danger, chipBg: T.dangerSoft, chipColor: T.danger },
 };
 
 export default function MasterMiniAppCalendar() {
@@ -106,6 +186,8 @@ export default function MasterMiniAppCalendar() {
   const { userId } = useAuthStore();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [masterId, setMasterId] = useState<string | null>(null);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
   const [rows, setRows] = useState<Appointment[]>([]);
@@ -176,7 +258,7 @@ export default function MasterMiniAppCalendar() {
         price: Number(r.price ?? 0),
         notes: r.notes,
         client_id: r.client_id,
-        client_name: cp?.full_name ?? 'Клиент',
+        client_name: cp?.full_name ?? t.defaultClient,
         client_phone: cp?.phone ?? null,
         service_name: svc?.name ?? '—',
         duration_min: Number(svc?.duration_minutes ?? 0),
@@ -278,8 +360,8 @@ export default function MasterMiniAppCalendar() {
     <MobilePage>
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <PageHeader
-          title={formatDayHeader(day)}
-          subtitle={`${totals.count} ${plural(totals.count, ['запись', 'записи', 'записей'])} · ${totals.revenue.toFixed(0)} ₴`}
+          title={formatDayHeader(day, t)}
+          subtitle={t.bookingsCount(totals.count, totals.revenue.toFixed(0))}
           right={
             <Link
               href="/telegram/m/slot/new"
@@ -295,7 +377,7 @@ export default function MasterMiniAppCalendar() {
                 justifyContent: 'center',
                 textDecoration: 'none',
               }}
-              aria-label="Новая запись"
+              aria-label={t.newBooking}
             >
               <Plus size={20} strokeWidth={2.4} />
             </Link>
@@ -343,7 +425,7 @@ export default function MasterMiniAppCalendar() {
             }}
           >
             <CalendarDays size={14} />
-            {day.toLocaleDateString('ru', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {day.toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
           </button>
           <button
             type="button"
@@ -397,15 +479,15 @@ export default function MasterMiniAppCalendar() {
               >
                 <CalendarDays size={26} color={T.accent} strokeWidth={2} />
               </div>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 14 }}>Записей нет</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 14 }}>{t.emptyTitle}</p>
               <p style={{ ...TYPE.caption, marginTop: 4 }}>
-                Добавь запись вручную или жди онлайн-бронирования
+                {t.emptyHint}
               </p>
             </div>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rows.map((r, i) => {
-                const meta = STATUS_META[r.status];
+                const meta = { ...STATUS_META_STYLES[r.status], label: t.status[r.status] };
                 return (
                   <motion.li
                     key={r.id}
@@ -454,10 +536,10 @@ export default function MasterMiniAppCalendar() {
                         }}
                       >
                         <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
-                          {new Date(r.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(r.starts_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <span style={{ fontSize: 10, color: T.textTertiary, marginTop: 2 }}>
-                          {r.duration_min} мин
+                          {r.duration_min} {t.minutes}
                         </span>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -536,24 +618,24 @@ export default function MasterMiniAppCalendar() {
                         gap: 6,
                         padding: '4px 10px',
                         borderRadius: 999,
-                        background: STATUS_META[active.status].chipBg,
-                        color: STATUS_META[active.status].chipColor,
+                        background: STATUS_META_STYLES[active.status].chipBg,
+                        color: STATUS_META_STYLES[active.status].chipColor,
                         fontSize: 10,
                         fontWeight: 700,
                         letterSpacing: '0.05em',
                         textTransform: 'uppercase',
                       }}
                     >
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_META[active.status].stripBg }} />
-                      {STATUS_META[active.status].label}
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_META_STYLES[active.status].stripBg }} />
+                      {t.status[active.status]}
                     </span>
                     <h2 style={{ ...TYPE.h2, color: T.text, marginTop: 8, marginBottom: 0 }}>{active.service_name}</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8, ...TYPE.body, color: T.textSecondary }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Clock size={14} />
-                        {new Date(active.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(active.starts_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' })}
                         {' – '}
-                        {new Date(active.ends_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(active.ends_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' })}
                       </div>
                       <span style={{ color: T.textTertiary }}>·</span>
                       <span style={{ fontWeight: 700, color: T.text }}>{active.price.toFixed(0)} ₴</span>
@@ -562,7 +644,7 @@ export default function MasterMiniAppCalendar() {
 
                   {/* Client */}
                   <div style={{ background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}`, borderRadius: R.md, padding: 14 }}>
-                    <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>Клиент</p>
+                    <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>{t.clientSection}</p>
                     <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 4 }}>{active.client_name}</p>
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       {active.client_phone && (
@@ -625,13 +707,17 @@ export default function MasterMiniAppCalendar() {
 
                   {active.notes && (
                     <div style={{ background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}`, borderRadius: R.md, padding: 14 }}>
-                      <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>Заметки</p>
+                      <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>{t.notesSection}</p>
                       <p style={{ ...TYPE.body, color: T.text, marginTop: 4, whiteSpace: 'pre-wrap' }}>{active.notes}</p>
                     </div>
                   )}
 
                   {active.status === 'in_progress' && (
-                    <ServiceTimer startsAt={active.starts_at} endsAt={active.ends_at} />
+                    <ServiceTimer
+                      startsAt={active.starts_at}
+                      endsAt={active.ends_at}
+                      labels={{ exceeded: t.exceeded, inProgress: t.inProgress }}
+                    />
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -674,7 +760,7 @@ export default function MasterMiniAppCalendar() {
                             opacity: acting ? 0.5 : 1,
                           }}
                         >
-                          <XCircle size={14} /> Отменить
+                          <XCircle size={14} /> {t.cancel}
                         </button>
                         <button
                           type="button"
@@ -697,7 +783,7 @@ export default function MasterMiniAppCalendar() {
                             opacity: acting ? 0.5 : 1,
                           }}
                         >
-                          <UserX size={14} /> Не пришёл
+                          <UserX size={14} /> {t.noShow}
                         </button>
                       </div>
                     )}
@@ -712,7 +798,7 @@ export default function MasterMiniAppCalendar() {
   );
 }
 
-function ServiceTimer({ startsAt, endsAt }: { startsAt: string; endsAt: string }) {
+function ServiceTimer({ startsAt, endsAt, labels }: { startsAt: string; endsAt: string; labels: { exceeded: string; inProgress: string } }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
@@ -742,7 +828,7 @@ function ServiceTimer({ startsAt, endsAt }: { startsAt: string; endsAt: string }
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         <span style={{ color: overdue ? T.danger : '#b45309' }}>
-          {overdue ? 'Превышено' : 'Идёт визит'}
+          {overdue ? labels.exceeded : labels.inProgress}
         </span>
         <span style={{ fontVariantNumeric: 'tabular-nums', color: T.textSecondary }}>
           {fmt(elapsed)} / {fmt(total)}
