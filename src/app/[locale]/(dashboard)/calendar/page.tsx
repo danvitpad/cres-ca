@@ -350,12 +350,22 @@ export default function CalendarPage() {
 
   function refetchAll() { refetch(); refetchBlocked(); }
 
-  const dayKey = [
+  // Multi-interval working_hours (миграция 2026-05-05). Берём
+  // первый и последний интервалы дня для скролла к рабочим часам в
+  // календарной сетке. Если день выходной — фолбэк 9-18.
+  const dayHoursNorm = useMemo(
+    () => normalizeWorkingHours(master?.working_hours),
+    [master?.working_hours],
+  );
+  const dayKey = ([
     'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
-  ][currentDate.getDay()];
-  const dayHours = master?.working_hours?.[dayKey];
-  const workStart = dayHours ? parseInt(dayHours.start.split(':')[0]) : 9;
-  const workEnd = dayHours ? parseInt(dayHours.end.split(':')[0]) : 18;
+  ] as const)[currentDate.getDay()];
+  // JS sun=0 → нам нужен 'sunday' ключ нашего объекта (он есть). OK как есть.
+  const dayInfo = dayHoursNorm[dayKey as keyof typeof dayHoursNorm];
+  const firstIv = dayInfo.enabled ? dayInfo.intervals[0] : null;
+  const lastIv = dayInfo.enabled ? dayInfo.intervals[dayInfo.intervals.length - 1] : null;
+  const workStart = firstIv ? parseInt(firstIv.start.split(':')[0]) : 9;
+  const workEnd = lastIv ? parseInt(lastIv.end.split(':')[0]) : 18;
 
   function navigate(delta: number) {
     const d = new Date(currentDate);
