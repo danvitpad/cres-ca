@@ -48,13 +48,16 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
         const { data: { user } } = await supabase.auth.getUser();
         if (cancelled) return;
         if (user) {
+          // tier лежит на subscriptions, не на profiles — раньше выбирали
+          // 'tier' прямо отсюда и получали 400. Сейчас читаем только profile,
+          // tier подтянем отдельно (для UI он нужен только в master shell).
           const { data: profile } = await supabase
             .from('profiles')
-            .select('role, tier, full_name')
+            .select('role, full_name')
             .eq('id', user.id)
-            .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
+            .maybeSingle<{ role: string | null; full_name: string | null }>();
           if (cancelled) return;
-          setAuth(user.id, (profile?.role ?? 'client') as UserRole, (profile?.tier ?? null) as SubscriptionTier | null, profile?.full_name ?? null);
+          setAuth(user.id, (profile?.role ?? 'client') as UserRole, null as SubscriptionTier | null, profile?.full_name ?? null);
           setHydrated(true);
           return;
         }

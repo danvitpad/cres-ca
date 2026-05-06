@@ -52,10 +52,33 @@ interface ReviewItem {
   reviewer_name: string | null;
 }
 
-type WorkingHoursEntry = { start: string; end: string } | null;
+// Working_hours приходит в новом multi-interval формате
+// { enabled, intervals: [{start, end}, ...] }, но в БД могут оставаться
+// старые записи в single-interval формате { start, end }. Поддерживаем оба
+// (нормализуем в один на читаемом этапе).
+type WorkingInterval = { start: string; end: string };
+type WorkingHoursEntry =
+  | { enabled?: boolean; intervals?: WorkingInterval[] }
+  | { start: string; end: string }
+  | null
+  | undefined;
 type WorkingHoursMap = Record<string, WorkingHoursEntry>;
 
-type WorkingDay = NonNullable<WorkingHoursEntry>;
+type WorkingDay = WorkingInterval;
+
+function getDayIntervals(entry: WorkingHoursEntry): WorkingInterval[] {
+  if (!entry) return [];
+  if ('intervals' in entry && Array.isArray(entry.intervals)) {
+    if (entry.enabled === false) return [];
+    return entry.intervals.filter(
+      (i): i is WorkingInterval => typeof i?.start === 'string' && typeof i?.end === 'string',
+    );
+  }
+  if ('start' in entry && 'end' in entry && typeof entry.start === 'string' && typeof entry.end === 'string') {
+    return [{ start: entry.start, end: entry.end }];
+  }
+  return [];
+}
 
 interface MasterDetail {
   id: string;
@@ -101,20 +124,26 @@ function getOpenStatus(wh: WorkingHoursMap | null): { isOpen: boolean; label: st
   if (!wh) return { isOpen: false, label: 'Нет расписания' };
   const now = new Date();
   const dayKey = JS_DAY_TO_KEY[now.getDay()];
-  const entry = wh[dayKey];
-  if (!entry) return { isOpen: false, label: 'Сегодня выходной' };
+  const intervals = getDayIntervals(wh[dayKey]);
+  if (intervals.length === 0) return { isOpen: false, label: 'Сегодня выходной' };
 
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const [startH, startM] = entry.start.split(':').map(Number);
-  const [endH, endM] = entry.end.split(':').map(Number);
-  const start = startH * 60 + startM;
-  const end = endH * 60 + endM;
-
-  if (currentMinutes >= start && currentMinutes < end) {
-    return { isOpen: true, label: `Открыто до ${entry.end}` };
-  }
-  if (currentMinutes < start) {
-    return { isOpen: false, label: `Откроется в ${entry.start}` };
+  // Идём по интервалам по возрастанию start. Если сейчас внутри одного —
+  // показываем «Открыто до конца этого интервала». Если до первого — показываем
+  // когда откроется. Иначе — «Закрыто» (например, между двумя интервалами или
+  // после последнего).
+  const sorted = [...intervals].sort((a, b) => a.start.localeCompare(b.start));
+  for (const it of sorted) {
+    const [sh, sm] = it.start.split(':').map(Number);
+    const [eh, em] = it.end.split(':').map(Number);
+    const s = sh * 60 + sm;
+    const e = eh * 60 + em;
+    if (currentMinutes >= s && currentMinutes < e) {
+      return { isOpen: true, label: `Открыто до ${it.end}` };
+    }
+    if (currentMinutes < s) {
+      return { isOpen: false, label: `Откроется в ${it.start}` };
+    }
   }
   return { isOpen: false, label: 'Закрыто' };
 }
@@ -368,10 +397,10 @@ export default function MiniAppMasterDetailPage() {
     return master ? getOpenStatus(master.working_hours) : { isOpen: false, label: '' };
   }, [master]);
 
-  /* ─── schedule presence: any non-null day means master has set hours ─── */
+  /* ─── schedule presence: хотя бы у одного дня есть валидный интервал ─── */
   const hasSchedule = useMemo(() => {
     if (!master?.working_hours) return false;
-    return DAYS_ORDER.some((d) => Boolean(master.working_hours?.[d]));
+    return DAYS_ORDER.some((d) => getDayIntervals(master.working_hours?.[d]).length > 0);
   }, [master]);
 
   const todayKey = JS_DAY_TO_KEY[new Date().getDay()];
@@ -867,9 +896,15 @@ export default function MiniAppMasterDetailPage() {
             <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4">
               <h3 className="mb-3 text-[13px] font-semibold text-neutral-800">Часы работы</h3>
               <ul className="space-y-2">
-                {DAYS_ORDER.filter((day) => Boolean(master.working_hours?.[day])).map((day) => {
-                  const h = master.working_hours?.[day] as WorkingDay;
+                {DAYS_ORDER.map((day) => {
+                  const intervals = getDayIntervals(master.working_hours?.[day]);
+                  if (intervals.length === 0) return null;
                   const isToday = day === todayKey;
+                  // Несколько интервалов в день показываем через запятую:
+                  // «10:00 — 13:00, 14:00 — 19:00».
+                  const label = intervals
+                    .map((iv) => `${iv.start} — ${iv.end}`)
+                    .join(', ');
                   return (
                     <li
                       key={day}
@@ -884,7 +919,7 @@ export default function MiniAppMasterDetailPage() {
                         </span>
                       </div>
                       <span className={isToday ? 'text-neutral-900 font-bold' : 'text-neutral-700 font-medium'}>
-                        {`${h.start} — ${h.end}`}
+                        {label}
                       </span>
                     </li>
                   );

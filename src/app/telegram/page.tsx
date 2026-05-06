@@ -73,14 +73,15 @@ export default function TelegramEntryPage() {
           const supabase = createClient();
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
+            // tier живёт на subscriptions, не на profiles. Раньше брали 'tier'
+            // прямо отсюда и получали 400 (которое потом ломало layout).
             const { data: profile } = await supabase
               .from('profiles')
-              .select('role, tier, full_name')
+              .select('role, full_name')
               .eq('id', user.id)
-              .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>();
+              .maybeSingle<{ role: string | null; full_name: string | null }>();
             const role = (profile?.role ?? 'client') as 'master' | 'client' | 'salon_admin' | 'receptionist';
-            const tier = (profile?.tier ?? null) as 'trial' | 'starter' | 'pro' | 'business' | null;
-            setAuth(user.id, role, tier, profile?.full_name ?? null);
+            setAuth(user.id, role, null, profile?.full_name ?? null);
             if (role === 'master' || role === 'salon_admin') {
               router.replace('/telegram/m/home');
             } else {

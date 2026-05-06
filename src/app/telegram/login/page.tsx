@@ -133,12 +133,14 @@ export default function MiniAppLoginPage() {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      // tier — отдельная сущность (subscriptions), на profiles нет такой
+      // колонки. Не запрашиваем чтобы не получать 400.
       const [{ data: profile }, { data: masterRow }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('role, tier, full_name')
+          .select('role, full_name')
           .eq('id', user.id)
-          .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>(),
+          .maybeSingle<{ role: string | null; full_name: string | null }>(),
         supabase
           .from('masters')
           .select('id')
@@ -147,7 +149,7 @@ export default function MiniAppLoginPage() {
       ]);
       const isMaster = !!masterRow || profile?.role === 'master' || profile?.role === 'salon_admin';
       const role = (isMaster ? (profile?.role ?? 'master') : (profile?.role ?? 'client')) as string;
-      setAuth(user.id, role as UserRole, (profile?.tier ?? null) as SubscriptionTier | null, profile?.full_name ?? null);
+      setAuth(user.id, role as UserRole, null as SubscriptionTier | null, profile?.full_name ?? null);
       window.location.replace(isMaster ? '/telegram/m/home' : '/telegram/home');
     })();
   }, [router, setAuth]);
@@ -177,9 +179,9 @@ export default function MiniAppLoginPage() {
       const [{ data: profile }, { data: masterRow }] = await Promise.all([
         supabase
           .from('profiles')
-          .select('role, tier, full_name')
+          .select('role, full_name')
           .eq('id', data.user.id)
-          .maybeSingle<{ role: string | null; tier: string | null; full_name: string | null }>(),
+          .maybeSingle<{ role: string | null; full_name: string | null }>(),
         supabase
           .from('masters')
           .select('id')
@@ -188,7 +190,7 @@ export default function MiniAppLoginPage() {
       ]);
       const isMaster = !!masterRow || profile?.role === 'master' || profile?.role === 'salon_admin';
       const role = (isMaster ? (profile?.role ?? 'master') : (profile?.role ?? 'client')) as string;
-      setAuth(data.user.id, role as UserRole, (profile?.tier ?? null) as SubscriptionTier | null, profile?.full_name ?? null);
+      setAuth(data.user.id, role as UserRole, null as SubscriptionTier | null, profile?.full_name ?? null);
       const target = isMaster ? '/telegram/m/home' : '/telegram/home';
       window.location.replace(target);
     } catch (e) {
