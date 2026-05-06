@@ -40,6 +40,7 @@ import { Bot, ArrowDown } from 'lucide-react';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
 import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
@@ -51,21 +52,42 @@ const MINIAPP_CARD_LABELS = {
   managerAssigned: 'Мастер будет назначен администратором',
 };
 
-const CATEGORIES = [
-  { key: 'all', label: 'Все' },
-  { key: 'beauty', label: 'Красота' },
-  { key: 'health', label: 'Здоровье' },
-  { key: 'home', label: 'Дом' },
-  { key: 'auto', label: 'Авто' },
-  { key: 'fitness', label: 'Фитнес' },
-  { key: 'petCare', label: 'Питомцы' },
-] as const;
+type Lang = 'uk' | 'ru' | 'en';
+
+// Локализованные категории и рейтинговые опции. Keys остаются стабильными
+// (используются в логике фильтрации), меняются только подписи.
+const CATEGORY_KEYS = ['all', 'beauty', 'health', 'home', 'auto', 'fitness', 'petCare'] as const;
+type CategoryKey = (typeof CATEGORY_KEYS)[number];
+
+const CATEGORY_LABELS: Record<Lang, Record<CategoryKey, string>> = {
+  uk: { all: 'Усі', beauty: 'Краса', health: "Здоров'я", home: 'Дім', auto: 'Авто', fitness: 'Фітнес', petCare: 'Тварини' },
+  ru: { all: 'Все', beauty: 'Красота', health: 'Здоровье', home: 'Дом', auto: 'Авто', fitness: 'Фитнес', petCare: 'Питомцы' },
+  en: { all: 'All', beauty: 'Beauty', health: 'Health', home: 'Home', auto: 'Auto', fitness: 'Fitness', petCare: 'Pets' },
+};
 
 const RATING_OPTS = [
-  { v: 0, label: 'Любой' },
-  { v: 4, label: '4.0+' },
-  { v: 4.5, label: '4.5+' },
+  { v: 0, key: 'any' },
+  { v: 4, key: '4.0+' },
+  { v: 4.5, key: '4.5+' },
 ] as const;
+
+const RATING_LABELS: Record<Lang, Record<string, string>> = {
+  uk: { 'any': 'Будь-який', '4.0+': '4.0+', '4.5+': '4.5+' },
+  ru: { 'any': 'Любой', '4.0+': '4.0+', '4.5+': '4.5+' },
+  en: { 'any': 'Any', '4.0+': '4.0+', '4.5+': '4.5+' },
+};
+
+const FILTER_LABELS: Record<Lang, { title: string; category: string; rating: string; reset: string; apply: string; placeholder: string; filtersAria: string }> = {
+  uk: { title: 'Фільтри', category: 'Категорія', rating: 'Рейтинг', reset: 'Скинути', apply: 'Показати', placeholder: 'Майстер, послуга, салон…', filtersAria: 'Фільтри' },
+  ru: { title: 'Фильтры', category: 'Категория', rating: 'Рейтинг', reset: 'Сбросить', apply: 'Показать', placeholder: 'Мастер, услуга, салон…', filtersAria: 'Фильтры' },
+  en: { title: 'Filters', category: 'Category', rating: 'Rating', reset: 'Reset', apply: 'Show', placeholder: 'Master, service, salon…', filtersAria: 'Filters' },
+};
+
+const VIEW_LABELS: Record<Lang, { list: string; map: string; route: string }> = {
+  uk: { list: 'Список', map: 'Карта', route: '🗺 Маршрут до майстра' },
+  ru: { list: 'Список', map: 'Карта', route: '🗺 Маршрут к мастеру' },
+  en: { list: 'List', map: 'Map', route: '🗺 Route to master' },
+};
 
 interface ApiMasterRow {
   id: string;
@@ -172,9 +194,16 @@ export default function MiniAppSearchPage() {
   const sp = useSearchParams();
   const { haptic } = useTelegram();
 
+  // Локаль Mini App — для подписей фильтров и категорий.
+  const lang = useMiniAppLocale();
+  const tFilter = FILTER_LABELS[lang];
+  const catLabels = CATEGORY_LABELS[lang];
+  const ratingLabels = RATING_LABELS[lang];
+  const tView = VIEW_LABELS[lang];
+
   const [view, setView] = useState<'list' | 'map'>(sp.get('view') === 'map' ? 'map' : 'list');
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<typeof CATEGORIES[number]['key']>('all');
+  const [category, setCategory] = useState<CategoryKey>('all');
   const [minRating, setMinRating] = useState<0 | 4 | 4.5>(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -384,8 +413,15 @@ export default function MiniAppSearchPage() {
     return masters.filter((m) => {
       if (minRating > 0 && m.rating < minRating) return false;
       if (category !== 'all') {
-        const target = CATEGORIES.find((c) => c.key === category)?.label ?? '';
-        if (!(m.specialization ?? '').toLowerCase().includes(target.toLowerCase())) return false;
+        // Подстрочный матч по специализации мастера. Берём ВСЕ локали ярлыка
+        // (uk/ru/en) — мастер мог написать «Краса» или «Красота» или «Beauty».
+        const targets = [
+          CATEGORY_LABELS.uk[category],
+          CATEGORY_LABELS.ru[category],
+          CATEGORY_LABELS.en[category],
+        ].map((s) => s.toLowerCase());
+        const spec = (m.specialization ?? '').toLowerCase();
+        if (!targets.some((t) => spec.includes(t))) return false;
       }
       return true;
     });
@@ -473,7 +509,7 @@ export default function MiniAppSearchPage() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Мастер, услуга, салон…"
+              placeholder={tFilter.placeholder}
               style={{
                 flex: 1,
                 background: 'transparent',
@@ -538,7 +574,7 @@ export default function MiniAppSearchPage() {
               cursor: 'pointer',
               flexShrink: 0,
             }}
-            aria-label="Фильтры"
+            aria-label={tFilter.filtersAria}
           >
             <SlidersHorizontal size={20} color={T.text} strokeWidth={2} />
             {activeFilters > 0 && (
@@ -607,7 +643,7 @@ export default function MiniAppSearchPage() {
                   }}
                 >
                   <Icon size={13} />
-                  {mode === 'list' ? 'Список' : 'Карта'}
+                  {mode === 'list' ? tView.list : tView.map}
                 </button>
               );
             })}
@@ -864,7 +900,7 @@ export default function MiniAppSearchPage() {
                             minHeight: 44,
                           }}
                         >
-                          🗺 Маршрут до мастера
+                          {tView.route}
                         </a>
                       )}
                     </>
@@ -878,18 +914,18 @@ export default function MiniAppSearchPage() {
 
       <BottomSheet open={filtersOpen} onClose={() => setFiltersOpen(false)}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '4px 0 24px', color: T.text }}>
-          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>Фильтры</h3>
+          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{tFilter.title}</h3>
 
           <div>
-            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>Категория</p>
+            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.category}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {CATEGORIES.map((c) => {
-                const active = category === c.key;
+              {CATEGORY_KEYS.map((key) => {
+                const active = category === key;
                 return (
                   <button
-                    key={c.key}
+                    key={key}
                     type="button"
-                    onClick={() => setCategory(c.key)}
+                    onClick={() => setCategory(key)}
                     style={{
                       padding: '8px 14px',
                       borderRadius: R.pill,
@@ -902,7 +938,7 @@ export default function MiniAppSearchPage() {
                       fontFamily: 'inherit',
                     }}
                   >
-                    {c.label}
+                    {catLabels[key]}
                   </button>
                 );
               })}
@@ -910,7 +946,7 @@ export default function MiniAppSearchPage() {
           </div>
 
           <div>
-            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>Рейтинг</p>
+            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.rating}</p>
             <div style={{ display: 'flex', gap: 8 }}>
               {RATING_OPTS.map((opt) => {
                 const active = minRating === opt.v;
@@ -935,7 +971,7 @@ export default function MiniAppSearchPage() {
                     }}
                   >
                     {opt.v > 0 && <Star size={12} fill="#f59e0b" color="#f59e0b" />}
-                    {opt.label}
+                    {ratingLabels[opt.key]}
                   </button>
                 );
               })}
@@ -962,7 +998,7 @@ export default function MiniAppSearchPage() {
                 fontFamily: 'inherit',
               }}
             >
-              Сбросить
+              {tFilter.reset}
             </button>
             <button
               type="button"
@@ -983,7 +1019,7 @@ export default function MiniAppSearchPage() {
                 fontFamily: 'inherit',
               }}
             >
-              Показать ({total})
+              {tFilter.apply} ({total})
             </button>
           </div>
         </div>
