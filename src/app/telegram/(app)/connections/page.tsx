@@ -37,6 +37,92 @@ function authHeaders(): Record<string, string> {
 
 type Tab = 'masters' | 'salons' | 'friends';
 
+type Lang = 'uk' | 'ru' | 'en';
+
+function getContactsLocale(): Lang {
+  if (typeof window === 'undefined') return 'uk';
+  try {
+    const stored = localStorage.getItem('cres:locale');
+    if (stored === 'ru' || stored === 'en' || stored === 'uk') return stored;
+  } catch {}
+  return 'uk';
+}
+
+const STR = {
+  uk: {
+    title: 'Контакти',
+    subtitle: 'Твої майстри, салони та друзі',
+    tabMasters: 'Майстри',
+    tabSalons: 'Салони',
+    tabFriends: 'Друзі',
+    emptyMastersTitle: 'Ти ще не підписаний на майстрів',
+    emptyMastersDesc: 'Знайди майстра і підпишись, щоб бачити їх оновлення та швидко записуватися.',
+    findMaster: 'Знайти майстра',
+    emptySalonsTitle: 'Ти ще не підписаний на салони',
+    emptySalonsDesc: 'Стеж за оновленнями улюблених салонів — нові майстри, акції, вікна в розкладі.',
+    findSalon: 'Знайти салон',
+    emptyFriendsTitle: 'У тебе поки немає друзів',
+    emptyFriendsDesc: 'Підпишись на інших клієнтів — і якщо вони підпишуться у відповідь, ви опинитесь у списку друзів.',
+    search: 'Пошук',
+    nearestSlots: 'Найближчі вікна',
+    masterFallback: 'Майстер',
+    userFallback: 'Користувач',
+    removeFromContacts: 'Видалити з контактів',
+    unfollow: 'Відписатися',
+    confirmRemoveMaster: (name: string) => `Видалити ${name} з контактів?`,
+    confirmRemoveSalon: (name: string) => `Видалити салон "${name}" з контактів?`,
+    confirmUnfollow: (name: string) => `Відписатися від ${name}?`,
+  },
+  ru: {
+    title: 'Контакты',
+    subtitle: 'Твои мастера, салоны и друзья',
+    tabMasters: 'Мастера',
+    tabSalons: 'Салоны',
+    tabFriends: 'Друзья',
+    emptyMastersTitle: 'Ты пока не подписан на мастеров',
+    emptyMastersDesc: 'Найди мастера и подпишись, чтобы видеть их обновления и быстро записываться.',
+    findMaster: 'Найти мастера',
+    emptySalonsTitle: 'Ты пока не подписан на салоны',
+    emptySalonsDesc: 'Следи за обновлениями любимых салонов — новые мастера, акции, окна в расписании.',
+    findSalon: 'Найти салон',
+    emptyFriendsTitle: 'У тебя пока нет друзей',
+    emptyFriendsDesc: 'Подпишись на других клиентов — и если они подпишутся в ответ, вы окажетесь в списке друзей.',
+    search: 'Поиск',
+    nearestSlots: 'Ближайшие окна',
+    masterFallback: 'Мастер',
+    userFallback: 'Пользователь',
+    removeFromContacts: 'Удалить из контактов',
+    unfollow: 'Отписаться',
+    confirmRemoveMaster: (name: string) => `Удалить ${name} из контактов?`,
+    confirmRemoveSalon: (name: string) => `Удалить салон "${name}" из контактов?`,
+    confirmUnfollow: (name: string) => `Отписаться от ${name}?`,
+  },
+  en: {
+    title: 'Contacts',
+    subtitle: 'Your masters, salons and friends',
+    tabMasters: 'Masters',
+    tabSalons: 'Salons',
+    tabFriends: 'Friends',
+    emptyMastersTitle: 'You haven’t followed any masters yet',
+    emptyMastersDesc: 'Find a master and follow to see updates and book quickly.',
+    findMaster: 'Find a master',
+    emptySalonsTitle: 'You haven’t followed any salons yet',
+    emptySalonsDesc: 'Follow your favourite salons — new masters, promos, schedule openings.',
+    findSalon: 'Find a salon',
+    emptyFriendsTitle: 'No friends yet',
+    emptyFriendsDesc: 'Follow other clients — once they follow back, you’ll see them here.',
+    search: 'Search',
+    nearestSlots: 'Nearest openings',
+    masterFallback: 'Master',
+    userFallback: 'User',
+    removeFromContacts: 'Remove from contacts',
+    unfollow: 'Unfollow',
+    confirmRemoveMaster: (name: string) => `Remove ${name} from contacts?`,
+    confirmRemoveSalon: (name: string) => `Remove salon "${name}" from contacts?`,
+    confirmUnfollow: (name: string) => `Unfollow ${name}?`,
+  },
+} as const;
+
 interface MasterItem {
   id: string;
   name: string | null;
@@ -78,6 +164,7 @@ export default function MiniAppContactsPage() {
   const { userId } = useAuthStore();
   const [tab, setTab] = useState<Tab>('masters');
   const [loading, setLoading] = useState(true);
+  const t = STR[getContactsLocale()];
 
   const [masters, setMasters] = useState<MasterItem[]>([]);
   const [salons, setSalons] = useState<SalonItem[]>([]);
@@ -98,7 +185,7 @@ export default function MiniAppContactsPage() {
 
   async function unfollowMaster(id: string, name: string | null) {
     if (removing) return;
-    const ok = await tgConfirm(`Удалить ${name ?? 'мастера'} из контактов?`);
+    const ok = await tgConfirm(t.confirmRemoveMaster(name ?? t.masterFallback.toLowerCase()));
     if (!ok) return;
     setRemoving(id);
     haptic('warning');
@@ -116,7 +203,7 @@ export default function MiniAppContactsPage() {
 
   async function unfollowSalon(id: string, name: string) {
     if (removing) return;
-    const ok = await tgConfirm(`Удалить салон "${name}" из контактов?`);
+    const ok = await tgConfirm(t.confirmRemoveSalon(name));
     if (!ok) return;
     setRemoving(id);
     haptic('warning');
@@ -133,7 +220,7 @@ export default function MiniAppContactsPage() {
 
   async function unfollowFriend(id: string, name: string | null) {
     if (removing) return;
-    const ok = await tgConfirm(`Отписаться от ${name ?? 'пользователя'}?`);
+    const ok = await tgConfirm(t.confirmUnfollow(name ?? t.userFallback.toLowerCase()));
     if (!ok) return;
     setRemoving(id);
     haptic('warning');
@@ -204,14 +291,14 @@ export default function MiniAppContactsPage() {
       transition={{ duration: 0.3 }}
       className="px-5 pt-6 pb-6"
     >
-      <h1 className="text-[24px] font-bold leading-tight">Контакты</h1>
-      <p className="mt-1 text-[13px] text-neutral-500">Твои мастера, салоны и друзья</p>
+      <h1 className="text-[24px] font-bold leading-tight">{t.title}</h1>
+      <p className="mt-1 text-[13px] text-neutral-500">{t.subtitle}</p>
 
       {/* Tabs */}
       <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
-        <TabBtn active={tab === 'masters'} onClick={() => { setTab('masters'); haptic('light'); }} icon={User} label="Мастера" count={counts.masters} />
-        <TabBtn active={tab === 'salons'} onClick={() => { setTab('salons'); haptic('light'); }} icon={Building2} label="Салоны" count={counts.salons} />
-        <TabBtn active={tab === 'friends'} onClick={() => { setTab('friends'); haptic('light'); }} icon={Users} label="Друзья" count={counts.friends} />
+        <TabBtn active={tab === 'masters'} onClick={() => { setTab('masters'); haptic('light'); }} icon={User} label={t.tabMasters} count={counts.masters} />
+        <TabBtn active={tab === 'salons'} onClick={() => { setTab('salons'); haptic('light'); }} icon={Building2} label={t.tabSalons} count={counts.salons} />
+        <TabBtn active={tab === 'friends'} onClick={() => { setTab('friends'); haptic('light'); }} icon={Users} label={t.tabFriends} count={counts.friends} />
       </div>
 
       <div className="mt-4">
@@ -223,9 +310,9 @@ export default function MiniAppContactsPage() {
           masters.length === 0 ? (
             <EmptyState
               icon={User}
-              title="Ты пока не подписан на мастеров"
-              desc="Найди мастера и подпишись, чтобы видеть их обновления и быстро записываться."
-              ctaLabel="Найти мастера"
+              title={t.emptyMastersTitle}
+              desc={t.emptyMastersDesc}
+              ctaLabel={t.findMaster}
               ctaHref="/telegram/search"
             />
           ) : (
@@ -236,7 +323,7 @@ export default function MiniAppContactsPage() {
                   <div className="mb-2 flex items-center gap-1.5 px-1">
                     <Clock className="size-3.5 text-violet-600" />
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-700/80">
-                      Ближайшие окна
+                      {t.nearestSlots}
                     </p>
                   </div>
                   <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1" style={{ scrollbarWidth: 'none' }}>
@@ -249,7 +336,7 @@ export default function MiniAppContactsPage() {
                       >
                         <div className="flex items-center gap-2">
                           <Avatar src={s.avatar} name={s.name} />
-                          <p className="truncate text-[12px] font-semibold">{s.name ?? 'Мастер'}</p>
+                          <p className="truncate text-[12px] font-semibold">{s.name ?? t.masterFallback}</p>
                         </div>
                         <div className="flex items-center gap-1 text-[11px] text-neutral-700">
                           <Clock className="size-3" />
@@ -272,7 +359,7 @@ export default function MiniAppContactsPage() {
                   >
                     <Avatar src={m.avatar} name={m.name} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-semibold">{m.name ?? 'Мастер'}</p>
+                      <p className="truncate text-[14px] font-semibold">{m.name ?? t.masterFallback}</p>
                       <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
                         {m.specialization && <span className="truncate">{m.specialization}</span>}
                         {m.salonName && (
@@ -302,7 +389,7 @@ export default function MiniAppContactsPage() {
                       onClick={(e) => { e.stopPropagation(); unfollowMaster(m.id, m.name); }}
                       disabled={removing === m.id}
                       className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
-                      aria-label="Удалить из контактов"
+                      aria-label={t.removeFromContacts}
                     >
                       {removing === m.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
                     </button>
@@ -316,9 +403,9 @@ export default function MiniAppContactsPage() {
           salons.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="Ты пока не подписан на салоны"
-              desc="Следи за обновлениями любимых салонов — новые мастера, акции, окна в расписании."
-              ctaLabel="Найти салон"
+              title={t.emptySalonsTitle}
+              desc={t.emptySalonsDesc}
+              ctaLabel={t.findSalon}
               ctaHref="/telegram/search"
             />
           ) : (
@@ -355,7 +442,7 @@ export default function MiniAppContactsPage() {
                       onClick={(e) => { e.stopPropagation(); unfollowSalon(s.id, s.name); }}
                       disabled={removing === s.id}
                       className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
-                      aria-label="Удалить из контактов"
+                      aria-label={t.removeFromContacts}
                     >
                       {removing === s.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
                     </button>
@@ -369,9 +456,9 @@ export default function MiniAppContactsPage() {
           friends.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="У тебя пока нет друзей"
-              desc="Подпишись на других клиентов — и если они подпишутся в ответ, вы окажетесь в списке друзей."
-              ctaLabel="Поиск"
+              title={t.emptyFriendsTitle}
+              desc={t.emptyFriendsDesc}
+              ctaLabel={t.search}
               ctaHref="/telegram/search"
             />
           ) : (
@@ -387,7 +474,7 @@ export default function MiniAppContactsPage() {
                   >
                     <Avatar src={f.avatar} name={f.name} />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-semibold">{f.name ?? 'Пользователь'}</p>
+                      <p className="truncate text-[14px] font-semibold">{f.name ?? t.userFallback}</p>
                       <p className="truncate text-[11px] text-neutral-500">
                         {f.slug ? `@${f.slug}` : f.publicId ?? ''}
                       </p>
@@ -397,7 +484,7 @@ export default function MiniAppContactsPage() {
                       onClick={(e) => { e.stopPropagation(); unfollowFriend(f.id, f.name); }}
                       disabled={removing === f.id}
                       className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
-                      aria-label="Отписаться"
+                      aria-label={t.unfollow}
                     >
                       {removing === f.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
                     </button>

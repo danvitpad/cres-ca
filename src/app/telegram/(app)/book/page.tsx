@@ -71,10 +71,111 @@ interface MasterInfo {
 const STEPS: Step[] = ['services', 'datetime', 'confirm'];
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-const DAY_NAMES_SHORT: Record<string, string> = {
-  sunday: 'Вс', monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср',
-  thursday: 'Чт', friday: 'Пт', saturday: 'Сб',
+const DAY_NAMES_SHORT_BY_LANG: Record<'uk' | 'ru' | 'en', Record<string, string>> = {
+  uk: { sunday: 'Нд', monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср', thursday: 'Чт', friday: 'Пт', saturday: 'Сб' },
+  ru: { sunday: 'Вс', monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср', thursday: 'Чт', friday: 'Пт', saturday: 'Сб' },
+  en: { sunday: 'Sun', monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat' },
 };
+
+const DAY_NAMES_SHORT: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get(_t, p) { return DAY_NAMES_SHORT_BY_LANG[getBookLocale()][String(p)]; },
+});
+
+const CALENDAR_HEADER_BY_LANG: Record<'uk' | 'ru' | 'en', string[]> = {
+  uk: ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+  ru: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+};
+
+const STR = {
+  uk: {
+    masterNotFound: 'Майстер не вказаний',
+    stepServices: 'Послуги',
+    stepDatetime: 'Дата і час',
+    stepConfirm: 'Підтвердження',
+    all: 'Усі',
+    noActiveServices: 'У майстра поки немає активних послуг',
+    yearSuffix: ' р.',
+    noFreeSlots: 'Немає вільних слотів',
+    nearest: 'Найближча:',
+    pastSlot: 'Цей час вже минув',
+    bookedSlot: 'Цей час вже зайнятий',
+    tooShortSlot: 'Послуга не вміщується у цей час',
+    pastSlotsHint: 'Сьогодні всі слоти вже минули. Виберіть інший день вище.',
+    dateLabel: 'Дата',
+    timeLabel: 'Час',
+    duration: 'тривалість',
+    withMaster: (n: string) => `з ${n}`,
+    totalToPay: 'Всього до сплати',
+    importantInfo: 'Важлива інформація',
+    continue: 'Продовжити',
+    payInShop: 'До сплати на місці',
+    booking: 'Бронюємо...',
+    confirm: 'Підтвердити',
+    exitTitle: 'Ви точно хочете перервати це бронювання?',
+    exitDesc: 'Усі вибрані параметри буде скинуто.',
+    cancel: 'Скасувати',
+    exit: 'Вийти',
+  },
+  ru: {
+    masterNotFound: 'Мастер не указан',
+    stepServices: 'Услуги',
+    stepDatetime: 'Дата и время',
+    stepConfirm: 'Подтверждение',
+    all: 'Все',
+    noActiveServices: 'У мастера пока нет активных услуг',
+    yearSuffix: ' г.',
+    noFreeSlots: 'Нет свободных слотов',
+    nearest: 'Ближайшая:',
+    pastSlot: 'Это время уже прошло',
+    bookedSlot: 'Это время уже занято',
+    tooShortSlot: 'Услуга не помещается в это время',
+    pastSlotsHint: 'Сегодня все слоты уже прошли. Выберите другой день выше.',
+    dateLabel: 'Дата',
+    timeLabel: 'Время',
+    duration: 'длительность',
+    withMaster: (n: string) => `с ${n}`,
+    totalToPay: 'Всего к оплате',
+    importantInfo: 'Важная информация',
+    continue: 'Продолжить',
+    payInShop: 'К оплате в магазине',
+    booking: 'Бронирование...',
+    confirm: 'Подтвердить',
+    exitTitle: 'Вы точно хотите прервать это бронирование?',
+    exitDesc: 'Все выбранные параметры будут сброшены.',
+    cancel: 'Отменить',
+    exit: 'Выйти',
+  },
+  en: {
+    masterNotFound: 'Master not specified',
+    stepServices: 'Services',
+    stepDatetime: 'Date & time',
+    stepConfirm: 'Confirmation',
+    all: 'All',
+    noActiveServices: 'This master has no active services yet',
+    yearSuffix: '',
+    noFreeSlots: 'No free slots',
+    nearest: 'Nearest:',
+    pastSlot: 'This time has already passed',
+    bookedSlot: 'This time is already booked',
+    tooShortSlot: 'Service does not fit in this time',
+    pastSlotsHint: 'All slots for today have passed. Pick another day above.',
+    dateLabel: 'Date',
+    timeLabel: 'Time',
+    duration: 'duration',
+    withMaster: (n: string) => `with ${n}`,
+    totalToPay: 'Total',
+    importantInfo: 'Important info',
+    continue: 'Continue',
+    payInShop: 'Pay in shop',
+    booking: 'Booking...',
+    confirm: 'Confirm',
+    exitTitle: 'Are you sure you want to cancel this booking?',
+    exitDesc: 'All selected options will be cleared.',
+    cancel: 'Cancel',
+    exit: 'Exit',
+  },
+} as const;
 
 type BookLang = 'uk' | 'ru' | 'en';
 
@@ -296,6 +397,8 @@ export default function MiniAppBookPage() {
   /* ── Derived ── */
   const stepIndex = STEPS.indexOf(step);
   const masterName = master?.display_name ?? master?.full_name ?? '';
+  const lang = getBookLocale();
+  const t = STR[lang];
 
   const totalPrice = useMemo(
     () => selectedServices.reduce((sum, s) => sum + Number(s.price), 0),
@@ -560,7 +663,8 @@ export default function MiniAppBookPage() {
     }
 
     const serviceNames = selectedServices.map((s) => s.name).join(', ');
-    const dateFormatted = selectedDate.toLocaleDateString('ru', { day: 'numeric', month: 'short' });
+    const localeMap: Record<BookLang, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
+    const dateFormatted = selectedDate.toLocaleDateString(localeMap[lang], { day: 'numeric', month: 'short' });
 
     const res = await fetch('/api/telegram/c/book', {
       method: 'POST',
@@ -631,7 +735,7 @@ export default function MiniAppBookPage() {
   if (!masterId) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-8 text-center">
-        <p className="text-sm" style={{ color: T.textSecondary }}>Мастер не указан</p>
+        <p className="text-sm" style={{ color: T.textSecondary }}>{t.masterNotFound}</p>
       </div>
     );
   }
@@ -673,9 +777,9 @@ export default function MiniAppBookPage() {
             </button>
 
             <h1 className="text-[15px] font-semibold" style={{ color: T.text }}>
-              {step === 'services' && 'Услуги'}
-              {step === 'datetime' && 'Дата и время'}
-              {step === 'confirm' && 'Подтверждение'}
+              {step === 'services' && t.stepServices}
+              {step === 'datetime' && t.stepDatetime}
+              {step === 'confirm' && t.stepConfirm}
             </h1>
 
             <button
@@ -735,7 +839,7 @@ export default function MiniAppBookPage() {
                         border: `1px solid ${T.borderSubtle}`,
                       }}
                     >
-                      Все
+                      {t.all}
                     </button>
                     {categories.map((cat) => (
                       <button
@@ -822,7 +926,7 @@ export default function MiniAppBookPage() {
                 {services.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
                     <AlertCircle className="mb-3 size-8" style={{ color: T.textTertiary }} />
-                    <p className="text-sm" style={{ color: T.textSecondary }}>У мастера пока нет активных услуг</p>
+                    <p className="text-sm" style={{ color: T.textSecondary }}>{t.noActiveServices}</p>
                   </div>
                 )}
               </motion.div>
@@ -848,7 +952,7 @@ export default function MiniAppBookPage() {
                   className="mb-4 flex items-center justify-between"
                 >
                   <h2 className="text-[15px] font-semibold capitalize" style={{ color: T.text }}>
-                    {MONTH_NAMES_FULL[new Date().getMonth()]} {new Date().getFullYear()} г.
+                    {MONTH_NAMES_FULL[new Date().getMonth()]} {new Date().getFullYear()}{t.yearSuffix}
                   </h2>
                   <button
                     onClick={() => { haptic('light'); setShowFullCalendar(!showFullCalendar); }}
@@ -950,7 +1054,7 @@ export default function MiniAppBookPage() {
 
                       {/* Day names */}
                       <div className="mb-1 grid grid-cols-7 gap-1 text-center text-[10px] font-medium" style={{ color: T.textTertiary }}>
-                        {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'].map((d) => (
+                        {CALENDAR_HEADER_BY_LANG[lang].map((d) => (
                           <div key={d}>{d}</div>
                         ))}
                       </div>
@@ -1007,7 +1111,7 @@ export default function MiniAppBookPage() {
                       <div className="rounded-2xl p-6 text-center" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
                         <CalendarIcon className="mx-auto mb-2 size-7" style={{ color: T.textDisabled }} />
                         <p className="text-[13px] font-medium" style={{ color: T.textSecondary }}>
-                          Нет свободных слотов
+                          {t.noFreeSlots}
                         </p>
                         {nextAvailableDate && (
                           <button
@@ -1015,7 +1119,7 @@ export default function MiniAppBookPage() {
                             className="mt-3 rounded-xl px-4 py-2 text-[12px] font-semibold text-violet-600 transition-colors"
                             style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
                           >
-                            Ближайшая: {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
+                            {t.nearest} {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
                           </button>
                         )}
                       </div>
@@ -1056,10 +1160,10 @@ export default function MiniAppBookPage() {
                             // Past / booked / tooShort — все рисуем серыми disabled, разница в подсказке.
                             const tooltip =
                               s.state === 'past'
-                                ? 'Это время уже прошло'
+                                ? t.pastSlot
                                 : s.state === 'booked'
-                                  ? 'Это время уже занято'
-                                  : 'Услуга не помещается в это время';
+                                  ? t.bookedSlot
+                                  : t.tooShortSlot;
                             return (
                               <motion.div
                                 key={`${s.state}-${s.time}`}
@@ -1086,7 +1190,7 @@ export default function MiniAppBookPage() {
                     {/* Только прошедшие слоты — показываем подсказку выбрать другой день */}
                     {!slotsLoading && slots.length === 0 && pastSlots.length > 0 && (
                       <div className="mt-2 rounded-xl px-3 py-2 text-center text-[12px]" style={{ border: `1px solid ${T.borderSubtle}`, background: T.bgSubtle, color: T.textSecondary }}>
-                        Сегодня все слоты уже прошли. Выберите другой день выше.
+                        {t.pastSlotsHint}
                       </div>
                     )}
                   </motion.div>
@@ -1154,7 +1258,7 @@ export default function MiniAppBookPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: T.textTertiary }}>
-                          Дата
+                          {t.dateLabel}
                         </p>
                         <p className="text-[14px] font-semibold capitalize" style={{ color: T.text }}>
                           {formatDateFull(selectedDate)}
@@ -1168,12 +1272,12 @@ export default function MiniAppBookPage() {
                       </div>
                       <div>
                         <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: T.textTertiary }}>
-                          Время
+                          {t.timeLabel}
                         </p>
                         <p className="text-[14px] font-semibold" style={{ color: T.text }}>
                           {selectedTime}–{endTime}{' '}
                           <span className="font-normal" style={{ color: T.textSecondary }}>
-                            (длительность {formatDuration(totalDuration)})
+                            ({t.duration} {formatDuration(totalDuration)})
                           </span>
                         </p>
                       </div>
@@ -1192,7 +1296,7 @@ export default function MiniAppBookPage() {
                               {service.name}
                             </p>
                             <p className="mt-0.5 text-[12px]" style={{ color: T.textSecondary }}>
-                              {formatDuration(service.duration_minutes)} с {masterName}
+                              {formatDuration(service.duration_minutes)} {t.withMaster(masterName)}
                             </p>
                           </div>
                           <p className="shrink-0 text-[14px] font-bold" style={{ color: T.text }}>
@@ -1207,7 +1311,7 @@ export default function MiniAppBookPage() {
 
                   {/* Total */}
                   <div className="flex items-center justify-between p-5">
-                    <p className="text-[14px] font-medium" style={{ color: T.textSecondary }}>Всего к оплате</p>
+                    <p className="text-[14px] font-medium" style={{ color: T.textSecondary }}>{t.totalToPay}</p>
                     <p className="text-[20px] font-bold" style={{ color: T.text }}>
                       {formatPrice(totalPrice)} {currency}
                     </p>
@@ -1226,7 +1330,7 @@ export default function MiniAppBookPage() {
                         <Info className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[14px] font-semibold" style={{ color: T.text }}>Важная информация</p>
+                        <p className="text-[14px] font-semibold" style={{ color: T.text }}>{t.importantInfo}</p>
                         <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed" style={{ color: T.textSecondary }}>
                           {master.booking_important_info}
                         </p>
@@ -1271,7 +1375,7 @@ export default function MiniAppBookPage() {
                   color: selectedServices.length > 0 ? T.surface : T.textDisabled,
                 }}
               >
-                Продолжить
+                {t.continue}
               </button>
             </motion.div>
           )}
@@ -1287,7 +1391,7 @@ export default function MiniAppBookPage() {
               style={{ borderTop: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: T.textSecondary }}>К оплате в магазине</span>
+                <span className="text-[13px]" style={{ color: T.textSecondary }}>{t.payInShop}</span>
                 <span className="text-[16px] font-bold" style={{ color: T.text }}>
                   {formatPrice(totalPrice)} {currency}
                 </span>
@@ -1303,7 +1407,7 @@ export default function MiniAppBookPage() {
                 ) : (
                   <Check className="size-4" strokeWidth={2.5} />
                 )}
-                {submitting ? 'Бронирование...' : 'Подтвердить'}
+                {submitting ? t.booking : t.confirm}
               </button>
             </motion.div>
           )}
@@ -1334,10 +1438,10 @@ export default function MiniAppBookPage() {
               <div className="mx-auto mb-5 h-1 w-10 rounded-full" style={{ background: T.borderSubtle }} />
 
               <h3 className="text-center text-[17px] font-bold" style={{ color: T.text }}>
-                Вы точно хотите прервать это бронирование?
+                {t.exitTitle}
               </h3>
               <p className="mt-2 text-center text-[14px]" style={{ color: T.textSecondary }}>
-                Все выбранные параметры будут сброшены.
+                {t.exitDesc}
               </p>
 
               <div className="mt-6 flex gap-3">
@@ -1346,14 +1450,14 @@ export default function MiniAppBookPage() {
                   className="flex-1 rounded-2xl py-3.5 text-[14px] font-semibold transition-colors"
                   style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface, color: T.textSecondary }}
                 >
-                  Отменить
+                  {t.cancel}
                 </button>
                 <button
                   onClick={confirmExit}
                   className="flex-1 rounded-2xl py-3.5 text-[14px] font-semibold transition-colors"
                   style={{ background: T.text, color: T.surface }}
                 >
-                  Выйти
+                  {t.exit}
                 </button>
               </div>
             </motion.div>

@@ -84,6 +84,58 @@ function formatDay(d: Date) {
   return d.toLocaleDateString(LOC[lang], { day: 'numeric', month: 'long' });
 }
 
+const STR = {
+  uk: {
+    inbox: 'Inbox',
+    title: 'Сповіщення',
+    unreadOne: 'непрочитане',
+    unreadFew: 'непрочитаних',
+    unreadMany: 'непрочитаних',
+    markAll: 'Прочитати все',
+    empty: 'Порожньо',
+    emptyDesc: 'Нові записи та події зʼявляться тут',
+    mutual: 'Взаємно',
+    follow: 'Підписатися',
+    locale: 'uk-UA',
+  },
+  ru: {
+    inbox: 'Inbox',
+    title: 'Уведомления',
+    unreadOne: 'непрочитанное',
+    unreadFew: 'непрочитанных',
+    unreadMany: 'непрочитанных',
+    markAll: 'Прочитать всё',
+    empty: 'Пусто',
+    emptyDesc: 'Новые записи и события появятся здесь',
+    mutual: 'Взаимно',
+    follow: 'Подписаться',
+    locale: 'ru-RU',
+  },
+  en: {
+    inbox: 'Inbox',
+    title: 'Notifications',
+    unreadOne: 'unread',
+    unreadFew: 'unread',
+    unreadMany: 'unread',
+    markAll: 'Mark all read',
+    empty: 'Empty',
+    emptyDesc: 'New bookings and events will appear here',
+    mutual: 'Mutual',
+    follow: 'Follow',
+    locale: 'en-US',
+  },
+} as const;
+
+function pluralUnread(count: number, lang: 'uk' | 'ru' | 'en'): string {
+  const t = STR[lang];
+  if (lang === 'en') return count === 1 ? t.unreadOne : t.unreadFew;
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return t.unreadOne;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return t.unreadFew;
+  return t.unreadMany;
+}
+
 const NOTIF_ICONS: Record<string, typeof Bell> = {
   new_follower: UserPlus,
   mutual_follow: Users,
@@ -191,6 +243,8 @@ export default function ClientMiniAppNotifications() {
 
   const unreadCount = items.filter((n) => !n.read_at).length;
   const groups = groupByDay(items);
+  const lang = getLocale();
+  const t = STR[lang];
 
   return (
     <motion.div
@@ -201,10 +255,10 @@ export default function ClientMiniAppNotifications() {
     >
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">Inbox</p>
-          <h1 className="mt-1 text-2xl font-bold">Уведомления</h1>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">{t.inbox}</p>
+          <h1 className="mt-1 text-2xl font-bold">{t.title}</h1>
           {unreadCount > 0 && (
-            <p className="mt-0.5 text-[11px] text-neutral-500">{unreadCount} непрочитанных</p>
+            <p className="mt-0.5 text-[11px] text-neutral-500">{unreadCount} {pluralUnread(unreadCount, lang)}</p>
           )}
         </div>
         {unreadCount > 0 && (
@@ -212,7 +266,7 @@ export default function ClientMiniAppNotifications() {
             onClick={markAllRead}
             className="rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
           >
-            Прочитать всё
+            {t.markAll}
           </button>
         )}
       </div>
@@ -228,8 +282,8 @@ export default function ClientMiniAppNotifications() {
           <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-neutral-200 bg-white">
             <Inbox className="size-6 text-neutral-600" />
           </div>
-          <p className="mt-4 text-base font-semibold">Пусто</p>
-          <p className="mt-1 text-xs text-neutral-500">Новые записи и события появятся здесь</p>
+          <p className="mt-4 text-base font-semibold">{t.empty}</p>
+          <p className="mt-1 text-xs text-neutral-500">{t.emptyDesc}</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -267,7 +321,7 @@ export default function ClientMiniAppNotifications() {
                           <p className="truncate text-[13px] font-semibold">{n.title}</p>
                           <p className="mt-0.5 line-clamp-2 text-[11px] text-neutral-600">{n.body}</p>
                           <p className="mt-1 text-[10px] text-neutral-400">
-                            {new Date(n.sent_at ?? n.created_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(n.sent_at ?? n.created_at).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' })}
                             {' · '}
                             {n.channel}
                           </p>
@@ -290,9 +344,9 @@ export default function ClientMiniAppNotifications() {
                             {followState === 'loading' ? (
                               <Loader2 className="size-3 animate-spin" />
                             ) : followState === true ? (
-                              <><UserCheck className="size-3" /> Взаимно</>
+                              <><UserCheck className="size-3" /> {t.mutual}</>
                             ) : (
-                              <><UserPlus className="size-3" /> Подписаться</>
+                              <><UserPlus className="size-3" /> {t.follow}</>
                             )}
                           </button>
                         )}
@@ -300,7 +354,7 @@ export default function ClientMiniAppNotifications() {
                         {/* Mutual badge */}
                         {notifType === 'mutual_follow' && (
                           <span className="shrink-0 rounded-full border border-emerald-300 px-2.5 py-1 text-[10px] font-semibold text-emerald-600">
-                            Взаимно
+                            {t.mutual}
                           </span>
                         )}
                       </button>
