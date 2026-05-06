@@ -40,13 +40,33 @@ import { Bot, ArrowDown } from 'lucide-react';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
 import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
-const AI_PROMPTS = [
-  'Запиши на маникюр на завтра',
-  'Найди мастера в Печерском',
-  'Напомни о коррекции бровей',
-  'Что взять с собой?',
-] as const;
+// AI-чипы. Все 4 варианта реально срабатывают:
+//   1) find_slots (book) — найти свободные слоты + кликабельные карточки
+//   2) find_master — поиск мастера по запросу
+//   3) next_due — когда мне пора на повторный визит (по моей истории)
+//   4) prep — советы по подготовке к визиту
+const AI_PROMPTS_BY_LANG: Record<'uk' | 'ru' | 'en', readonly string[]> = {
+  uk: [
+    'Запиши на манікюр завтра',
+    'Знайди майстра поруч',
+    'Коли мені знову на корекцію?',
+    'Що взяти з собою на візит?',
+  ],
+  ru: [
+    'Запиши на маникюр завтра',
+    'Найди мастера рядом',
+    'Когда мне на коррекцию?',
+    'Что взять с собой на визит?',
+  ],
+  en: [
+    'Book me a manicure for tomorrow',
+    'Find a master nearby',
+    'When is my next touch-up?',
+    'What should I bring to the visit?',
+  ],
+};
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
@@ -198,6 +218,9 @@ export default function MiniAppSearchPage() {
   // AI consierge state
   const [aiOpen, setAiOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
+  // Локаль Mini App — для локализованных AI-чипов и интерфейса.
+  const lang = useMiniAppLocale();
+  const aiPrompts = AI_PROMPTS_BY_LANG[lang];
 
   // Follow state — what user already added to contacts (mastersById, salonsById)
   const [followedMasters, setFollowedMasters] = useState<Set<string>>(new Set());
@@ -571,7 +594,7 @@ export default function MiniAppSearchPage() {
           <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', margin: `0 -${PAGE_PADDING_X}px`, padding: `0 ${PAGE_PADDING_X}px` }}>
             <style>{`.ai-prompts::-webkit-scrollbar { display: none; }`}</style>
             <div className="ai-prompts" style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-              {AI_PROMPTS.map((prompt) => (
+              {aiPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   type="button"

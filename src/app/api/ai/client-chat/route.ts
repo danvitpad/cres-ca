@@ -202,7 +202,11 @@ export async function POST(req: Request) {
     let serverReply: string | null = null;
 
     // Алиас find → find_master (старые сессии)
-    const intent = parsed.intent === 'find' ? 'find_master' : parsed.intent;
+    // book → find_slots — клиент сказал «запиши на маникюр завтра», мы должны
+    // вернуть КЛИКАБЕЛЬНЫЕ слот-карточки (а не просто текст «ищу окна…»). После
+    // клика по карточке /api/ai/client-action создаёт реальную запись.
+    let intent = parsed.intent === 'find' ? 'find_master' : parsed.intent;
+    if (intent === 'book') intent = 'find_slots';
 
     if (intent === 'find_master' && parsed.params) {
       const params = { ...parsed.params };
