@@ -46,7 +46,10 @@ import {
   Check,
   X,
   UserPlus,
+  Clock,
 } from 'lucide-react';
+import { WorkingHoursEditor } from '@/components/shared/working-hours-editor';
+import { normalizeWorkingHours } from '@/lib/working-hours/normalize';
 import { FONT } from '@/lib/dashboard-theme';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import type { AppointmentData } from '@/hooks/use-appointments';
@@ -235,7 +238,7 @@ export default function CalendarPage() {
   /* Quick sale / quick payment state */
 
   /* Right-side drawer state */
-  type DrawerType = 'settings' | 'waitlist' | 'filters' | 'analytics' | 'blockTime' | null;
+  type DrawerType = 'settings' | 'waitlist' | 'filters' | 'analytics' | 'blockTime' | 'workingHours' | null;
   const [activeDrawer, setActiveDrawer] = useState<DrawerType>(null);
   const [blockTimeDefault, setBlockTimeDefault] = useState<string | undefined>(undefined);
   const [editingBlock, setEditingBlock] = useState<{ id: string; starts_at: string; ends_at: string; reason: string | null } | undefined>(undefined);
@@ -704,6 +707,18 @@ export default function CalendarPage() {
               )}
             </div>
 
+          {/* «Часы работы» — открывает drawer с мульти-интервальным редактором.
+              Шаблон расписания на каждую неделю. Конфликт-чек делает endpoint. */}
+          <button
+            onClick={() => setActiveDrawer('workingHours')}
+            title="Часы работы"
+            aria-label="Часы работы"
+            style={pillBtn(F, { paddingLeft: 12, paddingRight: 12, gap: 6 })}
+          >
+            <Clock style={{ width: 18, height: 18, flexShrink: 0 }} />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Часы работы</span>
+          </button>
+
           {/* "Добавить" split button — Fresha: dark/inverted */}
           <div ref={addDropdownRef} style={{ position: 'relative' }}>
             <button
@@ -1130,6 +1145,32 @@ export default function CalendarPage() {
             onSaved={refetch}
             onClose={() => setNewDrawerOpen(false)}
           />
+        </CalendarDrawer>
+
+        <CalendarDrawer
+          open={activeDrawer === 'workingHours'}
+          onClose={() => setActiveDrawer(null)}
+          title="Часы работы"
+          width={420}
+          theme={mounted && resolvedTheme === 'dark' ? 'dark' : 'light'}
+        >
+          <div style={{ padding: 20 }}>
+            <p style={{ marginBottom: 16, fontSize: 13, color: F.textMuted }}>
+              Когда тебе можно записаться. Клиенты увидят свободные слоты только в эти часы.
+              Можно добавить несколько окон в один день — например, до обеда и после.
+            </p>
+            <WorkingHoursEditor
+              initial={normalizeWorkingHours(master.working_hours)}
+              saveEndpoint="/api/me/working-hours"
+              lang="ru"
+              onSaved={() => {
+                setActiveDrawer(null);
+                refetch();
+                refetchAll();
+                toast.success('Расписание сохранено');
+              }}
+            />
+          </div>
         </CalendarDrawer>
 
         <CalendarDrawer
