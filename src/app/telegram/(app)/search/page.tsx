@@ -437,11 +437,17 @@ export default function MiniAppSearchPage() {
         ...FONT_BASE,
         display: 'flex',
         flexDirection: 'column',
-        // height (not minHeight) so child with flex:1 actually fills viewport.
-        // Map view in the right tab needs full vertical space — minHeight let
-        // the container collapse to its content height (~300px map collapsed).
-        height: view === 'map' ? '100dvh' : 'auto',
-        minHeight: '100dvh',
+        // height на map-view нужен FIX'енный, чтобы flex:1 у блока с картой
+        // получил конкретное число и Leaflet смог себя растянуть.
+        // Раньше было `100dvh` — но <main> снаружи имеет padding-bottom
+        // 81px (под floating bottom-nav) + tg-safe-area. В сумме страница
+        // получалась выше viewport на эти 81px и под картой появлялось
+        // пустое белое пространство (см. скрин Данила 2026-05-06).
+        // Вычитаем эти отступы:
+        height: view === 'map'
+          ? 'calc(100dvh - 81px - env(safe-area-inset-bottom, 0px) - var(--tg-content-top, 0px))'
+          : 'auto',
+        minHeight: view === 'map' ? undefined : '100dvh',
         background: T.bg,
         color: T.text,
       }}
