@@ -35,7 +35,7 @@ export function useUiPrefs() {
   const { setTheme: setNextTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname() ?? '/';
-  const [prefs, setPrefs] = useState<UiPrefs>({ theme: 'auto', language: 'ru' });
+  const [prefs, setPrefs] = useState<UiPrefs>({ theme: 'auto', language: 'uk' });
   const [loaded, setLoaded] = useState(false);
 
   // Initial load — once per session
@@ -46,7 +46,7 @@ export function useUiPrefs() {
       .then((data: { ui_theme?: UiTheme; ui_language?: UiLanguage } | null) => {
         if (cancelled || !data) { setLoaded(true); return; }
         const theme = (data.ui_theme ?? 'auto') as UiTheme;
-        const language = (data.ui_language ?? 'ru') as UiLanguage;
+        const language = (data.ui_language ?? 'uk') as UiLanguage;
         setPrefs({ theme, language });
         setNextTheme(theme === 'auto' ? 'system' : theme);
         setLoaded(true);

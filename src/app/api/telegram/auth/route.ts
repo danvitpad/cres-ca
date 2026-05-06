@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   const { data: profile } = await admin
     .from('profiles')
-    .select('id, role, full_name, first_name, last_name, phone, public_id, date_of_birth')
+    .select('id, role, full_name, first_name, last_name, phone, public_id, date_of_birth, ui_language')
     .eq('telegram_id', tg.id)
     .maybeSingle();
 
@@ -111,6 +111,11 @@ export async function POST(request: Request) {
     fullName: profile.first_name || profile.full_name,
     firstName: profile.first_name,
     lastName: profile.last_name,
+    // Возвращаем сохранённый язык — entry-страница положит в
+    // localStorage cres:locale и Mini App сразу подхватит правильный
+    // язык. Дефолт = uk (украинский), пока пользователь сам не сменит.
+    uiLanguage: (profile.ui_language === 'uk' || profile.ui_language === 'ru' || profile.ui_language === 'en')
+      ? profile.ui_language : 'uk',
     missing: needsPhone ? ['phone'] : [],
   });
 }

@@ -30,10 +30,12 @@ export async function GET() {
     .maybeSingle();
 
   const profile = data as { ui_theme?: string; ui_language?: string; public_language?: string } | null;
+  // Дефолт UI-языка для новых пользователей = 'uk' (правило 2026-05-06).
+  // public_language наследуется от ui_language, иначе тоже 'uk'.
   return NextResponse.json({
     ui_theme: profile?.ui_theme ?? 'auto',
-    ui_language: profile?.ui_language ?? 'ru',
-    public_language: profile?.public_language ?? profile?.ui_language ?? 'ru',
+    ui_language: profile?.ui_language ?? 'uk',
+    public_language: profile?.public_language ?? profile?.ui_language ?? 'uk',
   });
 }
 

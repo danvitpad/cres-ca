@@ -117,6 +117,17 @@ export default function TelegramEntryPage() {
         JSON.stringify({ initData, tgData: data.tgData ?? null, startParam }),
       );
 
+      // Синхронизируем сохранённый язык: если в profile уже есть ui_language —
+      // подтягиваем в localStorage чтобы Mini App открылся в правильном языке
+      // даже на новом устройстве. Иначе остаётся дефолт 'uk'.
+      try {
+        if (data.uiLanguage && ['uk', 'ru', 'en'].includes(data.uiLanguage)) {
+          localStorage.setItem('cres:locale', data.uiLanguage);
+        } else if (!localStorage.getItem('cres:locale')) {
+          localStorage.setItem('cres:locale', 'uk');
+        }
+      } catch {}
+
       if (data.linked && !data.needsRegistration) {
         setAuth(data.userId, data.role, data.tier, data.fullName);
 
