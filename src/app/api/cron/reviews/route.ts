@@ -15,15 +15,15 @@ type Lang = 'ru' | 'uk' | 'en';
 const FALLBACK_REVIEW: Record<Lang, { subject: string; body: string }> = {
   ru: {
     subject: '⭐ Оцените визит',
-    body: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста, кнопкой ниже. После — можно оставить комментарий.\n[review:{apt_id}]',
+    body: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста, кнопкой ниже. После — можно оставить комментарий.',
   },
   uk: {
     subject: '⭐ Оцініть візит',
-    body: 'Як пройшов візит?\nПослуга: {service_name}\nМайстер: {master_name}\n\nОцініть, будь ласка, кнопкою нижче. Потім — можна залишити коментар.\n[review:{apt_id}]',
+    body: 'Як пройшов візит?\nПослуга: {service_name}\nМайстер: {master_name}\n\nОцініть, будь ласка, кнопкою нижче. Потім — можна залишити коментар.',
   },
   en: {
     subject: '⭐ Rate your visit',
-    body: 'How was the visit?\nService: {service_name}\nMaster: {master_name}\n\nPlease rate using the buttons below. After — you can add a comment.\n[review:{apt_id}]',
+    body: 'How was the visit?\nService: {service_name}\nMaster: {master_name}\n\nPlease rate using the buttons below. After — you can add a comment.',
   },
 };
 
@@ -67,14 +67,19 @@ export async function GET(request: Request) {
     .eq('target_type', 'master');
   const reviewedSet = new Set((existingReviews ?? []).map((r) => r.appointment_id));
 
+  // Раньше dedup делался через регекс на body «[review:apt_id]» — сам apt_id жил
+  // в видимом тексте сообщения (некрасиво для клиента). Теперь dedup через
+  // notifications.data — apt_id больше не показывается пользователю.
+  // (Фикс 2026-05-06.)
   const { data: existingNotifs } = await supabase
     .from('notifications')
-    .select('body')
-    .like('body', '%[review:%');
+    .select('data')
+    .eq('data->>kind', 'review_request')
+    .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
   const notifiedSet = new Set<string>();
   (existingNotifs ?? []).forEach((n) => {
-    const m = n.body?.match(/\[review:([0-9a-f-]{36})\]/i);
-    if (m) notifiedSet.add(m[1]);
+    const aptId = (n as { data: { appointment_id?: string } | null }).data?.appointment_id;
+    if (aptId) notifiedSet.add(aptId);
   });
 
   const profileIds = appointments
@@ -125,16 +130,19 @@ export async function GET(request: Request) {
       master_name: masterName,
       apt_id: apt.id,
     });
-    const finalBody = rendered.body.includes(`[review:${apt.id}]`) ? rendered.body : `${rendered.body} [review:${apt.id}]`;
+    // Очищаем body от старого маркера [review:apt_id], если шаблон мастера его
+    // содержит — мы больше не показываем технический apt_id клиенту.
+    const finalBody = rendered.body.replace(/\s*\[review:[0-9a-f-]{36}\]/gi, '').trim();
 
-    // Native TG rating — 5 inline buttons. Webhook handles `review:<apt_id>:<stars>`
-    // and writes the score into the reviews table without a web round-trip.
+    // Native TG rating — 5 inline buttons «1⭐ 2⭐ 3⭐ 4⭐ 5⭐». Webhook handles
+    // `review:<apt_id>:<stars>` and writes the score into the reviews table
+    // without a web round-trip.
     const inlineKeyboard = [[
-      { text: '⭐', callback_data: `review:${apt.id}:1` },
-      { text: '⭐⭐', callback_data: `review:${apt.id}:2` },
-      { text: '⭐⭐⭐', callback_data: `review:${apt.id}:3` },
-      { text: '⭐⭐⭐⭐', callback_data: `review:${apt.id}:4` },
-      { text: '⭐⭐⭐⭐⭐', callback_data: `review:${apt.id}:5` },
+      { text: '1⭐', callback_data: `review:${apt.id}:1` },
+      { text: '2⭐', callback_data: `review:${apt.id}:2` },
+      { text: '3⭐', callback_data: `review:${apt.id}:3` },
+      { text: '4⭐', callback_data: `review:${apt.id}:4` },
+      { text: '5⭐', callback_data: `review:${apt.id}:5` },
     ]];
 
     await supabase.from('notifications').insert({

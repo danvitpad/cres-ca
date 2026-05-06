@@ -129,12 +129,12 @@ export async function POST(request: Request) {
   }
 
   // ── Review comment via force_reply ──
-  // The earlier callback (review:<apt_id>:<stars>) sent a force_reply prompt
-  // tagged with [review:<apt_id>]. When the user replies, we attach the text
-  // as the reviews.comment. Quick path before falling through to the rest.
-  const reviewReplyMatch = update.message.reply_to_message?.text?.match(/\[review:([0-9a-f-]{36})\]/i);
-  if (reviewReplyMatch) {
-    const apptId = reviewReplyMatch[1];
+  // Раньше связь reply ↔ review строилась через regex-маркер «[review:<apt_id>]»
+  // в тексте force_reply prompt'а — клиент видел этот хэш в чате (некрасиво).
+  // Теперь callback handler сохраняет message_id prompt'а в reviews.tg_prompt_message_id,
+  // а здесь ищем review по reply_to_message.message_id. Без видимых меток.
+  const replyToMsgId = update.message.reply_to_message?.message_id;
+  if (replyToMsgId) {
     const supabase = createServiceClient();
     const { data: profile } = await supabase
       .from('profiles').select('id').eq('telegram_id', telegramId).single();
@@ -142,18 +142,16 @@ export async function POST(request: Request) {
       const { data: existing } = await supabase
         .from('reviews')
         .select('id')
-        .eq('appointment_id', apptId)
-        .eq('target_type', 'master')
+        .eq('tg_prompt_message_id', replyToMsgId)
         .eq('reviewer_id', profile.id)
         .maybeSingle();
       if (existing) {
         await supabase.from('reviews').update({ comment: text.slice(0, 2000) }).eq('id', existing.id);
-        await sendMessage(chatId, '✅ Спасибо! Комментарий сохранён.');
-      } else {
-        await sendMessage(chatId, '⚠️ Сначала поставь оценку звёздочками — комментарий привязывается к ней.');
+        await sendMessage(chatId, '✅ Дякуємо! Коментар збережено.');
+        return NextResponse.json({ ok: true });
       }
+      // Не нашли — этот reply не связан с review-prompt'ом, fall through.
     }
-    return NextResponse.json({ ok: true });
   }
 
   const appUrl = `${process.env.NEXT_PUBLIC_APP_URL}/telegram`;
@@ -1594,22 +1592,38 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
         body: JSON.stringify({
           chat_id: chatId,
           message_id: cb.message.message_id,
-          text: `<b>Спасибо за оценку!</b>\nВы поставили ${'⭐'.repeat(stars)}`,
+          text: `<b>Дякуємо за оцінку!</b>\nВи поставили ${stars}⭐`,
           parse_mode: 'HTML',
         }),
       });
     } catch {}
 
-    // Ask for an optional text comment via force_reply. The reply_to_message
-    // marker «[review:<apt_id>]» is what the inbound-message handler keys off.
-    await sendMessage(
+    // Ask for an optional text comment via force_reply. Раньше в текст вшивали
+    // маркер «[review:<apt_id>]» — клиенту это было видно, некрасиво.
+    // Теперь сохраняем message_id force_reply prompt'а в reviews.tg_prompt_message_id,
+    // и при reply ищем review row по этому полю — без видимых хэш-меток.
+    // Клиент бот всегда на украинском (правило 2026-05-05).
+    const promptResponse = await sendMessage(
       chatId,
-      `Хочешь оставить комментарий? Просто ответь на это сообщение текстом.\n\n[review:${apptId}]`,
+      'Хочеш залишити коментар? Просто дай відповідь на це повідомлення текстом.',
       {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         reply_markup: { force_reply: true, selective: true } as any,
       },
     );
+    const promptMsgId = (promptResponse as { ok?: boolean; result?: { message_id?: number } } | null)?.result?.message_id;
+    if (promptMsgId) {
+      const reviewId = existing?.id ?? (await supabase
+        .from('reviews')
+        .select('id')
+        .eq('appointment_id', apptId)
+        .eq('target_type', 'master')
+        .eq('reviewer_id', profile.id)
+        .maybeSingle()).data?.id;
+      if (reviewId) {
+        await supabase.from('reviews').update({ tg_prompt_message_id: promptMsgId }).eq('id', reviewId);
+      }
+    }
     return;
   }
 
