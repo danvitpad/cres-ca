@@ -14,22 +14,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Globe, Wifi, Check } from 'lucide-react';
+import { Globe, Wifi } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
 interface MasterRow {
   id: string;
   profile_id: string | null;
-  slug: string | null;
   is_public: boolean | null;
   works_online: boolean | null;
 }
 
 // Тема публички больше НЕ выбирается мастером — она автоматически
-// следует за prefers-color-scheme пользователя. Раньше тут был
-// выбор «Светлая/Тёмная»; убран по запросу: страница должна
-// инвертироваться сама в зависимости от темы клиента.
+// следует за prefers-color-scheme пользователя.
+// CRES-CA ID редактируется прямо на чипе под hero-card (см. PublicCresIdBadge),
+// здесь оставлены только два главных тумблера: видимость страницы и онлайн-режим.
 
 export function OwnerInlineQuickSettings({
   masterProfileId,
@@ -38,8 +37,6 @@ export function OwnerInlineQuickSettings({
 }) {
   const [isOwner, setIsOwner] = useState(false);
   const [master, setMaster] = useState<MasterRow | null>(null);
-  const [draftSlug, setDraftSlug] = useState('');
-  const [slugError, setSlugError] = useState<string | null>(null);
   const [savingField, setSavingField] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,13 +47,10 @@ export function OwnerInlineQuickSettings({
       setIsOwner(true);
       const { data: row } = await supabase
         .from('masters')
-        .select('id, profile_id, slug, is_public, works_online')
+        .select('id, profile_id, is_public, works_online')
         .eq('profile_id', masterProfileId)
         .maybeSingle();
-      if (row) {
-        setMaster(row as unknown as MasterRow);
-        setDraftSlug((row as unknown as MasterRow).slug ?? '');
-      }
+      if (row) setMaster(row as unknown as MasterRow);
     });
   }, [masterProfileId]);
 
@@ -85,37 +79,6 @@ export function OwnerInlineQuickSettings({
     }
   }
 
-  async function saveSlug() {
-    setSlugError(null);
-    if (!draftSlug.trim()) {
-      setSlugError('Введите CRES-CA ID');
-      return;
-    }
-    if (draftSlug === master?.slug) return;
-    setSavingField('slug');
-    try {
-      const res = await fetch('/api/me/master-customization', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug: draftSlug.trim().toLowerCase() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const err = data as { error?: string; field?: string };
-        if (err.field === 'slug') {
-          setSlugError(err.error || 'Неверный CRES-CA ID');
-        } else {
-          toast.error(err.error || 'Не удалось сохранить');
-        }
-        return;
-      }
-      toast.success('CRES-CA ID обновлён. Обновите ссылку у клиентов!');
-      setTimeout(() => { window.location.href = `/m/${draftSlug.trim().toLowerCase()}`; }, 500);
-    } finally {
-      setSavingField(null);
-    }
-  }
-
   return (
     <div
       className="rounded-2xl border p-4 shadow-sm"
@@ -129,7 +92,6 @@ export function OwnerInlineQuickSettings({
         <h3 className="text-sm font-bold" style={{ color: 'var(--m-text)' }}>Управление страницей</h3>
       </div>
 
-      {/* Toggles */}
       <div className="space-y-2">
         <ToggleRow
           icon={<Globe className="size-4" />}
@@ -148,41 +110,6 @@ export function OwnerInlineQuickSettings({
           onChange={(v) => patch('works_online', v)}
         />
       </div>
-
-      {/* CRES-CA ID — одна строка, вертикальная компоновка чтобы не сжимался */}
-      <div className="mt-4 border-t border-neutral-100 pt-3">
-        <div className="mb-1.5 text-xs font-semibold text-neutral-700">CRES-CA ID</div>
-        <div className="rounded-md bg-neutral-100 px-2 py-1.5 text-[11px] font-mono text-neutral-500 truncate">
-          cres-ca.com/m/<span className="text-neutral-900">{master.slug ?? '...'}</span>
-        </div>
-        <div className="mt-2 flex items-center gap-2">
-          <input
-            type="text"
-            value={draftSlug}
-            onChange={(e) => {
-              setDraftSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-              setSlugError(null);
-            }}
-            placeholder="ваш-id"
-            maxLength={32}
-            className="flex-1 min-w-0 rounded-md border border-neutral-200 bg-white px-2 py-1.5 text-xs font-mono outline-none focus:border-[var(--ds-accent,#14b8a6)]"
-            style={slugError ? { borderColor: '#ef4444' } : undefined}
-          />
-          <button
-            type="button"
-            onClick={saveSlug}
-            disabled={savingField === 'slug' || !draftSlug.trim() || draftSlug === master.slug}
-            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--ds-accent,#14b8a6)] text-white disabled:opacity-40"
-            title="Сохранить"
-          >
-            <Check className="size-4" />
-          </button>
-        </div>
-        {slugError && <p className="mt-1 text-[11px] text-rose-500">{slugError}</p>}
-      </div>
-
-      {/* Тема страницы больше не выбирается — следует за prefers-color-scheme
-          пользователя. См. /m/[handle]/page.tsx комментарий о теме. */}
     </div>
   );
 }

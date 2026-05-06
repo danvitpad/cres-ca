@@ -694,7 +694,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
             {/* CRES-CA ID — публичный handle, клик копирует ссылку */}
             {(master.slug || master.invite_code) && (
               <div className="flex justify-center">
-                <PublicCresIdBadge handle={master.slug || master.invite_code!} />
+                <PublicCresIdBadge
+                  handle={master.slug || master.invite_code!}
+                  masterProfileId={master.profile_id}
+                />
               </div>
             )}
             {/* Кнопка «Подписаться» теперь живёт внутри PublicHeroCard,
