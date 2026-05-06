@@ -113,6 +113,14 @@ interface DayViewProps {
   blockedTimes?: BlockedTime[];
   workStart: number;
   workEnd: number;
+  /**
+   * Multi-interval рабочих окон в МИНУТАХ от начала суток. Если передано —
+   * перекрывает workStart/workEnd: визуальная подсветка рабочего фона + проверка
+   * isSlotWorking учитывают каждый интервал отдельно.
+   * Пустой массив = весь день нерабочий (выходной).
+   * Не передано = legacy fallback на workStart/workEnd как одно окно.
+   */
+  workIntervals?: Array<{ startMin: number; endMin: number }>;
   masterName?: string;
   masterAvatar?: string | null;
   masterId?: string;
@@ -146,6 +154,7 @@ export function DayView({
   blockedTimes = [],
   workStart,
   workEnd,
+  workIntervals,
   masterName,
   masterAvatar,
   masterId,
@@ -195,12 +204,18 @@ export function DayView({
     return () => clearInterval(interval);
   }, []);
 
-  /* ── Scroll to work start ── */
+  /* ── Scroll to work start. Если есть workIntervals — скроллим к началу
+       первого. Если выходной — на 9 утра (чтобы не упирались в 00:00). ── */
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = Math.max(0, workStart * HOUR_HEIGHT - HOUR_HEIGHT);
-    }
-  }, [workStart, date]);
+    if (!scrollRef.current) return;
+    const targetMin = workIntervals && workIntervals.length > 0
+      ? workIntervals[0].startMin
+      : workStart * 60;
+    scrollRef.current.scrollTop = Math.max(0, (targetMin / 60) * HOUR_HEIGHT - HOUR_HEIGHT);
+    // workIntervals - reference; меняется на каждый рендер если родитель не
+    // мемоизирует, но это OK для этого эффекта (scroll идемпотентен).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workStart, date, JSON.stringify(workIntervals ?? null)]);
 
   /* ── Helpers ── */
   const currentTimeY = (currentMinute / 60) * HOUR_HEIGHT;
@@ -245,7 +260,16 @@ export function DayView({
   }
 
   function isSlotWorking(i: number) {
-    const h = (i * SLOT_MINUTES) / 60;
+    const slotMin = i * SLOT_MINUTES;
+    if (workIntervals) {
+      // Multi-interval mode (новый формат). Рабочий слот = попадает в любой
+      // интервал. Если массив пуст — день полностью нерабочий.
+      return workIntervals.some(
+        (iv) => slotMin >= iv.startMin && slotMin < iv.endMin,
+      );
+    }
+    // Legacy fallback на workStart/workEnd как одно окно
+    const h = slotMin / 60;
     return h >= workStart && h < workEnd;
   }
 
@@ -476,17 +500,38 @@ export function DayView({
             }}
           />
 
-          {/* Working hours overlay */}
-          <div
-            style={{
-              position: 'absolute',
-              top: workHighlightTop,
-              left: TIME_COL_WIDTH,
-              right: 0,
-              height: workHighlightHeight,
-              backgroundColor: C.pageBg,
-            }}
-          />
+          {/* Working hours overlay — multi-interval. Каждое рабочее окно
+              рисуется белым прямоугольником поверх non-working фона. Если
+              workIntervals пуст — overlay'ев нет, день полностью серый. */}
+          {workIntervals
+            ? workIntervals.map((iv, i) => {
+                const top = (iv.startMin / 60) * HOUR_HEIGHT;
+                const height = ((iv.endMin - iv.startMin) / 60) * HOUR_HEIGHT;
+                return (
+                  <div
+                    key={`work-${i}`}
+                    style={{
+                      position: 'absolute',
+                      top, height,
+                      left: TIME_COL_WIDTH,
+                      right: 0,
+                      backgroundColor: C.pageBg,
+                    }}
+                  />
+                );
+              })
+            : (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: workHighlightTop,
+                  left: TIME_COL_WIDTH,
+                  right: 0,
+                  height: workHighlightHeight,
+                  backgroundColor: C.pageBg,
+                }}
+              />
+            )}
 
           {/* ── Grid lines — 10-min intervals, labels at :00 with suffix, sub-labels at :30 ── */}
           {Array.from({ length: TOTAL_HOURS * INTERVALS_PER_HOUR }, (_, i) => {

@@ -23,6 +23,12 @@ interface WeekViewProps {
   appointments: AppointmentData[];
   onDayClick: (date: Date) => void;
   onAppointmentClick: (appointment: AppointmentData) => void;
+  /**
+   * Multi-interval рабочих окон на каждый день недели. Ключи: monday/.../sunday.
+   * Каждое окно — startMin/endMin от начала суток. Пустой массив у дня = выходной.
+   * Не передано = legacy fallback (9-18 на все дни).
+   */
+  workIntervalsByDay?: Record<string, Array<{ startMin: number; endMin: number }>>;
 }
 
 const DAY_KEYS = [
@@ -34,6 +40,7 @@ export function WeekView({
   appointments,
   onDayClick,
   onAppointmentClick,
+  workIntervalsByDay,
 }: WeekViewProps) {
   const t = useTranslations('profile');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -127,32 +134,44 @@ export function WeekView({
           {/* Day columns */}
           {days.map((day, dayIndex) => {
             const dayAppts = getApptsForDay(day);
+            // Per-day рабочие интервалы. Если задан workIntervalsByDay — используем,
+            // иначе legacy fallback 9-18 как одно окно.
+            const dayKey = DAY_KEYS[dayIndex];
+            const intervals = workIntervalsByDay
+              ? (workIntervalsByDay[dayKey] ?? [])
+              : [{ startMin: WORK_START * 60, endMin: WORK_END * 60 }];
 
             return (
               <div
                 key={dayIndex}
                 className="flex-1 relative border-l border-border/30"
               >
-                {/* Hour grid lines + non-working zones */}
-                {Array.from({ length: TOTAL_HOURS }, (_, hour) => {
-                  const isWorking = hour >= WORK_START && hour < WORK_END;
-                  return (
+                {/* Серый фон всей колонки — нерабочее время */}
+                <div className="absolute inset-0 bg-muted/30" />
+                {/* Поверх — белые полосы рабочих окон */}
+                {intervals.map((iv, i) => (
+                  <div
+                    key={`work-${i}`}
+                    className="absolute left-0 right-0 bg-background"
+                    style={{
+                      top: (iv.startMin / 60) * HOUR_HEIGHT,
+                      height: ((iv.endMin - iv.startMin) / 60) * HOUR_HEIGHT,
+                    }}
+                  />
+                ))}
+                {/* Часовые линии (поверх фона) */}
+                {Array.from({ length: TOTAL_HOURS }, (_, hour) => (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 border-t border-border/30"
+                    style={{ top: hour * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                  >
                     <div
-                      key={hour}
-                      className={cn(
-                        'absolute left-0 right-0 border-t border-border/30',
-                        !isWorking && 'bg-muted/30',
-                      )}
-                      style={{ top: hour * HOUR_HEIGHT, height: HOUR_HEIGHT }}
-                    >
-                      {/* Half-hour line */}
-                      <div
-                        className="absolute left-0 right-0 border-t border-border/15"
-                        style={{ top: HOUR_HEIGHT / 2 }}
-                      />
-                    </div>
-                  );
-                })}
+                      className="absolute left-0 right-0 border-t border-border/15"
+                      style={{ top: HOUR_HEIGHT / 2 }}
+                    />
+                  </div>
+                ))}
 
                 {/* Appointments */}
                 {dayAppts.map((appt) => {

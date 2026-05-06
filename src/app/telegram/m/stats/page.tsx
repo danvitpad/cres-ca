@@ -14,6 +14,102 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+const I18N: Record<MiniAppLang, {
+  paymentMethods: readonly string[];
+  expenseCategories: readonly string[];
+  defaultExpenseCat: string;
+  periodToday: string; periodWeek: string; periodMonth: string;
+  income: string; expense: string;
+  kpiRevenue: string; kpiBookings: string; kpiAvgCheck: string; kpiCompleted: string;
+  kpiCompletedSub: (done: number, total: number) => string;
+  noShowText: (n: number) => string; noShowHint: string;
+  topServices: string; noData: string; noDataHint: string;
+  newIncome: string; newExpense: string;
+  amountLabel: string; amountPh: string;
+  clientLabel: string; clientPh: string; serviceLabel: string; servicePh: string;
+  payMethodLabel: string;
+  noteLabel: string; notePh: string;
+  catLabel: string;
+  descLabel: string; descPh: string;
+  vendorLabel: string; vendorPh: string;
+  saving: string; save: string;
+  errInvalidAmount: string; errNoInitData: string; errGeneric: string;
+}> = {
+  uk: {
+    paymentMethods: ['Готівка', 'Картка', 'Переказ'],
+    expenseCategories: ['Витратники', 'Оренда', 'Податки', 'Реклама', 'Обладнання', 'Їжа', 'Транспорт', 'Комунальні', 'Інше'],
+    defaultExpenseCat: 'Інше',
+    periodToday: 'Сьогодні', periodWeek: '7 днів', periodMonth: '30 днів',
+    income: 'Дохід', expense: 'Витрата',
+    kpiRevenue: 'Виручка', kpiBookings: 'Записів', kpiAvgCheck: 'Середній чек', kpiCompleted: 'Виконано',
+    kpiCompletedSub: (d, t) => `${d} із ${t}`,
+    noShowText: (n) => `${n} не прийшло`,
+    noShowHint: 'Спробуй вимагати передплату для нових клієнтів',
+    topServices: 'Топ-послуги', noData: 'Ще немає даних',
+    noDataHint: 'Починай приймати клієнтів — статистика зʼявиться автоматично',
+    newIncome: 'Новий дохід', newExpense: 'Нова витрата',
+    amountLabel: 'Сума, ₴', amountPh: '0',
+    clientLabel: 'Клієнт (опційно)', clientPh: 'Почни друкувати імʼя',
+    serviceLabel: 'Послуга (опційно)', servicePh: 'Почни друкувати назву',
+    payMethodLabel: 'Спосіб оплати',
+    noteLabel: 'Нотатка', notePh: 'Напр. «постійний клієнт»',
+    catLabel: 'Категорія',
+    descLabel: 'Опис', descPh: 'Що купив / за що платиш',
+    vendorLabel: 'Постачальник (опційно)', vendorPh: 'Магазин / компанія',
+    saving: 'Зберігаю…', save: 'Зберегти',
+    errInvalidAmount: 'Введи коректну суму', errNoInitData: 'Немає initData', errGeneric: 'Помилка',
+  },
+  ru: {
+    paymentMethods: ['Наличные', 'Карта', 'Перевод'],
+    expenseCategories: ['Расходники', 'Аренда', 'Налоги', 'Реклама', 'Оборудование', 'Еда', 'Транспорт', 'Коммунальные', 'Другое'],
+    defaultExpenseCat: 'Другое',
+    periodToday: 'Сегодня', periodWeek: '7 дней', periodMonth: '30 дней',
+    income: 'Доход', expense: 'Расход',
+    kpiRevenue: 'Выручка', kpiBookings: 'Записей', kpiAvgCheck: 'Средний чек', kpiCompleted: 'Выполнено',
+    kpiCompletedSub: (d, t) => `${d} из ${t}`,
+    noShowText: (n) => `${n} не пришло`,
+    noShowHint: 'Попробуй требовать предоплату для новых клиентов',
+    topServices: 'Топ-услуги', noData: 'Ещё нет данных',
+    noDataHint: 'Начни принимать клиентов — статистика появится автоматически',
+    newIncome: 'Новый доход', newExpense: 'Новый расход',
+    amountLabel: 'Сумма, ₴', amountPh: '0',
+    clientLabel: 'Клиент (опционально)', clientPh: 'Начни печатать имя',
+    serviceLabel: 'Услуга (опционально)', servicePh: 'Начни печатать название',
+    payMethodLabel: 'Способ оплаты',
+    noteLabel: 'Заметка', notePh: 'Напр. «постоянный клиент»',
+    catLabel: 'Категория',
+    descLabel: 'Описание', descPh: 'Что купил / за что платишь',
+    vendorLabel: 'Поставщик (опционально)', vendorPh: 'Магазин / компания',
+    saving: 'Сохраняю…', save: 'Сохранить',
+    errInvalidAmount: 'Введи корректную сумму', errNoInitData: 'Нет initData', errGeneric: 'Ошибка',
+  },
+  en: {
+    paymentMethods: ['Cash', 'Card', 'Transfer'],
+    expenseCategories: ['Supplies', 'Rent', 'Taxes', 'Marketing', 'Equipment', 'Food', 'Transport', 'Utilities', 'Other'],
+    defaultExpenseCat: 'Other',
+    periodToday: 'Today', periodWeek: '7 days', periodMonth: '30 days',
+    income: 'Income', expense: 'Expense',
+    kpiRevenue: 'Revenue', kpiBookings: 'Bookings', kpiAvgCheck: 'Avg check', kpiCompleted: 'Completed',
+    kpiCompletedSub: (d, t) => `${d} of ${t}`,
+    noShowText: (n) => `${n} no-shows`,
+    noShowHint: 'Try requiring deposit for new clients',
+    topServices: 'Top services', noData: 'No data yet',
+    noDataHint: 'Start booking clients — stats will appear automatically',
+    newIncome: 'New income', newExpense: 'New expense',
+    amountLabel: 'Amount, ₴', amountPh: '0',
+    clientLabel: 'Client (optional)', clientPh: 'Start typing a name',
+    serviceLabel: 'Service (optional)', servicePh: 'Start typing a name',
+    payMethodLabel: 'Payment method',
+    noteLabel: 'Note', notePh: 'E.g. «regular client»',
+    catLabel: 'Category',
+    descLabel: 'Description', descPh: 'What you bought / paid for',
+    vendorLabel: 'Vendor (optional)', vendorPh: 'Store / company',
+    saving: 'Saving…', save: 'Save',
+    errInvalidAmount: 'Enter a valid amount', errNoInitData: 'No initData', errGeneric: 'Error',
+  },
+};
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -40,12 +136,11 @@ interface AptRow {
   service_name: string;
 }
 
-const PAYMENT_METHODS = ['Наличные', 'Карта', 'Перевод'] as const;
-const EXPENSE_CATEGORIES = ['Расходники', 'Аренда', 'Налоги', 'Реклама', 'Оборудование', 'Еда', 'Транспорт', 'Коммунальные', 'Другое'] as const;
-
 export default function MasterMiniAppStats() {
   const { ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
   const [period, setPeriod] = useState<Period>('week');
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AptRow[]>([]);
@@ -146,7 +241,7 @@ export default function MasterMiniAppStats() {
                 period === p ? 'bg-white text-black' : 'text-neutral-600'
               }`}
             >
-              {p === 'today' ? 'Сегодня' : p === 'week' ? '7 дней' : '30 дней'}
+              {p === 'today' ? t.periodToday : p === 'week' ? t.periodWeek : t.periodMonth}
             </button>
           ))}
         </div>
@@ -299,6 +394,8 @@ function FinanceEntryForm({
   onSuccess: () => void;
 }) {
   const { haptic } = useTelegram();
+  const lang = useMiniAppLocale();
+  const tForm = I18N[lang];
   const [amount, setAmount] = useState('');
   const [a, setA] = useState('');
   const [b, setB] = useState('');
@@ -417,7 +514,7 @@ function FinanceEntryForm({
           <div>
             <label className="text-[11px] uppercase tracking-wide text-neutral-400">Способ оплаты</label>
             <div className="mt-2 grid grid-cols-2 gap-2">
-              {PAYMENT_METHODS.map((m) => (
+              {tForm.paymentMethods.map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -436,7 +533,7 @@ function FinanceEntryForm({
           <div>
             <label className="text-[11px] uppercase tracking-wide text-neutral-400">Категория</label>
             <div className="mt-2 flex flex-wrap gap-2">
-              {EXPENSE_CATEGORIES.map((cat) => (
+              {tForm.expenseCategories.map((cat) => (
                 <button
                   key={cat}
                   type="button"

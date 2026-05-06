@@ -350,9 +350,10 @@ export default function CalendarPage() {
 
   function refetchAll() { refetch(); refetchBlocked(); }
 
-  // Multi-interval working_hours (миграция 2026-05-05). Берём
-  // первый и последний интервалы дня для скролла к рабочим часам в
-  // календарной сетке. Если день выходной — фолбэк 9-18.
+  // Multi-interval working_hours (миграция 2026-05-05). Передаём в DayView /
+  // ThreeDayView как массив интервалов в минутах — каждое рабочее окно
+  // отображается отдельным белым прямоугольником поверх серого «нерабочего» фона.
+  // workStart/workEnd — legacy props для скролла на ~первое окно.
   const dayHoursNorm = useMemo(
     () => normalizeWorkingHours(master?.working_hours),
     [master?.working_hours],
@@ -360,8 +361,32 @@ export default function CalendarPage() {
   const dayKey = ([
     'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday',
   ] as const)[currentDate.getDay()];
-  // JS sun=0 → нам нужен 'sunday' ключ нашего объекта (он есть). OK как есть.
   const dayInfo = dayHoursNorm[dayKey as keyof typeof dayHoursNorm];
+  const dayWorkIntervals = useMemo(
+    () => dayInfo.enabled
+      ? dayInfo.intervals.map((iv) => {
+          const [sh, sm] = iv.start.split(':').map(Number);
+          const [eh, em] = iv.end.split(':').map(Number);
+          return { startMin: sh * 60 + sm, endMin: eh * 60 + em };
+        })
+      : [],
+    [dayInfo],
+  );
+  // Для week/3-day views — все 7 дней сразу.
+  const weekWorkIntervalsByDay = useMemo(() => {
+    const out: Record<string, Array<{ startMin: number; endMin: number }>> = {};
+    for (const k of ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const) {
+      const info = dayHoursNorm[k];
+      out[k] = info.enabled
+        ? info.intervals.map((iv) => {
+            const [sh, sm] = iv.start.split(':').map(Number);
+            const [eh, em] = iv.end.split(':').map(Number);
+            return { startMin: sh * 60 + sm, endMin: eh * 60 + em };
+          })
+        : [];
+    }
+    return out;
+  }, [dayHoursNorm]);
   const firstIv = dayInfo.enabled ? dayInfo.intervals[0] : null;
   const lastIv = dayInfo.enabled ? dayInfo.intervals[dayInfo.intervals.length - 1] : null;
   const workStart = firstIv ? parseInt(firstIv.start.split(':')[0]) : 9;
@@ -794,6 +819,7 @@ export default function CalendarPage() {
               blockedTimes={blockedTimes}
               workStart={workStart}
               workEnd={workEnd}
+              workIntervals={dayWorkIntervals}
               masterName={master.salon_id ? master.profile?.full_name : undefined}
               masterAvatar={master.salon_id ? master.profile?.avatar_url : undefined}
               showMasterHeader={!!master.salon_id}
@@ -843,6 +869,7 @@ export default function CalendarPage() {
             <WeekView
               weekStart={startDate}
               appointments={appointments}
+              workIntervalsByDay={weekWorkIntervalsByDay}
               onDayClick={(d) => {
                 setCurrentDate(d);
                 setView('day');
