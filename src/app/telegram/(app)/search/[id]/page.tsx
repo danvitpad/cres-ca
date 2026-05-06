@@ -120,12 +120,15 @@ const DAY_NAMES_FULL: Record<string, string> = {
 };
 const JS_DAY_TO_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 
+// Подписи табов синхронизированы с публичной страницей мастера /m/{handle}
+// чтобы клиент не видел два разных языка для одного и того же раздела:
+// «Работы» (не «Портфолио»), «Адрес» (не «Контакты») и т.д.
 const TAB_ITEMS = [
   { key: 'services', label: 'Услуги' },
-  { key: 'portfolio', label: 'Портфолио' },
+  { key: 'portfolio', label: 'Работы' },
   { key: 'reviews', label: 'Отзывы' },
+  { key: 'about', label: 'Адрес' },
   { key: 'partners', label: 'Рекомендую' },
-  { key: 'about', label: 'Контакты' },
 ] as const;
 
 type TabKey = (typeof TAB_ITEMS)[number]['key'];
