@@ -47,11 +47,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Read mode
+  // Read mode — embed referrer master (если клиент пришёл от партнёра).
   const { data: client } = await admin
     .from('clients')
     .select(
-      'id, full_name, phone, email, date_of_birth, notes, allergies, contraindications, has_health_alert, behavior_indicators, total_visits, total_spent, avg_check, last_visit_at',
+      'id, full_name, phone, email, date_of_birth, notes, allergies, contraindications, has_health_alert, behavior_indicators, total_visits, total_spent, avg_check, last_visit_at, referrer_master_id, referrer:masters!clients_referrer_master_id_fkey(display_name, profile:profiles!masters_profile_id_fkey(full_name))',
     )
     .eq('id', client_id)
     .eq('master_id', master.id)

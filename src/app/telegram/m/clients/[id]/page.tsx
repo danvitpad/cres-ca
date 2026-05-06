@@ -121,6 +121,9 @@ interface ClientFull {
   total_spent: number;
   avg_check: number;
   last_visit_at: string | null;
+  referrer_master_id?: string | null;
+  /** Embed из API: имя мастера-партнёра, который привёл клиента (через партнёрскую ссылку). */
+  referrer?: { display_name: string | null; profile: { full_name: string | null } | { full_name: string | null }[] | null } | null;
 }
 
 interface VisitRow {
@@ -263,6 +266,17 @@ export default function MasterMiniAppClientCard() {
             )}
           </div>
           {client.phone && <p className="mt-0.5 text-[11px] text-neutral-600">{client.phone}</p>}
+          {(() => {
+            // Партнёрская атрибуция — клиент пришёл с публичной страницы
+            // другого мастера через партнёрскую ссылку.
+            const r = client.referrer ? (Array.isArray(client.referrer) ? client.referrer[0] : client.referrer) : null;
+            const refProfile = r ? (Array.isArray(r.profile) ? r.profile[0] : r.profile) : null;
+            const refName = r?.display_name ?? refProfile?.full_name ?? null;
+            if (!refName) return null;
+            return (
+              <p className="mt-1 text-[11px] font-medium text-emerald-700">🤝 Пришёл от {refName}</p>
+            );
+          })()}
         </div>
       </div>
 

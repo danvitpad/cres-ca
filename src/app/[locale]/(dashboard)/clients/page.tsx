@@ -16,6 +16,7 @@ import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { formatPhone } from '@/lib/phone';
 import { useMaster } from '@/hooks/use-master';
+import { useSubscription } from '@/hooks/use-subscription';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -804,6 +805,9 @@ function PartnersSection({ C }: { C: PageTheme }) {
   const [incoming, setIncoming] = useState<PartnerItem[]>([]);
   const [outgoing, setOutgoing] = useState<PartnerItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const sub = useSubscription();
+  const canReorder = sub.canUse('partners_custom_order');
 
   // Search
   const [q, setQ] = useState('');
@@ -820,6 +824,38 @@ function PartnersSection({ C }: { C: PageTheme }) {
     }
     setLoading(false);
   }, []);
+
+  async function persistOrder(items: PartnerItem[]) {
+    try {
+      await fetch('/api/partners/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ordered_ids: items.map((p) => p.id) }),
+      });
+    } catch { /* ignore — UI уже показывает новый порядок, пересохранится при следующем drag */ }
+  }
+
+  function onDragStart(id: string) { setDragId(id); }
+  function onDragOver(targetId: string, e: React.DragEvent) {
+    e.preventDefault();
+    if (!dragId || dragId === targetId) return;
+    setActive((prev) => {
+      const fromIdx = prev.findIndex((p) => p.id === dragId);
+      const toIdx = prev.findIndex((p) => p.id === targetId);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+  }
+  function onDragEnd() {
+    if (dragId) {
+      // Persist последний порядок
+      void persistOrder(active);
+    }
+    setDragId(null);
+  }
 
   useEffect(() => { load(); }, [load]);
 
@@ -990,9 +1026,22 @@ function PartnersSection({ C }: { C: PageTheme }) {
 
       {/* Active partners */}
       <div>
-        <h3 style={{ fontSize: 13, fontWeight: 650, color: C.textSecondary, margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          Мои партнёры ({active.length})
-        </h3>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 650, color: C.textSecondary, margin: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Мои партнёры ({active.length})
+          </h3>
+          {active.length > 1 && (
+            canReorder ? (
+              <span style={{ fontSize: 11, color: C.textTertiary }}>
+                Перетащи чтобы изменить порядок на публичной странице
+              </span>
+            ) : (
+              <span title="Доступно в подписке Business" style={{ fontSize: 11, color: C.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                🔒 Порядок — Business
+              </span>
+            )
+          )}
+        </div>
         {active.length === 0 ? (
           <EmptyState
             icon={<Heart className="w-6 h-6" />}
@@ -1002,7 +1051,19 @@ function PartnersSection({ C }: { C: PageTheme }) {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
             {active.map(p => (
-              <div key={p.id} style={cardBase}>
+              <div
+                key={p.id}
+                draggable={canReorder}
+                onDragStart={() => canReorder && onDragStart(p.id)}
+                onDragOver={(e) => canReorder && onDragOver(p.id, e)}
+                onDragEnd={onDragEnd}
+                style={{
+                  ...cardBase,
+                  opacity: dragId === p.id ? 0.5 : 1,
+                  cursor: canReorder ? 'grab' : 'default',
+                  transition: 'opacity 0.15s ease',
+                }}
+              >
                 <Link
                   href={`/partners/${p.id}`}
                   style={{

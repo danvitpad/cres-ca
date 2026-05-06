@@ -59,7 +59,8 @@ export type SubscriptionFeature =
   | 'salon_marketing'      // Рассылки от лица салона
   | 'unified_catalog'      // Единый каталог команды (salon_services)
   | 'payouts'              // Payouts мастерам, commission %
-  | 'marketplace_publish'; // Авто-публикация на CRES-CA marketplace
+  | 'marketplace_publish'  // Авто-публикация на CRES-CA marketplace
+  | 'partners_custom_order'; // Drag&drop порядка партнёров на публичной странице (BUSINESS)
 
 const STARTER_FEATURES: SubscriptionFeature[] = [
   'calendar', 'online_booking', 'basic_client_cards', 'reminders', 'basic_finance',
@@ -83,6 +84,8 @@ const BUSINESS_FEATURES: SubscriptionFeature[] = [
   'file_storage', 'equipment_booking', 'priority_support',
   // Step 13: BUSINESS даёт инструменты команды
   'team_management', 'salon_marketing', 'unified_catalog', 'payouts',
+  // 2026-05-06: drag&drop порядка партнёров на публичной странице
+  'partners_custom_order',
 ];
 
 export const SUBSCRIPTION_CONFIG: Record<SubscriptionTier, SubscriptionLimits> = {
