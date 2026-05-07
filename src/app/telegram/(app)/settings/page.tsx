@@ -45,10 +45,7 @@ const I18N: Record<Lang, {
   darkTheme: string; darkManual: string; darkAuto: string;
   language: string; langOptions: string;
   privacy: string; privacyDesc: string;
-  feedback: string; feedbackDesc: string;
-  helpTitle: string; helpDesc: string; helpLink: string;
-  accountTitle: string; accountDesc: string;
-  signOut: string; signingOut: string;
+  support: string; supportDesc: string;
   contactSheet: string; save: string;
   pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
   pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
@@ -62,10 +59,7 @@ const I18N: Record<Lang, {
     darkTheme: 'Темна тема', darkManual: 'Вручну', darkAuto: 'Як у Telegram',
     language: 'Мова', langOptions: 'Українська · Русский · English',
     privacy: 'Приватність', privacyDesc: 'Що бачать майстри та команди',
-    feedback: 'Зворотній зв\'язок', feedbackDesc: 'Напишіть або запишіть голосом',
-    helpTitle: 'Потрібна допомога?', helpDesc: 'Напишіть у', helpLink: 'Telegram-бот',
-    accountTitle: 'Дії з обліковим записом', accountDesc: 'Експорт даних та видалення облікового запису доступні у веб-версії:',
-    signOut: 'Вийти з акаунту', signingOut: 'Виходимо...',
+    support: 'Підтримка', supportDesc: 'Напишіть або запишіть голосом у Telegram-бот',
     contactSheet: 'Контактні дані', save: 'Зберегти',
     pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
     pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
@@ -81,10 +75,7 @@ const I18N: Record<Lang, {
     darkTheme: 'Тёмная тема', darkManual: 'Вручную', darkAuto: 'Как в Telegram',
     language: 'Язык', langOptions: 'Українська · Русский · English',
     privacy: 'Приватность', privacyDesc: 'Что видят мастера и команды',
-    feedback: 'Обратная связь', feedbackDesc: 'Напишите или запишите голосом',
-    helpTitle: 'Нужна помощь?', helpDesc: 'Напишите в', helpLink: 'Telegram-бот',
-    accountTitle: 'Действия с учётной записью', accountDesc: 'Экспорт данных и удаление учётной записи доступны в веб-версии:',
-    signOut: 'Выйти из аккаунта', signingOut: 'Выходим...',
+    support: 'Поддержка', supportDesc: 'Напишите или запишите голосом в Telegram-бот',
     contactSheet: 'Контактные данные', save: 'Сохранить',
     pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
     pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
@@ -100,10 +91,7 @@ const I18N: Record<Lang, {
     darkTheme: 'Dark theme', darkManual: 'Manual', darkAuto: 'Follow Telegram',
     language: 'Language', langOptions: 'Українська · Русский · English',
     privacy: 'Privacy', privacyDesc: 'What masters and teams see',
-    feedback: 'Feedback', feedbackDesc: 'Write or record a voice message',
-    helpTitle: 'Need help?', helpDesc: 'Message us in', helpLink: 'Telegram bot',
-    accountTitle: 'Account actions', accountDesc: 'Data export and account deletion are available in the web version:',
-    signOut: 'Sign out', signingOut: 'Signing out...',
+    support: 'Support', supportDesc: 'Write or record a voice message to Telegram bot',
     contactSheet: 'Contact info', save: 'Save',
     pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
     pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
@@ -347,26 +335,9 @@ export default function MiniAppSettingsPage() {
           <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.title}</h1>
         </div>
 
-        {/* Contact info */}
+        {/* Email/Phone карточка убрана — эти поля теперь редактируются в
+            «Профіль → Редагувати». Кнопка смены пароля живёт самостоятельно. */}
         <div style={cardStyle}>
-          <button type="button" onClick={openContactEdit} style={rowStyle}>
-            <div style={iconBox}><Mail size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-          <div style={divider} />
-          <button type="button" onClick={openContactEdit} style={rowStyle}>
-            <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-          <div style={divider} />
           <button
             type="button"
             onClick={() => {
@@ -434,100 +405,31 @@ export default function MiniAppSettingsPage() {
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
           <div style={divider} />
-          <Link href="/telegram/settings/feedback" onClick={() => haptic('light')} style={rowStyle}>
-            <div style={{ ...iconBox, borderColor: 'rgba(244,63,94,0.2)', background: 'rgba(244,63,94,0.08)' }}>
-              <Heart size={16} color="#f43f5e" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.feedback}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.feedbackDesc}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </Link>
-        </div>
-
-        {/* Support note */}
-        <div
-          style={{
-            background: T.surface,
-            border: `1px solid ${T.borderSubtle}`,
-            borderRadius: R.lg,
-            padding: '14px 16px',
-            fontSize: 13,
-            lineHeight: 1.6,
-            color: T.textSecondary,
-            boxShadow: SHADOW.card,
-          }}
-        >
-          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, marginBottom: 4 }}>{t.helpTitle}</p>
-          {t.helpDesc}{' '}
+          {/* Зворотній зв'язок + Потрібна допомога? слиты в один пункт
+              «Підтримка» — все три раньше вели в один и тот же Telegram-бот.
+              Голосовое/текстовое сообщение принимает сам бот, поэтому
+              отдельной страницы /telegram/settings/feedback больше не нужно. */}
           <a
             href="https://t.me/crescacom_bot"
             target="_blank"
             rel="noopener noreferrer"
-            style={{ color: T.accent, fontWeight: 600, textDecoration: 'none' }}
+            onClick={() => haptic('light')}
+            style={{ ...rowStyle, textDecoration: 'none' }}
           >
-            {t.helpLink}
-          </a>.
-        </div>
-
-        {/* Web-only actions notice */}
-        <div
-          style={{
-            background: T.surface,
-            border: `1px solid ${T.borderSubtle}`,
-            borderRadius: R.lg,
-            padding: '14px 16px',
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: T.textSecondary,
-            boxShadow: SHADOW.card,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
-            {t.accountTitle}
-          </div>
-          {t.accountDesc}&nbsp;
-          <a
-            href="https://cres-ca.com/ru/account-settings"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: T.accent, fontWeight: 500, textDecoration: 'none' }}
-          >
-            cres-ca.com
+            <div style={{ ...iconBox, borderColor: 'rgba(244,63,94,0.2)', background: 'rgba(244,63,94,0.08)' }}>
+              <Heart size={16} color="#f43f5e" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.support}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.supportDesc}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
           </a>
         </div>
 
-        {/* Sign out */}
-        <button
-          type="button"
-          onClick={signOut}
-          disabled={signingOut}
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            width: '100%',
-            padding: '16px',
-            borderRadius: R.lg,
-            border: `1px solid ${T.borderSubtle}`,
-            background: T.surface,
-            boxShadow: SHADOW.card,
-            color: T.danger,
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: signingOut ? 'wait' : 'pointer',
-            fontFamily: 'inherit',
-            opacity: signingOut ? 0.6 : 1,
-            overflow: 'hidden',
-          }}
-        >
-          <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: T.danger }} />
-          {signingOut ? <Loader2 size={16} className="animate-spin" /> : <LogOut size={16} />}
-          {signingOut ? t.signingOut : t.signOut}
-        </button>
+        {/* «Дії з обліковим записом» / Sign out blocks убраны — Sign out
+            живёт в Профілі (главной cтранице юзера), экспорт/удаление
+            аккаунта доступен в веб-версии без отдельной плашки. */}
       </motion.div>
 
       {/* Contact edit bottom sheet */}

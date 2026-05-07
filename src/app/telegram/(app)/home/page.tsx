@@ -297,7 +297,9 @@ export default function MiniAppHomePage() {
           </Link>
         ) : null}
 
-        {/* Твои постоянные — мастер+услуга где было ≥3 визитов */}
+        {/* Твои постоянные — мастер+услуга где было ≥3 визитов.
+            paddingX добавлен чтобы заголовок и первая карточка не лепились
+            к левому краю экрана (раньше прилипало в Mini App клиента). */}
         {regulars.length > 0 && (
           <div style={{ marginTop: 12 }}>
             <SectionHeader title={t.regulars} rightLabel="" />
@@ -306,7 +308,7 @@ export default function MiniAppHomePage() {
                 display: 'flex',
                 gap: 8,
                 overflowX: 'auto',
-                paddingBottom: 4,
+                padding: `0 ${PAGE_PADDING_X}px 4px`,
                 scrollSnapType: 'x mandatory',
                 WebkitOverflowScrolling: 'touch',
               }}
