@@ -108,6 +108,43 @@ export async function GET(request: NextRequest) {
     .lte('starts_at', dayEnd)
     .gte('ends_at', dayStart);
 
+  // Записи текущего клиента у ДРУГИХ мастеров на эту же дату.
+  // Если клиент уже записан 11:00-12:00 у мастера A, при попытке записаться
+  // 11:30 у мастера B произошёл бы конфликт по личному календарю клиента —
+  // он не может быть в двух местах одновременно. Поэтому добавляем все его
+  // existing записи в busySlots для текущего расчёта.
+  // Если запрос анонимный (нет сессии) — пропускаем эту проверку.
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // У клиента может быть несколько client-rows (по одной на каждого
+      // мастера к которому он записывался). Берём все, чтобы найти все
+      // appointments принадлежащие этому профилю.
+      const { data: clientRows } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('profile_id', user.id);
+      const clientIds = (clientRows ?? []).map((c: { id: string }) => c.id);
+      if (clientIds.length > 0) {
+        const { data: clientAppts } = await supabase
+          .from('appointments')
+          .select('starts_at, ends_at')
+          .in('client_id', clientIds)
+          .gte('starts_at', dayStart)
+          .lte('starts_at', dayEnd)
+          .not('status', 'in', '("cancelled","cancelled_by_client","cancelled_by_master","no_show")');
+        for (const a of clientAppts ?? []) {
+          const s = timeToMinutes(new Date(a.starts_at).toTimeString().slice(0, 5));
+          const e = timeToMinutes(new Date(a.ends_at).toTimeString().slice(0, 5));
+          busySlots.push({ start: s, end: e });
+        }
+      }
+    }
+  } catch {
+    // Auth check is best-effort — если не получилось, продолжаем без блокировки
+    // личного календаря клиента (он сам увидит конфликт при попытке записи).
+  }
+
   for (const b of blocks ?? []) {
     const bs = new Date(b.starts_at);
     const be = new Date(b.ends_at);
