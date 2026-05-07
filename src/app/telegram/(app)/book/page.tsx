@@ -32,6 +32,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T } from '@/components/miniapp/design';
+import { formatMoney } from '@/lib/format/money';
 
 /* ─────────────────── Types ─────────────────── */
 
@@ -904,8 +905,8 @@ export default function MiniAppBookPage() {
                           <motion.div
                             className="flex size-7 items-center justify-center rounded-full border-[1.5px] transition-colors"
                             style={{
-                              borderColor: isSelected ? '#7c3aed' : T.borderSubtle,
-                              background: isSelected ? '#7c3aed' : 'transparent',
+                              borderColor: isSelected ? VIOLET : T.borderSubtle,
+                              background: isSelected ? VIOLET : 'transparent',
                             }}
                             animate={{ scale: isSelected ? [1, 1.15, 1] : 1 }}
                             transition={{ duration: 0.25 }}
@@ -937,7 +938,7 @@ export default function MiniAppBookPage() {
                         {/* Price */}
                         <div className="shrink-0 pt-0.5">
                           <p className="text-[14px] font-bold" style={{ color: T.text }}>
-                            {formatPrice(Number(service.price))} {service.currency}
+                            {formatMoney(service.price, service.currency)}
                           </p>
                         </div>
                       </motion.button>
@@ -986,7 +987,7 @@ export default function MiniAppBookPage() {
                     style={{
                       border: `1px solid ${T.borderSubtle}`,
                       background: T.surface,
-                      color: showFullCalendar ? '#7c3aed' : T.textSecondary,
+                      color: showFullCalendar ? VIOLET : T.textSecondary,
                     }}
                   >
                     <CalendarIcon className="size-4" />
@@ -1027,8 +1028,8 @@ export default function MiniAppBookPage() {
                               className="flex shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2.5 transition-colors"
                               style={{
                                 minWidth: 56,
-                                background: isSelected ? '#7c3aed' : off ? T.bgSubtle : T.surface,
-                                border: `1px solid ${isSelected ? '#7c3aed' : T.borderSubtle}`,
+                                background: isSelected ? VIOLET : off ? T.bgSubtle : T.surface,
+                                border: `1px solid ${isSelected ? VIOLET : T.borderSubtle}`,
                                 opacity: off ? 0.55 : 1,
                                 cursor: off ? 'not-allowed' : 'pointer',
                               }}
@@ -1116,7 +1117,7 @@ export default function MiniAppBookPage() {
                               onClick={() => handleSelectDate(day)}
                               className="flex size-10 items-center justify-center rounded-xl text-[13px] font-medium transition-colors"
                               style={{
-                                background: isSelected ? '#7c3aed' : 'transparent',
+                                background: isSelected ? VIOLET : 'transparent',
                                 color: isSelected ? '#fff' : off ? T.textDisabled : T.text,
                                 border: isToday && !isSelected ? `1px solid ${T.border}` : 'none',
                                 opacity: off ? 0.35 : 1,
@@ -1382,16 +1383,11 @@ export default function MiniAppBookPage() {
                     {selectedServices.map((service) => {
                       return (
                         <div key={service.id} className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[14px] font-semibold" style={{ color: T.text }}>
-                              {service.name}
-                            </p>
-                            <p className="mt-0.5 text-[12px]" style={{ color: T.textSecondary }}>
-                              {formatDuration(service.duration_minutes)} {t.withMaster(masterName)}
-                            </p>
-                          </div>
+                          <p className="min-w-0 flex-1 text-[14px] font-semibold" style={{ color: T.text }}>
+                            {service.name}
+                          </p>
                           <p className="shrink-0 text-[14px] font-bold" style={{ color: T.text }}>
-                            {formatPrice(Number(service.price))} {service.currency}
+                            {formatMoney(service.price, service.currency)}
                           </p>
                         </div>
                       );
@@ -1404,7 +1400,7 @@ export default function MiniAppBookPage() {
                   <div className="flex items-center justify-between p-5">
                     <p className="text-[14px] font-medium" style={{ color: T.textSecondary }}>{t.totalToPay}</p>
                     <p className="text-[20px] font-bold" style={{ color: T.text }}>
-                      {formatPrice(totalPrice)} {currency}
+                      {formatMoney(totalPrice, currency)}
                     </p>
                   </div>
                 </motion.div>
@@ -1453,7 +1449,7 @@ export default function MiniAppBookPage() {
                   className="mb-3 text-center text-[13px]"
                   style={{ color: T.textSecondary }}
                 >
-                  {formatPrice(totalPrice)} {currency} · {selectedServices.length}{' '}
+                  {formatMoney(totalPrice, currency)} · {selectedServices.length}{' '}
                   {pluralServices(selectedServices.length)} · {formatDuration(totalDuration)}
                 </motion.p>
               )}
@@ -1481,12 +1477,8 @@ export default function MiniAppBookPage() {
               className="fixed inset-x-0 bottom-0 z-40 px-4 pb-8 pt-4"
               style={{ borderTop: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-[13px]" style={{ color: T.textSecondary }}>{t.payInShop}</span>
-                <span className="text-[16px] font-bold" style={{ color: T.text }}>
-                  {formatPrice(totalPrice)} {currency}
-                </span>
-              </div>
+              {/* Раньше тут была строка «До сплати на місці · 1 ₴» — она
+                  дублировала «Всього до сплати» из самой карточки. Убрали. */}
               <button
                 onClick={handleConfirm}
                 disabled={submitting}
