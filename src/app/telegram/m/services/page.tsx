@@ -1,28 +1,32 @@
 /** --- YAML
  * name: MasterMiniAppServicesTab
- * description: Услуги мастера как отдельный таб (4-й слот). Read-only список
- *              активных услуг + ссылка на веб-дашборд для добавления/редактирования.
- *              Раньше был re-export из settings/services, но SettingsShell внутри
- *              рендерил кнопку «Назад», которая на табе не нужна — теперь свой
- *              лейаут с PageHeader без back-кнопки.
+ * description: Услуги мастера (4-й таб). Native CRUD без выхода в браузер:
+ *              кнопка «+ Добавить» открывает bottom-sheet с полями
+ *              (название, длительность, цена, описание, цвет). Тап на
+ *              существующую услугу — тот же sheet в режиме edit с
+ *              кнопками «В архив» / «Активировать» и «Удалить».
+ *              CRUD через service-role endpoint /api/telegram/m/service-mutate.
+ *              Архив показывается отдельной секцией ниже активных.
  * created: 2026-05-07
  * --- */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Scissors, Clock, ArrowUpRight, Plus } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { getInitData } from '@/lib/telegram/webapp';
+import { createClient } from '@/lib/supabase/client';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
-import { T, R, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface Service {
   id: string;
   name: string;
+  description: string | null;
   duration_minutes: number;
   price: number;
   currency: string;
@@ -30,39 +34,70 @@ interface Service {
   color: string | null;
 }
 
+const COLORS = ['#2dd4bf', '#a78bfa', '#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#ec4899', '#64748b'];
+
 const I18N: Record<MiniAppLang, {
   title: string;
   subtitle: (active: number, archived: number) => string;
   empty: string; emptyHint: string;
-  add: string; addHint: string;
+  add: string;
+  archived: string;
   minutes: string;
+  sheetCreate: string; sheetEdit: string;
+  fieldName: string; fieldDuration: string; fieldPrice: string; fieldDescription: string; fieldColor: string;
+  placeholderName: string; placeholderDescription: string;
+  save: string; saving: string;
+  archiveBtn: string; restoreBtn: string; deleteBtn: string;
+  deleteConfirm: string;
+  errName: string; errDuration: string; errPrice: string; errSave: string;
 }> = {
   uk: {
     title: 'Послуги і ціни',
     subtitle: (a, ar) => `${a} активних · ${ar} в архіві`,
-    empty: 'Поки немає послуг',
-    emptyHint: 'Створи послугу у веб-дашборді',
-    add: 'Додати / редагувати',
-    addHint: 'Редагування цін та послуг — у веб-дашборді.',
+    empty: 'Поки немає послуг', emptyHint: 'Створи свою першу — тапни «+ Додати»',
+    add: 'Додати послугу',
+    archived: 'В архіві',
     minutes: 'хв',
+    sheetCreate: 'Нова послуга', sheetEdit: 'Редагувати послугу',
+    fieldName: 'Назва', fieldDuration: 'Тривалість, хв', fieldPrice: 'Ціна, ₴',
+    fieldDescription: 'Опис (опційно)', fieldColor: 'Колір',
+    placeholderName: 'Стрижка, манікюр…', placeholderDescription: 'Що включено, особливості…',
+    save: 'Зберегти', saving: 'Зберігаємо…',
+    archiveBtn: 'В архів', restoreBtn: 'Активувати', deleteBtn: 'Видалити',
+    deleteConfirm: 'Видалити послугу повністю?',
+    errName: 'Введи назву', errDuration: 'Введи тривалість', errPrice: 'Введи ціну', errSave: 'Не вдалось зберегти',
   },
   ru: {
     title: 'Услуги и цены',
     subtitle: (a, ar) => `${a} активных · ${ar} в архиве`,
-    empty: 'Пока нет услуг',
-    emptyHint: 'Создай услугу в веб-дашборде',
-    add: 'Добавить / редактировать',
-    addHint: 'Редактирование цен и услуг — в веб-дашборде.',
+    empty: 'Пока нет услуг', emptyHint: 'Создай первую — тапни «+ Добавить»',
+    add: 'Добавить услугу',
+    archived: 'В архиве',
     minutes: 'мин',
+    sheetCreate: 'Новая услуга', sheetEdit: 'Редактировать услугу',
+    fieldName: 'Название', fieldDuration: 'Длительность, мин', fieldPrice: 'Цена, ₴',
+    fieldDescription: 'Описание (опционально)', fieldColor: 'Цвет',
+    placeholderName: 'Стрижка, маникюр…', placeholderDescription: 'Что включено, особенности…',
+    save: 'Сохранить', saving: 'Сохраняем…',
+    archiveBtn: 'В архив', restoreBtn: 'Активировать', deleteBtn: 'Удалить',
+    deleteConfirm: 'Удалить услугу полностью?',
+    errName: 'Введи название', errDuration: 'Введи длительность', errPrice: 'Введи цену', errSave: 'Не удалось сохранить',
   },
   en: {
     title: 'Services & prices',
     subtitle: (a, ar) => `${a} active · ${ar} archived`,
-    empty: 'No services yet',
-    emptyHint: 'Create a service in the web dashboard',
-    add: 'Add / edit',
-    addHint: 'Editing prices and services — in the web dashboard.',
+    empty: 'No services yet', emptyHint: 'Create your first — tap «+ Add»',
+    add: 'Add service',
+    archived: 'Archived',
     minutes: 'min',
+    sheetCreate: 'New service', sheetEdit: 'Edit service',
+    fieldName: 'Name', fieldDuration: 'Duration, min', fieldPrice: 'Price, ₴',
+    fieldDescription: 'Description (optional)', fieldColor: 'Color',
+    placeholderName: 'Haircut, manicure…', placeholderDescription: 'What’s included, details…',
+    save: 'Save', saving: 'Saving…',
+    archiveBtn: 'Archive', restoreBtn: 'Activate', deleteBtn: 'Delete',
+    deleteConfirm: 'Delete service permanently?',
+    errName: 'Enter name', errDuration: 'Enter duration', errPrice: 'Enter price', errSave: 'Failed to save',
   },
 };
 
@@ -71,64 +106,50 @@ export default function MasterMiniAppServicesTab() {
   const { haptic } = useTelegram();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
-
-  function openEditor() {
-    haptic('light');
-    // Полный редактор услуг живёт в веб-кабинете. Открываем во внешнем
-    // браузере (не в Telegram WebView): WebView без cookie session
-    // редиректит на главную = календарь, и пользователь не попадает
-    // куда хотел. openLink использует системный браузер с живой сессией.
-    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/${lang}/services`;
-    const w = window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } };
-    if (w.Telegram?.WebApp?.openLink) {
-      w.Telegram.WebApp.openLink(url);
-    } else {
-      window.open(url, '_blank');
-    }
-  }
   const [items, setItems] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [sheet, setSheet] = useState<{ mode: 'create' | 'edit'; service?: Service } | null>(null);
 
   useEffect(() => {
     if (!userId) return;
+    let cancelled = false;
     (async () => {
       const supabase = createClient();
       const { data: master } = await supabase
         .from('masters').select('id').eq('profile_id', userId).maybeSingle();
+      if (cancelled) return;
       if (!master) { setLoading(false); return; }
       const { data } = await supabase
         .from('services')
-        .select('id, name, duration_minutes, price, currency, is_active, color')
+        .select('id, name, description, duration_minutes, price, currency, is_active, color')
         .eq('master_id', master.id)
-        .order('name');
+        .order('is_active', { ascending: false })
+        .order('price', { ascending: false });
+      if (cancelled) return;
       setItems((data as Service[] | null) ?? []);
       setLoading(false);
     })();
-  }, [userId]);
+    return () => { cancelled = true; };
+  }, [userId, refreshKey]);
 
-  const activeCount = items.filter((s) => s.is_active).length;
+  const active = items.filter((s) => s.is_active);
+  const archived = items.filter((s) => !s.is_active);
 
   return (
     <MobilePage>
-      <PageHeader title={t.title} subtitle={loading ? undefined : t.subtitle(activeCount, items.length - activeCount)} />
+      <PageHeader title={t.title} subtitle={loading ? undefined : t.subtitle(active.length, archived.length)} />
 
       <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {loading ? (
           [0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{ height: 64, borderRadius: R.md, background: T.bgSubtle }}
-              className="animate-pulse"
-            />
+            <div key={i} style={{ height: 64, borderRadius: R.md, background: T.bgSubtle }} />
           ))
         ) : items.length === 0 ? (
           <div
             style={{
-              padding: 28,
-              border: `1px dashed ${T.border}`,
-              borderRadius: R.md,
-              background: T.surface,
-              textAlign: 'center',
+              padding: 28, border: `1px dashed ${T.border}`, borderRadius: R.md,
+              background: T.surface, textAlign: 'center',
             }}
           >
             <div
@@ -144,74 +165,373 @@ export default function MasterMiniAppServicesTab() {
             <p style={{ marginTop: 4, fontSize: 11, color: T.textTertiary }}>{t.emptyHint}</p>
           </div>
         ) : (
-          items.map((s, i) => (
-            <motion.div
-              key={s.id}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.02 }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 14px',
-                borderRadius: R.md,
-                border: `1px solid ${T.borderSubtle}`,
-                background: s.is_active ? T.surface : T.bgSubtle,
-                opacity: s.is_active ? 1 : 0.6,
-                boxShadow: SHADOW.card,
-              }}
-            >
-              <span
-                style={{ width: 10, height: 10, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.name}
+          <>
+            {active.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
+
+            {archived.length > 0 && (
+              <>
+                <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: '12px 4px 4px' }}>
+                  {t.archived}
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11, color: T.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <Clock size={11} />
-                  {s.duration_minutes} {t.minutes}
-                </p>
-              </div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
-                {Number(s.price).toFixed(0)}{' '}
-                <span style={{ fontSize: 11, fontWeight: 500, color: T.textTertiary }}>
-                  {s.currency === 'UAH' ? '₴' : s.currency}
-                </span>
-              </p>
-            </motion.div>
-          ))
+                {archived.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
+              </>
+            )}
+          </>
         )}
 
         <button
           type="button"
-          onClick={openEditor}
+          onClick={() => { haptic('light'); setSheet({ mode: 'create' }); }}
           style={{
             marginTop: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             padding: '14px 16px',
             borderRadius: R.md,
             border: `1px solid ${T.accent}`,
             background: T.accentSoft,
             color: T.accent,
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
+            fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
           <Plus size={16} strokeWidth={2.4} />
           {t.add}
-          <ArrowUpRight size={13} strokeWidth={2.4} />
         </button>
-        <p style={{ textAlign: 'center', fontSize: 11, color: T.textTertiary, marginTop: 4 }}>
-          {t.addHint}
-        </p>
       </div>
+
+      <AnimatePresence>
+        {sheet && (
+          <ServiceSheet
+            mode={sheet.mode}
+            service={sheet.service}
+            t={t}
+            onClose={() => setSheet(null)}
+            onSaved={() => { setSheet(null); setRefreshKey((k) => k + 1); }}
+          />
+        )}
+      </AnimatePresence>
     </MobilePage>
   );
+}
+
+function ServiceRowCard({ s, i, t, onTap }: { s: Service; i: number; t: typeof I18N['ru']; onTap: () => void }) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onTap}
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.02 }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 14px', borderRadius: R.md,
+        border: `1px solid ${T.borderSubtle}`,
+        background: s.is_active ? T.surface : T.bgSubtle,
+        opacity: s.is_active ? 1 : 0.6,
+        boxShadow: SHADOW.card,
+        cursor: 'pointer',
+        textAlign: 'left',
+        fontFamily: 'inherit',
+        width: '100%',
+      }}
+    >
+      <span style={{ width: 10, height: 10, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {s.name}
+        </p>
+        <p style={{ margin: '2px 0 0', fontSize: 11, color: T.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <Clock size={11} />
+          {s.duration_minutes} {t.minutes}
+        </p>
+      </div>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
+        {Number(s.price).toFixed(0)}{' '}
+        <span style={{ fontSize: 11, fontWeight: 500, color: T.textTertiary }}>
+          {s.currency === 'UAH' ? '₴' : s.currency}
+        </span>
+      </p>
+    </motion.button>
+  );
+}
+
+function ServiceSheet({ mode, service, t, onClose, onSaved }: {
+  mode: 'create' | 'edit';
+  service?: Service;
+  t: typeof I18N['ru'];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [name, setName] = useState(service?.name ?? '');
+  const [duration, setDuration] = useState(String(service?.duration_minutes ?? 60));
+  const [price, setPrice] = useState(String(service?.price ?? ''));
+  const [description, setDescription] = useState(service?.description ?? '');
+  const [color, setColor] = useState<string>(service?.color ?? COLORS[0]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  async function callMutate(payload: Record<string, unknown>) {
+    const initData = getInitData();
+    const res = await fetch('/api/telegram/m/service-mutate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || j.error || 'failed');
+    }
+    return res.json();
+  }
+
+  async function save() {
+    if (busy) return;
+    setErr(null);
+    const n = name.trim();
+    if (!n) { setErr(t.errName); return; }
+    const dur = Number(duration.replace(',', '.'));
+    if (!Number.isFinite(dur) || dur <= 0) { setErr(t.errDuration); return; }
+    const pr = Number(price.replace(',', '.'));
+    if (!Number.isFinite(pr) || pr < 0) { setErr(t.errPrice); return; }
+
+    setBusy(true);
+    try {
+      if (mode === 'create') {
+        await callMutate({
+          action: 'create',
+          name: n, duration_minutes: dur, price: pr,
+          description: description.trim() || null,
+          color,
+        });
+      } else if (service) {
+        await callMutate({
+          action: 'update', id: service.id,
+          name: n, duration_minutes: dur, price: pr,
+          description: description.trim() || null,
+          color,
+        });
+      }
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.errSave);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function archiveOrRestore() {
+    if (!service || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await callMutate({
+        action: service.is_active ? 'archive' : 'restore',
+        id: service.id,
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.errSave);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteService() {
+    if (!service || busy) return;
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setBusy(true);
+    setErr(null);
+    try {
+      // Soft-delete через archive — реальный DELETE может оставить orphans в
+      // appointments. Архив = is_active=false.
+      await callMutate({ action: 'archive', id: service.id });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.errSave);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => !busy && onClose()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 80,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+      }}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={SPRING.default}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+          background: T.surface,
+          padding: `20px ${PAGE_PADDING_X}px`,
+          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          boxShadow: SHADOW.elevated,
+          maxHeight: '90dvh', overflowY: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>
+            {mode === 'create' ? t.sheetCreate : t.sheetEdit}
+          </h3>
+          <button
+            type="button" onClick={() => !busy && onClose()}
+            aria-label="Закрыть"
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: `1px solid ${T.border}`, background: T.surface,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            }}
+          >
+            <X size={16} color={T.text} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Field label={t.fieldName}>
+            <input
+              autoFocus={mode === 'create'}
+              value={name}
+              onChange={(e) => setName(e.target.value.slice(0, 120))}
+              placeholder={t.placeholderName}
+              style={inputStyle}
+            />
+          </Field>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Field label={t.fieldDuration}>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                style={inputStyle}
+              />
+            </Field>
+            <Field label={t.fieldPrice}>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={price}
+                onChange={(e) => setPrice(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+                style={inputStyle}
+              />
+            </Field>
+          </div>
+
+          <Field label={t.fieldDescription}>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
+              placeholder={t.placeholderDescription}
+              rows={3}
+              style={{ ...inputStyle, resize: 'none' }}
+            />
+          </Field>
+
+          <Field label={t.fieldColor}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  aria-label={c}
+                  style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: c,
+                    border: c === color ? `3px solid ${T.text}` : `1px solid ${T.borderSubtle}`,
+                    cursor: 'pointer', padding: 0,
+                  }}
+                />
+              ))}
+            </div>
+          </Field>
+
+          {err && <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{err}</p>}
+
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy}
+            style={{
+              marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: '14px 16px', borderRadius: R.md, border: 'none',
+              background: T.text, color: T.bg,
+              fontSize: 15, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
+              fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {busy ? t.saving : t.save}
+          </button>
+
+          {mode === 'edit' && service && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={archiveOrRestore}
+                disabled={busy}
+                style={secondaryBtn(false)}
+              >
+                {service.is_active ? <Archive size={14} /> : <RotateCcw size={14} />}
+                {service.is_active ? t.archiveBtn : t.restoreBtn}
+              </button>
+              <button
+                type="button"
+                onClick={deleteService}
+                disabled={busy}
+                style={secondaryBtn(true)}
+              >
+                <Trash2 size={14} />
+                {confirmDelete ? t.deleteConfirm : t.deleteBtn}
+              </button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 12 }}>
+      <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: 0 }}>
+        {label}
+      </p>
+      <div style={{ marginTop: 4 }}>{children}</div>
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'transparent', border: 'none', outline: 'none',
+  ...TYPE.body, color: T.text, fontFamily: 'inherit',
+};
+
+function secondaryBtn(danger: boolean): React.CSSProperties {
+  return {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: '10px 12px', borderRadius: R.pill,
+    border: `1px solid ${danger ? T.dangerSoft : T.border}`,
+    background: danger ? T.dangerSoft : T.surface,
+    color: danger ? T.danger : T.text,
+    fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+  };
 }
