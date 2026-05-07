@@ -27,6 +27,7 @@ const I18N: Record<MiniAppLang, {
   kpiCompletedSub: (done: number, total: number) => string;
   noShowText: (n: number) => string; noShowHint: string;
   topServices: string; noData: string; noDataHint: string;
+  allOperations: string; opVisit: string; opIncome: string; opExpense: string; opEmpty: string;
   newIncome: string; newExpense: string;
   amountLabel: string; amountPh: string;
   clientLabel: string; clientPh: string; serviceLabel: string; servicePh: string;
@@ -50,6 +51,8 @@ const I18N: Record<MiniAppLang, {
     noShowHint: 'Спробуй вимагати передплату для нових клієнтів',
     topServices: 'Топ-послуги', noData: 'Ще немає даних',
     noDataHint: 'Починай приймати клієнтів — статистика зʼявиться автоматично',
+    allOperations: 'Усі операції', opVisit: 'Візит', opIncome: 'Дохід', opExpense: 'Витрата',
+    opEmpty: 'Поки немає операцій за цей період',
     newIncome: 'Новий дохід', newExpense: 'Нова витрата',
     amountLabel: 'Сума, ₴', amountPh: '0',
     clientLabel: 'Клієнт (опційно)', clientPh: 'Почни друкувати імʼя',
@@ -74,6 +77,8 @@ const I18N: Record<MiniAppLang, {
     noShowHint: 'Попробуй требовать предоплату для новых клиентов',
     topServices: 'Топ-услуги', noData: 'Ещё нет данных',
     noDataHint: 'Начни принимать клиентов — статистика появится автоматически',
+    allOperations: 'Все операции', opVisit: 'Визит', opIncome: 'Доход', opExpense: 'Расход',
+    opEmpty: 'Пока нет операций за этот период',
     newIncome: 'Новый доход', newExpense: 'Новый расход',
     amountLabel: 'Сумма, ₴', amountPh: '0',
     clientLabel: 'Клиент (опционально)', clientPh: 'Начни печатать имя',
@@ -98,6 +103,8 @@ const I18N: Record<MiniAppLang, {
     noShowHint: 'Try requiring deposit for new clients',
     topServices: 'Top services', noData: 'No data yet',
     noDataHint: 'Start booking clients — stats will appear automatically',
+    allOperations: 'All operations', opVisit: 'Visit', opIncome: 'Income', opExpense: 'Expense',
+    opEmpty: 'No operations for this period yet',
     newIncome: 'New income', newExpense: 'New expense',
     amountLabel: 'Amount, ₴', amountPh: '0',
     clientLabel: 'Client (optional)', clientPh: 'Start typing a name',
@@ -137,6 +144,15 @@ interface AptRow {
   service_name: string;
 }
 
+interface OpRow {
+  id: string;
+  kind: 'visit' | 'income' | 'expense';
+  amount: number;
+  label: string;
+  sublabel: string | null;
+  date: string;
+}
+
 export default function MasterMiniAppStats() {
   const { ready, haptic } = useTelegram();
   const { userId } = useAuthStore();
@@ -146,6 +162,7 @@ export default function MasterMiniAppStats() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<AptRow[]>([]);
   const [manualIncomeTotal, setManualIncomeTotal] = useState(0);
+  const [operations, setOperations] = useState<OpRow[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sheetOpen, setSheetOpen] = useState<null | 'income' | 'expense'>(null);
 
@@ -154,11 +171,13 @@ export default function MasterMiniAppStats() {
     (async () => {
       setLoading(true);
       const initData = getInitData();
-      if (!initData) { setLoading(false); return; }
       const res = await fetch('/api/telegram/m/stats', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, period }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ initData: initData ?? null, period }),
       });
       if (!res.ok) { setLoading(false); return; }
       const json = await res.json();
@@ -181,6 +200,7 @@ export default function MasterMiniAppStats() {
       });
       setRows(mapped);
       setManualIncomeTotal(Number(json.manual_income_total ?? 0));
+      setOperations((json.operations ?? []) as OpRow[]);
       setLoading(false);
     })();
   }, [userId, period, refreshKey]);
@@ -330,7 +350,53 @@ export default function MasterMiniAppStats() {
               </div>
             )}
 
-            {rows.length === 0 && (
+            {/* Все операции — единый список визитов / доходов / расходов
+                за выбранный период, отсортирован по дате DESC. По запросу
+                Данила: «На странице финансы должна быть таблицы всех
+                доходов и всех расходов». */}
+            <div>
+              <h2 className="mb-3 text-sm font-semibold">{t.allOperations}</h2>
+              {operations.length === 0 ? (
+                <p className="text-[12px] text-neutral-500">{t.opEmpty}</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {operations.map((op) => {
+                    const isDebit = op.kind === 'expense';
+                    const tagText = op.kind === 'visit' ? t.opVisit : op.kind === 'income' ? t.opIncome : t.opExpense;
+                    const tagBg = op.kind === 'visit' ? 'bg-violet-100 text-violet-700'
+                      : op.kind === 'income' ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-rose-100 text-rose-700';
+                    const dateLabel = new Date(op.date).toLocaleDateString(lang === 'uk' ? 'uk-UA' : lang === 'en' ? 'en-US' : 'ru-RU', {
+                      day: 'numeric', month: 'short',
+                    });
+                    return (
+                      <li
+                        key={op.id}
+                        className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5"
+                      >
+                        <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tagBg}`}>
+                          {tagText}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-semibold">{op.label}</p>
+                          {op.sublabel && (
+                            <p className="truncate text-[11px] text-neutral-500">{op.sublabel}</p>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className={`text-[13px] font-bold tabular-nums ${isDebit ? 'text-rose-600' : 'text-neutral-900'}`}>
+                            {isDebit ? '−' : '+'}{op.amount.toFixed(0)}₴
+                          </p>
+                          <p className="text-[10px] text-neutral-400">{dateLabel}</p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {rows.length === 0 && operations.length === 0 && (
               <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-8 text-center">
                 <p className="text-sm font-semibold">{t.noData}</p>
                 <p className="mt-1 text-xs text-neutral-500">{t.noDataHint}</p>

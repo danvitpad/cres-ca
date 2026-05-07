@@ -71,12 +71,18 @@ function MasterMiniAppQuickBookingInner() {
   useEffect(() => {
     if (!userId) return;
     (async () => {
+      // initData необязателен — endpoint умеет cookie session тоже.
+      // Раньше при отсутствии initData страница сразу падала в «Профиль
+      // мастера не найден», даже когда в TG WebApp initData ещё не успел
+      // подтянуться или мастер был залогинен через cookie (browser-mode).
       const initData = getInitData();
-      if (!initData) { setLoading(false); return; }
       const res = await fetch('/api/telegram/m/slot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ initData: initData ?? null }),
       });
       if (!res.ok) { setLoading(false); return; }
       const json = await res.json();
@@ -107,16 +113,18 @@ function MasterMiniAppQuickBookingInner() {
     setStep('saving');
     setError(null);
     const initData = getInitData();
-    if (!initData) { setError('Нет данных сессии'); setStep('time'); return; }
     const [h, m] = time.split(':').map(Number);
     const start = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m, 0);
     const end = new Date(start.getTime() + selectedService.duration_minutes * 60000);
     try {
       const res = await fetch('/api/telegram/m/slot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
         body: JSON.stringify({
-          initData,
+          initData: initData ?? null,
           mode: 'create',
           client_id: selectedClient.id,
           service_id: selectedService.id,
