@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2, Package } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
@@ -60,6 +60,7 @@ const I18N: Record<MiniAppLang, {
   errName: string; errDuration: string; errPrice: string; errSave: string;
   toggleMobile: string; toggleMobileHint: string; fieldTravelBuffer: string;
   togglePrepayment: string; togglePrepaymentHint: string; fieldPrepaymentAmount: string;
+  materialsTitle: string; materialsHint: string; materialsEmpty: string; materialsStock: string;
 }> = {
   uk: {
     title: 'Послуги і ціни',
@@ -80,6 +81,10 @@ const I18N: Record<MiniAppLang, {
     fieldTravelBuffer: 'Буфер на дорогу, хв',
     togglePrepayment: 'Передоплата обов’язкова', togglePrepaymentHint: 'Клієнт оплачує перед записом',
     fieldPrepaymentAmount: 'Сума передоплати, ₴',
+    materialsTitle: 'Витратники на 1 візит',
+    materialsHint: 'Автоматично спишеться зі складу коли візит «Виконано»',
+    materialsEmpty: 'Спочатку додай матеріали у склад (веб-кабінет)',
+    materialsStock: 'на складі',
   },
   ru: {
     title: 'Услуги и цены',
@@ -100,6 +105,10 @@ const I18N: Record<MiniAppLang, {
     fieldTravelBuffer: 'Буфер на дорогу, мин',
     togglePrepayment: 'Предоплата обязательна', togglePrepaymentHint: 'Клиент оплачивает до записи',
     fieldPrepaymentAmount: 'Сумма предоплаты, ₴',
+    materialsTitle: 'Расходники на 1 визит',
+    materialsHint: 'Автоматически спишется со склада когда визит «Выполнено»',
+    materialsEmpty: 'Сначала добавь материалы в склад (веб-кабинет)',
+    materialsStock: 'на складе',
   },
   en: {
     title: 'Services & prices',
@@ -120,6 +129,10 @@ const I18N: Record<MiniAppLang, {
     fieldTravelBuffer: 'Travel buffer, min',
     togglePrepayment: 'Prepayment required', togglePrepaymentHint: 'Client pays before booking',
     fieldPrepaymentAmount: 'Prepayment amount, ₴',
+    materialsTitle: 'Supplies per visit',
+    materialsHint: 'Auto-deducted from inventory when visit marked «Completed»',
+    materialsEmpty: 'Add materials to inventory first (web dashboard)',
+    materialsStock: 'in stock',
   },
 };
 
@@ -295,6 +308,37 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Расходники: список доступного склада + map material_id → quantity_per_visit.
+  // Загружаются при открытии sheet'а одним запросом /service-options.
+  const [inventory, setInventory] = useState<Array<{ id: string; name: string; unit: string; quantity: number }>>([]);
+  const [recipeMap, setRecipeMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const initData = getInitData();
+      const res = await fetch('/api/telegram/m/service-options', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ service_id: service?.id ?? null }),
+      });
+      if (!res.ok || cancelled) return;
+      const json = await res.json() as {
+        inventory: Array<{ id: string; name: string; unit: string; quantity: number }>;
+        materials: Array<{ material_id: string; quantity: number }>;
+      };
+      if (cancelled) return;
+      setInventory(json.inventory ?? []);
+      const m: Record<string, number> = {};
+      for (const it of json.materials ?? []) m[it.material_id] = it.quantity;
+      setRecipeMap(m);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function callMutate(payload: Record<string, unknown>) {
     const initData = getInitData();
@@ -325,6 +369,12 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
 
     setBusy(true);
     try {
+      // Расходники: только те, у кого qty>0. Нулевые удалятся через
+      // полную замену service_materials в endpoint.
+      const materials = Object.entries(recipeMap)
+        .filter(([, q]) => Number(q) > 0)
+        .map(([material_id, quantity]) => ({ material_id, quantity: Number(quantity) }));
+
       const common = {
         name: n,
         duration_minutes: dur,
@@ -335,6 +385,7 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
         travel_buffer_minutes: isMobile ? Math.max(0, Number(travelBuffer.replace(',', '.')) || 0) : 0,
         requires_prepayment: requiresPrepayment,
         prepayment_amount: requiresPrepayment ? Math.max(0, Number(prepaymentAmount.replace(',', '.')) || 0) : 0,
+        materials,
       };
       if (mode === 'create') {
         await callMutate({ action: 'create', ...common });
@@ -518,6 +569,77 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
               />
             </Field>
           )}
+
+          {/* Расходники на 1 визит — паритет с веб-формой. Если у мастера
+              склад пуст, показываем подсказку добавить там. */}
+          <div
+            style={{
+              borderRadius: R.md,
+              border: `1px solid ${T.borderSubtle}`,
+              background: T.bg,
+              padding: 14,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Package size={14} color={T.text} />
+              <p style={{ fontSize: 13, fontWeight: 700, color: T.text, margin: 0 }}>{t.materialsTitle}</p>
+            </div>
+            <p style={{ fontSize: 11, color: T.textTertiary, margin: 0 }}>{t.materialsHint}</p>
+
+            {inventory.length === 0 ? (
+              <p style={{ fontSize: 12, color: T.textTertiary, marginTop: 10, fontStyle: 'italic' }}>
+                {t.materialsEmpty}
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                {inventory.map((it) => {
+                  const qty = recipeMap[it.id] ?? 0;
+                  return (
+                    <div
+                      key={it.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 12px', borderRadius: R.sm,
+                        background: T.surface,
+                        border: `1px solid ${qty > 0 ? T.accent : T.borderSubtle}`,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {it.name}
+                        </p>
+                        <p style={{ fontSize: 11, color: T.textTertiary, margin: '2px 0 0' }}>
+                          {it.quantity} {it.unit} {t.materialsStock}
+                        </p>
+                      </div>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={qty > 0 ? String(qty) : ''}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^\d.,]/g, '').replace(',', '.').slice(0, 8);
+                          const num = raw === '' ? 0 : Number(raw);
+                          setRecipeMap((prev) => {
+                            const next = { ...prev };
+                            if (Number.isFinite(num) && num > 0) next[it.id] = num;
+                            else delete next[it.id];
+                            return next;
+                          });
+                        }}
+                        style={{
+                          width: 64, textAlign: 'right',
+                          background: 'transparent', border: 'none', outline: 'none',
+                          fontSize: 16, fontWeight: 700, color: T.text, fontFamily: 'inherit',
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: T.textTertiary, minWidth: 24 }}>{it.unit}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
           {err && <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{err}</p>}
 

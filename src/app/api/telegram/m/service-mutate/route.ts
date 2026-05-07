@@ -25,6 +25,9 @@ type Body = {
   travel_buffer_minutes?: number;
   requires_prepayment?: boolean;
   prepayment_amount?: number;
+  /** Расходники привязанные к услуге. При передаче — полная замена
+   *  service_materials (delete-then-insert), как в веб-форме. */
+  materials?: Array<{ material_id: string; quantity: number }>;
 };
 
 export async function POST(request: Request) {
@@ -69,6 +72,24 @@ export async function POST(request: Request) {
     return p;
   }
 
+  // Helper: синхронизирует service_materials = полная замена. Возвращает error
+  // строку если что-то пошло не так. Materials с qty<=0 пропускаются (deletion).
+  async function syncMaterials(serviceId: string): Promise<string | null> {
+    if (!Array.isArray(body.materials)) return null;
+    const { error: delErr } = await admin.from('service_materials').delete().eq('service_id', serviceId);
+    if (delErr) return delErr.message;
+    const rows = body.materials
+      .filter((m) => m && m.material_id && Number(m.quantity) > 0)
+      .map((m) => ({
+        service_id: serviceId,
+        material_id: m.material_id,
+        quantity: Number(m.quantity),
+      }));
+    if (rows.length === 0) return null;
+    const { error: insErr } = await admin.from('service_materials').insert(rows);
+    return insErr?.message ?? null;
+  }
+
   if (body.action === 'create') {
     const name = (body.name ?? '').trim();
     const duration = Number(body.duration_minutes ?? 0);
@@ -85,6 +106,10 @@ export async function POST(request: Request) {
     const { data, error } = await admin.from('services').insert(payload).select('id').single();
     if (error || !data) {
       return NextResponse.json({ error: 'insert_failed', detail: error?.message }, { status: 500 });
+    }
+    const matErr = await syncMaterials(data.id);
+    if (matErr) {
+      return NextResponse.json({ error: 'materials_failed', detail: matErr }, { status: 500 });
     }
     return NextResponse.json({ ok: true, id: data.id });
   }
@@ -104,13 +129,18 @@ export async function POST(request: Request) {
     if (typeof body.name === 'string' && !(update.name as string)) {
       return NextResponse.json({ error: 'name_required' }, { status: 400 });
     }
-    if (Object.keys(update).length === 0) {
-      return NextResponse.json({ error: 'no_fields' }, { status: 400 });
+    if (Object.keys(update).length > 0) {
+      const { error } = await admin.from('services').update(update).eq('id', body.id);
+      if (error) {
+        return NextResponse.json({ error: 'update_failed', detail: error.message }, { status: 500 });
+      }
     }
-
-    const { error } = await admin.from('services').update(update).eq('id', body.id);
-    if (error) {
-      return NextResponse.json({ error: 'update_failed', detail: error.message }, { status: 500 });
+    const matErr = await syncMaterials(body.id);
+    if (matErr) {
+      return NextResponse.json({ error: 'materials_failed', detail: matErr }, { status: 500 });
+    }
+    if (Object.keys(update).length === 0 && !Array.isArray(body.materials)) {
+      return NextResponse.json({ error: 'no_fields' }, { status: 400 });
     }
     return NextResponse.json({ ok: true });
   }
