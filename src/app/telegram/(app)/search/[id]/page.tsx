@@ -577,7 +577,21 @@ export default function MiniAppMasterDetailPage() {
   // floating bottom-nav. Раньше тут был pb-28 (112px) поверх — клиент
   // видел ~80px белой пустоты между последним блоком и навигацией.
   return (
-    <div ref={scrollContainerRef} className="relative min-h-screen overflow-x-hidden pb-4">
+    <div
+      ref={scrollContainerRef}
+      className="relative min-h-screen"
+      style={{
+        // overflow-x: clip обрезает горизонтальное переполнение, но НЕ создаёт
+        // scroll context (как overflow-hidden) — sticky-табы продолжают
+        // прилипать к viewport. Иначе табы при скролле «гуляли» — sticky
+        // ломался от родительского overflow:hidden.
+        overflowX: 'clip',
+        // Запас снизу чтобы sticky bottom CTA (~50px высота, поднят на 84px над
+        // bottom-nav, плюс safe-area) не закрывал последнюю строку контента
+        // (адрес мастера обрезался кнопкой — см. скрин).
+        paddingBottom: 'calc(160px + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       {/* ━━━ HERO BANNER ━━━ */}
       <div ref={heroRef} className="relative h-[170px] overflow-hidden">
         {master.avatar_url ? (
@@ -646,6 +660,35 @@ export default function MiniAppMasterDetailPage() {
             <p className="mt-1 text-[13px] text-neutral-500">{master.specialization}</p>
           )}
         </div>
+
+        {/* CRES-CA ID — сразу под именем (по запросу пользователя). Тап
+            копирует ссылку на публичную страницу. */}
+        {master.cresHandle && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === 'undefined' || !master.cresHandle) return;
+                const url = `${window.location.origin}/m/${master.cresHandle}`;
+                navigator.clipboard.writeText(url).then(() => {
+                  haptic('selection');
+                  setCresIdCopied(true);
+                  window.setTimeout(() => setCresIdCopied(false), 1500);
+                });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors active:scale-[0.97]"
+              style={{
+                background: 'var(--m-surface)',
+                color: 'var(--m-text-secondary)',
+                borderColor: 'var(--m-border)',
+              }}
+            >
+              <span style={{ color: 'var(--m-text-tertiary)' }}>CRES-CA ID:</span>
+              <span style={{ fontWeight: 600, color: 'var(--m-text)' }}>{master.cresHandle}</span>
+              {cresIdCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
+            </button>
+          </div>
+        )}
 
         {/* Meta row — rating, city, open status only when there is a schedule */}
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[12px]">
@@ -746,35 +789,6 @@ export default function MiniAppMasterDetailPage() {
           </button>
         </div>
 
-        {/* CRES-CA ID — публичный handle. Тап копирует ссылку на страницу
-            мастера. Видно только если мастер задал slug или у него есть
-            invite_code. */}
-        {master.cresHandle && (
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window === 'undefined' || !master.cresHandle) return;
-                const url = `${window.location.origin}/m/${master.cresHandle}`;
-                navigator.clipboard.writeText(url).then(() => {
-                  haptic('selection');
-                  setCresIdCopied(true);
-                  window.setTimeout(() => setCresIdCopied(false), 1500);
-                });
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors active:scale-[0.97]"
-              style={{
-                background: 'var(--m-surface)',
-                color: 'var(--m-text-secondary)',
-                borderColor: 'var(--m-border)',
-              }}
-            >
-              <span style={{ color: 'var(--m-text-tertiary)' }}>CRES-CA ID:</span>
-              <span style={{ fontWeight: 600, color: 'var(--m-text)' }}>{master.cresHandle}</span>
-              {cresIdCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
-            </button>
-          </div>
-        )}
       </motion.div>
 
       {/* ━━━ TAB BAR (sticky) — реагирует на тему через CSS-переменные.
@@ -1083,65 +1097,6 @@ export default function MiniAppMasterDetailPage() {
           </div>
         )}
 
-        {/* ── Partners / «Рекомендую» ── */}
-        {master.partners.length > 0 && (
-          <div
-            ref={(el) => { sectionRefs.current.partners = el; }}
-            data-section="partners"
-          >
-            <h2 className="mb-1 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
-              <Heart className="size-4 text-neutral-500" />
-              {tStr.recommendTitle}
-            </h2>
-            <p className="mb-3 text-[12px] text-neutral-500">
-              {tStr.recommendDesc}
-            </p>
-            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-              {master.partners.map((p) => {
-                const partnerName = p.display_name ?? p.full_name ?? 'Мастер';
-                return (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        haptic('light');
-                        router.push(`/telegram/search/${p.id}`);
-                      }}
-                      className="flex w-full flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3 text-center transition active:scale-[0.97]"
-                    >
-                      {p.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.avatar_url}
-                          alt={partnerName}
-                          className="size-14 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex size-14 items-center justify-center rounded-full bg-neutral-100 text-[16px] font-semibold text-neutral-600">
-                          {partnerName.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="text-[12px] font-semibold leading-tight text-neutral-900">
-                        {partnerName}
-                      </div>
-                      {p.specialization && (
-                        <div className="text-[10px] text-neutral-500 leading-tight">{p.specialization}</div>
-                      )}
-                      {(p.rating ?? 0) > 0 && (
-                        <div className="flex items-center gap-1 text-[10px] text-neutral-500">
-                          <Star size={10} fill="#f59e0b" color="#f59e0b" />
-                          {Number(p.rating).toFixed(1)}
-                          <span>({p.total_reviews ?? 0})</span>
-                        </div>
-                      )}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
-
         {/* ── Contacts (hours + address) ── */}
         {(hasSchedule || master.city || master.address) && (
         <div
@@ -1214,6 +1169,65 @@ export default function MiniAppMasterDetailPage() {
             </div>
           )}
         </div>
+        )}
+
+        {/* ── Partners / «Рекомендую» — последняя секция (после адреса). */}
+        {master.partners.length > 0 && (
+          <div
+            ref={(el) => { sectionRefs.current.partners = el; }}
+            data-section="partners"
+          >
+            <h2 className="mb-1 flex items-center gap-2 text-[15px] font-bold text-neutral-900">
+              <Heart className="size-4 text-neutral-500" />
+              {tStr.recommendTitle}
+            </h2>
+            <p className="mb-3 text-[12px] text-neutral-500">
+              {tStr.recommendDesc}
+            </p>
+            <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              {master.partners.map((p) => {
+                const partnerName = p.display_name ?? p.full_name ?? 'Мастер';
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptic('light');
+                        router.push(`/telegram/search/${p.id}`);
+                      }}
+                      className="flex w-full flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-white p-3 text-center transition active:scale-[0.97]"
+                    >
+                      {p.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={p.avatar_url}
+                          alt={partnerName}
+                          className="size-14 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex size-14 items-center justify-center rounded-full bg-neutral-100 text-[16px] font-semibold text-neutral-600">
+                          {partnerName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="text-[12px] font-semibold leading-tight text-neutral-900">
+                        {partnerName}
+                      </div>
+                      {p.specialization && (
+                        <div className="text-[10px] text-neutral-500 leading-tight">{p.specialization}</div>
+                      )}
+                      {(p.rating ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 text-[10px] text-neutral-500">
+                          <Star size={10} fill="#f59e0b" color="#f59e0b" />
+                          {Number(p.rating).toFixed(1)}
+                          <span>({p.total_reviews ?? 0})</span>
+                        </div>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </div>
 
