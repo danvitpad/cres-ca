@@ -97,6 +97,7 @@ const STR = {
     noActiveServices: 'У майстра поки немає активних послуг',
     yearSuffix: ' р.',
     noFreeSlots: 'Немає вільних слотів',
+    dayOff: 'вих.',
     nearest: 'Найближча:',
     pastSlot: 'Цей час вже минув',
     bookedSlot: 'Цей час вже зайнятий',
@@ -126,6 +127,7 @@ const STR = {
     noActiveServices: 'У мастера пока нет активных услуг',
     yearSuffix: ' г.',
     noFreeSlots: 'Нет свободных слотов',
+    dayOff: 'вых.',
     nearest: 'Ближайшая:',
     pastSlot: 'Это время уже прошло',
     bookedSlot: 'Это время уже занято',
@@ -155,6 +157,7 @@ const STR = {
     noActiveServices: 'This master has no active services yet',
     yearSuffix: '',
     noFreeSlots: 'No free slots',
+    dayOff: 'off',
     nearest: 'Nearest:',
     pastSlot: 'This time has already passed',
     bookedSlot: 'This time is already booked',
@@ -1007,7 +1010,9 @@ export default function MiniAppBookPage() {
                         {horizontalDates.map((date, i) => {
                           const off = isDayOff(date);
                           const isSelected = selectedDate?.toDateString() === date.toDateString();
-                          const isToday = date.toDateString() === new Date().toDateString();
+                          // void для подавления unused warning — isToday раньше использовался,
+                          // оставляем переменную если понадобится подсветка «сегодня».
+                          void (date.toDateString() === new Date().toDateString());
                           const dayName = DAY_NAMES_SHORT[WEEKDAYS[date.getDay()]];
 
                           return (
@@ -1019,12 +1024,13 @@ export default function MiniAppBookPage() {
                               animate="visible"
                               disabled={off}
                               onClick={() => handleSelectDate(date)}
-                              className="flex shrink-0 flex-col items-center gap-1.5 rounded-2xl px-3 py-3 transition-colors"
+                              className="flex shrink-0 flex-col items-center gap-1 rounded-2xl px-3 py-2.5 transition-colors"
                               style={{
                                 minWidth: 56,
-                                background: isSelected ? '#7c3aed' : T.surface,
+                                background: isSelected ? '#7c3aed' : off ? T.bgSubtle : T.surface,
                                 border: `1px solid ${isSelected ? '#7c3aed' : T.borderSubtle}`,
-                                opacity: off ? 0.3 : 1,
+                                opacity: off ? 0.55 : 1,
+                                cursor: off ? 'not-allowed' : 'pointer',
                               }}
                             >
                               <span
@@ -1035,10 +1041,21 @@ export default function MiniAppBookPage() {
                               </span>
                               <span
                                 className="text-[18px] font-bold leading-none"
-                                style={{ color: isSelected ? '#fff' : T.text }}
+                                style={{
+                                  color: isSelected ? '#fff' : off ? T.textTertiary : T.text,
+                                  textDecoration: off ? 'line-through' : 'none',
+                                }}
                               >
                                 {date.getDate()}
                               </span>
+                              {off && (
+                                <span
+                                  className="text-[9px] font-semibold uppercase tracking-wide"
+                                  style={{ color: T.textTertiary }}
+                                >
+                                  {t.dayOff}
+                                </span>
+                              )}
                             </motion.button>
                           );
                         })}
@@ -1133,7 +1150,7 @@ export default function MiniAppBookPage() {
                           <div key={i} className="h-12 animate-pulse rounded-xl" style={{ background: T.surface, border: `1px solid ${T.borderSubtle}` }} />
                         ))}
                       </div>
-                    ) : slots.length === 0 && pastSlots.length === 0 && bookedSlots.length === 0 && tooShortSlots.length === 0 ? (
+                    ) : slots.length === 0 ? (
                       <div className="rounded-2xl p-6 text-center" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
                         <CalendarIcon className="mx-auto mb-2 size-7" style={{ color: T.textDisabled }} />
                         <p className="text-[13px] font-medium" style={{ color: T.textSecondary }}>
@@ -1150,11 +1167,11 @@ export default function MiniAppBookPage() {
                         )}
                       </div>
                     ) : (
-                      // Группирую свободные слоты в непрерывные окна:
-                      // соседние слоты считаются одним окном если gap ≤ 15 мин
-                      // (равно шагу). Для каждого окна — карточка с заголовком
-                      // «10:00 — 19:00» и chip-pills внутри. Past/booked/tooShort
-                      // скрываю — пользователю важны только free окна.
+                      // Рендерим расписание дня как ряд блоков:
+                      //  • зелёные «свободно» (карточка с timeframe + slot pills)
+                      //  • серые «недоступно» (между занятыми/нерабочими промежутками)
+                      // Шаг подстраивается под длительность услуги (см. /api/slots):
+                      // 15 мин для услуг <60, 30 мин для <120, 60 мин для ≥120.
                       (() => {
                         const sorted = [...slots].sort((a, b) => a.localeCompare(b));
                         if (sorted.length === 0) return null;
@@ -1162,7 +1179,14 @@ export default function MiniAppBookPage() {
                           const [h, m] = t.split(':').map(Number);
                           return h * 60 + m;
                         };
-                        const STEP = 15;
+                        const m2t = (mins: number) => {
+                          const h = Math.floor(mins / 60);
+                          const m = mins % 60;
+                          return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                        };
+                        const STEP = Math.max(15, totalDuration);
+
+                        // Группируем continuous slots в окна (gap > step → разрыв).
                         const windows: string[][] = [];
                         let current: string[] = [sorted[0]];
                         for (let i = 1; i < sorted.length; i++) {
@@ -1175,20 +1199,46 @@ export default function MiniAppBookPage() {
                         }
                         windows.push(current);
 
+                        // Собираем последовательность блоков: окно → пробел → окно → ...
+                        type Block =
+                          | { kind: 'free'; start: string; end: string; slots: string[] }
+                          | { kind: 'busy'; start: string; end: string };
+                        const blocks: Block[] = [];
+                        for (let i = 0; i < windows.length; i++) {
+                          const win = windows[i];
+                          const winStart = win[0];
+                          const winEndMin = t2m(win[win.length - 1]) + totalDuration;
+                          const winEnd = m2t(winEndMin);
+                          blocks.push({ kind: 'free', start: winStart, end: winEnd, slots: win });
+
+                          // Если есть следующее окно — между ними серый промежуток.
+                          if (i + 1 < windows.length) {
+                            const nextStart = windows[i + 1][0];
+                            blocks.push({ kind: 'busy', start: winEnd, end: nextStart });
+                          }
+                        }
+
                         return (
-                          <div className="space-y-3">
-                            {windows.map((win) => {
-                              const start = win[0];
-                              // конец окна = последний старт + step (потому что слот
-                              // win[last] = последняя возможная точка старта, после
-                              // неё ещё step минут окна работы).
-                              const lastMin = t2m(win[win.length - 1]) + STEP;
-                              const endH = Math.floor(lastMin / 60);
-                              const endM = lastMin % 60;
-                              const end = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+                          <div className="space-y-2">
+                            {blocks.map((b, idx) => {
+                              if (b.kind === 'busy') {
+                                return (
+                                  <div
+                                    key={`busy-${idx}-${b.start}`}
+                                    className="rounded-xl px-3 py-2.5 text-[12px] font-medium"
+                                    style={{
+                                      background: T.bgSubtle,
+                                      color: T.textTertiary,
+                                      border: `1px dashed ${T.borderSubtle}`,
+                                    }}
+                                  >
+                                    {b.start} — {b.end} · {t.bookedSlot}
+                                  </div>
+                                );
+                              }
                               return (
                                 <motion.div
-                                  key={`window-${start}`}
+                                  key={`free-${idx}-${b.start}`}
                                   variants={fadeUp}
                                   initial="hidden"
                                   animate="visible"
@@ -1196,13 +1246,13 @@ export default function MiniAppBookPage() {
                                   style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
                                 >
                                   <div
-                                    className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-wide"
+                                    className="mb-2 px-1 text-[12px] font-semibold tracking-wide"
                                     style={{ color: T.textTertiary }}
                                   >
-                                    {start} — {end}
+                                    {b.start} — {b.end}
                                   </div>
                                   <div className="flex flex-wrap gap-1.5">
-                                    {win.map((time) => {
+                                    {b.slots.map((time) => {
                                       const isSelected = selectedTime === time;
                                       return (
                                         <button

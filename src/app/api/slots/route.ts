@@ -131,12 +131,9 @@ export async function GET(request: NextRequest) {
   const isToday = date === kyivTodayStr;
   const nowMin = isToday ? kyivNow.getHours() * 60 + kyivNow.getMinutes() : -1;
 
-  // Multi-interval: для каждого интервала генерируем слоты с шагом 15 мин для
-  // всех услуг (стандарт Fresha). Раньше для коротких услуг (<15 мин) был
-  // адаптивный шаг 5 мин — клиенты жаловались на «забор» из 5-мин кнопок
-  // 10:00, 10:05, 10:10... Теперь даже для услуги «проба 5 мин» слоты идут
-  // через 15 минут. Если мастер захочет более точные старты — это отдельная
-  // настройка в его кабинете (не дефолт).
+  // Multi-interval: шаг = длительность услуги (минимум 15 мин). Так слоты
+  // не пересекаются между собой, и клиент видит чёткие непересекающиеся
+  // варианты. Услуга 30 мин → шаг 30; 45 мин → 45; 90 мин → 90.
   // ВАЖНО: слот включается в `slots` только если start + duration ≤ end_of_interval.
   // То есть 2.5-часовая услуга в окне 9:30–12:30 даёт стартовые точки
   // 9:30, 9:45, 10:00 (10:00 + 150 = 12:30 = граница, попадает).
@@ -153,8 +150,7 @@ export async function GET(request: NextRequest) {
   const bookedSlots: string[] = [];
   const tooShortSlots: string[] = [];
 
-  const step = 15;
-  void duration; void duration; // duration влияет на доступность, не на шаг
+  const step = Math.max(15, duration);
 
   for (const iv of workingDay.intervals) {
     const startMin = timeToMinutes(iv.start);
