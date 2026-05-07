@@ -45,7 +45,6 @@ const I18N: Record<Lang, {
   darkTheme: string; darkManual: string; darkAuto: string;
   language: string; langOptions: string;
   privacy: string; privacyDesc: string;
-  support: string; supportDesc: string;
   contactSheet: string; save: string;
   pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
   pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
@@ -59,7 +58,6 @@ const I18N: Record<Lang, {
     darkTheme: 'Темна тема', darkManual: 'Вручну', darkAuto: 'Як у Telegram',
     language: 'Мова', langOptions: 'Українська · Русский · English',
     privacy: 'Приватність', privacyDesc: 'Що бачать майстри та команди',
-    support: 'Підтримка', supportDesc: 'Напишіть або запишіть голосом у Telegram-бот',
     contactSheet: 'Контактні дані', save: 'Зберегти',
     pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
     pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
@@ -75,7 +73,6 @@ const I18N: Record<Lang, {
     darkTheme: 'Тёмная тема', darkManual: 'Вручную', darkAuto: 'Как в Telegram',
     language: 'Язык', langOptions: 'Українська · Русский · English',
     privacy: 'Приватность', privacyDesc: 'Что видят мастера и команды',
-    support: 'Поддержка', supportDesc: 'Напишите или запишите голосом в Telegram-бот',
     contactSheet: 'Контактные данные', save: 'Сохранить',
     pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
     pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
@@ -91,7 +88,6 @@ const I18N: Record<Lang, {
     darkTheme: 'Dark theme', darkManual: 'Manual', darkAuto: 'Follow Telegram',
     language: 'Language', langOptions: 'Українська · Русский · English',
     privacy: 'Privacy', privacyDesc: 'What masters and teams see',
-    support: 'Support', supportDesc: 'Write or record a voice message to Telegram bot',
     contactSheet: 'Contact info', save: 'Save',
     pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
     pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
@@ -335,9 +331,28 @@ export default function MiniAppSettingsPage() {
           <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.title}</h1>
         </div>
 
-        {/* Email/Phone карточка убрана — эти поля теперь редактируются в
-            «Профіль → Редагувати». Кнопка смены пароля живёт самостоятельно. */}
+        {/* Контактные данные: Email · Телефон · Смена пароля.
+            Email/Телефон редактируются здесь (а не в Профілі) — это контактные
+            настройки, логичнее жить в Налаштування. */}
         <div style={cardStyle}>
+          <button type="button" onClick={openContactEdit} style={rowStyle}>
+            <div style={iconBox}><Mail size={16} color={T.text} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+          <div style={divider} />
+          <button type="button" onClick={openContactEdit} style={rowStyle}>
+            <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
+              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+          <div style={divider} />
           <button
             type="button"
             onClick={() => {

@@ -26,7 +26,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
+import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
 import { mapError } from '@/lib/errors';
 import { getInitData } from '@/lib/telegram/webapp';
 import {
@@ -460,15 +460,13 @@ export default function MiniAppProfilePage() {
             e.target.value = '';
           }}
         />
-        <ImageCropDialog
-          open={!!cropSrc}
+        <MiniAppAvatarCropSheet
           src={cropSrc}
+          title={t.avatarTitle}
+          cancelLabel={t.close}
+          applyLabel={t.save}
           onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
           onCropped={onAvatarCropped}
-          title={t.avatarTitle}
-          aspect={1}
-          shape="round"
-          outputSize={512}
         />
 
         {/* GradientHeroCard (wallet balance) — hidden: loyalty/bonuses temporarily disabled */}
@@ -585,51 +583,8 @@ export default function MiniAppProfilePage() {
                   </div>
                 </SectionGroup>
 
-                {/* ── Контакты ── */}
-                <SectionGroup label={t.sectionContact}>
-                  {(() => {
-                    // TG-аккаунты получают auto-сгенерированный email вида
-                    // tg-12345@cres-ca.com. Менять его в Mini App нет смысла
-                    // (требует cookie-сессии для auth.updateUser). Помечаем readonly.
-                    const isAutoEmail = !!editEmail && /tg-\d+@/.test(editEmail);
-                    return (
-                      <>
-                        <FieldBox label={t.fieldEmail}>
-                          <input
-                            type="email"
-                            value={editEmail}
-                            onChange={(e) => setEditEmail(e.target.value.trim().slice(0, 120))}
-                            placeholder="name@example.com"
-                            autoComplete="email"
-                            inputMode="email"
-                            disabled={isAutoEmail}
-                            style={{
-                              ...inputStyle,
-                              opacity: isAutoEmail ? 0.6 : 1,
-                              cursor: isAutoEmail ? 'not-allowed' : 'text',
-                            }}
-                          />
-                          {isAutoEmail && (
-                            <p style={{ ...TYPE.micro, marginTop: 6, color: T.textTertiary }}>
-                              {t.emailReadonlyHint}
-                            </p>
-                          )}
-                        </FieldBox>
-                        <FieldBox label={t.fieldPhone}>
-                          <input
-                            type="tel"
-                            value={editPhone}
-                            onChange={(e) => setEditPhone(e.target.value.replace(/[^\d+\-()\s]/g, '').slice(0, 30))}
-                            placeholder="+380 …"
-                            autoComplete="tel"
-                            inputMode="tel"
-                            style={inputStyle}
-                          />
-                        </FieldBox>
-                      </>
-                    );
-                  })()}
-                </SectionGroup>
+                {/* Email + Телефон редактируются в Налаштування (Контактные
+                    данные). В Профілі оставлены только публичные поля. */}
 
                 {/* ── Публичная страница ── */}
                 <SectionGroup label={t.sectionPublic}>
