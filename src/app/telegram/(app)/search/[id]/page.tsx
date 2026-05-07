@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Star, MapPin, Clock, Loader2, Share2,
   ChevronRight, Camera, MessageSquare, CalendarCheck, Heart, HeartOff,
+  Copy, Check,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
@@ -92,6 +93,9 @@ interface MasterDetail {
   total_reviews: number;
   avatar_url: string | null;
   full_name: string | null;
+  /** CRES-CA публичный handle. Берём slug, иначе invite_code. Используется
+   *  для копирования ссылки на публичную страницу мастера. */
+  cresHandle: string | null;
   working_hours: WorkingHoursMap | null;
   latitude: number | null;
   longitude: number | null;
@@ -241,6 +245,7 @@ export default function MiniAppMasterDetailPage() {
   const [following, setFollowing] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
+  const [cresIdCopied, setCresIdCopied] = useState(false);
 
   // Refs for scroll-to-section
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -264,7 +269,7 @@ export default function MiniAppMasterDetailPage() {
       const [masterRes, portfolioRes, reviewsRes, categoriesRes, partnersRes] = await Promise.all([
         supabase
           .from('masters')
-          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, profile:profiles!masters_profile_id_fkey(first_name, last_name, full_name, avatar_url), services!services_master_id_fkey(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
+          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, slug, invite_code, profile:profiles!masters_profile_id_fkey(first_name, last_name, full_name, avatar_url), services!services_master_id_fkey(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
           .eq('id', params.id)
           .eq('is_active', true)
           .maybeSingle(),
@@ -318,6 +323,8 @@ export default function MiniAppMasterDetailPage() {
         working_hours: WorkingHoursMap | null;
         latitude: number | null;
         longitude: number | null;
+        slug: string | null;
+        invite_code: string | null;
         profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
         services: Array<ServiceItem & { is_active: boolean }>;
       };
@@ -388,6 +395,7 @@ export default function MiniAppMasterDetailPage() {
         total_reviews: Number(m.total_reviews ?? 0),
         avatar_url: m.avatar_url ?? p?.avatar_url ?? null,
         full_name: p?.full_name ?? null,
+        cresHandle: m.slug ?? m.invite_code ?? null,
         working_hours: m.working_hours,
         latitude: m.latitude ?? null,
         longitude: m.longitude ?? null,
@@ -569,7 +577,7 @@ export default function MiniAppMasterDetailPage() {
   // floating bottom-nav. Раньше тут был pb-28 (112px) поверх — клиент
   // видел ~80px белой пустоты между последним блоком и навигацией.
   return (
-    <div ref={scrollContainerRef} className="relative min-h-screen pb-4">
+    <div ref={scrollContainerRef} className="relative min-h-screen overflow-x-hidden pb-4">
       {/* ━━━ HERO BANNER ━━━ */}
       <div ref={heroRef} className="relative h-[170px] overflow-hidden">
         {master.avatar_url ? (
@@ -578,9 +586,12 @@ export default function MiniAppMasterDetailPage() {
             <img
               src={master.avatar_url}
               alt=""
-              className="absolute inset-0 size-full object-cover scale-110 blur-md brightness-75"
+              className="absolute inset-0 size-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40" />
+            {/* Тёмное затемнение снизу — чтобы белый круглый аватар, который
+                перекрывает hero на -mt-12, читался ровным кольцом, и top-buttons
+                «назад/поделиться» оставались видны на любом фото. */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35" />
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-rose-400" />
@@ -659,20 +670,64 @@ export default function MiniAppMasterDetailPage() {
           )}
         </div>
 
-        {/* Subscribe button — explicit text, replaces heart */}
-        <div className="mt-4 flex gap-2">
-          {/* Кнопка использует Mini App-токены (var(--m-text) / var(--m-bg))
-              чтобы корректно контрастировать и в светлой, и в тёмной теме —
-              раньше было bg-neutral-900 + text-white, и в дарк-моде кнопка
-              сливалась с фоном. */}
+        {/* Bio — поднят ПЕРЕД кнопками, чтобы клиент сначала прочитал кто
+            такой мастер, а потом решал «записаться/подписаться». Сворачивается
+            до 5 строк с тогглом. */}
+        {master.bio && (
+          <div className="mt-4">
+            <p
+              className="whitespace-pre-line text-[14px] leading-relaxed text-neutral-700"
+              style={
+                bioExpanded
+                  ? undefined
+                  : {
+                      display: '-webkit-box',
+                      WebkitLineClamp: 5,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }
+              }
+            >
+              {master.bio}
+            </p>
+            {master.bio.length > 250 && (
+              <button
+                type="button"
+                onClick={() => { haptic('light'); setBioExpanded((v) => !v); }}
+                className="mt-1 text-[12px] font-semibold text-neutral-900 active:opacity-60"
+              >
+                {bioExpanded ? 'Свернуть' : 'Раскрыть'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Кнопки «Записаться» + «Подписаться» — в строку (две колонки).
+            Записаться слева как primary action, Подписаться справа. Темы
+            переключаются через --m-text / --m-bg. */}
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => {
+              haptic('selection');
+              router.push(`/telegram/book?master_id=${master.id}`);
+            }}
+            className="flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.98]"
+            style={{
+              background: 'var(--m-text)',
+              color: 'var(--m-bg)',
+            }}
+          >
+            <CalendarCheck className="size-4" />
+            {tStr.book}
+          </button>
           <button
             onClick={toggleFollow}
             disabled={followBusy}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60"
+            className="flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-[13px] font-semibold transition-colors disabled:opacity-60 active:scale-[0.98]"
             style={{
-              background: following ? 'transparent' : 'var(--m-text)',
-              color: following ? 'var(--m-text-secondary)' : 'var(--m-bg)',
-              border: following ? '1px solid var(--m-border)' : 'none',
+              background: 'transparent',
+              color: 'var(--m-text)',
+              borderColor: 'var(--m-border)',
             }}
           >
             {followBusy ? (
@@ -691,47 +746,50 @@ export default function MiniAppMasterDetailPage() {
           </button>
         </div>
 
-        {/* Bio — directly under the head. Collapsed to 5 lines initially with
-            «Раскрыть»/«Свернуть» toggle for long texts. No header label —
-            just free-form intro from the master. */}
-        {master.bio && (
-          <div className="mt-4">
-            <p
-              className="whitespace-pre-line text-[14px] leading-relaxed text-neutral-700"
-              style={
-                bioExpanded
-                  ? undefined
-                  : {
-                      display: '-webkit-box',
-                      WebkitLineClamp: 5,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }
-              }
+        {/* CRES-CA ID — публичный handle. Тап копирует ссылку на страницу
+            мастера. Видно только если мастер задал slug или у него есть
+            invite_code. */}
+        {master.cresHandle && (
+          <div className="mt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window === 'undefined' || !master.cresHandle) return;
+                const url = `${window.location.origin}/m/${master.cresHandle}`;
+                navigator.clipboard.writeText(url).then(() => {
+                  haptic('selection');
+                  setCresIdCopied(true);
+                  window.setTimeout(() => setCresIdCopied(false), 1500);
+                });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-medium transition-colors active:scale-[0.97]"
+              style={{
+                background: 'var(--m-surface)',
+                color: 'var(--m-text-secondary)',
+                borderColor: 'var(--m-border)',
+              }}
             >
-              {master.bio}
-            </p>
-            {/* Show toggle only if text actually overflows 5 lines.
-                Heuristic: 5 lines × ~50 chars/line ≈ 250 chars. */}
-            {master.bio.length > 250 && (
-              <button
-                type="button"
-                onClick={() => { haptic('light'); setBioExpanded((v) => !v); }}
-                className="mt-1 text-[12px] font-semibold text-neutral-900 active:opacity-60"
-              >
-                {bioExpanded ? 'Свернуть' : 'Раскрыть'}
-              </button>
-            )}
+              <span style={{ color: 'var(--m-text-tertiary)' }}>CRES-CA ID:</span>
+              <span style={{ fontWeight: 600, color: 'var(--m-text)' }}>{master.cresHandle}</span>
+              {cresIdCopied ? <Check className="size-3" /> : <Copy className="size-3" />}
+            </button>
           </div>
         )}
       </motion.div>
 
-      {/* ━━━ TAB BAR (sticky, light) ━━━ */}
+      {/* ━━━ TAB BAR (sticky) — реагирует на тему через CSS-переменные.
+            Раньше было bg-white/95 хардкод и в тёмной теме шапка таб-бара
+            оставалась белой полосой. Теперь подсветка активного таба тоже
+            идёт от --m-text (черный в светлой / белый в тёмной). */}
       <div
         ref={tabBarRef}
-        className="sticky top-0 z-30 mt-5 border-b border-neutral-200 bg-white/95 backdrop-blur-xl"
+        className="sticky top-0 z-30 mt-5 border-b backdrop-blur-xl"
+        style={{
+          background: 'color-mix(in oklab, var(--m-bg) 92%, transparent)',
+          borderColor: 'var(--m-border)',
+        }}
       >
-        <div className="flex gap-0 px-5">
+        <div className="flex gap-0 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TAB_KEYS.map((key) => {
             // Hide tabs with no content
             if (key === 'portfolio' && master.portfolio.length === 0) return null;
@@ -745,15 +803,18 @@ export default function MiniAppMasterDetailPage() {
               <button
                 key={key}
                 onClick={() => scrollToSection(key)}
-                className={`relative px-3 py-3 text-[13px] font-medium transition-colors ${
-                  isActive ? 'text-neutral-900' : 'text-neutral-500'
-                }`}
+                className="relative whitespace-nowrap px-3 py-3 text-[13px] transition-colors"
+                style={{
+                  color: isActive ? 'var(--m-text)' : 'var(--m-text-tertiary)',
+                  fontWeight: isActive ? 700 : 500,
+                }}
               >
                 {tabLabels[key]}
                 {isActive && (
                   <motion.div
                     layoutId="tab-underline"
-                    className="absolute inset-x-3 -bottom-px h-[2px] rounded-full bg-neutral-900"
+                    className="absolute inset-x-3 -bottom-px h-[2.5px] rounded-full"
+                    style={{ background: 'var(--m-text)' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
                 )}
@@ -899,6 +960,18 @@ export default function MiniAppMasterDetailPage() {
                     className="size-full object-cover"
                     loading="lazy"
                   />
+                  {item.caption && item.caption.trim() && (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 px-2 pt-6 pb-2 text-left"
+                      style={{
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.42) 60%, rgba(0,0,0,0) 100%)',
+                      }}
+                    >
+                      <p className="line-clamp-2 text-[11px] font-medium leading-tight text-white drop-shadow">
+                        {item.caption}
+                      </p>
+                    </div>
+                  )}
                 </motion.button>
               ))}
             </div>
@@ -1152,12 +1225,18 @@ export default function MiniAppMasterDetailPage() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur-xl"
-            style={{ paddingBottom: 'calc(var(--tg-content-bottom, 0px) + 8px)' }}
+            className="fixed inset-x-0 z-40 border-t backdrop-blur-xl"
+            style={{
+              // 84px = высота floating-pill nav (~64px) + 20px gap. Иначе бар
+              // прятался ПОД клиентским bottom-nav (см. скриншот пользователя).
+              bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
+              background: 'color-mix(in oklab, var(--m-bg) 92%, transparent)',
+              borderColor: 'var(--m-border)',
+            }}
           >
             <div className="flex items-center justify-between px-5 py-3">
-              <div className="text-[13px] text-neutral-500">
-                <span className="font-semibold text-neutral-900">{activeServicesCount}</span>{' '}
+              <div className="text-[13px]" style={{ color: 'var(--m-text-secondary)' }}>
+                <span className="font-semibold" style={{ color: 'var(--m-text)' }}>{activeServicesCount}</span>{' '}
                 {tStr.servicesCount(activeServicesCount)}
               </div>
               <button
@@ -1165,7 +1244,11 @@ export default function MiniAppMasterDetailPage() {
                   haptic('selection');
                   router.push(`/telegram/book?master_id=${master.id}`);
                 }}
-                className="flex items-center gap-2 rounded-2xl bg-white px-6 py-2.5 text-[14px] font-semibold text-black active:scale-[0.97] transition-transform shadow-lg shadow-white/10"
+                className="flex items-center gap-2 rounded-2xl px-6 py-2.5 text-[14px] font-semibold active:scale-[0.97] transition-transform shadow-lg"
+                style={{
+                  background: 'var(--m-text)',
+                  color: 'var(--m-bg)',
+                }}
               >
                 <CalendarCheck className="size-4" />
                 {tStr.book}
