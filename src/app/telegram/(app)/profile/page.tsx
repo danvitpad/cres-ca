@@ -463,8 +463,6 @@ export default function MiniAppProfilePage() {
         <MiniAppAvatarCropSheet
           src={cropSrc}
           title={t.avatarTitle}
-          cancelLabel={t.close}
-          applyLabel={t.save}
           onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
           onCropped={onAvatarCropped}
         />

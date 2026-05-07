@@ -12,7 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
-import { X, Check, ZoomIn, ZoomOut, Loader2 } from 'lucide-react';
+import { X, Check, Loader2 } from 'lucide-react';
 
 interface Props {
   /** ObjectURL картинки или null. !!src управляет видимостью. */
@@ -21,10 +21,6 @@ interface Props {
   outputSize?: number;
   /** Заголовок sheet. */
   title?: string;
-  /** Локализованные подписи. */
-  cancelLabel?: string;
-  applyLabel?: string;
-  applyingLabel?: string;
   onClose: () => void;
   onCropped: (blob: Blob) => void;
 }
@@ -33,9 +29,6 @@ export function MiniAppAvatarCropSheet({
   src,
   outputSize = 512,
   title = 'Аватар',
-  cancelLabel = 'Скасувати',
-  applyLabel = 'Застосувати',
-  applyingLabel = 'Застосовуємо…',
   onClose,
   onCropped,
 }: Props) {
@@ -138,7 +131,10 @@ export function MiniAppAvatarCropSheet({
         </button>
       </div>
 
-      {/* Crop area */}
+      {/* Crop area — занимает всё оставшееся пространство.
+          Зум через pinch-жест на touch (react-easy-crop поддерживает),
+          кнопки/слайдер удалены — UI чистый, только сама картинка с
+          круглой рамкой. */}
       <div style={{ position: 'relative', flex: 1, background: '#000' }}>
         <Cropper
           image={src}
@@ -157,107 +153,9 @@ export function MiniAppAvatarCropSheet({
           restrictPosition
         />
       </div>
-
-      {/* Zoom slider */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '16px 20px 12px',
-          background: '#000',
-          color: '#fff',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setZoom((z) => Math.max(1, +(z - 0.2).toFixed(2)))}
-          aria-label="Zoom out"
-          style={zoomBtnStyle}
-        >
-          <ZoomOut size={16} />
-        </button>
-        <input
-          type="range"
-          min={1}
-          max={4}
-          step={0.01}
-          value={zoom}
-          onChange={(e) => setZoom(parseFloat(e.target.value))}
-          style={{ flex: 1, accentColor: '#2dd4bf' }}
-        />
-        <button
-          type="button"
-          onClick={() => setZoom((z) => Math.min(4, +(z + 0.2).toFixed(2)))}
-          aria-label="Zoom in"
-          style={zoomBtnStyle}
-        >
-          <ZoomIn size={16} />
-        </button>
-      </div>
-
-      {/* Bottom action row — крупная кнопка для пальца */}
-      <div style={{ padding: '4px 16px 16px', background: '#000' }}>
-        <button
-          type="button"
-          onClick={apply}
-          disabled={!area || busy}
-          style={{
-            width: '100%',
-            padding: '14px',
-            borderRadius: 999,
-            border: 'none',
-            background: !area || busy ? 'rgba(255,255,255,0.15)' : '#fff',
-            color: !area || busy ? 'rgba(255,255,255,0.5)' : '#000',
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: !area || busy ? 'wait' : 'pointer',
-            fontFamily: 'inherit',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-          {busy ? applyingLabel : applyLabel}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            width: '100%',
-            marginTop: 8,
-            padding: '12px',
-            borderRadius: 999,
-            border: 'none',
-            background: 'transparent',
-            color: 'rgba(255,255,255,0.7)',
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          {cancelLabel}
-        </button>
-      </div>
     </div>
   );
 }
-
-const zoomBtnStyle: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.2)',
-  background: 'rgba(255,255,255,0.08)',
-  color: '#fff',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-};
 
 /* ─── Image crop helpers ─── */
 
