@@ -216,9 +216,16 @@ export default function MasterMiniAppClientCard() {
   }
 
   if (!client) {
+    // Клиент не найден (удалён, отфильтрован новым правилом «мастер не клиент»,
+    // или просто кривой id из истории Telegram WebView). Вместо тупикового
+    // текста — отправляем мастера на список клиентов, чтобы интерфейс не
+    // выглядел сломанным.
+    if (typeof window !== 'undefined') {
+      router.replace('/telegram/m/clients');
+    }
     return (
-      <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-neutral-600">{t.notFound}</p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
