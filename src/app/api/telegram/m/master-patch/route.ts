@@ -1,0 +1,76 @@
+/** --- YAML
+ * name: Telegram Master Patch API
+ * description: PATCH полей masters (specialization, headline, bio, address,
+ *              workplace_name, city) + profile.first_name/last_name. Используется
+ *              inline-редактором публичной страницы в Mini App. Принимает
+ *              initData → resolveUserId → service-role update.
+ * created: 2026-05-07
+ * --- */
+
+import { NextResponse } from 'next/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { resolveUserId } from '@/lib/auth/resolve-user';
+
+type Body = {
+  // master fields
+  specialization?: string | null;
+  headline?: string | null;
+  bio?: string | null;
+  address?: string | null;
+  workplace_name?: string | null;
+  city?: string | null;
+  // profile fields
+  first_name?: string;
+  last_name?: string;
+};
+
+export async function POST(request: Request) {
+  const userId = await resolveUserId(request);
+  if (!userId) {
+    return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as Body;
+
+  const masterUpdate: Record<string, string | null> = {};
+  const profileUpdate: Record<string, string | null> = {};
+
+  for (const k of ['specialization', 'headline', 'bio', 'address', 'workplace_name', 'city'] as const) {
+    if (k in body) {
+      const v = body[k];
+      masterUpdate[k] = typeof v === 'string' ? v.trim() || null : null;
+    }
+  }
+  if (typeof body.first_name === 'string' || typeof body.last_name === 'string') {
+    const fn = (body.first_name ?? '').trim();
+    const ln = (body.last_name ?? '').trim();
+    profileUpdate.first_name = fn || null;
+    profileUpdate.last_name = ln || null;
+    profileUpdate.full_name = [fn, ln].filter(Boolean).join(' ') || null;
+  }
+
+  if (Object.keys(masterUpdate).length === 0 && Object.keys(profileUpdate).length === 0) {
+    return NextResponse.json({ error: 'no_fields' }, { status: 400 });
+  }
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+
+  if (Object.keys(masterUpdate).length > 0) {
+    const { error } = await admin.from('masters').update(masterUpdate).eq('profile_id', userId);
+    if (error) {
+      return NextResponse.json({ error: 'master_update_failed', detail: error.message }, { status: 500 });
+    }
+  }
+  if (Object.keys(profileUpdate).length > 0) {
+    const { error } = await admin.from('profiles').update(profileUpdate).eq('id', userId);
+    if (error) {
+      return NextResponse.json({ error: 'profile_update_failed', detail: error.message }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ ok: true });
+}
