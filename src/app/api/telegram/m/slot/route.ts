@@ -83,15 +83,11 @@ export async function POST(request: Request) {
   }
 
   // Default: load options
-  const [{ data: clients }, { data: services }] = await Promise.all([
+  const [{ data: clientsRaw }, { data: services }, { data: allMasters }] = await Promise.all([
     admin
       .from('clients')
-      .select('id, full_name, phone')
+      .select('id, full_name, phone, profile_id')
       .eq('master_id', master.id)
-      // Исключаем самого мастера если он по ошибке оказался в своих clients
-      // (тестовая запись с profile_id == userId). Manually-added clients
-      // имеют profile_id NULL — их пропускаем (`profile_id.is.null`).
-      .or(`profile_id.is.null,profile_id.neq.${userId}`)
       .order('last_visit_at', { ascending: false, nullsFirst: false })
       .limit(300),
     admin
@@ -100,11 +96,22 @@ export async function POST(request: Request) {
       .eq('master_id', master.id)
       .eq('is_active', true)
       .order('name', { ascending: true }),
+    admin.from('masters').select('profile_id'),
   ]);
+
+  // Любой profile_id, принадлежащий мастеру — не показывать в списке clients.
+  const masterProfileIds = new Set(
+    ((allMasters ?? []) as Array<{ profile_id: string | null }>)
+      .map((m) => m.profile_id)
+      .filter((v): v is string => !!v),
+  );
+  const clients = ((clientsRaw ?? []) as Array<{ profile_id: string | null; id: string; full_name: string; phone: string | null }>)
+    .filter((c) => !c.profile_id || !masterProfileIds.has(c.profile_id))
+    .map(({ profile_id: _profileId, ...rest }) => { void _profileId; return rest; });
 
   return NextResponse.json({
     masterId: master.id,
-    clients: clients ?? [],
+    clients,
     services: services ?? [],
   });
 }

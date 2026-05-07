@@ -31,16 +31,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ clients: [], masterId: null });
   }
 
-  const { data: clients, error } = await admin
+  // Загружаем profile_id всех мастеров — клиенты с такими profile_id не должны
+  // показываться в чужих списках (мастер не клиент в чужой воронке).
+  const { data: allMasters } = await admin.from('masters').select('profile_id');
+  const masterProfileIds = new Set(
+    ((allMasters ?? []) as Array<{ profile_id: string | null }>)
+      .map((m) => m.profile_id)
+      .filter((v): v is string => !!v),
+  );
+
+  const { data: clientsRaw, error } = await admin
     .from('clients')
-    .select('id, full_name, phone, total_visits, total_spent, last_visit_at, has_health_alert, behavior_indicators')
+    .select('id, full_name, phone, profile_id, total_visits, total_spent, last_visit_at, has_health_alert, behavior_indicators')
     .eq('master_id', master.id)
-    // Исключаем самого мастера из списка своих клиентов (если он туда попал
-    // случайно — например при тестировании). profile_id NULL = manually-added,
-    // их оставляем.
-    .or(`profile_id.is.null,profile_id.neq.${userId}`)
     .order('last_visit_at', { ascending: false, nullsFirst: false })
     .limit(500);
+
+  // Отфильтровываем клиентов чьи profile_id принадлежат мастерам.
+  // profile_id NULL — обычные ручные клиенты без TG-привязки, оставляем.
+  const clients = ((clientsRaw ?? []) as Array<{ profile_id: string | null } & Record<string, unknown>>)
+    .filter((c) => !c.profile_id || !masterProfileIds.has(c.profile_id));
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
