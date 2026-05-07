@@ -405,31 +405,12 @@ export default function MiniAppSettingsPage() {
             <ChevronRight size={16} color={T.textTertiary} />
           </Link>
           <div style={divider} />
-          {/* Зворотній зв'язок + Потрібна допомога? слиты в один пункт
-              «Підтримка» — все три раньше вели в один и тот же Telegram-бот.
-              Голосовое/текстовое сообщение принимает сам бот, поэтому
-              отдельной страницы /telegram/settings/feedback больше не нужно. */}
-          <a
-            href="https://t.me/crescacom_bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => haptic('light')}
-            style={{ ...rowStyle, textDecoration: 'none' }}
-          >
-            <div style={{ ...iconBox, borderColor: 'rgba(244,63,94,0.2)', background: 'rgba(244,63,94,0.08)' }}>
-              <Heart size={16} color="#f43f5e" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.support}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.supportDesc}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </a>
+          {/* «Підтримка» убрана отсюда — она же есть в Профілі (главная
+              страница юзера). Дублирование в двух местах сбивало. */}
         </div>
 
         {/* «Дії з обліковим записом» / Sign out blocks убраны — Sign out
-            живёт в Профілі (главной cтранице юзера), экспорт/удаление
-            аккаунта доступен в веб-версии без отдельной плашки. */}
+            живёт в Профілі, экспорт/удаление аккаунта доступен в веб-версии. */}
       </motion.div>
 
       {/* Contact edit bottom sheet */}

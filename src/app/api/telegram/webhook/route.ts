@@ -224,9 +224,18 @@ export async function POST(request: Request) {
       // Deep-link с beta-closed страницы — сразу запускаем beta-flow
       await handleBetaRequestStart(chatId, telegramId, firstName);
     } else {
+      // Beta-режим контролируется env BETA_MODE.
+      //   BETA_MODE = 'true'  (или не задано) → показываем бета-приглашение
+      //   BETA_MODE = 'false'             → обычное welcome-сообщение
+      // Когда бета закроется/откроется публично — переключаем в Vercel env,
+      // не трогая код.
+      const betaMode = process.env.BETA_MODE !== 'false';
+      const welcomeText = betaMode
+        ? `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nСервис сейчас в стадии бета-тестирования. Открой приложение, если ты уже бета-тестировщик. Если нет — напиши «Хочу попасть в бета» и я возьму твою заявку.`
+        : `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nОткрой приложение, чтобы начать.`;
       await sendMessage(
         chatId,
-        `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nСервис сейчас в стадии бета-тестирования. Открой приложение, если ты уже бета-тестировщик. Если нет — напиши «Хочу попасть в бета» и я возьму твою заявку.`,
+        welcomeText,
         {
           parse_mode: 'HTML',
           reply_markup: {
