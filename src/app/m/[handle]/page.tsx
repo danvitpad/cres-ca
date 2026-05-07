@@ -20,7 +20,8 @@ import { MiniAppBackBar } from '@/components/master/mini-app-back-bar';
 import { normalizeWorkingHours } from '@/lib/working-hours/normalize';
 import { PublicBackButton } from '@/components/master/public-back-button';
 import { OwnerCompletenessPrompt } from '@/components/master/owner-completeness-prompt';
-import { FollowMasterButton } from '@/components/master/follow-master-button';
+import { OwnerHiddenCTAs } from '@/components/master/owner-hidden-ctas';
+import { MiniAppBottomPad } from '@/components/master/mini-app-bottom-pad';
 import { MasterPageSectionTabs } from '@/components/master/section-tabs';
 import { ServicesByCategory } from '@/components/master/services-by-category';
 import { PublicHeroCard } from '@/components/master/public-hero-card';
@@ -610,7 +611,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
   // hex-цвет от мастера игнорируются (поля остаются в DB но не рендерятся).
   return (
     <div
-      className="public-master-scope min-h-screen"
+      className="public-master-scope min-h-screen overflow-x-hidden"
       style={{
         backgroundColor: 'var(--m-bg)',
         color: 'var(--m-text)',
@@ -618,6 +619,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       }}
     >
       <MiniAppBackBar />
+      <MiniAppBottomPad />
       <PublicBackButton masterProfileId={master.profile_id} />
       <RefCapture />
       <PartnerRefCapture />
@@ -691,6 +693,25 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               } : null}
               worksOnline={worksOnline}
             />
+            {/* Bio — поднято над кнопками: клиент сначала читает кто такой
+                мастер, потом решает «Записаться / Подписаться». На вебе sticky
+                LEFT col, на mobile — обычный блок. */}
+            <div id="inline-bio" className="scroll-mt-24">
+              <InlineBioBlock
+                masterId={master.id}
+                masterProfileId={master.profile_id}
+                initialBio={master.bio}
+              />
+            </div>
+            {void hasBio /* legacy var */}
+
+            {/* Главные CTA — «Записаться» + «Подписаться» в строку. Скрыты для
+                владельца. */}
+            <OwnerHiddenCTAs
+              masterId={master.id}
+              masterProfileId={master.profile_id}
+            />
+
             {/* CRES-CA ID — публичный handle, клик копирует ссылку */}
             {(master.slug || master.invite_code) && (
               <div className="flex justify-center">
@@ -700,8 +721,6 @@ export default async function MasterShowcasePage({ params }: PageProps) {
                 />
               </div>
             )}
-            {/* Кнопка «Подписаться» теперь живёт внутри PublicHeroCard,
-                чтобы скроллиться вместе со sticky-карточкой. */}
 
             {/* Способы связи — соцсети / мессенджеры. Размещены здесь,
                 сразу под блоком «Записаться», чтобы клиент видел контакты
@@ -739,16 +758,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
               />
             )}
 
-            {/* Bio — inline-editable. Скрыто для клиента если пусто; для owner —
-                CTA «Добавь описание». */}
-            <div id="inline-bio" className="scroll-mt-24">
-              <InlineBioBlock
-                masterId={master.id}
-                masterProfileId={master.profile_id}
-                initialBio={master.bio}
-              />
-            </div>
-            {void hasBio /* legacy var, rendering moved to InlineBioBlock */}
+            {/* Bio переехал в LEFT col над кнопками «Записаться/Подписаться». */}
 
             {/* Интересы и увлечения — показываем сразу под «О мастере»,
                 до блока услуг, чтобы клиент узнал мастера как личность. */}
@@ -934,10 +944,13 @@ export default async function MasterShowcasePage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Mobile sticky bottom CTA — visible while scrolling on phones */}
+      {/* Mobile sticky bottom CTA — visible while scrolling on phones.
+          В Mini App клиента поднимается над floating-pill bottom-nav через
+          --mini-app-bottom-pad (см. MiniAppBottomPad). На вебе пад = 0. */}
       <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur p-3 lg:hidden"
+        className="fixed inset-x-0 z-30 border-t backdrop-blur p-3 lg:hidden"
         style={{
+          bottom: 'calc(var(--mini-app-bottom-pad, 0px) + env(safe-area-inset-bottom, 0px))',
           background: 'color-mix(in oklab, var(--m-bg) 95%, transparent)',
           borderColor: 'var(--m-border)',
         }}
@@ -946,7 +959,10 @@ export default async function MasterShowcasePage({ params }: PageProps) {
           {tt.bookCta}{hasServices && ` · ${tt.from} ${formatMoney(minPrice, currency)}`}
         </BookingCTA>
       </div>
-      <div className="h-20 lg:hidden" />
+      <div
+        className="lg:hidden"
+        style={{ height: 'calc(80px + var(--mini-app-bottom-pad, 0px))' }}
+      />
       </BookingDrawerProvider>
     </div>
   );

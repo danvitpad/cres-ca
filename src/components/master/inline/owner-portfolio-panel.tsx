@@ -266,6 +266,18 @@ export function OwnerPortfolioPanel({
                       transformOrigin: `${x}% ${y}%`,
                     }}
                   />
+                  {item.caption && item.caption.trim() && (
+                    <div
+                      className="pointer-events-none absolute inset-x-0 bottom-0 px-2 pt-6 pb-2 text-left"
+                      style={{
+                        background: 'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.42) 60%, rgba(0,0,0,0) 100%)',
+                      }}
+                    >
+                      <p className="line-clamp-2 text-[12px] font-medium leading-tight text-white drop-shadow-sm">
+                        {item.caption}
+                      </p>
+                    </div>
+                  )}
                 </button>
                 {isOwner && (
                   <button

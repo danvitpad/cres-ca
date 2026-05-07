@@ -12,7 +12,6 @@
 import { Star, MapPin, Building2, Users, Phone, Mail } from 'lucide-react';
 import { InlineAvatarEdit } from './inline/avatar-edit';
 import { OnlineBadge } from './online-badge';
-import { OwnerHiddenCTAs } from './owner-hidden-ctas';
 import { getVerticalCopy } from '@/lib/verticals/copy';
 
 /** Если эта публичка — на самом деле страница КОМАНДЫ (мастер сам владеет
@@ -174,9 +173,9 @@ export function PublicHeroCard({
         </div>
       </div>
 
-      {/* Кнопки «Записаться» и «Подписаться» скрыты для владельца страницы —
-          OwnerHiddenCTAs проверяет сессию на клиенте и рендерит null для owner. */}
-      <OwnerHiddenCTAs masterId={masterId} masterProfileId={masterProfileId} />
+      {/* Кнопки «Записаться» / «Подписаться» вынесены в отдельный блок ниже Bio
+          (см. page.tsx). Это позволяет клиенту прочитать описание мастера до
+          действия. */}
 
       {/* Divider */}
       <div className="border-t border-neutral-200" />

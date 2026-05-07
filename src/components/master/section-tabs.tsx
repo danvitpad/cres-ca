@@ -72,16 +72,16 @@ export function MasterPageSectionTabs({ sections, accent = 'var(--color-accent)'
 
   return (
     <div
-      className="sticky top-0 z-30 -mx-4 mt-8 border-b px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      className="sticky top-0 z-30 -mx-4 mt-8 border-b backdrop-blur sm:-mx-6 lg:-mx-8"
       style={{
-        background: 'color-mix(in oklab, var(--m-bg) 90%, transparent)',
+        background: 'color-mix(in oklab, var(--m-bg) 92%, transparent)',
         borderColor: 'var(--m-border)',
         ['--page-accent' as string]: accent,
       }}
     >
       <div
         ref={railRef}
-        className="-mb-px flex gap-1 overflow-x-auto pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mb-px flex gap-1 overflow-x-auto px-4 pb-px sm:px-6 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {sections.map((s) => {
           const isActive = active === s.id;
@@ -91,15 +91,16 @@ export function MasterPageSectionTabs({ sections, accent = 'var(--color-accent)'
               type="button"
               data-section={s.id}
               onClick={() => go(s.id)}
-              className="relative whitespace-nowrap px-4 py-3.5 text-[14px] font-semibold transition-colors"
+              className="relative whitespace-nowrap px-4 py-3.5 text-[14px] transition-colors"
               style={{
                 color: isActive ? accent : 'var(--m-text-tertiary)',
+                fontWeight: isActive ? 700 : 500,
               }}
             >
               {s.label}
               {isActive && (
                 <span
-                  className="absolute inset-x-2 bottom-0 h-[2px] rounded-full"
+                  className="absolute inset-x-2 bottom-0 h-[2.5px] rounded-full"
                   style={{ background: accent }}
                 />
               )}
