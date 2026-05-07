@@ -10,6 +10,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { notifySuperadmin } from '@/lib/notifications/superadmin-notify';
+import { appendFeedbackToSheet } from '@/lib/feedback/sheet-sync';
 
 export type FeedbackSource = 'web_settings' | 'telegram_bot' | 'telegram_voice' | 'mobile';
 export type FeedbackCategory = 'bug' | 'feature' | 'question' | 'praise' | 'other';
@@ -140,10 +141,22 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
     buttons: buildFeedbackButtons({ feedbackId: row.id, tgUsername: tgUser, hasChatId: !!resolvedChatId }),
   });
 
-  // Google Sheets интеграция отключена по решению пользователя — фидбек
-  // приходит только в @crescasuperadmin_bot. Этого достаточно: inline-кнопки
-  // позволяют ответить клиенту через бот, голос приходит отдельным аудио-файлом.
-  return { id: row.id, cleaned, category, sheetSynced: false };
+  // Google Sheets sync — best-effort, не валим submitFeedback если упадёт.
+  // Если env FEEDBACK_SHEET_WEBHOOK_URL не задан, функция вернёт false и
+  // фидбек просто живёт в БД + TG bot. Чтобы включить — см. docs/feedback-sheets.md.
+  const sheetSynced = await appendFeedbackToSheet({
+    createdAt: row.created_at,
+    profileName,
+    profileRole,
+    tgUsername: tgUser,
+    categoryLabel: CATEGORY_LABELS[category],
+    cleanedText: cleaned,
+    originalText,
+    feedbackId: row.id,
+    source,
+  });
+
+  return { id: row.id, cleaned, category, sheetSynced };
 }
 
 /** Унифицированный формат уведомления Данилу — без шумовых полей (id, source). */
