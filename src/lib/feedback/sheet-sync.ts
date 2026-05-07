@@ -40,24 +40,55 @@ export async function appendFeedbackToSheet(row: FeedbackSheetRow): Promise<bool
   const url = process.env.FEEDBACK_SHEET_WEBHOOK_URL;
   if (!url) return false;
 
+  const body = JSON.stringify(row);
+  const headers = { 'Content-Type': 'text/plain;charset=utf-8' };
+  // 10 сек таймаут — Apps Script на холодном старте бывает 5-7 сек.
+  // Один и тот же сигнал используем для обоих запросов.
+  const signal = AbortSignal.timeout(10000);
+
   try {
-    // ВАЖНО про Content-Type:
-    // Apps Script Web App при `application/json` получает body байтами в
-    // непонятной кодировке — кириллица/эмодзи приходят как «?????». При
-    // `text/plain;charset=utf-8` Apps Script кладёт e.postData.contents как
-    // правильную UTF-8 строку, и JSON.parse() работает чисто.
-    // Также text/plain не триггерит CORS preflight — для Apps Script это
-    // стандартный workaround.
-    const res = await fetch(url, {
+    // Apps Script Web App делает 302 redirect:
+    //   script.google.com/macros/s/{ID}/exec
+    //     ↓
+    //   script.googleusercontent.com/macros/echo?user_content_key=…
+    // По fetch spec при 302 на POST body НЕ пересылается на новый URL
+    // (или конвертится в GET) — googleusercontent отвечает 411 Length
+    // Required. Делаем redirect вручную: первый POST с redirect:'manual',
+    // читаем Location, делаем второй POST на final URL с тем же body —
+    // fetch автоматически поставит Content-Length и всё проходит.
+    //
+    // Важно про Content-Type — text/plain;charset=utf-8 нужен чтобы
+    // Apps Script читал body как UTF-8 (кириллица/эмодзи). При
+    // application/json он получает байты в неизвестной кодировке и
+    // выдаёт «?????» в таблице. Этот же Content-Type не триггерит
+    // CORS preflight, лишний для server-side fetch но не помешает.
+    const initial = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(row),
-      redirect: 'follow', // Apps Script Web App делает 302 на googleusercontent
-      // 10 сек таймаут — Apps Script на холодном старте бывает 5-7 сек.
-      signal: AbortSignal.timeout(10000),
+      headers,
+      body,
+      redirect: 'manual',
+      signal,
     });
-    if (!res.ok) {
-      console.warn('[feedback-sheet] non-2xx:', res.status, await res.text().catch(() => ''));
+
+    let finalRes: Response;
+    if (initial.status === 302 || initial.status === 303 || initial.status === 307 || initial.status === 308) {
+      const location = initial.headers.get('location');
+      if (!location) {
+        console.warn('[feedback-sheet] redirect without Location header');
+        return false;
+      }
+      finalRes = await fetch(location, {
+        method: 'POST',
+        headers,
+        body,
+        signal,
+      });
+    } else {
+      finalRes = initial;
+    }
+
+    if (!finalRes.ok) {
+      console.warn('[feedback-sheet] non-2xx after redirect:', finalRes.status, await finalRes.text().catch(() => ''));
       return false;
     }
     return true;
