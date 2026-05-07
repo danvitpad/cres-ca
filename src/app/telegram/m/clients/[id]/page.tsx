@@ -167,20 +167,32 @@ export default function MasterMiniAppClientCard() {
   const [client, setClient] = useState<ClientFull | null>(null);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // notFound = endpoint реально вернул что клиента нет (vs. транзиентная
+  // ошибка / отсутствие initData). Только при notFound делаем редирект на
+  // список — иначе на browser-mode (без TG) тоже редиректило, и клиент
+  // моментально возвращался на /clients после тапа.
+  const [notFound, setNotFound] = useState(false);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const reload = useCallback(async () => {
     if (!params?.id) return;
     const initData = getInitData();
-    if (!initData) { setLoading(false); return; }
+    // initData необязателен — endpoint умеет cookie session тоже.
     const res = await fetch('/api/telegram/m/client-detail', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData, client_id: params.id }),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify({ initData: initData ?? null, client_id: params.id }),
     });
     if (!res.ok) { setLoading(false); return; }
     const json = await res.json();
-    if (!json.client) { setLoading(false); return; }
+    if (!json.client) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
     setClient(json.client as ClientFull);
 
     type A = {
@@ -216,16 +228,23 @@ export default function MasterMiniAppClientCard() {
   }
 
   if (!client) {
-    // Клиент не найден (удалён, отфильтрован новым правилом «мастер не клиент»,
-    // или просто кривой id из истории Telegram WebView). Вместо тупикового
-    // текста — отправляем мастера на список клиентов, чтобы интерфейс не
-    // выглядел сломанным.
-    if (typeof window !== 'undefined') {
-      router.replace('/telegram/m/clients');
+    // notFound = endpoint реально ответил что клиента нет (id из истории
+    // Mini App, отфильтрован новым правилом и т.п.) — отправляем на список.
+    // Если же fetch упал из-за auth/network — показываем плашку, не
+    // редиректим (иначе при каждом тапе моментально возвращало назад).
+    if (notFound) {
+      if (typeof window !== 'undefined') {
+        router.replace('/telegram/m/clients');
+      }
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-neutral-400" />
+        </div>
+      );
     }
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-neutral-400" />
+      <div className="px-5 pt-10 text-center">
+        <p className="text-sm text-neutral-600">{t.notFound}</p>
       </div>
     );
   }
