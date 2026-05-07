@@ -41,16 +41,23 @@ export async function appendFeedbackToSheet(row: FeedbackSheetRow): Promise<bool
   if (!url) return false;
 
   try {
+    // ВАЖНО про Content-Type:
+    // Apps Script Web App при `application/json` получает body байтами в
+    // непонятной кодировке — кириллица/эмодзи приходят как «?????». При
+    // `text/plain;charset=utf-8` Apps Script кладёт e.postData.contents как
+    // правильную UTF-8 строку, и JSON.parse() работает чисто.
+    // Также text/plain не триггерит CORS preflight — для Apps Script это
+    // стандартный workaround.
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(row),
-      // 5 сек таймаут — Apps Script бывает медленный, но если совсем висит,
-      // не блокируем основной запрос.
-      signal: AbortSignal.timeout(5000),
+      redirect: 'follow', // Apps Script Web App делает 302 на googleusercontent
+      // 10 сек таймаут — Apps Script на холодном старте бывает 5-7 сек.
+      signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) {
-      console.warn('[feedback-sheet] non-2xx:', res.status);
+      console.warn('[feedback-sheet] non-2xx:', res.status, await res.text().catch(() => ''));
       return false;
     }
     return true;
