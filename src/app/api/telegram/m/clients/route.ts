@@ -35,6 +35,10 @@ export async function POST(request: Request) {
     .from('clients')
     .select('id, full_name, phone, total_visits, total_spent, last_visit_at, has_health_alert, behavior_indicators')
     .eq('master_id', master.id)
+    // Исключаем самого мастера из списка своих клиентов (если он туда попал
+    // случайно — например при тестировании). profile_id NULL = manually-added,
+    // их оставляем.
+    .or(`profile_id.is.null,profile_id.neq.${userId}`)
     .order('last_visit_at', { ascending: false, nullsFirst: false })
     .limit(500);
 

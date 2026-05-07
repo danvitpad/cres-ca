@@ -25,6 +25,8 @@ export async function POST(req: Request) {
     admin.from('clients')
       .select('id, full_name, phone')
       .eq('master_id', master.id)
+      // Исключаем самого мастера если он есть в своих clients (тестовый кейс).
+      .or(`profile_id.is.null,profile_id.neq.${userId}`)
       .order('last_visit_at', { ascending: false, nullsFirst: false })
       .limit(200),
     admin.from('services')

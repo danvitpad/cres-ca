@@ -88,6 +88,10 @@ export async function POST(request: Request) {
       .from('clients')
       .select('id, full_name, phone')
       .eq('master_id', master.id)
+      // Исключаем самого мастера если он по ошибке оказался в своих clients
+      // (тестовая запись с profile_id == userId). Manually-added clients
+      // имеют profile_id NULL — их пропускаем (`profile_id.is.null`).
+      .or(`profile_id.is.null,profile_id.neq.${userId}`)
       .order('last_visit_at', { ascending: false, nullsFirst: false })
       .limit(300),
     admin
