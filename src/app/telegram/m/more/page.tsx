@@ -1,0 +1,186 @@
+/** --- YAML
+ * name: MasterMiniAppMoreTab
+ * description: Таб «Ещё» — список разделов которые не получили отдельного слота
+ *              в нижней навигации. Маркетинг / Партнёры / Расписание / Команда /
+ *              Моя публичная страница / AI-чат / Настройки / Выход.
+ * created: 2026-05-07
+ * --- */
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import {
+  Megaphone,
+  Users2,
+  CalendarClock,
+  Building2,
+  Globe,
+  Bot,
+  Settings as SettingsIcon,
+  HelpCircle,
+  ChevronRight,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { T, R, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useAuthStore } from '@/stores/auth-store';
+import { createClient } from '@/lib/supabase/client';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+
+interface MoreLinkRaw {
+  key: string;
+  href: string;
+  icon: LucideIcon;
+  labelKey: keyof typeof I18N['ru'];
+  hintKey: keyof typeof I18N['ru'];
+}
+
+const I18N: Record<MiniAppLang, {
+  title: string;
+  marketing: string; marketingHint: string;
+  partners: string; partnersHint: string;
+  schedule: string; scheduleHint: string;
+  team: string; teamHint: string;
+  publicPage: string; publicPageHint: string;
+  ai: string; aiHint: string;
+  settings: string; settingsHint: string;
+  help: string; helpHint: string;
+}> = {
+  uk: {
+    title: 'Ще',
+    marketing: 'Маркетинг', marketingHint: 'Розсилки, акції, промокоди',
+    partners: 'Партнери', partnersHint: 'Реферали та взаємні рекомендації',
+    schedule: 'Графік роботи', scheduleHint: 'Робочі години та вихідні',
+    team: 'Команда', teamHint: 'Салон та колеги',
+    publicPage: 'Моя публічна сторінка', publicPageHint: 'Як тебе бачать клієнти',
+    ai: 'AI-помічник', aiHint: 'Запитай — я відповім',
+    settings: 'Налаштування', settingsHint: 'Профіль, мова, тема, тариф',
+    help: 'Допомога', helpHint: 'Інструкції та підтримка',
+  },
+  ru: {
+    title: 'Ещё',
+    marketing: 'Маркетинг', marketingHint: 'Рассылки, акции, промокоды',
+    partners: 'Партнёры', partnersHint: 'Рефералы и взаимные рекомендации',
+    schedule: 'График работы', scheduleHint: 'Рабочие часы и выходные',
+    team: 'Команда', teamHint: 'Салон и коллеги',
+    publicPage: 'Моя публичная страница', publicPageHint: 'Как тебя видят клиенты',
+    ai: 'AI-помощник', aiHint: 'Спроси — отвечу',
+    settings: 'Настройки', settingsHint: 'Профиль, язык, тема, тариф',
+    help: 'Помощь', helpHint: 'Инструкции и поддержка',
+  },
+  en: {
+    title: 'More',
+    marketing: 'Marketing', marketingHint: 'Broadcasts, deals, promo codes',
+    partners: 'Partners', partnersHint: 'Referrals and mutual recommendations',
+    schedule: 'Schedule', scheduleHint: 'Working hours and days off',
+    team: 'Team', teamHint: 'Salon and colleagues',
+    publicPage: 'My public page', publicPageHint: 'How clients see you',
+    ai: 'AI assistant', aiHint: 'Ask — I’ll answer',
+    settings: 'Settings', settingsHint: 'Profile, language, theme, plan',
+    help: 'Help', helpHint: 'Guides and support',
+  },
+};
+
+export default function MasterMiniAppMore() {
+  const { haptic } = useTelegram();
+  const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
+  const [salonId, setSalonId] = useState<string | null>(null);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const { data: member } = await supabase
+        .from('salon_members')
+        .select('salon_id')
+        .eq('profile_id', userId)
+        .eq('is_active', true)
+        .maybeSingle<{ salon_id: string }>();
+      if (cancelled) return;
+      if (member?.salon_id) setSalonId(member.salon_id);
+      const { data: master } = await supabase
+        .from('masters')
+        .select('invite_code')
+        .eq('profile_id', userId)
+        .maybeSingle<{ invite_code: string | null }>();
+      if (cancelled) return;
+      if (master?.invite_code) setInviteCode(master.invite_code);
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  const links: MoreLinkRaw[] = [
+    { key: 'marketing', href: `/${lang}/marketing`, icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
+    { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
+    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: CalendarClock, labelKey: 'schedule', hintKey: 'scheduleHint' },
+    ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
+    ...(inviteCode ? [{ key: 'public', href: `/m/${inviteCode}?owner=1&from=more`, icon: Globe, labelKey: 'publicPage' as const, hintKey: 'publicPageHint' as const }] : []),
+    { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
+    { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
+    { key: 'help', href: '/telegram/m/settings/help', icon: HelpCircle, labelKey: 'help', hintKey: 'helpHint' },
+  ];
+
+  return (
+    <MobilePage>
+      <PageHeader title={t.title} />
+      <div
+        style={{
+          margin: `4px ${PAGE_PADDING_X}px 0`,
+          background: T.surface,
+          border: `1px solid ${T.borderSubtle}`,
+          borderRadius: R.lg,
+          boxShadow: SHADOW.card,
+          overflow: 'hidden',
+        }}
+      >
+        {links.map((it, idx) => {
+          const Icon = it.icon;
+          return (
+            <Link
+              key={it.key}
+              href={it.href}
+              onClick={() => haptic('light')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                padding: '16px 16px',
+                borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
+                textDecoration: 'none',
+                color: T.text,
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <span
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 11,
+                  background: T.accentSoft,
+                  color: T.accent,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={18} strokeWidth={2.2} />
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: T.text }}>{t[it.labelKey]}</span>
+                <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 2 }}>{t[it.hintKey]}</span>
+              </span>
+              <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} />
+            </Link>
+          );
+        })}
+      </div>
+    </MobilePage>
+  );
+}

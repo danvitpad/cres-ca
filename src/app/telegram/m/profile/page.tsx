@@ -11,9 +11,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
-import { Settings, Star, Share2, ExternalLink, Loader2, Users, LogOut, Pencil, X } from 'lucide-react';
+import { Settings, Star, Share2, ExternalLink, Loader2, Pencil, X, Globe } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
@@ -31,6 +32,8 @@ const I18N: Record<MiniAppLang, {
   fileTooLarge: string;
   nameSheetTitle: string; firstName: string; lastName: string; saving: string; saveBtn: string;
   firstNamePh: string; lastNamePh: string;
+  close: string;
+  publicPageTitle: string; publicPageHint: string; publicPageEdit: string;
 }> = {
   uk: {
     notFound: 'Профіль майстра не знайдено.', defaultName: 'Майстер',
@@ -44,6 +47,10 @@ const I18N: Record<MiniAppLang, {
     nameSheetTitle: 'Імʼя та прізвище', firstName: 'Імʼя', lastName: 'Прізвище',
     saving: 'Зберігаємо…', saveBtn: 'Зберегти',
     firstNamePh: 'Даніїл', lastNamePh: 'Падалко',
+    close: 'Закрити',
+    publicPageTitle: 'Моя публічна сторінка',
+    publicPageHint: 'Як тебе бачать клієнти. Відкрий — і редагуй прямо там.',
+    publicPageEdit: 'Відкрити та редагувати',
   },
   ru: {
     notFound: 'Профиль мастера не найден.', defaultName: 'Мастер',
@@ -57,6 +64,10 @@ const I18N: Record<MiniAppLang, {
     nameSheetTitle: 'Имя и фамилия', firstName: 'Имя', lastName: 'Фамилия',
     saving: 'Сохраняем…', saveBtn: 'Сохранить',
     firstNamePh: 'Даниил', lastNamePh: 'Падалко',
+    close: 'Закрыть',
+    publicPageTitle: 'Моя публичная страница',
+    publicPageHint: 'Как тебя видят клиенты. Открой — и редактируй прямо там.',
+    publicPageEdit: 'Открыть и редактировать',
   },
   en: {
     notFound: 'Master profile not found.', defaultName: 'Master',
@@ -70,6 +81,10 @@ const I18N: Record<MiniAppLang, {
     nameSheetTitle: 'First & last name', firstName: 'First name', lastName: 'Last name',
     saving: 'Saving…', saveBtn: 'Save',
     firstNamePh: 'Daniel', lastNamePh: 'Padalko',
+    close: 'Close',
+    publicPageTitle: 'My public page',
+    publicPageHint: 'How clients see you. Open — and edit right there.',
+    publicPageEdit: 'Open and edit',
   },
 };
 
@@ -120,6 +135,7 @@ function tierLabelFor(tier: string | null | undefined, t: typeof I18N['ru']): st
 
 export default function MasterMiniAppProfile() {
   const { haptic } = useTelegram();
+  const router = useRouter();
   const { userId } = useAuthStore();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
@@ -307,8 +323,33 @@ export default function MasterMiniAppProfile() {
         transition={{ duration: 0.3 }}
         style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
       >
-        {/* Hero: avatar + name + tier + settings */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: `28px ${PAGE_PADDING_X}px 0` }}>
+        {/* Close button — full-screen profile lives outside tab nav, нужен явный возврат */}
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
+          <button
+            type="button"
+            onClick={() => { haptic('light'); router.back(); }}
+            aria-label={t.close}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: '50%',
+              border: `1px solid ${T.border}`,
+              background: T.surface,
+              color: T.text,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: 0,
+              boxShadow: SHADOW.card,
+            }}
+          >
+            <X size={18} strokeWidth={2.4} />
+          </button>
+        </div>
+
+        {/* Hero: avatar + name + tier */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: `4px ${PAGE_PADDING_X}px 0` }}>
           <button
             type="button"
             onClick={() => avatarInputRef.current?.click()}
@@ -436,26 +477,6 @@ export default function MasterMiniAppProfile() {
               <p style={{ ...TYPE.micro, marginTop: 4 }}>{master.city}</p>
             )}
           </div>
-          <Link
-            href="/telegram/m/settings"
-            onClick={() => haptic('light')}
-            style={{
-              flexShrink: 0,
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: T.text,
-              textDecoration: 'none',
-            }}
-            aria-label={t.settings}
-          >
-            <Settings size={20} strokeWidth={2} />
-          </Link>
         </div>
 
         {/* Stats grid */}
@@ -487,80 +508,151 @@ export default function MasterMiniAppProfile() {
           </div>
         )}
 
-        {/* Actions row — share + open public page (single button, ?from=profile so the page can offer back nav) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
-          <button
-            type="button"
-            onClick={shareLink}
+        {/* Моя публичная страница — отдельный заметный блок: иконка + описание + 2 действия */}
+        <div
+          style={{
+            margin: `0 ${PAGE_PADDING_X}px`,
+            padding: 16,
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.md,
+            boxShadow: SHADOW.card,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: T.accentSoft,
+                color: T.accent,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <Globe size={20} strokeWidth={2.2} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: T.text, margin: 0 }}>{t.publicPageTitle}</p>
+              <p style={{ fontSize: 12, color: T.textTertiary, margin: '2px 0 0' }}>{t.publicPageHint}</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+            <button
+              type="button"
+              onClick={shareLink}
+              disabled={!master.invite_code}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                padding: '12px 16px',
+                borderRadius: R.pill,
+                border: `1px solid ${T.border}`,
+                background: T.surface,
+                color: master.invite_code ? T.text : T.textTertiary,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: master.invite_code ? 'pointer' : 'not-allowed',
+                fontFamily: 'inherit',
+                opacity: master.invite_code ? 1 : 0.5,
+              }}
+            >
+              <Share2 size={15} strokeWidth={2.2} />
+              {t.share}
+            </button>
+            {master.invite_code ? (
+              <Link
+                href={`/m/${master.invite_code}?owner=1&from=profile`}
+                onClick={() => haptic('light')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '12px 16px',
+                  borderRadius: R.pill,
+                  border: 'none',
+                  background: T.text,
+                  color: T.bg,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                <ExternalLink size={15} strokeWidth={2.2} />
+                {t.publicPageEdit}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '12px 16px',
+                  borderRadius: R.pill,
+                  border: 'none',
+                  background: T.bgSubtle,
+                  color: T.textTertiary,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  opacity: 0.6,
+                  cursor: 'not-allowed',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <ExternalLink size={15} strokeWidth={2.2} />
+                {t.publicPageEdit}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Настройки — карточка-ссылка */}
+        <Link
+          href="/telegram/m/settings"
+          onClick={() => haptic('light')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            margin: `0 ${PAGE_PADDING_X}px`,
+            padding: '14px 16px',
+            background: T.surface,
+            border: `1px solid ${T.borderSubtle}`,
+            borderRadius: R.md,
+            boxShadow: SHADOW.card,
+            textDecoration: 'none',
+            color: T.text,
+          }}
+        >
+          <span
             style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: T.accentSoft,
+              color: T.accent,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
-              padding: '14px 16px',
-              borderRadius: R.md,
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              color: T.text,
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              boxShadow: SHADOW.card,
+              flexShrink: 0,
             }}
           >
-            <Share2 size={16} strokeWidth={2.2} />
-            {t.share}
-          </button>
-          {master.invite_code ? (
-            <Link
-              href={`/m/${master.invite_code}?owner=1&from=profile`}
-              onClick={() => haptic('light')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                padding: '14px 16px',
-                borderRadius: R.md,
-                border: `1px solid ${T.border}`,
-                background: T.surface,
-                color: T.text,
-                fontSize: 14,
-                fontWeight: 600,
-                textDecoration: 'none',
-                boxShadow: SHADOW.card,
-              }}
-            >
-              <ExternalLink size={16} strokeWidth={2.2} />
-              {t.myPage}
-            </Link>
-          ) : (
-            <button
-              type="button"
-              disabled
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                padding: '14px 16px',
-                borderRadius: R.md,
-                border: `1px solid ${T.border}`,
-                background: T.surface,
-                color: T.textTertiary,
-                fontSize: 14,
-                fontWeight: 600,
-                opacity: 0.5,
-                cursor: 'not-allowed',
-                fontFamily: 'inherit',
-              }}
-            >
-              <ExternalLink size={16} strokeWidth={2.2} />
-              {t.myPage}
-            </button>
-          )}
-        </div>
+            <Settings size={18} strokeWidth={2.2} />
+          </span>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{t.settings}</span>
+        </Link>
       </motion.div>
 
       {nameEditOpen && (

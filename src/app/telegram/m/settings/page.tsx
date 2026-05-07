@@ -14,13 +14,10 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  User as UserIcon,
-  Scissors,
   CalendarCheck,
   CreditCard,
   Bell,
   Globe,
-  Mic,
   HelpCircle,
   MessageCircle,
   Moon,
@@ -83,14 +80,16 @@ interface SettingsItem {
   Icon: LucideIcon;
 }
 
+// Настройки — только то что не получило отдельного слота в нижней навигации.
+// Профиль / Услуги / Голос убраны:
+//   • Профиль открывается по аватару справа сверху на любом табе.
+//   • Услуги стали отдельным табом (4-й слот) — /telegram/m/services.
+//   • Голос идёт через TG-бот, отдельной страницы в Mini App больше нет.
 const ITEMS: SettingsItem[] = [
-  { key: 'profile',       href: '/telegram/m/profile',                 labelKey: 'profile',       Icon: UserIcon },
-  { key: 'services',      href: '/telegram/m/settings/services',       labelKey: 'services',      Icon: Scissors },
   { key: 'schedule',      href: '/telegram/m/settings/schedule',       labelKey: 'schedule',      Icon: CalendarCheck },
   { key: 'billing',       href: '/telegram/m/settings/billing',        labelKey: 'billing',       Icon: CreditCard },
   { key: 'notifications', href: '/telegram/m/settings/notifications',  labelKey: 'notifications', Icon: Bell },
   { key: 'language',      href: '/telegram/m/settings/language',       labelKey: 'language',      Icon: Globe },
-  { key: 'voice',         href: '/telegram/m/voice-assistant',         labelKey: 'voice',         Icon: Mic },
   { key: 'help',          href: '/telegram/m/settings/help',           labelKey: 'help',          Icon: HelpCircle },
   { key: 'feedback',      href: '/telegram/m/settings/feedback',       labelKey: 'feedback',      Icon: MessageCircle },
 ];
