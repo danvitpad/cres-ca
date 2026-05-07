@@ -32,9 +32,17 @@ interface Service {
   currency: string;
   is_active: boolean;
   color: string | null;
+  is_mobile: boolean | null;
+  travel_buffer_minutes: number | null;
+  requires_prepayment: boolean | null;
+  prepayment_amount: number | null;
 }
 
-const COLORS = ['#2dd4bf', '#a78bfa', '#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#ec4899', '#64748b'];
+// Палитра 12 цветов — паритет с веб-формой (services dashboard).
+const COLORS = [
+  '#2dd4bf', '#ec4899', '#ef4444', '#f59e0b', '#10b981', '#06b6d4',
+  '#3b82f6', '#a78bfa', '#22c55e', '#f43f5e', '#64748b', '#1e293b',
+];
 
 const I18N: Record<MiniAppLang, {
   title: string;
@@ -50,6 +58,8 @@ const I18N: Record<MiniAppLang, {
   archiveBtn: string; restoreBtn: string; deleteBtn: string;
   deleteConfirm: string;
   errName: string; errDuration: string; errPrice: string; errSave: string;
+  toggleMobile: string; toggleMobileHint: string; fieldTravelBuffer: string;
+  togglePrepayment: string; togglePrepaymentHint: string; fieldPrepaymentAmount: string;
 }> = {
   uk: {
     title: 'Послуги і ціни',
@@ -66,6 +76,10 @@ const I18N: Record<MiniAppLang, {
     archiveBtn: 'В архів', restoreBtn: 'Активувати', deleteBtn: 'Видалити',
     deleteConfirm: 'Видалити послугу повністю?',
     errName: 'Введи назву', errDuration: 'Введи тривалість', errPrice: 'Введи ціну', errSave: 'Не вдалось зберегти',
+    toggleMobile: 'Виїзна послуга', toggleMobileHint: 'Я їду до клієнта',
+    fieldTravelBuffer: 'Буфер на дорогу, хв',
+    togglePrepayment: 'Передоплата обов’язкова', togglePrepaymentHint: 'Клієнт оплачує перед записом',
+    fieldPrepaymentAmount: 'Сума передоплати, ₴',
   },
   ru: {
     title: 'Услуги и цены',
@@ -82,6 +96,10 @@ const I18N: Record<MiniAppLang, {
     archiveBtn: 'В архив', restoreBtn: 'Активировать', deleteBtn: 'Удалить',
     deleteConfirm: 'Удалить услугу полностью?',
     errName: 'Введи название', errDuration: 'Введи длительность', errPrice: 'Введи цену', errSave: 'Не удалось сохранить',
+    toggleMobile: 'Выездная услуга', toggleMobileHint: 'Я еду к клиенту',
+    fieldTravelBuffer: 'Буфер на дорогу, мин',
+    togglePrepayment: 'Предоплата обязательна', togglePrepaymentHint: 'Клиент оплачивает до записи',
+    fieldPrepaymentAmount: 'Сумма предоплаты, ₴',
   },
   en: {
     title: 'Services & prices',
@@ -98,6 +116,10 @@ const I18N: Record<MiniAppLang, {
     archiveBtn: 'Archive', restoreBtn: 'Activate', deleteBtn: 'Delete',
     deleteConfirm: 'Delete service permanently?',
     errName: 'Enter name', errDuration: 'Enter duration', errPrice: 'Enter price', errSave: 'Failed to save',
+    toggleMobile: 'Mobile service', toggleMobileHint: 'I travel to the client',
+    fieldTravelBuffer: 'Travel buffer, min',
+    togglePrepayment: 'Prepayment required', togglePrepaymentHint: 'Client pays before booking',
+    fieldPrepaymentAmount: 'Prepayment amount, ₴',
   },
 };
 
@@ -122,7 +144,7 @@ export default function MasterMiniAppServicesTab() {
       if (!master) { setLoading(false); return; }
       const { data } = await supabase
         .from('services')
-        .select('id, name, description, duration_minutes, price, currency, is_active, color')
+        .select('id, name, description, duration_minutes, price, currency, is_active, color, is_mobile, travel_buffer_minutes, requires_prepayment, prepayment_amount')
         .eq('master_id', master.id)
         .order('is_active', { ascending: false })
         .order('price', { ascending: false });
@@ -266,6 +288,10 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
   const [price, setPrice] = useState(String(service?.price ?? ''));
   const [description, setDescription] = useState(service?.description ?? '');
   const [color, setColor] = useState<string>(service?.color ?? COLORS[0]);
+  const [isMobile, setIsMobile] = useState(!!service?.is_mobile);
+  const [travelBuffer, setTravelBuffer] = useState(String(service?.travel_buffer_minutes ?? 0));
+  const [requiresPrepayment, setRequiresPrepayment] = useState(!!service?.requires_prepayment);
+  const [prepaymentAmount, setPrepaymentAmount] = useState(String(service?.prepayment_amount ?? 0));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -299,20 +325,21 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
 
     setBusy(true);
     try {
+      const common = {
+        name: n,
+        duration_minutes: dur,
+        price: pr,
+        description: description.trim() || null,
+        color,
+        is_mobile: isMobile,
+        travel_buffer_minutes: isMobile ? Math.max(0, Number(travelBuffer.replace(',', '.')) || 0) : 0,
+        requires_prepayment: requiresPrepayment,
+        prepayment_amount: requiresPrepayment ? Math.max(0, Number(prepaymentAmount.replace(',', '.')) || 0) : 0,
+      };
       if (mode === 'create') {
-        await callMutate({
-          action: 'create',
-          name: n, duration_minutes: dur, price: pr,
-          description: description.trim() || null,
-          color,
-        });
+        await callMutate({ action: 'create', ...common });
       } else if (service) {
-        await callMutate({
-          action: 'update', id: service.id,
-          name: n, duration_minutes: dur, price: pr,
-          description: description.trim() || null,
-          color,
-        });
+        await callMutate({ action: 'update', id: service.id, ...common });
       }
       onSaved();
     } catch (e) {
@@ -444,7 +471,7 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
           </Field>
 
           <Field label={t.fieldColor}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {COLORS.map((c) => (
                 <button
                   key={c}
@@ -452,7 +479,7 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
                   onClick={() => setColor(c)}
                   aria-label={c}
                   style={{
-                    width: 28, height: 28, borderRadius: '50%',
+                    width: 32, height: 32, borderRadius: '50%',
                     background: c,
                     border: c === color ? `3px solid ${T.text}` : `1px solid ${T.borderSubtle}`,
                     cursor: 'pointer', padding: 0,
@@ -461,6 +488,36 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
               ))}
             </div>
           </Field>
+
+          {/* Тумблеры — выездная услуга и предоплата. Open conditional fields ниже. */}
+          <ToggleRow
+            label={t.toggleMobile} hint={t.toggleMobileHint}
+            on={isMobile} onChange={setIsMobile}
+          />
+          {isMobile && (
+            <Field label={t.fieldTravelBuffer}>
+              <input
+                type="text" inputMode="numeric"
+                value={travelBuffer}
+                onChange={(e) => setTravelBuffer(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                style={inputStyle}
+              />
+            </Field>
+          )}
+          <ToggleRow
+            label={t.togglePrepayment} hint={t.togglePrepaymentHint}
+            on={requiresPrepayment} onChange={setRequiresPrepayment}
+          />
+          {requiresPrepayment && (
+            <Field label={t.fieldPrepaymentAmount}>
+              <input
+                type="text" inputMode="decimal"
+                value={prepaymentAmount}
+                onChange={(e) => setPrepaymentAmount(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+                style={inputStyle}
+              />
+            </Field>
+          )}
 
           {err && <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{err}</p>}
 
@@ -510,11 +567,28 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 12 }}>
-      <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: 0 }}>
+    <div
+      style={{
+        borderRadius: R.md,
+        border: `1px solid ${T.borderSubtle}`,
+        background: T.bg,
+        padding: '12px 14px 14px',
+      }}
+    >
+      <p
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: T.textTertiary,
+          margin: 0,
+          marginBottom: 8,
+        }}
+      >
         {label}
       </p>
-      <div style={{ marginTop: 4 }}>{children}</div>
+      {children}
     </div>
   );
 }
@@ -522,8 +596,57 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const inputStyle: React.CSSProperties = {
   width: '100%',
   background: 'transparent', border: 'none', outline: 'none',
-  ...TYPE.body, color: T.text, fontFamily: 'inherit',
+  fontSize: 16, // 16+ чтобы iOS не зумил при focus
+  fontWeight: 500,
+  lineHeight: 1.3,
+  color: T.text,
+  fontFamily: 'inherit',
+  padding: 0,
 };
+
+function ToggleRow({ label, hint, on, onChange }: { label: string; hint?: string; on: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px',
+        borderRadius: R.md,
+        border: `1px solid ${T.borderSubtle}`,
+        background: T.bg,
+        textAlign: 'left',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>{label}</p>
+        {hint && <p style={{ fontSize: 12, color: T.textTertiary, margin: '2px 0 0' }}>{hint}</p>}
+      </div>
+      <span
+        style={{
+          width: 44, height: 26, borderRadius: 13,
+          background: on ? T.accent : T.borderSubtle,
+          position: 'relative',
+          transition: 'background 0.2s',
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute', top: 3,
+            left: on ? 21 : 3,
+            width: 20, height: 20, borderRadius: '50%',
+            background: '#fff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            transition: 'left 0.2s',
+          }}
+        />
+      </span>
+    </button>
+  );
+}
 
 function secondaryBtn(danger: boolean): React.CSSProperties {
   return {

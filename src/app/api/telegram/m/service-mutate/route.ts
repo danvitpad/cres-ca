@@ -1,8 +1,10 @@
 /** --- YAML
  * name: Telegram Master Service Mutate API
  * description: CRUD для услуг мастера из Mini App. POST {action} — create / update /
- *              archive (soft delete is_active=false) / restore. Validate ownership
- *              через master.profile_id == userId. Service-role + initData.
+ *              archive / restore. Поля совпадают с веб-формой:
+ *              name, description, duration_minutes, price, currency, color,
+ *              is_mobile, travel_buffer_minutes, requires_prepayment,
+ *              prepayment_amount. Service-role + initData валидация.
  * created: 2026-05-07
  * --- */
 
@@ -19,6 +21,10 @@ type Body = {
   price?: number;
   currency?: string;
   color?: string | null;
+  is_mobile?: boolean;
+  travel_buffer_minutes?: number;
+  requires_prepayment?: boolean;
+  prepayment_amount?: number;
 };
 
 export async function POST(request: Request) {
@@ -47,6 +53,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'not_master' }, { status: 403 });
   }
 
+  // Helper: собирает payload из body (только переданные поля).
+  function buildPayload(): Record<string, unknown> {
+    const p: Record<string, unknown> = {};
+    if (typeof body.name === 'string') p.name = body.name.trim();
+    if ('description' in body) p.description = body.description?.toString().trim() || null;
+    if (typeof body.duration_minutes === 'number') p.duration_minutes = body.duration_minutes;
+    if (typeof body.price === 'number') p.price = body.price;
+    if (typeof body.currency === 'string') p.currency = body.currency.toUpperCase();
+    if ('color' in body) p.color = body.color ?? null;
+    if (typeof body.is_mobile === 'boolean') p.is_mobile = body.is_mobile;
+    if (typeof body.travel_buffer_minutes === 'number') p.travel_buffer_minutes = body.travel_buffer_minutes;
+    if (typeof body.requires_prepayment === 'boolean') p.requires_prepayment = body.requires_prepayment;
+    if (typeof body.prepayment_amount === 'number') p.prepayment_amount = body.prepayment_amount;
+    return p;
+  }
+
   if (body.action === 'create') {
     const name = (body.name ?? '').trim();
     const duration = Number(body.duration_minutes ?? 0);
@@ -55,20 +77,12 @@ export async function POST(request: Request) {
     if (!Number.isFinite(duration) || duration <= 0) return NextResponse.json({ error: 'invalid_duration' }, { status: 400 });
     if (!Number.isFinite(price) || price < 0) return NextResponse.json({ error: 'invalid_price' }, { status: 400 });
 
-    const { data, error } = await admin
-      .from('services')
-      .insert({
-        master_id: master.id,
-        name,
-        description: body.description?.trim() || null,
-        duration_minutes: duration,
-        price,
-        currency: (body.currency ?? 'UAH').toUpperCase(),
-        color: body.color ?? null,
-        is_active: true,
-      })
-      .select('id')
-      .single();
+    const payload = {
+      master_id: master.id,
+      is_active: true,
+      ...buildPayload(),
+    };
+    const { data, error } = await admin.from('services').insert(payload).select('id').single();
     if (error || !data) {
       return NextResponse.json({ error: 'insert_failed', detail: error?.message }, { status: 500 });
     }
@@ -77,7 +91,6 @@ export async function POST(request: Request) {
 
   if (body.action === 'update') {
     if (!body.id) return NextResponse.json({ error: 'id_required' }, { status: 400 });
-    // Ownership check
     const { data: existing } = await admin
       .from('services')
       .select('master_id')
@@ -87,24 +100,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
 
-    const update: Record<string, string | number | null> = {};
-    if (typeof body.name === 'string') {
-      const n = body.name.trim();
-      if (!n) return NextResponse.json({ error: 'name_required' }, { status: 400 });
-      update.name = n;
+    const update = buildPayload();
+    if (typeof body.name === 'string' && !(update.name as string)) {
+      return NextResponse.json({ error: 'name_required' }, { status: 400 });
     }
-    if ('description' in body) update.description = body.description?.toString().trim() || null;
-    if (typeof body.duration_minutes === 'number') {
-      if (body.duration_minutes <= 0) return NextResponse.json({ error: 'invalid_duration' }, { status: 400 });
-      update.duration_minutes = body.duration_minutes;
-    }
-    if (typeof body.price === 'number') {
-      if (body.price < 0) return NextResponse.json({ error: 'invalid_price' }, { status: 400 });
-      update.price = body.price;
-    }
-    if (typeof body.currency === 'string') update.currency = body.currency.toUpperCase();
-    if ('color' in body) update.color = body.color ?? null;
-
     if (Object.keys(update).length === 0) {
       return NextResponse.json({ error: 'no_fields' }, { status: 400 });
     }
