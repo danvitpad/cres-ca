@@ -13,12 +13,10 @@ import Link from 'next/link';
 import {
   Megaphone,
   Users2,
-  CalendarClock,
   Building2,
-  Globe,
   Bot,
   Settings as SettingsIcon,
-  HelpCircle,
+  User as UserIcon,
   ChevronRight,
   ArrowUpRight,
 } from 'lucide-react';
@@ -44,45 +42,37 @@ const I18N: Record<MiniAppLang, {
   title: string;
   marketing: string; marketingHint: string;
   partners: string; partnersHint: string;
-  schedule: string; scheduleHint: string;
   team: string; teamHint: string;
-  publicPage: string; publicPageHint: string;
   ai: string; aiHint: string;
+  profile: string; profileHint: string;
   settings: string; settingsHint: string;
-  help: string; helpHint: string;
 }> = {
   uk: {
     title: 'Ще',
     marketing: 'Маркетинг', marketingHint: 'Розсилки, акції, промокоди',
     partners: 'Партнери', partnersHint: 'Реферали та взаємні рекомендації',
-    schedule: 'Графік роботи', scheduleHint: 'Робочі години та вихідні',
     team: 'Команда', teamHint: 'Салон та колеги',
-    publicPage: 'Моя публічна сторінка', publicPageHint: 'Як тебе бачать клієнти',
     ai: 'AI-помічник', aiHint: 'Запитай — я відповім',
-    settings: 'Налаштування', settingsHint: 'Профіль, мова, тема, тариф',
-    help: 'Допомога', helpHint: 'Інструкції та підтримка',
+    profile: 'Профіль', profileHint: 'Ім’я, аватар, тариф',
+    settings: 'Налаштування', settingsHint: 'Тариф, сповіщення, мова',
   },
   ru: {
     title: 'Ещё',
     marketing: 'Маркетинг', marketingHint: 'Рассылки, акции, промокоды',
     partners: 'Партнёры', partnersHint: 'Рефералы и взаимные рекомендации',
-    schedule: 'График работы', scheduleHint: 'Рабочие часы и выходные',
     team: 'Команда', teamHint: 'Салон и коллеги',
-    publicPage: 'Моя публичная страница', publicPageHint: 'Как тебя видят клиенты',
     ai: 'AI-помощник', aiHint: 'Спроси — отвечу',
-    settings: 'Настройки', settingsHint: 'Профиль, язык, тема, тариф',
-    help: 'Помощь', helpHint: 'Инструкции и поддержка',
+    profile: 'Профиль', profileHint: 'Имя, аватар, тариф',
+    settings: 'Настройки', settingsHint: 'Тариф, уведомления, язык',
   },
   en: {
     title: 'More',
     marketing: 'Marketing', marketingHint: 'Broadcasts, deals, promo codes',
     partners: 'Partners', partnersHint: 'Referrals and mutual recommendations',
-    schedule: 'Schedule', scheduleHint: 'Working hours and days off',
     team: 'Team', teamHint: 'Salon and colleagues',
-    publicPage: 'My public page', publicPageHint: 'How clients see you',
     ai: 'AI assistant', aiHint: 'Ask — I’ll answer',
-    settings: 'Settings', settingsHint: 'Profile, language, theme, plan',
-    help: 'Help', helpHint: 'Guides and support',
+    profile: 'Profile', profileHint: 'Name, avatar, plan',
+    settings: 'Settings', settingsHint: 'Plan, notifications, language',
   },
 };
 
@@ -92,7 +82,6 @@ export default function MasterMiniAppMore() {
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [salonId, setSalonId] = useState<string | null>(null);
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -107,30 +96,20 @@ export default function MasterMiniAppMore() {
         .maybeSingle<{ salon_id: string }>();
       if (cancelled) return;
       if (member?.salon_id) setSalonId(member.salon_id);
-      const { data: master } = await supabase
-        .from('masters')
-        .select('invite_code')
-        .eq('profile_id', userId)
-        .maybeSingle<{ invite_code: string | null }>();
-      if (cancelled) return;
-      if (master?.invite_code) setInviteCode(master.invite_code);
     })();
     return () => { cancelled = true; };
   }, [userId]);
 
-  // Маркетинг живёт только в веб-кабинете → открываем во внешнем браузере
-  // через Telegram WebApp.openLink. Раньше был просто `<Link>` на /ru/marketing,
-  // но web-страница в Mini App WebView без cookie session редиректила на
-  // главную (=календарь) — пользователь жаловался «маркетинг ведёт на календарь».
+  // Публичная страница НЕ здесь — она открывается тапом на кружок аватара
+  // справа сверху (HeaderAvatar) → /telegram/m/public-page.
+  // Маркетинг временно открывается во внешнем браузере (Mini-App-версия в работе).
   const links: MoreLinkRaw[] = [
     { key: 'marketing', href: `/${lang}/marketing`, icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', external: true },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
-    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: CalendarClock, labelKey: 'schedule', hintKey: 'scheduleHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
-    ...(inviteCode ? [{ key: 'public', href: `/m/${inviteCode}?owner=1&from=more`, icon: Globe, labelKey: 'publicPage' as const, hintKey: 'publicPageHint' as const, external: true }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
+    { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, labelKey: 'profile', hintKey: 'profileHint' },
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
-    { key: 'help', href: '/telegram/m/settings/help', icon: HelpCircle, labelKey: 'help', hintKey: 'helpHint' },
   ];
 
   function openExternal(href: string) {

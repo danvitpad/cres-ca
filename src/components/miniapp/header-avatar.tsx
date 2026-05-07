@@ -61,6 +61,7 @@ export function MiniAppHeaderAvatar() {
 
   const hidden =
     pathname === '/telegram/m/profile' ||
+    pathname === '/telegram/m/public-page' ||
     pathname.startsWith('/telegram/m/voice-book') ||
     pathname.startsWith('/telegram/m/voice-intro') ||
     pathname.startsWith('/telegram/m/slot/') ||
@@ -76,9 +77,11 @@ export function MiniAppHeaderAvatar() {
       type="button"
       onClick={() => {
         haptic('light');
-        router.push('/telegram/m/profile');
+        // По запросу 2026-05-07: кружок-аватар сверху ведёт на публичную
+        // страницу (как клиенты видят мастера). Профиль доступен из таба «Ещё».
+        router.push('/telegram/m/public-page');
       }}
-      aria-label="Профиль"
+      aria-label="Моя публичная страница"
       style={{
         position: 'fixed',
         top: 'calc(16px + var(--tg-content-top, 0px))',

@@ -11,11 +11,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Scissors, Clock, ArrowUpRight, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -68,8 +68,24 @@ const I18N: Record<MiniAppLang, {
 
 export default function MasterMiniAppServicesTab() {
   const { userId } = useAuthStore();
+  const { haptic } = useTelegram();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
+
+  function openEditor() {
+    haptic('light');
+    // Полный редактор услуг живёт в веб-кабинете. Открываем во внешнем
+    // браузере (не в Telegram WebView): WebView без cookie session
+    // редиректит на главную = календарь, и пользователь не попадает
+    // куда хотел. openLink использует системный браузер с живой сессией.
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/${lang}/services`;
+    const w = window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } };
+    if (w.Telegram?.WebApp?.openLink) {
+      w.Telegram.WebApp.openLink(url);
+    } else {
+      window.open(url, '_blank');
+    }
+  }
   const [items, setItems] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -168,8 +184,9 @@ export default function MasterMiniAppServicesTab() {
           ))
         )}
 
-        <Link
-          href={`/${lang}/services`}
+        <button
+          type="button"
+          onClick={openEditor}
           style={{
             marginTop: 8,
             display: 'flex',
@@ -183,13 +200,14 @@ export default function MasterMiniAppServicesTab() {
             color: T.accent,
             fontSize: 14,
             fontWeight: 700,
-            textDecoration: 'none',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
           }}
         >
           <Plus size={16} strokeWidth={2.4} />
           {t.add}
           <ArrowUpRight size={13} strokeWidth={2.4} />
-        </Link>
+        </button>
         <p style={{ textAlign: 'center', fontSize: 11, color: T.textTertiary, marginTop: 4 }}>
           {t.addHint}
         </p>

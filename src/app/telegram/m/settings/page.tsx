@@ -15,12 +15,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CalendarCheck,
   CreditCard,
   Bell,
   Globe,
-  HelpCircle,
-  MessageCircle,
   Moon,
   LogOut,
   ChevronRight,
@@ -112,13 +109,14 @@ interface SettingsItem {
   Icon: LucideIcon;
 }
 
+// Минимальный набор настроек. Убрано (по запросу 2026-05-07):
+//   • График работы — переехал на публичную страницу.
+//   • Помощь — пишется в TG-бот.
+//   • Обратная связь — пишется в TG-бот.
 const ITEMS: SettingsItem[] = [
-  { key: 'schedule',      href: '/telegram/m/settings/schedule',       labelKey: 'schedule',      Icon: CalendarCheck },
   { key: 'billing',       href: '/telegram/m/settings/billing',        labelKey: 'billing',       Icon: CreditCard },
   { key: 'notifications', href: '/telegram/m/settings/notifications',  labelKey: 'notifications', Icon: Bell },
   { key: 'language',      href: '/telegram/m/settings/language',       labelKey: 'language',      Icon: Globe },
-  { key: 'help',          href: '/telegram/m/settings/help',           labelKey: 'help',          Icon: HelpCircle },
-  { key: 'feedback',      href: '/telegram/m/settings/feedback',       labelKey: 'feedback',      Icon: MessageCircle },
 ];
 
 export default function MasterMiniAppSettings() {

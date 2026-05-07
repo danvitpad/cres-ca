@@ -33,8 +33,30 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
   const [checking, setChecking] = useState(true);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   const isSalonContext = pathname.startsWith('/telegram/m/salon/');
+
+  // При открытой экранной клавиатуре прячем bottom-nav и кружок аватара —
+  // иначе они перекрывают нижние поля формы (ввод дохода/расхода, заметки
+  // в карточке клиента и т.п.). Когда клавиатура закрывается, элементы
+  // возвращаются автоматически.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const baseHeight = window.innerHeight;
+    function update() {
+      // Эвристика: если visual viewport короче окна больше чем на 150px —
+      // значит клавиатура съела место. Порог 150px защищает от false-positive
+      // на iOS, где safari address bar тоже немного двигает viewport.
+      const open = baseHeight - vv!.height > 150;
+      setKeyboardOpen(open);
+    }
+    vv.addEventListener('resize', update);
+    update();
+    return () => vv.removeEventListener('resize', update);
+  }, []);
 
   useEffect(() => {
     if (isSalonContext) {
@@ -97,13 +119,15 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     { key: 'more', href: '/telegram/m/more', icon: MoreHorizontal, label: 'Ещё' },
   ];
 
-  // Fullscreen routes — booking/voice flows have own footers; profile = свой UI без табов.
+  // Fullscreen routes — booking/voice flows have own footers; profile/public-page
+  // = свой UI с крестиком закрытия, без bottom-nav.
   const isFullscreen =
     pathname.startsWith('/telegram/m/voice-book') ||
     pathname.startsWith('/telegram/m/voice-intro') ||
     pathname.startsWith('/telegram/m/slot/') ||
     pathname.startsWith('/telegram/m/onboarding') ||
-    pathname === '/telegram/m/profile';
+    pathname === '/telegram/m/profile' ||
+    pathname === '/telegram/m/public-page';
 
   return (
     <TelegramProvider>
@@ -126,8 +150,8 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
         >
           {children}
         </main>
-        {!isFullscreen && <MiniAppHeaderAvatar />}
-        {!isFullscreen && <MiniAppBottomNav tabs={tabs} />}
+        {!isFullscreen && !keyboardOpen && <MiniAppHeaderAvatar />}
+        {!isFullscreen && !keyboardOpen && <MiniAppBottomNav tabs={tabs} />}
       </MiniAppThemeProvider>
     </TelegramProvider>
   );
