@@ -26,6 +26,7 @@ import {
   Mail,
   Phone as PhoneIcon,
   KeyRound,
+  Cake,
   X,
   Check,
 } from 'lucide-react';
@@ -51,6 +52,8 @@ const I18N: Record<MiniAppLang, {
   pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
   emailConfirm: string;
   saveError: string;
+  visibilityTitle: string; visibilityHint: string;
+  showPhone: string; showEmail: string; showDob: string;
 }> = {
   uk: {
     back: 'Назад',
@@ -67,6 +70,9 @@ const I18N: Record<MiniAppLang, {
     pwSaved: 'Пароль оновлено',
     emailConfirm: 'Лист з підтвердженням надіслано. Відкрий його, щоб завершити зміну email.',
     saveError: 'Не вдалось зберегти',
+    visibilityTitle: 'Що бачать клієнти на публічній сторінці',
+    visibilityHint: 'Якщо тумблер вимкнений — поле сховане від клієнтів',
+    showPhone: 'Показувати телефон', showEmail: 'Показувати email', showDob: 'Показувати дату народження',
   },
   ru: {
     back: 'Назад',
@@ -83,6 +89,9 @@ const I18N: Record<MiniAppLang, {
     pwSaved: 'Пароль обновлён',
     emailConfirm: 'Письмо с подтверждением отправлено. Открой его, чтобы завершить смену email.',
     saveError: 'Не удалось сохранить',
+    visibilityTitle: 'Что видят клиенты на публичной странице',
+    visibilityHint: 'Если тумблер выключен — поле скрыто от клиентов',
+    showPhone: 'Показывать телефон', showEmail: 'Показывать email', showDob: 'Показывать дату рождения',
   },
   en: {
     back: 'Back',
@@ -99,6 +108,9 @@ const I18N: Record<MiniAppLang, {
     pwSaved: 'Password updated',
     emailConfirm: 'Confirmation email sent. Open it to finish changing your email.',
     saveError: 'Failed to save',
+    visibilityTitle: 'What clients see on your public page',
+    visibilityHint: 'Toggle off to hide a field from clients',
+    showPhone: 'Show phone', showEmail: 'Show email', showDob: 'Show birthday',
   },
 };
 
@@ -148,20 +160,65 @@ export default function MasterMiniAppSettings() {
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = useState(false);
 
+  // Visibility flags для публичной страницы — мастер решает показывать ли
+  // клиентам телефон / email / ДР.
+  const [phonePublic, setPhonePublic] = useState(false);
+  const [emailPublic, setEmailPublic] = useState(false);
+  const [dobPublic, setDobPublic] = useState(false);
+
   useEffect(() => {
     if (!userId) return;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase
-        .from('profiles')
-        .select('email, phone')
-        .eq('id', userId)
-        .maybeSingle<{ email: string | null; phone: string | null }>();
-      if (!data) return;
-      setEmail(data.email);
-      setPhone(data.phone);
+      const [profileQ, masterQ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('email, phone')
+          .eq('id', userId)
+          .maybeSingle<{ email: string | null; phone: string | null }>(),
+        supabase
+          .from('masters')
+          .select('phone_public, email_public, dob_public')
+          .eq('profile_id', userId)
+          .maybeSingle<{ phone_public: boolean | null; email_public: boolean | null; dob_public: boolean | null }>(),
+      ]);
+      if (profileQ.data) {
+        setEmail(profileQ.data.email);
+        setPhone(profileQ.data.phone);
+      }
+      if (masterQ.data) {
+        setPhonePublic(!!masterQ.data.phone_public);
+        setEmailPublic(!!masterQ.data.email_public);
+        setDobPublic(!!masterQ.data.dob_public);
+      }
     })();
   }, [userId]);
+
+  async function toggleVisibility(field: 'phone_public' | 'email_public' | 'dob_public', next: boolean) {
+    haptic('light');
+    // Optimistic update — visual immediately, revert при ошибке.
+    if (field === 'phone_public') setPhonePublic(next);
+    if (field === 'email_public') setEmailPublic(next);
+    if (field === 'dob_public') setDobPublic(next);
+    const initData = getInitData();
+    try {
+      const res = await fetch('/api/telegram/m/public-visibility', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ [field]: next }),
+      });
+      if (!res.ok) throw new Error('failed');
+    } catch {
+      haptic('error');
+      // revert
+      if (field === 'phone_public') setPhonePublic(!next);
+      if (field === 'email_public') setEmailPublic(!next);
+      if (field === 'dob_public') setDobPublic(!next);
+    }
+  }
 
   function openContactEdit() {
     setEditPhone(phone ? phone.replace(/^\+380/, '') : '');
@@ -385,6 +442,37 @@ export default function MasterMiniAppSettings() {
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </button>
+        </div>
+
+        {/* Видимость на публичной странице — управляет masters.phone_public /
+            email_public / dob_public. Сами поля (телефон, email) живут выше
+            в карточке контактов; здесь только тумблеры показывать ли их клиентам. */}
+        <div>
+          <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: `0 4px 6px` }}>
+            {t.visibilityTitle}
+          </p>
+          <div style={cardStyle}>
+            <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} style={rowStyle}>
+              <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showPhone}</p>
+              <MiniToggle on={phonePublic} />
+            </button>
+            <div style={divider} />
+            <button type="button" onClick={() => toggleVisibility('email_public', !emailPublic)} style={rowStyle}>
+              <div style={iconBox}><Mail size={16} color={T.text} /></div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showEmail}</p>
+              <MiniToggle on={emailPublic} />
+            </button>
+            <div style={divider} />
+            <button type="button" onClick={() => toggleVisibility('dob_public', !dobPublic)} style={rowStyle}>
+              <div style={iconBox}><Cake size={16} color={T.text} /></div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showDob}</p>
+              <MiniToggle on={dobPublic} />
+            </button>
+          </div>
+          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
+            {t.visibilityHint}
+          </p>
         </div>
 
         {/* Master settings list — то что не получило отдельного слота в bottom nav.

@@ -1,14 +1,12 @@
 /** --- YAML
  * name: MasterMiniAppPublicPage
- * description: Native Mini App превью публичной страницы мастера (как видят
- *              клиенты). Hero + статистика + био + услуги + портфолио +
- *              контакты + часы. Кнопка ✕ слева сверху для возврата.
- *              Полное редактирование (логотип / обложка / категории / отзывы)
- *              открывается во внешнем браузере через WebApp.openLink — там
- *              живёт inline-edit с шкалой полей и cookie session мастера.
- *              Раньше тап на «Моя страница» открывал тот же web-экран в TG
- *              WebView, но он секунду подгружался и не выглядел нативно.
- *              Этот экран рендерится мгновенно из supabase + Mini App tokens.
+ * description: Native Mini App превью публичной страницы мастера — паритет с
+ *              /m/{handle} в вебе и /telegram/(app)/search/[id] у клиента.
+ *              Секции: cover, hero (avatar+name+spec+city+rating), stats,
+ *              actions (share + полное редактирование), bio, услуги, портфолио,
+ *              часы работы, языки, адрес, отзывы, рекомендации (партнёры).
+ *              Контактных данных (телефон / email) тут нет — они живут в
+ *              Settings под тумблерами «Показывать на публичной».
  * created: 2026-05-07
  * --- */
 
@@ -18,8 +16,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
-  X, Pencil, Star, MapPin, Phone, Mail, Globe, Clock,
-  ExternalLink, Loader2, Share2,
+  X, Pencil, Star, MapPin, Globe, Clock,
+  ExternalLink, Loader2, Share2, Users2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -32,6 +30,7 @@ interface MasterData {
   id: string;
   display_name: string | null;
   specialization: string | null;
+  headline: string | null;
   bio: string | null;
   city: string | null;
   rating: number;
@@ -39,10 +38,13 @@ interface MasterData {
   avatar_url: string | null;
   cover_url: string | null;
   invite_code: string | null;
+  slug: string | null;
   workplace: string | null;
   address: string | null;
-  phone: string | null;
-  instagram: string | null;
+  social_links: Record<string, string | null>;
+  languages: string[];
+  interests: string[];
+  working_hours: unknown;
   total_appointments: number;
   total_clients: number;
 }
@@ -50,17 +52,48 @@ interface MasterData {
 interface ServiceRow {
   id: string;
   name: string;
+  description: string | null;
   duration_minutes: number;
   price: number;
   currency: string;
   color: string | null;
+  category: { name: string } | null;
 }
 
 interface PortfolioRow {
   id: string;
   image_url: string;
   caption: string | null;
+  service_name: string | null;
+  item_x: number | null;
+  item_y: number | null;
+  item_scale: number | null;
 }
+
+interface ReviewRow {
+  id: string;
+  score: number;
+  comment: string | null;
+  created_at: string;
+  is_anonymous: boolean;
+  reviewer_name: string | null;
+  reviewer_avatar: string | null;
+}
+
+interface PartnerRow {
+  id: string;
+  display_name: string | null;
+  specialization: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  invite_code: string | null;
+}
+
+interface WorkingHoursDay { open: string; close: string; closed?: boolean }
+type WorkingHours = Record<string, WorkingHoursDay | null>;
+
+const DAYS_RU = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 const I18N: Record<MiniAppLang, {
   loading: string; notFound: string;
@@ -69,52 +102,63 @@ const I18N: Record<MiniAppLang, {
   bio: string; bioEmpty: string;
   services: string; servicesEmpty: string;
   portfolio: string; portfolioEmpty: string;
-  contacts: string; contactsEmpty: string;
-  hours: string;
-  noPhone: string; noEmail: string; noInstagram: string;
-  minutes: string;
+  hours: string; hoursEmpty: string;
+  languages: string; languagesEmpty: string;
+  address: string; addressEmpty: string;
+  reviewsTitle: string; reviewsEmpty: string; anonReviewer: string;
+  partners: string; partnersEmpty: string;
+  closed: string; minutes: string;
 }> = {
   uk: {
     loading: 'Завантажуємо…', notFound: 'Профіль не знайдено',
     close: 'Закрити', share: 'Поділитись',
-    editAll: 'Повне редагування', editAllHint: 'Логотип, обкладинка, портфоліо, відгуки — у браузері',
+    editAll: 'Повне редагування', editAllHint: 'Логотип, обкладинка, послуги, відгуки — у браузері',
     worksLabel: 'Робіт', clientsLabel: 'Клієнтів', rating: 'Рейтинг',
     reviews: (n) => `${n} відгуків`,
     bio: 'Про себе', bioEmpty: 'Розкажи про себе у браузерному редакторі',
     services: 'Послуги', servicesEmpty: 'Послуг поки немає',
     portfolio: 'Портфоліо', portfolioEmpty: 'Робіт поки немає',
-    contacts: 'Контакти', contactsEmpty: 'Контактів поки немає',
-    hours: 'Графік роботи',
-    noPhone: 'Телефон не вказаний', noEmail: 'Email не вказаний', noInstagram: 'Instagram не вказаний',
-    minutes: 'хв',
+    hours: 'Графік роботи', hoursEmpty: 'Години не вказані',
+    languages: 'Мови', languagesEmpty: 'Мови не вказані',
+    address: 'Адреса', addressEmpty: 'Адреса не вказана',
+    reviewsTitle: 'Відгуки', reviewsEmpty: 'Відгуків поки немає',
+    anonReviewer: 'Анонімний клієнт',
+    partners: 'Рекомендую', partnersEmpty: 'Поки нікого не рекомендую',
+    closed: 'вихідний', minutes: 'хв',
   },
   ru: {
     loading: 'Загружаем…', notFound: 'Профиль не найден',
     close: 'Закрыть', share: 'Поделиться',
-    editAll: 'Полное редактирование', editAllHint: 'Логотип, обложка, портфолио, отзывы — в браузере',
+    editAll: 'Полное редактирование', editAllHint: 'Логотип, обложка, услуги, отзывы — в браузере',
     worksLabel: 'Работ', clientsLabel: 'Клиентов', rating: 'Рейтинг',
     reviews: (n) => `${n} отзывов`,
     bio: 'О себе', bioEmpty: 'Расскажи о себе в браузерном редакторе',
     services: 'Услуги', servicesEmpty: 'Услуг пока нет',
     portfolio: 'Портфолио', portfolioEmpty: 'Работ пока нет',
-    contacts: 'Контакты', contactsEmpty: 'Контактов пока нет',
-    hours: 'График работы',
-    noPhone: 'Телефон не указан', noEmail: 'Email не указан', noInstagram: 'Instagram не указан',
-    minutes: 'мин',
+    hours: 'График работы', hoursEmpty: 'Часы не указаны',
+    languages: 'Языки', languagesEmpty: 'Языки не указаны',
+    address: 'Адрес', addressEmpty: 'Адрес не указан',
+    reviewsTitle: 'Отзывы', reviewsEmpty: 'Отзывов пока нет',
+    anonReviewer: 'Анонимный клиент',
+    partners: 'Рекомендую', partnersEmpty: 'Пока никого не рекомендую',
+    closed: 'выходной', minutes: 'мин',
   },
   en: {
     loading: 'Loading…', notFound: 'Profile not found',
     close: 'Close', share: 'Share',
-    editAll: 'Full editor', editAllHint: 'Logo, cover, portfolio, reviews — in the browser',
+    editAll: 'Full editor', editAllHint: 'Logo, cover, services, reviews — in the browser',
     worksLabel: 'Visits', clientsLabel: 'Clients', rating: 'Rating',
     reviews: (n) => `${n} reviews`,
     bio: 'About', bioEmpty: 'Tell about yourself in the browser editor',
     services: 'Services', servicesEmpty: 'No services yet',
     portfolio: 'Portfolio', portfolioEmpty: 'No works yet',
-    contacts: 'Contacts', contactsEmpty: 'No contacts yet',
-    hours: 'Working hours',
-    noPhone: 'Phone not set', noEmail: 'Email not set', noInstagram: 'Instagram not set',
-    minutes: 'min',
+    hours: 'Hours', hoursEmpty: 'Hours not set',
+    languages: 'Languages', languagesEmpty: 'Languages not set',
+    address: 'Address', addressEmpty: 'Address not set',
+    reviewsTitle: 'Reviews', reviewsEmpty: 'No reviews yet',
+    anonReviewer: 'Anonymous client',
+    partners: 'I recommend', partnersEmpty: 'No recommendations yet',
+    closed: 'closed', minutes: 'min',
   },
 };
 
@@ -135,19 +179,16 @@ export default function MasterMiniAppPublicPage() {
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [master, setMaster] = useState<MasterData | null>(null);
-  const [profileEmail, setProfileEmail] = useState<string | null>(null);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioRow[]>([]);
+  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [partners, setPartners] = useState<PartnerRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      // В Mini App без cookie supabase session прямой select упирается в RLS
-      // (auth.uid() = NULL) — поэтому идём через service-role endpoint, который
-      // валидирует initData. Аналог /api/telegram/m/profile, но с полным
-      // набором полей публички + services + portfolio.
       const initData = getInitData();
       const res = await fetch('/api/telegram/m/public-page-data', {
         method: 'POST',
@@ -161,15 +202,17 @@ export default function MasterMiniAppPublicPage() {
       if (!res.ok) { setLoading(false); return; }
       const json = await res.json() as {
         master: MasterData | null;
-        profile: { email: string | null } | null;
         services: ServiceRow[];
         portfolio: PortfolioRow[];
+        reviews: ReviewRow[];
+        partners: PartnerRow[];
       };
       if (cancelled) return;
       setMaster(json.master);
-      setProfileEmail(json.profile?.email ?? null);
       setServices(json.services ?? []);
       setPortfolio(json.portfolio ?? []);
+      setReviews(json.reviews ?? []);
+      setPartners(json.partners ?? []);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -178,7 +221,7 @@ export default function MasterMiniAppPublicPage() {
   function shareLink() {
     if (!master?.invite_code) return;
     haptic('light');
-    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/m/${master.invite_code}`;
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/m/${master.slug || master.invite_code}`;
     const w = window as unknown as { Telegram?: { WebApp?: { openTelegramLink?: (url: string) => void } } };
     if (w.Telegram?.WebApp?.openTelegramLink) {
       w.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}`);
@@ -190,7 +233,7 @@ export default function MasterMiniAppPublicPage() {
   function openFullEditor() {
     if (!master?.invite_code) return;
     haptic('light');
-    openExternal(`/m/${master.invite_code}?owner=1&from=miniapp-public`);
+    openExternal(`/m/${master.slug || master.invite_code}?owner=1&from=miniapp-public`);
   }
 
   if (loading) {
@@ -214,6 +257,7 @@ export default function MasterMiniAppPublicPage() {
   }
 
   const displayName = master.display_name || '—';
+  const wh = (master.working_hours as WorkingHours | null) ?? null;
 
   return (
     <MobilePage>
@@ -221,23 +265,40 @@ export default function MasterMiniAppPublicPage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 24 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 32 }}
       >
-        {/* Cover + close button */}
-        <div style={{ position: 'relative', width: '100%' }}>
+        {/* Cover — фиксированная высота 180px, фон-плейсхолдер серый чтобы
+            прозрачные PNG не накладывались на контент ниже. Аватар не
+            пересекается с cover — рендерится отдельной строкой. */}
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: 180,
+            background: T.bgSubtle,
+            overflow: 'hidden',
+          }}
+        >
           {master.cover_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={master.cover_url}
               alt=""
-              style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                display: 'block',
+              }}
             />
           ) : (
             <div
               style={{
                 width: '100%',
-                height: 120,
-                background: `linear-gradient(135deg, ${T.gradientFrom}40, ${T.gradientTo}40)`,
+                height: '100%',
+                background: `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
+                opacity: 0.35,
               }}
             />
           )}
@@ -249,14 +310,11 @@ export default function MasterMiniAppPublicPage() {
               position: 'absolute',
               left: 12,
               top: 'calc(12px + var(--tg-content-top, 0px))',
-              width: 36,
-              height: 36,
+              width: 36, height: 36,
               borderRadius: '50%',
               border: `1px solid ${T.border}`,
               background: T.surface,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer',
               boxShadow: SHADOW.card,
             }}
@@ -265,26 +323,29 @@ export default function MasterMiniAppPublicPage() {
           </button>
         </div>
 
-        {/* Hero: avatar + name + spec + city */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: `0 ${PAGE_PADDING_X}px`, marginTop: -40 }}>
+        {/* Hero: avatar + name. Avatar overlap'ит cover на 30px (классический
+            Fresha-стиль), но строго в своём grid-row, не накладываясь на контент. */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, padding: `0 ${PAGE_PADDING_X}px`, marginTop: -50 }}>
           <div
             style={{
-              width: 80, height: 80, borderRadius: '50%',
+              width: 84, height: 84, borderRadius: '50%',
               border: `4px solid ${T.bg}`, overflow: 'hidden', flexShrink: 0,
               background: T.surface,
             }}
           >
-            <AvatarCircle url={master.avatar_url} name={displayName} size={72} />
+            <AvatarCircle url={master.avatar_url} name={displayName} size={76} />
           </div>
-          <div style={{ flex: 1, minWidth: 0, paddingTop: 44 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
             <h1 style={{ ...TYPE.h2, color: T.text, margin: 0, fontSize: 22 }}>{displayName}</h1>
-            {master.specialization && (
-              <p style={{ ...TYPE.caption, marginTop: 2 }}>{master.specialization}</p>
+            {(master.headline || master.specialization) && (
+              <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {master.headline || master.specialization}
+              </p>
             )}
-            {master.city && (
+            {(master.workplace || master.city) && (
               <p style={{ ...TYPE.micro, marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <MapPin size={11} />
-                {master.city}
+                {[master.workplace, master.city].filter(Boolean).join(' · ')}
               </p>
             )}
           </div>
@@ -344,34 +405,37 @@ export default function MasterMiniAppPublicPage() {
           {master.bio ? (
             <p style={{ ...TYPE.body, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>{master.bio}</p>
           ) : (
-            <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.bioEmpty}</p>
+            <Empty text={t.bioEmpty} />
           )}
         </Section>
 
         {/* Services */}
         <Section title={t.services}>
           {services.length === 0 ? (
-            <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.servicesEmpty}</p>
+            <Empty text={t.servicesEmpty} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {services.map((s) => (
                 <div
                   key={s.id}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
                     padding: '10px 12px', borderRadius: R.md,
                     border: `1px solid ${T.borderSubtle}`, background: T.surface,
                   }}
                 >
-                  <span style={{ width: 8, height: 8, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }} />
+                  <span style={{ width: 8, height: 8, marginTop: 6, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{s.name}</p>
-                    <p style={{ ...TYPE.micro, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {s.category && (
+                      <p style={{ ...TYPE.micro, marginTop: 2, color: T.textTertiary }}>{s.category.name}</p>
+                    )}
+                    <p style={{ ...TYPE.micro, marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <Clock size={10} />
                       {s.duration_minutes} {t.minutes}
                     </p>
                   </div>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: T.text, fontVariantNumeric: 'tabular-nums', margin: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: T.text, fontVariantNumeric: 'tabular-nums', margin: 0, flexShrink: 0 }}>
                     {Number(s.price).toFixed(0)}{' '}
                     <span style={{ fontSize: 11, fontWeight: 500, color: T.textTertiary }}>
                       {s.currency === 'UAH' ? '₴' : s.currency}
@@ -386,42 +450,197 @@ export default function MasterMiniAppPublicPage() {
         {/* Portfolio */}
         <Section title={t.portfolio}>
           {portfolio.length === 0 ? (
-            <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.portfolioEmpty}</p>
+            <Empty text={t.portfolioEmpty} />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-              {portfolio.map((it) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={it.id}
-                  src={it.image_url}
-                  alt={it.caption ?? ''}
-                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: R.sm, display: 'block' }}
-                />
+              {portfolio.map((it) => {
+                const x = typeof it.item_x === 'number' ? it.item_x : 50;
+                const y = typeof it.item_y === 'number' ? it.item_y : 50;
+                const scale = typeof it.item_scale === 'number' ? it.item_scale : 1;
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={it.id}
+                    src={it.image_url}
+                    alt={it.caption ?? ''}
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1',
+                      objectFit: 'cover',
+                      objectPosition: `${x}% ${y}%`,
+                      transform: scale !== 1 ? `scale(${scale})` : undefined,
+                      borderRadius: R.sm,
+                      display: 'block',
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </Section>
+
+        {/* Working hours */}
+        <Section title={t.hours}>
+          {wh ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {DAY_KEYS.map((k, i) => {
+                const day = wh[k];
+                const isClosed = !day || day.closed || (!day.open && !day.close);
+                return (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: T.text, fontWeight: 600, width: 36 }}>{DAYS_RU[i]}</span>
+                    <span style={{ color: isClosed ? T.textTertiary : T.text }}>
+                      {isClosed ? t.closed : `${day.open} – ${day.close}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Empty text={t.hoursEmpty} />
+          )}
+        </Section>
+
+        {/* Languages */}
+        <Section title={t.languages}>
+          {master.languages && master.languages.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {master.languages.map((l) => (
+                <span
+                  key={l}
+                  style={{
+                    padding: '4px 10px', borderRadius: 999,
+                    border: `1px solid ${T.borderSubtle}`, background: T.bgSubtle,
+                    fontSize: 12, color: T.text, fontWeight: 600,
+                  }}
+                >
+                  {l}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <Empty text={t.languagesEmpty} />
+          )}
+        </Section>
+
+        {/* Address */}
+        <Section title={t.address}>
+          {master.address ? (
+            <p style={{ ...TYPE.body, color: T.text, margin: 0, display: 'inline-flex', alignItems: 'flex-start', gap: 8 }}>
+              <MapPin size={16} style={{ marginTop: 2, flexShrink: 0 }} color={T.textSecondary} />
+              <span>{master.address}</span>
+            </p>
+          ) : (
+            <Empty text={t.addressEmpty} />
+          )}
+        </Section>
+
+        {/* Reviews */}
+        <Section title={t.reviewsTitle}>
+          {reviews.length === 0 ? (
+            <Empty text={t.reviewsEmpty} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {reviews.slice(0, 5).map((r) => (
+                <div key={r.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <AvatarCircle url={r.reviewer_avatar} name={r.reviewer_name ?? '?'} size={32} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ ...TYPE.bodyStrong, fontSize: 13, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {r.reviewer_name || t.anonReviewer}
+                      </p>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, marginTop: 1 }}>
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <Star
+                            key={idx}
+                            size={11}
+                            fill={idx < r.score ? '#f59e0b' : 'none'}
+                            color={idx < r.score ? '#f59e0b' : T.textTertiary}
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {r.comment && (
+                    <p style={{ ...TYPE.caption, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>{r.comment}</p>
+                  )}
+                </div>
               ))}
             </div>
           )}
         </Section>
 
-        {/* Contacts */}
-        <Section title={t.contacts}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <ContactRow icon={<Phone size={14} />} value={master.phone} placeholder={t.noPhone} />
-            <ContactRow icon={<Mail size={14} />} value={profileEmail} placeholder={t.noEmail} />
-            <ContactRow icon={<Globe size={14} />} value={master.instagram} placeholder={t.noInstagram} />
-            {master.address && (
-              <ContactRow icon={<MapPin size={14} />} value={master.address} placeholder="" />
-            )}
-          </div>
+        {/* Partners / Recommendations */}
+        <Section title={t.partners}>
+          {partners.length === 0 ? (
+            <Empty text={t.partnersEmpty} />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {partners.map((p) => (
+                <div
+                  key={p.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 10px', borderRadius: R.md,
+                    border: `1px solid ${T.borderSubtle}`, background: T.surface,
+                  }}
+                >
+                  <AvatarCircle url={p.avatar_url} name={p.display_name ?? '?'} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ ...TYPE.bodyStrong, fontSize: 13, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.display_name || '—'}
+                    </p>
+                    {(p.specialization || p.city) && (
+                      <p style={{ ...TYPE.micro, marginTop: 1 }}>
+                        {[p.specialization, p.city].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                  <Users2 size={14} color={T.textTertiary} />
+                </div>
+              ))}
+            </div>
+          )}
         </Section>
+
+        {/* Social links — Instagram / TikTok / YouTube etc. */}
+        {master.social_links && Object.values(master.social_links).some((v) => !!v) && (
+          <Section title="—" hideTitle>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {Object.entries(master.social_links)
+                .filter(([, v]) => !!v)
+                .map(([k, v]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => v && openExternal(String(v))}
+                    style={{
+                      padding: '6px 10px', borderRadius: 999,
+                      border: `1px solid ${T.borderSubtle}`, background: T.surface,
+                      fontSize: 12, color: T.text, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    <Globe size={12} />
+                    {k}
+                  </button>
+                ))}
+            </div>
+          </Section>
+        )}
       </motion.div>
     </MobilePage>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, hideTitle }: { title: string; children: React.ReactNode; hideTitle?: boolean }) {
   return (
     <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
-      <h2 style={{ ...TYPE.h3, color: T.text, margin: '0 0 8px', fontSize: 16 }}>{title}</h2>
+      {!hideTitle && (
+        <h2 style={{ ...TYPE.h3, color: T.text, margin: '0 0 8px', fontSize: 16 }}>{title}</h2>
+      )}
       <div
         style={{
           background: T.surface,
@@ -460,14 +679,6 @@ function Stat({ value, label, withStar }: { value: string; label: string; withSt
   );
 }
 
-function ContactRow({ icon, value, placeholder }: { icon: React.ReactNode; value: string | null; placeholder: string }) {
-  const empty = !value || !value.trim();
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ color: empty ? T.textTertiary : T.text, flexShrink: 0 }}>{icon}</span>
-      <span style={{ fontSize: 13, color: empty ? T.textTertiary : T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {empty ? placeholder : value}
-      </span>
-    </div>
-  );
+function Empty({ text }: { text: string }) {
+  return <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{text}</p>;
 }
