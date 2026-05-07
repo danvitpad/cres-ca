@@ -575,9 +575,22 @@ export default function MasterMiniAppProfile() {
               {t.share}
             </button>
             {master.invite_code ? (
-              <Link
-                href={`/m/${master.invite_code}?owner=1&from=profile`}
-                onClick={() => haptic('light')}
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('light');
+                  // Открываем в системном браузере через Telegram WebApp.openLink:
+                  // в WebView без cookie session web-страница редиректит на login
+                  // и owner-mode не активируется. Внешний браузер использует
+                  // существующую сессию мастера.
+                  const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/m/${master.invite_code}?owner=1&from=profile`;
+                  const w = window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } };
+                  if (w.Telegram?.WebApp?.openLink) {
+                    w.Telegram.WebApp.openLink(url);
+                  } else {
+                    window.open(url, '_blank');
+                  }
+                }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -590,12 +603,13 @@ export default function MasterMiniAppProfile() {
                   color: T.bg,
                   fontSize: 13,
                   fontWeight: 700,
-                  textDecoration: 'none',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
                 }}
               >
                 <ExternalLink size={15} strokeWidth={2.2} />
                 {t.publicPageEdit}
-              </Link>
+              </button>
             ) : (
               <button
                 type="button"

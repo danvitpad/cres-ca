@@ -20,6 +20,7 @@ import {
   Settings as SettingsIcon,
   HelpCircle,
   ChevronRight,
+  ArrowUpRight,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -35,6 +36,8 @@ interface MoreLinkRaw {
   icon: LucideIcon;
   labelKey: keyof typeof I18N['ru'];
   hintKey: keyof typeof I18N['ru'];
+  /** true → открывать во внешнем браузере (web-страница, не Mini App page). */
+  external?: boolean;
 }
 
 const I18N: Record<MiniAppLang, {
@@ -115,16 +118,31 @@ export default function MasterMiniAppMore() {
     return () => { cancelled = true; };
   }, [userId]);
 
+  // Маркетинг живёт только в веб-кабинете → открываем во внешнем браузере
+  // через Telegram WebApp.openLink. Раньше был просто `<Link>` на /ru/marketing,
+  // но web-страница в Mini App WebView без cookie session редиректила на
+  // главную (=календарь) — пользователь жаловался «маркетинг ведёт на календарь».
   const links: MoreLinkRaw[] = [
-    { key: 'marketing', href: `/${lang}/marketing`, icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
+    { key: 'marketing', href: `/${lang}/marketing`, icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', external: true },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     { key: 'schedule', href: '/telegram/m/settings/schedule', icon: CalendarClock, labelKey: 'schedule', hintKey: 'scheduleHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
-    ...(inviteCode ? [{ key: 'public', href: `/m/${inviteCode}?owner=1&from=more`, icon: Globe, labelKey: 'publicPage' as const, hintKey: 'publicPageHint' as const }] : []),
+    ...(inviteCode ? [{ key: 'public', href: `/m/${inviteCode}?owner=1&from=more`, icon: Globe, labelKey: 'publicPage' as const, hintKey: 'publicPageHint' as const, external: true }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
     { key: 'help', href: '/telegram/m/settings/help', icon: HelpCircle, labelKey: 'help', hintKey: 'helpHint' },
   ];
+
+  function openExternal(href: string) {
+    haptic('light');
+    const fullUrl = href.startsWith('http') ? href : `${typeof window !== 'undefined' ? window.location.origin : ''}${href}`;
+    const w = window as { Telegram?: { WebApp?: { openLink?: (url: string) => void } } };
+    if (w.Telegram?.WebApp?.openLink) {
+      w.Telegram.WebApp.openLink(fullUrl);
+    } else {
+      window.open(fullUrl, '_blank');
+    }
+  }
 
   return (
     <MobilePage>
@@ -141,33 +159,30 @@ export default function MasterMiniAppMore() {
       >
         {links.map((it, idx) => {
           const Icon = it.icon;
-          return (
-            <Link
-              key={it.key}
-              href={it.href}
-              onClick={() => haptic('light')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 14,
-                padding: '16px 16px',
-                borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
-                textDecoration: 'none',
-                color: T.text,
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
+          const RightIcon = it.external ? ArrowUpRight : ChevronRight;
+          const rowStyle: React.CSSProperties = {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            padding: '16px 16px',
+            borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
+            textDecoration: 'none',
+            color: T.text,
+            WebkitTapHighlightColor: 'transparent',
+            background: 'transparent',
+            border: 'none',
+            width: '100%',
+            textAlign: 'left',
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+          };
+          const inner = (
+            <>
               <span
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 11,
-                  background: T.accentSoft,
-                  color: T.accent,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
+                  width: 38, height: 38, borderRadius: 11,
+                  background: T.accentSoft, color: T.accent,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}
               >
                 <Icon size={18} strokeWidth={2.2} />
@@ -176,7 +191,19 @@ export default function MasterMiniAppMore() {
                 <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: T.text }}>{t[it.labelKey]}</span>
                 <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 2 }}>{t[it.hintKey]}</span>
               </span>
-              <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} />
+              <RightIcon size={16} color={T.textTertiary} strokeWidth={2} />
+            </>
+          );
+          if (it.external) {
+            return (
+              <button key={it.key} type="button" onClick={() => openExternal(it.href)} style={rowStyle}>
+                {inner}
+              </button>
+            );
+          }
+          return (
+            <Link key={it.key} href={it.href} onClick={() => haptic('light')} style={rowStyle as React.CSSProperties}>
+              {inner}
             </Link>
           );
         })}

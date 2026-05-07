@@ -13,6 +13,7 @@ import { TrendingUp, Calendar, Target, Loader2, Award, XCircle, Plus, Minus } fr
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
+import { PageHeader } from '@/components/miniapp/shells';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
@@ -220,13 +221,23 @@ export default function MasterMiniAppStats() {
     );
   }
 
+  const titleByLang = { uk: 'Фінанси', ru: 'Финансы', en: 'Finance' } as const;
+
   return (
     <>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="space-y-5 px-5 pt-6 pb-10"
+      >
+        <PageHeader title={titleByLang[lang]} />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.05 }}
+        className="space-y-5 px-5 pt-2 pb-10"
       >
         {/* Period tabs — Today / 7 / 30 */}
         <div className="flex gap-1 rounded-2xl border border-neutral-200 bg-white p-1">

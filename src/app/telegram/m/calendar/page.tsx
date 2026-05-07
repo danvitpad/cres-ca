@@ -359,29 +359,12 @@ export default function MasterMiniAppCalendar() {
   return (
     <MobilePage>
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Кнопка «Новая запись» переехала в floating FAB снизу справа —
+            раньше она жила в PageHeader.right и перекрывалась кружком аватара
+            (тот теперь fixed top-right на каждом табе). */}
         <PageHeader
           title={formatDayHeader(day, t)}
           subtitle={t.bookingsCount(totals.count, totals.revenue.toFixed(0))}
-          right={
-            <Link
-              href="/telegram/m/slot/new"
-              onClick={() => haptic('selection')}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: T.text,
-                color: T.bg,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textDecoration: 'none',
-              }}
-              aria-label={t.newBooking}
-            >
-              <Plus size={20} strokeWidth={2.4} />
-            </Link>
-          }
         />
 
         {/* Day nav */}
@@ -794,6 +777,34 @@ export default function MasterMiniAppCalendar() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Floating «+» — раньше жил в PageHeader.right, но кружок аватара (fixed
+          top-right на каждом табе) перекрывал его. Перенесён в правый-нижний
+          угол, всегда виден, не конкурирует с bottom-nav (nav висит снизу
+          по центру). */}
+      <Link
+        href="/telegram/m/slot/new"
+        onClick={() => haptic('selection')}
+        aria-label={t.newBooking}
+        style={{
+          position: 'fixed',
+          right: 16,
+          bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          background: T.text,
+          color: T.bg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textDecoration: 'none',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)',
+          zIndex: 40,
+        }}
+      >
+        <Plus size={24} strokeWidth={2.4} />
+      </Link>
     </MobilePage>
   );
 }
