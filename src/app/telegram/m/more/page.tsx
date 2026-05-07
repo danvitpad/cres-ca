@@ -16,7 +16,6 @@ import {
   Building2,
   Bot,
   Settings as SettingsIcon,
-  User as UserIcon,
   ChevronRight,
   ArrowUpRight,
 } from 'lucide-react';
@@ -103,12 +102,14 @@ export default function MasterMiniAppMore() {
   // Публичная страница НЕ здесь — она открывается тапом на кружок аватара
   // справа сверху (HeaderAvatar) → /telegram/m/public-page.
   // Маркетинг временно открывается во внешнем браузере (Mini-App-версия в работе).
+  // Профиль убран по запросу 2026-05-07 — всё что было в нём (имя, аватар,
+  // тариф, био, контакты) живёт на публичной странице (открывается тапом
+  // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
     { key: 'marketing', href: `/${lang}/marketing`, icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', external: true },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
-    { key: 'profile', href: '/telegram/m/profile', icon: UserIcon, labelKey: 'profile', hintKey: 'profileHint' },
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
   ];
 

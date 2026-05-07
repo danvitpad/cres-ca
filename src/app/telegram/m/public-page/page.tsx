@@ -280,9 +280,11 @@ export default function MasterMiniAppPublicPage() {
 
   const displayName = master.display_name || '—';
   const wh = (master.working_hours as WorkingHours | null) ?? null;
-  // Cover показываем только если он явно отличается от аватара. Иначе у мастеров,
-  // которые поставили лого и в аватар, и в обложку, не было бы двух копий лого.
-  const showCover = !!master.cover_url && master.cover_url !== master.avatar_url;
+  // Cover показывается ВСЕГДА — либо реальная картинка (если cover_url задан
+  // и отличается от аватара), либо градиент-плейсхолдер. Это даёт стабильный
+  // layout: аватар всегда на одной высоте, не «прыгает» в зависимости от
+  // настроек мастера.
+  const hasRealCover = !!master.cover_url && master.cover_url !== master.avatar_url;
 
   // Сортировка отзывов: с комментарием → без, внутри каждой группы по дате DESC.
   const sortedReviews = [...reviews].sort((a, b) => {
@@ -300,22 +302,22 @@ export default function MasterMiniAppPublicPage() {
         transition={{ duration: 0.25 }}
         style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 32 }}
       >
-        {/* Cover (только если он отличается от аватара). flex-shrink:0 + явная
-            высота 180 + overflow:hidden — гарантия что огромные PNG лого не
-            растянут блок на полэкрана. */}
-        {showCover ? (
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              flexShrink: 0,
-              height: 180,
-              maxHeight: 180,
-              background: T.bgSubtle,
-              overflow: 'hidden',
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+        {/* Cover — всегда фиксированная высота 160px. Если задан cover_url
+            и он отличается от аватара — рендерим картинку. Иначе — градиент
+            из brand-цветов как плейсхолдер. */}
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            flexShrink: 0,
+            height: 160,
+            maxHeight: 160,
+            background: hasRealCover ? T.bgSubtle : `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
+            overflow: 'hidden',
+          }}
+        >
+          {hasRealCover && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={master.cover_url!}
               alt=""
@@ -327,42 +329,41 @@ export default function MasterMiniAppPublicPage() {
                 display: 'block',
               }}
             />
-            <CloseBtn onClick={() => { haptic('light'); router.back(); }} />
-          </div>
-        ) : (
-          <div style={{ position: 'relative', width: '100%', flexShrink: 0, height: 60 }}>
-            <CloseBtn onClick={() => { haptic('light'); router.back(); }} />
-          </div>
-        )}
+          )}
+          <CloseBtn onClick={() => { haptic('light'); router.back(); }} />
+        </div>
 
-        {/* Hero: avatar + name + spec + city. Аватар крупный (96px) и больше
-            не накладывается на cover (cover scrollable выше). */}
+        {/* Hero: avatar над cover (overlap 50%) + имя/спец/город СНИЗУ под
+            аватаром (как в вебе). Раньше имя было справа от аватара и
+            «толкалось» с ним; теперь чистый Fresha-style: круглый аватар
+            центрирован, под ним крупное имя и метаданные. */}
         <div
           style={{
-            display: 'flex', alignItems: 'flex-end', gap: 12,
+            display: 'flex', flexDirection: 'column',
             padding: `0 ${PAGE_PADDING_X}px`,
-            marginTop: showCover ? -52 : 0,
+            marginTop: -56,
           }}
         >
           <div
             style={{
-              width: 96, height: 96, borderRadius: '50%',
+              width: 100, height: 100, borderRadius: '50%',
               border: `4px solid ${T.bg}`, overflow: 'hidden', flexShrink: 0,
               background: T.surface,
+              boxShadow: SHADOW.card,
             }}
           >
-            <AvatarCircle url={master.avatar_url} name={displayName} size={88} />
+            <AvatarCircle url={master.avatar_url} name={displayName} size={92} />
           </div>
-          <div style={{ flex: 1, minWidth: 0, paddingBottom: 4 }}>
+          <div style={{ marginTop: 12, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <h1 style={{ ...TYPE.h2, color: T.text, margin: 0, fontSize: 22, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <h1 style={{ ...TYPE.h2, color: T.text, margin: 0, fontSize: 24, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {displayName}
               </h1>
               <PencilBtn onClick={() => { haptic('selection'); setEditField('name'); }} />
             </div>
             <SpecRow t={t} value={master.headline || master.specialization} onEdit={() => setEditField('specialization')} />
             {(master.workplace || master.city) && (
-              <p style={{ ...TYPE.micro, marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <p style={{ ...TYPE.micro, marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <MapPin size={11} />
                 {[master.workplace, master.city].filter(Boolean).join(' · ')}
               </p>

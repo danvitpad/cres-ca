@@ -258,7 +258,7 @@ export default function MasterMiniAppClientCard() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-3 px-4 pt-4 pb-32"
+      className="space-y-3 px-4 pt-4 pb-56"
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
@@ -440,8 +440,13 @@ export default function MasterMiniAppClientCard() {
         </div>
       </Block>
 
-      {/* AI chat — sticky bottom */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">
+      {/* AI chat — sticky bottom, поднят над bottom-nav (~84px + safe-area).
+          Раньше прятался под плавающим pill-nav'ом, было непонятно что
+          там вообще. */}
+      <div
+        className="fixed inset-x-0 z-40 border-t border-neutral-200 bg-white/95 backdrop-blur px-3 pt-2 pb-2"
+        style={{ bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))' }}
+      >
         <ClientAiChat clientId={client.id} haptic={haptic} onApplied={reload} />
       </div>
     </motion.div>

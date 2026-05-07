@@ -364,47 +364,9 @@ export default function MasterMiniAppClientsPage() {
     <MobilePage>
       <PageHeader title={t.pageTitle} subtitle={rows.length > 0 ? t.clientsCount(rows.length) : undefined} />
 
-      {/* Tabs: Clients / Partners */}
-      <div style={{ display: 'flex', gap: 6, padding: `8px ${PAGE_PADDING_X}px 0` }}>
-        <button
-          type="button"
-          onClick={() => haptic('selection')}
-          style={{
-            flex: 1,
-            padding: '10px 16px',
-            borderRadius: R.pill,
-            border: 'none',
-            background: T.text,
-            color: T.bg,
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          {t.tabClients}
-        </button>
-        <Link
-          href="/telegram/m/partners"
-          onClick={() => haptic('selection')}
-          style={{
-            flex: 1,
-            padding: '10px 16px',
-            borderRadius: R.pill,
-            border: `1px solid ${T.border}`,
-            background: 'transparent',
-            color: T.textSecondary,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            textAlign: 'center',
-            textDecoration: 'none',
-          }}
-        >
-          {t.tabPartners}
-        </Link>
-      </div>
+      {/* Раньше тут был переключатель «Клиенты / Партнёры», но Партнёры —
+          отдельный раздел в табе «Ещё», ссылка дублировала ту же страницу.
+          Убрано по запросу 2026-05-07. */}
 
       {/* Universal search — clients filter + people from CRES-CA */}
       <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
