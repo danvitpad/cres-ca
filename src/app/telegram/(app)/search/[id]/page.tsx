@@ -791,10 +791,10 @@ export default function MiniAppMasterDetailPage() {
 
       </motion.div>
 
-      {/* ━━━ TAB BAR (sticky) — реагирует на тему через CSS-переменные.
-            Раньше было bg-white/95 хардкод и в тёмной теме шапка таб-бара
-            оставалась белой полосой. Теперь подсветка активного таба тоже
-            идёт от --m-text (черный в светлой / белый в тёмной). */}
+      {/* ━━━ TAB BAR (sticky) — равномерные колонки flex-1 чтобы все табы
+            помещались на узком экране без горизонтального скролла. Раньше был
+            overflow-x:auto и rail можно было «двигать» свайпом — пользователь
+            это раздражал. */}
       <div
         ref={tabBarRef}
         className="sticky top-0 z-30 mt-5 border-b backdrop-blur-xl"
@@ -803,7 +803,7 @@ export default function MiniAppMasterDetailPage() {
           borderColor: 'var(--m-border)',
         }}
       >
-        <div className="flex gap-0 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex">
           {TAB_KEYS.map((key) => {
             // Hide tabs with no content
             if (key === 'portfolio' && master.portfolio.length === 0) return null;
@@ -817,17 +817,17 @@ export default function MiniAppMasterDetailPage() {
               <button
                 key={key}
                 onClick={() => scrollToSection(key)}
-                className="relative whitespace-nowrap px-3 py-3 text-[13px] transition-colors"
+                className="relative flex-1 min-w-0 px-1 py-3 text-[12.5px] transition-colors"
                 style={{
                   color: isActive ? 'var(--m-text)' : 'var(--m-text-tertiary)',
                   fontWeight: isActive ? 700 : 500,
                 }}
               >
-                {tabLabels[key]}
+                <span className="block truncate">{tabLabels[key]}</span>
                 {isActive && (
                   <motion.div
                     layoutId="tab-underline"
-                    className="absolute inset-x-3 -bottom-px h-[2.5px] rounded-full"
+                    className="absolute inset-x-2 -bottom-px h-[2.5px] rounded-full"
                     style={{ background: 'var(--m-text)' }}
                     transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   />
