@@ -101,11 +101,13 @@ async function handleCallback(cb: NonNullable<SuperadminUpdate['callback_query']
       updated_at: new Date().toISOString(),
     }, { onConflict: 'chat_id' });
 
-    // Force-reply prompt — admin types reply, that message has reply_to_message
-    // pointing to this prompt with the [fb:<id>] marker.
+    // Force-reply prompt — admin types reply, мы найдём feedback_id через
+    // state в superadmin_state.awaiting_reply_for (см. handleMessage).
+    // Раньше показывали `[fb:<UUID>]` в тексте как fallback для regex —
+    // выглядело как мусор у админа, убрали. State надёжнее.
     await tgFetch(token, 'sendMessage', {
       chat_id: chatId,
-      text: `Напишите ответ пользователю — он придёт ему через бот.\n\n[fb:${feedbackId}]`,
+      text: 'Напишите ответ пользователю — он придёт ему через бот.',
       reply_markup: { force_reply: true, selective: true },
     });
     return;
@@ -134,15 +136,23 @@ async function handleCallback(cb: NonNullable<SuperadminUpdate['callback_query']
 }
 
 async function handleMessage(msg: NonNullable<SuperadminUpdate['message']>) {
-  const replyText = msg.reply_to_message?.text ?? '';
-  const match = replyText.match(/\[fb:([0-9a-f-]{36})\]/i);
-  if (!match || !msg.text) return;
-
-  const feedbackId = match[1];
+  if (!msg.text) return;
   const adminText = msg.text.trim();
   if (!adminText) return;
 
   const supabase = admin();
+  // Источник правды — superadmin_state.awaiting_reply_for. Сохраняется в
+  // callback `fb_reply:<id>` (см. handleCallback). Раньше также пытались
+  // выцепить feedback_id regex'ом из reply_to_message [fb:<UUID>] — теперь
+  // этот маркер не выводим в текст (был визуальным мусором у админа).
+  const { data: state } = await supabase
+    .from('superadmin_state')
+    .select('awaiting_reply_for')
+    .eq('chat_id', msg.chat.id)
+    .maybeSingle<{ awaiting_reply_for: string | null }>();
+
+  const feedbackId = state?.awaiting_reply_for;
+  if (!feedbackId) return;
   const { data: fb } = await supabase
     .from('feedback')
     .select('tg_chat_id, profile_name')

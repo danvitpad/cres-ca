@@ -40,55 +40,30 @@ export async function appendFeedbackToSheet(row: FeedbackSheetRow): Promise<bool
   const url = process.env.FEEDBACK_SHEET_WEBHOOK_URL;
   if (!url) return false;
 
-  const body = JSON.stringify(row);
-  const headers = { 'Content-Type': 'text/plain;charset=utf-8' };
-  // 10 сек таймаут — Apps Script на холодном старте бывает 5-7 сек.
-  // Один и тот же сигнал используем для обоих запросов.
-  const signal = AbortSignal.timeout(10000);
+  // ПРОБЛЕМА UTF-8 в Apps Script:
+  // При POST с json/text-body Apps Script кладёт `e.postData.contents` как
+  // строку, **уже декодированную как Latin-1**. Кириллица/эмодзи приходят
+  // в виде «?????» в таблице независимо от Content-Type.
+  //
+  // РЕШЕНИЕ: отправляем JSON в base64 как form-параметр `payload`. Тогда
+  // Apps Script кладёт base64 в `e.parameter.payload`, и мы вручную
+  // декодируем UTF-8 на стороне Apps Script (Utilities.newBlob + UTF-8).
+  // Этот путь устойчив к кодировкам и не теряет body на 302 redirect
+  // (form-encoded запросы fetch обрабатывает корректно).
+  const json = JSON.stringify(row);
+  const payloadB64 = Buffer.from(json, 'utf-8').toString('base64');
+  const formBody = `payload=${encodeURIComponent(payloadB64)}`;
 
   try {
-    // Apps Script Web App делает 302 redirect:
-    //   script.google.com/macros/s/{ID}/exec
-    //     ↓
-    //   script.googleusercontent.com/macros/echo?user_content_key=…
-    // По fetch spec при 302 на POST body НЕ пересылается на новый URL
-    // (или конвертится в GET) — googleusercontent отвечает 411 Length
-    // Required. Делаем redirect вручную: первый POST с redirect:'manual',
-    // читаем Location, делаем второй POST на final URL с тем же body —
-    // fetch автоматически поставит Content-Length и всё проходит.
-    //
-    // Важно про Content-Type — text/plain;charset=utf-8 нужен чтобы
-    // Apps Script читал body как UTF-8 (кириллица/эмодзи). При
-    // application/json он получает байты в неизвестной кодировке и
-    // выдаёт «?????» в таблице. Этот же Content-Type не триггерит
-    // CORS preflight, лишний для server-side fetch но не помешает.
-    const initial = await fetch(url, {
+    const res = await fetch(url, {
       method: 'POST',
-      headers,
-      body,
-      redirect: 'manual',
-      signal,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody,
+      redirect: 'follow',
+      signal: AbortSignal.timeout(10000),
     });
-
-    let finalRes: Response;
-    if (initial.status === 302 || initial.status === 303 || initial.status === 307 || initial.status === 308) {
-      const location = initial.headers.get('location');
-      if (!location) {
-        console.warn('[feedback-sheet] redirect without Location header');
-        return false;
-      }
-      finalRes = await fetch(location, {
-        method: 'POST',
-        headers,
-        body,
-        signal,
-      });
-    } else {
-      finalRes = initial;
-    }
-
-    if (!finalRes.ok) {
-      console.warn('[feedback-sheet] non-2xx after redirect:', finalRes.status, await finalRes.text().catch(() => ''));
+    if (!res.ok) {
+      console.warn('[feedback-sheet] non-2xx:', res.status, await res.text().catch(() => ''));
       return false;
     }
     return true;
