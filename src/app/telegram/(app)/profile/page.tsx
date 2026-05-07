@@ -46,8 +46,11 @@ const I18N: Record<Lang, {
   menuProfile: string; menuContacts: string; menuSettings: string; menuSupport: string;
   logout: string; loggingOut: string;
   editTitle: string; save: string;
-  fieldName: string; fieldSlug: string; fieldBio: string;
+  fieldFirstName: string; fieldLastName: string; fieldEmail: string; fieldPhone: string;
+  fieldSlug: string; fieldBio: string;
   slugHint: string; bioCount: string;
+  emailReadonlyHint: string;
+  sectionPersonal: string; sectionContact: string; sectionPublic: string;
   followers: string; following: string;
   masterBadge: string; empty: string; user: string;
   close: string; avatarLabel: string;
@@ -58,8 +61,14 @@ const I18N: Record<Lang, {
     menuProfile: 'Профіль', menuContacts: 'Контакти', menuSettings: 'Налаштування', menuSupport: 'Підтримка',
     logout: 'Вийти', loggingOut: 'Виходимо...',
     editTitle: 'Редагувати профіль', save: 'Зберегти',
-    fieldName: 'Ім\'я', fieldSlug: 'Ім\'я посилання (slug)', fieldBio: 'Про себе',
+    fieldFirstName: 'Ім\'я', fieldLastName: 'Прізвище',
+    fieldEmail: 'Email', fieldPhone: 'Телефон',
+    fieldSlug: 'Ім\'я посилання (slug)', fieldBio: 'Про себе',
     slugHint: '3–32 символи: латиниця, цифри, крапка, дефіс, підкреслення',
+    emailReadonlyHint: 'Email прив\'язаний через Telegram — змінити можна тільки у веб-кабінеті',
+    sectionPersonal: 'Особисті дані',
+    sectionContact: 'Контакти',
+    sectionPublic: 'Публічна сторінка',
     saveError: 'Не вдалось зберегти', avatarTitle: 'Аватар', guest: 'Гість',
     bioCount: '/280',
     followers: 'Підписники', following: 'Обрані',
@@ -71,8 +80,14 @@ const I18N: Record<Lang, {
     menuProfile: 'Профиль', menuContacts: 'Контакты', menuSettings: 'Настройки', menuSupport: 'Поддержка',
     logout: 'Выйти', loggingOut: 'Выходим...',
     editTitle: 'Редактировать профиль', save: 'Сохранить',
-    fieldName: 'Имя', fieldSlug: 'Имя ссылки (slug)', fieldBio: 'О себе',
+    fieldFirstName: 'Имя', fieldLastName: 'Фамилия',
+    fieldEmail: 'Email', fieldPhone: 'Телефон',
+    fieldSlug: 'Имя ссылки (slug)', fieldBio: 'О себе',
     slugHint: '3–32 символа: латиница, цифры, точка, дефис, подчёркивание',
+    emailReadonlyHint: 'Email привязан через Telegram — поменять можно только в веб-кабинете',
+    sectionPersonal: 'Личные данные',
+    sectionContact: 'Контакты',
+    sectionPublic: 'Публичная страница',
     saveError: 'Не удалось сохранить', avatarTitle: 'Аватар', guest: 'Гость',
     bioCount: '/280',
     followers: 'Подписчики', following: 'Избранное',
@@ -84,8 +99,14 @@ const I18N: Record<Lang, {
     menuProfile: 'Profile', menuContacts: 'Contacts', menuSettings: 'Settings', menuSupport: 'Support',
     logout: 'Sign out', loggingOut: 'Signing out...',
     editTitle: 'Edit profile', save: 'Save',
-    fieldName: 'Name', fieldSlug: 'Link name (slug)', fieldBio: 'About',
+    fieldFirstName: 'First name', fieldLastName: 'Last name',
+    fieldEmail: 'Email', fieldPhone: 'Phone',
+    fieldSlug: 'Link name (slug)', fieldBio: 'About',
     slugHint: '3–32 chars: latin letters, numbers, dot, dash, underscore',
+    emailReadonlyHint: 'Email is linked via Telegram — change it from the web app',
+    sectionPersonal: 'Personal',
+    sectionContact: 'Contact',
+    sectionPublic: 'Public page',
     bioCount: '/280',
     followers: 'Followers', following: 'Saved',
     masterBadge: ' · Master', empty: 'Empty', user: 'User',
@@ -130,9 +151,19 @@ export default function MiniAppProfilePage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
 
-  // Edit profile modal state
+  // Profile contact data — отдельно от full_name, чтобы дать клиенту
+  // редактировать почту/телефон. У TG-юзеров email обычно auto-generated
+  // (например `tg-12345@cres-ca.com`), такие маркируем readonly.
+  const [email, setEmail] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+
+  // Edit profile modal state — first/last разделены, чтобы клиент мог
+  // править имя и фамилию по отдельности (потом склеиваем в full_name).
   const [editOpen, setEditOpen] = useState(false);
-  const [editName, setEditName] = useState('');
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editSlug, setEditSlug] = useState('');
   const [editBusy, setEditBusy] = useState(false);
@@ -158,6 +189,8 @@ export default function MiniAppProfilePage() {
           setSlug(data.slug ?? null);
           setPublicId(data.public_id ?? null);
           setAvatarUrl(data.avatar_url ?? null);
+          setEmail(data.email ?? null);
+          setPhone(data.phone ?? null);
           setFollowingCount(Number(data.following_count ?? 0));
         }
       }
@@ -166,7 +199,17 @@ export default function MiniAppProfilePage() {
   }, [userId]);
 
   function openEdit() {
-    setEditName(fullName || tgFullName || '');
+    // Разбиваем full_name на first/last по первому пробелу. Если ничего
+    // нет — пробуем TG данные пользователя (он точно есть в Mini App).
+    const source = fullName || tgFullName || '';
+    const trimmed = source.trim();
+    const spaceIdx = trimmed.indexOf(' ');
+    const first = spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx);
+    const last = spaceIdx === -1 ? '' : trimmed.slice(spaceIdx + 1);
+    setEditFirstName(first);
+    setEditLastName(last);
+    setEditEmail(email ?? '');
+    setEditPhone(phone ?? '');
     setEditBio(bio ?? '');
     setEditSlug(slug ?? '');
     setEditError(null);
@@ -183,6 +226,8 @@ export default function MiniAppProfilePage() {
       // Telegram initData (header X-TG-Init-Data). resolveUserId на сервере
       // вытащит user_id по telegram_id из profiles.
       const initData = getInitData();
+      const composedFullName = `${editFirstName.trim()} ${editLastName.trim()}`.trim();
+      const phoneClean = editPhone.trim() || null;
       const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: {
@@ -190,9 +235,12 @@ export default function MiniAppProfilePage() {
           ...(initData ? { 'X-TG-Init-Data': initData } : {}),
         },
         body: JSON.stringify({
-          fullName: editName.trim() || null,
+          fullName: composedFullName || null,
           bio: editBio.trim() || null,
           slug: editSlug.trim() || null,
+          phone: phoneClean,
+          // email отправляем только если поменялся И не выглядит как
+          // TG auto-generated адрес — менять auto-email не даём (см. UI).
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -201,9 +249,10 @@ export default function MiniAppProfilePage() {
         haptic('error');
         return;
       }
-      setFullName(editName.trim() || null);
+      setFullName(composedFullName || null);
       setBio(editBio.trim() || null);
       setSlug(editSlug.trim() || null);
+      setPhone(phoneClean);
       haptic('success');
       setEditOpen(false);
     } catch (e) {
@@ -511,72 +560,109 @@ export default function MiniAppProfilePage() {
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <FieldBox label={t.fieldName}>
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value.slice(0, 80))}
-                    placeholder={t.fieldName}
-                    style={{
-                      width: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      ...TYPE.body,
-                      color: T.text,
-                      padding: 0,
-                    }}
-                  />
-                </FieldBox>
-
-                <FieldBox label={t.fieldSlug}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ color: T.textTertiary }}>@</span>
-                    <input
-                      value={editSlug}
-                      onChange={(e) =>
-                        setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32))
-                      }
-                      placeholder="username"
-                      style={{
-                        width: '100%',
-                        background: 'transparent',
-                        border: 'none',
-                        outline: 'none',
-                        ...TYPE.body,
-                        color: T.text,
-                        padding: 0,
-                        fontFamily: 'inherit',
-                      }}
-                    />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* ── Личные данные ── */}
+                <SectionGroup label={t.sectionPersonal}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <FieldBox label={t.fieldFirstName}>
+                      <input
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value.slice(0, 60))}
+                        placeholder={t.fieldFirstName}
+                        autoComplete="given-name"
+                        style={inputStyle}
+                      />
+                    </FieldBox>
+                    <FieldBox label={t.fieldLastName}>
+                      <input
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value.slice(0, 60))}
+                        placeholder={t.fieldLastName}
+                        autoComplete="family-name"
+                        style={inputStyle}
+                      />
+                    </FieldBox>
                   </div>
-                  <p style={{ ...TYPE.micro, marginTop: 6 }}>
-                    {t.slugHint}
-                  </p>
-                </FieldBox>
+                </SectionGroup>
 
-                <FieldBox label={t.fieldBio}>
-                  <textarea
-                    value={editBio}
-                    onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
-                    placeholder={t.fieldBio}
-                    rows={4}
-                    style={{
-                      width: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      outline: 'none',
-                      resize: 'none',
-                      ...TYPE.body,
-                      color: T.text,
-                      padding: 0,
-                      fontFamily: 'inherit',
-                    }}
-                  />
-                  <p style={{ ...TYPE.micro, marginTop: 6, textAlign: 'right' }}>
-                    {editBio.length}{t.bioCount}
-                  </p>
-                </FieldBox>
+                {/* ── Контакты ── */}
+                <SectionGroup label={t.sectionContact}>
+                  {(() => {
+                    // TG-аккаунты получают auto-сгенерированный email вида
+                    // tg-12345@cres-ca.com. Менять его в Mini App нет смысла
+                    // (требует cookie-сессии для auth.updateUser). Помечаем readonly.
+                    const isAutoEmail = !!editEmail && /tg-\d+@/.test(editEmail);
+                    return (
+                      <>
+                        <FieldBox label={t.fieldEmail}>
+                          <input
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value.trim().slice(0, 120))}
+                            placeholder="name@example.com"
+                            autoComplete="email"
+                            inputMode="email"
+                            disabled={isAutoEmail}
+                            style={{
+                              ...inputStyle,
+                              opacity: isAutoEmail ? 0.6 : 1,
+                              cursor: isAutoEmail ? 'not-allowed' : 'text',
+                            }}
+                          />
+                          {isAutoEmail && (
+                            <p style={{ ...TYPE.micro, marginTop: 6, color: T.textTertiary }}>
+                              {t.emailReadonlyHint}
+                            </p>
+                          )}
+                        </FieldBox>
+                        <FieldBox label={t.fieldPhone}>
+                          <input
+                            type="tel"
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value.replace(/[^\d+\-()\s]/g, '').slice(0, 30))}
+                            placeholder="+380 …"
+                            autoComplete="tel"
+                            inputMode="tel"
+                            style={inputStyle}
+                          />
+                        </FieldBox>
+                      </>
+                    );
+                  })()}
+                </SectionGroup>
+
+                {/* ── Публичная страница ── */}
+                <SectionGroup label={t.sectionPublic}>
+                  <FieldBox label={t.fieldSlug}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ color: T.textTertiary }}>@</span>
+                      <input
+                        value={editSlug}
+                        onChange={(e) =>
+                          setEditSlug(e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 32))
+                        }
+                        placeholder="username"
+                        style={inputStyle}
+                      />
+                    </div>
+                    <p style={{ ...TYPE.micro, marginTop: 6 }}>
+                      {t.slugHint}
+                    </p>
+                  </FieldBox>
+
+                  <FieldBox label={t.fieldBio}>
+                    <textarea
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value.slice(0, 280))}
+                      placeholder={t.fieldBio}
+                      rows={3}
+                      style={{ ...inputStyle, resize: 'none' as const }}
+                    />
+                    <p style={{ ...TYPE.micro, marginTop: 6, textAlign: 'right' }}>
+                      {editBio.length}{t.bioCount}
+                    </p>
+                  </FieldBox>
+                </SectionGroup>
 
                 {editError && (
                   <div
@@ -758,3 +844,37 @@ function FieldBox({ label, children }: { label: string; children: React.ReactNod
     </div>
   );
 }
+
+/** Группа полей с заголовком сверху — визуально разделяет редактор на
+ *  «Личное / Контакты / Публичка». */
+function SectionGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        style={{
+          ...TYPE.micro,
+          color: T.textTertiary,
+          fontWeight: 700,
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          paddingLeft: 4,
+        }}
+      >
+        {label}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Общий стиль для всех input/textarea внутри FieldBox. */
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'transparent',
+  border: 'none',
+  outline: 'none',
+  ...TYPE.body,
+  color: T.text,
+  padding: 0,
+  fontFamily: 'inherit',
+};

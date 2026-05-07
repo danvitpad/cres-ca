@@ -35,7 +35,10 @@ function authHeaders(): Record<string, string> {
   return initData ? { 'x-tg-init-data': initData } : {};
 }
 
-type Tab = 'masters' | 'salons' | 'friends';
+// Salons tab убран до момента когда подключим логику подписки на салоны —
+// сейчас бэкенд `/api/telegram/c/contacts` уже возвращает salons, но клиент
+// не подписывается на них нигде в UI, экран всегда был пустым.
+type Tab = 'masters' | 'friends';
 
 type Lang = 'uk' | 'ru' | 'en';
 
@@ -294,10 +297,9 @@ export default function MiniAppContactsPage() {
       <h1 className="text-[24px] font-bold leading-tight">{t.title}</h1>
       <p className="mt-1 text-[13px] text-neutral-500">{t.subtitle}</p>
 
-      {/* Tabs */}
-      <div className="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
+      {/* Tabs — Salons таб скрыт (см. комментарий у Tab). */}
+      <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
         <TabBtn active={tab === 'masters'} onClick={() => { setTab('masters'); haptic('light'); }} icon={User} label={t.tabMasters} count={counts.masters} />
-        <TabBtn active={tab === 'salons'} onClick={() => { setTab('salons'); haptic('light'); }} icon={Building2} label={t.tabSalons} count={counts.salons} />
         <TabBtn active={tab === 'friends'} onClick={() => { setTab('friends'); haptic('light'); }} icon={Users} label={t.tabFriends} count={counts.friends} />
       </div>
 
@@ -353,8 +355,8 @@ export default function MiniAppContactsPage() {
                   <div
                     role="button"
                     tabIndex={0}
-                    onClick={() => { haptic('light'); router.push(`/telegram/m/${m.id}`); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/m/${m.id}`); }}
+                    onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/search/${m.id}`); }}
                     className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
                   >
                     <Avatar src={m.avatar} name={m.name} />
@@ -399,7 +401,10 @@ export default function MiniAppContactsPage() {
               </ul>
             </>
           )
-        ) : tab === 'salons' ? (
+        ) : false ? (
+          // ── Salons branch (dead code) ──
+          // Логика осталась на случай возврата таба, но условие false
+          // делает её недостижимой. Salons таб скрыт сверху (см. type Tab).
           salons.length === 0 ? (
             <EmptyState
               icon={Building2}
