@@ -21,9 +21,9 @@ import {
   X, Pencil, Star, MapPin, Phone, Mail, Globe, Clock,
   ExternalLink, Loader2, Share2,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -144,40 +144,32 @@ export default function MasterMiniAppPublicPage() {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
-      const { data: m } = await supabase
-        .from('masters')
-        .select('id, display_name, specialization, bio, city, rating, total_reviews, avatar_url, cover_url, invite_code, workplace, address, phone, instagram, total_appointments, total_clients')
-        .eq('profile_id', userId)
-        .maybeSingle<MasterData>();
+      // В Mini App без cookie supabase session прямой select упирается в RLS
+      // (auth.uid() = NULL) — поэтому идём через service-role endpoint, который
+      // валидирует initData. Аналог /api/telegram/m/profile, но с полным
+      // набором полей публички + services + portfolio.
+      const initData = getInitData();
+      const res = await fetch('/api/telegram/m/public-page-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({}),
+      });
       if (cancelled) return;
-      if (!m) { setLoading(false); return; }
-      setMaster(m);
-
-      const { data: p } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('id', userId)
-        .maybeSingle<{ email: string | null }>();
-      if (!cancelled && p) setProfileEmail(p.email);
-
-      const [{ data: svc }, { data: port }] = await Promise.all([
-        supabase
-          .from('services')
-          .select('id, name, duration_minutes, price, currency, color')
-          .eq('master_id', m.id)
-          .eq('is_active', true)
-          .order('price', { ascending: false }),
-        supabase
-          .from('portfolio_items')
-          .select('id, image_url, caption')
-          .eq('master_id', m.id)
-          .order('sort_order', { ascending: true })
-          .limit(12),
-      ]);
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json() as {
+        master: MasterData | null;
+        profile: { email: string | null } | null;
+        services: ServiceRow[];
+        portfolio: PortfolioRow[];
+      };
       if (cancelled) return;
-      setServices((svc as ServiceRow[] | null) ?? []);
-      setPortfolio((port as PortfolioRow[] | null) ?? []);
+      setMaster(json.master);
+      setProfileEmail(json.profile?.email ?? null);
+      setServices(json.services ?? []);
+      setPortfolio(json.portfolio ?? []);
       setLoading(false);
     })();
     return () => { cancelled = true; };
