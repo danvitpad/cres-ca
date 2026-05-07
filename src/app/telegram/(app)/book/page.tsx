@@ -970,8 +970,12 @@ export default function MiniAppBookPage() {
                   animate="visible"
                   className="mb-4 flex items-center justify-between"
                 >
-                  <h2 className="text-[15px] font-semibold capitalize" style={{ color: T.text }}>
-                    {MONTH_NAMES_FULL[new Date().getMonth()]} {new Date().getFullYear()}{t.yearSuffix}
+                  <h2 className="text-[15px] font-semibold" style={{ color: T.text }}>
+                    {/* capitalize-first вручную (CSS capitalize ставил «Р.» на «р.»). */}
+                    {(() => {
+                      const m = MONTH_NAMES_FULL[new Date().getMonth()];
+                      return m.charAt(0).toUpperCase() + m.slice(1);
+                    })()} {new Date().getFullYear()}
                   </h2>
                   <button
                     onClick={() => { haptic('light'); setShowFullCalendar(!showFullCalendar); }}
@@ -1059,8 +1063,11 @@ export default function MiniAppBookPage() {
                         >
                           <ChevronLeft className="size-4" />
                         </button>
-                        <span className="text-[13px] font-semibold capitalize" style={{ color: T.text }}>
-                          {MONTH_NAMES_FULL[calMonth.getMonth()]} {calMonth.getFullYear()}
+                        <span className="text-[13px] font-semibold" style={{ color: T.text }}>
+                          {(() => {
+                            const m = MONTH_NAMES_FULL[calMonth.getMonth()];
+                            return m.charAt(0).toUpperCase() + m.slice(1);
+                          })()} {calMonth.getFullYear()}
                         </span>
                         <button
                           onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}
