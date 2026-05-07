@@ -1,10 +1,12 @@
 /** --- YAML
  * name: MiniAppActivityPage
- * description: «Действие» — Fresha-style. Большой заголовок, чёрные tab-pills
- *              (Все / Записи / Подарочные карты / Абонементы), список карточек или
- *              empty-state с CTA «Поиск заведений». Светлая тема, премиум.
+ * description: «Активність» клиента — переключение между Список (карточки записей с
+ *              chip-фильтром «Майбутні / Минулі») и Календар (месячная сетка с
+ *              точками на днях где есть записи, тап → список записей дня).
+ *              Подарочные карты и абонементы убраны до момента когда подключим
+ *              данные — пустые табы только сбивали.
  * created: 2026-04-13
- * updated: 2026-04-26
+ * updated: 2026-05-07
  * --- */
 
 'use client';
@@ -19,6 +21,8 @@ import {
   Clock3,
   ChevronRight,
   CalendarDays,
+  List,
+  ChevronLeft,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -38,63 +42,67 @@ type Lang = 'uk' | 'ru' | 'en';
 
 const I18N: Record<Lang, {
   title: string;
-  tabAll: string; tabUpcoming: string; tabGiftCards: string; tabMemberships: string; tabPast: string;
-  noGiftCards: string; noMemberships: string; noGiftCardsDesc: string; noMembershipsDesc: string;
+  viewList: string; viewCalendar: string;
+  filterUpcoming: string; filterPast: string;
   noActivity: string; noActivityDesc: string;
-  searchMasters: string; searchVenues: string;
+  noActivityOnDay: string;
+  searchVenues: string;
+  weekdaysShort: string[];
   status: Record<string, string>;
+  monthsLong: string[];
 }> = {
   uk: {
     title: 'Активність',
-    tabAll: 'Всі', tabUpcoming: 'Записи', tabGiftCards: 'Подарункові карти',
-    tabMemberships: 'Абонементи', tabPast: 'Історія',
-    noGiftCards: 'Немає подарункових карт', noMemberships: 'Немає абонементів',
-    noGiftCardsDesc: 'Куплені та отримані подарункові карти відображатимуться тут',
-    noMembershipsDesc: 'Активні абонементи у майстрів відображатимуться тут',
-    noActivity: 'Немає активності',
-    noActivityDesc: 'Ваші зустрічі, покупки та підписки відображатимуться тут',
-    searchMasters: 'Пошук майстрів', searchVenues: 'Пошук закладів',
+    viewList: 'Список', viewCalendar: 'Календар',
+    filterUpcoming: 'Майбутні', filterPast: 'Минулі',
+    noActivity: 'Немає записів',
+    noActivityDesc: 'Майбутні зустрічі та історія візитів з’являться тут',
+    noActivityOnDay: 'У цей день записів немає',
+    searchVenues: 'Знайти майстра',
+    weekdaysShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Нд'],
     status: {
       booked: 'Записано', confirmed: 'Підтверджено', in_progress: 'Йде',
       completed: 'Завершено', cancelled: 'Скасовано', cancelled_by_client: 'Скасовано',
       cancelled_by_master: 'Скасовано', no_show: 'Не з\'явився',
     },
+    monthsLong: ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень',
+                 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'],
   },
   ru: {
-    title: 'Действие',
-    tabAll: 'Все', tabUpcoming: 'Записи', tabGiftCards: 'Подарочные карты',
-    tabMemberships: 'Абонементы', tabPast: 'История',
-    noGiftCards: 'Нет подарочных карт', noMemberships: 'Нет абонементов',
-    noGiftCardsDesc: 'Купленные и полученные подарочные карты будут отображаться здесь',
-    noMembershipsDesc: 'Активные абонементы у мастеров будут отображаться здесь',
-    noActivity: 'Нет активности',
-    noActivityDesc: 'Ваши встречи, покупки и подписки будут отображаться здесь',
-    searchMasters: 'Поиск мастеров', searchVenues: 'Поиск заведений',
+    title: 'Активность',
+    viewList: 'Список', viewCalendar: 'Календарь',
+    filterUpcoming: 'Будущие', filterPast: 'Прошедшие',
+    noActivity: 'Нет записей',
+    noActivityDesc: 'Будущие встречи и история визитов появятся здесь',
+    noActivityOnDay: 'В этот день записей нет',
+    searchVenues: 'Найти мастера',
+    weekdaysShort: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
     status: {
       booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт',
       completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено',
       cancelled_by_master: 'Отменено', no_show: 'Не пришёл',
     },
+    monthsLong: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
   },
   en: {
     title: 'Activity',
-    tabAll: 'All', tabUpcoming: 'Upcoming', tabGiftCards: 'Gift cards',
-    tabMemberships: 'Memberships', tabPast: 'History',
-    noGiftCards: 'No gift cards', noMemberships: 'No memberships',
-    noGiftCardsDesc: 'Purchased and received gift cards will appear here',
-    noMembershipsDesc: 'Active memberships with masters will appear here',
-    noActivity: 'No activity',
-    noActivityDesc: 'Your appointments, purchases and subscriptions will appear here',
-    searchMasters: 'Find masters', searchVenues: 'Find venues',
+    viewList: 'List', viewCalendar: 'Calendar',
+    filterUpcoming: 'Upcoming', filterPast: 'Past',
+    noActivity: 'No appointments',
+    noActivityDesc: 'Upcoming meetings and visit history will appear here',
+    noActivityOnDay: 'No appointments on this day',
+    searchVenues: 'Find a master',
+    weekdaysShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     status: {
       booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress',
       completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled',
       cancelled_by_master: 'Cancelled', no_show: 'No show',
     },
+    monthsLong: ['January', 'February', 'March', 'April', 'May', 'June',
+                 'July', 'August', 'September', 'October', 'November', 'December'],
   },
 };
-
-// Card labels are derived from the locale in the component
 
 type SalonEmbed =
   | { id: string; name: string; logo_url: string | null; city: string | null; rating: number | null }
@@ -123,27 +131,45 @@ interface AppointmentRow {
   salon: SalonRef | null;
 }
 
-type Tab = 'all' | 'upcoming' | 'past' | 'gift_cards' | 'memberships';
+type View = 'list' | 'calendar';
+type Filter = 'upcoming' | 'past';
+
+const STATUS_DONE = ['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'];
+
+function isDoneStatus(s: string): boolean {
+  return STATUS_DONE.includes(s);
+}
+
+/** YYYY-MM-DD по локальному времени. */
+function dayKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 export default function MiniAppActivityPage() {
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
-  const tabOptions: { value: Tab; label: string }[] = [
-    { value: 'all', label: t.tabAll },
-    { value: 'upcoming', label: t.tabUpcoming },
-    { value: 'gift_cards', label: t.tabGiftCards },
-    { value: 'memberships', label: t.tabMemberships },
-    { value: 'past', label: t.tabPast },
-  ];
+
   const cardLabels = {
     masterPlaceholder: lang === 'en' ? 'Master' : lang === 'uk' ? 'Майстер' : 'Мастер',
     salonPlaceholder: lang === 'en' ? 'Salon' : lang === 'uk' ? 'Салон' : 'Салон',
-    managerAssigned: lang === 'en' ? 'Master will be assigned by admin' : lang === 'uk' ? 'Майстра призначить адміністратор' : 'Мастер будет назначен администратором',
+    managerAssigned: lang === 'en'
+      ? 'Master will be assigned by admin'
+      : lang === 'uk' ? 'Майстра призначить адміністратор' : 'Мастер будет назначен администратором',
   };
+
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
-  const [tab, setTab] = useState<Tab>('all');
+  const [view, setView] = useState<View>('list');
+  const [filter, setFilter] = useState<Filter>('upcoming');
+  const [calMonth, setCalMonth] = useState<Date>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -163,9 +189,7 @@ export default function MiniAppActivityPage() {
             const parsed = JSON.parse(stash) as { initData?: string };
             if (parsed.initData) return parsed.initData;
           }
-        } catch {
-          /* ignore */
-        }
+        } catch { /* ignore */ }
         return null;
       })();
       if (!initData) {
@@ -238,25 +262,29 @@ export default function MiniAppActivityPage() {
     })();
   }, [userId]);
 
-  const { upcoming, past, all } = useMemo(() => {
+  /** Разделение записей: будущие = !done && start ≥ now-1h. */
+  const { upcoming, past, byDay } = useMemo(() => {
     const now = Date.now();
     const up: AppointmentRow[] = [];
     const pa: AppointmentRow[] = [];
+    const map = new Map<string, AppointmentRow[]>();
     for (const a of appointments) {
-      const isDone = ['completed', 'cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show'].includes(
-        a.status,
-      );
-      if (!isDone && new Date(a.starts_at).getTime() >= now - 3600 * 1000) up.push(a);
-      else pa.push(a);
+      const startTs = new Date(a.starts_at).getTime();
+      const future = !isDoneStatus(a.status) && startTs >= now - 3600 * 1000;
+      if (future) up.push(a); else pa.push(a);
+      const key = dayKey(new Date(a.starts_at));
+      const list = map.get(key) ?? [];
+      list.push(a);
+      map.set(key, list);
     }
     up.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
     pa.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime());
-    return { upcoming: up, past: pa, all: [...up, ...pa] };
+    // День сортируем по времени внутри
+    map.forEach((list) => list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()));
+    return { upcoming: up, past: pa, byDay: map };
   }, [appointments]);
 
-  const visible: AppointmentRow[] =
-    tab === 'all' ? all : tab === 'upcoming' ? upcoming : tab === 'past' ? past : [];
-  const isAppointmentTab = tab === 'all' || tab === 'upcoming' || tab === 'past';
+  const listVisible = filter === 'upcoming' ? upcoming : past;
 
   return (
     <MobilePage>
@@ -268,17 +296,18 @@ export default function MiniAppActivityPage() {
       >
         <PageHeader title={t.title} />
 
+        {/* Главный toggle: Список / Календар */}
         <TabPills
-          value={tab}
-          onChange={(v) => {
-            setTab(v);
-            haptic('selection');
-          }}
-          options={tabOptions}
+          value={view}
+          onChange={(v) => { setView(v); haptic('selection'); }}
+          options={[
+            { value: 'list', label: t.viewList },
+            { value: 'calendar', label: t.viewCalendar },
+          ]}
           accent="#0a0a0c"
         />
 
-        <div style={{ padding: `8px ${PAGE_PADDING_X}px 0` }}>
+        <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[0, 1, 2].map((i) => (
@@ -294,114 +323,30 @@ export default function MiniAppActivityPage() {
                 />
               ))}
             </div>
-          ) : !isAppointmentTab ? (
-            <EmptyState
-              icon={
-                <span style={{ fontSize: 56, lineHeight: 1 }}>
-                  {tab === 'gift_cards' ? '🎁' : '🎫'}
-                </span>
-              }
-              title={tab === 'gift_cards' ? t.noGiftCards : t.noMemberships}
-              desc={tab === 'gift_cards' ? t.noGiftCardsDesc : t.noMembershipsDesc}
-              ctaLabel={t.searchMasters}
-              ctaHref="/telegram/search"
-            />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon={<CalendarDaysIcon />}
-              title={t.noActivity}
-              desc={t.noActivityDesc}
-              ctaLabel={t.searchVenues}
-              ctaHref="/telegram/search"
+          ) : view === 'list' ? (
+            <ListView
+              filter={filter}
+              setFilter={setFilter}
+              upcoming={upcoming}
+              past={past}
+              listVisible={listVisible}
+              t={t}
+              lang={lang}
+              cardLabels={cardLabels}
+              haptic={haptic}
             />
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {visible.map((a, i) => {
-                const masterRef = a.master_id
-                  ? {
-                      id: a.master_id,
-                      display_name: a.master_display_name,
-                      avatar_url: a.master_avatar,
-                      specialization: a.master_specialization,
-                      salon_id: a.master_salon_id,
-                    }
-                  : null;
-                const d = resolveCardDisplay(masterRef, a.salon, cardLabels);
-                const dateLocale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
-                const date = new Date(a.starts_at).toLocaleString(dateLocale, {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                });
-                return (
-                  <motion.li
-                    key={a.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.02 }}
-                  >
-                    <Link
-                      href={`/telegram/activity/${a.id}`}
-                      onClick={() => haptic('light')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 12,
-                        padding: 14,
-                        background: T.surface,
-                        border: `1px solid ${T.borderSubtle}`,
-                        borderRadius: R.md,
-                        textDecoration: 'none',
-                        color: T.text,
-                      }}
-                    >
-                      <AvatarCircle url={a.master_avatar} name={d.primary || 'M'} size={48} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {d.primary}
-                        </p>
-                        {d.secondary && (
-                          <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {d.secondary}
-                          </p>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              width: 8,
-                              height: 8,
-                              borderRadius: '50%',
-                              background: a.service_color ?? T.accent,
-                            }}
-                          />
-                          <span style={{ ...TYPE.caption, fontWeight: 600, color: T.textSecondary }}>
-                            {a.service_name}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, ...TYPE.caption }}>
-                          <Calendar size={13} />
-                          <span>{date}</span>
-                          {a.price > 0 && (
-                            <>
-                              <span style={{ color: T.textTertiary }}>·</span>
-                              <span style={{ fontWeight: 600, color: T.text }}>
-                                {formatMoney(a.price, a.currency)}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        <StatusChip status={a.status} labels={t.status} />
-                        <ChevronRight size={18} color={T.textTertiary} />
-                      </div>
-                    </Link>
-                  </motion.li>
-                );
-              })}
-            </ul>
+            <CalendarView
+              calMonth={calMonth}
+              setCalMonth={setCalMonth}
+              selectedDay={selectedDay}
+              setSelectedDay={setSelectedDay}
+              byDay={byDay}
+              t={t}
+              lang={lang}
+              cardLabels={cardLabels}
+              haptic={haptic}
+            />
           )}
         </div>
       </motion.div>
@@ -409,8 +354,366 @@ export default function MiniAppActivityPage() {
   );
 }
 
+/* ─────────────────── ListView ─────────────────── */
+
+interface ListViewProps {
+  filter: Filter;
+  setFilter: (f: Filter) => void;
+  upcoming: AppointmentRow[];
+  past: AppointmentRow[];
+  listVisible: AppointmentRow[];
+  t: typeof I18N['uk'];
+  lang: Lang;
+  cardLabels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
+  haptic: (kind: 'light' | 'selection') => void;
+}
+
+function ListView({ filter, setFilter, upcoming, past, listVisible, t, lang, cardLabels, haptic }: ListViewProps) {
+  const upcomingCount = upcoming.length;
+  const pastCount = past.length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Sub-filter chip */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {(['upcoming', 'past'] as const).map((f) => {
+          const active = filter === f;
+          const count = f === 'upcoming' ? upcomingCount : pastCount;
+          return (
+            <button
+              key={f}
+              onClick={() => { setFilter(f); haptic('selection'); }}
+              style={{
+                flex: 1,
+                padding: '8px 14px',
+                borderRadius: R.pill,
+                border: `1px solid ${active ? T.text : T.borderSubtle}`,
+                background: active ? T.text : 'transparent',
+                color: active ? T.bg : T.textSecondary,
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              {f === 'upcoming' ? t.filterUpcoming : t.filterPast}
+              <span style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: active ? T.bg : T.textTertiary,
+                opacity: active ? 0.7 : 1,
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {listVisible.length === 0 ? (
+        <EmptyState
+          icon={<CalendarDaysIcon />}
+          title={t.noActivity}
+          desc={t.noActivityDesc}
+          ctaLabel={t.searchVenues}
+          ctaHref="/telegram/search"
+        />
+      ) : (
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {listVisible.map((a, i) => (
+            <AppointmentCard key={a.id} appt={a} index={i} t={t} lang={lang} cardLabels={cardLabels} haptic={haptic} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────── CalendarView ─────────────────── */
+
+interface CalendarViewProps {
+  calMonth: Date;
+  setCalMonth: (d: Date) => void;
+  selectedDay: string | null;
+  setSelectedDay: (d: string | null) => void;
+  byDay: Map<string, AppointmentRow[]>;
+  t: typeof I18N['uk'];
+  lang: Lang;
+  cardLabels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
+  haptic: (kind: 'light' | 'selection') => void;
+}
+
+function CalendarView({ calMonth, setCalMonth, selectedDay, setSelectedDay, byDay, t, lang, cardLabels, haptic }: CalendarViewProps) {
+  const monthLabel = `${t.monthsLong[calMonth.getMonth()]} ${calMonth.getFullYear()}`;
+  const todayKey = dayKey(new Date());
+
+  // Сетка месяца: понедельник = первый день недели.
+  const weeks = useMemo(() => {
+    const firstOfMonth = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+    // jsDay: 0=Sun..6=Sat — переводим в Mon=0..Sun=6
+    const jsDay = firstOfMonth.getDay();
+    const offset = jsDay === 0 ? 6 : jsDay - 1;
+    const start = new Date(firstOfMonth);
+    start.setDate(start.getDate() - offset);
+
+    const grid: Date[][] = [];
+    const cur = new Date(start);
+    for (let w = 0; w < 6; w++) {
+      const week: Date[] = [];
+      for (let d = 0; d < 7; d++) {
+        week.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+      grid.push(week);
+    }
+    return grid;
+  }, [calMonth]);
+
+  const selectedAppts = selectedDay ? (byDay.get(selectedDay) ?? []) : [];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Месяц + навигация */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          onClick={() => {
+            haptic('light');
+            setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1));
+            setSelectedDay(null);
+          }}
+          aria-label="Prev month"
+          style={chevronBtnStyle}
+        >
+          <ChevronLeft size={18} />
+        </button>
+        <div style={{ ...TYPE.h3, color: T.text, fontWeight: 700 }}>{monthLabel}</div>
+        <button
+          onClick={() => {
+            haptic('light');
+            setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1));
+            setSelectedDay(null);
+          }}
+          aria-label="Next month"
+          style={chevronBtnStyle}
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
+      {/* Шапка недели */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, fontSize: 11, color: T.textTertiary, fontWeight: 600 }}>
+        {t.weekdaysShort.map((w) => (
+          <div key={w} style={{ textAlign: 'center' }}>{w}</div>
+        ))}
+      </div>
+
+      {/* Сетка дней */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+            {week.map((day) => {
+              const key = dayKey(day);
+              const inMonth = day.getMonth() === calMonth.getMonth();
+              const isToday = key === todayKey;
+              const isSelected = key === selectedDay;
+              const dayAppts = byDay.get(key) ?? [];
+              const hasItems = dayAppts.length > 0;
+              // Цвет точки: зелёный если есть будущие, серый если только прошлые
+              const now = Date.now();
+              const hasUpcoming = dayAppts.some((a) =>
+                !isDoneStatus(a.status) && new Date(a.starts_at).getTime() >= now - 3600 * 1000,
+              );
+              const dotColor = hasUpcoming ? T.accent : T.textTertiary;
+
+              return (
+                <button
+                  key={key}
+                  onClick={() => { haptic('selection'); setSelectedDay(isSelected ? null : key); }}
+                  style={{
+                    aspectRatio: '1 / 1',
+                    borderRadius: R.sm,
+                    border: `1px solid ${isSelected ? T.text : 'transparent'}`,
+                    background: isSelected ? T.bgSubtle : 'transparent',
+                    color: inMonth ? T.text : T.textTertiary,
+                    fontFamily: 'inherit',
+                    fontSize: 14,
+                    fontWeight: isToday ? 800 : 500,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    padding: 0,
+                    opacity: inMonth ? 1 : 0.45,
+                    position: 'relative',
+                  }}
+                >
+                  <span>{day.getDate()}</span>
+                  {hasItems && (
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: dotColor,
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Список выбранного дня */}
+      {selectedDay && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+          <div style={{ ...TYPE.caption, color: T.textTertiary, fontWeight: 600 }}>
+            {(() => {
+              const [y, m, d] = selectedDay.split('-').map(Number);
+              const dt = new Date(y, m - 1, d);
+              const locale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
+              return dt.toLocaleDateString(locale, { day: 'numeric', month: 'long', weekday: 'long' });
+            })()}
+          </div>
+          {selectedAppts.length === 0 ? (
+            <div style={{
+              padding: '20px 16px',
+              borderRadius: R.md,
+              background: T.bgSubtle,
+              color: T.textSecondary,
+              fontSize: 13,
+              textAlign: 'center',
+            }}>
+              {t.noActivityOnDay}
+            </div>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {selectedAppts.map((a, i) => (
+                <AppointmentCard key={a.id} appt={a} index={i} t={t} lang={lang} cardLabels={cardLabels} haptic={haptic} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const chevronBtnStyle: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: R.pill,
+  border: `1px solid ${T.borderSubtle}`,
+  background: T.surface,
+  color: T.text,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+};
+
+/* ─────────────────── AppointmentCard (общая) ─────────────────── */
+
+interface CardProps {
+  appt: AppointmentRow;
+  index: number;
+  t: typeof I18N['uk'];
+  lang: Lang;
+  cardLabels: { masterPlaceholder: string; salonPlaceholder: string; managerAssigned: string };
+  haptic: (kind: 'light' | 'selection') => void;
+}
+
+function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: CardProps) {
+  void List; // отключаем unused-warning, импорт пригодится позже
+  const masterRef = a.master_id
+    ? {
+        id: a.master_id,
+        display_name: a.master_display_name,
+        avatar_url: a.master_avatar,
+        specialization: a.master_specialization,
+        salon_id: a.master_salon_id,
+      }
+    : null;
+  const d = resolveCardDisplay(masterRef, a.salon, cardLabels);
+  const dateLocale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
+  const date = new Date(a.starts_at).toLocaleString(dateLocale, {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.02 }}
+    >
+      <Link
+        href={`/telegram/activity/${a.id}`}
+        onClick={() => haptic('light')}
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          padding: 14,
+          background: T.surface,
+          border: `1px solid ${T.borderSubtle}`,
+          borderRadius: R.md,
+          textDecoration: 'none',
+          color: T.text,
+        }}
+      >
+        <AvatarCircle url={a.master_avatar} name={d.primary || 'M'} size={48} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {d.primary}
+          </p>
+          {d.secondary && (
+            <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {d.secondary}
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                background: a.service_color ?? T.accent,
+              }}
+            />
+            <span style={{ ...TYPE.caption, fontWeight: 600, color: T.textSecondary }}>
+              {a.service_name}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, ...TYPE.caption }}>
+            <Calendar size={13} />
+            <span>{date}</span>
+            {a.price > 0 && (
+              <>
+                <span style={{ color: T.textTertiary }}>·</span>
+                <span style={{ fontWeight: 600, color: T.text }}>
+                  {formatMoney(a.price, a.currency)}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <StatusChip status={a.status} labels={t.status} />
+          <ChevronRight size={18} color={T.textTertiary} />
+        </div>
+      </Link>
+    </motion.li>
+  );
+}
+
 function CalendarDaysIcon() {
-  // Soft purple-pink gradient calendar icon — Fresha empty-state vibe
   return (
     <div
       style={{
