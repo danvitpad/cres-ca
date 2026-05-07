@@ -127,10 +127,19 @@ export async function voiceToText(params: {
       }
       log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
     } catch (e) {
-      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+      const errMsg = (e as Error).message;
+      // Логируем ПОЛНУЮ ошибку для каждой модели (raw, не truncated) чтобы
+      // можно было увидеть quota/auth/timeout прямо в Vercel logs.
+      console.error(`[voiceToText] ${model} failed:`, errMsg.slice(0, 300));
+      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: errMsg });
     }
   }
 
+  // Сводный лог по всем моделям перед throw — видно сразу всю цепочку
+  // в один взгляд.
+  console.error('[voiceToText] all models failed. Summary:',
+    log.map((l) => `${l.model}=${l.error?.slice(0, 80) ?? 'ok'}`).join(' | '),
+  );
   throw new AIUnavailableError('All Gemini transcription models failed', log);
 }
 
