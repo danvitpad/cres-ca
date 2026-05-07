@@ -1143,68 +1143,83 @@ export default function MiniAppBookPage() {
                         )}
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* Все слоты в одной сетке, отсортированные по времени.
-                            Прошедшие и занятые рисуем серыми, не нажимаются. */}
-                        {(() => {
-                          type Slot = { time: string; state: 'free' | 'past' | 'booked' | 'tooShort' };
-                          const all: Slot[] = [
-                            ...pastSlots.map((t) => ({ time: t, state: 'past' as const })),
-                            ...bookedSlots.map((t) => ({ time: t, state: 'booked' as const })),
-                            ...tooShortSlots.map((t) => ({ time: t, state: 'tooShort' as const })),
-                            ...slots.map((t) => ({ time: t, state: 'free' as const })),
-                          ].sort((a, b) => a.time.localeCompare(b.time));
-                          return all.map((s, i) => {
-                            if (s.state === 'free') {
-                              const isSelected = selectedTime === s.time;
+                      // Группирую свободные слоты в непрерывные окна:
+                      // соседние слоты считаются одним окном если gap ≤ 15 мин
+                      // (равно шагу). Для каждого окна — карточка с заголовком
+                      // «10:00 — 19:00» и chip-pills внутри. Past/booked/tooShort
+                      // скрываю — пользователю важны только free окна.
+                      (() => {
+                        const sorted = [...slots].sort((a, b) => a.localeCompare(b));
+                        if (sorted.length === 0) return null;
+                        const t2m = (t: string) => {
+                          const [h, m] = t.split(':').map(Number);
+                          return h * 60 + m;
+                        };
+                        const STEP = 15;
+                        const windows: string[][] = [];
+                        let current: string[] = [sorted[0]];
+                        for (let i = 1; i < sorted.length; i++) {
+                          if (t2m(sorted[i]) - t2m(sorted[i - 1]) <= STEP) {
+                            current.push(sorted[i]);
+                          } else {
+                            windows.push(current);
+                            current = [sorted[i]];
+                          }
+                        }
+                        windows.push(current);
+
+                        return (
+                          <div className="space-y-3">
+                            {windows.map((win) => {
+                              const start = win[0];
+                              // конец окна = последний старт + step (потому что слот
+                              // win[last] = последняя возможная точка старта, после
+                              // неё ещё step минут окна работы).
+                              const lastMin = t2m(win[win.length - 1]) + STEP;
+                              const endH = Math.floor(lastMin / 60);
+                              const endM = lastMin % 60;
+                              const end = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
                               return (
-                                <motion.button
-                                  key={`free-${s.time}`}
-                                  custom={i}
-                                  variants={cardVariants}
+                                <motion.div
+                                  key={`window-${start}`}
+                                  variants={fadeUp}
                                   initial="hidden"
                                   animate="visible"
-                                  onClick={() => handleSelectTime(s.time)}
-                                  className="flex items-center justify-center rounded-xl py-3 text-[15px] font-semibold transition-colors"
-                                  style={{
-                                    border: `1px solid ${isSelected ? T.border : T.borderSubtle}`,
-                                    background: isSelected ? T.surface : T.surface,
-                                    color: T.text,
-                                  }}
+                                  className="rounded-2xl p-3"
+                                  style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
                                 >
-                                  {s.time}
-                                </motion.button>
+                                  <div
+                                    className="mb-2 px-1 text-[12px] font-semibold uppercase tracking-wide"
+                                    style={{ color: T.textTertiary }}
+                                  >
+                                    {start} — {end}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {win.map((time) => {
+                                      const isSelected = selectedTime === time;
+                                      return (
+                                        <button
+                                          key={time}
+                                          onClick={() => handleSelectTime(time)}
+                                          className="rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors active:scale-[0.97]"
+                                          style={{
+                                            border: `1px solid ${isSelected ? T.text : T.borderSubtle}`,
+                                            background: isSelected ? T.text : 'transparent',
+                                            color: isSelected ? T.bg : T.text,
+                                            minWidth: 64,
+                                          }}
+                                        >
+                                          {time}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
                               );
-                            }
-                            // Past / booked / tooShort — все рисуем серыми disabled, разница в подсказке.
-                            const tooltip =
-                              s.state === 'past'
-                                ? t.pastSlot
-                                : s.state === 'booked'
-                                  ? t.bookedSlot
-                                  : t.tooShortSlot;
-                            return (
-                              <motion.div
-                                key={`${s.state}-${s.time}`}
-                                custom={i}
-                                variants={cardVariants}
-                                initial="hidden"
-                                animate="visible"
-                                className={`flex items-center justify-center rounded-xl py-3 text-[15px] font-semibold cursor-not-allowed select-none ${s.state === 'past' ? 'line-through' : ''}`}
-                                style={{
-                                  border: `1px solid ${T.borderSubtle}`,
-                                  background: T.bgSubtle,
-                                  color: T.textDisabled,
-                                }}
-                                aria-disabled="true"
-                                title={tooltip}
-                              >
-                                {s.time}
-                              </motion.div>
-                            );
-                          });
-                        })()}
-                      </div>
+                            })}
+                          </div>
+                        );
+                      })()
                     )}
                     {/* Только прошедшие слоты — показываем подсказку выбрать другой день */}
                     {!slotsLoading && slots.length === 0 && pastSlots.length > 0 && (
