@@ -1,27 +1,31 @@
 /** --- YAML
  * name: MasterMiniAppPublicPage
- * description: Native Mini App превью + inline-редактор публичной страницы
- *              мастера. Все ключевые текстовые поля (имя, специализация, био,
- *              workplace, адрес) редактируются через ✎-кнопку рядом с секцией
- *              без выхода в браузер. Cover/портфолио/отзывы/услуги пока
- *              открываются в браузере (большая отдельная задача).
+ * description: Native Mini App превью + inline-редактор публичной страницы.
+ *              Cover 120px (с кнопкой замены/удаления), аватар overlap с
+ *              кнопкой замены, имя/спец/город под ним. Последовательность
+ *              блоков как на вебе /m/{handle}: Hero → Stats → Bio → Услуги →
+ *              Портфолио → Отзывы → Адрес → График → Рекомендую. Раздела
+ *              «Место работы» нет (его и в вебе как отдельного блока нет —
+ *              workplace_name живёт внутри Hero).
  * created: 2026-05-07
  * --- */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Pencil, Star, MapPin, Clock, ExternalLink, Loader2, Share2, Users2, Globe,
+  Camera, Trash2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
 import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
-import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface MasterData {
@@ -98,7 +102,6 @@ const I18N: Record<MiniAppLang, {
   bio: string; bioEmpty: string; bioEdit: string;
   name: string; nameEdit: string; nameFirst: string; nameLast: string;
   specialization: string; specEmpty: string; specEdit: string;
-  workplace: string; workplaceEmpty: string; workplaceEdit: string;
   services: string; servicesEmpty: string;
   portfolio: string; portfolioEmpty: string;
   hours: string; hoursEmpty: string;
@@ -106,17 +109,19 @@ const I18N: Record<MiniAppLang, {
   reviewsTitle: string; reviewsEmpty: string; anonReviewer: string;
   partners: string; partnersEmpty: string;
   closed: string; minutes: string;
+  coverSheet: string; coverReplace: string; coverDelete: string; coverDeleteConfirm: string;
+  avatarTitle: string;
+  saveError: string;
 }> = {
   uk: {
     loading: 'Завантажуємо…', notFound: 'Профіль не знайдено',
     close: 'Закрити', share: 'Поділитись',
-    editAll: 'Решту — у браузері', editAllHint: 'Логотип, обкладинка, послуги, відгуки, графік',
+    editAll: 'Решту — у браузері', editAllHint: 'Категорії послуг, FAQ, налаштування',
     worksLabel: 'Робіт', clientsLabel: 'Клієнтів', rating: 'Рейтинг',
     reviews: (n) => `${n} відгуків`,
     bio: 'Про себе', bioEmpty: 'Тапни ✎ щоб додати опис', bioEdit: 'Про себе',
     name: 'Імʼя', nameEdit: 'Імʼя та прізвище', nameFirst: 'Імʼя', nameLast: 'Прізвище',
     specialization: 'Спеціалізація', specEmpty: 'Тапни ✎ щоб задати', specEdit: 'Спеціалізація',
-    workplace: 'Місце роботи', workplaceEmpty: 'Тапни ✎ щоб задати', workplaceEdit: 'Місце роботи',
     services: 'Послуги', servicesEmpty: 'Послуг поки немає',
     portfolio: 'Портфоліо', portfolioEmpty: 'Робіт поки немає',
     hours: 'Графік роботи', hoursEmpty: 'Години не вказані',
@@ -125,17 +130,19 @@ const I18N: Record<MiniAppLang, {
     anonReviewer: 'Анонімний клієнт',
     partners: 'Рекомендую', partnersEmpty: 'Поки нікого не рекомендую',
     closed: 'вихідний', minutes: 'хв',
+    coverSheet: 'Обкладинка', coverReplace: 'Завантажити нову', coverDelete: 'Видалити обкладинку', coverDeleteConfirm: 'Видалити обкладинку?',
+    avatarTitle: 'Аватар',
+    saveError: 'Не вдалось зберегти',
   },
   ru: {
     loading: 'Загружаем…', notFound: 'Профиль не найден',
     close: 'Закрыть', share: 'Поделиться',
-    editAll: 'Остальное — в браузере', editAllHint: 'Логотип, обложка, услуги, отзывы, график',
+    editAll: 'Остальное — в браузере', editAllHint: 'Категории услуг, FAQ, настройки',
     worksLabel: 'Работ', clientsLabel: 'Клиентов', rating: 'Рейтинг',
     reviews: (n) => `${n} отзывов`,
     bio: 'О себе', bioEmpty: 'Тапни ✎ чтобы добавить описание', bioEdit: 'О себе',
     name: 'Имя', nameEdit: 'Имя и фамилия', nameFirst: 'Имя', nameLast: 'Фамилия',
     specialization: 'Специализация', specEmpty: 'Тапни ✎ чтобы задать', specEdit: 'Специализация',
-    workplace: 'Место работы', workplaceEmpty: 'Тапни ✎ чтобы задать', workplaceEdit: 'Место работы',
     services: 'Услуги', servicesEmpty: 'Услуг пока нет',
     portfolio: 'Портфолио', portfolioEmpty: 'Работ пока нет',
     hours: 'График работы', hoursEmpty: 'Часы не указаны',
@@ -144,17 +151,19 @@ const I18N: Record<MiniAppLang, {
     anonReviewer: 'Анонимный клиент',
     partners: 'Рекомендую', partnersEmpty: 'Пока никого не рекомендую',
     closed: 'выходной', minutes: 'мин',
+    coverSheet: 'Обложка', coverReplace: 'Загрузить новую', coverDelete: 'Удалить обложку', coverDeleteConfirm: 'Удалить обложку?',
+    avatarTitle: 'Аватар',
+    saveError: 'Не удалось сохранить',
   },
   en: {
     loading: 'Loading…', notFound: 'Profile not found',
     close: 'Close', share: 'Share',
-    editAll: 'The rest — in the browser', editAllHint: 'Logo, cover, services, reviews, schedule',
+    editAll: 'The rest — in the browser', editAllHint: 'Service categories, FAQ, settings',
     worksLabel: 'Visits', clientsLabel: 'Clients', rating: 'Rating',
     reviews: (n) => `${n} reviews`,
     bio: 'About', bioEmpty: 'Tap ✎ to add description', bioEdit: 'About',
     name: 'Name', nameEdit: 'First & last name', nameFirst: 'First name', nameLast: 'Last name',
     specialization: 'Specialization', specEmpty: 'Tap ✎ to set', specEdit: 'Specialization',
-    workplace: 'Workplace', workplaceEmpty: 'Tap ✎ to set', workplaceEdit: 'Workplace',
     services: 'Services', servicesEmpty: 'No services yet',
     portfolio: 'Portfolio', portfolioEmpty: 'No works yet',
     hours: 'Hours', hoursEmpty: 'Hours not set',
@@ -163,6 +172,9 @@ const I18N: Record<MiniAppLang, {
     anonReviewer: 'Anonymous client',
     partners: 'I recommend', partnersEmpty: 'No recommendations yet',
     closed: 'closed', minutes: 'min',
+    coverSheet: 'Cover', coverReplace: 'Upload new', coverDelete: 'Remove cover', coverDeleteConfirm: 'Remove cover?',
+    avatarTitle: 'Avatar',
+    saveError: 'Failed to save',
   },
 };
 
@@ -176,7 +188,7 @@ function openExternal(href: string) {
   }
 }
 
-type EditField = null | 'name' | 'specialization' | 'bio' | 'workplace' | 'address';
+type EditField = null | 'name' | 'specialization' | 'bio' | 'address';
 
 export default function MasterMiniAppPublicPage() {
   const router = useRouter();
@@ -191,6 +203,11 @@ export default function MasterMiniAppPublicPage() {
   const [partners, setPartners] = useState<PartnerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editField, setEditField] = useState<EditField>(null);
+  const [coverSheetOpen, setCoverSheetOpen] = useState(false);
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null);
+  const [imageBusy, setImageBusy] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   async function loadData() {
     const initData = getInitData();
@@ -240,6 +257,50 @@ export default function MasterMiniAppPublicPage() {
     }
   }
 
+  async function uploadImage(target: 'avatar' | 'cover', blob: Blob) {
+    setImageBusy(true);
+    try {
+      const initData = getInitData();
+      const form = new FormData();
+      form.append('target', target);
+      form.append('file', blob, `${target}-${Date.now()}.webp`);
+      const res = await fetch('/api/telegram/m/master-image', {
+        method: 'POST',
+        headers: { ...(initData ? { 'X-TG-Init-Data': initData } : {}) },
+        body: form,
+      });
+      if (!res.ok) { haptic('error'); return; }
+      const json = await res.json() as { url?: string };
+      if (json.url && master) {
+        setMaster({ ...master, [target === 'avatar' ? 'avatar_url' : 'cover_url']: json.url });
+        haptic('success');
+      }
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function deleteCover() {
+    setImageBusy(true);
+    try {
+      const initData = getInitData();
+      const res = await fetch('/api/telegram/m/master-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ action: 'delete-cover' }),
+      });
+      if (!res.ok) { haptic('error'); return; }
+      if (master) setMaster({ ...master, cover_url: null });
+      setCoverSheetOpen(false);
+      haptic('success');
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
   function shareLink() {
     if (!master?.invite_code) return;
     haptic('light');
@@ -280,13 +341,9 @@ export default function MasterMiniAppPublicPage() {
 
   const displayName = master.display_name || '—';
   const wh = (master.working_hours as WorkingHours | null) ?? null;
-  // Cover показывается ВСЕГДА — либо реальная картинка (если cover_url задан
-  // и отличается от аватара), либо градиент-плейсхолдер. Это даёт стабильный
-  // layout: аватар всегда на одной высоте, не «прыгает» в зависимости от
-  // настроек мастера.
   const hasRealCover = !!master.cover_url && master.cover_url !== master.avatar_url;
 
-  // Сортировка отзывов: с комментарием → без, внутри каждой группы по дате DESC.
+  // Сортировка отзывов: с комментариями вверх, потом по дате DESC.
   const sortedReviews = [...reviews].sort((a, b) => {
     const aHas = a.comment && a.comment.trim().length > 0 ? 1 : 0;
     const bHas = b.comment && b.comment.trim().length > 0 ? 1 : 0;
@@ -302,16 +359,16 @@ export default function MasterMiniAppPublicPage() {
         transition={{ duration: 0.25 }}
         style={{ display: 'flex', flexDirection: 'column', gap: 18, paddingBottom: 32 }}
       >
-        {/* Cover — всегда фиксированная высота 160px. Если задан cover_url
-            и он отличается от аватара — рендерим картинку. Иначе — градиент
-            из brand-цветов как плейсхолдер. */}
+        {/* Cover — фиксированные 120px (НЕ растягивается). aspect-ratio
+            явный, чтобы прозрачные PNG-логотипы не подняли блок выше. */}
         <div
           style={{
             position: 'relative',
             width: '100%',
             flexShrink: 0,
-            height: 160,
-            maxHeight: 160,
+            height: 120,
+            minHeight: 120,
+            maxHeight: 120,
             background: hasRealCover ? T.bgSubtle : `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
             overflow: 'hidden',
           }}
@@ -331,30 +388,70 @@ export default function MasterMiniAppPublicPage() {
             />
           )}
           <CloseBtn onClick={() => { haptic('light'); router.back(); }} />
+
+          {/* Edit cover — pencil справа снизу */}
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setCoverSheetOpen(true); }}
+            aria-label={t.coverSheet}
+            style={{
+              position: 'absolute',
+              right: 12,
+              bottom: 12,
+              width: 36, height: 36,
+              borderRadius: '50%',
+              border: 'none',
+              background: 'rgba(0,0,0,0.55)',
+              color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', padding: 0,
+              backdropFilter: 'blur(4px)',
+            }}
+          >
+            <Camera size={18} strokeWidth={2.4} />
+          </button>
         </div>
 
-        {/* Hero: avatar над cover (overlap 50%) + имя/спец/город СНИЗУ под
-            аватаром (как в вебе). Раньше имя было справа от аватара и
-            «толкалось» с ним; теперь чистый Fresha-style: круглый аватар
-            центрирован, под ним крупное имя и метаданные. */}
+        {/* Hero: avatar overlap'ит cover на 40px (не больше), имя + спец + город снизу. */}
         <div
           style={{
             display: 'flex', flexDirection: 'column',
             padding: `0 ${PAGE_PADDING_X}px`,
-            marginTop: -56,
+            marginTop: -40,
           }}
         >
-          <div
-            style={{
-              width: 100, height: 100, borderRadius: '50%',
-              border: `4px solid ${T.bg}`, overflow: 'hidden', flexShrink: 0,
-              background: T.surface,
-              boxShadow: SHADOW.card,
-            }}
-          >
-            <AvatarCircle url={master.avatar_url} name={displayName} size={92} />
+          <div style={{ position: 'relative', width: 92, height: 92 }}>
+            <div
+              style={{
+                width: 92, height: 92, borderRadius: '50%',
+                border: `4px solid ${T.bg}`, overflow: 'hidden', flexShrink: 0,
+                background: T.surface,
+                boxShadow: SHADOW.card,
+              }}
+            >
+              <AvatarCircle url={master.avatar_url} name={displayName} size={84} />
+            </div>
+            {/* Edit avatar — маленький pencil справа снизу */}
+            <button
+              type="button"
+              onClick={() => { haptic('light'); avatarInputRef.current?.click(); }}
+              aria-label={t.avatarTitle}
+              disabled={imageBusy}
+              style={{
+                position: 'absolute',
+                right: -2, bottom: -2,
+                width: 28, height: 28,
+                borderRadius: '50%',
+                border: `2px solid ${T.bg}`,
+                background: T.text, color: T.bg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', padding: 0,
+              }}
+            >
+              <Pencil size={12} strokeWidth={2.4} />
+            </button>
           </div>
-          <div style={{ marginTop: 12, minWidth: 0 }}>
+          <div style={{ marginTop: 10, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <h1 style={{ ...TYPE.h2, color: T.text, margin: 0, fontSize: 24, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {displayName}
@@ -362,10 +459,10 @@ export default function MasterMiniAppPublicPage() {
               <PencilBtn onClick={() => { haptic('selection'); setEditField('name'); }} />
             </div>
             <SpecRow t={t} value={master.headline || master.specialization} onEdit={() => setEditField('specialization')} />
-            {(master.workplace || master.city) && (
+            {master.city && (
               <p style={{ ...TYPE.micro, marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <MapPin size={11} />
-                {[master.workplace, master.city].filter(Boolean).join(' · ')}
+                {master.city}
               </p>
             )}
           </div>
@@ -382,7 +479,16 @@ export default function MasterMiniAppPublicPage() {
           />
         </div>
 
-        {/* Actions */}
+        {/* Bio (как в вебе — сразу после Hero и Stats) */}
+        <SectionWithEdit title={t.bio} onEdit={() => setEditField('bio')}>
+          {master.bio ? (
+            <p style={{ ...TYPE.body, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>{master.bio}</p>
+          ) : (
+            <Empty text={t.bioEmpty} />
+          )}
+        </SectionWithEdit>
+
+        {/* Actions: Share + остальное в браузере */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
           <button
             type="button"
@@ -408,37 +514,7 @@ export default function MasterMiniAppPublicPage() {
           {t.editAllHint}
         </p>
 
-        {/* Bio (inline-edit) */}
-        <SectionWithEdit title={t.bio} onEdit={() => setEditField('bio')}>
-          {master.bio ? (
-            <p style={{ ...TYPE.body, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>{master.bio}</p>
-          ) : (
-            <Empty text={t.bioEmpty} />
-          )}
-        </SectionWithEdit>
-
-        {/* Workplace (inline-edit) */}
-        <SectionWithEdit title={t.workplace} onEdit={() => setEditField('workplace')}>
-          {master.workplace ? (
-            <p style={{ ...TYPE.body, color: T.text, margin: 0 }}>{master.workplace}</p>
-          ) : (
-            <Empty text={t.workplaceEmpty} />
-          )}
-        </SectionWithEdit>
-
-        {/* Address (inline-edit) */}
-        <SectionWithEdit title={t.address} onEdit={() => setEditField('address')}>
-          {master.address ? (
-            <p style={{ ...TYPE.body, color: T.text, margin: 0, display: 'inline-flex', alignItems: 'flex-start', gap: 8 }}>
-              <MapPin size={16} style={{ marginTop: 2, flexShrink: 0 }} color={T.textSecondary} />
-              <span>{master.address}</span>
-            </p>
-          ) : (
-            <Empty text={t.addressEmpty} />
-          )}
-        </SectionWithEdit>
-
-        {/* Services */}
+        {/* Услуги */}
         <Section title={t.services}>
           {services.length === 0 ? (
             <Empty text={t.servicesEmpty} />
@@ -476,7 +552,7 @@ export default function MasterMiniAppPublicPage() {
           )}
         </Section>
 
-        {/* Portfolio */}
+        {/* Портфолио */}
         <Section title={t.portfolio}>
           {portfolio.length === 0 ? (
             <Empty text={t.portfolioEmpty} />
@@ -503,29 +579,7 @@ export default function MasterMiniAppPublicPage() {
           )}
         </Section>
 
-        {/* Working hours */}
-        <Section title={t.hours}>
-          {wh ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {DAY_KEYS.map((k, i) => {
-                const day = wh[k];
-                const isClosed = !day || day.closed || (!day.open && !day.close);
-                return (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span style={{ color: T.text, fontWeight: 600, width: 36 }}>{DAYS_RU[i]}</span>
-                    <span style={{ color: isClosed ? T.textTertiary : T.text }}>
-                      {isClosed ? t.closed : `${day.open} – ${day.close}`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <Empty text={t.hoursEmpty} />
-          )}
-        </Section>
-
-        {/* Reviews */}
+        {/* Отзывы */}
         <Section title={t.reviewsTitle}>
           {sortedReviews.length === 0 ? (
             <Empty text={t.reviewsEmpty} />
@@ -561,7 +615,41 @@ export default function MasterMiniAppPublicPage() {
           )}
         </Section>
 
-        {/* Partners */}
+        {/* Адрес (inline-edit) */}
+        <SectionWithEdit title={t.address} onEdit={() => setEditField('address')}>
+          {master.address ? (
+            <p style={{ ...TYPE.body, color: T.text, margin: 0, display: 'inline-flex', alignItems: 'flex-start', gap: 8 }}>
+              <MapPin size={16} style={{ marginTop: 2, flexShrink: 0 }} color={T.textSecondary} />
+              <span>{master.address}</span>
+            </p>
+          ) : (
+            <Empty text={t.addressEmpty} />
+          )}
+        </SectionWithEdit>
+
+        {/* График работы */}
+        <Section title={t.hours}>
+          {wh ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {DAY_KEYS.map((k, i) => {
+                const day = wh[k];
+                const isClosed = !day || day.closed || (!day.open && !day.close);
+                return (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                    <span style={{ color: T.text, fontWeight: 600, width: 36 }}>{DAYS_RU[i]}</span>
+                    <span style={{ color: isClosed ? T.textTertiary : T.text }}>
+                      {isClosed ? t.closed : `${day.open} – ${day.close}`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Empty text={t.hoursEmpty} />
+          )}
+        </Section>
+
+        {/* Рекомендую (партнёры) */}
         <Section title={t.partners}>
           {partners.length === 0 ? (
             <Empty text={t.partnersEmpty} />
@@ -594,7 +682,7 @@ export default function MasterMiniAppPublicPage() {
           )}
         </Section>
 
-        {/* Social links */}
+        {/* Соцсети — если заполнены */}
         {master.social_links && Object.values(master.social_links).some((v) => !!v) && (
           <Section title="—" hideTitle>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -622,7 +710,58 @@ export default function MasterMiniAppPublicPage() {
         )}
       </motion.div>
 
-      {/* Edit sheets — один per поле */}
+      {/* hidden file inputs */}
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (f.size > 8 * 1024 * 1024) { haptic('error'); return; }
+          uploadImage('cover', f);
+          setCoverSheetOpen(false);
+          e.target.value = '';
+        }}
+      />
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (f.size > 8 * 1024 * 1024) { haptic('error'); return; }
+          setAvatarCropSrc(URL.createObjectURL(f));
+          e.target.value = '';
+        }}
+      />
+
+      {/* Avatar crop — Mini App native fullscreen sheet */}
+      <MiniAppAvatarCropSheet
+        src={avatarCropSrc}
+        title={t.avatarTitle}
+        onClose={() => { if (avatarCropSrc) URL.revokeObjectURL(avatarCropSrc); setAvatarCropSrc(null); }}
+        onCropped={(blob) => uploadImage('avatar', blob)}
+      />
+
+      {/* Cover sheet: «Заменить» + «Удалить» */}
+      <AnimatePresence>
+        {coverSheetOpen && (
+          <CoverActionSheet
+            t={t}
+            hasCover={hasRealCover}
+            busy={imageBusy}
+            onPickFile={() => coverInputRef.current?.click()}
+            onDelete={deleteCover}
+            onClose={() => setCoverSheetOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Inline edit text sheets */}
       <MiniAppEditTextSheet
         open={editField === 'bio'}
         title={t.bioEdit}
@@ -643,22 +782,8 @@ export default function MasterMiniAppPublicPage() {
         maxLength={120}
         onClose={() => setEditField(null)}
         onSave={async (v) => {
-          // Пишем в headline (приоритетное поле для публички); специализация
-          // отдельная категория.
           await patchMaster({ headline: v });
           setMaster({ ...master, headline: v.trim() || null });
-        }}
-      />
-      <MiniAppEditTextSheet
-        open={editField === 'workplace'}
-        title={t.workplaceEdit}
-        initialValue={master.workplace ?? ''}
-        multiline={false}
-        maxLength={120}
-        onClose={() => setEditField(null)}
-        onSave={async (v) => {
-          await patchMaster({ workplace_name: v });
-          setMaster({ ...master, workplace: v.trim() || null });
         }}
       />
       <MiniAppEditTextSheet
@@ -686,6 +811,104 @@ export default function MasterMiniAppPublicPage() {
         />
       )}
     </MobilePage>
+  );
+}
+
+function CoverActionSheet({
+  t, hasCover, busy, onPickFile, onDelete, onClose,
+}: {
+  t: typeof I18N['ru'];
+  hasCover: boolean;
+  busy: boolean;
+  onPickFile: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => !busy && onClose()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 80,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)',
+      }}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={SPRING.default}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+          background: T.surface,
+          padding: `20px ${PAGE_PADDING_X}px`,
+          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          boxShadow: SHADOW.elevated,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.coverSheet}</h3>
+          <button
+            type="button" onClick={() => !busy && onClose()}
+            aria-label={t.close}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: `1px solid ${T.border}`, background: T.surface,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            }}
+          >
+            <X size={16} color={T.text} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            type="button"
+            onClick={onPickFile}
+            disabled={busy}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px 16px',
+              borderRadius: R.md, border: 'none',
+              background: T.text, color: T.bg,
+              fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+              opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+            {t.coverReplace}
+          </button>
+          {hasCover && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!confirm) { setConfirm(true); return; }
+                onDelete();
+              }}
+              disabled={busy}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '14px 16px',
+                borderRadius: R.md,
+                border: `1px solid ${T.dangerSoft}`,
+                background: T.dangerSoft,
+                color: T.danger,
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <Trash2 size={14} />
+              {confirm ? t.coverDeleteConfirm : t.coverDelete}
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -830,7 +1053,6 @@ function Empty({ text }: { text: string }) {
   return <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{text}</p>;
 }
 
-/** Отдельный sheet для имени — два поля (Имя + Фамилия). */
 function NameEditSheet({
   t, fullName, onClose, onSave,
 }: {
