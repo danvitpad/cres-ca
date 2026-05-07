@@ -1,18 +1,19 @@
 /** --- YAML
  * name: MasterMiniAppSettings
- * description: Mini App master settings — theme-aware (light/dark via miniapp
- *   design tokens), Apple-style list of sections + bottom logout. Fixed:
- *   was using raw bg-white that broke in dark mode; logout now has timeout
- *   fallback so it never hangs the UI even if auth.signOut stalls.
+ * description: Mini App master settings — паритет с клиентом по контактным
+ *              данным (Email · Телефон · Пароль) + раздел разделов мастера
+ *              (Расписание / Тариф / Уведомления / Язык / Помощь / Обратная
+ *              связь) + Theme toggle + Sign out.
  * created: 2026-04-19
- * updated: 2026-04-29
+ * updated: 2026-05-07
  * --- */
 
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarCheck,
   CreditCard,
@@ -25,51 +26,82 @@ import {
   ChevronRight,
   ArrowLeft,
   Loader2,
+  Mail,
+  Phone as PhoneIcon,
+  KeyRound,
+  X,
+  Check,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { useAuthStore } from '@/stores/auth-store';
+import { mapError } from '@/lib/errors';
+import { getInitData } from '@/lib/telegram/webapp';
+import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 const I18N: Record<MiniAppLang, {
   back: string;
-  profile: string; services: string; schedule: string; billing: string;
-  notifications: string; language: string; voice: string; help: string; feedback: string;
+  schedule: string; billing: string; notifications: string; language: string; help: string; feedback: string;
   themeDark: string; themeManual: string; themeAsTelegram: string;
-  accountSection: string; accountHint: string;
   loggingOut: string; logout: string;
+  emailLabel: string; phoneLabel: string; notSet: string;
+  changePassword: string;
+  contactSheet: string; save: string; close: string;
+  pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
+  pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
+  emailConfirm: string;
+  saveError: string;
 }> = {
   uk: {
     back: 'Назад',
-    profile: 'Профіль та портфоліо', services: 'Послуги та ціни', schedule: 'Графік роботи',
-    billing: 'Тариф та платежі', notifications: 'Сповіщення', language: 'Мова',
-    voice: 'Голосовий помічник', help: 'Допомога', feedback: 'Зворотний зв’язок',
+    schedule: 'Графік роботи', billing: 'Тариф та платежі', notifications: 'Сповіщення', language: 'Мова',
+    help: 'Допомога', feedback: 'Зворотний зв’язок',
     themeDark: 'Темна тема', themeManual: 'Вручну', themeAsTelegram: 'Як в Telegram',
-    accountSection: 'Дії з обліковим записом',
-    accountHint: 'Експорт даних та видалення облікового запису доступні у веб-версії:',
     loggingOut: 'Виходимо…', logout: 'Вийти',
+    emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не вказано',
+    changePassword: 'Змінити пароль',
+    contactSheet: 'Контактні дані', save: 'Зберегти', close: 'Закрити',
+    pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
+    pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
+    pwNewPlaceholder: 'Мінімум 8 символів', pwRepeatPlaceholder: 'Ще раз',
+    pwSaved: 'Пароль оновлено',
+    emailConfirm: 'Лист з підтвердженням надіслано. Відкрий його, щоб завершити зміну email.',
+    saveError: 'Не вдалось зберегти',
   },
   ru: {
     back: 'Назад',
-    profile: 'Профиль и портфолио', services: 'Услуги и цены', schedule: 'График работы',
-    billing: 'Тариф и платежи', notifications: 'Уведомления', language: 'Язык',
-    voice: 'Голосовой помощник', help: 'Помощь', feedback: 'Обратная связь',
+    schedule: 'График работы', billing: 'Тариф и платежи', notifications: 'Уведомления', language: 'Язык',
+    help: 'Помощь', feedback: 'Обратная связь',
     themeDark: 'Тёмная тема', themeManual: 'Вручную', themeAsTelegram: 'Как в Telegram',
-    accountSection: 'Действия с учётной записью',
-    accountHint: 'Экспорт данных и удаление учётной записи доступны в веб-версии:',
     loggingOut: 'Выходим…', logout: 'Выйти',
+    emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не указан',
+    changePassword: 'Сменить пароль',
+    contactSheet: 'Контактные данные', save: 'Сохранить', close: 'Закрыть',
+    pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
+    pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
+    pwNewPlaceholder: 'Минимум 8 символов', pwRepeatPlaceholder: 'Ещё раз',
+    pwSaved: 'Пароль обновлён',
+    emailConfirm: 'Письмо с подтверждением отправлено. Открой его, чтобы завершить смену email.',
+    saveError: 'Не удалось сохранить',
   },
   en: {
     back: 'Back',
-    profile: 'Profile & portfolio', services: 'Services & prices', schedule: 'Schedule',
-    billing: 'Plan & billing', notifications: 'Notifications', language: 'Language',
-    voice: 'Voice assistant', help: 'Help', feedback: 'Feedback',
+    schedule: 'Schedule', billing: 'Plan & billing', notifications: 'Notifications', language: 'Language',
+    help: 'Help', feedback: 'Feedback',
     themeDark: 'Dark theme', themeManual: 'Manual', themeAsTelegram: 'Match Telegram',
-    accountSection: 'Account actions',
-    accountHint: 'Data export and account deletion are available in the web version:',
     loggingOut: 'Signing out…', logout: 'Sign out',
+    emailLabel: 'Email', phoneLabel: 'Phone', notSet: 'Not set',
+    changePassword: 'Change password',
+    contactSheet: 'Contact info', save: 'Save', close: 'Close',
+    pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
+    pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
+    pwNewPlaceholder: 'At least 8 characters', pwRepeatPlaceholder: 'Once more',
+    pwSaved: 'Password updated',
+    emailConfirm: 'Confirmation email sent. Open it to finish changing your email.',
+    saveError: 'Failed to save',
   },
 };
 
@@ -80,11 +112,6 @@ interface SettingsItem {
   Icon: LucideIcon;
 }
 
-// Настройки — только то что не получило отдельного слота в нижней навигации.
-// Профиль / Услуги / Голос убраны:
-//   • Профиль открывается по аватару справа сверху на любом табе.
-//   • Услуги стали отдельным табом (4-й слот) — /telegram/m/services.
-//   • Голос идёт через TG-бот, отдельной страницы в Mini App больше нет.
 const ITEMS: SettingsItem[] = [
   { key: 'schedule',      href: '/telegram/m/settings/schedule',       labelKey: 'schedule',      Icon: CalendarCheck },
   { key: 'billing',       href: '/telegram/m/settings/billing',        labelKey: 'billing',       Icon: CreditCard },
@@ -97,27 +124,200 @@ const ITEMS: SettingsItem[] = [
 export default function MasterMiniAppSettings() {
   const { haptic } = useTelegram();
   const router = useRouter();
+  const { userId, clearAuth } = useAuthStore();
   const { theme, override, setOverride } = useMiniAppTheme();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Контактные данные — то же что у клиента
+  const [email, setEmail] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+
+  // Edit contact modal
+  const [contactOpen, setContactOpen] = useState(false);
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+  const [emailConfirmSent, setEmailConfirmSent] = useState(false);
+
+  // Password change modal
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSuccess, setPwSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('profiles')
+        .select('email, phone')
+        .eq('id', userId)
+        .maybeSingle<{ email: string | null; phone: string | null }>();
+      if (!data) return;
+      setEmail(data.email);
+      setPhone(data.phone);
+    })();
+  }, [userId]);
+
+  function openContactEdit() {
+    setEditPhone(phone ? phone.replace(/^\+380/, '') : '');
+    setEditEmail(email ?? '');
+    setContactError(null);
+    setEmailConfirmSent(false);
+    setContactOpen(true);
+    haptic('light');
+  }
+
+  async function saveContact() {
+    if (contactBusy) return;
+    setContactBusy(true);
+    setContactError(null);
+    try {
+      const initData = getInitData();
+      const emailChanged = editEmail.trim().toLowerCase() !== (email ?? '').toLowerCase();
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({
+          phone: editPhone.trim(),
+          email: editEmail.trim() || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setContactError(mapError(data.error, t.saveError));
+        haptic('error');
+        return;
+      }
+      setPhone(editPhone.trim() ? `+380${editPhone.replace(/\D/g, '').replace(/^380/, '')}` : null);
+      if (!emailChanged) setEmail(editEmail.trim() || null);
+      haptic('success');
+      if (emailChanged && editEmail.trim()) {
+        setEmailConfirmSent(true);
+      } else {
+        setContactOpen(false);
+      }
+    } catch (e) {
+      setContactError(mapError(e instanceof Error ? e.message : 'network_error'));
+    } finally {
+      setContactBusy(false);
+    }
+  }
+
+  async function savePassword() {
+    if (pwBusy) return;
+    setPwError(null);
+    if (pwNew.length < 8) {
+      setPwError(t.pwMinLen);
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      setPwError(t.pwMismatch);
+      return;
+    }
+    setPwBusy(true);
+    try {
+      const initData = getInitData();
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ password: pwNew }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPwError(mapError(data.error, t.saveError));
+        haptic('error');
+        return;
+      }
+      haptic('success');
+      setPwSuccess(true);
+      setPwNew('');
+      setPwConfirm('');
+      setTimeout(() => {
+        setPwOpen(false);
+        setPwSuccess(false);
+      }, 1400);
+    } finally {
+      setPwBusy(false);
+    }
+  }
+
   async function logout() {
     if (loggingOut) return;
     setLoggingOut(true);
     haptic('warning');
-
-    // Always navigate even if signOut() hangs (TG WebView occasionally stalls
-    // on auth requests). Race against a 1.5s timeout.
-    // Navigate FIRST — full page replace kills the React tree, so the layout's
-    // "!userId → router.replace('/telegram')" effect never fires.
-    // clearAuth() is intentionally omitted: the store re-initialises from scratch
-    // on the new page. signOut is fire-and-forget (TG WebView can stall auth).
-    try { createClient().auth.signOut(); } catch { /* ignore */ }
-    // Keep cres:tg so /telegram/welcome can render without bouncing through /telegram
-    // (which would re-auth via initData and bring the user straight back to home).
+    // Паритет с клиентским logout: сначала /api/telegram/unlink (отвязка
+    // telegram_id чтобы не было автологина), потом auth.signOut, очистка
+    // auth-store + sessionStorage, и затем редирект. Раньше был только
+    // fire-and-forget signOut + redirect — этого мало для чистого выхода.
+    try {
+      const initData = getInitData();
+      if (initData) {
+        await fetch('/api/telegram/unlink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+      }
+    } catch { /* ignore */ }
+    try { await createClient().auth.signOut(); } catch { /* ignore */ }
+    try { clearAuth(); } catch { /* ignore */ }
+    try { sessionStorage.removeItem('cres:tg'); } catch { /* ignore */ }
     window.location.replace('/telegram/welcome');
   }
+
+  const iconBox: React.CSSProperties = {
+    width: 36,
+    height: 36,
+    borderRadius: R.sm,
+    border: `1px solid ${T.borderSubtle}`,
+    background: T.surface,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  };
+
+  const cardStyle: React.CSSProperties = {
+    borderRadius: R.lg,
+    border: `1px solid ${T.borderSubtle}`,
+    background: T.surface,
+    boxShadow: SHADOW.card,
+    overflow: 'hidden',
+  };
+
+  const rowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '14px 16px',
+    background: 'transparent',
+    border: 'none',
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    color: T.text,
+    textDecoration: 'none',
+  };
+
+  const divider: React.CSSProperties = {
+    height: 1,
+    background: T.borderSubtle,
+    margin: '0 16px',
+  };
 
   return (
     <div
@@ -151,7 +351,49 @@ export default function MasterMiniAppSettings() {
           <ArrowLeft size={18} strokeWidth={2.4} />
         </button>
 
-        {/* Settings list */}
+        {/* Контактные данные — Email + Телефон + Сменить пароль (паритет с клиентом) */}
+        <div style={cardStyle}>
+          <button type="button" onClick={openContactEdit} style={rowStyle}>
+            <div style={iconBox}><Mail size={16} color={T.text} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
+              <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+          <div style={divider} />
+          <button type="button" onClick={openContactEdit} style={rowStyle}>
+            <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
+              <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+          <div style={divider} />
+          <button
+            type="button"
+            onClick={() => {
+              setPwNew(''); setPwConfirm('');
+              setPwError(null); setPwSuccess(false);
+              setPwOpen(true);
+              haptic('light');
+            }}
+            style={rowStyle}
+          >
+            <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
+            <div style={{ flex: 1 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+        </div>
+
+        {/* Master settings list — то что не получило отдельного слота в bottom nav.
+            Профиль / Услуги / Голос убраны:
+              • Профиль — кружок справа сверху на любом табе.
+              • Услуги — отдельный таб.
+              • Голос — только TG-бот. */}
         <div
           style={{
             background: T.surface,
@@ -177,16 +419,6 @@ export default function MasterMiniAppSettings() {
                   textDecoration: 'none',
                   color: T.text,
                   WebkitTapHighlightColor: 'transparent',
-                  transition: 'background 0.12s',
-                }}
-                onPointerDown={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = T.bgSubtle;
-                }}
-                onPointerUp={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                }}
-                onPointerLeave={(e) => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
                 }}
               >
                 <span
@@ -265,33 +497,6 @@ export default function MasterMiniAppSettings() {
           </button>
         </div>
 
-        {/* Web-only actions notice */}
-        <div
-          style={{
-            background: T.surface,
-            border: `1px solid ${T.borderSubtle}`,
-            borderRadius: R.lg,
-            padding: '14px 16px',
-            fontSize: 13,
-            lineHeight: 1.5,
-            color: T.textSecondary,
-            boxShadow: SHADOW.card,
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 4 }}>
-            {t.accountSection}
-          </div>
-          {t.accountHint}&nbsp;
-          <a
-            href={`https://cres-ca.com/${lang}/settings`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: T.accent, fontWeight: 500, textDecoration: 'none' }}
-          >
-            cres-ca.com/settings
-          </a>
-        </div>
-
         {/* Logout */}
         <button
           type="button"
@@ -323,6 +528,244 @@ export default function MasterMiniAppSettings() {
           {loggingOut ? t.loggingOut : t.logout}
         </button>
       </div>
+
+      {/* Contact edit bottom sheet */}
+      <AnimatePresence>
+        {contactOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 50,
+              display: 'flex',
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => !contactBusy && setContactOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={SPRING.default}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%',
+                maxWidth: 480,
+                borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+                background: T.surface,
+                padding: `20px ${PAGE_PADDING_X}px`,
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.contactSheet}</h3>
+                <button
+                  type="button"
+                  onClick={() => !contactBusy && setContactOpen(false)}
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    border: `1px solid ${T.border}`, background: T.surface,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}
+                  aria-label={t.close}
+                >
+                  <X size={16} color={T.text} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 16 }}>
+                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Email</label>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value.slice(0, 120))}
+                    placeholder="you@example.com"
+                    style={{
+                      display: 'block', width: '100%', marginTop: 4,
+                      background: 'transparent', border: 'none', outline: 'none',
+                      ...TYPE.body, color: T.text, fontFamily: 'inherit',
+                    }}
+                  />
+                  {emailConfirmSent && (
+                    <p style={{ ...TYPE.micro, color: T.success, marginTop: 8 }}>
+                      {t.emailConfirm}
+                    </p>
+                  )}
+                </div>
+
+                <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 16 }}>
+                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t.phoneLabel}</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, ...TYPE.body }}>
+                    <span style={{ color: T.textTertiary }}>+380</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                      placeholder="501234567"
+                      style={{
+                        flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                        color: T.text, fontFamily: 'inherit', fontSize: 'inherit',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {contactError && (
+                  <div style={{
+                    position: 'relative', borderRadius: R.sm,
+                    border: `1px solid ${T.dangerSoft}`, background: T.dangerSoft,
+                    padding: '12px 12px 12px 16px', ...TYPE.caption, color: T.danger, overflow: 'hidden',
+                  }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: T.danger }} />
+                    {contactError}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={saveContact}
+                  disabled={contactBusy}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    width: '100%', padding: '16px', borderRadius: R.md, border: 'none',
+                    background: T.text, color: T.bg, fontSize: 15, fontWeight: 700,
+                    cursor: contactBusy ? 'wait' : 'pointer', fontFamily: 'inherit', opacity: contactBusy ? 0.6 : 1,
+                  }}
+                >
+                  {contactBusy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  {t.save}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Password change bottom sheet */}
+      <AnimatePresence>
+        {pwOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 50,
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => !pwBusy && setPwOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 40, opacity: 0 }}
+              transition={SPRING.default}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 480,
+                borderRadius: `${R.lg}px ${R.lg}px 0 0`, background: T.surface,
+                padding: `20px ${PAGE_PADDING_X}px`,
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.pwSheet}</h3>
+                <button
+                  type="button"
+                  onClick={() => !pwBusy && setPwOpen(false)}
+                  style={{
+                    width: 36, height: 36, borderRadius: '50%',
+                    border: `1px solid ${T.border}`, background: T.surface,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  }}
+                  aria-label={t.close}
+                >
+                  <X size={16} color={T.text} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 16 }}>
+                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t.pwNew}</label>
+                  <input
+                    type="password"
+                    value={pwNew}
+                    onChange={(e) => setPwNew(e.target.value.slice(0, 72))}
+                    placeholder={t.pwNewPlaceholder}
+                    autoComplete="new-password"
+                    style={{
+                      display: 'block', width: '100%', marginTop: 4,
+                      background: 'transparent', border: 'none', outline: 'none',
+                      ...TYPE.body, color: T.text, fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+
+                <div style={{ borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, background: T.bg, padding: 16 }}>
+                  <label style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{t.pwRepeat}</label>
+                  <input
+                    type="password"
+                    value={pwConfirm}
+                    onChange={(e) => setPwConfirm(e.target.value.slice(0, 72))}
+                    placeholder={t.pwRepeatPlaceholder}
+                    autoComplete="new-password"
+                    style={{
+                      display: 'block', width: '100%', marginTop: 4,
+                      background: 'transparent', border: 'none', outline: 'none',
+                      ...TYPE.body, color: T.text, fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+
+                {pwError && (
+                  <div style={{
+                    position: 'relative', borderRadius: R.sm,
+                    border: `1px solid ${T.dangerSoft}`, background: T.dangerSoft,
+                    padding: '12px 12px 12px 16px', ...TYPE.caption, color: T.danger, overflow: 'hidden',
+                  }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: T.danger }} />
+                    {pwError}
+                  </div>
+                )}
+                {pwSuccess && (
+                  <div style={{
+                    position: 'relative', borderRadius: R.sm,
+                    border: `1px solid ${T.successSoft}`, background: T.successSoft,
+                    padding: '12px 12px 12px 16px', ...TYPE.caption, color: T.success, overflow: 'hidden',
+                  }}>
+                    <span style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 4, borderRadius: '0 4px 4px 0', background: T.success }} />
+                    {t.pwSaved}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={savePassword}
+                  disabled={pwBusy || pwSuccess}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    width: '100%', padding: '16px', borderRadius: R.md, border: 'none',
+                    background: T.text, color: T.bg, fontSize: 15, fontWeight: 700,
+                    cursor: pwBusy ? 'wait' : 'pointer', fontFamily: 'inherit',
+                    opacity: (pwBusy || pwSuccess) ? 0.6 : 1,
+                  }}
+                >
+                  {pwBusy ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+                  {t.save}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

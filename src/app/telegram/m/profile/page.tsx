@@ -12,14 +12,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
 import { Settings, Star, Share2, ExternalLink, Loader2, Pencil, X, Globe } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
-import { ImageCropDialog } from '@/components/ui/image-crop-dialog';
+import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
+import { getInitData as getInitDataLib } from '@/lib/telegram/webapp';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 const I18N: Record<MiniAppLang, {
@@ -212,20 +212,30 @@ export default function MasterMiniAppProfile() {
   }
 
   async function uploadCroppedAvatar(blob: Blob) {
+    // Идём через тот же endpoint что и клиент (/api/profile/avatar) — service-role +
+    // валидация initData. Раньше был прямой `supabase.storage.upload + profiles.update`
+    // через cookie session, но в Mini App мастера часто нет cookie session (заходит
+    // только через TG initData) → upload падал на RLS. Теперь — паритет с клиентом.
     setAvatarBusy(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const path = `${user.id}/avatar-${Date.now()}.webp`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, blob, {
-        contentType: blob.type, cacheControl: '3600', upsert: false,
+      const initData = getInitDataLib();
+      const form = new FormData();
+      form.append('file', blob, `avatar-${Date.now()}.webp`);
+      const res = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        headers: { ...(initData ? { 'X-TG-Init-Data': initData } : {}) },
+        body: form,
       });
-      if (upErr) { alert(`Ошибка загрузки: ${upErr.message}`); return; }
-      const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-      await supabase.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', user.id);
-      setProfileAvatar(pub.publicUrl);
-      haptic('success');
+      if (!res.ok) { haptic('error'); return; }
+      const data = await res.json().catch(() => ({} as { avatarUrl?: string }));
+      if (data?.avatarUrl) {
+        setProfileAvatar(data.avatarUrl);
+        haptic('success');
+      } else {
+        haptic('error');
+      }
+    } catch {
+      haptic('error');
     } finally {
       setAvatarBusy(false);
     }
@@ -398,15 +408,11 @@ export default function MasterMiniAppProfile() {
               e.target.value = '';
             }}
           />
-          <ImageCropDialog
-            open={!!cropSrc}
+          <MiniAppAvatarCropSheet
             src={cropSrc}
+            title={t.avatarTitle}
             onClose={() => { if (cropSrc) URL.revokeObjectURL(cropSrc); setCropSrc(null); }}
             onCropped={uploadCroppedAvatar}
-            title={t.avatarTitle}
-            aspect={1}
-            shape="round"
-            outputSize={512}
           />
           <div style={{ flex: 1, minWidth: 0, paddingTop: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
