@@ -15,7 +15,7 @@ import { appendFeedbackToSheet } from '@/lib/feedback/sheet-sync';
 export type FeedbackSource = 'web_settings' | 'telegram_bot' | 'telegram_voice' | 'mobile';
 export type FeedbackCategory = 'bug' | 'feature' | 'question' | 'praise' | 'other';
 
-const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
+export const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
   bug: '🐛 Баг',
   feature: '💡 Пожелание',
   question: '❓ Вопрос',

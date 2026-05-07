@@ -1713,19 +1713,11 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
       });
     } catch {}
 
-    // Force_reply: попросить коммент. Связь reply ↔ review через tg_prompt_message_id.
-    const promptResponse = await sendMessage(
-      chatId,
-      'Хочеш залишити коментар? Просто дай відповідь на це повідомлення текстом.',
-      {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        reply_markup: { force_reply: true, selective: true } as any,
-      },
-    );
-    const promptMsgId = (promptResponse as { ok?: boolean; result?: { message_id?: number } } | null)?.result?.message_id;
-    if (promptMsgId) {
-      await supabase.from('reviews').update({ tg_prompt_message_id: promptMsgId }).eq('id', review.id);
-    }
+    // Force-reply «Хочеш залишити коментар?» убран — пользователь уже оставил
+    // отзыв (оценка), второй раз просить ещё и текст-комментарий выглядело
+    // как «бот не услышал». Если клиент ХОЧЕТ написать коммент — может
+    // ответить любым сообщением, fallback на recent-review (см. вверху файла,
+    // ≤30 мин без comment) подцепит его автоматически.
     return;
   }
 
@@ -2100,7 +2092,23 @@ async function saveFeedbackAndNotify(
     await sendVoiceToSuperadmin(opts.voiceBuffer, opts.voiceMime, `Голос к отзыву от ${escapeHtml(profileName)}`);
   }
 
-  // Google Sheets sync отключён — фидбек приходит только через бота.
+  // Google Sheets sync (best-effort). Раньше webhook-путь обходил sheet sync —
+  // он жил только в lib/feedback/submit.ts (web-форма), голосовой и текстовый
+  // фидбек через бот туда никогда не попадал. Теперь дёргаем напрямую.
+  const { CATEGORY_LABELS } = await import('@/lib/feedback/submit');
+  const { appendFeedbackToSheet } = await import('@/lib/feedback/sheet-sync');
+  await appendFeedbackToSheet({
+    createdAt: row.created_at,
+    profileName,
+    profileRole,
+    tgUsername: tgUser,
+    tgChatId,
+    categoryLabel: CATEGORY_LABELS[category],
+    cleanedText: cleaned,
+    originalText: transcript,
+    feedbackId: row.id,
+    source,
+  });
 }
 
 function escapeHtml(s: string): string {
