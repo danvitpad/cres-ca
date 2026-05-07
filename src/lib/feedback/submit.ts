@@ -149,6 +149,7 @@ export async function submitFeedback(opts: SubmitOpts): Promise<SubmitResult | n
     profileName,
     profileRole,
     tgUsername: tgUser,
+    tgChatId: resolvedChatId,
     categoryLabel: CATEGORY_LABELS[category],
     cleanedText: cleaned,
     originalText,

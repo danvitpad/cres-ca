@@ -15,8 +15,11 @@ export interface FeedbackSheetRow {
   profileName: string;
   /** «master» / «client» / «salon_admin» / null. */
   profileRole: string | null;
-  /** TG username без @ (для ссылки). */
+  /** TG username без @ (для ссылки). null если у пользователя закрыт username. */
   tgUsername: string | null;
+  /** TG chat_id (числовой) — нужен для связи через `tg://user?id=...` если
+   *  у пользователя нет username, и для прямой отправки сообщения через бот. */
+  tgChatId: number | null;
   /** Категория с эмодзи: «🐛 Баг» / «💡 Пожелание» / ... */
   categoryLabel: string;
   /** Транскрипт после AI cleanup. */
