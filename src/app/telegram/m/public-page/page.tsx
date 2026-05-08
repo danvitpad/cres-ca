@@ -192,7 +192,7 @@ function openExternal(href: string) {
 // 'specialization' (направление мастера) удалён из inline-edit на публичке —
 // направление выбирается при регистрации и меняется в Настройках, а не на
 // публичной странице (по запросу 2026-05-08).
-type EditField = null | 'name' | 'bio' | 'address';
+type EditField = null | 'name' | 'bio' | 'address' | 'slug';
 
 export default function MasterMiniAppPublicPage() {
   const router = useRouter();
@@ -561,10 +561,10 @@ export default function MasterMiniAppPublicPage() {
           )}
         </SectionWithEdit>
 
-        {/* CRES-ID badge — публичный handle мастера. Тап копирует ссылку
-            на публичную страницу. Сам slug редактируется в Settings. */}
+        {/* CRES-ID badge — публичный handle мастера. Тап на pill копирует
+            ссылку, тап на ✎ открывает sheet редактирования slug. */}
         {master.invite_code && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: `0 ${PAGE_PADDING_X}px` }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
             <button
               type="button"
               onClick={copyCresLink}
@@ -581,6 +581,7 @@ export default function MasterMiniAppPublicPage() {
               <span style={{ color: T.textTertiary, fontWeight: 500 }}>{t.cresIdLabel}</span>
               <span style={{ fontWeight: 700 }}>@{master.slug || master.invite_code}</span>
             </button>
+            <PencilBtn onClick={() => { haptic('selection'); setEditField('slug'); }} />
           </div>
         )}
 
@@ -636,7 +637,7 @@ export default function MasterMiniAppPublicPage() {
                     key={it.id}
                     type="button"
                     onClick={() => { haptic('light'); setLightboxItem(it); }}
-                    style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                    style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', position: 'relative', overflow: 'hidden', borderRadius: R.sm }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -645,9 +646,29 @@ export default function MasterMiniAppPublicPage() {
                       style={{
                         width: '100%', aspectRatio: '1', objectFit: 'cover',
                         objectPosition: `${x}% ${y}%`,
-                        borderRadius: R.sm, display: 'block',
+                        display: 'block',
                       }}
                     />
+                    {it.caption && (
+                      <div
+                        style={{
+                          position: 'absolute', left: 0, right: 0, bottom: 0,
+                          padding: '14px 6px 4px',
+                          background: 'linear-gradient(to top, rgba(0,0,0,0.65), transparent)',
+                          color: '#fff',
+                          fontSize: 10, fontWeight: 600,
+                          lineHeight: 1.2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {it.caption}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -739,19 +760,32 @@ export default function MasterMiniAppPublicPage() {
           </div>
         </SectionWithEdit>
 
-        {/* Рекомендую (партнёры) */}
+        {/* Рекомендую (партнёры) — тап на карточку открывает публичку
+            партнёра. Пока через openExternal /m/{handle} с ref=
+            текущего мастера, чтобы партнёрская атрибуция сохранялась
+            (RefCapture на /m/{handle} читает ref). Клиент видит публичку
+            рекомендованного мастера. */}
         <Section title={t.partners}>
           {partners.length === 0 ? (
             <Empty text={t.partnersEmpty} />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {partners.map((p) => (
-                <div
+                <button
                   key={p.id}
+                  type="button"
+                  onClick={() => {
+                    if (!p.invite_code) return;
+                    haptic('light');
+                    const myCode = master.invite_code ?? '';
+                    const url = `/m/${p.invite_code}${myCode ? `?ref=${myCode}` : ''}`;
+                    openExternal(url);
+                  }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '8px 10px', borderRadius: R.md,
                     border: `1px solid ${T.borderSubtle}`, background: T.surface,
+                    width: '100%', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                   }}
                 >
                   <AvatarCircle url={p.avatar_url} name={p.display_name ?? '?'} size={36} />
@@ -766,7 +800,7 @@ export default function MasterMiniAppPublicPage() {
                     )}
                   </div>
                   <Users2 size={14} color={T.textTertiary} />
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -887,6 +921,20 @@ export default function MasterMiniAppPublicPage() {
         onSave={async (v) => {
           await patchMaster({ address: v });
           setMaster({ ...master, address: v.trim() || null });
+        }}
+      />
+      <MiniAppEditTextSheet
+        open={editField === 'slug'}
+        title="CRES-ID"
+        initialValue={master.slug ?? master.invite_code ?? ''}
+        multiline={false}
+        maxLength={32}
+        placeholder="username (3–32 символа: латиница, цифры, . _ -)"
+        onClose={() => setEditField(null)}
+        onSave={async (v) => {
+          const slug = v.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '');
+          await patchMaster({ slug });
+          setMaster({ ...master, slug: slug || null });
         }}
       />
       {editField === 'name' && (

@@ -22,10 +22,15 @@ type Body = {
   /** JSON {mon: {open,close,closed?}, tue: {...}, ...}. Если поле передано —
    *  пишется целиком, без слияния (мастер всегда отправляет полную неделю). */
   working_hours?: Record<string, { open?: string; close?: string; closed?: boolean } | null> | null;
+  /** Публичный slug в URL /m/{slug}. Валидация: 3-32 символа, латиница/цифры/
+   *  точка/дефис/подчёркивание. Уникальность проверяется в БД (UNIQUE). */
+  slug?: string;
   // profile fields
   first_name?: string;
   last_name?: string;
 };
+
+const SLUG_RE = /^[a-z0-9][a-z0-9_.-]{2,31}$/;
 
 export async function POST(request: Request) {
   const userId = await resolveUserId(request);
@@ -46,6 +51,13 @@ export async function POST(request: Request) {
   }
   if ('working_hours' in body) {
     masterUpdate.working_hours = body.working_hours ?? null;
+  }
+  if (typeof body.slug === 'string') {
+    const slug = body.slug.trim().toLowerCase();
+    if (slug && !SLUG_RE.test(slug)) {
+      return NextResponse.json({ error: 'invalid_slug' }, { status: 400 });
+    }
+    masterUpdate.slug = slug || null;
   }
   if (typeof body.first_name === 'string' || typeof body.last_name === 'string') {
     const fn = (body.first_name ?? '').trim();

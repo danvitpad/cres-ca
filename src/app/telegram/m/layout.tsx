@@ -16,7 +16,7 @@ import {
   CalendarDays,
   Users as UsersIcon,
   Scissors,
-  TrendingUp,
+  Coins,
   MoreHorizontal,
   Loader2,
 } from 'lucide-react';
@@ -115,7 +115,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
     { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
     { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
     { key: 'services', href: '/telegram/m/services', icon: Scissors, label: 'Услуги' },
-    { key: 'finance', href: '/telegram/m/finance', icon: TrendingUp, label: 'Финансы' },
+    { key: 'finance', href: '/telegram/m/finance', icon: Coins, label: 'Финансы' },
     { key: 'more', href: '/telegram/m/more', icon: MoreHorizontal, label: 'Ещё' },
   ];
 
