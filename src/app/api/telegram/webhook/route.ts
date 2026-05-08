@@ -416,25 +416,38 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     .eq('profile_id', session.profile_id)
     .maybeSingle();
 
-  // ── Client (no master record) → only path is feedback ──
-  // Clients use voice exclusively for feedback. Single short transcription call.
+  // ── Client path: AI-агент (action router). Раньше всё голосовое от
+  // клиента уходило в feedback, и клиент не мог попросить «запиши меня»,
+  // «когда у меня записи», «сколько потратил». Теперь Gemini сам определяет
+  // намерение → handleClientVoiceIntent выполняет действие, либо если это
+  // действительно feedback — старый flow.
   if (!master) {
     try {
-      const { voiceToText } = await import('@/lib/ai/router');
-      const { data: transcript } = await voiceToText({ audioBase64: base64, mimeType });
-      const t = (transcript ?? '').trim();
-      if (t.length < 4) {
-        await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуй сказать чётче или напиши текстом командой /feedback');
+      const { parseClientVoiceIntent } = await import('@/lib/ai/client-voice-intent');
+      const intent = await parseClientVoiceIntent(base64, mimeType);
+      const transcript = intent.raw_transcript || '';
+
+      // feedback / unknown → старый flow
+      if (intent.action === 'feedback') {
+        const text = (intent.text || transcript).trim();
+        if (text.length < 4) {
+          await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуй сказать чётче или напиши текстом командой /feedback');
+          return;
+        }
+        await saveFeedbackAndNotify(session.profile_id, text, 'telegram_voice', {
+          chatId,
+          voiceBuffer: Buffer.from(base64, 'base64'),
+          voiceMime: mimeType,
+        });
+        await sendMessage(chatId, FEEDBACK_THANKS);
         return;
       }
-      await saveFeedbackAndNotify(session.profile_id, t, 'telegram_voice', {
-        chatId,
-        voiceBuffer: Buffer.from(base64, 'base64'),
-        voiceMime: mimeType,
-      });
-      await sendMessage(chatId, FEEDBACK_THANKS);
+
+      const { handleClientVoiceIntent } = await import('@/lib/ai/client-voice-handler');
+      const result = await handleClientVoiceIntent(supabase, session.profile_id, intent);
+      await sendMessage(chatId, result.reply);
     } catch (err) {
-      console.error('[voice] client feedback transcription failed:', (err as Error)?.message);
+      console.error('[voice] client intent failed:', (err as Error)?.message);
       await sendMessage(chatId, '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.');
     }
     return;
