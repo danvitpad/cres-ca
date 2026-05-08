@@ -16,8 +16,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, Pencil, Star, MapPin, Clock, ExternalLink, Loader2, Share2, Users2, Globe,
-  Camera, Trash2,
+  X, Pencil, Star, MapPin, Clock, Loader2, Users2, Globe,
+  Camera, Trash2, Copy, Check,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -97,7 +97,8 @@ const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 const I18N: Record<MiniAppLang, {
   loading: string; notFound: string;
-  close: string; share: string; editAll: string; editAllHint: string;
+  close: string;
+  cresIdLabel: string; cresIdCopied: string;
   worksLabel: string; clientsLabel: string; rating: string; reviews: (n: number) => string;
   bio: string; bioEmpty: string; bioEdit: string;
   name: string; nameEdit: string; nameFirst: string; nameLast: string;
@@ -115,8 +116,8 @@ const I18N: Record<MiniAppLang, {
 }> = {
   uk: {
     loading: 'Завантажуємо…', notFound: 'Профіль не знайдено',
-    close: 'Закрити', share: 'Поділитись',
-    editAll: 'Решту — у браузері', editAllHint: 'Категорії послуг, FAQ, налаштування',
+    close: 'Закрити',
+    cresIdLabel: 'CRES-ID', cresIdCopied: 'Посилання скопійовано',
     worksLabel: 'Робіт', clientsLabel: 'Клієнтів', rating: 'Рейтинг',
     reviews: (n) => `${n} відгуків`,
     bio: 'Про себе', bioEmpty: 'Тапни ✎ щоб додати опис', bioEdit: 'Про себе',
@@ -136,8 +137,8 @@ const I18N: Record<MiniAppLang, {
   },
   ru: {
     loading: 'Загружаем…', notFound: 'Профиль не найден',
-    close: 'Закрыть', share: 'Поделиться',
-    editAll: 'Остальное — в браузере', editAllHint: 'Категории услуг, FAQ, настройки',
+    close: 'Закрыть',
+    cresIdLabel: 'CRES-ID', cresIdCopied: 'Ссылка скопирована',
     worksLabel: 'Работ', clientsLabel: 'Клиентов', rating: 'Рейтинг',
     reviews: (n) => `${n} отзывов`,
     bio: 'О себе', bioEmpty: 'Тапни ✎ чтобы добавить описание', bioEdit: 'О себе',
@@ -157,8 +158,8 @@ const I18N: Record<MiniAppLang, {
   },
   en: {
     loading: 'Loading…', notFound: 'Profile not found',
-    close: 'Close', share: 'Share',
-    editAll: 'The rest — in the browser', editAllHint: 'Service categories, FAQ, settings',
+    close: 'Close',
+    cresIdLabel: 'CRES-ID', cresIdCopied: 'Link copied',
     worksLabel: 'Visits', clientsLabel: 'Clients', rating: 'Rating',
     reviews: (n) => `${n} reviews`,
     bio: 'About', bioEmpty: 'Tap ✎ to add description', bioEdit: 'About',
@@ -188,7 +189,10 @@ function openExternal(href: string) {
   }
 }
 
-type EditField = null | 'name' | 'specialization' | 'bio' | 'address';
+// 'specialization' (направление мастера) удалён из inline-edit на публичке —
+// направление выбирается при регистрации и меняется в Настройках, а не на
+// публичной странице (по запросу 2026-05-08).
+type EditField = null | 'name' | 'bio' | 'address';
 
 export default function MasterMiniAppPublicPage() {
   const router = useRouter();
@@ -208,6 +212,12 @@ export default function MasterMiniAppPublicPage() {
   const [imageBusy, setImageBusy] = useState(false);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  // Portfolio lightbox + add
+  const [lightboxItem, setLightboxItem] = useState<PortfolioRow | null>(null);
+  const [editCaptionOpen, setEditCaptionOpen] = useState(false);
+  const portfolioInputRef = useRef<HTMLInputElement | null>(null);
+  // Hours editor
+  const [hoursSheetOpen, setHoursSheetOpen] = useState(false);
 
   async function loadData() {
     const initData = getInitData();
@@ -280,6 +290,70 @@ export default function MasterMiniAppPublicPage() {
     }
   }
 
+  async function uploadPortfolioPhoto(file: File) {
+    setImageBusy(true);
+    try {
+      const initData = getInitData();
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/telegram/m/master-portfolio', {
+        method: 'POST',
+        headers: { ...(initData ? { 'X-TG-Init-Data': initData } : {}) },
+        body: form,
+      });
+      if (!res.ok) { haptic('error'); return; }
+      await loadData();
+      haptic('success');
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function updatePortfolioCaption(id: string, caption: string) {
+    const initData = getInitData();
+    const res = await fetch('/api/telegram/m/master-portfolio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify({ action: 'update', id, caption }),
+    });
+    if (!res.ok) throw new Error('failed');
+    setPortfolio((arr) => arr.map((p) => p.id === id ? { ...p, caption: caption.trim() || null } : p));
+    if (lightboxItem?.id === id) setLightboxItem({ ...lightboxItem, caption: caption.trim() || null });
+  }
+
+  async function deletePortfolioItem(id: string) {
+    const initData = getInitData();
+    const res = await fetch('/api/telegram/m/master-portfolio', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify({ action: 'delete', id }),
+    });
+    if (!res.ok) { haptic('error'); return; }
+    setPortfolio((arr) => arr.filter((p) => p.id !== id));
+    setLightboxItem(null);
+    haptic('success');
+  }
+
+  async function saveWorkingHours(next: WorkingHours) {
+    const initData = getInitData();
+    const res = await fetch('/api/telegram/m/master-patch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify({ working_hours: next }),
+    });
+    if (!res.ok) throw new Error('failed');
+    if (master) setMaster({ ...master, working_hours: next });
+  }
+
   async function deleteCover() {
     setImageBusy(true);
     try {
@@ -301,22 +375,17 @@ export default function MasterMiniAppPublicPage() {
     }
   }
 
-  function shareLink() {
+  // CRES-ID badge: тап копирует ссылку на публичку. Слаg/invite_code
+  // редактируется в Settings (отдельная задача, тут только read-only badge).
+  const [cresIdCopied, setCresIdCopied] = useState(false);
+  function copyCresLink() {
     if (!master?.invite_code) return;
     haptic('light');
-    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/m/${master.slug || master.invite_code}`;
-    const w = window as unknown as { Telegram?: { WebApp?: { openTelegramLink?: (url: string) => void } } };
-    if (w.Telegram?.WebApp?.openTelegramLink) {
-      w.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}`);
-    } else {
-      navigator.clipboard?.writeText(url);
-    }
-  }
-
-  function openFullEditor() {
-    if (!master?.invite_code) return;
-    haptic('light');
-    openExternal(`/m/${master.slug || master.invite_code}?owner=1&from=miniapp-public`);
+    const handle = master.slug || master.invite_code;
+    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/m/${handle}`;
+    navigator.clipboard?.writeText(url);
+    setCresIdCopied(true);
+    setTimeout(() => setCresIdCopied(false), 1500);
   }
 
   if (loading) {
@@ -458,7 +527,11 @@ export default function MasterMiniAppPublicPage() {
               </h1>
               <PencilBtn onClick={() => { haptic('selection'); setEditField('name'); }} />
             </div>
-            <SpecRow t={t} value={master.headline || master.specialization} onEdit={() => setEditField('specialization')} />
+            {(master.headline || master.specialization) && (
+              <p style={{ ...TYPE.caption, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {master.headline || master.specialization}
+              </p>
+            )}
             {master.city && (
               <p style={{ ...TYPE.micro, marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <MapPin size={11} />
@@ -488,31 +561,28 @@ export default function MasterMiniAppPublicPage() {
           )}
         </SectionWithEdit>
 
-        {/* Actions: Share + остальное в браузере */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
-          <button
-            type="button"
-            onClick={shareLink}
-            disabled={!master.invite_code}
-            style={pillBtn(false)}
-          >
-            <Share2 size={14} strokeWidth={2.2} />
-            {t.share}
-          </button>
-          <button
-            type="button"
-            onClick={openFullEditor}
-            disabled={!master.invite_code}
-            style={pillBtn(true)}
-          >
-            <Pencil size={14} strokeWidth={2.2} />
-            {t.editAll}
-            <ExternalLink size={11} strokeWidth={2.2} />
-          </button>
-        </div>
-        <p style={{ ...TYPE.micro, textAlign: 'center', padding: `0 ${PAGE_PADDING_X}px`, marginTop: -8 }}>
-          {t.editAllHint}
-        </p>
+        {/* CRES-ID badge — публичный handle мастера. Тап копирует ссылку
+            на публичную страницу. Сам slug редактируется в Settings. */}
+        {master.invite_code && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: `0 ${PAGE_PADDING_X}px` }}>
+            <button
+              type="button"
+              onClick={copyCresLink}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 14px', borderRadius: R.pill,
+                border: `1px solid ${T.borderSubtle}`,
+                background: T.surface, color: T.text,
+                fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              {cresIdCopied ? <Check size={14} color={T.success} /> : <Copy size={14} color={T.textSecondary} />}
+              <span style={{ color: T.textTertiary, fontWeight: 500 }}>{t.cresIdLabel}</span>
+              <span style={{ fontWeight: 700 }}>@{master.slug || master.invite_code}</span>
+            </button>
+          </div>
+        )}
 
         {/* Услуги */}
         <Section title={t.services}>
@@ -552,7 +622,7 @@ export default function MasterMiniAppPublicPage() {
           )}
         </Section>
 
-        {/* Портфолио */}
+        {/* Портфолио — тап на фото = lightbox с управлением, кнопка «+» снизу */}
         <Section title={t.portfolio}>
           {portfolio.length === 0 ? (
             <Empty text={t.portfolioEmpty} />
@@ -562,21 +632,45 @@ export default function MasterMiniAppPublicPage() {
                 const x = typeof it.item_x === 'number' ? it.item_x : 50;
                 const y = typeof it.item_y === 'number' ? it.item_y : 50;
                 return (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <button
                     key={it.id}
-                    src={it.image_url}
-                    alt={it.caption ?? ''}
-                    style={{
-                      width: '100%', aspectRatio: '1', objectFit: 'cover',
-                      objectPosition: `${x}% ${y}%`,
-                      borderRadius: R.sm, display: 'block',
-                    }}
-                  />
+                    type="button"
+                    onClick={() => { haptic('light'); setLightboxItem(it); }}
+                    style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={it.image_url}
+                      alt={it.caption ?? ''}
+                      style={{
+                        width: '100%', aspectRatio: '1', objectFit: 'cover',
+                        objectPosition: `${x}% ${y}%`,
+                        borderRadius: R.sm, display: 'block',
+                      }}
+                    />
+                  </button>
                 );
               })}
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => { haptic('light'); portfolioInputRef.current?.click(); }}
+            disabled={imageBusy}
+            style={{
+              marginTop: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: '12px 14px',
+              borderRadius: R.md,
+              border: `1px dashed ${T.border}`, background: 'transparent',
+              color: T.text, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'inherit',
+              opacity: imageBusy ? 0.6 : 1,
+            }}
+          >
+            {imageBusy ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+            Добавить фото
+          </button>
         </Section>
 
         {/* Отзывы */}
@@ -627,27 +721,23 @@ export default function MasterMiniAppPublicPage() {
           )}
         </SectionWithEdit>
 
-        {/* График работы */}
-        <Section title={t.hours}>
-          {wh ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {DAY_KEYS.map((k, i) => {
-                const day = wh[k];
-                const isClosed = !day || day.closed || (!day.open && !day.close);
-                return (
-                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                    <span style={{ color: T.text, fontWeight: 600, width: 36 }}>{DAYS_RU[i]}</span>
-                    <span style={{ color: isClosed ? T.textTertiary : T.text }}>
-                      {isClosed ? t.closed : `${day.open} – ${day.close}`}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <Empty text={t.hoursEmpty} />
-          )}
-        </Section>
+        {/* График работы — read view + кнопка ✎ → bottom sheet с 7 днями */}
+        <SectionWithEdit title={t.hours} onEdit={() => { haptic('selection'); setHoursSheetOpen(true); }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {DAY_KEYS.map((k, i) => {
+              const day = wh ? wh[k] : null;
+              const isClosed = !day || day.closed || (!day.open && !day.close);
+              return (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: T.text, fontWeight: 600, width: 36 }}>{DAYS_RU[i]}</span>
+                  <span style={{ color: isClosed ? T.textTertiary : T.text }}>
+                    {isClosed ? t.closed : `${day!.open} – ${day!.close}`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </SectionWithEdit>
 
         {/* Рекомендую (партнёры) */}
         <Section title={t.partners}>
@@ -738,6 +828,19 @@ export default function MasterMiniAppPublicPage() {
           e.target.value = '';
         }}
       />
+      <input
+        ref={portfolioInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (f.size > 8 * 1024 * 1024) { haptic('error'); return; }
+          uploadPortfolioPhoto(f);
+          e.target.value = '';
+        }}
+      />
 
       {/* Avatar crop — Mini App native fullscreen sheet */}
       <MiniAppAvatarCropSheet
@@ -775,18 +878,6 @@ export default function MasterMiniAppPublicPage() {
         }}
       />
       <MiniAppEditTextSheet
-        open={editField === 'specialization'}
-        title={t.specEdit}
-        initialValue={master.headline ?? master.specialization ?? ''}
-        multiline={false}
-        maxLength={120}
-        onClose={() => setEditField(null)}
-        onSave={async (v) => {
-          await patchMaster({ headline: v });
-          setMaster({ ...master, headline: v.trim() || null });
-        }}
-      />
-      <MiniAppEditTextSheet
         open={editField === 'address'}
         title={t.addressEdit}
         initialValue={master.address ?? ''}
@@ -810,6 +901,42 @@ export default function MasterMiniAppPublicPage() {
           }}
         />
       )}
+
+      {/* Portfolio lightbox */}
+      <AnimatePresence>
+        {lightboxItem && (
+          <PortfolioLightbox
+            item={lightboxItem}
+            onClose={() => setLightboxItem(null)}
+            onEditCaption={() => setEditCaptionOpen(true)}
+            onDelete={async () => { await deletePortfolioItem(lightboxItem.id); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit portfolio caption */}
+      <MiniAppEditTextSheet
+        open={editCaptionOpen}
+        title="Подпись"
+        initialValue={lightboxItem?.caption ?? ''}
+        multiline
+        maxLength={200}
+        onClose={() => setEditCaptionOpen(false)}
+        onSave={async (v) => {
+          if (lightboxItem) await updatePortfolioCaption(lightboxItem.id, v);
+        }}
+      />
+
+      {/* Working hours sheet */}
+      <AnimatePresence>
+        {hoursSheetOpen && (
+          <HoursSheet
+            initial={(master.working_hours as WorkingHours | null) ?? {}}
+            onClose={() => setHoursSheetOpen(false)}
+            onSave={async (next) => { await saveWorkingHours(next); setHoursSheetOpen(false); }}
+          />
+        )}
+      </AnimatePresence>
     </MobilePage>
   );
 }
@@ -956,32 +1083,6 @@ function PencilBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
-function SpecRow({ t, value, onEdit }: { t: typeof I18N['ru']; value: string | null; onEdit: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-      {value ? (
-        <p style={{ ...TYPE.caption, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-          {value}
-        </p>
-      ) : (
-        <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0, fontStyle: 'italic' }}>{t.specEmpty}</p>
-      )}
-      <PencilBtn onClick={onEdit} />
-    </div>
-  );
-}
-
-function pillBtn(primary: boolean): React.CSSProperties {
-  return {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-    padding: '12px 14px', borderRadius: R.pill,
-    border: primary ? 'none' : `1px solid ${T.border}`,
-    background: primary ? T.text : T.surface,
-    color: primary ? T.bg : T.text,
-    fontSize: 13, fontWeight: primary ? 700 : 600,
-    cursor: 'pointer', fontFamily: 'inherit',
-  };
-}
 
 function Section({ title, children, hideTitle }: { title: string; children: React.ReactNode; hideTitle?: boolean }) {
   return (
@@ -1158,5 +1259,281 @@ function NameEditSheet({
         </button>
       </div>
     </div>
+  );
+}
+
+function PortfolioLightbox({
+  item, onClose, onEditCaption, onDelete,
+}: {
+  item: PortfolioRow;
+  onClose: () => void;
+  onEditCaption: () => void;
+  onDelete: () => Promise<void>;
+}) {
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 90,
+        background: 'rgba(0,0,0,0.92)',
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 16px' }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          aria-label="Закрыть"
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            border: 'none', background: 'rgba(255,255,255,0.18)',
+            color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+          }}
+        >
+          <X size={18} />
+        </button>
+      </div>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px', minHeight: 0 }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={item.image_url}
+          alt={item.caption ?? ''}
+          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 12 }}
+        />
+      </div>
+      <div onClick={(e) => e.stopPropagation()} style={{ padding: '16px', color: '#fff' }}>
+        {item.caption ? (
+          <p style={{ fontSize: 14, margin: 0, marginBottom: 12, whiteSpace: 'pre-wrap' }}>{item.caption}</p>
+        ) : (
+          <p style={{ fontSize: 13, margin: 0, marginBottom: 12, opacity: 0.6, fontStyle: 'italic' }}>Без подписи</p>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button
+            type="button"
+            onClick={onEditCaption}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '12px', borderRadius: R.pill,
+              border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.08)',
+              color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <Pencil size={14} />
+            Подпись
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              if (!confirm) { setConfirm(true); return; }
+              setBusy(true);
+              try { await onDelete(); } finally { setBusy(false); }
+            }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              padding: '12px', borderRadius: R.pill,
+              border: '1px solid rgba(239,68,68,0.6)', background: 'rgba(239,68,68,0.18)',
+              color: '#fca5a5', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            {confirm ? 'Удалить?' : 'Удалить'}
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+function HoursSheet({
+  initial, onClose, onSave,
+}: {
+  initial: WorkingHours;
+  onClose: () => void;
+  onSave: (next: WorkingHours) => Promise<void>;
+}) {
+  const [days, setDays] = useState<WorkingHours>(() => {
+    const out: WorkingHours = {};
+    for (const k of DAY_KEYS) {
+      const d = initial[k];
+      out[k] = d
+        ? { open: d.open || '09:00', close: d.close || '18:00', closed: d.closed ?? (!d.open && !d.close) }
+        : { open: '09:00', close: '18:00', closed: true };
+    }
+    return out;
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function update(key: string, patch: Partial<{ open: string; close: string; closed: boolean }>) {
+    setDays((prev) => {
+      const cur = prev[key] ?? { open: '09:00', close: '18:00', closed: true };
+      return { ...prev, [key]: { ...cur, ...patch } };
+    });
+  }
+
+  async function submit() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      // Чистим выходные от time'ов чтобы не вводить в заблуждение публичку.
+      const out: WorkingHours = {};
+      for (const k of DAY_KEYS) {
+        const d = days[k];
+        if (!d || d.closed) { out[k] = { open: '', close: '', closed: true }; continue; }
+        out[k] = { open: d.open, close: d.close, closed: false };
+      }
+      await onSave(out);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => !busy && onClose()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 80,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)',
+      }}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={SPRING.default}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+          background: T.surface,
+          padding: `20px ${PAGE_PADDING_X}px`,
+          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          boxShadow: SHADOW.elevated,
+          maxHeight: '90dvh', overflowY: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>График работы</h3>
+          <button
+            type="button"
+            onClick={() => !busy && onClose()}
+            aria-label="Закрыть"
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: `1px solid ${T.border}`, background: T.surface,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            }}
+          >
+            <X size={16} color={T.text} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {DAY_KEYS.map((k, i) => {
+            const d = days[k] ?? { open: '09:00', close: '18:00', closed: true };
+            return (
+              <div
+                key={k}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: R.md,
+                  border: `1px solid ${T.borderSubtle}`,
+                  background: d.closed ? T.bgSubtle : T.bg,
+                }}
+              >
+                <span style={{ width: 32, fontSize: 13, fontWeight: 700, color: T.text }}>{DAYS_RU[i]}</span>
+                {d.closed ? (
+                  <span style={{ flex: 1, fontSize: 13, color: T.textTertiary }}>выходной</span>
+                ) : (
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="time"
+                      value={d.open}
+                      onChange={(e) => update(k, { open: e.target.value })}
+                      style={{
+                        flex: 1, fontSize: 14, fontWeight: 600,
+                        background: 'transparent', border: 'none', outline: 'none',
+                        color: T.text, fontFamily: 'inherit',
+                      }}
+                    />
+                    <span style={{ color: T.textTertiary }}>–</span>
+                    <input
+                      type="time"
+                      value={d.close}
+                      onChange={(e) => update(k, { close: e.target.value })}
+                      style={{
+                        flex: 1, fontSize: 14, fontWeight: 600,
+                        background: 'transparent', border: 'none', outline: 'none',
+                        color: T.text, fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => update(k, { closed: !d.closed })}
+                  style={{
+                    width: 40, height: 24, borderRadius: 12,
+                    border: 'none', padding: 0,
+                    background: d.closed ? T.borderSubtle : T.accent,
+                    position: 'relative', cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                  aria-label="Выходной"
+                >
+                  <span
+                    style={{
+                      position: 'absolute', top: 3,
+                      left: d.closed ? 3 : 19,
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: '#fff',
+                      transition: 'left 0.2s',
+                    }}
+                  />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {err && <p style={{ ...TYPE.caption, color: T.danger, marginTop: 8 }}>{err}</p>}
+
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy}
+          style={{
+            marginTop: 14, width: '100%',
+            padding: '14px 16px', borderRadius: R.md, border: 'none',
+            background: T.text, color: T.bg,
+            fontSize: 15, fontWeight: 700,
+            cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy && <Loader2 size={14} className="animate-spin" />}
+          Сохранить
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }

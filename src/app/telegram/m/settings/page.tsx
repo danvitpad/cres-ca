@@ -38,6 +38,8 @@ import { mapError } from '@/lib/errors';
 import { getInitData } from '@/lib/telegram/webapp';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
+import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
+import { Briefcase } from 'lucide-react';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 const I18N: Record<MiniAppLang, {
@@ -54,6 +56,7 @@ const I18N: Record<MiniAppLang, {
   saveError: string;
   visibilityTitle: string; visibilityHint: string;
   showPhone: string; showEmail: string; showDob: string;
+  specTitle: string; specEdit: string; specEmpty: string;
 }> = {
   uk: {
     back: 'Назад',
@@ -73,6 +76,7 @@ const I18N: Record<MiniAppLang, {
     visibilityTitle: 'Що бачать клієнти на публічній сторінці',
     visibilityHint: 'Якщо тумблер вимкнений — поле сховане від клієнтів',
     showPhone: 'Показувати телефон', showEmail: 'Показувати email', showDob: 'Показувати дату народження',
+    specTitle: 'Напрямок', specEdit: 'Напрямок майстра', specEmpty: 'Не вказано',
   },
   ru: {
     back: 'Назад',
@@ -92,6 +96,7 @@ const I18N: Record<MiniAppLang, {
     visibilityTitle: 'Что видят клиенты на публичной странице',
     visibilityHint: 'Если тумблер выключен — поле скрыто от клиентов',
     showPhone: 'Показывать телефон', showEmail: 'Показывать email', showDob: 'Показывать дату рождения',
+    specTitle: 'Направление', specEdit: 'Направление мастера', specEmpty: 'Не указано',
   },
   en: {
     back: 'Back',
@@ -111,6 +116,7 @@ const I18N: Record<MiniAppLang, {
     visibilityTitle: 'What clients see on your public page',
     visibilityHint: 'Toggle off to hide a field from clients',
     showPhone: 'Show phone', showEmail: 'Show email', showDob: 'Show birthday',
+    specTitle: 'Direction', specEdit: 'Master direction', specEmpty: 'Not set',
   },
 };
 
@@ -166,6 +172,11 @@ export default function MasterMiniAppSettings() {
   const [emailPublic, setEmailPublic] = useState(false);
   const [dobPublic, setDobPublic] = useState(false);
 
+  // Направление мастера (specialization). Редактируется тут, а не на публичке.
+  const [specialization, setSpecialization] = useState<string>('');
+  const [specSheetOpen, setSpecSheetOpen] = useState(false);
+  const [specSaving, setSpecSaving] = useState(false);
+
   useEffect(() => {
     if (!userId) return;
     (async () => {
@@ -178,9 +189,12 @@ export default function MasterMiniAppSettings() {
           .maybeSingle<{ email: string | null; phone: string | null }>(),
         supabase
           .from('masters')
-          .select('phone_public, email_public, dob_public')
+          .select('phone_public, email_public, dob_public, specialization, headline')
           .eq('profile_id', userId)
-          .maybeSingle<{ phone_public: boolean | null; email_public: boolean | null; dob_public: boolean | null }>(),
+          .maybeSingle<{
+            phone_public: boolean | null; email_public: boolean | null; dob_public: boolean | null;
+            specialization: string | null; headline: string | null;
+          }>(),
       ]);
       if (profileQ.data) {
         setEmail(profileQ.data.email);
@@ -190,9 +204,34 @@ export default function MasterMiniAppSettings() {
         setPhonePublic(!!masterQ.data.phone_public);
         setEmailPublic(!!masterQ.data.email_public);
         setDobPublic(!!masterQ.data.dob_public);
+        setSpecialization(masterQ.data.headline || masterQ.data.specialization || '');
       }
     })();
   }, [userId]);
+
+  async function saveSpecialization(value: string) {
+    setSpecSaving(true);
+    try {
+      const initData = getInitData();
+      const res = await fetch('/api/telegram/m/master-patch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({ headline: value, specialization: value }),
+      });
+      if (!res.ok) throw new Error('failed');
+      setSpecialization(value.trim());
+      setSpecSheetOpen(false);
+      haptic('success');
+    } catch {
+      haptic('error');
+      throw new Error('save_failed');
+    } finally {
+      setSpecSaving(false);
+    }
+  }
 
   async function toggleVisibility(field: 'phone_public' | 'email_public' | 'dob_public', next: boolean) {
     haptic('light');
@@ -439,6 +478,25 @@ export default function MasterMiniAppSettings() {
             <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
             <div style={{ flex: 1 }}>
               <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+        </div>
+
+        {/* Направление мастера (specialization) — выбирается при регистрации,
+            меняется тут, а не на публичной странице. */}
+        <div style={cardStyle}>
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setSpecSheetOpen(true); }}
+            style={rowStyle}
+          >
+            <div style={iconBox}><Briefcase size={16} color={T.text} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.specTitle}</p>
+              <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {specialization || t.specEmpty}
+              </p>
             </div>
             <ChevronRight size={16} color={T.textTertiary} />
           </button>
@@ -852,6 +910,17 @@ export default function MasterMiniAppSettings() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Edit specialization sheet */}
+      <MiniAppEditTextSheet
+        open={specSheetOpen}
+        title={t.specEdit}
+        initialValue={specialization}
+        multiline={false}
+        maxLength={120}
+        onClose={() => !specSaving && setSpecSheetOpen(false)}
+        onSave={async (v) => { await saveSpecialization(v); }}
+      />
     </div>
   );
 }

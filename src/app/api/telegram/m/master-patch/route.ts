@@ -19,6 +19,9 @@ type Body = {
   address?: string | null;
   workplace_name?: string | null;
   city?: string | null;
+  /** JSON {mon: {open,close,closed?}, tue: {...}, ...}. Если поле передано —
+   *  пишется целиком, без слияния (мастер всегда отправляет полную неделю). */
+  working_hours?: Record<string, { open?: string; close?: string; closed?: boolean } | null> | null;
   // profile fields
   first_name?: string;
   last_name?: string;
@@ -32,7 +35,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as Body;
 
-  const masterUpdate: Record<string, string | null> = {};
+  const masterUpdate: Record<string, unknown> = {};
   const profileUpdate: Record<string, string | null> = {};
 
   for (const k of ['specialization', 'headline', 'bio', 'address', 'workplace_name', 'city'] as const) {
@@ -40,6 +43,9 @@ export async function POST(request: Request) {
       const v = body[k];
       masterUpdate[k] = typeof v === 'string' ? v.trim() || null : null;
     }
+  }
+  if ('working_hours' in body) {
+    masterUpdate.working_hours = body.working_hours ?? null;
   }
   if (typeof body.first_name === 'string' || typeof body.last_name === 'string') {
     const fn = (body.first_name ?? '').trim();
