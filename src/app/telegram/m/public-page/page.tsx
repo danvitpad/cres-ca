@@ -538,6 +538,29 @@ export default function MasterMiniAppPublicPage() {
                 {master.city}
               </p>
             )}
+            {/* CRES-ID badge — прямо под именем/спец/город. Тап = копия
+                ссылки на публичку, ✎ = редактировать slug. */}
+            {master.invite_code && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={copyCresLink}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 10px', borderRadius: R.pill,
+                    border: `1px solid ${T.borderSubtle}`,
+                    background: T.surface, color: T.text,
+                    fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  {cresIdCopied ? <Check size={12} color={T.success} /> : <Copy size={12} color={T.textSecondary} />}
+                  <span style={{ color: T.textTertiary, fontWeight: 500 }}>{t.cresIdLabel}</span>
+                  <span style={{ fontWeight: 700 }}>@{master.slug || master.invite_code}</span>
+                </button>
+                <PencilBtn onClick={() => { haptic('selection'); setEditField('slug'); }} />
+              </div>
+            )}
           </div>
         </div>
 

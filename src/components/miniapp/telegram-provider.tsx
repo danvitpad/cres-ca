@@ -81,12 +81,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       webapp.ready();
       webapp.expand();
       try { webapp.disableVerticalSwipes(); } catch {}
-      // Use Telegram's own theme keywords so the chrome (header/bottom bar)
-      // matches the user's current Telegram color scheme automatically.
-      // 'bg_color' resolves to whatever bg the user's TG is using right now.
-      try { webapp.setHeaderColor('bg_color'); } catch {}
-      try { webapp.setBackgroundColor('bg_color'); } catch {}
-      try { webapp.setBottomBarColor('bg_color'); } catch {}
+      // Initial chrome paint — наш hex (определяется по prefers-color-scheme).
+      // theme.tsx эффект перезапишет это после монтирования при смене темы,
+      // но первый кадр Mini App уже должен быть нашего цвета, не системного TG.
+      const dark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+      const initHex = dark ? '#0f0f0f' : '#ffffff';
+      try { webapp.setHeaderColor(initHex); } catch {}
+      try { webapp.setBackgroundColor(initHex); } catch {}
+      try { webapp.setBottomBarColor(initHex); } catch {}
 
       syncSafeArea(webapp);
       syncTheme(webapp);
