@@ -106,7 +106,7 @@ export default function MasterMiniAppMore() {
   // тариф, био, контакты) живёт на публичной странице (открывается тапом
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
-    { key: 'marketing', href: `/${lang}/marketing`, icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', external: true },
+    { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },

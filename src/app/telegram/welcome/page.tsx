@@ -270,7 +270,7 @@ export default function MiniAppWelcomePage() {
       <div
         className="fixed inset-x-0 bottom-0 space-y-3 px-6 pb-6 pt-10"
         style={{
-          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
         }}
       >

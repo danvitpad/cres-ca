@@ -85,24 +85,11 @@ export default function MasterMiniAppPartnersList() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-4 px-4 pt-4 pb-24"
+      className="space-y-4 px-4 pt-12 pb-24"
     >
-      {/* Tabs */}
-      <div className="flex gap-1.5 rounded-2xl border border-neutral-200 bg-white p-1">
-        <Link
-          href="/telegram/m/clients"
-          onClick={() => haptic('light')}
-          className="flex-1 rounded-xl py-1.5 text-center text-[12px] font-semibold text-neutral-500"
-        >
-          Клиенты
-        </Link>
-        <button
-          onClick={() => haptic('light')}
-          className="flex-1 rounded-xl bg-white/10 py-1.5 text-[12px] font-semibold"
-        >
-          Партнёры
-        </button>
-      </div>
+      {/* Раньше тут был таб «Клиенты | Партнёры», но Клиенты — отдельный таб
+          в нижней навигации. Дублировать переключатель не нужно, плюс верхняя
+          часть пересекалась с floating-аватаром. Убрано 2026-05-08. */}
 
       <header className="flex items-center gap-2">
         <Handshake className="size-5 text-violet-600" />

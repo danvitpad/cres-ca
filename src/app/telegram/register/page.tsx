@@ -555,7 +555,7 @@ export default function MiniAppRegisterPage() {
         style={{
           opacity: keyboardOpen ? 0 : 1,
           pointerEvents: keyboardOpen ? 'none' : 'auto',
-          paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
         }}
       >

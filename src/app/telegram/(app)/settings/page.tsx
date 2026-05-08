@@ -459,7 +459,7 @@ export default function MiniAppSettingsPage() {
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 background: T.surface,
                 padding: `20px ${PAGE_PADDING_X}px`,
-                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -612,7 +612,7 @@ export default function MiniAppSettingsPage() {
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 background: T.surface,
                 padding: `20px ${PAGE_PADDING_X}px`,
-                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

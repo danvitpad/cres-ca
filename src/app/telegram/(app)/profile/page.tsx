@@ -506,7 +506,7 @@ export default function MiniAppProfilePage() {
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
                 padding: `20px ${PAGE_PADDING_X}px`,
-                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
                 boxShadow: SHADOW.elevated,
                 // dvh = dynamic viewport height: автоматически ужимается когда
                 // клавиатура открыта (в отличие от vh, который остаётся
@@ -698,7 +698,7 @@ export default function MiniAppProfilePage() {
                 maxHeight: '80dvh',
                 background: T.surface,
                 borderRadius: `${R.lg}px ${R.lg}px 0 0`,
-                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+                paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
                 overflow: 'hidden',
               }}
             >
