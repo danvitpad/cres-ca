@@ -34,6 +34,7 @@ export async function GET(req: Request) {
     // Notify masters who got new suggestions — single TG-push
     if (stats.suggestionsCreated > 0) {
       await notifyMasters(db);
+      await notifyClients(db);
     }
 
     console.log('[rebook-scan] done in', ms, 'ms — ', JSON.stringify(stats));
@@ -89,4 +90,74 @@ async function notifyMasters(db: ReturnType<typeof admin>) {
       }).catch(() => null),
     ),
   );
+}
+
+/**
+ * For each fresh suggestion (last 24h), sends a gentle TG nudge to the CLIENT:
+ * «Давно не були у [мастер] — хочете записатися?»
+ * One message per (client × master) pair — no spam.
+ */
+async function notifyClients(db: ReturnType<typeof admin>) {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: rows } = await db
+    .from('rebook_suggestions')
+    .select(`
+      id,
+      master_id,
+      service_id,
+      client_id,
+      clients:client_id(
+        profile_id,
+        profiles:profile_id(telegram_id)
+      ),
+      masters:master_id(
+        display_name,
+        profile:profiles!masters_profile_id_fkey(full_name)
+      )
+    `)
+    .eq('status', 'pending_master')
+    .gte('created_at', since);
+
+  if (!rows?.length) return;
+
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return;
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  // Dedupe: one nudge per (client_profile_id, master_id)
+  const seen = new Set<string>();
+
+  for (const r of rows as unknown as Array<{
+    master_id: string;
+    service_id: string | null;
+    clients: { profile_id: string; profiles: { telegram_id: number | null } | null } | null;
+    masters: { display_name: string | null; profile: { full_name: string | null } | null } | null;
+  }>) {
+    const tgId = r.clients?.profiles?.telegram_id;
+    const profileId = r.clients?.profile_id;
+    if (!tgId || !profileId) continue;
+
+    const key = `${profileId}:${r.master_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const masterName = r.masters?.profile?.full_name ?? r.masters?.display_name ?? 'майстер';
+    const bookUrl = r.service_id
+      ? `${appUrl}/telegram/book?master=${r.master_id}&service=${r.service_id}`
+      : `${appUrl}/telegram/book?master=${r.master_id}`;
+
+    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: tgId,
+        parse_mode: 'HTML',
+        text: `💆 <b>Давно не були у ${masterName}?</b>\n\nСхоже, настав час! Запишіться зараз, поки є вільні слоти.`,
+        reply_markup: {
+          inline_keyboard: [[{ text: '📅 Записатися', web_app: { url: bookUrl } }]],
+        },
+      }),
+    }).catch(() => null);
+  }
 }
