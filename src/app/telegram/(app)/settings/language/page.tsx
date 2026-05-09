@@ -15,7 +15,7 @@ import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
-import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+import { useMiniAppLocale, setMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'uk' | 'ru' | 'en';
 
@@ -48,22 +48,20 @@ export default function ClientLanguagePage() {
     setBusy(true);
     setCurrent(code);
 
-    // 1. Persist immediately (synchronous writes first so reload sees new value)
-    try { localStorage.setItem('cres:locale', code); } catch {}
-    document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    // Persist + broadcast — все Mini App компоненты через useMiniAppLocale
+    // мгновенно перерисуются. Без перезагрузки страницы.
+    setMiniAppLocale(code);
 
-    // 2. Fire DB save in background (best-effort, don't block navigation)
+    // DB save в фоне — best-effort, не блокирует UI.
     fetch('/api/me/ui-prefs', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ui_language: code }),
     }).catch(() => {});
 
-    // 3. Small delay so the checkmark is visible, then hard-navigate back.
-    //    Hard navigation (not router.back) forces a full page reload which
-    //    makes useMiniAppLocale() re-read localStorage in every component.
-    await new Promise((r) => setTimeout(r, 400));
-    window.location.href = '/telegram/settings';
+    // Маленькая задержка для галочки + лоадера, остаёмся на этой странице.
+    await new Promise((r) => setTimeout(r, 250));
+    setBusy(false);
   }
 
   return (

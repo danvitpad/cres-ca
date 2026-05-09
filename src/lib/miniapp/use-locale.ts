@@ -1,10 +1,12 @@
 /** --- YAML
  * name: useMiniAppLocale
- * description: Shared locale hook for client Mini App pages. Reads from
+ * description: Shared locale hook for Mini App pages. Reads from
  *              localStorage `cres:locale` (set by language picker). Returns
- *              current lang code. Pages define their own I18N dict and call
- *              `const t = I18N[lang]` — same pattern as home/page.tsx.
+ *              current lang code AND reacts live to changes via the
+ *              `cres:locale-changed` custom event — no page reload needed.
+ *              Pages define their own I18N dict and call `const t = I18N[lang]`.
  * created: 2026-05-05
+ * updated: 2026-05-09
  * --- */
 
 import { useEffect, useState } from 'react';
@@ -12,23 +14,55 @@ import { useEffect, useState } from 'react';
 export type MiniAppLang = 'uk' | 'ru' | 'en';
 
 const VALID: MiniAppLang[] = ['uk', 'ru', 'en'];
+export const LOCALE_CHANGED_EVENT = 'cres:locale-changed';
 
-/**
- * Reads `cres:locale` from localStorage and returns the current Mini App language.
- * Defaults to 'uk' if not set or if the stored value is invalid.
- * Re-renders the component on mount (once localStorage is available).
- */
+function read(): MiniAppLang {
+  try {
+    const stored = localStorage.getItem('cres:locale') as MiniAppLang | null;
+    if (stored && VALID.includes(stored)) return stored;
+  } catch {
+    // localStorage unavailable
+  }
+  return 'uk';
+}
+
 export function useMiniAppLocale(): MiniAppLang {
   const [lang, setLang] = useState<MiniAppLang>('uk');
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('cres:locale') as MiniAppLang | null;
-      if (stored && VALID.includes(stored)) setLang(stored);
-    } catch {
-      // localStorage unavailable (SSR / private mode)
-    }
+    setLang(read());
+
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent<MiniAppLang>).detail;
+      if (detail && VALID.includes(detail)) {
+        setLang(detail);
+      } else {
+        setLang(read());
+      }
+    };
+    window.addEventListener(LOCALE_CHANGED_EVENT, onChange);
+    // storage event срабатывает в других вкладках, но для safety
+    window.addEventListener('storage', onChange);
+    return () => {
+      window.removeEventListener(LOCALE_CHANGED_EVENT, onChange);
+      window.removeEventListener('storage', onChange);
+    };
   }, []);
 
   return lang;
+}
+
+/** Persist + broadcast new locale. Все компоненты через useMiniAppLocale
+ *  моментально перерисуются, без перезагрузки страницы. */
+export function setMiniAppLocale(code: MiniAppLang): void {
+  if (!VALID.includes(code)) return;
+  try {
+    localStorage.setItem('cres:locale', code);
+  } catch {
+    // ignore
+  }
+  // cookie тоже обновляем — нужно для веб-кабинета и SSR.
+  document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=${60 * 60 * 24 * 365}`;
+
+  window.dispatchEvent(new CustomEvent<MiniAppLang>(LOCALE_CHANGED_EVENT, { detail: code }));
 }

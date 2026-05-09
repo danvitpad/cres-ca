@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { Check } from '@phosphor-icons/react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
+import { setMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'ru' | 'uk' | 'en';
 
@@ -43,18 +44,19 @@ export default function MiniAppLanguagePage() {
     haptic('selection');
     setBusy(true);
     setCurrent(code);
-    // 1) Сохраняем в БД — desktop при следующей загрузке подхватит.
-    try {
-      await fetch('/api/me/ui-prefs', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ui_language: code }),
-      });
-    } catch { /* offline-tolerant */ }
-    // 2) Cookie для немедленного применения на web (если пользователь
-    //    вернётся туда, не дожидаясь полной перезагрузки).
-    document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=${60 * 60 * 24 * 365}`;
-    setBusy(false);
+
+    // Hot-swap: localStorage + cookie + событие → все компоненты
+    // через useMiniAppLocale моментально перерисуются. Без перезагрузки.
+    setMiniAppLocale(code);
+
+    // DB save в фоне.
+    fetch('/api/me/ui-prefs', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ui_language: code }),
+    }).catch(() => { /* offline-tolerant */ });
+
+    setTimeout(() => setBusy(false), 250);
   }
 
   return (

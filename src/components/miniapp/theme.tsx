@@ -101,8 +101,10 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
     const wa = w.Telegram?.WebApp;
     if (!wa) return;
 
-    // Hex-цвета, идентичные --m-bg для светлой и тёмной темы.
-    const hex = theme === 'dark' ? '#0f0f0f' : '#ffffff';
+    // Hex ТОЧНО совпадает с --m-bg (см. globals.css). Раньше стоял
+    // #0f0f0f в dark, а реальный --m-bg = #141417 — из-за этого шапка
+    // казалась темнее body.
+    const hex = theme === 'dark' ? '#141417' : '#ffffff';
     try { wa.setHeaderColor?.(hex); } catch {}
     try { wa.setBackgroundColor?.(hex); } catch {}
     try { wa.setBottomBarColor?.(hex); } catch {}
