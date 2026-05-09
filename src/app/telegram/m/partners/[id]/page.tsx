@@ -36,7 +36,15 @@ function getInitData(): string | null {
   return null;
 }
 
-interface Profile { full_name: string | null; avatar_url: string | null; slug: string | null; username: string | null }
+interface Profile {
+  full_name: string | null;
+  avatar_url: string | null;
+  slug: string | null;
+  username: string | null;
+  phone: string | null;
+  email: string | null;
+  date_of_birth: string | null;
+}
 interface MasterEntry {
   id: string;
   specialization: string | null;
@@ -45,6 +53,11 @@ interface MasterEntry {
   team_mode: string | null;
   salon_id: string | null;
   profile: Profile | null;
+}
+interface PartnerStats {
+  clients_referred: number;
+  appointments_completed: number;
+  total_profit: number;
 }
 interface Partnership {
   id: string;
@@ -61,6 +74,18 @@ interface Partnership {
   cross_promotion: boolean;
   partner: MasterEntry;
   youInitiated: boolean;
+  stats?: PartnerStats;
+}
+
+function formatDob(iso: string | null): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch {
+    return '—';
+  }
 }
 
 interface NoteEntry { index: number; date: string | null; body: string }
@@ -169,12 +194,14 @@ export default function MasterMiniAppPartnerCard() {
         )}
       </div>
 
-      {/* 1. Partner info */}
+      {/* 1. Partner info — контакты + специализация */}
       <Block icon={<UserIcon className="size-3.5" />} title={isTeam ? 'О команде' : 'О партнёре'} badge="Партнёр управляет сам">
         <div className="grid grid-cols-2 gap-3 text-[12px]">
           <Field label={isTeam ? 'Название' : 'Имя'} value={partnerName} />
           <Field label="Специализация" value={partner.specialization || '—'} />
-          <Field label="Тип" value={isTeam ? 'Команда / салон' : 'Соло-мастер'} />
+          <Field label="Телефон" value={partner.profile?.phone || '—'} />
+          <Field label="Email" value={partner.profile?.email || '—'} />
+          <Field label="День рождения" value={formatDob(partner.profile?.date_of_birth ?? null)} />
           <Field label="Telegram" value={partner.profile?.username ? `@${partner.profile.username}` : '—'} />
         </div>
         {partner.bio && (
@@ -183,6 +210,27 @@ export default function MasterMiniAppPartnerCard() {
           </p>
         )}
       </Block>
+
+      {/* Profit stats — сколько клиентов привёл партнёр и какую выручку. */}
+      {partnership.stats && (
+        <Block icon={<BarChart3 className="size-3.5" />} title="Профит от партнёра">
+          <div className="grid grid-cols-3 gap-2">
+            <Tile label="Клиентов привёл" value={partnership.stats.clients_referred} />
+            <Tile label="Завершённых визитов" value={partnership.stats.appointments_completed} />
+            <Tile label="Выручка, ₴" value={partnership.stats.total_profit} />
+          </div>
+          {!partnership.promo_code && (
+            <p className="mt-2 text-[10px] text-neutral-400 leading-relaxed">
+              Чтобы считать клиентов от партнёра — задай промокод партнёрства ниже. Клиенты используют его при записи, и сюда попадает статистика.
+            </p>
+          )}
+          {partnership.promo_code && partnership.stats.clients_referred === 0 && (
+            <p className="mt-2 text-[10px] text-neutral-400 leading-relaxed">
+              Пока никто не записался по промокоду «{partnership.promo_code}».
+            </p>
+          )}
+        </Block>
+      )}
 
       {/* 2. Notes */}
       <NotesBlock

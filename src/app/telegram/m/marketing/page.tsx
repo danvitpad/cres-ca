@@ -12,10 +12,12 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Megaphone, Send, Tag, Ticket, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Megaphone, Send, Tag, Ticket, Sparkles, ChevronRight } from 'lucide-react';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 const I18N: Record<MiniAppLang, {
   title: string; subtitle: string;
@@ -57,12 +59,34 @@ const I18N: Record<MiniAppLang, {
 export default function MasterMiniAppMarketing() {
   const lang = useMiniAppLocale();
   const t = I18N[lang];
+  const { haptic } = useTelegram();
+  const router = useRouter();
+  void router;
 
-  const sections = [
-    { icon: Send, title: t.broadcasts, hint: t.broadcastsHint },
-    { icon: Tag, title: t.deals, hint: t.dealsHint },
-    { icon: Ticket, title: t.promo, hint: t.promoHint },
-    { icon: Sparkles, title: t.reviews, hint: t.reviewsHint },
+  // Открытие веб-кабинета в TG webview (Mini App не покидается).
+  // Пока нативный Mini App-редактор маркетинга не написан — это самый
+  // быстрый способ дать мастеру полный CRUD без полного backend-порта.
+  function openWeb(tab: 'broadcasts' | 'deals' | 'promo' | 'reviews') {
+    haptic('selection');
+    const base = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://www.cres-ca.com';
+    const url = `${base}/${lang}/marketing?tab=${tab}`;
+    try {
+      const tg = (window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } }).Telegram?.WebApp;
+      if (tg?.openLink) {
+        tg.openLink(url);
+        return;
+      }
+    } catch {
+      // fallthrough
+    }
+    window.location.href = url;
+  }
+
+  const sections: Array<{ icon: typeof Send; title: string; hint: string; tab: 'broadcasts' | 'deals' | 'promo' | 'reviews' }> = [
+    { icon: Send, title: t.broadcasts, hint: t.broadcastsHint, tab: 'broadcasts' },
+    { icon: Tag, title: t.deals, hint: t.dealsHint, tab: 'deals' },
+    { icon: Ticket, title: t.promo, hint: t.promoHint, tab: 'promo' },
+    { icon: Sparkles, title: t.reviews, hint: t.reviewsHint, tab: 'reviews' },
   ];
 
   return (
@@ -111,15 +135,20 @@ export default function MasterMiniAppMarketing() {
           {sections.map((s, i) => {
             const Icon = s.icon;
             return (
-              <div
+              <button
+                type="button"
                 key={i}
+                onClick={() => openWeb(s.tab)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '14px 14px',
                   borderRadius: R.md,
                   border: `1px solid ${T.borderSubtle}`,
                   background: T.surface,
-                  opacity: 0.85,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  textAlign: 'left',
+                  width: '100%',
                 }}
               >
                 <span
@@ -136,7 +165,8 @@ export default function MasterMiniAppMarketing() {
                   <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>{s.title}</p>
                   <p style={{ fontSize: 12, color: T.textTertiary, margin: '2px 0 0' }}>{s.hint}</p>
                 </div>
-              </div>
+                <ChevronRight size={16} color={T.textTertiary} />
+              </button>
             );
           })}
         </div>
