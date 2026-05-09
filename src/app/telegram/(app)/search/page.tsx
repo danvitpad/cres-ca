@@ -77,10 +77,10 @@ const RATING_LABELS: Record<Lang, Record<string, string>> = {
   en: { 'any': 'Any', '4.0+': '4.0+', '4.5+': '4.5+' },
 };
 
-const FILTER_LABELS: Record<Lang, { title: string; category: string; rating: string; reset: string; apply: string; placeholder: string; filtersAria: string }> = {
-  uk: { title: 'Фільтри', category: 'Категорія', rating: 'Рейтинг', reset: 'Скинути', apply: 'Показати', placeholder: 'Майстер, послуга, салон…', filtersAria: 'Фільтри' },
-  ru: { title: 'Фильтры', category: 'Категория', rating: 'Рейтинг', reset: 'Сбросить', apply: 'Показать', placeholder: 'Мастер, услуга, салон…', filtersAria: 'Фильтры' },
-  en: { title: 'Filters', category: 'Category', rating: 'Rating', reset: 'Reset', apply: 'Show', placeholder: 'Master, service, salon…', filtersAria: 'Filters' },
+const FILTER_LABELS: Record<Lang, { title: string; category: string; rating: string; price: string; priceAny: string; sortBy: string; sortDefault: string; sortDistance: string; reset: string; apply: string; placeholder: string; filtersAria: string }> = {
+  uk: { title: 'Фільтри', category: 'Категорія', rating: 'Рейтинг', price: 'Ціна (від)', priceAny: 'Будь-яка', sortBy: 'Сортування', sortDefault: 'За умовчанням', sortDistance: 'Поруч зі мною', reset: 'Скинути', apply: 'Показати', placeholder: 'Майстер, послуга, салон…', filtersAria: 'Фільтри' },
+  ru: { title: 'Фильтры', category: 'Категория', rating: 'Рейтинг', price: 'Цена (от)', priceAny: 'Любая', sortBy: 'Сортировка', sortDefault: 'По умолчанию', sortDistance: 'Рядом со мной', reset: 'Сбросить', apply: 'Показать', placeholder: 'Мастер, услуга, салон…', filtersAria: 'Фильтры' },
+  en: { title: 'Filters', category: 'Category', rating: 'Rating', price: 'Price (from)', priceAny: 'Any', sortBy: 'Sort by', sortDefault: 'Default', sortDistance: 'Near me', reset: 'Reset', apply: 'Show', placeholder: 'Master, service, salon…', filtersAria: 'Filters' },
 };
 
 const VIEW_LABELS: Record<Lang, { list: string; map: string; route: string }> = {
@@ -108,6 +108,7 @@ interface ApiMasterRow {
   display_name: string | null;
   avatar_url: string | null;
   profile: { full_name: string | null } | { full_name: string | null }[] | null;
+  services: { price: number }[] | null;
   salon:
     | { id: string; name: string | null; logo_url: string | null; city: string | null; rating: number | null }
     | { id: string; name: string | null; logo_url: string | null; city: string | null; rating: number | null }[]
@@ -132,6 +133,7 @@ interface NormMaster {
   specialization: string | null;
   rating: number;
   avatar: string | null;
+  priceFrom: number | null;
   salonId: string | null;
   lat: number | null;
   lng: number | null;
@@ -151,6 +153,8 @@ function unwrap<T>(v: T | T[] | null | undefined): T | null {
 function normalizeMaster(row: ApiMasterRow): NormMaster {
   const p = unwrap(row.profile);
   const salon = unwrap(row.salon);
+  const prices = (row.services ?? []).map((s) => Number(s.price)).filter((n) => n > 0);
+  const priceFrom = prices.length > 0 ? Math.min(...prices) : null;
   return {
     id: row.id,
     displayName: row.display_name ?? p?.full_name ?? 'Мастер',
@@ -158,6 +162,7 @@ function normalizeMaster(row: ApiMasterRow): NormMaster {
     specialization: row.specialization,
     rating: Number(row.rating ?? 0),
     avatar: row.avatar_url,
+    priceFrom,
     salonId: row.salon_id,
     lat: row.latitude,
     lng: row.longitude,
@@ -211,6 +216,8 @@ export default function MiniAppSearchPage() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryKey>('all');
   const [minRating, setMinRating] = useState<0 | 4 | 4.5>(0);
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'default' | 'distance'>('default');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
@@ -414,10 +421,11 @@ export default function MiniAppSearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
-  // Client-side filter by category/rating (keeps API simple)
+  // Client-side filter by category/rating/price + optional distance sort
   const filteredMasters = useMemo(() => {
-    return masters.filter((m) => {
+    let result = masters.filter((m) => {
       if (minRating > 0 && m.rating < minRating) return false;
+      if (maxPrice !== null && m.priceFrom !== null && m.priceFrom > maxPrice) return false;
       if (category !== 'all') {
         // Подстрочный матч по специализации мастера. Берём ВСЕ локали ярлыка
         // (uk/ru/en) — мастер мог написать «Краса» или «Красота» или «Beauty».
@@ -431,7 +439,18 @@ export default function MiniAppSearchPage() {
       }
       return true;
     });
-  }, [masters, minRating, category]);
+    if (sortBy === 'distance' && userLocation) {
+      const [ulat, ulng] = userLocation;
+      result = [...result].sort((a, b) => {
+        const da = a.lat !== null && a.lng !== null
+          ? Math.hypot(a.lat - ulat, a.lng - ulng) : Infinity;
+        const db = b.lat !== null && b.lng !== null
+          ? Math.hypot(b.lat - ulat, b.lng - ulng) : Infinity;
+        return da - db;
+      });
+    }
+    return result;
+  }, [masters, minRating, category, maxPrice, sortBy, userLocation]);
 
   const filteredSalons = useMemo(() => {
     return salons.filter((s) => {
@@ -470,7 +489,7 @@ export default function MiniAppSearchPage() {
     [filteredSalons],
   );
 
-  const activeFilters = (category !== 'all' ? 1 : 0) + (minRating > 0 ? 1 : 0);
+  const activeFilters = (category !== 'all' ? 1 : 0) + (minRating > 0 ? 1 : 0) + (maxPrice !== null ? 1 : 0) + (sortBy !== 'default' ? 1 : 0);
   const total = filteredMasters.length + filteredSalons.length;
 
   return (
@@ -1033,12 +1052,73 @@ export default function MiniAppSearchPage() {
             </div>
           </div>
 
+          {/* Price slider */}
+          <div>
+            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.price}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                type="range"
+                min={0}
+                max={3000}
+                step={100}
+                value={maxPrice ?? 3000}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  setMaxPrice(v >= 3000 ? null : v);
+                }}
+                style={{ flex: 1, accentColor: T.accent }}
+              />
+              <span style={{ fontSize: 13, fontWeight: 600, color: T.text, minWidth: 60, textAlign: 'right' }}>
+                {maxPrice === null ? tFilter.priceAny : `≤ ${maxPrice}₴`}
+              </span>
+            </div>
+          </div>
+
+          {/* Sort */}
+          <div>
+            <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.sortBy}</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['default', 'distance'] as const).map((opt) => {
+                const active = sortBy === opt;
+                const label = opt === 'default' ? tFilter.sortDefault : tFilter.sortDistance;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => {
+                      haptic('selection');
+                      if (opt === 'distance' && !userLocation) {
+                        locate(true);
+                      }
+                      setSortBy(opt);
+                    }}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: R.pill,
+                      border: `1px solid ${active ? T.text : T.border}`,
+                      background: active ? T.text : 'transparent',
+                      color: active ? T.bg : T.textSecondary,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={{ display: 'flex', gap: 10, paddingTop: 8 }}>
             <button
               type="button"
               onClick={() => {
                 setCategory('all');
                 setMinRating(0);
+                setMaxPrice(null);
+                setSortBy('default');
               }}
               style={{
                 flex: 1,
