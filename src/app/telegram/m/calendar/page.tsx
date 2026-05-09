@@ -49,6 +49,7 @@ const I18N: Record<MiniAppLang, {
   cancel: string; noShow: string;
   exceeded: string; inProgress: string;
   minutes: string;
+  riskLabel: Record<'low' | 'medium' | 'high', string>;
   status: Record<Status, string>;
 }> = {
   uk: {
@@ -69,6 +70,7 @@ const I18N: Record<MiniAppLang, {
     cancel: 'Скасувати', noShow: 'Не прийшов',
     exceeded: 'Перевищено', inProgress: 'Йде візит',
     minutes: 'хв',
+    riskLabel: { low: 'Низький ризик', medium: 'Середній ризик', high: 'Високий ризик' },
     status: {
       booked: 'Заброньовано', confirmed: 'Підтверджено', in_progress: 'Йде',
       completed: 'Виконано', cancelled: 'Скасовано',
@@ -93,6 +95,7 @@ const I18N: Record<MiniAppLang, {
     cancel: 'Отменить', noShow: 'Не пришёл',
     exceeded: 'Превышено', inProgress: 'Идёт визит',
     minutes: 'мин',
+    riskLabel: { low: 'Низкий риск', medium: 'Средний риск', high: 'Высокий риск' },
     status: {
       booked: 'Забронировано', confirmed: 'Подтверждено', in_progress: 'Идёт',
       completed: 'Выполнено', cancelled: 'Отменено',
@@ -112,6 +115,7 @@ const I18N: Record<MiniAppLang, {
     cancel: 'Cancel', noShow: 'No-show',
     exceeded: 'Overtime', inProgress: 'Visit in progress',
     minutes: 'min',
+    riskLabel: { low: 'Low risk', medium: 'Medium risk', high: 'High risk' },
     status: {
       booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress',
       completed: 'Completed', cancelled: 'Cancelled',
@@ -297,6 +301,20 @@ export default function MasterMiniAppCalendar() {
   }, [focusId, rows]);
 
   const active = useMemo(() => rows.find((r) => r.id === activeId) ?? null, [rows, activeId]);
+
+  const [clientRisk, setClientRisk] = useState<'low' | 'medium' | 'high' | null>(null);
+  useEffect(() => {
+    setClientRisk(null);
+    if (!active?.client_id) return;
+    const initData = getInitData();
+    if (!initData) return;
+    fetch(`/api/telegram/m/client-risk?client_id=${active.client_id}`, {
+      headers: { 'X-TG-Init-Data': initData },
+    })
+      .then((r) => r.json())
+      .then((d: { risk?: 'low' | 'medium' | 'high' | null }) => setClientRisk(d.risk ?? null))
+      .catch(() => {});
+  }, [active?.client_id]);
 
   async function updateStatus(id: string, status: Status, extra: Record<string, unknown> = {}) {
     setActing(true);
@@ -634,7 +652,23 @@ export default function MasterMiniAppCalendar() {
                   {/* Client */}
                   <div style={{ background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}`, borderRadius: R.md, padding: 14 }}>
                     <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase' }}>{t.clientSection}</p>
-                    <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 4 }}>{active.client_name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                      <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{active.client_name}</p>
+                      {clientRisk && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                          padding: '2px 7px',
+                          borderRadius: 999,
+                          background: clientRisk === 'high' ? T.dangerSoft : clientRisk === 'medium' ? '#fef3c7' : T.successSoft,
+                          color: clientRisk === 'high' ? T.danger : clientRisk === 'medium' ? '#b45309' : T.success,
+                        }}>
+                          {t.riskLabel[clientRisk]}
+                        </span>
+                      )}
+                    </div>
                     <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                       {active.client_phone && (
                         <a
