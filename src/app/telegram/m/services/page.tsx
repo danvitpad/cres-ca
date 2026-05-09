@@ -22,6 +22,7 @@ import { createClient } from '@/lib/supabase/client';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { getServiceName } from '@/lib/i18n/get-service-name';
 
 interface Service {
   id: string;
@@ -36,6 +37,8 @@ interface Service {
   travel_buffer_minutes: number | null;
   requires_prepayment: boolean | null;
   prepayment_amount: number | null;
+  name_i18n: Record<string, string> | null;
+  description_i18n: Record<string, string> | null;
 }
 
 // Палитра 12 цветов — паритет с веб-формой (services dashboard).
@@ -157,7 +160,7 @@ export default function MasterMiniAppServicesTab() {
       if (!master) { setLoading(false); return; }
       const { data } = await supabase
         .from('services')
-        .select('id, name, description, duration_minutes, price, currency, is_active, color, is_mobile, travel_buffer_minutes, requires_prepayment, prepayment_amount')
+        .select('id, name, description, duration_minutes, price, currency, is_active, color, is_mobile, travel_buffer_minutes, requires_prepayment, prepayment_amount, name_i18n, description_i18n')
         .eq('master_id', master.id)
         .order('is_active', { ascending: false })
         .order('price', { ascending: false });
@@ -201,14 +204,14 @@ export default function MasterMiniAppServicesTab() {
           </div>
         ) : (
           <>
-            {active.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
+            {active.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} lang={lang} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
 
             {archived.length > 0 && (
               <>
                 <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: '12px 4px 4px' }}>
                   {t.archived}
                 </p>
-                {archived.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
+                {archived.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} lang={lang} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
               </>
             )}
           </>
@@ -248,7 +251,7 @@ export default function MasterMiniAppServicesTab() {
   );
 }
 
-function ServiceRowCard({ s, i, t, onTap }: { s: Service; i: number; t: typeof I18N['ru']; onTap: () => void }) {
+function ServiceRowCard({ s, i, t, onTap, lang }: { s: Service; i: number; t: typeof I18N['ru']; onTap: () => void; lang: MiniAppLang }) {
   return (
     <motion.button
       type="button"
@@ -272,7 +275,7 @@ function ServiceRowCard({ s, i, t, onTap }: { s: Service; i: number; t: typeof I
       <span style={{ width: 10, height: 10, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {s.name}
+          {getServiceName(s, lang)}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 11, color: T.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <Clock size={11} />

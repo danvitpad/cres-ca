@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { resolveUserId } from '@/lib/auth/resolve-user';
+import { translateService } from '@/lib/i18n/translate-service';
 
 type Body = {
   action: 'create' | 'update' | 'archive' | 'restore';
@@ -72,6 +73,22 @@ export async function POST(request: Request) {
     return p;
   }
 
+  // Helper: запускает в фоне AI-перевод name+description на 3 языка.
+  // Best-effort — на ошибки просто логирует. Не блокирует ответ клиенту.
+  function scheduleTranslation(serviceId: string, name: string, description: string | null) {
+    void (async () => {
+      try {
+        const result = await translateService(name, description);
+        if (!result) return;
+        const update: Record<string, unknown> = { name_i18n: result.name };
+        if (result.description) update.description_i18n = result.description;
+        await admin.from('services').update(update).eq('id', serviceId);
+      } catch (e) {
+        console.error('[service-mutate] translate failed:', (e as Error).message);
+      }
+    })();
+  }
+
   // Helper: синхронизирует service_materials = полная замена. Возвращает error
   // строку если что-то пошло не так. Materials с qty<=0 пропускаются (deletion).
   async function syncMaterials(serviceId: string): Promise<string | null> {
@@ -111,6 +128,12 @@ export async function POST(request: Request) {
     if (matErr) {
       return NextResponse.json({ error: 'materials_failed', detail: matErr }, { status: 500 });
     }
+    // AI-перевод в фоне. Берём имя и описание из body, не из payload —
+    // payload.name типизирован TS-ом узко (master_id|is_active), хотя
+    // реально содержит и name через rest spread.
+    if (typeof body.name === 'string' && body.name.trim()) {
+      scheduleTranslation(data.id, body.name.trim(), body.description?.toString().trim() || null);
+    }
     return NextResponse.json({ ok: true, id: data.id });
   }
 
@@ -133,6 +156,18 @@ export async function POST(request: Request) {
       const { error } = await admin.from('services').update(update).eq('id', body.id);
       if (error) {
         return NextResponse.json({ error: 'update_failed', detail: error.message }, { status: 500 });
+      }
+      // Перевод заново только если name или description менялись.
+      if ('name' in update || 'description' in update) {
+        // Подтягиваем актуальные значения из БД (на случай частичного PATCH).
+        const { data: full } = await admin
+          .from('services')
+          .select('name, description')
+          .eq('id', body.id)
+          .maybeSingle<{ name: string | null; description: string | null }>();
+        if (full?.name) {
+          scheduleTranslation(body.id, full.name, full.description ?? null);
+        }
       }
     }
     const matErr = await syncMaterials(body.id);
