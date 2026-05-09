@@ -13,6 +13,8 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Search, Check, ChevronRight, Clock, Loader2, User as UserIcon } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMainButton } from '@/lib/miniapp/use-main-button';
+import { isTelegram } from '@/lib/telegram/webapp';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -150,6 +152,13 @@ function MasterMiniAppQuickBookingInner() {
       setStep('time');
     }
   }, [masterId, selectedClient, selectedService, day, time, haptic, router]);
+
+  useMainButton({
+    text: 'Создать запись',
+    active: step === 'time' && !!selectedClient && !!selectedService,
+    loading: step === 'saving',
+    onClick: save,
+  });
 
   if (loading) {
     return (
@@ -334,12 +343,14 @@ function MasterMiniAppQuickBookingInner() {
             </div>
           )}
 
-          <button
-            onClick={save}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-500 py-4 text-[15px] font-semibold text-white shadow-md shadow-teal-500/20 active:scale-[0.98] active:bg-teal-600 transition-all"
-          >
-            <Check className="size-4" /> Создать запись · {Number(selectedService.price).toFixed(0)} ₴
-          </button>
+          {!isTelegram() && (
+            <button
+              onClick={save}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-500 py-4 text-[15px] font-semibold text-white shadow-md shadow-teal-500/20 active:scale-[0.98] active:bg-teal-600 transition-all"
+            >
+              <Check className="size-4" /> Создать запись · {Number(selectedService.price).toFixed(0)} ₴
+            </button>
+          )}
         </>
       )}
 

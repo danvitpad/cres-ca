@@ -16,6 +16,8 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { formatMoney } from '@/lib/format/money';
+import { useMainButton } from '@/lib/miniapp/use-main-button';
+import { isTelegram } from '@/lib/telegram/webapp';
 
 interface GiftCert {
   id: string;
@@ -150,6 +152,13 @@ export default function MasterGiftCertsPage() {
   }, []);
 
   useEffect(() => { loadCerts(); }, [loadCerts]);
+
+  useMainButton({
+    text: t.save,
+    active: showForm,
+    loading: saving,
+    onClick: handleCreate,
+  });
 
   async function handleCreate() {
     const num = parseFloat(amount.replace(',', '.'));
@@ -325,29 +334,31 @@ export default function MasterGiftCertsPage() {
                 />
               </label>
 
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                style={{
-                  width: '100%',
-                  borderRadius: R.md,
-                  padding: '12px 16px',
-                  background: T.text,
-                  color: T.bg,
-                  border: 'none',
-                  ...TYPE.body,
-                  fontWeight: 600,
-                  cursor: saving ? 'default' : 'pointer',
-                  opacity: saving ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }}
-              >
-                {saving && <Loader2 size={15} className="animate-spin" />}
-                {saving ? t.saving : t.save}
-              </button>
+              {!isTelegram() && (
+                <button
+                  onClick={handleCreate}
+                  disabled={saving}
+                  style={{
+                    width: '100%',
+                    borderRadius: R.md,
+                    padding: '12px 16px',
+                    background: T.text,
+                    color: T.bg,
+                    border: 'none',
+                    ...TYPE.body,
+                    fontWeight: 600,
+                    cursor: saving ? 'default' : 'pointer',
+                    opacity: saving ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                >
+                  {saving && <Loader2 size={15} className="animate-spin" />}
+                  {saving ? t.saving : t.save}
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
