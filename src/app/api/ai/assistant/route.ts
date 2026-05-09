@@ -136,8 +136,9 @@ export async function POST(request: Request) {
     { data: weekApts },
     { data: weekManual },
     { data: weekExpenses },
-    { data: topClients },
+    { data: rawClients },
     { data: services },
+    { data: partnerships },
   ] = await Promise.all([
     admin.from('appointments')
       .select('id, status, price, starts_at, service:service_id(name), client:client_id(full_name)')
@@ -148,9 +149,34 @@ export async function POST(request: Request) {
     admin.from('appointments').select('status, price').eq('master_id', master.id).gte('starts_at', weekAgo.toISOString()),
     admin.from('manual_incomes').select('amount').eq('master_id', master.id).gte('date', weekAgoIso).lte('date', todayIso),
     admin.from('expenses').select('amount, category').eq('master_id', master.id).gte('date', weekAgoIso).lte('date', todayIso),
-    admin.from('clients').select('id, full_name, total_visits, total_spent, last_visit_at').eq('master_id', master.id).order('total_spent', { ascending: false }).limit(8),
+    admin.from('clients').select('id, full_name, total_visits, total_spent, last_visit_at, profile_id').eq('master_id', master.id).order('total_spent', { ascending: false }),
     admin.from('services').select('name, price').eq('master_id', master.id).eq('is_active', true).limit(20),
+    admin.from('master_partnerships').select('partner_id').eq('master_id', master.id).in('status', ['active', 'accepted']),
   ]);
+
+  // Build set of partner profile_ids — partner row in `clients` should not count as a real client.
+  const partnerMasterIds = (partnerships ?? []).map((p) => (p as { partner_id: string }).partner_id);
+  let partnerProfileIds: string[] = [];
+  if (partnerMasterIds.length > 0) {
+    const { data: pmasters } = await admin
+      .from('masters')
+      .select('profile_id')
+      .in('id', partnerMasterIds);
+    partnerProfileIds = (pmasters ?? [])
+      .map((m) => (m as { profile_id: string | null }).profile_id)
+      .filter((p): p is string => !!p);
+  }
+  const partnerProfileSet = new Set<string>(partnerProfileIds);
+  const partnerCount = partnerMasterIds.length;
+
+  // Real clients = exclude self + partner profile_ids.
+  const topClients = (rawClients ?? []).filter((c) => {
+    const cli = c as { profile_id: string | null };
+    if (cli.profile_id === profile.id) return false;
+    if (cli.profile_id && partnerProfileSet.has(cli.profile_id)) return false;
+    return true;
+  });
+  const clientsCount = topClients.length;
 
   const todayList = (todayApts ?? []).map((a) => {
     const t = new Date(a.starts_at).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
@@ -186,6 +212,11 @@ ${todayList.length ? todayList.join('\n') : 'пусто'}
 - Итого выручка: ${weekApptRevenue + weekManualRevenue} ₴
 - Расходы: ${weekExpTotal} ₴
 - Прибыль: ${weekApptRevenue + weekManualRevenue - weekExpTotal} ₴
+
+КЛИЕНТЫ:
+- Всего обычных клиентов: ${clientsCount}
+- Партнёров (другие мастера, с которыми обмен записями): ${partnerCount}
+ВАЖНО: «клиент» и «партнёр» — РАЗНЫЕ сущности. Не суммируй их и не называй партнёров клиентами.
 
 ТОП-КЛИЕНТЫ:
 ${vipList.join('\n') || 'нет данных'}
