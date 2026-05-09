@@ -93,7 +93,7 @@ export default function NewTaskPage() {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={SPRING.soft}
-      style={{ ...FONT_BASE, padding: '12px 16px 120px', minHeight: '100dvh' }}
+      style={{ ...FONT_BASE, padding: '12px 16px 120px' }}
     >
       <button
         type="button"

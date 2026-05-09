@@ -419,7 +419,6 @@ export default function MasterMiniAppSettings() {
     <div
       style={{
         ...FONT_BASE,
-        minHeight: '100dvh',
         background: T.bg,
         color: T.text,
       }}

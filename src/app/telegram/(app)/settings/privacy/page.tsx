@@ -77,7 +77,6 @@ export default function ClientPrivacyPage() {
         ...FONT_BASE,
         padding: `16px ${PAGE_PADDING_X}px 16px`,
         background: T.bg,
-        minHeight: '100dvh',
       }}
     >
       <Link

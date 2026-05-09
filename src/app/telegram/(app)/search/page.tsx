@@ -534,7 +534,7 @@ export default function MiniAppSearchPage() {
         height: view === 'map'
           ? 'calc(100dvh - 81px - env(safe-area-inset-bottom, 0px) - var(--tg-content-top, 0px))'
           : 'auto',
-        minHeight: view === 'map' ? undefined : '100dvh',
+        minHeight: undefined,
         background: T.bg,
         color: T.text,
       }}

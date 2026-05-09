@@ -91,7 +91,7 @@ export default function MasterTasksPage() {
   };
 
   return (
-    <div style={{ ...FONT_BASE, padding: '20px 16px 100px', minHeight: '100dvh' }}>
+    <div style={{ ...FONT_BASE, padding: '20px 16px 100px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h1 style={{ ...TYPE.h1, color: T.text, margin: 0 }}>Задачи</h1>
         <Link

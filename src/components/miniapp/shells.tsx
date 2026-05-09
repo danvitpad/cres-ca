@@ -32,14 +32,8 @@ export function MobilePage({
       className={className}
       style={{
         ...FONT_BASE,
-        minHeight: '100dvh',
         background: bg,
         color: T.text,
-        // Padding для floating nav УЖЕ задан в (app)/layout.tsx и m/layout.tsx
-        // (81px + safe-area). Раньше тут добавлялись ещё 96px → суммарный
-        // отступ 177px между последним блоком и nav. Убрано — layout единственный
-        // источник нижнего отступа. hideTabBar оставляем для случаев когда
-        // shell используется без layout.
         paddingBottom: hideTabBar ? 0 : 0,
       }}
     >

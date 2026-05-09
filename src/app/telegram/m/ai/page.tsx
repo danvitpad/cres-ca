@@ -165,7 +165,7 @@ export default function MasterMiniAppAI() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}
+        style={{ display: 'flex', flexDirection: 'column' }}
       >
         <PageHeader
           title={t.title}
