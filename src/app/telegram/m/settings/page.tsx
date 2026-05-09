@@ -38,6 +38,7 @@ import { mapError } from '@/lib/errors';
 import { getInitData } from '@/lib/telegram/webapp';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
+import { HapticToggle } from '@/components/miniapp/haptic-toggle';
 import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
 import { Briefcase } from 'lucide-react';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -642,6 +643,9 @@ export default function MasterMiniAppSettings() {
             <MiniToggle on={theme === 'dark'} />
           </button>
         </div>
+
+        {/* Haptic toggle (Phase 4 — Mini App premium speed) */}
+        <HapticToggle lang={lang} />
 
         {/* Logout */}
         <button

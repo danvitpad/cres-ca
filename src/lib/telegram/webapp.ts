@@ -229,21 +229,38 @@ export function getStartParam(): string | undefined {
 }
 
 // --- Haptic Feedback ---
+//
+// Module-level enabled flag. Default: true (haptic on for new users).
+// Mini App's HapticProvider calls setHapticEnabled(...) on mount/change to
+// reflect profiles.haptic_enabled. So all haptic.{impact|success|...}() calls
+// across the codebase automatically respect the user's tumbler in Settings —
+// no refactoring required at callsites.
+
+let hapticEnabled = true;
+
+export function setHapticEnabled(v: boolean) {
+  hapticEnabled = v;
+}
 
 export const haptic = {
   impact: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'light') => {
+    if (!hapticEnabled) return;
     tg()?.HapticFeedback?.impactOccurred(style);
   },
   success: () => {
+    if (!hapticEnabled) return;
     tg()?.HapticFeedback?.notificationOccurred('success');
   },
   error: () => {
+    if (!hapticEnabled) return;
     tg()?.HapticFeedback?.notificationOccurred('error');
   },
   warning: () => {
+    if (!hapticEnabled) return;
     tg()?.HapticFeedback?.notificationOccurred('warning');
   },
   selection: () => {
+    if (!hapticEnabled) return;
     tg()?.HapticFeedback?.selectionChanged();
   },
 };

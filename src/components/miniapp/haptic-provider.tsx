@@ -10,6 +10,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { setHapticEnabled } from '@/lib/telegram/webapp';
 
 interface HapticPrefsContext {
   enabled: boolean;
@@ -35,6 +36,7 @@ export function HapticProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (data && typeof data.haptic_enabled === 'boolean') {
           setEnabledState(data.haptic_enabled);
+          setHapticEnabled(data.haptic_enabled);
         }
         setLoaded(true);
       })
@@ -44,6 +46,7 @@ export function HapticProvider({ children }: { children: ReactNode }) {
 
   const setEnabled = useCallback((next: boolean) => {
     setEnabledState(next);
+    setHapticEnabled(next);
     fetch('/api/me/ui-prefs', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

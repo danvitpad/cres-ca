@@ -35,6 +35,7 @@ import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+import { HapticToggle } from '@/components/miniapp/haptic-toggle';
 
 type Lang = 'uk' | 'ru' | 'en';
 
@@ -423,6 +424,9 @@ export default function MiniAppSettingsPage() {
           {/* «Підтримка» убрана отсюда — она же есть в Профілі (главная
               страница юзера). Дублирование в двух местах сбивало. */}
         </div>
+
+        {/* Haptic toggle (Phase 4 — Mini App premium speed) */}
+        <HapticToggle lang={lang} />
 
         {/* «Дії з обліковим записом» / Sign out blocks убраны — Sign out
             живёт в Профілі, экспорт/удаление аккаунта доступен в веб-версии. */}
