@@ -18,6 +18,7 @@ import {
   Settings as SettingsIcon,
   ChevronRight,
   ArrowUpRight,
+  UserCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -45,6 +46,7 @@ const I18N: Record<MiniAppLang, {
   ai: string; aiHint: string;
   profile: string; profileHint: string;
   settings: string; settingsHint: string;
+  queue: string; queueHint: string;
 }> = {
   uk: {
     title: 'Ще',
@@ -54,6 +56,7 @@ const I18N: Record<MiniAppLang, {
     ai: 'AI-помічник', aiHint: 'Запитай — я відповім',
     profile: 'Профіль', profileHint: 'Ім’я, аватар, тариф',
     settings: 'Налаштування', settingsHint: 'Тариф, сповіщення, мова',
+    queue: 'Жива черга', queueHint: 'Walk-in клієнти без запису',
   },
   ru: {
     title: 'Ещё',
@@ -63,6 +66,7 @@ const I18N: Record<MiniAppLang, {
     ai: 'AI-помощник', aiHint: 'Спроси — отвечу',
     profile: 'Профиль', profileHint: 'Имя, аватар, тариф',
     settings: 'Настройки', settingsHint: 'Тариф, уведомления, язык',
+    queue: 'Живая очередь', queueHint: 'Walk-in клиенты без записи',
   },
   en: {
     title: 'More',
@@ -72,6 +76,7 @@ const I18N: Record<MiniAppLang, {
     ai: 'AI assistant', aiHint: 'Ask — I’ll answer',
     profile: 'Profile', profileHint: 'Name, avatar, plan',
     settings: 'Settings', settingsHint: 'Plan, notifications, language',
+    queue: 'Live queue', queueHint: 'Walk-in clients without appointment',
   },
 };
 
@@ -107,6 +112,7 @@ export default function MasterMiniAppMore() {
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
     { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
+    { key: 'queue', href: '/telegram/m/queue', icon: UserCheck, labelKey: 'queue', hintKey: 'queueHint' },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
