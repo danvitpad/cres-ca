@@ -32,6 +32,7 @@ import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { HomeScreenBanner } from '@/components/miniapp/home-screen-banner';
 import { getCached, setCached, isFresh, invalidateCache } from '@/lib/miniapp/cache';
 import { BlockTimeSheet } from '@/components/miniapp/block-time-sheet';
 
@@ -398,6 +399,10 @@ export default function MasterMiniAppCalendar() {
           title={formatDayHeader(day, t)}
           subtitle={t.bookingsCount(totals.count, totals.revenue.toFixed(0))}
         />
+
+        <div style={{ paddingLeft: PAGE_PADDING_X, paddingRight: PAGE_PADDING_X }}>
+          <HomeScreenBanner />
+        </div>
 
         {/* Day nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>

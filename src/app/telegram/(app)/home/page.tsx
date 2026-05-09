@@ -26,6 +26,7 @@ import {
 import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
 import { getCached, setCached } from '@/lib/miniapp/cache';
+import { HomeScreenBanner } from '@/components/miniapp/home-screen-banner';
 
 interface SalonRef {
   id: string;
@@ -273,6 +274,10 @@ export default function MiniAppHomePage() {
           /* AI-консьерж переехал в Tab «Найти» как главный CTA сверху —
              на личной главной шапка чистая. */
         />
+
+        <div style={{ paddingLeft: PAGE_PADDING_X, paddingRight: PAGE_PADDING_X }}>
+          <HomeScreenBanner />
+        </div>
 
         {/* Next appointment hero — gradient when есть, обычный если нет */}
         {next ? (
