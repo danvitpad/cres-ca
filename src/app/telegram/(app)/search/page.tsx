@@ -213,6 +213,9 @@ export default function MiniAppSearchPage() {
   const ratingLabels = RATING_LABELS[lang];
   const tView = VIEW_LABELS[lang];
 
+  const groupBookingId = sp.get('group_booking_id');
+  const groupBookingDate = sp.get('date');
+
   const [view, setView] = useState<'list' | 'map'>(sp.get('view') === 'map' ? 'map' : 'list');
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CategoryKey>('all');
@@ -756,7 +759,7 @@ export default function MiniAppSearchPage() {
                     <MiniResultCard
                       master={toMasterRef(m)}
                       salon={toSalonRef(m.salon)}
-                      onClick={() => { haptic('selection'); router.push(`/telegram/search/${m.id}`); }}
+                      onClick={() => { haptic('selection'); router.push(`/telegram/search/${m.id}${groupBookingId ? `?group_booking_id=${groupBookingId}&date=${groupBookingDate ?? ''}` : ''}`); }}
                       isAdded={followedMasters.has(m.id)}
                       addBusy={followBusy.has(m.id)}
                       onAdd={() => toggleFollowMaster(m.id)}
@@ -888,7 +891,7 @@ export default function MiniAppSearchPage() {
                     <>
                       <button
                         type="button"
-                        onClick={() => { haptic('selection'); router.push(`/telegram/search/${selected.id}`); }}
+                        onClick={() => { haptic('selection'); router.push(`/telegram/search/${selected.id}${groupBookingId ? `?group_booking_id=${groupBookingId}&date=${groupBookingDate ?? ''}` : ''}`); }}
                         style={{
                           width: '100%',
                           display: 'flex',

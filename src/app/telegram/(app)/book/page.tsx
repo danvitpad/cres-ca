@@ -426,6 +426,8 @@ export default function MiniAppBookPage() {
   const masterId = searchParams.get('master_id');
   const preselectedServiceId = searchParams.get('service_id');
   const rescheduleId = searchParams.get('reschedule');
+  const incomingGroupBookingId = searchParams.get('group_booking_id');
+  const incomingGroupDate = searchParams.get('date');
 
   /* ── State ── */
   const [step, setStep] = useState<Step>('services');
@@ -435,7 +437,11 @@ export default function MiniAppBookPage() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [selectedServices, setSelectedServices] = useState<ServiceItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => {
+    if (!incomingGroupDate) return null;
+    const parsed = new Date(incomingGroupDate);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  });
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[]>([]);
   const [pastSlots, setPastSlots] = useState<string[]>([]);
@@ -895,6 +901,7 @@ export default function MiniAppBookPage() {
         selected_time: selectedTime,
         partner_ref_master_id: partnerRef ?? undefined,
         gift_cert_code: giftCertDiscount ? giftCertCode.trim().toUpperCase() : undefined,
+        group_booking_id: incomingGroupBookingId ?? undefined,
       }),
     });
     if (!res.ok) {

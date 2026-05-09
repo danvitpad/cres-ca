@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Star, MapPin, Clock, Loader2, Share2,
@@ -228,8 +228,13 @@ function formatDate(iso: string, lang: Lang): string {
 export default function MiniAppMasterDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const sp = useSearchParams();
   const { haptic } = useTelegram();
   const userId = useAuthStore((s) => s.userId);
+
+  const groupBookingId = sp.get('group_booking_id');
+  const groupBookingDate = sp.get('date');
+  const bookSuffix = groupBookingId ? `&group_booking_id=${groupBookingId}&date=${groupBookingDate ?? ''}` : '';
   // Mini App locale — для всех подписей (табы, дни, статус, кнопки).
   const lang = useMiniAppLocale();
   const tStr = STR_BY_LANG[lang];
@@ -752,7 +757,7 @@ export default function MiniAppMasterDetailPage() {
           <button
             onClick={() => {
               haptic('selection');
-              router.push(`/telegram/book?master_id=${master.id}`);
+              router.push(`/telegram/book?master_id=${master.id}${bookSuffix}`);
             }}
             className="flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors active:scale-[0.98]"
             style={{
@@ -927,7 +932,7 @@ export default function MiniAppMasterDetailPage() {
                           <button
                             onClick={() => {
                               haptic('light');
-                              router.push(`/telegram/book?master_id=${master.id}&service_id=${s.id}`);
+                              router.push(`/telegram/book?master_id=${master.id}&service_id=${s.id}${bookSuffix}`);
                             }}
                             className="rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-1.5 text-[11px] font-medium text-neutral-800 active:scale-95 transition-all hover:bg-white/10"
                           >
@@ -1256,7 +1261,7 @@ export default function MiniAppMasterDetailPage() {
               <button
                 onClick={() => {
                   haptic('selection');
-                  router.push(`/telegram/book?master_id=${master.id}`);
+                  router.push(`/telegram/book?master_id=${master.id}${bookSuffix}`);
                 }}
                 className="flex items-center gap-2 rounded-2xl px-6 py-2.5 text-[14px] font-semibold active:scale-[0.97] transition-transform shadow-lg"
                 style={{
