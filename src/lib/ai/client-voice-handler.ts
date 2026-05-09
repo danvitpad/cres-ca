@@ -63,20 +63,30 @@ function periodRange(period: Period | null | undefined): { fromIso: string; toIs
   return { fromIso: from.toISOString(), toIso: now.toISOString(), label };
 }
 
-/** Список мастеров, к которым клиент имеет «доступ» — те у кого он значится
- *  в clients table (то есть уже был, есть карточка). Для голосового бронирования
- *  только из этого списка по запросу Данила. */
+/** Список мастеров, к которым у клиента есть отношение:
+ *  1) запись в clients (уже ходил) → client_id известен
+ *  2) подписка через follows (follower → following = profile мастера) → client_id null,
+ *     создаём при первой реальной записи.
+ *  Дедуп по master_id. Записи из clients имеют приоритет (там есть client_id). */
 async function findMastersForClient(admin: SupabaseClient, profileId: string): Promise<Array<{
   master_id: string;
-  client_id: string;
+  client_id: string | null;
   master_display_name: string;
   master_profile_id: string;
 }>> {
+  const map = new Map<string, {
+    master_id: string;
+    client_id: string | null;
+    master_display_name: string;
+    master_profile_id: string;
+  }>();
+
+  // 1) Из clients (есть client_id, нужен для существующих записей)
   const { data: clients } = await admin
     .from('clients')
     .select('id, master_id, master:masters(id, display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name))')
     .eq('profile_id', profileId);
-  type Row = {
+  type ClientRow = {
     id: string;
     master_id: string;
     master: {
@@ -86,18 +96,83 @@ async function findMastersForClient(admin: SupabaseClient, profileId: string): P
       profile: { full_name: string | null } | { full_name: string | null }[] | null;
     } | null;
   };
-  return ((clients ?? []) as unknown as Row[])
-    .filter((r) => !!r.master)
-    .map((r) => {
-      const m = r.master!;
+  for (const r of (clients ?? []) as unknown as ClientRow[]) {
+    if (!r.master) continue;
+    const prof = Array.isArray(r.master.profile) ? r.master.profile[0] : r.master.profile;
+    map.set(r.master.id, {
+      master_id: r.master.id,
+      client_id: r.id,
+      master_display_name: r.master.display_name || prof?.full_name || 'мастер',
+      master_profile_id: r.master.profile_id,
+    });
+  }
+
+  // 2) Из follows (подписки клиент → мастер)
+  const { data: follows } = await admin
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', profileId);
+  const followingIds = ((follows ?? []) as Array<{ following_id: string }>).map((f) => f.following_id);
+  if (followingIds.length > 0) {
+    const { data: subscribedMasters } = await admin
+      .from('masters')
+      .select('id, display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name)')
+      .in('profile_id', followingIds);
+    type MasterRow = {
+      id: string;
+      display_name: string | null;
+      profile_id: string;
+      profile: { full_name: string | null } | { full_name: string | null }[] | null;
+    };
+    for (const m of (subscribedMasters ?? []) as unknown as MasterRow[]) {
+      if (map.has(m.id)) continue; // уже есть из clients — не перезаписываем
       const prof = Array.isArray(m.profile) ? m.profile[0] : m.profile;
-      return {
+      map.set(m.id, {
         master_id: m.id,
-        client_id: r.id,
+        client_id: null,
         master_display_name: m.display_name || prof?.full_name || 'мастер',
         master_profile_id: m.profile_id,
-      };
-    });
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+/** Создать clients-row для клиента у мастера, если её ещё нет.
+ *  Используется при первой записи через подписку. Возвращает client_id. */
+async function ensureClientRow(
+  admin: SupabaseClient,
+  profileId: string,
+  masterId: string,
+): Promise<string | null> {
+  const { data: existing } = await admin
+    .from('clients')
+    .select('id')
+    .eq('profile_id', profileId)
+    .eq('master_id', masterId)
+    .maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  // Возьмём имя из profiles чтобы full_name был не пустой.
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('full_name, phone')
+    .eq('id', profileId)
+    .maybeSingle();
+
+  const { data: created, error } = await admin
+    .from('clients')
+    .insert({
+      profile_id: profileId,
+      master_id: masterId,
+      full_name: (profile as { full_name: string | null } | null)?.full_name ?? 'Клиент',
+      phone: (profile as { phone: string | null } | null)?.phone ?? null,
+    })
+    .select('id')
+    .single();
+  if (error || !created?.id) return null;
+  return created.id as string;
 }
 
 function matchByHint<T extends { master_display_name: string }>(items: T[], hint: string): T[] {
@@ -191,20 +266,14 @@ async function myBonuses(admin: SupabaseClient, profileId: string, masterHint: s
   return { ok: true, reply: `🎁 Твои бонусы:\n${lines.join('\n')}` };
 }
 
-/** Список мастеров, к которым клиент уже ходил (имеет запись в clients). */
+/** Список мастеров, к которым клиент уже ходил (clients) или на которых
+ *  подписан (follows). findMastersForClient уже дедуплицирует по master_id. */
 async function myMasters(admin: SupabaseClient, profileId: string): Promise<HandlerResult> {
   const masters = await findMastersForClient(admin, profileId);
   if (masters.length === 0) {
-    return { ok: true, reply: '👥 Ты пока не записывалась ни к одному мастеру. Открой приложение и найди подходящего.' };
+    return { ok: true, reply: '👥 У тебя пока нет мастеров — ни в записях, ни в подписках. Открой Mini App, найди подходящего и подпишись.' };
   }
-  // Дедуп по master_id (если у клиента несколько строк под одним мастером).
-  const seen = new Set<string>();
-  const unique = masters.filter((m) => {
-    if (seen.has(m.master_id)) return false;
-    seen.add(m.master_id);
-    return true;
-  });
-  const lines = unique.map((m) => `• ${m.master_display_name}`);
+  const lines = masters.map((m) => `• ${m.master_display_name}`);
   return { ok: true, reply: `👥 Твои мастера:\n${lines.join('\n')}` };
 }
 
@@ -398,7 +467,7 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
 
   const masters = await findMastersForClient(admin, profileId);
   if (masters.length === 0) {
-    return { ok: false, reply: '❌ Ты ещё ни к кому не записывался. Открой Mini App, найди мастера и запишись там.' };
+    return { ok: false, reply: '❌ У тебя нет мастеров в кабинете и ты ни на кого не подписан. Открой Mini App, найди мастера и подпишись.' };
   }
 
   // Match по имени
@@ -462,11 +531,20 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
     return { ok: false, reply: `❌ ${fmtDate(startsAt.toISOString())} в ${fmtTime(startsAt.toISOString())} у ${target.master_display_name} занято. Скажи другое время.` };
   }
 
+  // Если клиент только подписан и нет clients-row — создаём её прозрачно.
+  let clientId = target.client_id;
+  if (!clientId) {
+    clientId = await ensureClientRow(admin, profileId, target.master_id);
+    if (!clientId) {
+      return { ok: false, reply: `❌ Не удалось создать карточку клиента у ${target.master_display_name}. Попробуй из приложения.` };
+    }
+  }
+
   const { error } = await admin
     .from('appointments')
     .insert({
       master_id: target.master_id,
-      client_id: target.client_id,
+      client_id: clientId,
       service_id: svc.id,
       starts_at: startsAt.toISOString(),
       ends_at: endsAt.toISOString(),
