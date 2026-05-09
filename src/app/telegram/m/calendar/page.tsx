@@ -31,6 +31,7 @@ import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { getCached, setCached, isFresh, invalidateCache } from '@/lib/miniapp/cache';
 
 type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
@@ -189,20 +190,24 @@ export default function MasterMiniAppCalendar() {
   const router = useRouter();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
-  const [masterId, setMasterId] = useState<string | null>(null);
   const [day, setDay] = useState<Date>(() => startOfDay(new Date()));
-  const [rows, setRows] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const focusId = searchParams.get('id');
+  // Кэш-ключ по дню (focusId не влияет на список — он только подсвечивает уже
+  // загруженную карточку; разные focusId на одном дне = тот же набор записей).
+  const cacheKey = `m-calendar:${day.toISOString().slice(0, 10)}`;
+  type CachedDay = { masterId: string | null; rows: Appointment[] };
+  const [masterId, setMasterId] = useState<string | null>(() => getCached<CachedDay>(cacheKey)?.masterId ?? null);
+  const [rows, setRows] = useState<Appointment[]>(() => getCached<CachedDay>(cacheKey)?.rows ?? []);
+  // Loading=true только если кэша нет ИЛИ он несвежий и пустой. Если есть кэш —
+  // рендерим его сразу, в фоне обновляем без скелета.
+  const [loading, setLoading] = useState(() => !getCached<CachedDay>(cacheKey));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
 
-  const focusId = searchParams.get('id');
-
-  // Master ID resolved together with day data via /api/telegram/m/calendar
-  // (no separate fetch needed)
-
   const loadDay = useCallback(async () => {
-    setLoading(true);
+    const hasCache = !!getCached<CachedDay>(cacheKey);
+    // Скелет показываем только если данных совсем нет. Если есть — тихий refresh.
+    if (!hasCache) setLoading(true);
     const initData = getInitData();
     if (!initData) {
       setLoading(false);
@@ -266,8 +271,9 @@ export default function MasterMiniAppCalendar() {
       };
     });
     setRows(mapped);
+    setCached<CachedDay>(cacheKey, { masterId: json.masterId ?? null, rows: mapped });
     setLoading(false);
-  }, [day, focusId]);
+  }, [day, focusId, cacheKey, t.defaultClient]);
 
   useEffect(() => {
     loadDay();

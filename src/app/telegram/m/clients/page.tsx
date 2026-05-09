@@ -16,6 +16,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import { getCached, setCached } from '@/lib/miniapp/cache';
 
 const I18N: Record<MiniAppLang, {
   pageTitle: string;
@@ -211,9 +212,13 @@ export default function MasterMiniAppClientsPage() {
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const { userId } = useAuthStore();
-  const [masterId, setMasterId] = useState<string | null>(null);
-  const [rows, setRows] = useState<ClientRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Кэш на 60с — вернулся на таб → данные мгновенно из памяти, в фоне обновляется.
+  type CachedList = { masterId: string | null; rows: ClientRow[] };
+  const cacheKey = userId ? `m-clients:${userId}` : null;
+  const initial = cacheKey ? getCached<CachedList>(cacheKey) : undefined;
+  const [masterId, setMasterId] = useState<string | null>(initial?.masterId ?? null);
+  const [rows, setRows] = useState<ClientRow[]>(initial?.rows ?? []);
+  const [loading, setLoading] = useState(!initial);
   const [query, setQuery] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -238,9 +243,11 @@ export default function MasterMiniAppClientsPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !cacheKey) return;
+    const hasCache = !!getCached<CachedList>(cacheKey);
     (async () => {
-      setLoading(true);
+      // Скелет — только если данных совсем нет. Если есть кэш — silent refresh.
+      if (!hasCache) setLoading(true);
       const initData = getInitData();
       // initData необязателен — API принимает и cookie session (browser users)
       try {
@@ -254,12 +261,17 @@ export default function MasterMiniAppClientsPage() {
           return;
         }
         const json = await res.json();
-        setMasterId(json.masterId ?? null);
-        setRows((json.clients ?? []) as ClientRow[]);
+        const fresh: CachedList = {
+          masterId: json.masterId ?? null,
+          rows: (json.clients ?? []) as ClientRow[],
+        };
+        setMasterId(fresh.masterId);
+        setRows(fresh.rows);
+        setCached<CachedList>(cacheKey, fresh);
       } catch { /* network error */ }
       setLoading(false);
     })();
-  }, [userId, reloadKey]);
+  }, [userId, reloadKey, cacheKey]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

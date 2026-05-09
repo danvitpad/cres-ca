@@ -25,6 +25,7 @@ import {
 } from '@/components/miniapp/shells';
 import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
+import { getCached, setCached } from '@/lib/miniapp/cache';
 
 interface SalonRef {
   id: string;
@@ -127,17 +128,21 @@ export default function MiniAppHomePage() {
   // Имя для приветствия — берём первую часть full_name (первое имя).
   // Если профиль ещё не подгрузился — приветствие останется без имени.
   const firstName = fullName?.trim().split(/\s+/)[0] ?? '';
-  const [next, setNext] = useState<NextAppointment | null>(null);
-  const [slots, setSlots] = useState<SlotItem[]>([]);
-  const [regulars, setRegulars] = useState<Array<{
+  // Кэш на 60с — вернулся на главную → данные мгновенно из памяти.
+  type Regular = {
     master_id: string; master_name: string; master_avatar: string | null; master_slug: string;
     service_id: string; service_name: string; service_duration: number | null;
     service_price: number | null; service_currency: string | null; visit_count: number;
-  }>>([]);
-  // Флаг «все три fetch'а отработали» — без него empty-state мигает между
-  // монтированием компонента и приходом данных (видно у клиента: сначала
-  // «Поки що порожньо», через секунду — реальные слоты).
-  const [loaded, setLoaded] = useState(false);
+  };
+  type CachedHome = { next: NextAppointment | null; slots: SlotItem[]; regulars: Regular[] };
+  const cacheKey = userId ? `c-home:${userId}` : null;
+  const initial = cacheKey ? getCached<CachedHome>(cacheKey) : undefined;
+  const [next, setNext] = useState<NextAppointment | null>(initial?.next ?? null);
+  const [slots, setSlots] = useState<SlotItem[]>(initial?.slots ?? []);
+  const [regulars, setRegulars] = useState<Regular[]>(initial?.regulars ?? []);
+  // Флаг «все три fetch'а отработали». При наличии кэша — сразу true чтобы
+  // empty-state не мигал между монтированием и приходом фоновых данных.
+  const [loaded, setLoaded] = useState(!!initial);
   const [lang, setLang] = useState<Lang>('uk');
 
   useEffect(() => {
@@ -167,77 +172,84 @@ export default function MiniAppHomePage() {
         return null;
       })();
 
-      // Next appointment
-      if (initData) {
-        try {
-          const naRes = await fetch('/api/telegram/c/next-appointment', {
+      // Параллелим 3 fetch'а — раньше шли последовательно (3 RTT). Теперь
+      // три запроса стартуют одновременно, ждём всех — даёт ~1/3 от старого
+      // времени на cold-load главной.
+      const naFetch = initData
+        ? fetch('/api/telegram/c/next-appointment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ initData }),
-          });
-          if (naRes.ok) {
-            const { next: apt } = await naRes.json();
-            if (apt) {
-              type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null };
-              const a = apt as {
-                id: string;
-                starts_at: string;
-                price: number | null;
-                currency: string | null;
-                master: {
-                  id: string;
-                  specialization: string | null;
-                  display_name: string | null;
-                  avatar_url: string | null;
-                  profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
-                  salon: SalonEmbed | SalonEmbed[] | null;
-                } | null;
-                service: { name: string } | { name: string }[] | null;
-              };
-              const masterProfile = Array.isArray(a.master?.profile) ? a.master?.profile[0] : a.master?.profile;
-              const svc = Array.isArray(a.service) ? a.service[0] : a.service;
-              const rawSalon = Array.isArray(a.master?.salon) ? a.master?.salon[0] ?? null : a.master?.salon ?? null;
-              setNext({
-                id: a.id,
-                starts_at: a.starts_at,
-                master_id: a.master?.id ?? null,
-                master_name: a.master?.display_name ?? masterProfile?.full_name ?? '—',
-                master_avatar: a.master?.avatar_url ?? masterProfile?.avatar_url ?? null,
-                master_specialization: a.master?.specialization ?? null,
-                salon: rawSalon,
-                service_name: svc?.name ?? '—',
-                price: Number(a.price ?? 0),
-                currency: a.currency ?? 'UAH',
-              });
-            }
-          }
-        } catch { /* ignore */ }
+          }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
+        : Promise.resolve(null);
+
+      const slotsFetch = fetch(`/api/me/followed-slots?profileId=${userId}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
+      const regularsFetch = fetch('/api/me/regular-services')
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
+      const [naJson, slotsJson, regularsJson] = await Promise.all([
+        naFetch, slotsFetch, regularsFetch,
+      ]);
+
+      // Next appointment — нормализация embedded relations
+      let nextSnapshot: NextAppointment | null = null;
+      const apt = naJson?.next;
+      if (apt) {
+        type SalonEmbed = { id: string; name: string; logo_url: string | null; city: string | null };
+        const a = apt as {
+          id: string;
+          starts_at: string;
+          price: number | null;
+          currency: string | null;
+          master: {
+            id: string;
+            specialization: string | null;
+            display_name: string | null;
+            avatar_url: string | null;
+            profile: { full_name: string; avatar_url: string | null } | { full_name: string; avatar_url: string | null }[] | null;
+            salon: SalonEmbed | SalonEmbed[] | null;
+          } | null;
+          service: { name: string } | { name: string }[] | null;
+        };
+        const masterProfile = Array.isArray(a.master?.profile) ? a.master?.profile[0] : a.master?.profile;
+        const svc = Array.isArray(a.service) ? a.service[0] : a.service;
+        const rawSalon = Array.isArray(a.master?.salon) ? a.master?.salon[0] ?? null : a.master?.salon ?? null;
+        nextSnapshot = {
+          id: a.id,
+          starts_at: a.starts_at,
+          master_id: a.master?.id ?? null,
+          master_name: a.master?.display_name ?? masterProfile?.full_name ?? '—',
+          master_avatar: a.master?.avatar_url ?? masterProfile?.avatar_url ?? null,
+          master_specialization: a.master?.specialization ?? null,
+          salon: rawSalon,
+          service_name: svc?.name ?? '—',
+          price: Number(a.price ?? 0),
+          currency: a.currency ?? 'UAH',
+        };
       }
 
-      // Free slots from contacts
-      try {
-        const slotsRes = await fetch(`/api/me/followed-slots?profileId=${userId}`);
-        if (slotsRes.ok) {
-          const data = await slotsRes.json();
-          setSlots((data.items ?? []) as SlotItem[]);
-        }
-      } catch { /* ignore */ }
+      const slotsSnapshot = (slotsJson?.items ?? []) as SlotItem[];
+      const regularsSnapshot = Array.isArray(regularsJson?.items)
+        ? (regularsJson!.items as Regular[])
+        : [];
 
-      // Featured masters блок переехал в Tab «Найти» (Search) —
-      // на главной только личный кабинет. Поэтому здесь не грузим.
-
-      // Regular services (≥3 completed visits at the same master+service)
-      try {
-        const res = await fetch('/api/me/regular-services');
-        if (res.ok) {
-          const j = await res.json();
-          setRegulars(Array.isArray(j.items) ? j.items : []);
-        }
-      } catch { /* ignore */ }
-
+      setNext(nextSnapshot);
+      setSlots(slotsSnapshot);
+      setRegulars(regularsSnapshot);
+      if (cacheKey) {
+        setCached<CachedHome>(cacheKey, {
+          next: nextSnapshot,
+          slots: slotsSnapshot,
+          regulars: regularsSnapshot,
+        });
+      }
       setLoaded(true);
     })();
-  }, [userId]);
+  }, [userId, cacheKey]);
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
