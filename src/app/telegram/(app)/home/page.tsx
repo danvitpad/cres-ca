@@ -23,6 +23,7 @@ import {
   SectionHeader,
   AvatarCircle,
 } from '@/components/miniapp/shells';
+import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
 
 interface SalonRef {
@@ -314,9 +315,8 @@ export default function MiniAppHomePage() {
               }}
             >
               {regulars.map((r) => (
-                <button
+                <TapButton
                   key={`${r.master_id}-${r.service_id}`}
-                  type="button"
                   onClick={() => {
                     haptic('light');
                     router.push(`/telegram/book?master=${r.master_id}&service=${r.service_id}`);
@@ -329,7 +329,6 @@ export default function MiniAppHomePage() {
                     background: T.surface,
                     padding: 12,
                     textAlign: 'left',
-                    cursor: 'pointer',
                     scrollSnapAlign: 'start',
                     minHeight: 88,
                   }}
@@ -340,7 +339,7 @@ export default function MiniAppHomePage() {
                     {formatMoney(r.service_price, 'UAH')}
                     {r.service_duration ? ` · ${r.service_duration} ${t.minSuffix}` : ''}
                   </div>
-                </button>
+                </TapButton>
               ))}
             </div>
           </div>

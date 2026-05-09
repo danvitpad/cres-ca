@@ -28,6 +28,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
@@ -369,8 +370,7 @@ export default function MasterMiniAppCalendar() {
 
         {/* Day nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
-          <button
-            type="button"
+          <TapButton
             onClick={() => { haptic('light'); setDay(addDays(day, -1)); }}
             style={{
               width: 44,
@@ -381,14 +381,12 @@ export default function MasterMiniAppCalendar() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
               flexShrink: 0,
             }}
           >
             <ChevronLeft size={18} color={T.text} />
-          </button>
-          <button
-            type="button"
+          </TapButton>
+          <TapButton
             onClick={() => { haptic('selection'); setDay(startOfDay(new Date())); }}
             style={{
               flex: 1,
@@ -403,15 +401,13 @@ export default function MasterMiniAppCalendar() {
               color: T.text,
               fontSize: 13,
               fontWeight: 600,
-              cursor: 'pointer',
               fontFamily: 'inherit',
             }}
           >
             <CalendarDays size={14} />
             {day.toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
-          </button>
-          <button
-            type="button"
+          </TapButton>
+          <TapButton
             onClick={() => { haptic('light'); setDay(addDays(day, 1)); }}
             style={{
               width: 44,
@@ -422,12 +418,11 @@ export default function MasterMiniAppCalendar() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
               flexShrink: 0,
             }}
           >
             <ChevronRight size={18} color={T.text} />
-          </button>
+          </TapButton>
         </div>
 
         {/* Appointments list */}
@@ -478,8 +473,7 @@ export default function MasterMiniAppCalendar() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
                   >
-                    <button
-                      type="button"
+                    <TapButton
                       onClick={() => onSelect(r.id)}
                       style={{
                         position: 'relative',
@@ -492,7 +486,6 @@ export default function MasterMiniAppCalendar() {
                         background: T.surface,
                         border: `1px solid ${T.borderSubtle}`,
                         boxShadow: SHADOW.card,
-                        cursor: 'pointer',
                         textAlign: 'left',
                         fontFamily: 'inherit',
                       }}
@@ -552,7 +545,7 @@ export default function MasterMiniAppCalendar() {
                           </span>
                         </div>
                       </div>
-                    </button>
+                    </TapButton>
                   </motion.li>
                 );
               })}
