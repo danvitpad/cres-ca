@@ -41,6 +41,7 @@ import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/mini
 import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+import { csGet, csSet } from '@/lib/miniapp/cloud-storage';
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
@@ -238,6 +239,28 @@ export default function MiniAppSearchPage() {
   const [followedMasters, setFollowedMasters] = useState<Set<string>>(new Set());
   const [followedSalons, setFollowedSalons] = useState<Set<string>>(new Set());
   const [followBusy, setFollowBusy] = useState<Set<string>>(new Set());
+
+  // Restore last-used filters from CloudStorage on mount
+  useEffect(() => {
+    csGet('search:filters').then((raw) => {
+      if (!raw) return;
+      try {
+        const f = JSON.parse(raw) as { category?: string; minRating?: number; maxPrice?: number | null; sortBy?: string };
+        if (f.category && ['all', 'nails', 'hair', 'brows', 'lashes', 'massage', 'skin', 'barber', 'makeup', 'other'].includes(f.category)) {
+          setCategory(f.category as CategoryKey);
+        }
+        if (f.minRating === 4 || f.minRating === 4.5) setMinRating(f.minRating);
+        if (typeof f.maxPrice === 'number' || f.maxPrice === null) setMaxPrice(f.maxPrice ?? null);
+        if (f.sortBy === 'distance') setSortBy('distance');
+      } catch {}
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist filters to CloudStorage whenever they change
+  useEffect(() => {
+    csSet('search:filters', JSON.stringify({ category, minRating, maxPrice, sortBy }));
+  }, [category, minRating, maxPrice, sortBy]);
 
   const centerRef = useRef(center);
   centerRef.current = center;
