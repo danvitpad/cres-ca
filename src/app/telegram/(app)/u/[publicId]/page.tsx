@@ -10,10 +10,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, IdCard, UserPlus, UserCheck, Grid3x3, Loader2, MapPin } from 'lucide-react';
+import { ArrowLeft, Heart, IdCard, UserPlus, UserCheck, Grid3x3, Loader2, MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useFavorites } from '@/lib/miniapp/use-favorites';
 
 interface PublicProfile {
   id: string;
@@ -35,6 +36,7 @@ export default function MiniAppPublicProfilePage() {
   const viewerId = useAuthStore((s) => s.userId);
   const { haptic } = useTelegram();
 
+  const { isFavorite, toggle: toggleFavorite } = useFavorites();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [following, setFollowing] = useState(false);
@@ -210,6 +212,21 @@ export default function MiniAppPublicProfilePage() {
                 style={{ minHeight: 44 }}
               >
                 Записаться
+              </button>
+            )}
+            {profile.role === 'master' && (
+              <button
+                onClick={() => {
+                  haptic(isFavorite(profile.id) ? 'selection' : 'success');
+                  toggleFavorite(profile.id);
+                }}
+                className="flex size-11 items-center justify-center rounded-xl border border-neutral-200 bg-white/5 active:scale-[0.98] transition-transform"
+                aria-label={isFavorite(profile.id) ? 'Убрать из избранного' : 'Добавить в избранное'}
+              >
+                <Heart
+                  className="size-5 transition-colors"
+                  style={{ color: isFavorite(profile.id) ? '#e11d48' : undefined, fill: isFavorite(profile.id) ? '#e11d48' : 'none' }}
+                />
               </button>
             )}
           </>
