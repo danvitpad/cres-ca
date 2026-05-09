@@ -33,7 +33,9 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   const pathname = usePathname();
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
-  const [checking, setChecking] = useState(true);
+  // Если userId уже поднят из zustand store — пропускаем initial-checking фазу,
+  // чтобы спиннер не моргал на frame перед рендером скелетов и контента.
+  const [checking, setChecking] = useState(() => !useAuthStore.getState().userId);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   const isSalonContext = pathname.startsWith('/telegram/m/salon/');
@@ -64,27 +66,28 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
       setChecking(false);
       return;
     }
+    // Guard: если userId уже в zustand-сторе — не делаем повторный auth bootstrap.
+    // Иначе useEffect перезапускался по [userId] после setAuth и грузил masters
+    // дважды (видно в Network tab — два одинаковых REST-запроса). Второй запрос
+    // masters вообще не нужен — результат был void.
+    if (userId) {
+      setChecking(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      let resolvedUserId = userId;
-      if (!resolvedUserId) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (cancelled) return;
-        if (!user) { router.replace('/telegram'); return; }
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, full_name')
-          .eq('id', user.id)
-          .maybeSingle<{ role: string | null; full_name: string | null }>();
-        if (cancelled) return;
-        const role = (profile?.role ?? 'client') as 'master' | 'client' | 'salon_admin' | 'receptionist';
-        useAuthStore.getState().setAuth(user.id, role, null, profile?.full_name ?? null);
-        resolvedUserId = user.id;
-      }
-      const { data } = await supabase.from('masters').select('id').eq('profile_id', resolvedUserId).maybeSingle();
+      const { data: { user } } = await supabase.auth.getUser();
       if (cancelled) return;
-      void data;
+      if (!user) { router.replace('/telegram'); return; }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, full_name')
+        .eq('id', user.id)
+        .maybeSingle<{ role: string | null; full_name: string | null }>();
+      if (cancelled) return;
+      const role = (profile?.role ?? 'client') as 'master' | 'client' | 'salon_admin' | 'receptionist';
+      useAuthStore.getState().setAuth(user.id, role, null, profile?.full_name ?? null);
       setChecking(false);
     })();
     return () => { cancelled = true; };

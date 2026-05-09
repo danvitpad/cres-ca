@@ -1,18 +1,19 @@
 /** --- YAML
  * name: PageTransition
- * description: Переход между Mini App страницами в стиле Telegram-iOS — лёгкий
- *              fade + slide справа. Длительность ~220мс. Уважает prefers-reduced-
- *              motion (тогда отдаёт children без обёртки). Использует
- *              AnimatePresence mode="wait" с ключом по pathname.
+ * description: Лёгкий fade-in новой страницы Mini App. Только opacity (без
+ *              slide — slide+exit делал «дыру» между страницами 360мс и
+ *              ощущался как «дважды грузится»). Длительность 130мс. Без
+ *              AnimatePresence wait — новый контент появляется сразу, без
+ *              блокировки. Уважает prefers-reduced-motion.
  * created: 2026-05-09
+ * updated: 2026-05-09 (subtle fade only — fixed perceived double-load)
  * --- */
 
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { EASE } from './design';
 
 export function PageTransition({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -21,17 +22,14 @@ export function PageTransition({ children }: { children: ReactNode }) {
   if (reduce) return <>{children}</>;
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        initial={{ opacity: 0, x: 8 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -4 }}
-        transition={EASE.emphasized}
-        style={{ minHeight: '100%' }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.13, ease: [0.4, 0, 0.2, 1] }}
+      style={{ minHeight: '100%' }}
+    >
+      {children}
+    </motion.div>
   );
 }
