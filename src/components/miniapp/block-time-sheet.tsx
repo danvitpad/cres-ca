@@ -411,16 +411,29 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
                 </div>
                 <div>
                   <span style={labelStyle}>{t.durationLabel}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', padding: 0 }}>
                     <input
                       type="number"
                       min={1}
                       max={24 * 60}
                       value={duration}
                       onChange={(e) => setDuration(Math.max(1, Number(e.target.value) || 0))}
-                      style={{ ...inputStyle, textAlign: 'center', flex: 1 }}
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        background: 'transparent',
+                        color: T.text,
+                        fontSize: 15,
+                        fontFamily: 'inherit',
+                        textAlign: 'center',
+                        outline: 'none',
+                        padding: '12px 0 12px 14px',
+                        minWidth: 0,
+                      }}
                     />
-                    <span style={{ color: T.textSecondary, fontSize: 13 }}>{t.minutesUnit}</span>
+                    <span style={{ color: T.textTertiary, fontSize: 14, fontWeight: 500, paddingRight: 14, flexShrink: 0 }}>
+                      {t.minutesUnit}
+                    </span>
                   </div>
                 </div>
               </div>

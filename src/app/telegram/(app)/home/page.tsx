@@ -339,22 +339,25 @@ export default function MiniAppHomePage() {
                     router.push(`/telegram/book?master=${r.master_id}&service=${r.service_id}`);
                   }}
                   style={{
-                    minWidth: 200,
+                    minWidth: 196,
                     flex: '0 0 auto',
                     border: `1px solid ${T.borderSubtle}`,
                     borderRadius: R.md,
                     background: T.surface,
-                    padding: 12,
+                    padding: '12px 14px',
                     textAlign: 'left',
                     scrollSnapAlign: 'start',
-                    minHeight: 88,
+                    boxShadow: SHADOW.card,
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 600, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.service_name}</div>
-                  <div style={{ marginTop: 2, fontSize: 12, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.atMaster} {r.master_name}</div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: T.success, fontWeight: 700 }}>
-                    {formatMoney(r.service_price, 'UAH')}
-                    {r.service_duration ? ` · ${r.service_duration} ${t.minSuffix}` : ''}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <AvatarCircle url={r.master_avatar} name={r.master_name} size={30} />
+                    <span style={{ fontSize: 12, fontWeight: 500, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.master_name}</span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{r.service_name}</div>
+                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.accent }}>{formatMoney(r.service_price, 'UAH')}</span>
+                    {r.service_duration && <span style={{ fontSize: 12, color: T.textTertiary }}>· {r.service_duration} {t.minSuffix}</span>}
                   </div>
                 </TapButton>
               ))}

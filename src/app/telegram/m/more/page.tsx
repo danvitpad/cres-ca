@@ -119,6 +119,15 @@ export default function MasterMiniAppMore() {
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
   ];
 
+  const ICON_THEME: Record<string, { bg: string; color: string }> = {
+    marketing: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
+    queue:     { bg: 'rgba(16,185,129,0.12)',  color: '#10b981' },
+    partners:  { bg: 'rgba(59,130,246,0.12)',  color: '#3b82f6' },
+    team:      { bg: 'rgba(139,92,246,0.12)',  color: '#8b5cf6' },
+    ai:        { bg: 'rgba(13,148,136,0.12)',  color: '#0d9488' },
+    settings:  { bg: 'rgba(107,114,128,0.12)', color: '#6b7280' },
+  };
+
   function openExternal(href: string) {
     haptic('light');
     const fullUrl = href.startsWith('http') ? href : `${typeof window !== 'undefined' ? window.location.origin : ''}${href}`;
@@ -162,12 +171,13 @@ export default function MasterMiniAppMore() {
             fontFamily: 'inherit',
             cursor: 'pointer',
           };
+          const ic = ICON_THEME[it.key] ?? { bg: T.accentSoft, color: T.accent };
           const inner = (
             <>
               <span
                 style={{
                   width: 38, height: 38, borderRadius: 11,
-                  background: T.accentSoft, color: T.accent,
+                  background: ic.bg, color: ic.color,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}
               >

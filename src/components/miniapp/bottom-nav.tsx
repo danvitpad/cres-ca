@@ -1,10 +1,10 @@
 /** --- YAML
  * name: MiniAppBottomNav
- * description: Премиум floating-pill нижняя навигация. Fresha-style: белый pill с тенью,
- *              4 иконки, активная — заполнена акцентом в pill-pocket. Работает для всех
- *              Mini App ролей (клиент / мастер / команда) — конфиг табов передаётся через
- *              `tabs` prop.
+ * description: Премиум floating-pill нижняя навигация с frosted-glass фоном,
+ *              подписями под иконками и iOS-style активным состоянием.
+ *              Работает для всех Mini App ролей через `tabs` prop.
  * created: 2026-04-26
+ * updated: 2026-05-09 (glass + labels + premium active state)
  * --- */
 
 'use client';
@@ -18,18 +18,14 @@ import { T, R, SHADOW, SPRING } from './design';
 export interface NavTab {
   key: string;
   href: string;
-  /** Outline icon shown when inactive */
   icon: LucideIcon;
-  /** Same icon for active state — стиль активной отличает background */
   iconFilled?: LucideIcon;
   label: string;
 }
 
 interface Props {
   tabs: readonly NavTab[];
-  /** Override accent if needed (мастер vs клиент могут отличаться). */
   accent?: string;
-  /** Hide nav (e.g. на fullscreen booking flow) */
   hidden?: boolean;
 }
 
@@ -46,11 +42,13 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
         right: 12,
         bottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
         zIndex: 50,
-        background: T.surface,
+        background: 'var(--m-nav-bg, rgba(255,255,255,0.88))',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(180%)',
         borderRadius: R.pill,
         boxShadow: SHADOW.navBar,
-        border: `1px solid ${T.borderSubtle}`,
-        padding: '8px 12px',
+        border: `0.5px solid ${T.borderSubtle}`,
+        padding: '6px 8px',
       }}
     >
       <ul
@@ -75,14 +73,17 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                 style={{
                   position: 'relative',
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  height: 48,
-                  borderRadius: R.pill,
+                  gap: 3,
+                  padding: '6px 4px',
+                  borderRadius: R.xl,
                   textDecoration: 'none',
                   color: active ? accent : T.textTertiary,
-                  transition: 'color 200ms ease',
+                  transition: 'color 180ms ease',
                   WebkitTapHighlightColor: 'transparent',
+                  minHeight: 52,
                 }}
               >
                 {active && (
@@ -91,18 +92,35 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                     transition={SPRING.snappy}
                     style={{
                       position: 'absolute',
-                      inset: 4,
-                      borderRadius: R.pill,
-                      background: `${accent}1a`,
+                      inset: 0,
+                      borderRadius: R.xl,
+                      background: `${accent}18`,
                     }}
                   />
                 )}
                 <Icon
-                  size={24}
-                  strokeWidth={active ? 2.4 : 2}
+                  size={22}
+                  strokeWidth={active ? 2.5 : 2}
                   fill="none"
                   style={{ position: 'relative', zIndex: 1 }}
                 />
+                <span
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    fontSize: 10,
+                    fontWeight: active ? 700 : 500,
+                    letterSpacing: '-0.01em',
+                    lineHeight: 1,
+                    color: active ? accent : T.textTertiary,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '100%',
+                  }}
+                >
+                  {tab.label}
+                </span>
               </NavLink>
             </li>
           );

@@ -82,6 +82,9 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       webapp.expand();
       try { webapp.requestFullscreen(); } catch {}
       try { webapp.disableVerticalSwipes(); } catch {}
+      // Re-sync insets after fullscreen animation settles (~400ms)
+      setTimeout(() => syncSafeArea(webapp), 400);
+      try { webapp.onEvent('fullscreenChanged' as Parameters<typeof webapp.onEvent>[0], () => syncSafeArea(webapp)); } catch {}
       // Initial chrome paint — keyword 'bg_color', не hex.
       // Telegram сам подбирает цвет под текущую тему (тёмная/светлая)
       // и под THEME_PARAMS пользователя. Hex'ом мы рисковали выйти за тон

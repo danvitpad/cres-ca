@@ -255,6 +255,7 @@
   --m-warning-soft: #fef3c7;
   --m-danger: #b91c1c;
   --m-danger-soft: #fee2e2;
+  --m-nav-bg: rgba(255, 255, 255, 0.88);
 }
 [data-theme="dark"] {
   --m-bg: #141417;
@@ -277,6 +278,7 @@
   --m-warning-soft: rgba(251, 191, 36, 0.16);
   --m-danger: #f87171;
   --m-danger-soft: rgba(248, 113, 113, 0.16);
+  --m-nav-bg: rgba(20, 20, 23, 0.92);
 }
 
 /* Публичная страница мастера + любые другие страницы без явного
@@ -308,6 +310,7 @@ html.dark {
   --m-warning-soft: rgba(251, 191, 36, 0.16);
   --m-danger: #f87171;
   --m-danger-soft: rgba(248, 113, 113, 0.16);
+  --m-nav-bg: rgba(20, 20, 23, 0.92);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]):not(.dark):not(.light) {
@@ -331,6 +334,7 @@ html.dark {
     --m-warning-soft: rgba(251, 191, 36, 0.16);
     --m-danger: #f87171;
     --m-danger-soft: rgba(248, 113, 113, 0.16);
+    --m-nav-bg: rgba(20, 20, 23, 0.92);
   }
 }
 

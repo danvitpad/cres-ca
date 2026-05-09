@@ -539,18 +539,21 @@ export default function MasterMiniAppCalendar() {
                       />
                       <div
                         style={{
-                          width: 56,
+                          width: 58,
                           flexShrink: 0,
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
                           textAlign: 'center',
+                          background: T.bgSubtle,
+                          borderRadius: R.sm,
+                          padding: '8px 4px',
                         }}
                       >
-                        <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
                           {new Date(r.starts_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <span style={{ fontSize: 10, color: T.textTertiary, marginTop: 2 }}>
+                        <span style={{ fontSize: 10, color: T.textTertiary, marginTop: 3 }}>
                           {r.duration_min} {t.minutes}
                         </span>
                       </div>
@@ -564,13 +567,13 @@ export default function MasterMiniAppCalendar() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
                           <span
                             style={{
-                              padding: '2px 8px',
+                              padding: '3px 8px',
                               borderRadius: 999,
                               background: meta.chipBg,
                               color: meta.chipColor,
-                              fontSize: 9,
+                              fontSize: 10,
                               fontWeight: 700,
-                              letterSpacing: '0.05em',
+                              letterSpacing: '0.04em',
                               textTransform: 'uppercase',
                             }}
                           >

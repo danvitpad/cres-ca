@@ -12,7 +12,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import type { CSSProperties, ReactNode } from 'react';
-import { Search } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 import { T, R, TYPE, SHADOW, SPRING, HERO_GRADIENT, FONT_BASE, PAGE_PADDING_X } from './design';
 
 /** Контейнер страницы — задаёт padding и шрифт. */
@@ -78,18 +78,45 @@ export function PageHeader({
   );
 }
 
-/** Section title + optional «Посмотреть все» link */
+/** Section title + optional «Посмотреть все» link.
+ *  variant="group" (default): bold 20px Fresha-style heading.
+ *  variant="settings": 11px uppercase gray label (iOS Settings style). */
 export function SectionHeader({
   title,
   href,
   rightLabel = 'Посмотреть все',
   accent = T.accent,
+  variant = 'group',
 }: {
   title: string;
   href?: string;
   rightLabel?: string;
   accent?: string;
+  variant?: 'group' | 'settings';
 }) {
+  if (variant === 'settings') {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: `0 ${PAGE_PADDING_X}px`,
+          marginBottom: 8,
+          marginTop: 24,
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: T.textTertiary, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {title}
+        </span>
+        {href && (
+          <Link href={href} style={{ fontSize: 13, fontWeight: 600, color: accent, textDecoration: 'none' }}>
+            {rightLabel}
+          </Link>
+        )}
+      </div>
+    );
+  }
   return (
     <div
       style={{
@@ -177,15 +204,22 @@ export function GradientHeroCard({
   );
 }
 
-/** Карточка-список с пунктами меню (Профиль / Избранное / ...) — Fresha-style */
+/** Карточка-список с пунктами меню (Профиль / Избранное / ...) — iOS Settings style */
 export interface MenuItem {
   key: string;
   icon: ReactNode;
+  /** Background color for the icon container (optional, defaults to accent-soft) */
+  iconBg?: string;
+  /** Icon color (optional, defaults to accent) */
+  iconColor?: string;
   label: string;
+  hint?: string;
   href?: string;
   onClick?: () => void;
   rightSlot?: ReactNode;
   danger?: boolean;
+  /** Hide the disclosure chevron */
+  noChevron?: boolean;
 }
 
 export function MenuList({ items }: { items: MenuItem[] }) {
@@ -197,6 +231,7 @@ export function MenuList({ items }: { items: MenuItem[] }) {
         border: `1px solid ${T.borderSubtle}`,
         borderRadius: R.lg,
         overflow: 'hidden',
+        boxShadow: SHADOW.card,
       }}
     >
       {items.map((it, idx) => {
@@ -206,7 +241,8 @@ export function MenuList({ items }: { items: MenuItem[] }) {
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              padding: '16px 18px',
+              padding: '0 16px',
+              minHeight: 58,
               borderBottom: idx < items.length - 1 ? `1px solid ${T.borderSubtle}` : 'none',
               background: 'transparent',
               cursor: 'pointer',
@@ -220,19 +256,29 @@ export function MenuList({ items }: { items: MenuItem[] }) {
           >
             <div
               style={{
-                width: 28,
-                height: 28,
+                width: 34,
+                height: 34,
+                borderRadius: 9,
+                background: it.iconBg ?? (it.danger ? 'rgba(185,28,28,0.1)' : T.accentSoft),
+                color: it.iconColor ?? (it.danger ? T.danger : T.accent),
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: it.danger ? T.danger : T.textSecondary,
                 flexShrink: 0,
               }}
             >
               {it.icon}
             </div>
-            <span style={{ flex: 1, ...TYPE.bodyStrong }}>{it.label}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: 'block', ...TYPE.bodyStrong, color: it.danger ? T.danger : T.text }}>{it.label}</span>
+              {it.hint && (
+                <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 1 }}>{it.hint}</span>
+              )}
+            </div>
             {it.rightSlot}
+            {!it.noChevron && !it.rightSlot && (
+              <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} style={{ flexShrink: 0 }} />
+            )}
           </div>
         );
         if (it.href) {
