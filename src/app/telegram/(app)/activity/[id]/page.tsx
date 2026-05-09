@@ -24,6 +24,7 @@ import {
   CalendarClock,
   Loader2,
   X,
+  Share2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -76,6 +77,8 @@ const I18N: Record<MiniAppLang, {
   feeFree: string; feePartial: (s: string) => string; feeFull: (s: string) => string;
   cancelConfirmBack: string; cancelConfirm: string;
   rateTitle: string; ratePlaceholder: string; submitReview: string;
+  share: string;
+  shareText: (service: string, master: string, date: string) => string;
   status: Record<string, string>;
   dateLocale: 'uk-UA' | 'ru-RU' | 'en-GB';
 }> = {
@@ -88,8 +91,9 @@ const I18N: Record<MiniAppLang, {
     cancelTitle: 'Скасувати запис?', cancelHint: 'Майстер отримає сповіщення про скасування',
     feeFree: 'Скасування безкоштовне', feePartial: (s) => `Часткова оплата: ${s}`, feeFull: (s) => `Повна вартість: ${s}`,
     cancelConfirmBack: 'Назад', cancelConfirm: 'Скасувати',
-    rateTitle: 'Оцініть візит', ratePlaceholder: 'Розкажи про візит (необов’язково)', submitReview: 'Відправити відгук',
-    status: { booked: 'Записано', confirmed: 'Підтверджено', in_progress: 'Йде', completed: 'Завершено', cancelled: 'Скасовано', cancelled_by_client: 'Скасовано', no_show: 'Не прийшов' },
+    rateTitle: "Оцініть візит", ratePlaceholder: "Розкажи про візит (необов’язково)", submitReview: "Відправити відгук",
+    share: "Поділитись", shareText: (s, m, d) => `Записався до ${m} на ${s} — ${d}`,
+    status: { booked: "Записано", confirmed: "Підтверджено", in_progress: "Йде", completed: "Завершено", cancelled: "Скасовано", cancelled_by_client: "Скасовано", no_show: "Не прийшов" },
     dateLocale: 'uk-UA',
   },
   ru: {
@@ -102,6 +106,7 @@ const I18N: Record<MiniAppLang, {
     feeFree: 'Отмена бесплатна', feePartial: (s) => `Частичная оплата: ${s}`, feeFull: (s) => `Полная стоимость: ${s}`,
     cancelConfirmBack: 'Назад', cancelConfirm: 'Отменить',
     rateTitle: 'Оцените визит', ratePlaceholder: 'Расскажи о визите (необязательно)', submitReview: 'Отправить отзыв',
+    share: 'Поделиться', shareText: (s, m, d) => `Записался к ${m} на ${s} — ${d}`,
     status: { booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт', completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено', no_show: 'Не пришёл' },
     dateLocale: 'ru-RU',
   },
@@ -115,6 +120,7 @@ const I18N: Record<MiniAppLang, {
     feeFree: 'Cancellation is free', feePartial: (s) => `Partial fee: ${s}`, feeFull: (s) => `Full price: ${s}`,
     cancelConfirmBack: 'Back', cancelConfirm: 'Cancel',
     rateTitle: 'Rate the visit', ratePlaceholder: 'Tell us about the visit (optional)', submitReview: 'Send review',
+    share: 'Share', shareText: (s, m, d) => `Booked ${s} with ${m} — ${d}`,
     status: { booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled', no_show: 'No-show' },
     dateLocale: 'en-GB',
   },
@@ -262,6 +268,21 @@ export default function MiniAppAppointmentDetail() {
     toast('Спасибо за отзыв!');
     setReviewExists(true);
     setRatingOpen(false);
+  }
+
+  function shareBooking() {
+    if (!row) return;
+    haptic('light');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.cres-ca.com';
+    const bookUrl = `${appUrl}/telegram/book?master_id=${row.master_id}&service_id=${row.service_id}`;
+    const dateStr = new Date(row.starts_at).toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short' });
+    const name = row.master?.display_name || row.master?.profile?.full_name || '';
+    const text = t.shareText(row.service?.name ?? '', name, dateStr);
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(bookUrl)}&text=${encodeURIComponent(text)}`;
+    try {
+      (window as { Telegram?: { WebApp?: { openTelegramLink?: (url: string) => void } } })
+        .Telegram?.WebApp?.openTelegramLink?.(shareUrl);
+    } catch {}
   }
 
   if (loading) {
@@ -516,6 +537,13 @@ export default function MiniAppAppointmentDetail() {
             <CalendarClock className="size-5" /> Перенести
           </button>
         )}
+        <button
+          onClick={shareBooking}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+          style={{ minHeight: 44 }}
+        >
+          <Share2 className="size-5" /> {t.share}
+        </button>
         {canCancel && (
           <button
             onClick={() => {
