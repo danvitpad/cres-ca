@@ -122,6 +122,7 @@ const STR = {
     joinWaitlist: 'Встати в чергу',
     waitlistJoined: 'Ви в черзі! Повідомимо коли зʼявиться слот.',
     waitlistAlready: 'Ви вже в черзі',
+    upsellLabel: 'Часто додають:',
   },
   ru: {
     masterNotFound: 'Мастер не указан',
@@ -155,6 +156,7 @@ const STR = {
     joinWaitlist: 'Встать в очередь',
     waitlistJoined: 'Вы в очереди! Уведомим когда появится слот.',
     waitlistAlready: 'Вы уже в очереди',
+    upsellLabel: 'Часто добавляют:',
   },
   en: {
     masterNotFound: 'Master not specified',
@@ -186,8 +188,9 @@ const STR = {
     cancel: 'Cancel',
     exit: 'Exit',
     joinWaitlist: 'Join waitlist',
-    waitlistJoined: 'You\'re on the waitlist! We\'ll notify you when a slot opens.',
-    waitlistAlready: 'You\'re already on the waitlist',
+    waitlistJoined: "You're on the waitlist! We'll notify you when a slot opens.",
+    waitlistAlready: "You're already on the waitlist",
+    upsellLabel: 'Often added:',
   },
 } as const;
 
@@ -407,6 +410,7 @@ export default function MiniAppBookPage() {
   const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
   const [waitlistJoining, setWaitlistJoining] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
+  const [upsellSuggestions, setUpsellSuggestions] = useState<ServiceItem[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -427,6 +431,23 @@ export default function MiniAppBookPage() {
   );
 
   const currency = selectedServices[0]?.currency ?? '₴';
+
+  // Fetch upsell suggestions when the first service is selected
+  const firstSelectedId = selectedServices[0]?.id;
+  useEffect(() => {
+    setUpsellSuggestions([]);
+    if (!masterId || !firstSelectedId) return;
+    fetch(`/api/telegram/c/upsell?master_id=${masterId}&service_id=${firstSelectedId}`)
+      .then((r) => r.json())
+      .then((d: { suggestions?: ServiceItem[] }) => {
+        const filtered = (d.suggestions ?? []).filter(
+          (s) => !selectedServices.some((sel) => sel.id === s.id),
+        );
+        setUpsellSuggestions(filtered);
+      })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masterId, firstSelectedId]);
 
   const filteredServices = useMemo(() => {
     if (!activeCategory) return services;
@@ -1086,6 +1107,34 @@ export default function MiniAppBookPage() {
                     );
                   })}
                 </div>
+
+                {/* Upsell suggestions */}
+                {upsellSuggestions.length > 0 && selectedServices.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-4 rounded-2xl p-3"
+                    style={{ background: T.surfaceElevated, border: `1px solid ${T.borderSubtle}` }}
+                  >
+                    <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide" style={{ color: T.textTertiary }}>
+                      {t.upsellLabel}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {upsellSuggestions.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => { haptic('light'); toggleService(s); setUpsellSuggestions((prev) => prev.filter((u) => u.id !== s.id)); }}
+                          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors"
+                          style={{ background: T.accentSoft, color: T.accent, border: `1px solid ${T.accent}20` }}
+                        >
+                          <Plus className="size-3" strokeWidth={2.5} />
+                          {s.name} · {formatMoney(s.price, s.currency)}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
 
                 {services.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 text-center">
