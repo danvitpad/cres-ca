@@ -17,6 +17,27 @@ export interface ChatMessage {
 const HISTORY_LIMIT = 6;
 
 /**
+ * Get-or-create the conversation row for this master. Direct SQL — avoids
+ * Supabase RPC scalar-unwrap quirks where the response shape can vary.
+ */
+async function ensureConversationId(admin: SupabaseClient, masterId: string): Promise<string | null> {
+  const { data: existing } = await admin
+    .from('master_chat_conversations')
+    .select('id')
+    .eq('master_id', masterId)
+    .maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  const { data: created, error: insertErr } = await admin
+    .from('master_chat_conversations')
+    .insert({ master_id: masterId })
+    .select('id')
+    .single();
+  if (insertErr || !created?.id) return null;
+  return created.id as string;
+}
+
+/**
  * Load the most recent N messages for this master (oldest first).
  * Returns empty array on any error — chat continues without memory.
  */
@@ -25,10 +46,8 @@ export async function loadMasterChatHistory(
   masterId: string,
   limit = HISTORY_LIMIT,
 ): Promise<ChatMessage[]> {
-  const { data: convId, error: convErr } = await admin.rpc('get_master_conversation', {
-    p_master_id: masterId,
-  });
-  if (convErr || !convId) return [];
+  const convId = await ensureConversationId(admin, masterId);
+  if (!convId) return [];
 
   const { data: msgs } = await admin
     .from('master_chat_messages')
@@ -46,7 +65,7 @@ export async function loadMasterChatHistory(
 
 /**
  * Append a user→assistant exchange to history and bump last_message_at.
- * Best-effort: logs but does not throw on failure.
+ * Best-effort: returns silently on failure.
  */
 export async function appendMasterChatExchange(
   admin: SupabaseClient,
@@ -55,10 +74,8 @@ export async function appendMasterChatExchange(
   assistantText: string,
   meta?: Record<string, unknown>,
 ): Promise<void> {
-  const { data: convId, error: convErr } = await admin.rpc('get_master_conversation', {
-    p_master_id: masterId,
-  });
-  if (convErr || !convId) return;
+  const convId = await ensureConversationId(admin, masterId);
+  if (!convId) return;
 
   await admin.from('master_chat_messages').insert([
     { conversation_id: convId, role: 'user', content: userText.slice(0, 4000), meta: meta ?? null },
