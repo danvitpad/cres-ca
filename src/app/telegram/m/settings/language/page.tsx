@@ -9,27 +9,48 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check } from '@phosphor-icons/react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
-import { setMiniAppLocale } from '@/lib/miniapp/use-locale';
+import { useMiniAppLocale, setMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
-type Lang = 'ru' | 'uk' | 'en';
+type Lang = MiniAppLang;
 
 const LANGS: { code: Lang; label: string }[] = [
-  { code: 'ru', label: 'Русский' },
   { code: 'uk', label: 'Українська' },
+  { code: 'ru', label: 'Русский' },
   { code: 'en', label: 'English' },
 ];
+
+const I18N: Record<Lang, { title: string; subtitle: string; footer: string }> = {
+  uk: {
+    title: 'Мова',
+    subtitle: 'Синхронізується з веб-кабінетом',
+    footer: 'Впливає на мову інтерфейсу в Mini App і веб-кабінеті. Мова повідомлень клієнтам — окрема настройка в «Редагувати профіль».',
+  },
+  ru: {
+    title: 'Язык',
+    subtitle: 'Синхронизируется с веб-кабинетом',
+    footer: 'Влияет на язык интерфейса в Mini App и веб-кабинете. Язык уведомлений клиентам — отдельная настройка в «Редактировать профиль».',
+  },
+  en: {
+    title: 'Language',
+    subtitle: 'Synced with web cabinet',
+    footer: 'Affects Mini App and web cabinet UI language. Client notifications language — separate setting in «Edit profile».',
+  },
+};
 
 export default function MiniAppLanguagePage() {
   const { haptic } = useTelegram();
   const router = useRouter();
   const { theme } = useMiniAppTheme();
-  const [current, setCurrent] = useState<Lang>('uk');
+  // current = lang из хука (реактивно). Никаких useEffect+fetch — это
+  // вызывало гонку с локальным state и галочка возвращалась на старое.
+  const current = useMiniAppLocale();
+  const t = I18N[current];
   const [busy, setBusy] = useState(false);
 
   const cardBg = theme === 'dark' ? '#1a1a1d' : '#ffffff';
@@ -37,27 +58,15 @@ export default function MiniAppLanguagePage() {
   const dividerColor = theme === 'dark' ? '#27272a' : '#e5e5e7';
   const labelColor = theme === 'dark' ? '#fafafa' : '#0a0a0a';
 
-  // Подтягиваем сохранённое значение из БД, чтобы переключатель показал
-  // настоящее текущее состояние (а не дефолтный 'ru').
-  useEffect(() => {
-    fetch('/api/me/ui-prefs')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { ui_language?: Lang } | null) => {
-        if (data?.ui_language) setCurrent(data.ui_language);
-      })
-      .catch(() => { /* offline-tolerant */ });
-  }, []);
-
   async function pick(code: Lang) {
     if (code === current || busy) return;
     haptic('selection');
     setBusy(true);
-    setCurrent(code);
 
-    // Hot-swap клиентских компонентов через useMiniAppLocale.
+    // Hot-swap: localStorage + cookie + dispatch event.
+    // useMiniAppLocale через event обновится → current = code → галочка
+    // переедет, заголовок переключится через I18N[current].
     setMiniAppLocale(code);
-    // router.refresh() для server-rendered частей (next-intl читает
-    // новую cookie NEXT_LOCALE) — без полного reload.
     router.refresh();
 
     fetch('/api/me/ui-prefs', {
@@ -70,7 +79,7 @@ export default function MiniAppLanguagePage() {
   }
 
   return (
-    <SettingsShell title="Язык" subtitle="Синхронизируется с веб-дашбордом">
+    <SettingsShell title={t.title} subtitle={t.subtitle}>
       <ul
         className="overflow-hidden rounded-2xl"
         style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
@@ -90,10 +99,7 @@ export default function MiniAppLanguagePage() {
           </li>
         ))}
       </ul>
-      <p className="px-2 text-[11px] text-neutral-400">
-        Влияет на язык интерфейса в Mini App и web-кабинете. Для языка уведомлений клиентам —
-        отдельная настройка в «Редактировать профиль».
-      </p>
+      <p className="px-2 text-[11px] text-neutral-400">{t.footer}</p>
     </SettingsShell>
   );
 }

@@ -10,7 +10,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -35,31 +35,26 @@ const I18N: Record<Lang, { title: string; subtitle: string; back: string; saved:
 export default function ClientLanguagePage() {
   const { haptic } = useTelegram();
   const router = useRouter();
-  const lang = useMiniAppLocale();
-  const [current, setCurrent] = useState<Lang>(lang);
-  const [busy, setBusy] = useState(false);
-
-  // Sync current selection with locale once localStorage is read
-  useEffect(() => { setCurrent(lang); }, [lang]);
-
+  // current и t берутся напрямую из хука — он реактивен через
+  // 'cres:locale-changed' event. Никаких useState/useEffect для current,
+  // иначе возникает гонка и галочка может вернуться на старое значение.
+  const current = useMiniAppLocale();
   const t = I18N[current];
+  const [busy, setBusy] = useState(false);
 
   async function pick(code: Lang) {
     if (code === current || busy) return;
     haptic('selection');
     setBusy(true);
-    setCurrent(code);
 
-    // Persist + broadcast — все Mini App компоненты через useMiniAppLocale
-    // мгновенно перерисуются.
+    // Hot-swap: localStorage + cookie + dispatch event → useMiniAppLocale
+    // обновится → current = code → t = I18N[code] → весь экран
+    // перерисуется с новым языком, галочка переедет.
     setMiniAppLocale(code);
 
-    // router.refresh() обновляет server-rendered части (next-intl
-    // прочитает новую cookie NEXT_LOCALE) БЕЗ полного reload —
-    // остаёмся на странице языка с UI state.
+    // Server-rendered части (next-intl) подхватят новую cookie.
     router.refresh();
 
-    // DB save в фоне — best-effort, не блокирует UI.
     fetch('/api/me/ui-prefs', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
