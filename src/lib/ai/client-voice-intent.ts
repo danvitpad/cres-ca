@@ -8,7 +8,7 @@
  * created: 2026-05-08
  * --- */
 
-import { voiceToIntent, extractJSON, AIUnavailableError } from './router';
+import { voiceToIntent, textToJSON, extractJSON, AIUnavailableError } from './router';
 
 export type ClientVoiceAction =
   | 'feedback'
@@ -170,4 +170,28 @@ export async function parseClientVoiceIntent(
     throw new AIUnavailableError(`Model returned unparseable output: ${raw.slice(0, 200)}`, log);
   }
   return normalizeIntent(parsed);
+}
+
+/**
+ * Текстовый брат parseClientVoiceIntent. Используется когда клиент пишет в
+ * Telegram-бот текстом (не голосом). Тот же набор интентов и параметров —
+ * чтобы handleClientVoiceIntent работал унифицированно.
+ *
+ * Без аудио → нормализованный raw_transcript = исходному тексту (упрощает
+ * downstream-логику).
+ */
+export async function parseClientTextIntent(userText: string): Promise<ClientVoiceIntent> {
+  const { data: raw, model, log } = await textToJSON({
+    systemPrompt: buildPrompt(),
+    userMessage: userText,
+  });
+  console.log('[client-text] model=%s log=%s', model, JSON.stringify(log));
+  const parsed = extractJSON<RawIntent>(raw);
+  if (!parsed) {
+    throw new AIUnavailableError(`Model returned unparseable output: ${raw.slice(0, 200)}`, log);
+  }
+  const intent = normalizeIntent(parsed);
+  // Override raw_transcript — у нас есть оригинальный text, он надёжнее.
+  if (!intent.raw_transcript) intent.raw_transcript = userText.trim();
+  return intent;
 }

@@ -293,11 +293,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // /help
+  // /help — расширенный список того что понимает AI текстом и голосом
   if (text.startsWith('/help')) {
     await sendMessage(
       chatId,
-      '💡 <b>Команды CRES-CA:</b>\n\n<b>Общие:</b>\n/start — запуск\n/find — найти мастера (AI)\n/feedback — оставить отзыв\n/help — справка\n\n<b>Для мастеров:</b>\n/today — записи на сегодня\n/tomorrow — записи на завтра\n/clients — сколько у меня клиентов\n/finance — заработок за неделю/месяц\n\n🎤 <b>Голос (мастер):</b>\nОтправь голосовое — я создам напоминание, запишу клиента, добавлю расход.\n\n💬 <b>Отзыв голосом (все):</b>\nЗапиши голосовое со словами «обратная связь» — я сохраню в feedback.',
+      `💡 <b>Что я умею</b>
+
+Просто пиши или говори голосом — AI сам поймёт.
+
+<b>👤 Для клиентов</b> (записаться к мастеру):
+• «Запиши меня к Тане на маникюр завтра в 14»
+• «Какие у меня записи?» / «Когда я к Тане?»
+• «Отмени запись на завтра»
+• «Перенеси на пятницу 16:00»
+• «Сколько я потратила в этом месяце?»
+• «Найди мне маникюр в центре» / /find
+
+<b>💼 Для мастеров</b> (управление бизнесом):
+• «Запиши Таю на маникюр в четверг 10:00»
+• «Перенеси Таю на пятницу 12:00»
+• «Отмени запись Тани»
+• «Сколько у меня сегодня записей?»
+• «Сколько я заработала за неделю?»
+• «Потратила 500 на краску»
+• «Списала 200 мл краски»
+• «Напомни завтра в 18 заказать материалы»
+• /today, /tomorrow, /clients, /finance
+
+<b>💬 Обратная связь</b>
+Если хочешь сообщить о баге, написать благодарность или предложение — начни сообщение со слов «обратная связь» / «жалоба» / «идея», или используй /feedback.
+
+<b>🎤 Голос</b>
+Просто отправь голосовое — AI поймёт что тебе нужно.`,
       { parse_mode: 'HTML' },
     );
     return NextResponse.json({ ok: true });
@@ -340,17 +367,40 @@ async function handleTextIntent(chatId: number, text: string) {
     return;
   }
 
-  // Master-only flow (clients use voice for feedback only)
   const { data: master } = await supabase
     .from('masters')
     .select('id')
     .eq('profile_id', session.profile_id)
     .maybeSingle();
 
-  // If user is a client (no master row) — treat text as feedback
+  // ── Client text path: AI agent. Раньше любой текст от клиента уходил
+  // в feedback — теперь AI сам решает: запись/отмена/перенос/расходы/
+  // список визитов. И только если AI определил намерение как 'feedback'
+  // или не понял (unknown), — старый flow с записью в feedback table.
   if (!master) {
-    await saveFeedbackAndNotify(session.profile_id, text, 'telegram_bot', { chatId });
-    await sendMessage(chatId, FEEDBACK_THANKS);
+    await sendMessage(chatId, '⌛ Думаю...');
+    try {
+      const { parseClientTextIntent } = await import('@/lib/ai/client-voice-intent');
+      const intent = await parseClientTextIntent(text);
+
+      if (intent.action === 'feedback' || intent.action === 'unknown') {
+        const fbText = (intent.text || text).trim();
+        if (fbText.length < 4) {
+          await sendMessage(chatId, '❌ Слишком коротко. Опиши подробнее или скажи что нужно сделать.');
+          return;
+        }
+        await saveFeedbackAndNotify(session.profile_id, fbText, 'telegram_bot', { chatId });
+        await sendMessage(chatId, FEEDBACK_THANKS);
+        return;
+      }
+
+      const { handleClientVoiceIntent } = await import('@/lib/ai/client-voice-handler');
+      const result = await handleClientVoiceIntent(supabase, session.profile_id, intent);
+      await sendMessage(chatId, result.reply);
+    } catch (err) {
+      console.error('[client-text] intent failed:', (err as Error)?.message);
+      await sendMessage(chatId, '❌ AI временно перегружен. Попробуй через 10-20 секунд или нажми /help.');
+    }
     return;
   }
 
