@@ -28,6 +28,7 @@ import {
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
+import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface DetailRow {
   id: string;
@@ -54,14 +55,69 @@ interface DetailRow {
   } | null;
 }
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  booked: { label: 'Записан', color: 'bg-sky-500/15 text-sky-600 border-sky-500/30' },
-  confirmed: { label: 'Подтверждено', color: 'bg-emerald-500/15 text-emerald-600 border-emerald-300' },
-  in_progress: { label: 'Идёт', color: 'bg-violet-100 text-violet-600 border-violet-300' },
-  completed: { label: 'Завершено', color: 'bg-emerald-500/15 text-emerald-600 border-emerald-300' },
-  cancelled: { label: 'Отменено', color: 'bg-rose-500/15 text-rose-600 border-rose-300' },
-  cancelled_by_client: { label: 'Отменено', color: 'bg-rose-500/15 text-rose-600 border-rose-300' },
-  no_show: { label: 'Не пришёл', color: 'bg-amber-500/15 text-amber-600 border-amber-300' },
+const STATUS_COLOR: Record<string, string> = {
+  booked: 'bg-sky-500/15 text-sky-600 border-sky-500/30',
+  confirmed: 'bg-emerald-500/15 text-emerald-600 border-emerald-300',
+  in_progress: 'bg-violet-100 text-violet-600 border-violet-300',
+  completed: 'bg-emerald-500/15 text-emerald-600 border-emerald-300',
+  cancelled: 'bg-rose-500/15 text-rose-600 border-rose-300',
+  cancelled_by_client: 'bg-rose-500/15 text-rose-600 border-rose-300',
+  no_show: 'bg-amber-500/15 text-amber-600 border-amber-300',
+};
+
+const I18N: Record<MiniAppLang, {
+  back: string;
+  notFound: string;
+  service: string; date: string; time: string; total: string; place: string; route: string; copyNumber: string;
+  numberCopied: (n: string) => string;
+  noteLabel: string; beforeAfterLabel: string; before: string; after: string;
+  rateMaster: string; repeat: string; reschedule: string; cancelBtn: string;
+  cancelTitle: string; cancelHint: string;
+  feeFree: string; feePartial: (s: string) => string; feeFull: (s: string) => string;
+  cancelConfirmBack: string; cancelConfirm: string;
+  rateTitle: string; ratePlaceholder: string; submitReview: string;
+  status: Record<string, string>;
+  dateLocale: 'uk-UA' | 'ru-RU' | 'en-GB';
+}> = {
+  uk: {
+    back: 'Назад', notFound: 'Запис не знайдено',
+    service: 'Послуга', date: 'Дата', time: 'Час', total: 'Разом', place: 'Місце', route: 'Маршрут', copyNumber: 'Скопіювати',
+    numberCopied: (n) => `Номер скопійовано: ${n}`,
+    noteLabel: 'Нотатка', beforeAfterLabel: 'До / Після', before: 'До', after: 'Після',
+    rateMaster: 'Оцінити майстра', repeat: 'Повторити запис', reschedule: 'Перенести', cancelBtn: 'Скасувати запис',
+    cancelTitle: 'Скасувати запис?', cancelHint: 'Майстер отримає сповіщення про скасування',
+    feeFree: 'Скасування безкоштовне', feePartial: (s) => `Часткова оплата: ${s}`, feeFull: (s) => `Повна вартість: ${s}`,
+    cancelConfirmBack: 'Назад', cancelConfirm: 'Скасувати',
+    rateTitle: 'Оцініть візит', ratePlaceholder: 'Розкажи про візит (необов’язково)', submitReview: 'Відправити відгук',
+    status: { booked: 'Записано', confirmed: 'Підтверджено', in_progress: 'Йде', completed: 'Завершено', cancelled: 'Скасовано', cancelled_by_client: 'Скасовано', no_show: 'Не прийшов' },
+    dateLocale: 'uk-UA',
+  },
+  ru: {
+    back: 'Назад', notFound: 'Запись не найдена',
+    service: 'Услуга', date: 'Дата', time: 'Время', total: 'Итого', place: 'Место', route: 'Маршрут', copyNumber: 'Скопировать',
+    numberCopied: (n) => `Номер скопирован: ${n}`,
+    noteLabel: 'Заметка', beforeAfterLabel: 'До / После', before: 'До', after: 'После',
+    rateMaster: 'Оценить мастера', repeat: 'Повторить запись', reschedule: 'Перенести', cancelBtn: 'Отменить запись',
+    cancelTitle: 'Отменить запись?', cancelHint: 'Мастер получит уведомление об отмене',
+    feeFree: 'Отмена бесплатна', feePartial: (s) => `Частичная оплата: ${s}`, feeFull: (s) => `Полная стоимость: ${s}`,
+    cancelConfirmBack: 'Назад', cancelConfirm: 'Отменить',
+    rateTitle: 'Оцените визит', ratePlaceholder: 'Расскажи о визите (необязательно)', submitReview: 'Отправить отзыв',
+    status: { booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт', completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено', no_show: 'Не пришёл' },
+    dateLocale: 'ru-RU',
+  },
+  en: {
+    back: 'Back', notFound: 'Booking not found',
+    service: 'Service', date: 'Date', time: 'Time', total: 'Total', place: 'Place', route: 'Directions', copyNumber: 'Copy',
+    numberCopied: (n) => `Number copied: ${n}`,
+    noteLabel: 'Note', beforeAfterLabel: 'Before / After', before: 'Before', after: 'After',
+    rateMaster: 'Rate the master', repeat: 'Book again', reschedule: 'Reschedule', cancelBtn: 'Cancel booking',
+    cancelTitle: 'Cancel this booking?', cancelHint: 'Master will be notified about the cancellation',
+    feeFree: 'Cancellation is free', feePartial: (s) => `Partial fee: ${s}`, feeFull: (s) => `Full price: ${s}`,
+    cancelConfirmBack: 'Back', cancelConfirm: 'Cancel',
+    rateTitle: 'Rate the visit', ratePlaceholder: 'Tell us about the visit (optional)', submitReview: 'Send review',
+    status: { booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled', no_show: 'No-show' },
+    dateLocale: 'en-GB',
+  },
 };
 
 export default function MiniAppAppointmentDetail() {
@@ -69,6 +125,8 @@ export default function MiniAppAppointmentDetail() {
   const router = useRouter();
   const { userId } = useAuthStore();
   const { haptic } = useTelegram();
+  const lang = useMiniAppLocale();
+  const t = I18N[lang];
 
   const [row, setRow] = useState<DetailRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -220,13 +278,13 @@ export default function MiniAppAppointmentDetail() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center px-8 text-center">
         <AlertTriangle className="mb-4 size-12 text-neutral-400" />
-        <p className="text-base font-semibold">Запись не найдена</p>
+        <p className="text-base font-semibold">{t.notFound}</p>
         <button
           onClick={() => { haptic('selection'); router.push('/telegram/activity'); }}
           className="mt-6 rounded-[var(--brand-radius-lg)] border border-neutral-200 px-4 py-2 text-sm"
           style={{ minHeight: 44 }}
         >
-          Назад
+          {t.back}
         </button>
       </div>
     );
@@ -250,7 +308,8 @@ export default function MiniAppAppointmentDetail() {
   // вариант для no-show — не отмена с штрафом, а перенос).
   const canReschedule = canCancel;
   const isCompleted = row.status === 'completed';
-  const statusInfo = statusLabels[row.status] ?? statusLabels.booked;
+  const statusLabel = t.status[row.status] ?? t.status.booked;
+  const statusColor = STATUS_COLOR[row.status] ?? STATUS_COLOR.booked;
 
   return (
     <motion.div
@@ -266,7 +325,7 @@ export default function MiniAppAppointmentDetail() {
         }}
         className="inline-flex items-center gap-1.5 text-sm text-neutral-600 active:text-neutral-900"
       >
-        <ArrowLeft className="size-4" /> Назад
+        <ArrowLeft className="size-4" /> {t.back}
       </button>
 
       {/* Hero card */}
@@ -278,15 +337,15 @@ export default function MiniAppAppointmentDetail() {
         <div className="relative space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Услуга</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">{t.service}</p>
               <h1 className="mt-1 text-xl font-bold">{row.service?.name ?? '—'}</h1>
               {row.service?.description && (
                 <p className="mt-1 line-clamp-2 text-[12px] text-neutral-500">{row.service.description}</p>
               )}
             </div>
-            <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusInfo.color}`}>
+            <span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusColor}`}>
               {isCompleted && <CheckCircle2 className="mr-1 inline size-2.5" />}
-              {statusInfo.label}
+              {statusLabel}
             </span>
           </div>
 

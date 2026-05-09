@@ -24,6 +24,7 @@ import {
   Loader2,
   Plus,
   CalendarDays,
+  CalendarOff,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -32,6 +33,7 @@ import { TapButton } from '@/components/miniapp/tap-press';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached, isFresh, invalidateCache } from '@/lib/miniapp/cache';
+import { BlockTimeSheet } from '@/components/miniapp/block-time-sheet';
 
 type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
@@ -40,6 +42,7 @@ const I18N: Record<MiniAppLang, {
   dateLocale: string;
   bookingsCount: (n: number, revenue: string) => string;
   newBooking: string;
+  blockTime: string;
   emptyTitle: string; emptyHint: string;
   defaultClient: string;
   clientSection: string; notesSection: string;
@@ -58,6 +61,7 @@ const I18N: Record<MiniAppLang, {
       return `${n} ${w} · ${r} ₴`;
     },
     newBooking: 'Новий запис',
+    blockTime: 'Заблокувати час',
     emptyTitle: 'Записів немає',
     emptyHint: 'Додай запис вручну або чекай онлайн-бронювання',
     defaultClient: 'Клієнт',
@@ -81,6 +85,7 @@ const I18N: Record<MiniAppLang, {
       return `${n} ${w} · ${r} ₴`;
     },
     newBooking: 'Новая запись',
+    blockTime: 'Заблокировать время',
     emptyTitle: 'Записей нет',
     emptyHint: 'Добавь запись вручную или жди онлайн-бронирования',
     defaultClient: 'Клиент',
@@ -99,6 +104,7 @@ const I18N: Record<MiniAppLang, {
     dateLocale: 'en-US',
     bookingsCount: (n, r) => `${n} ${n === 1 ? 'booking' : 'bookings'} · ${r} ₴`,
     newBooking: 'New booking',
+    blockTime: 'Block time',
     emptyTitle: 'No bookings',
     emptyHint: 'Add a booking manually or wait for online bookings',
     defaultClient: 'Client',
@@ -203,6 +209,7 @@ export default function MasterMiniAppCalendar() {
   const [loading, setLoading] = useState(() => !getCached<CachedDay>(cacheKey));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
 
   const loadDay = useCallback(async () => {
     const hasCache = !!getCached<CachedDay>(cacheKey);
@@ -777,6 +784,35 @@ export default function MasterMiniAppCalendar() {
         </AnimatePresence>
       </div>
 
+      {/* Floating «Заблокировать» — мини-FAB над основным «+».
+          Один тап открывает sheet для блокировки времени на текущий день. */}
+      <button
+        type="button"
+        onClick={() => { haptic('selection'); setBlockOpen(true); }}
+        aria-label={t.blockTime}
+        title={t.blockTime}
+        style={{
+          position: 'fixed',
+          right: 18,
+          bottom: 'calc(164px + env(safe-area-inset-bottom, 0px))',
+          width: 48,
+          height: 48,
+          borderRadius: '50%',
+          background: T.surface,
+          color: T.text,
+          border: `1px solid ${T.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+          zIndex: 40,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+      >
+        <CalendarOff size={20} strokeWidth={2} />
+      </button>
+
       {/* Floating «+» — раньше жил в PageHeader.right, но кружок аватара (fixed
           top-right на каждом табе) перекрывал его. Перенесён в правый-нижний
           угол, всегда виден, не конкурирует с bottom-nav (nav висит снизу
@@ -804,6 +840,26 @@ export default function MasterMiniAppCalendar() {
       >
         <Plus size={24} strokeWidth={2.4} />
       </Link>
+
+      <BlockTimeSheet
+        open={blockOpen}
+        onClose={() => setBlockOpen(false)}
+        date={day}
+        defaultTime={(() => {
+          const isToday = isSameDay(day, new Date());
+          if (!isToday) return '12:00';
+          const now = new Date();
+          const h = now.getHours();
+          const m = Math.ceil(now.getMinutes() / 15) * 15;
+          const hh = String(m === 60 ? h + 1 : h).padStart(2, '0');
+          const mm = String(m === 60 ? 0 : m).padStart(2, '0');
+          return `${hh}:${mm}`;
+        })()}
+        onSaved={() => {
+          invalidateCache(cacheKey);
+          loadDay();
+        }}
+      />
     </MobilePage>
   );
 }
