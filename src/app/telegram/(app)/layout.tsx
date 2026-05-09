@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import type { UserRole, SubscriptionTier } from '@/types';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
+import { useSyncLocaleFromDb } from '@/lib/miniapp/use-sync-locale';
 
 const NAV_LABELS: Record<'uk' | 'ru' | 'en', readonly [string, string, string, string]> = {
   uk: ['Головна', 'Пошук', 'Записи', 'Профіль'],
@@ -34,6 +35,8 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
   const userId = useAuthStore((s) => s.userId);
   const setAuth = useAuthStore((s) => s.setAuth);
   const [hydrated, setHydrated] = useState(false);
+  // Тянем сохранённый язык из БД при первом открытии — переживает сессии.
+  useSyncLocaleFromDb();
   const lang = useMiniAppLocale();
   const [home, search, activity, profile] = NAV_LABELS[lang];
 

@@ -28,11 +28,15 @@ import { PageTransition } from '@/components/miniapp/page-transition';
 import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
+import { useSyncLocaleFromDb } from '@/lib/miniapp/use-sync-locale';
 
 export default function MasterMiniAppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const userId = useAuthStore((s) => s.userId);
+  // Синхронизация языка из БД при первом открытии — нужно чтобы выбранный
+  // язык сохранялся между сессиями и устройствами.
+  useSyncLocaleFromDb();
   // Если userId уже поднят из zustand store — пропускаем initial-checking фазу,
   // чтобы спиннер не моргал на frame перед рендером скелетов и контента.
   const [checking, setChecking] = useState(() => !useAuthStore.getState().userId);
