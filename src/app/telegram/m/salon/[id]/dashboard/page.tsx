@@ -59,7 +59,7 @@ export default function MiniAppSalonDashboard() {
   const params = useParams();
   const router = useRouter();
   const salonId = params.id as string;
-  const { ready } = useTelegram();
+  const { ready, haptic } = useTelegram();
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -171,7 +171,7 @@ export default function MiniAppSalonDashboard() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => router.push(`/telegram/m/salon/${salonId}/master/${m.id}`)}
+                onClick={() => { haptic('light'); router.push(`/telegram/m/salon/${salonId}/master/${m.id}`); }}
                 className="w-full rounded-xl border border-border bg-card p-3 flex items-center gap-3 text-left hover:bg-muted/50 transition-colors"
               >
                 <div className="size-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center overflow-hidden shrink-0">

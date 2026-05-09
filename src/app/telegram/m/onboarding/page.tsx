@@ -34,6 +34,7 @@ import { T as THEME, R, FONT_BASE, SHADOW, SPRING } from '@/components/miniapp/d
 import { getDefaultServices, type DefaultService } from '@/lib/verticals/default-services';
 import { getSpecializations } from '@/lib/verticals/specializations';
 import { useAuthStore } from '@/stores/auth-store';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 type Lang = 'uk' | 'ru' | 'en';
@@ -197,6 +198,7 @@ export default function MasterOnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [pendingSalonRoute, setPendingSalonRoute] = useState<string | null>(null);
+  const { haptic } = useTelegram();
 
   const totalSteps = role === 'salon_admin' ? 1 : 4;
 
@@ -245,6 +247,7 @@ export default function MasterOnboardingPage() {
   // ── Step 1: vertical select ───────────────────────────────────────────────
   const handleVerticalSelect = useCallback(
     (key: string) => {
+      haptic('selection');
       if (role === 'salon_admin') {
         setVertical(key);
         finishSalonAdmin(key);
@@ -262,18 +265,21 @@ export default function MasterOnboardingPage() {
 
   // ── Forward / back nav ────────────────────────────────────────────────────
   const goNext = useCallback(() => {
+    haptic('light');
     setDirection(1);
     setStep((s) => (s < 4 ? ((s + 1) as Step) : s));
-  }, []);
+  }, [haptic]);
 
   const goBack = useCallback(() => {
+    haptic('light');
     setDirection(-1);
     setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
-  }, []);
+  }, [haptic]);
 
   // ── Final save (master) ───────────────────────────────────────────────────
   async function finish(skipServices = false) {
     if (!userId) return;
+    haptic('success');
     setSaving(true);
     const isOnlineEducation = vertical === 'education' && workMode === 'online';
     const selected = skipServices
@@ -428,7 +434,7 @@ export default function MasterOnboardingPage() {
                 t={t}
                 vertical={vertical}
                 selected={specialization}
-                onSelect={setSpecialization}
+                onSelect={(s) => { haptic('selection'); setSpecialization(s); }}
                 onNext={goNext}
               />
             </motion.div>
@@ -447,7 +453,7 @@ export default function MasterOnboardingPage() {
                 t={t}
                 selected={workMode}
                 address={address}
-                onSelect={setWorkMode}
+                onSelect={(w) => { haptic('selection'); setWorkMode(w); }}
                 onAddressChange={setAddress}
                 onCoordsChange={setCoords}
                 onNext={goNext}
@@ -994,7 +1000,9 @@ function Step4Services({
   onFinish: () => void;
   onSkip: () => void;
 }) {
+  const { haptic } = useTelegram();
   function toggleService(id: number) {
+    haptic('selection');
     onChange(services.map((s) => (s.id === id ? { ...s, enabled: !s.enabled } : s)));
   }
   function updatePrice(id: number, raw: string) {

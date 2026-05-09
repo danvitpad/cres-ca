@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { CaretDown, ChatCircle } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
 
 const FAQ: Array<{ q: string; a: string }> = [
   {
@@ -41,10 +42,11 @@ const FAQ: Array<{ q: string; a: string }> = [
 
 function Item({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
+  const { haptic } = useTelegram();
   return (
     <li className="border-b border-white/5 last:border-b-0">
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { haptic('light'); setOpen((v) => !v); }}
         className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white border-neutral-200 transition-colors"
       >
         <span className="flex-1 text-[13px] font-medium leading-snug">{q}</span>
