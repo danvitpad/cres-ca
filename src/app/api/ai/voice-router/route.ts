@@ -278,18 +278,17 @@ export async function POST(request: Request) {
       if (!d.text) {
         return NextResponse.json({ intent, data: d, executed: false, message: 'Пустая заметка' });
       }
-      // Try to link to client by name
+      // Fuzzy client lookup via RPC: handles declension + latin↔cyrillic + ukr/rus.
+      // Strictly scoped to this master's clients.
       let clientId: string | null = null;
       if (d.client_hint) {
-        const { data: clients } = await admin
-          .from('clients')
-          .select('id')
-          .eq('master_id', master_id)
-          .ilike('full_name', `%${d.client_hint}%`)
-          .limit(1);
-        clientId = clients?.[0]?.id || null;
+        const { data: matches } = await admin.rpc('find_master_clients', {
+          p_master_id: master_id,
+          p_query: d.client_hint,
+          p_limit: 1,
+        });
+        clientId = (matches as Array<{ id: string }> | null)?.[0]?.id || null;
       }
-      // Insert as voice_note (if table exists) — otherwise fallback to client notes field
       if (clientId) {
         const { data: client } = await admin.from('clients').select('notes').eq('id', clientId).single();
         const existing = (client?.notes as string) || '';

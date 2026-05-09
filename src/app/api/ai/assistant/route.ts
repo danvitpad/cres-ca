@@ -318,20 +318,23 @@ async function executeTextAction(
 
     case 'client_note': {
       if (!intent.client_name) return { ok: false, answer: '❓ Укажи имя клиента.' };
-      const tokens = intent.client_name.trim().split(/\s+/).filter((t: string) => t.length >= 3);
-      const or = tokens.length > 0
-        ? tokens.map((t: string) => `full_name.ilike.%${t}%`).join(',')
-        : `full_name.ilike.%${intent.client_name}%`;
-      const { data: clients } = await admin
-        .from('clients').select('id, full_name, notes').eq('master_id', masterId).or(or).limit(1);
-      if (!clients || clients.length === 0) {
+      // Use fuzzy search RPC: handles declension (Таисию→Таисия), latin↔cyrillic
+      // (Taisia↔Таисия), и ukr/rus (Ірина↔Ирина). Strictly scoped to this master.
+      const { data: matches } = await admin.rpc('find_master_clients', {
+        p_master_id: masterId,
+        p_query: intent.client_name,
+        p_limit: 5,
+      });
+      if (!matches || matches.length === 0) {
         return { ok: false, answer: `⚠️ Клиент «${intent.client_name}» не найден.` };
       }
-      const c = clients[0];
+      const top = matches[0] as { id: string; full_name: string };
+      const { data: c } = await admin.from('clients').select('notes').eq('id', top.id).maybeSingle();
       const stamp = `[${new Date().toLocaleDateString('ru-RU')}]`;
-      const newNotes = c.notes ? `${c.notes}\n${stamp} ${intent.text}` : `${stamp} ${intent.text}`;
-      await admin.from('clients').update({ notes: newNotes }).eq('id', c.id);
-      return { ok: true, answer: `✅ Заметка к ${c.full_name}: «${intent.text}»` };
+      const existing = (c?.notes as string | null) ?? '';
+      const newNotes = existing ? `${existing}\n${stamp} ${intent.text}` : `${stamp} ${intent.text}`;
+      await admin.from('clients').update({ notes: newNotes }).eq('id', top.id);
+      return { ok: true, answer: `✅ Заметка к ${top.full_name}: «${intent.text}»` };
     }
 
     case 'inventory': {

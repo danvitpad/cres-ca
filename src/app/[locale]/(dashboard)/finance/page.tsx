@@ -123,8 +123,10 @@ export default function FinancePage() {
   const [lastAppointments, setLastAppointments] = useState<AppointmentRow[]>([]);
   const [topServices, setTopServices] = useState<TopServiceRow[]>([]);
 
-  const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
+  // AI в финансах отключён 2026-05-09 (по просьбе Данила) — переезжает в единого master AI-агента.
+  // Стейт оставлен закомментированным на случай возврата.
+  // const [aiInsight, setAiInsight] = useState<string | null>(null);
+  // const [aiLoading, setAiLoading] = useState(false);
 
   const [marginRows, setMarginRows] = useState<MarginRow[]>([]);
   const [marginLoading, setMarginLoading] = useState(false);
@@ -245,28 +247,30 @@ export default function FinancePage() {
     return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); supabase.removeChannel(ch3); };
   }, [master?.id, loadData]);
 
-  const fetchAiInsight = useCallback(async () => {
-    if (!master?.id) return;
-    setAiLoading(true);
-    try {
-      const res = await fetch('/api/finance/ai-insights', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'period_summary', master_id: master.id, period: periodKey }),
-      });
-      if (res.ok) {
-        const { insight } = await res.json();
-        setAiInsight(insight?.trim() || null);
-      } else {
-        setAiInsight(null);
-      }
-    } catch {
-      setAiInsight(null);
-    }
-    setAiLoading(false);
-  }, [master?.id, periodKey]);
+  // AI в финансах отключён 2026-05-09 (по просьбе Данила).
+  // Закомментировано целиком чтобы не дёргать /api/finance/ai-insights впустую.
+  // const fetchAiInsight = useCallback(async () => {
+  //   if (!master?.id) return;
+  //   setAiLoading(true);
+  //   try {
+  //     const res = await fetch('/api/finance/ai-insights', {
+  //       method: 'POST',
+  //       headers: { 'Content-Type': 'application/json' },
+  //       body: JSON.stringify({ type: 'period_summary', master_id: master.id, period: periodKey }),
+  //     });
+  //     if (res.ok) {
+  //       const { insight } = await res.json();
+  //       setAiInsight(insight?.trim() || null);
+  //     } else {
+  //       setAiInsight(null);
+  //     }
+  //   } catch {
+  //     setAiInsight(null);
+  //   }
+  //   setAiLoading(false);
+  // }, [master?.id, periodKey]);
 
-  useEffect(() => { fetchAiInsight(); }, [fetchAiInsight]);
+  // useEffect(() => { fetchAiInsight(); }, [fetchAiInsight]);
 
   async function addExpense() {
     if (!master?.id || !expAmount) return;
