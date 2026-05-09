@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     date_formatted,
     selected_time,
     partner_ref_master_id,
+    group_booking_id: incomingGroupId,
   } = body as {
     initData?: string;
     master_id?: string;
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     date_formatted?: string;
     selected_time?: string;
     partner_ref_master_id?: string;
+    group_booking_id?: string;
   };
 
   if (!initData || !master_id || !Array.isArray(appointments) || appointments.length === 0) {
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
   }
 
   // 2. Bulk insert appointments (with explicit return so we know they landed)
+  const groupBookingId = incomingGroupId ?? crypto.randomUUID();
   const rows = appointments.map((a) => ({
     client_id: clientId!,
     master_id,
@@ -132,6 +135,7 @@ export async function POST(request: Request) {
     status: 'booked',
     price: a.price,
     currency: a.currency,
+    group_booking_id: groupBookingId,
   }));
   const { data: inserted, error: insErr } = await admin
     .from('appointments')
@@ -300,5 +304,6 @@ export async function POST(request: Request) {
     clientId,
     appointmentIds: (inserted as Array<{ id: string }>).map((a) => a.id),
     depositsRequired,
+    groupBookingId,
   });
 }

@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -27,6 +28,7 @@ import {
   ChevronRight,
   AlertCircle,
   Info,
+  CheckCircle2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -123,6 +125,10 @@ const STR = {
     waitlistJoined: 'Ви в черзі! Повідомимо коли зʼявиться слот.',
     waitlistAlready: 'Ви вже в черзі',
     upsellLabel: 'Часто додають:',
+    successTitle: 'Записано!',
+    successSub: 'Запис успішно додано',
+    viewBookings: 'Мої записи',
+    addAnotherMaster: 'Додати ще майстра на цей день',
   },
   ru: {
     masterNotFound: 'Мастер не указан',
@@ -157,6 +163,10 @@ const STR = {
     waitlistJoined: 'Вы в очереди! Уведомим когда появится слот.',
     waitlistAlready: 'Вы уже в очереди',
     upsellLabel: 'Часто добавляют:',
+    successTitle: 'Готово!',
+    successSub: 'Запись успешно создана',
+    viewBookings: 'Мои записи',
+    addAnotherMaster: 'Добавить ещё мастера на этот день',
   },
   en: {
     masterNotFound: 'Master not specified',
@@ -191,6 +201,10 @@ const STR = {
     waitlistJoined: "You're on the waitlist! We'll notify you when a slot opens.",
     waitlistAlready: "You're already on the waitlist",
     upsellLabel: 'Often added:',
+    successTitle: 'Booked!',
+    successSub: 'Your appointment is confirmed',
+    viewBookings: 'My bookings',
+    addAnotherMaster: 'Add another master for the same day',
   },
 } as const;
 
@@ -411,6 +425,8 @@ export default function MiniAppBookPage() {
   const [waitlistJoining, setWaitlistJoining] = useState(false);
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [upsellSuggestions, setUpsellSuggestions] = useState<ServiceItem[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [bookedGroupId, setBookedGroupId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -842,6 +858,7 @@ export default function MiniAppBookPage() {
       ok?: boolean;
       appointmentIds?: string[];
       depositsRequired?: Array<{ appointment_id: string; amount: number; currency: string; reason: string | null }>;
+      groupBookingId?: string;
     };
 
     haptic('success');
@@ -898,7 +915,8 @@ export default function MiniAppBookPage() {
       }
     }
 
-    router.push('/telegram/activity');
+    setBookedGroupId(result.groupBookingId ?? null);
+    setShowSuccess(true);
   }
 
   /* ── Full calendar grid ── */
@@ -940,6 +958,45 @@ export default function MiniAppBookPage() {
   }
 
   const endTime = selectedTime ? addMinutesToTime(selectedTime, totalDuration) : '';
+
+  if (showSuccess) {
+    const dateStr = selectedDate
+      ? selectedDate.toLocaleDateString(lang === 'uk' ? 'uk-UA' : lang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short' })
+      : '';
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center" style={{ background: T.bg }}>
+        <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 16, stiffness: 200 }}>
+          <div className="mb-4 flex size-16 items-center justify-center rounded-full" style={{ background: T.accentSoft }}>
+            <CheckCircle2 className="size-8" style={{ color: T.accent }} />
+          </div>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+          <h1 className="text-[22px] font-bold" style={{ color: T.text }}>{t.successTitle}</h1>
+          <p className="mt-1 text-[14px]" style={{ color: T.textSecondary }}>{t.successSub}</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="mt-8 flex w-full max-w-xs flex-col gap-3">
+          {bookedGroupId && dateStr && (
+            <Link
+              href={`/telegram/search?group_booking_id=${bookedGroupId}&date=${selectedDate?.toISOString().slice(0, 10) ?? ''}`}
+              className="flex w-full items-center justify-center rounded-2xl px-4 py-3.5 text-[15px] font-semibold"
+              style={{ background: T.accent, color: '#fff' }}
+              onClick={() => haptic('medium')}
+            >
+              {t.addAnotherMaster}
+            </Link>
+          )}
+          <Link
+            href="/telegram/activity"
+            className="flex w-full items-center justify-center rounded-2xl px-4 py-3.5 text-[15px] font-semibold"
+            style={{ background: T.surfaceElevated, color: T.text, border: `1px solid ${T.borderSubtle}` }}
+            onClick={() => haptic('light')}
+          >
+            {t.viewBookings}
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <>
