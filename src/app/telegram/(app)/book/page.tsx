@@ -684,6 +684,35 @@ export default function MiniAppBookPage() {
     haptic('light');
     setSelectedTime(time);
     goToStep('confirm');
+    // Fire-and-forget: save draft so abandoned-booking cron can send a recovery push
+    if (masterId && selectedDate) {
+      const y = selectedDate.getFullYear();
+      const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const d = String(selectedDate.getDate()).padStart(2, '0');
+      const slotDate = `${y}-${m}-${d}`;
+      const w = typeof window !== 'undefined' ? (window as { Telegram?: { WebApp?: { initData?: string } } }) : null;
+      const liveId = w?.Telegram?.WebApp?.initData ?? null;
+      const stashedId = (() => {
+        try {
+          const s = sessionStorage.getItem('cres:tg');
+          return s ? (JSON.parse(s) as { initData?: string }).initData ?? null : null;
+        } catch { return null; }
+      })();
+      const draftInitData = liveId ?? stashedId;
+      fetch('/api/telegram/c/booking-draft', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(draftInitData ? { 'X-TG-Init-Data': draftInitData } : {}),
+        },
+        body: JSON.stringify({
+          master_id: masterId,
+          service_id: selectedServices[0]?.id ?? null,
+          slot_date: slotDate,
+          slot_time: time,
+        }),
+      }).catch(() => null);
+    }
   }
 
   /* ── Confirmation (booking) ── */
@@ -769,6 +798,25 @@ export default function MiniAppBookPage() {
     };
 
     haptic('success');
+
+    // Mark draft as converted (fire-and-forget)
+    if (selectedDate) {
+      const y = selectedDate.getFullYear();
+      const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const d = String(selectedDate.getDate()).padStart(2, '0');
+      fetch('/api/telegram/c/booking-draft', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+        },
+        body: JSON.stringify({
+          master_id: masterId,
+          slot_date: `${y}-${m}-${d}`,
+          slot_time: selectedTime,
+        }),
+      }).catch(() => null);
+    }
 
     // If any appointment requires a deposit — create intent + redirect to Hutko immediately.
     // We kick off deposit for the FIRST appointment; follow-ups handled individually.
