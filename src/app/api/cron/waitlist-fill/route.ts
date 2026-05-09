@@ -35,8 +35,8 @@ export async function GET(req: Request) {
   const { data: cancelled } = await adm
     .from('appointments')
     .select('id, master_id, service_id, starts_at')
-    .in('status', ['cancelled_by_client', 'cancelled_by_master', 'cancelled'])
-    .gte('cancelled_at', windowStart)
+    .in('status', ['cancelled_by_client', 'cancelled'])
+    .gte('updated_at', windowStart)
     .gt('starts_at', now);
 
   if (!cancelled?.length) {
