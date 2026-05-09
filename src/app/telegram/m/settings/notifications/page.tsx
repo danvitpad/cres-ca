@@ -117,14 +117,24 @@ export default function MiniAppNotificationsPage() {
 
   return (
     <SettingsShell title={t.pageTitle} subtitle={t.pageSubtitle}>
-      <ul className="overflow-hidden rounded-2xl border border-neutral-200 bg-white divide-y divide-neutral-200">
-        {ITEM_ORDER.map((key) => {
+      <ul
+        className="overflow-hidden rounded-2xl"
+        style={{
+          background: 'var(--m-surface)',
+          border: '1px solid var(--m-border)',
+        }}
+      >
+        {ITEM_ORDER.map((key, idx) => {
           const item = t.items[key];
           return (
-            <li key={key} className="flex items-start gap-3 px-4 py-3.5">
+            <li
+              key={key}
+              className="flex items-start gap-3 px-4 py-3.5"
+              style={idx === 0 ? undefined : { borderTop: '1px solid var(--m-border-subtle)' }}
+            >
               <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-medium leading-tight">{item.label}</p>
-                <p className="mt-1 text-[11px] text-neutral-500">{item.hint}</p>
+                <p className="text-[14px] font-medium leading-tight" style={{ color: 'var(--m-text)' }}>{item.label}</p>
+                <p className="mt-1 text-[11px]" style={{ color: 'var(--m-text-secondary)' }}>{item.hint}</p>
               </div>
               <button
                 type="button"

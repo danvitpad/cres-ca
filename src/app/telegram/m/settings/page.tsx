@@ -167,10 +167,11 @@ export default function MasterMiniAppSettings() {
   const [pwSuccess, setPwSuccess] = useState(false);
 
   // Visibility flags для публичной страницы — мастер решает показывать ли
-  // клиентам телефон / email / ДР.
-  const [phonePublic, setPhonePublic] = useState(false);
-  const [emailPublic, setEmailPublic] = useState(false);
-  const [dobPublic, setDobPublic] = useState(false);
+  // клиентам телефон / email / ДР. null = ещё не загружено (скрываем
+  // тумблеры до загрузки, иначе flash «выключено → включено»).
+  const [phonePublic, setPhonePublic] = useState<boolean | null>(null);
+  const [emailPublic, setEmailPublic] = useState<boolean | null>(null);
+  const [dobPublic, setDobPublic] = useState<boolean | null>(null);
 
   // Направление мастера (specialization). Редактируется тут, а не на публичке.
   const [specialization, setSpecialization] = useState<string>('');
@@ -502,36 +503,37 @@ export default function MasterMiniAppSettings() {
           </button>
         </div>
 
-        {/* Видимость на публичной странице — управляет masters.phone_public /
-            email_public / dob_public. Сами поля (телефон, email) живут выше
-            в карточке контактов; здесь только тумблеры показывать ли их клиентам. */}
-        <div>
-          <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: `0 4px 6px` }}>
-            {t.visibilityTitle}
-          </p>
-          <div style={cardStyle}>
-            <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} style={rowStyle}>
-              <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showPhone}</p>
-              <MiniToggle on={phonePublic} />
-            </button>
-            <div style={divider} />
-            <button type="button" onClick={() => toggleVisibility('email_public', !emailPublic)} style={rowStyle}>
-              <div style={iconBox}><Mail size={16} color={T.text} /></div>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showEmail}</p>
-              <MiniToggle on={emailPublic} />
-            </button>
-            <div style={divider} />
-            <button type="button" onClick={() => toggleVisibility('dob_public', !dobPublic)} style={rowStyle}>
-              <div style={iconBox}><Cake size={16} color={T.text} /></div>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showDob}</p>
-              <MiniToggle on={dobPublic} />
-            </button>
+        {/* Видимость на публичной странице — рендерится только после загрузки
+            из БД, иначе flash «выключено → включено» при первом открытии. */}
+        {phonePublic !== null && emailPublic !== null && dobPublic !== null && (
+          <div>
+            <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: `0 4px 6px` }}>
+              {t.visibilityTitle}
+            </p>
+            <div style={cardStyle}>
+              <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} style={rowStyle}>
+                <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showPhone}</p>
+                <MiniToggle on={phonePublic} />
+              </button>
+              <div style={divider} />
+              <button type="button" onClick={() => toggleVisibility('email_public', !emailPublic)} style={rowStyle}>
+                <div style={iconBox}><Mail size={16} color={T.text} /></div>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showEmail}</p>
+                <MiniToggle on={emailPublic} />
+              </button>
+              <div style={divider} />
+              <button type="button" onClick={() => toggleVisibility('dob_public', !dobPublic)} style={rowStyle}>
+                <div style={iconBox}><Cake size={16} color={T.text} /></div>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showDob}</p>
+                <MiniToggle on={dobPublic} />
+              </button>
+            </div>
+            <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
+              {t.visibilityHint}
+            </p>
           </div>
-          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
-            {t.visibilityHint}
-          </p>
-        </div>
+        )}
 
         {/* Master settings list — то что не получило отдельного слота в bottom nav.
             Профиль / Услуги / Голос убраны:
