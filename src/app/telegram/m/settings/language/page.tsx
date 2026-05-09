@@ -10,6 +10,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check } from '@phosphor-icons/react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
@@ -18,14 +19,15 @@ import { setMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'ru' | 'uk' | 'en';
 
-const LANGS: { code: Lang; label: string; flag: string }[] = [
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'uk', label: 'Українська', flag: '🇺🇦' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
+const LANGS: { code: Lang; label: string }[] = [
+  { code: 'ru', label: 'Русский' },
+  { code: 'uk', label: 'Українська' },
+  { code: 'en', label: 'English' },
 ];
 
 export default function MiniAppLanguagePage() {
   const { haptic } = useTelegram();
+  const router = useRouter();
   const { theme } = useMiniAppTheme();
   const [current, setCurrent] = useState<Lang>('uk');
   const [busy, setBusy] = useState(false);
@@ -52,11 +54,12 @@ export default function MiniAppLanguagePage() {
     setBusy(true);
     setCurrent(code);
 
-    // Hot-swap: localStorage + cookie + событие → все компоненты
-    // через useMiniAppLocale моментально перерисуются. Без перезагрузки.
+    // Hot-swap клиентских компонентов через useMiniAppLocale.
     setMiniAppLocale(code);
+    // router.refresh() для server-rendered частей (next-intl читает
+    // новую cookie NEXT_LOCALE) — без полного reload.
+    router.refresh();
 
-    // DB save в фоне.
     fetch('/api/me/ui-prefs', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -81,7 +84,6 @@ export default function MiniAppLanguagePage() {
               className="flex w-full items-center gap-3 px-4 py-3.5 transition-opacity disabled:opacity-60"
               style={{ color: labelColor }}
             >
-              <span className="text-[20px]">{l.flag}</span>
               <span className="flex-1 text-left text-[14px] font-medium">{l.label}</span>
               {current === l.code && <Check size={16} weight="bold" className="text-teal-500" />}
             </button>

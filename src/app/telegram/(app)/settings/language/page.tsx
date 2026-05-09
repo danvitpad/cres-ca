@@ -11,6 +11,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -19,10 +20,10 @@ import { useMiniAppLocale, setMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'uk' | 'ru' | 'en';
 
-const LANGS: { code: Lang; label: string; flag: string }[] = [
-  { code: 'uk', label: 'Українська', flag: '🇺🇦' },
-  { code: 'ru', label: 'Русский', flag: '🇷🇺' },
-  { code: 'en', label: 'English', flag: '🇬🇧' },
+const LANGS: { code: Lang; label: string }[] = [
+  { code: 'uk', label: 'Українська' },
+  { code: 'ru', label: 'Русский' },
+  { code: 'en', label: 'English' },
 ];
 
 const I18N: Record<Lang, { title: string; subtitle: string; back: string; saved: string }> = {
@@ -33,6 +34,7 @@ const I18N: Record<Lang, { title: string; subtitle: string; back: string; saved:
 
 export default function ClientLanguagePage() {
   const { haptic } = useTelegram();
+  const router = useRouter();
   const lang = useMiniAppLocale();
   const [current, setCurrent] = useState<Lang>(lang);
   const [busy, setBusy] = useState(false);
@@ -49,8 +51,13 @@ export default function ClientLanguagePage() {
     setCurrent(code);
 
     // Persist + broadcast — все Mini App компоненты через useMiniAppLocale
-    // мгновенно перерисуются. Без перезагрузки страницы.
+    // мгновенно перерисуются.
     setMiniAppLocale(code);
+
+    // router.refresh() обновляет server-rendered части (next-intl
+    // прочитает новую cookie NEXT_LOCALE) БЕЗ полного reload —
+    // остаёмся на странице языка с UI state.
+    router.refresh();
 
     // DB save в фоне — best-effort, не блокирует UI.
     fetch('/api/me/ui-prefs', {
@@ -59,7 +66,6 @@ export default function ClientLanguagePage() {
       body: JSON.stringify({ ui_language: code }),
     }).catch(() => {});
 
-    // Маленькая задержка для галочки + лоадера, остаёмся на этой странице.
     await new Promise((r) => setTimeout(r, 250));
     setBusy(false);
   }
@@ -142,7 +148,6 @@ export default function ClientLanguagePage() {
                 transition: 'opacity 0.15s',
               }}
             >
-              <span style={{ fontSize: 22 }}>{l.flag}</span>
               <span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>{l.label}</span>
               {current === l.code && (
                 busy
