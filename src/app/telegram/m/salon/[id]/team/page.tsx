@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { haptic } from '@/lib/telegram/webapp';
 import { createClient } from '@/lib/supabase/client';
 import { SalonCatalogTab } from '@/components/salon/admin/catalog-tab';
 import { humanizeError } from '@/lib/format/error';
@@ -271,7 +272,7 @@ function TabButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => { haptic.selection(); onClick(); }}
       className={
         'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition-colors ' +
         (active
@@ -505,7 +506,7 @@ function RequestRow({
         <div className="mt-3 flex justify-end gap-2">
           <button
             type="button"
-            onClick={() => decide('reject')}
+            onClick={() => { haptic.impact('medium'); decide('reject'); }}
             disabled={busy !== null}
             className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
           >
@@ -514,7 +515,7 @@ function RequestRow({
           </button>
           <button
             type="button"
-            onClick={() => decide('approve')}
+            onClick={() => { haptic.impact('medium'); decide('approve'); }}
             disabled={busy !== null}
             className="inline-flex items-center gap-1 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
           >
@@ -827,7 +828,7 @@ function InviteSearchSheet({
               <p className="text-[11px] text-neutral-400">{message.length} / 500</p>
               <button
                 type="button"
-                onClick={send}
+                onClick={() => { haptic.impact('medium'); send(); }}
                 disabled={submitting}
                 className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
               >
@@ -1018,7 +1019,7 @@ function SettingsTab({
           <p className="text-[11px] text-neutral-400">{msg.length} / 600</p>
           <button
             type="button"
-            onClick={saveMessage}
+            onClick={() => { haptic.impact('medium'); saveMessage(); }}
             disabled={savingMsg}
             className="inline-flex items-center gap-1.5 rounded-[var(--brand-radius-lg)] bg-neutral-900 px-4 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50"
           >

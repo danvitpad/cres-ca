@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Bell, Cake } from 'lucide-react';
 import { NotificationPreferencesEditor } from '@/components/notifications/notification-preferences-editor';
+import { haptic } from '@/lib/telegram/webapp';
 
 export default function MiniAppNotificationsPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function MiniAppNotificationsPage() {
 
   async function toggleFriendBday() {
     if (busy || friendBday === null) return;
+    haptic.selection();
     const next = !friendBday;
     setBusy(true);
     setFriendBday(next);
@@ -51,7 +53,7 @@ export default function MiniAppNotificationsPage() {
     >
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => { haptic.impact('light'); router.back(); }}
           className="flex size-9 items-center justify-center rounded-full border border-neutral-200 bg-white active:bg-neutral-50 transition-colors"
           aria-label="Назад"
         >
