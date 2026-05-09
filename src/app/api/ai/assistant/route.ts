@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { aiChat } from '@/lib/ai/openrouter';
 import { parseTextIntent } from '@/lib/ai/gemini-voice';
+import { loadMasterChatHistory, appendMasterChatExchange } from '@/lib/ai/master-chat-history';
 
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -111,6 +112,11 @@ export async function POST(request: Request) {
           status: result.ok ? 'success' : 'failed',
           error_message: result.ok ? null : result.answer.slice(0, 200),
         });
+        // Persist action exchange so AI remembers what was done previously.
+        await appendMasterChatExchange(
+          admin, master.id, message.trim(), result.answer,
+          { action: intent.action, executed: result.ok },
+        );
         return NextResponse.json({ answer: result.answer, action: intent.action, executed: result.ok });
       }
     }
@@ -195,7 +201,10 @@ ${svcList.join(', ') || '—'}
 - Не выдумывай цифр.
 - Без эмодзи, без «отлично/молодец».`;
 
-  const trimmedHistory = (history ?? []).slice(-6);
+  // Persistent history from DB (survives reloads, shared across web/Mini App/TG voice).
+  // Falls back to client-supplied history if DB read fails (best-effort).
+  const dbHistory = await loadMasterChatHistory(admin, master.id, 6);
+  const trimmedHistory = dbHistory.length > 0 ? dbHistory : (history ?? []).slice(-6);
   const conv: ChatMessage[] = [...trimmedHistory, { role: 'user', content: message.trim() }];
 
   let ai = await callGemini(system, conv);
@@ -221,6 +230,9 @@ ${svcList.join(', ') || '—'}
     result: { answer: ai.text.slice(0, 2000), model: ai.model },
     status: 'success',
   });
+
+  // Persist exchange to chat history (best-effort).
+  await appendMasterChatExchange(admin, master.id, message.trim(), ai.text, { model: ai.model });
 
   return NextResponse.json({ answer: ai.text, model: ai.model });
 }
