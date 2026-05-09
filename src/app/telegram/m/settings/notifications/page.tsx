@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface Prefs {
@@ -84,10 +85,17 @@ const ITEM_ORDER: Array<keyof Prefs> = [
 
 export default function MiniAppNotificationsPage() {
   const { haptic } = useTelegram();
+  const { theme } = useMiniAppTheme();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [busy, setBusy] = useState(false);
+
+  const cardBg = theme === 'dark' ? '#1a1a1d' : '#ffffff';
+  const cardBorder = theme === 'dark' ? '#27272a' : '#e5e5e7';
+  const dividerColor = theme === 'dark' ? '#27272a' : '#e5e5e7';
+  const titleColor = theme === 'dark' ? '#fafafa' : '#0a0a0a';
+  const hintColor = theme === 'dark' ? '#a1a1aa' : '#71717a';
 
   useEffect(() => {
     fetch('/api/me/notif-prefs')
@@ -119,10 +127,7 @@ export default function MiniAppNotificationsPage() {
     <SettingsShell title={t.pageTitle} subtitle={t.pageSubtitle}>
       <ul
         className="overflow-hidden rounded-2xl"
-        style={{
-          background: 'var(--m-surface)',
-          border: '1px solid var(--m-border)',
-        }}
+        style={{ background: cardBg, border: `1px solid ${cardBorder}` }}
       >
         {ITEM_ORDER.map((key, idx) => {
           const item = t.items[key];
@@ -130,11 +135,11 @@ export default function MiniAppNotificationsPage() {
             <li
               key={key}
               className="flex items-start gap-3 px-4 py-3.5"
-              style={idx === 0 ? undefined : { borderTop: '1px solid var(--m-border-subtle)' }}
+              style={idx === 0 ? undefined : { borderTop: `1px solid ${dividerColor}` }}
             >
               <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-medium leading-tight" style={{ color: 'var(--m-text)' }}>{item.label}</p>
-                <p className="mt-1 text-[11px]" style={{ color: 'var(--m-text-secondary)' }}>{item.hint}</p>
+                <p className="text-[14px] font-medium leading-tight" style={{ color: titleColor }}>{item.label}</p>
+                <p className="mt-1 text-[11px]" style={{ color: hintColor }}>{item.hint}</p>
               </div>
               <button
                 type="button"
