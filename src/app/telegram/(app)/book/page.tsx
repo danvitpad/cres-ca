@@ -29,13 +29,14 @@ import {
   AlertCircle,
   Info,
   CheckCircle2,
+  Share2,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T } from '@/components/miniapp/design';
 import { formatMoney } from '@/lib/format/money';
-import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram } from '@/lib/telegram/webapp';
+import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram, tg } from '@/lib/telegram/webapp';
 
 /* ─────────────────── Types ─────────────────── */
 
@@ -135,6 +136,7 @@ const STR = {
     successSub: 'Запис успішно додано',
     viewBookings: 'Мої записи',
     addAnotherMaster: 'Додати ще майстра на цей день',
+    shareBooking: 'Поділитися',
   },
   ru: {
     masterNotFound: 'Мастер не указан',
@@ -179,6 +181,7 @@ const STR = {
     successSub: 'Запись успешно создана',
     viewBookings: 'Мои записи',
     addAnotherMaster: 'Добавить ещё мастера на этот день',
+    shareBooking: 'Поделиться',
   },
   en: {
     masterNotFound: 'Master not specified',
@@ -223,6 +226,7 @@ const STR = {
     successSub: 'Your appointment is confirmed',
     viewBookings: 'My bookings',
     addAnotherMaster: 'Add another master for the same day',
+    shareBooking: 'Share',
   },
 } as const;
 
@@ -1004,6 +1008,19 @@ export default function MiniAppBookPage() {
     const dateStr = selectedDate
       ? selectedDate.toLocaleDateString(lang === 'uk' ? 'uk-UA' : lang === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'short' })
       : '';
+    const bookingMasterName = master?.display_name ?? master?.full_name ?? '';
+
+    function shareBookingToTG() {
+      haptic('medium');
+      const emoji = lang === 'en' ? '✅' : '✅';
+      const lines: string[] = [emoji + ' ' + t.successTitle];
+      if (bookingMasterName) lines.push('👤 ' + bookingMasterName);
+      if (dateStr && selectedTime) lines.push('📅 ' + dateStr + ', ' + selectedTime);
+      if (selectedServices.length) lines.push('💆 ' + selectedServices.map((s) => s.name).join(', '));
+      const msg = lines.join('\n');
+      tg()?.openTelegramLink('https://t.me/share/url?url=&text=' + encodeURIComponent(msg));
+    }
+
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center" style={{ background: T.bg }}>
         <motion.div initial={{ scale: 0.7, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 16, stiffness: 200 }}>
@@ -1025,6 +1042,16 @@ export default function MiniAppBookPage() {
             >
               {t.addAnotherMaster}
             </Link>
+          )}
+          {isTelegram() && (
+            <button
+              onClick={shareBookingToTG}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-semibold"
+              style={{ background: T.surfaceElevated, color: T.accent, border: `1px solid ${T.accent}33` }}
+            >
+              <Share2 className="size-4" />
+              {t.shareBooking}
+            </button>
           )}
           <Link
             href="/telegram/activity"
