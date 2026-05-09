@@ -25,6 +25,7 @@ import {
   Loader2,
   X,
   Share2,
+  CalendarPlus,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -79,6 +80,7 @@ const I18N: Record<MiniAppLang, {
   rateTitle: string; ratePlaceholder: string; submitReview: string;
   share: string;
   shareText: (service: string, master: string, date: string) => string;
+  addToCalendar: string;
   status: Record<string, string>;
   dateLocale: 'uk-UA' | 'ru-RU' | 'en-GB';
 }> = {
@@ -93,6 +95,7 @@ const I18N: Record<MiniAppLang, {
     cancelConfirmBack: 'Назад', cancelConfirm: 'Скасувати',
     rateTitle: "Оцініть візит", ratePlaceholder: "Розкажи про візит (необов’язково)", submitReview: "Відправити відгук",
     share: "Поділитись", shareText: (s, m, d) => `Записався до ${m} на ${s} — ${d}`,
+    addToCalendar: "До календаря",
     status: { booked: "Записано", confirmed: "Підтверджено", in_progress: "Йде", completed: "Завершено", cancelled: "Скасовано", cancelled_by_client: "Скасовано", no_show: "Не прийшов" },
     dateLocale: 'uk-UA',
   },
@@ -107,6 +110,7 @@ const I18N: Record<MiniAppLang, {
     cancelConfirmBack: 'Назад', cancelConfirm: 'Отменить',
     rateTitle: 'Оцените визит', ratePlaceholder: 'Расскажи о визите (необязательно)', submitReview: 'Отправить отзыв',
     share: 'Поделиться', shareText: (s, m, d) => `Записался к ${m} на ${s} — ${d}`,
+    addToCalendar: 'В календарь',
     status: { booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт', completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено', no_show: 'Не пришёл' },
     dateLocale: 'ru-RU',
   },
@@ -121,6 +125,7 @@ const I18N: Record<MiniAppLang, {
     cancelConfirmBack: 'Back', cancelConfirm: 'Cancel',
     rateTitle: 'Rate the visit', ratePlaceholder: 'Tell us about the visit (optional)', submitReview: 'Send review',
     share: 'Share', shareText: (s, m, d) => `Booked ${s} with ${m} — ${d}`,
+    addToCalendar: 'Add to Calendar',
     status: { booked: 'Booked', confirmed: 'Confirmed', in_progress: 'In progress', completed: 'Completed', cancelled: 'Cancelled', cancelled_by_client: 'Cancelled', no_show: 'No-show' },
     dateLocale: 'en-GB',
   },
@@ -268,6 +273,17 @@ export default function MiniAppAppointmentDetail() {
     toast('Спасибо за отзыв!');
     setReviewExists(true);
     setRatingOpen(false);
+  }
+
+  function addToCalendar() {
+    if (!row) return;
+    haptic('light');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.cres-ca.com';
+    const icsUrl = `${appUrl}/api/appointments/${row.id}/ics`;
+    try {
+      (window as { Telegram?: { WebApp?: { openLink?: (url: string) => void } } })
+        .Telegram?.WebApp?.openLink?.(icsUrl);
+    } catch {}
   }
 
   function shareBooking() {
@@ -543,6 +559,13 @@ export default function MiniAppAppointmentDetail() {
           style={{ minHeight: 44 }}
         >
           <Share2 className="size-5" /> {t.share}
+        </button>
+        <button
+          onClick={addToCalendar}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-white/5 py-4 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+          style={{ minHeight: 44 }}
+        >
+          <CalendarPlus className="size-5" /> {t.addToCalendar}
         </button>
         {canCancel && (
           <button
