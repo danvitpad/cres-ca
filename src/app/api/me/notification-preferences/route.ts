@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 
   const { data } = await viewer.admin
     .from('notification_preferences')
-    .select('offsets_minutes, enabled, quiet_hours_start, quiet_hours_end')
+    .select('offsets_minutes, enabled, quiet_hours_start, quiet_hours_end, notif_friend_birthdays')
     .eq('profile_id', viewer.id)
     .maybeSingle();
 
@@ -59,6 +59,7 @@ export async function GET(req: Request) {
       enabled: true,
       quiet_hours_start: null,
       quiet_hours_end: null,
+      notif_friend_birthdays: true,
     });
   }
 
@@ -70,6 +71,7 @@ interface PutBody {
   enabled?: boolean;
   quiet_hours_start?: number | null;
   quiet_hours_end?: number | null;
+  notif_friend_birthdays?: boolean;
 }
 
 export async function PUT(req: Request) {
@@ -98,6 +100,9 @@ export async function PUT(req: Request) {
   }
   if (body.quiet_hours_end === null || (typeof body.quiet_hours_end === 'number' && body.quiet_hours_end >= 0 && body.quiet_hours_end <= 23)) {
     payload.quiet_hours_end = body.quiet_hours_end;
+  }
+  if (typeof body.notif_friend_birthdays === 'boolean') {
+    payload.notif_friend_birthdays = body.notif_friend_birthdays;
   }
 
   const { error } = await viewer.admin

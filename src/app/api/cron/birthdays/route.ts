@@ -328,6 +328,58 @@ export async function GET(request: Request) {
     });
   }
 
+  // 1d. Friend birthdays — для каждого профиля с ДР сегодня находим
+  //     mutual-follow друзей и шлём им уведомление (если у них в
+  //     notification_preferences не выключен notif_friend_birthdays).
+  const { data: allBdayProfiles } = await supabase
+    .from('profiles')
+    .select('id, full_name, date_of_birth')
+    .not('date_of_birth', 'is', null);
+
+  const friendBdayHits = (allBdayProfiles ?? []).filter((p) => {
+    if (!p.date_of_birth) return false;
+    const d = new Date(p.date_of_birth);
+    return d.getMonth() + 1 === month && d.getDate() === day;
+  });
+
+  for (const target of friendBdayHits) {
+    // Friends = mutual follow: A→target AND target→A.
+    const [{ data: followers }, { data: following }] = await Promise.all([
+      supabase.from('follows').select('follower_id').eq('following_id', target.id),
+      supabase.from('follows').select('following_id').eq('follower_id', target.id),
+    ]);
+    const followersSet = new Set(((followers ?? []) as Array<{ follower_id: string }>).map((f) => f.follower_id));
+    const friendIds = ((following ?? []) as Array<{ following_id: string }>)
+      .map((f) => f.following_id)
+      .filter((id) => followersSet.has(id));
+    if (friendIds.length === 0) continue;
+
+    // Опт-аут проверка. Default = true (если row нет — считаем opted in).
+    const { data: prefs } = await supabase
+      .from('notification_preferences')
+      .select('profile_id, notif_friend_birthdays')
+      .in('profile_id', friendIds);
+    const prefsMap = new Map<string, boolean>();
+    for (const p of (prefs ?? []) as Array<{ profile_id: string; notif_friend_birthdays: boolean | null }>) {
+      prefsMap.set(p.profile_id, p.notif_friend_birthdays !== false);
+    }
+
+    const targetName = target.full_name || 'твой друг';
+    for (const friendId of friendIds) {
+      const opted = prefsMap.has(friendId) ? prefsMap.get(friendId)! : true;
+      if (!opted) continue;
+      const marker = `[bday:friend:${target.id}:${friendId}:${dayKey}]`;
+      if (sentMarkers.has(marker)) continue;
+      inserts.push({
+        profile_id: friendId,
+        channel: 'telegram',
+        title: '🎂 День народження у друга',
+        body: `Сьогодні день народження у ${targetName}! Не забудь привітати. ${marker}`,
+        scheduled_for: new Date().toISOString(),
+      });
+    }
+  }
+
   // 2. Master birthdays — platform-side greeting from CRES-CA
   const { data: masterProfiles } = await supabase
     .from('profiles')
