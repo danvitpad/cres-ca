@@ -65,78 +65,78 @@ function periodRange(period: Period | null | undefined): { fromIso: string; toIs
 
 /** Список мастеров, к которым у клиента есть отношение:
  *  1) запись в clients (уже ходил) → client_id известен
- *  2) подписка через follows (follower → following = profile мастера) → client_id null,
- *     создаём при первой реальной записи.
- *  Дедуп по master_id. Записи из clients имеют приоритет (там есть client_id). */
+ *  2) подписка через follows → client_id null, создаём при реальной записи.
+ *  Реализовано через 3 простых SELECT (без PostgREST embedded join) —
+ *  embedded версия в проде нестабильна для этого пути. */
 async function findMastersForClient(admin: SupabaseClient, profileId: string): Promise<Array<{
   master_id: string;
   client_id: string | null;
   master_display_name: string;
   master_profile_id: string;
 }>> {
-  const map = new Map<string, {
-    master_id: string;
-    client_id: string | null;
-    master_display_name: string;
-    master_profile_id: string;
-  }>();
-
-  // 1) Из clients (есть client_id, нужен для существующих записей)
-  const { data: clients } = await admin
+  // 1) clients у этого профиля
+  const { data: clientsRows } = await admin
     .from('clients')
-    .select('id, master_id, master:masters(id, display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name))')
+    .select('id, master_id')
     .eq('profile_id', profileId);
-  type ClientRow = {
-    id: string;
-    master_id: string;
-    master: {
-      id: string;
-      display_name: string | null;
-      profile_id: string;
-      profile: { full_name: string | null } | { full_name: string | null }[] | null;
-    } | null;
-  };
-  for (const r of (clients ?? []) as unknown as ClientRow[]) {
-    if (!r.master) continue;
-    const prof = Array.isArray(r.master.profile) ? r.master.profile[0] : r.master.profile;
-    map.set(r.master.id, {
-      master_id: r.master.id,
-      client_id: r.id,
-      master_display_name: r.master.display_name || prof?.full_name || 'мастер',
-      master_profile_id: r.master.profile_id,
-    });
-  }
+  const clients = (clientsRows ?? []) as Array<{ id: string; master_id: string }>;
 
-  // 2) Из follows (подписки клиент → мастер)
-  const { data: follows } = await admin
+  // 2) follows этого профиля → найти masters по following_id (= master profile_id)
+  const { data: followsRows } = await admin
     .from('follows')
     .select('following_id')
     .eq('follower_id', profileId);
-  const followingIds = ((follows ?? []) as Array<{ following_id: string }>).map((f) => f.following_id);
-  if (followingIds.length > 0) {
-    const { data: subscribedMasters } = await admin
+  const followProfileIds = ((followsRows ?? []) as Array<{ following_id: string }>)
+    .map((f) => f.following_id);
+
+  // Собираем все master_id'ы, которые нужно загрузить.
+  const directMasterIds = clients.map((c) => c.master_id);
+  let mastersById = new Map<string, { id: string; display_name: string | null; profile_id: string }>();
+  if (directMasterIds.length > 0) {
+    const { data: ms } = await admin
       .from('masters')
-      .select('id, display_name, profile_id, profile:profiles!masters_profile_id_fkey(full_name)')
-      .in('profile_id', followingIds);
-    type MasterRow = {
-      id: string;
-      display_name: string | null;
-      profile_id: string;
-      profile: { full_name: string | null } | { full_name: string | null }[] | null;
-    };
-    for (const m of (subscribedMasters ?? []) as unknown as MasterRow[]) {
-      if (map.has(m.id)) continue; // уже есть из clients — не перезаписываем
-      const prof = Array.isArray(m.profile) ? m.profile[0] : m.profile;
-      map.set(m.id, {
-        master_id: m.id,
-        client_id: null,
-        master_display_name: m.display_name || prof?.full_name || 'мастер',
-        master_profile_id: m.profile_id,
-      });
+      .select('id, display_name, profile_id')
+      .in('id', directMasterIds);
+    for (const m of ((ms ?? []) as Array<{ id: string; display_name: string | null; profile_id: string }>)) {
+      mastersById.set(m.id, m);
+    }
+  }
+  // Из подписок: ищем masters where profile_id in followProfileIds
+  if (followProfileIds.length > 0) {
+    const { data: ms } = await admin
+      .from('masters')
+      .select('id, display_name, profile_id')
+      .in('profile_id', followProfileIds);
+    for (const m of ((ms ?? []) as Array<{ id: string; display_name: string | null; profile_id: string }>)) {
+      if (!mastersById.has(m.id)) mastersById.set(m.id, m);
     }
   }
 
-  return Array.from(map.values());
+  if (mastersById.size === 0) return [];
+
+  // Подтягиваем profile.full_name для тех у кого display_name пусто.
+  const allProfileIds = Array.from(mastersById.values()).map((m) => m.profile_id);
+  const profilesByid = new Map<string, string | null>();
+  if (allProfileIds.length > 0) {
+    const { data: profs } = await admin
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', allProfileIds);
+    for (const p of ((profs ?? []) as Array<{ id: string; full_name: string | null }>)) {
+      profilesByid.set(p.id, p.full_name);
+    }
+  }
+
+  // Map master_id → client_id (если есть в clients)
+  const clientIdByMaster = new Map<string, string>();
+  for (const c of clients) clientIdByMaster.set(c.master_id, c.id);
+
+  return Array.from(mastersById.values()).map((m) => ({
+    master_id: m.id,
+    client_id: clientIdByMaster.get(m.id) ?? null,
+    master_display_name: m.display_name || profilesByid.get(m.profile_id) || 'мастер',
+    master_profile_id: m.profile_id,
+  }));
 }
 
 /** Создать clients-row для клиента у мастера, если её ещё нет.
