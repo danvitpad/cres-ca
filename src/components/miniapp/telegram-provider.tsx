@@ -50,7 +50,14 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       const root = document.documentElement;
       const csa = webapp.contentSafeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 };
       const sa = webapp.safeAreaInset ?? { top: 0, bottom: 0, left: 0, right: 0 };
-      root.style.setProperty('--tg-content-top', `${csa.top}px`);
+      // В fullscreen-режиме Telegram возвращает contentSafeAreaInset.top = 0
+      // (своего хедера нет), НО кнопки «Закрыть» / стрелка / меню плавают
+      // поверх контента в верхнем углу — заголовки страниц залезают под них.
+      // Резервируем safeAreaInset.top (статусбар) + 56px на плавающие кнопки.
+      const w = webapp as unknown as { isExpanded?: boolean; isFullscreen?: boolean };
+      const isFullscreen = w.isFullscreen === true;
+      const topInset = isFullscreen ? sa.top + 56 : csa.top;
+      root.style.setProperty('--tg-content-top', `${topInset}px`);
       root.style.setProperty('--tg-content-bottom', `${csa.bottom}px`);
       root.style.setProperty('--tg-safe-top', `${sa.top}px`);
       root.style.setProperty('--tg-safe-bottom', `${sa.bottom}px`);
