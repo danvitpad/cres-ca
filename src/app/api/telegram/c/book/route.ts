@@ -46,6 +46,7 @@ export async function POST(request: Request) {
     selected_time,
     partner_ref_master_id,
     group_booking_id: incomingGroupId,
+    gift_cert_code,
   } = body as {
     initData?: string;
     master_id?: string;
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
     selected_time?: string;
     partner_ref_master_id?: string;
     group_booking_id?: string;
+    gift_cert_code?: string;
   };
 
   if (!initData || !master_id || !Array.isArray(appointments) || appointments.length === 0) {
@@ -297,6 +299,17 @@ export async function POST(request: Request) {
       sent_at: new Date().toISOString(),
       data: { type: isReschedule ? 'appointment_rescheduled' : 'appointment_created', action_url: '/telegram/app/activity' },
     });
+  }
+
+  // Redeem gift certificate if provided (fire-and-forget: booking is already committed)
+  if (gift_cert_code) {
+    await admin
+      .from('gift_certificates')
+      .update({ is_redeemed: true, redeemed_by: clientId })
+      .eq('master_id', master_id)
+      .ilike('code', gift_cert_code.trim())
+      .eq('is_redeemed', false)
+      .then(() => null, () => null);
   }
 
   return NextResponse.json({

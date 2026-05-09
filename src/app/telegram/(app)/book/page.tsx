@@ -125,6 +125,12 @@ const STR = {
     waitlistJoined: 'Ви в черзі! Повідомимо коли зʼявиться слот.',
     waitlistAlready: 'Ви вже в черзі',
     upsellLabel: 'Часто додають:',
+    giftCertPlaceholder: 'Код сертифіката',
+    giftCertApply: 'Застосувати',
+    giftCertApplied: (amt: string) => `Сертифікат: −${amt}`,
+    giftCertRemove: 'Видалити',
+    giftCertInvalid: 'Сертифікат не знайдено або вже використано',
+    giftCertChecking: 'Перевірка...',
     successTitle: 'Записано!',
     successSub: 'Запис успішно додано',
     viewBookings: 'Мої записи',
@@ -163,6 +169,12 @@ const STR = {
     waitlistJoined: 'Вы в очереди! Уведомим когда появится слот.',
     waitlistAlready: 'Вы уже в очереди',
     upsellLabel: 'Часто добавляют:',
+    giftCertPlaceholder: 'Код сертификата',
+    giftCertApply: 'Применить',
+    giftCertApplied: (amt: string) => `Сертификат: −${amt}`,
+    giftCertRemove: 'Удалить',
+    giftCertInvalid: 'Сертификат не найден или уже использован',
+    giftCertChecking: 'Проверка...',
     successTitle: 'Готово!',
     successSub: 'Запись успешно создана',
     viewBookings: 'Мои записи',
@@ -201,6 +213,12 @@ const STR = {
     waitlistJoined: "You're on the waitlist! We'll notify you when a slot opens.",
     waitlistAlready: "You're already on the waitlist",
     upsellLabel: 'Often added:',
+    giftCertPlaceholder: 'Gift card code',
+    giftCertApply: 'Apply',
+    giftCertApplied: (amt: string) => `Gift card: −${amt}`,
+    giftCertRemove: 'Remove',
+    giftCertInvalid: 'Certificate not found or already used',
+    giftCertChecking: 'Checking...',
     successTitle: 'Booked!',
     successSub: 'Your appointment is confirmed',
     viewBookings: 'My bookings',
@@ -427,6 +445,10 @@ export default function MiniAppBookPage() {
   const [upsellSuggestions, setUpsellSuggestions] = useState<ServiceItem[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [bookedGroupId, setBookedGroupId] = useState<string | null>(null);
+  const [giftCertCode, setGiftCertCode] = useState('');
+  const [giftCertDiscount, setGiftCertDiscount] = useState<number | null>(null);
+  const [giftCertCheckingState, setGiftCertCheckingState] = useState(false);
+  const [giftCertError, setGiftCertError] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -778,6 +800,24 @@ export default function MiniAppBookPage() {
     }
   }
 
+  /* ── Gift certificate validation ── */
+  async function handleApplyGiftCert() {
+    const code = giftCertCode.trim().toUpperCase();
+    if (!code || !masterId) return;
+    haptic('light');
+    setGiftCertCheckingState(true);
+    setGiftCertError('');
+    const res = await fetch(
+      `/api/telegram/c/gift-cert?code=${encodeURIComponent(code)}&master_id=${masterId}`,
+    ).catch(() => null);
+    setGiftCertCheckingState(false);
+    if (!res?.ok) { setGiftCertError(t.giftCertInvalid); haptic('error'); return; }
+    const data = await res.json() as { valid?: boolean; amount?: number };
+    if (!data.valid || !data.amount) { setGiftCertError(t.giftCertInvalid); haptic('error'); return; }
+    haptic('success');
+    setGiftCertDiscount(data.amount);
+  }
+
   /* ── Confirmation (booking) ── */
   async function handleConfirm() {
     if (selectedServices.length === 0 || !selectedDate || !selectedTime || !masterId || !userId) return;
@@ -846,6 +886,7 @@ export default function MiniAppBookPage() {
         date_formatted: dateFormatted,
         selected_time: selectedTime,
         partner_ref_master_id: partnerRef ?? undefined,
+        gift_cert_code: giftCertDiscount ? giftCertCode.trim().toUpperCase() : undefined,
       }),
     });
     if (!res.ok) {
@@ -1668,10 +1709,64 @@ export default function MiniAppBookPage() {
                   {/* Total */}
                   <div className="flex items-center justify-between p-5">
                     <p className="text-[14px] font-medium" style={{ color: T.textSecondary }}>{t.totalToPay}</p>
-                    <p className="text-[20px] font-bold" style={{ color: T.text }}>
-                      {formatMoney(totalPrice, currency)}
-                    </p>
+                    <div className="text-right">
+                      {giftCertDiscount != null && (
+                        <p className="text-[13px] line-through" style={{ color: T.textSecondary }}>
+                          {formatMoney(totalPrice, currency)}
+                        </p>
+                      )}
+                      <p className="text-[20px] font-bold" style={{ color: T.text }}>
+                        {formatMoney(Math.max(0, totalPrice - (giftCertDiscount ?? 0)), currency)}
+                      </p>
+                    </div>
                   </div>
+                </motion.div>
+
+                {/* Gift certificate input */}
+                <motion.div
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  className="mt-4 overflow-hidden rounded-2xl"
+                  style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
+                >
+                  {giftCertDiscount == null ? (
+                    <div className="flex items-center gap-2 p-4">
+                      <input
+                        type="text"
+                        value={giftCertCode}
+                        onChange={(e) => { setGiftCertCode(e.target.value.toUpperCase()); setGiftCertError(''); }}
+                        placeholder={t.giftCertPlaceholder}
+                        maxLength={32}
+                        className="min-w-0 flex-1 bg-transparent text-[14px] outline-none"
+                        style={{ color: T.text }}
+                      />
+                      <button
+                        onClick={handleApplyGiftCert}
+                        disabled={!giftCertCode.trim() || giftCertCheckingState}
+                        className="shrink-0 rounded-xl px-3 py-2 text-[13px] font-semibold transition-colors disabled:opacity-40"
+                        style={{ background: T.text, color: T.bg }}
+                      >
+                        {giftCertCheckingState ? t.giftCertChecking : t.giftCertApply}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4">
+                      <p className="text-[14px] font-semibold" style={{ color: T.accent }}>
+                        {t.giftCertApplied(formatMoney(giftCertDiscount, currency))}
+                      </p>
+                      <button
+                        onClick={() => { haptic('light'); setGiftCertDiscount(null); setGiftCertCode(''); }}
+                        className="text-[13px] font-medium"
+                        style={{ color: T.textSecondary }}
+                      >
+                        {t.giftCertRemove}
+                      </button>
+                    </div>
+                  )}
+                  {giftCertError && (
+                    <p className="px-4 pb-3 text-[12px]" style={{ color: T.danger }}>{giftCertError}</p>
+                  )}
                 </motion.div>
 
                 {master?.booking_important_info && master.booking_important_info.trim().length > 0 && (
