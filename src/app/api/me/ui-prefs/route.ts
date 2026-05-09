@@ -25,17 +25,23 @@ export async function GET() {
 
   const { data } = await supabase
     .from('profiles')
-    .select('ui_theme, ui_language, public_language')
+    .select('ui_theme, ui_language, public_language, haptic_enabled')
     .eq('id', user.id)
     .maybeSingle();
 
-  const profile = data as { ui_theme?: string; ui_language?: string; public_language?: string } | null;
+  const profile = data as {
+    ui_theme?: string;
+    ui_language?: string;
+    public_language?: string;
+    haptic_enabled?: boolean;
+  } | null;
   // Дефолт UI-языка для новых пользователей = 'uk' (правило 2026-05-06).
   // public_language наследуется от ui_language, иначе тоже 'uk'.
   return NextResponse.json({
     ui_theme: profile?.ui_theme ?? 'auto',
     ui_language: profile?.ui_language ?? 'uk',
     public_language: profile?.public_language ?? profile?.ui_language ?? 'uk',
+    haptic_enabled: profile?.haptic_enabled ?? true,
   });
 }
 
@@ -48,13 +54,15 @@ export async function PATCH(req: Request) {
     ui_theme?: string;
     ui_language?: string;
     public_language?: string;
+    haptic_enabled?: boolean;
   } | null;
   if (!body) return NextResponse.json({ error: 'bad_request' }, { status: 400 });
 
-  const update: Record<string, string> = {};
+  const update: Record<string, string | boolean> = {};
   if (body.ui_theme && VALID_THEME.has(body.ui_theme)) update.ui_theme = body.ui_theme;
   if (body.ui_language && VALID_LANG.has(body.ui_language)) update.ui_language = body.ui_language;
   if (body.public_language && VALID_LANG.has(body.public_language)) update.public_language = body.public_language;
+  if (typeof body.haptic_enabled === 'boolean') update.haptic_enabled = body.haptic_enabled;
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'no_valid_fields' }, { status: 400 });
   }

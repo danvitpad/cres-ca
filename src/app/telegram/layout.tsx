@@ -5,13 +5,14 @@
 
 import Script from 'next/script';
 import { SwipeNavigator } from '@/components/shared/swipe-navigator';
+import { HapticProvider } from '@/components/miniapp/haptic-provider';
 
 export default function TelegramLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
       <SwipeNavigator />
-      {children}
+      <HapticProvider>{children}</HapticProvider>
     </>
   );
 }

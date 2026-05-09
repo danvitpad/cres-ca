@@ -99,14 +99,22 @@ export const SHADOW = {
   pill: '0 4px 16px rgba(15,18,24,0.12)',
 } as const;
 
-/** Анимации — мягкие spring-y кривые. Используются framer-motion. */
+/** Анимации — Telegram-iOS feel: snappy без overshoot. Используются framer-motion. */
 export const SPRING = {
-  /** Default scale/translate spring */
-  default: { type: 'spring' as const, stiffness: 320, damping: 32 },
-  /** Snappy для кнопок */
-  snappy: { type: 'spring' as const, stiffness: 480, damping: 30 },
-  /** Soft для page transitions */
-  soft: { type: 'spring' as const, stiffness: 220, damping: 28 },
+  /** Default — общая просадка/перевод. */
+  default: { type: 'spring' as const, stiffness: 380, damping: 36 },
+  /** Snappy — для кнопок и tap-эффектов. */
+  snappy: { type: 'spring' as const, stiffness: 540, damping: 38 },
+  /** Soft — для page transitions и крупных layout-движений. */
+  soft: { type: 'spring' as const, stiffness: 280, damping: 32 },
+} as const;
+
+/** Эаз-кривые для не-spring анимаций (opacity, transform, page transitions).
+ *  Длительность в секундах. Material standard / iOS emphasized / fast-exit. */
+export const EASE = {
+  standard: { duration: 0.18, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] },
+  emphasized: { duration: 0.22, ease: [0.2, 0, 0, 1] as [number, number, number, number] },
+  exit: { duration: 0.14, ease: [0.4, 0, 1, 1] as [number, number, number, number] },
 } as const;
 
 /** Геометрия — стандартный padding страницы под Mini App шириной 390px */
