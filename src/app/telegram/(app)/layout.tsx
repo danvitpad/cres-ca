@@ -15,6 +15,7 @@ import { Home, Search, CalendarDays, User } from 'lucide-react';
 import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
 import { MiniAppThemeProvider } from '@/components/miniapp/theme';
+import { PageTransition } from '@/components/miniapp/page-transition';
 import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
@@ -99,7 +100,7 @@ export default function MiniAppLayout({ children }: { children: React.ReactNode 
               : 'calc(81px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
         <MiniAppBottomNav
           tabs={[

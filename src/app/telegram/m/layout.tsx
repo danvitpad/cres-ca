@@ -24,6 +24,7 @@ import { TelegramProvider } from '@/components/miniapp/telegram-provider';
 import { MiniAppBottomNav, type NavTab } from '@/components/miniapp/bottom-nav';
 import { MiniAppThemeProvider } from '@/components/miniapp/theme';
 import { MiniAppHeaderAvatar } from '@/components/miniapp/header-avatar';
+import { PageTransition } from '@/components/miniapp/page-transition';
 import { T, FONT_BASE } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
@@ -148,7 +149,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
               : 'calc(81px + max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px)))',
           }}
         >
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
         {!isFullscreen && !keyboardOpen && <MiniAppHeaderAvatar />}
         {!isFullscreen && !keyboardOpen && <MiniAppBottomNav tabs={tabs} />}

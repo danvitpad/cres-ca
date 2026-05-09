@@ -9,10 +9,10 @@
 
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
+import { NavLink } from './nav-link';
 import { T, R, SHADOW, SPRING } from './design';
 
 export interface NavTab {
@@ -68,7 +68,7 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
           const Icon = active && tab.iconFilled ? tab.iconFilled : tab.icon;
           return (
             <li key={tab.key} style={{ flex: 1 }}>
-              <Link
+              <NavLink
                 href={tab.href}
                 aria-label={tab.label}
                 aria-current={active ? 'page' : undefined}
@@ -103,7 +103,7 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                   fill="none"
                   style={{ position: 'relative', zIndex: 1 }}
                 />
-              </Link>
+              </NavLink>
             </li>
           );
         })}
