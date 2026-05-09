@@ -126,11 +126,109 @@ export async function handleClientVoiceIntent(
   if (intent.action === 'book') {
     return bookAppointment(admin, profileId, intent);
   }
+  if (intent.action === 'my_bonuses') {
+    return myBonuses(admin, profileId, intent.master_hint ?? null);
+  }
+  if (intent.action === 'my_masters') {
+    return myMasters(admin, profileId);
+  }
+  if (intent.action === 'help') {
+    return helpReply();
+  }
   // feedback и unknown обрабатываются ВНЕ хендлера — feedback идёт в старый
   // saveFeedbackAndNotify путь в webhook'е, unknown → подсказка.
   return {
     ok: false,
-    reply: '🤔 Не понял. Скажи: «запиши к Анне на маникюр завтра в 14», «когда у меня записи», «сколько потратил за май», «отмени запись на завтра».',
+    reply: '🤔 Не понял. Скажи: «запиши к Анне на маникюр завтра в 14», «когда у меня записи», «сколько потратил за май», «отмени запись на завтра», «сколько у меня бонусов», «кто мои мастера». Или напиши «помощь» — я расскажу всё что умею.',
+  };
+}
+
+/** Бонусы клиента у его мастеров. Если master_hint указан — фильтр.
+ *  Использует loyalty_balances + masters/profiles для имени. */
+async function myBonuses(admin: SupabaseClient, profileId: string, masterHint: string | null): Promise<HandlerResult> {
+  const { data: balances } = await admin
+    .from('loyalty_balances')
+    .select('balance, locked_balance, master:masters(id, display_name, profile:profiles!masters_profile_id_fkey(full_name))')
+    .eq('profile_id', profileId);
+
+  type Row = {
+    balance: number | null;
+    locked_balance: number | null;
+    master: {
+      id: string;
+      display_name: string | null;
+      profile: { full_name: string | null } | { full_name: string | null }[] | null;
+    } | { id: string; display_name: string | null; profile: { full_name: string | null } | { full_name: string | null }[] | null }[] | null;
+  };
+
+  const rows = ((balances ?? []) as unknown as Row[])
+    .map((r) => {
+      const m = Array.isArray(r.master) ? r.master[0] : r.master;
+      const prof = m ? (Array.isArray(m.profile) ? m.profile[0] : m.profile) : null;
+      const masterName = m?.display_name || prof?.full_name || 'мастер';
+      return {
+        masterName,
+        balance: Number(r.balance ?? 0),
+        locked: Number(r.locked_balance ?? 0),
+      };
+    })
+    .filter((r) => r.balance > 0 || r.locked > 0);
+
+  const filtered = masterHint
+    ? rows.filter((r) => r.masterName.toLowerCase().includes(masterHint.toLowerCase()))
+    : rows;
+
+  if (filtered.length === 0) {
+    return {
+      ok: true,
+      reply: masterHint
+        ? `🎁 У мастера «${masterHint}» бонусов нет.`
+        : '🎁 Пока бонусов нет. После визитов они начнут накапливаться.',
+    };
+  }
+
+  const lines = filtered.map((r) => `• ${r.masterName} — ${r.balance} баллов${r.locked > 0 ? ` (ещё ${r.locked} в ожидании)` : ''}`);
+  return { ok: true, reply: `🎁 Твои бонусы:\n${lines.join('\n')}` };
+}
+
+/** Список мастеров, к которым клиент уже ходил (имеет запись в clients). */
+async function myMasters(admin: SupabaseClient, profileId: string): Promise<HandlerResult> {
+  const masters = await findMastersForClient(admin, profileId);
+  if (masters.length === 0) {
+    return { ok: true, reply: '👥 Ты пока не записывалась ни к одному мастеру. Открой приложение и найди подходящего.' };
+  }
+  // Дедуп по master_id (если у клиента несколько строк под одним мастером).
+  const seen = new Set<string>();
+  const unique = masters.filter((m) => {
+    if (seen.has(m.master_id)) return false;
+    seen.add(m.master_id);
+    return true;
+  });
+  const lines = unique.map((m) => `• ${m.master_display_name}`);
+  return { ok: true, reply: `👥 Твои мастера:\n${lines.join('\n')}` };
+}
+
+/** Что умеет клиентский AI. Текст синхронизирован с /help в TG-боте. */
+function helpReply(): HandlerResult {
+  return {
+    ok: true,
+    reply: `💡 Что я умею (текстом или голосом):
+
+📅 Записи
+• «Запиши меня к Тане на маникюр завтра в 14»
+• «Какие у меня записи?»
+• «Отмени запись на завтра»
+• «Перенеси на пятницу 16:00»
+
+💰 Деньги
+• «Сколько я потратила в этом месяце?»
+• «Сколько у меня бонусов?»
+
+👥 Мои мастера
+• «Кто мои мастера?»
+
+💬 Обратная связь
+Хочешь сообщить о баге или предложить идею — начни со слов «жалоба» / «идея» / «не работает», или используй /feedback.`,
   };
 }
 

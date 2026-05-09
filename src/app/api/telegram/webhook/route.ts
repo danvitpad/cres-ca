@@ -383,10 +383,12 @@ async function handleTextIntent(chatId: number, text: string) {
       const { parseClientTextIntent } = await import('@/lib/ai/client-voice-intent');
       const intent = await parseClientTextIntent(text);
 
-      if (intent.action === 'feedback' || intent.action === 'unknown') {
+      // Только ЯВНЫЙ feedback идёт в feedback table. unknown даёт подсказку
+      // и НЕ засоряет feedback.
+      if (intent.action === 'feedback') {
         const fbText = (intent.text || text).trim();
         if (fbText.length < 4) {
-          await sendMessage(chatId, '❌ Слишком коротко. Опиши подробнее или скажи что нужно сделать.');
+          await sendMessage(chatId, '❌ Слишком коротко. Опиши подробнее.');
           return;
         }
         await saveFeedbackAndNotify(session.profile_id, fbText, 'telegram_bot', { chatId });
