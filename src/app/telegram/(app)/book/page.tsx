@@ -825,6 +825,19 @@ export default function MiniAppBookPage() {
 
     haptic('success');
 
+    // After 2nd successful booking, prompt to add the Mini App to home screen.
+    try {
+      const key = 'cres:bookings_done';
+      const prev = parseInt(localStorage.getItem(key) ?? '0', 10);
+      const next = prev + 1;
+      localStorage.setItem(key, String(next));
+      if (next === 2) {
+        // requestFullscreen is already active; addToHomeScreen shows native dialog
+        (window as { Telegram?: { WebApp?: { addToHomeScreen?: () => void } } })
+          .Telegram?.WebApp?.addToHomeScreen?.();
+      }
+    } catch {}
+
     // Mark draft as converted (fire-and-forget)
     if (selectedDate) {
       const y = selectedDate.getFullYear();

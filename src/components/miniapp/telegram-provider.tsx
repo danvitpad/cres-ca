@@ -80,6 +80,7 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       }
       webapp.ready();
       webapp.expand();
+      try { webapp.requestFullscreen(); } catch {}
       try { webapp.disableVerticalSwipes(); } catch {}
       // Initial chrome paint — keyword 'bg_color', не hex.
       // Telegram сам подбирает цвет под текущую тему (тёмная/светлая)
