@@ -505,13 +505,19 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
     const names = svcList.map((s) => s.name).slice(0, 5).join(', ');
     return { ok: false, reply: `🤔 Услуга не найдена. У ${target.master_display_name} есть: ${names}.` };
   }
-  if (matched.length > 1 && hint) {
-    const names = matched.map((s) => s.name).slice(0, 5).join(', ');
-    return { ok: false, reply: `🤔 Уточни услугу: ${names}.` };
+  // Услуга должна быть названа явно — даже если она одна. Иначе клиент
+  // может случайно записаться не на ту, особенно если у мастера потом
+  // появится больше услуг.
+  if (!hint) {
+    const names = svcList.map((s) => s.name).slice(0, 6).join(', ');
+    const onlyOne = svcList.length === 1
+      ? `Подтверди — записать на «${svcList[0].name}»? Скажи: «запиши на ${svcList[0].name}».`
+      : `Скажи какую: «запиши на ${svcList[0].name}».`;
+    return { ok: false, reply: `🤔 На какую услугу? У ${target.master_display_name} есть: ${names}. ${onlyOne}` };
   }
   if (matched.length > 1) {
     const names = matched.map((s) => s.name).slice(0, 5).join(', ');
-    return { ok: false, reply: `🤔 У ${target.master_display_name} несколько услуг: ${names}. Скажи какую.` };
+    return { ok: false, reply: `🤔 Уточни услугу: ${names}.` };
   }
   const svc = matched[0];
 
@@ -540,7 +546,7 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
     }
   }
 
-  const { error } = await admin
+  const { data: createdApt, error } = await admin
     .from('appointments')
     .insert({
       master_id: target.master_id,
@@ -552,10 +558,52 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
       price: svc.price,
       currency: svc.currency,
       booked_via: 'tg_voice',
-    });
+    })
+    .select('id')
+    .single();
   if (error) {
     return { ok: false, reply: '❌ Не получилось создать запись. Попробуй из приложения.' };
   }
+
+  // Уведомление мастеру: клиент записался сам, мастеру нужно знать.
+  // Best-effort — ошибка не должна сломать ответ клиенту.
+  try {
+    const { data: masterRow } = await admin
+      .from('masters')
+      .select('profile_id')
+      .eq('id', target.master_id)
+      .maybeSingle();
+    const masterProfileId = (masterRow as { profile_id: string | null } | null)?.profile_id;
+    if (masterProfileId) {
+      const { data: clientProfile } = await admin
+        .from('profiles')
+        .select('full_name')
+        .eq('id', profileId)
+        .maybeSingle();
+      const clientName = (clientProfile as { full_name: string | null } | null)?.full_name || 'Клиент';
+      await admin.from('notifications').insert({
+        profile_id: masterProfileId,
+        channel: 'telegram',
+        title: '📅 Новая запись',
+        body:
+          'Клиент: ' + clientName + '\n' +
+          'Услуга: ' + svc.name + '\n' +
+          'Дата: ' + fmtDate(startsAt.toISOString()) + '\n' +
+          'Время: ' + fmtTime(startsAt.toISOString()),
+        data: {
+          kind: 'master_booking_created',
+          apt_id: createdApt?.id,
+          client_id: clientId,
+          master_id: target.master_id,
+        },
+        status: 'pending',
+        scheduled_for: new Date().toISOString(),
+      });
+    }
+  } catch (e) {
+    console.error('[client-book] master notify failed:', (e as Error)?.message);
+  }
+
   return {
     ok: true,
     reply: `✅ Записал тебя: ${svc.name} у ${target.master_display_name}, ${fmtDate(startsAt.toISOString())} в ${fmtTime(startsAt.toISOString())}.`,
