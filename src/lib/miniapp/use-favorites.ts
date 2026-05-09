@@ -1,19 +1,32 @@
 /** --- YAML
  * name: useFavorites
  * description: >
- *   Persists a list of favourite master profile IDs in Telegram CloudStorage
- *   (falls back to localStorage in browser). Key: "fav:masters".
+ *   Persists favourite master profile IDs in Supabase (client_master_links).
+ *   Survives Telegram reinstall, cache clears, and device switches.
+ *   Uses /api/telegram/c/favorites — supports both cookie and X-TG-Init-Data auth.
  * created: 2026-05-09
  * --- */
 
 import { useCallback, useEffect, useState } from 'react';
-import { csGet, csSet } from '@/lib/miniapp/cloud-storage';
 
-const KEY = 'fav:masters';
+function getInitData(): string | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+  const live = w.Telegram?.WebApp?.initData;
+  if (live) return live;
+  try {
+    const stash = sessionStorage.getItem('cres:tg');
+    if (stash) {
+      const parsed = JSON.parse(stash) as { initData?: string };
+      if (parsed.initData) return parsed.initData;
+    }
+  } catch {}
+  return null;
+}
 
-function parse(raw: string | null): string[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw) as string[]; } catch { return []; }
+function headers(): Record<string, string> {
+  const initData = getInitData();
+  return { 'Content-Type': 'application/json', ...(initData ? { 'X-TG-Init-Data': initData } : {}) };
 }
 
 export function useFavorites() {
@@ -21,18 +34,30 @@ export function useFavorites() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    csGet(KEY).then((raw) => {
-      setIds(parse(raw));
-      setLoaded(true);
-    });
+    fetch('/api/telegram/c/favorites', { headers: headers() })
+      .then((r) => r.ok ? r.json() : null)
+      .then((json: { masterProfileIds?: string[] } | null) => {
+        setIds(json?.masterProfileIds ?? []);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
   }, []);
 
-  const isFavorite = useCallback((id: string) => ids.includes(id), [ids]);
+  const isFavorite = useCallback((profileId: string) => ids.includes(profileId), [ids]);
 
-  const toggle = useCallback(async (id: string) => {
-    const next = ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
-    setIds(next);
-    await csSet(KEY, JSON.stringify(next));
+  const toggle = useCallback(async (masterProfileId: string) => {
+    const wasFavorited = ids.includes(masterProfileId);
+    // Optimistic update
+    setIds((prev) => wasFavorited ? prev.filter((x) => x !== masterProfileId) : [...prev, masterProfileId]);
+    const res = await fetch('/api/telegram/c/favorites', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ masterProfileId }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      // Rollback on failure
+      setIds((prev) => wasFavorited ? [...prev, masterProfileId] : prev.filter((x) => x !== masterProfileId));
+    }
   }, [ids]);
 
   return { isFavorite, toggle, loaded };
