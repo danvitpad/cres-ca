@@ -23,6 +23,7 @@ import {
   Plus,
   Loader2,
   Calendar as CalendarIcon,
+  CalendarPlus,
   MapPin,
   ChevronLeft,
   ChevronRight,
@@ -137,6 +138,7 @@ const STR = {
     viewBookings: 'Мої записи',
     addAnotherMaster: 'Додати ще майстра на цей день',
     shareBooking: 'Поділитися',
+    addToCalendar: 'Додати в календар',
   },
   ru: {
     masterNotFound: 'Мастер не указан',
@@ -182,6 +184,7 @@ const STR = {
     viewBookings: 'Мои записи',
     addAnotherMaster: 'Добавить ещё мастера на этот день',
     shareBooking: 'Поделиться',
+    addToCalendar: 'Добавить в календарь',
   },
   en: {
     masterNotFound: 'Master not specified',
@@ -227,6 +230,7 @@ const STR = {
     viewBookings: 'My bookings',
     addAnotherMaster: 'Add another master for the same day',
     shareBooking: 'Share',
+    addToCalendar: 'Add to calendar',
   },
 } as const;
 
@@ -1010,6 +1014,25 @@ export default function MiniAppBookPage() {
       : '';
     const bookingMasterName = master?.display_name ?? master?.full_name ?? '';
 
+    function addToGoogleCalendar() {
+      haptic('medium');
+      if (!selectedDate || !selectedTime) return;
+      const [h, m] = selectedTime.split(':').map(Number);
+      const startDt = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), h, m);
+      const endDt = new Date(startDt.getTime() + totalDuration * 60000);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const fmt = (d: Date) =>
+        d.getFullYear().toString() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+        'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
+      const title = selectedServices.map((s) => s.name).join(', ') + (bookingMasterName ? ` — ${bookingMasterName}` : '');
+      const masterLabel = lang === 'uk' ? 'Майстер' : lang === 'ru' ? 'Мастер' : 'Master';
+      const details = bookingMasterName ? `${masterLabel}: ${bookingMasterName}` : '';
+      const params = new URLSearchParams({ action: 'TEMPLATE', text: title, dates: `${fmt(startDt)}/${fmt(endDt)}` });
+      if (details) params.set('details', details);
+      if (master?.address) params.set('location', master.address);
+      tg()?.openLink('https://calendar.google.com/calendar/render?' + params.toString());
+    }
+
     function shareBookingToTG() {
       haptic('medium');
       const emoji = lang === 'en' ? '✅' : '✅';
@@ -1043,15 +1066,25 @@ export default function MiniAppBookPage() {
               {t.addAnotherMaster}
             </Link>
           )}
-          {isTelegram() && (
-            <button
-              onClick={shareBookingToTG}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-semibold"
-              style={{ background: T.surfaceElevated, color: T.accent, border: `1px solid ${T.accent}33` }}
-            >
-              <Share2 className="size-4" />
-              {t.shareBooking}
-            </button>
+          {isTelegram() && selectedDate && selectedTime && (
+            <div className="flex w-full gap-2">
+              <button
+                onClick={addToGoogleCalendar}
+                className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[15px] font-semibold"
+                style={{ background: T.surfaceElevated, color: T.text, border: `1px solid ${T.borderSubtle}` }}
+              >
+                <CalendarPlus className="size-4" style={{ color: T.accent }} />
+                {t.addToCalendar}
+              </button>
+              <button
+                onClick={shareBookingToTG}
+                className="flex items-center justify-center rounded-2xl px-4 py-3.5 text-[15px] font-semibold"
+                style={{ background: T.surfaceElevated, color: T.accent, border: `1px solid ${T.accent}33` }}
+                aria-label={t.shareBooking}
+              >
+                <Share2 className="size-4" />
+              </button>
+            </div>
           )}
           <Link
             href="/telegram/activity"
