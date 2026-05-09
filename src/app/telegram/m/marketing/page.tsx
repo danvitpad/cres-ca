@@ -61,25 +61,12 @@ export default function MasterMiniAppMarketing() {
   const t = I18N[lang];
   const { haptic } = useTelegram();
   const router = useRouter();
-  void router;
 
-  // Открытие веб-кабинета в TG webview (Mini App не покидается).
-  // Пока нативный Mini App-редактор маркетинга не написан — это самый
-  // быстрый способ дать мастеру полный CRUD без полного backend-порта.
-  function openWeb(tab: 'broadcasts' | 'deals' | 'promo' | 'reviews') {
+  // Внутри Mini App — навигация router.push на нативную подстраницу.
+  // Никаких openLink (это бы вышло в Chrome).
+  function goTo(tab: 'broadcasts' | 'deals' | 'promo' | 'reviews') {
     haptic('selection');
-    const base = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '') || 'https://www.cres-ca.com';
-    const url = `${base}/${lang}/marketing?tab=${tab}`;
-    try {
-      const tg = (window as { Telegram?: { WebApp?: { openLink?: (u: string) => void } } }).Telegram?.WebApp;
-      if (tg?.openLink) {
-        tg.openLink(url);
-        return;
-      }
-    } catch {
-      // fallthrough
-    }
-    window.location.href = url;
+    router.push(`/telegram/m/marketing/${tab}`);
   }
 
   const sections: Array<{ icon: typeof Send; title: string; hint: string; tab: 'broadcasts' | 'deals' | 'promo' | 'reviews' }> = [
@@ -138,7 +125,7 @@ export default function MasterMiniAppMarketing() {
               <button
                 type="button"
                 key={i}
-                onClick={() => openWeb(s.tab)}
+                onClick={() => goTo(s.tab)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '14px 14px',
