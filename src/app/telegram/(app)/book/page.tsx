@@ -118,6 +118,9 @@ const STR = {
     exitDesc: 'Усі вибрані параметри буде скинуто.',
     cancel: 'Скасувати',
     exit: 'Вийти',
+    joinWaitlist: 'Встати в чергу',
+    waitlistJoined: 'Ви в черзі! Повідомимо коли зʼявиться слот.',
+    waitlistAlready: 'Ви вже в черзі',
   },
   ru: {
     masterNotFound: 'Мастер не указан',
@@ -148,6 +151,9 @@ const STR = {
     exitDesc: 'Все выбранные параметры будут сброшены.',
     cancel: 'Отменить',
     exit: 'Выйти',
+    joinWaitlist: 'Встать в очередь',
+    waitlistJoined: 'Вы в очереди! Уведомим когда появится слот.',
+    waitlistAlready: 'Вы уже в очереди',
   },
   en: {
     masterNotFound: 'Master not specified',
@@ -178,6 +184,9 @@ const STR = {
     exitDesc: 'All selected options will be cleared.',
     cancel: 'Cancel',
     exit: 'Exit',
+    joinWaitlist: 'Join waitlist',
+    waitlistJoined: 'You\'re on the waitlist! We\'ll notify you when a slot opens.',
+    waitlistAlready: 'You\'re already on the waitlist',
   },
 } as const;
 
@@ -395,6 +404,8 @@ export default function MiniAppBookPage() {
   const [showFullCalendar, setShowFullCalendar] = useState(false);
   const [calMonth, setCalMonth] = useState(new Date());
   const [nextAvailableDate, setNextAvailableDate] = useState<Date | null>(null);
+  const [waitlistJoining, setWaitlistJoining] = useState(false);
+  const [waitlistJoined, setWaitlistJoined] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -621,8 +632,51 @@ export default function MiniAppBookPage() {
     haptic('light');
     setSelectedTime(null);
     setSelectedDate(date);
+    setWaitlistJoined(false);
     // Load slots for this date immediately
     loadSlotsForDate(date);
+  }
+
+  /* ── Waitlist ── */
+  async function handleJoinWaitlist() {
+    if (!masterId || waitlistJoining || waitlistJoined) return;
+    setWaitlistJoining(true);
+    haptic('light');
+
+    const initData = (() => {
+      if (typeof window === 'undefined') return null;
+      const w = window as { Telegram?: { WebApp?: { initData?: string } } };
+      const live = w.Telegram?.WebApp?.initData;
+      if (live) return live;
+      try {
+        const stash = sessionStorage.getItem('cres:tg');
+        if (stash) {
+          const parsed = JSON.parse(stash) as { initData?: string };
+          if (parsed.initData) return parsed.initData;
+        }
+      } catch {}
+      return null;
+    })();
+
+    const res = await fetch('/api/telegram/c/waitlist', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify({
+        master_id: masterId,
+        service_id: selectedServices[0]?.id ?? null,
+      }),
+    }).catch(() => null);
+
+    setWaitlistJoining(false);
+    if (res?.ok) {
+      haptic('success');
+      setWaitlistJoined(true);
+    } else {
+      haptic('error');
+    }
   }
 
   /* ── Time selection (auto-advances to confirm) ── */
@@ -1152,18 +1206,40 @@ export default function MiniAppBookPage() {
                         ))}
                       </div>
                     ) : slots.length === 0 ? (
-                      <div className="rounded-2xl p-6 text-center" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
-                        <CalendarIcon className="mx-auto mb-2 size-7" style={{ color: T.textDisabled }} />
-                        <p className="text-[13px] font-medium" style={{ color: T.textSecondary }}>
-                          {t.noFreeSlots}
-                        </p>
-                        {nextAvailableDate && (
+                      <div className="space-y-2">
+                        <div className="rounded-2xl p-6 text-center" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
+                          <CalendarIcon className="mx-auto mb-2 size-7" style={{ color: T.textDisabled }} />
+                          <p className="text-[13px] font-medium" style={{ color: T.textSecondary }}>
+                            {t.noFreeSlots}
+                          </p>
+                          {nextAvailableDate && (
+                            <button
+                              onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
+                              className="mt-3 rounded-xl px-4 py-2 text-[12px] font-semibold text-violet-600 transition-colors"
+                              style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
+                            >
+                              {t.nearest} {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
+                            </button>
+                          )}
+                        </div>
+                        {waitlistJoined ? (
+                          <div className="rounded-2xl px-4 py-3 text-center text-[13px] font-medium" style={{ background: T.accentSoft, color: T.accent }}>
+                            {t.waitlistJoined}
+                          </div>
+                        ) : (
                           <button
-                            onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
-                            className="mt-3 rounded-xl px-4 py-2 text-[12px] font-semibold text-violet-600 transition-colors"
-                            style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
+                            type="button"
+                            onClick={handleJoinWaitlist}
+                            disabled={waitlistJoining}
+                            className="w-full rounded-2xl px-4 py-3 text-[14px] font-semibold transition-opacity active:scale-[0.98]"
+                            style={{
+                              border: `1px solid ${T.border}`,
+                              background: T.surface,
+                              color: T.text,
+                              opacity: waitlistJoining ? 0.6 : 1,
+                            }}
                           >
-                            {t.nearest} {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
+                            {waitlistJoining ? '…' : t.joinWaitlist}
                           </button>
                         )}
                       </div>
