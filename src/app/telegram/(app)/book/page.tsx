@@ -33,6 +33,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T } from '@/components/miniapp/design';
 import { formatMoney } from '@/lib/format/money';
+import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram } from '@/lib/telegram/webapp';
 
 /* ─────────────────── Types ─────────────────── */
 
@@ -579,6 +580,31 @@ export default function MiniAppBookPage() {
 
   // Slots are loaded via handleSelectDate and the initial load effect below
   // (avoiding setState inside useEffect for the react-hooks/set-state-in-effect rule)
+
+  /* ── Telegram MainButton — confirm step ── */
+  // Keep a stable ref so the onClick closure doesn't stale.
+  const handleConfirmRef = useRef(handleConfirm);
+  useEffect(() => { handleConfirmRef.current = handleConfirm; });
+
+  useEffect(() => {
+    if (step !== 'confirm') {
+      hideMainButton();
+      return;
+    }
+    const cb = () => handleConfirmRef.current();
+    showMainButton(t.confirm, cb);
+    return () => {
+      // Telegram SDK: offClick needs the same function reference
+      const w = (typeof window !== 'undefined' ? window : null) as { Telegram?: { WebApp?: { MainButton?: { offClick?: (fn: () => void) => void; hide?: () => void } } } } | null;
+      w?.Telegram?.WebApp?.MainButton?.offClick?.(cb);
+      hideMainButton();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, t.confirm]);
+
+  useEffect(() => {
+    if (step === 'confirm') setMainButtonLoading(submitting);
+  }, [submitting, step]);
 
   /* ── Navigation ── */
   function goToStep(target: Step) {
@@ -1591,7 +1617,7 @@ export default function MiniAppBookPage() {
             </motion.div>
           )}
 
-          {step === 'confirm' && (
+          {step === 'confirm' && !isTelegram() && (
             <motion.div
               key="footer-confirm"
               initial={{ y: 80, opacity: 0 }}
@@ -1601,8 +1627,7 @@ export default function MiniAppBookPage() {
               className="fixed inset-x-0 bottom-0 z-40 px-4 pb-8 pt-4"
               style={{ borderTop: `1px solid ${T.borderSubtle}`, background: T.surface }}
             >
-              {/* Раньше тут была строка «До сплати на місці · 1 ₴» — она
-                  дублировала «Всього до сплати» из самой карточки. Убрали. */}
+              {/* In Telegram, the native MainButton is used instead. */}
               <button
                 onClick={handleConfirm}
                 disabled={submitting}

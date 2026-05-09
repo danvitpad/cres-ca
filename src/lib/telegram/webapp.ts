@@ -279,6 +279,18 @@ export function hideMainButton() {
   tg()?.MainButton.hide();
 }
 
+export function setMainButtonLoading(loading: boolean) {
+  const btn = tg()?.MainButton;
+  if (!btn) return;
+  if (loading) {
+    btn.showProgress(true);
+    btn.disable();
+  } else {
+    btn.hideProgress();
+    btn.enable();
+  }
+}
+
 // --- Popups ---
 
 export function showAlert(message: string): Promise<void> {
