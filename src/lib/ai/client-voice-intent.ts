@@ -186,13 +186,24 @@ export async function parseClientVoiceIntent(
  * Telegram-бот текстом (не голосом). Тот же набор интентов и параметров —
  * чтобы handleClientVoiceIntent работал унифицированно.
  *
- * Без аудио → нормализованный raw_transcript = исходному тексту (упрощает
- * downstream-логику).
+ * `history` — последние 4-6 сообщений для контекста. Без него короткие
+ * ответы типа «Проба» на бот-вопрос «На какую услугу?» классифицируются
+ * как unknown. С историей — Gemini видит контекст и возвращает book.
  */
-export async function parseClientTextIntent(userText: string): Promise<ClientVoiceIntent> {
+export async function parseClientTextIntent(
+  userText: string,
+  history: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+): Promise<ClientVoiceIntent> {
+  const trimmed = history.slice(-6);
+  const historyBlock = trimmed.length > 0
+    ? '\n\nКОНТЕКСТ ПЕРЕПИСКИ (последние сообщения, старые сверху):\n' +
+      trimmed.map((m) => `[${m.role === 'user' ? 'клиент' : 'бот'}] ${m.content}`).join('\n') +
+      '\n\nТЕКУЩЕЕ СООБЩЕНИЕ КЛИЕНТА (опирайся на контекст выше): ' + userText
+    : userText;
+
   const { data: raw, model, log } = await textToJSON({
     systemPrompt: buildPrompt(),
-    userMessage: userText,
+    userMessage: historyBlock,
   });
   console.log('[client-text] model=%s log=%s', model, JSON.stringify(log));
   const parsed = extractJSON<RawIntent>(raw);
@@ -200,7 +211,6 @@ export async function parseClientTextIntent(userText: string): Promise<ClientVoi
     throw new AIUnavailableError(`Model returned unparseable output: ${raw.slice(0, 200)}`, log);
   }
   const intent = normalizeIntent(parsed);
-  // Override raw_transcript — у нас есть оригинальный text, он надёжнее.
   if (!intent.raw_transcript) intent.raw_transcript = userText.trim();
   return intent;
 }

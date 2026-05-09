@@ -381,10 +381,14 @@ async function handleTextIntent(chatId: number, text: string) {
     await sendMessage(chatId, '⌛ Думаю...');
     try {
       const { parseClientTextIntent } = await import('@/lib/ai/client-voice-intent');
-      const intent = await parseClientTextIntent(text);
+      const { loadClientTgHistory, appendClientTgExchange } = await import('@/lib/ai/client-tg-history');
 
-      // Только ЯВНЫЙ feedback идёт в feedback table. unknown даёт подсказку
-      // и НЕ засоряет feedback.
+      // История нужна чтобы AI понимал короткие ответы на свои вопросы
+      // («Проба» как ответ на «На какую услугу?»).
+      const history = await loadClientTgHistory(supabase, session.profile_id, 6);
+      const intent = await parseClientTextIntent(text, history);
+
+      // Только ЯВНЫЙ feedback идёт в feedback table. unknown даёт подсказку.
       if (intent.action === 'feedback') {
         const fbText = (intent.text || text).trim();
         if (fbText.length < 4) {
@@ -393,12 +397,15 @@ async function handleTextIntent(chatId: number, text: string) {
         }
         await saveFeedbackAndNotify(session.profile_id, fbText, 'telegram_bot', { chatId });
         await sendMessage(chatId, FEEDBACK_THANKS);
+        await appendClientTgExchange(supabase, session.profile_id, text, FEEDBACK_THANKS, 'feedback');
         return;
       }
 
       const { handleClientVoiceIntent } = await import('@/lib/ai/client-voice-handler');
       const result = await handleClientVoiceIntent(supabase, session.profile_id, intent);
       await sendMessage(chatId, result.reply);
+      // Сохраняем exchange чтобы следующий short-reply имел контекст.
+      await appendClientTgExchange(supabase, session.profile_id, text, result.reply, intent.action);
     } catch (err) {
       console.error('[client-text] intent failed:', (err as Error)?.message);
       await sendMessage(chatId, '❌ AI временно перегружен. Попробуй через 10-20 секунд или нажми /help.');
