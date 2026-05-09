@@ -13,7 +13,7 @@ import { translateService } from '@/lib/i18n/translate-service';
 
 export const maxDuration = 60;
 
-export async function POST(request: Request) {
+async function handle(request: Request) {
   const auth = request.headers.get('authorization') || '';
   if (auth !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
@@ -63,3 +63,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ ok: true, processed, failed, total: list.length });
 }
+
+export async function GET(request: Request) { return handle(request); }
+export async function POST(request: Request) { return handle(request); }
