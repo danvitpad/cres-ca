@@ -223,16 +223,6 @@ export default function MasterMiniAppPartnerCard() {
             <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '2px 0 0' }}>
               {isTeam ? 'Команда' : 'Соло мастер'}{partner.specialization ? ` · ${partner.specialization}` : ''}
             </p>
-            {partnership.status === 'paused' && (
-              <span style={{
-                display: 'inline-block', marginTop: 6,
-                padding: '2px 8px', borderRadius: R.pill,
-                background: T.warningSoft, color: T.warning,
-                ...TYPE.micro, fontWeight: 700,
-              }}>
-                На паузе
-              </span>
-            )}
             {partnership.status === 'pending' && (
               <span style={{
                 display: 'inline-block', marginTop: 6,
@@ -331,16 +321,6 @@ export default function MasterMiniAppPartnerCard() {
           </p>
         </div>
 
-        {/* Тумблер «Активно» / «На паузе» — для активных и приостановленных партнёрств */}
-        {(partnership.status === 'active' || partnership.status === 'paused') && (
-          <StatusToggleRow
-            partnership={partnership}
-            haptic={haptic}
-            onSaved={reload}
-            cardStyle={cardStyle}
-          />
-        )}
-
         {/* End partnership */}
         {partnership.status !== 'ended' && (
           confirmEnd ? (
@@ -437,76 +417,6 @@ function Tile({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function StatusToggleRow({
-  partnership, haptic, onSaved, cardStyle,
-}: {
-  partnership: Partnership;
-  haptic: (k: 'light' | 'success' | 'error') => void;
-  onSaved: () => void;
-  cardStyle: React.CSSProperties;
-}) {
-  const [busy, setBusy] = useState(false);
-  const isActive = partnership.status === 'active';
-
-  async function toggle() {
-    const initData = getInitData();
-    if (!initData) return;
-    setBusy(true);
-    haptic('light');
-    const res = await fetch('/api/telegram/m/partners/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData,
-        partnership_id: partnership.id,
-        field: 'status',
-        value: isActive ? 'paused' : 'active',
-      }),
-    });
-    setBusy(false);
-    if (!res.ok) haptic('error');
-    else { haptic('success'); onSaved(); }
-  }
-
-  return (
-    <div style={cardStyle}>
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={busy}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', padding: '14px 16px', gap: 12,
-          background: 'transparent', border: 'none',
-          cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', textAlign: 'left',
-        }}
-      >
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', ...TYPE.bodyStrong, color: T.text }}>
-            Активное партнёрство
-          </span>
-          <span style={{ display: 'block', ...TYPE.caption, marginTop: 2 }}>
-            {isActive ? 'Партнёрство работает' : 'Партнёрство приостановлено'}
-          </span>
-        </span>
-        <span
-          aria-hidden
-          style={{
-            position: 'relative', width: 44, height: 26, borderRadius: 13,
-            background: isActive ? T.accent : T.borderSubtle,
-            transition: 'background 200ms', flexShrink: 0,
-          }}
-        >
-          <span style={{
-            position: 'absolute', top: 3, left: isActive ? 21 : 3,
-            width: 20, height: 20, borderRadius: '50%', background: '#fff',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
-          }} />
-        </span>
-      </button>
-    </div>
-  );
-}
 
 /* ─── Notes block — multi-entry с inline edit/add/delete ─── */
 
