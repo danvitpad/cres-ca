@@ -49,10 +49,10 @@ const COLORS = [
 
 const I18N: Record<MiniAppLang, {
   title: string;
-  subtitle: (active: number, archived: number) => string;
   empty: string; emptyHint: string;
+  emptyArchive: string; emptyArchiveHint: string;
   add: string;
-  archived: string;
+  tabActive: string; tabArchived: string;
   minutes: string;
   sheetCreate: string; sheetEdit: string;
   fieldName: string; fieldDuration: string; fieldPrice: string; fieldDescription: string; fieldColor: string;
@@ -67,10 +67,10 @@ const I18N: Record<MiniAppLang, {
 }> = {
   uk: {
     title: 'Послуги і ціни',
-    subtitle: (a, ar) => `${a} активних · ${ar} в архіві`,
     empty: 'Поки немає послуг', emptyHint: 'Створи свою першу — тапни «+ Додати»',
+    emptyArchive: 'В архіві порожньо', emptyArchiveHint: 'Послуги які ти заархівував — з\'являться тут',
     add: 'Додати послугу',
-    archived: 'В архіві',
+    tabActive: 'Активні', tabArchived: 'В архіві',
     minutes: 'хв',
     sheetCreate: 'Нова послуга', sheetEdit: 'Редагувати послугу',
     fieldName: 'Назва', fieldDuration: 'Тривалість, хв', fieldPrice: 'Ціна, ₴',
@@ -91,10 +91,10 @@ const I18N: Record<MiniAppLang, {
   },
   ru: {
     title: 'Услуги и цены',
-    subtitle: (a, ar) => `${a} активных · ${ar} в архиве`,
     empty: 'Пока нет услуг', emptyHint: 'Создай первую — тапни «+ Добавить»',
+    emptyArchive: 'В архиве пусто', emptyArchiveHint: 'Услуги которые ты заархивировал — появятся здесь',
     add: 'Добавить услугу',
-    archived: 'В архиве',
+    tabActive: 'Активные', tabArchived: 'В архиве',
     minutes: 'мин',
     sheetCreate: 'Новая услуга', sheetEdit: 'Редактировать услугу',
     fieldName: 'Название', fieldDuration: 'Длительность, мин', fieldPrice: 'Цена, ₴',
@@ -115,10 +115,10 @@ const I18N: Record<MiniAppLang, {
   },
   en: {
     title: 'Services & prices',
-    subtitle: (a, ar) => `${a} active · ${ar} archived`,
     empty: 'No services yet', emptyHint: 'Create your first — tap «+ Add»',
+    emptyArchive: 'Archive is empty', emptyArchiveHint: 'Services you archive will appear here',
     add: 'Add service',
-    archived: 'Archived',
+    tabActive: 'Active', tabArchived: 'Archived',
     minutes: 'min',
     sheetCreate: 'New service', sheetEdit: 'Edit service',
     fieldName: 'Name', fieldDuration: 'Duration, min', fieldPrice: 'Price, ₴',
@@ -148,6 +148,7 @@ export default function MasterMiniAppServicesTab() {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sheet, setSheet] = useState<{ mode: 'create' | 'edit'; service?: Service } | null>(null);
+  const [tab, setTab] = useState<'active' | 'archived'>('active');
 
   useEffect(() => {
     if (!userId) return;
@@ -173,17 +174,67 @@ export default function MasterMiniAppServicesTab() {
 
   const active = items.filter((s) => s.is_active);
   const archived = items.filter((s) => !s.is_active);
+  const visible = tab === 'active' ? active : archived;
 
   return (
     <MobilePage>
-      <PageHeader title={t.title} subtitle={loading ? undefined : t.subtitle(active.length, archived.length)} />
+      <PageHeader title={t.title} />
 
-      <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Tab switcher: «Активные (N)» | «В архиве (N)» */}
+      {!loading && (
+        <div
+          role="tablist"
+          style={{
+            margin: `4px ${PAGE_PADDING_X}px 0`,
+            display: 'flex', gap: 4, padding: 4,
+            borderRadius: R.pill, background: T.bgSubtle,
+          }}
+        >
+          {([
+            { key: 'active' as const, label: t.tabActive, count: active.length },
+            { key: 'archived' as const, label: t.tabArchived, count: archived.length },
+          ]).map((it) => {
+            const isActive = tab === it.key;
+            return (
+              <button
+                key={it.key}
+                role="tab"
+                aria-selected={isActive}
+                type="button"
+                onClick={() => { haptic('selection'); setTab(it.key); }}
+                style={{
+                  flex: 1, padding: '8px 12px', borderRadius: R.pill, border: 'none',
+                  background: isActive ? T.surface : 'transparent',
+                  color: isActive ? T.text : T.textSecondary,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: isActive ? SHADOW.card : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                <span>{it.label}</span>
+                <span
+                  style={{
+                    minWidth: 20, padding: '0 6px', borderRadius: R.pill,
+                    fontSize: 11, fontWeight: 700,
+                    background: isActive ? T.accentSoft : 'transparent',
+                    color: isActive ? T.accent : T.textTertiary,
+                  }}
+                >
+                  {it.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {loading ? (
           [0, 1, 2].map((i) => (
             <div key={i} style={{ height: 64, borderRadius: R.md, background: T.bgSubtle }} />
           ))
-        ) : items.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div
             style={{
               padding: 28, border: `1px dashed ${T.border}`, borderRadius: R.md,
@@ -199,41 +250,37 @@ export default function MasterMiniAppServicesTab() {
             >
               <Scissors size={20} color={T.textTertiary} />
             </div>
-            <p style={{ marginTop: 12, fontSize: 13, color: T.text, fontWeight: 600 }}>{t.empty}</p>
-            <p style={{ marginTop: 4, fontSize: 11, color: T.textTertiary }}>{t.emptyHint}</p>
+            <p style={{ marginTop: 12, fontSize: 13, color: T.text, fontWeight: 600 }}>
+              {tab === 'active' ? t.empty : t.emptyArchive}
+            </p>
+            <p style={{ marginTop: 4, fontSize: 11, color: T.textTertiary }}>
+              {tab === 'active' ? t.emptyHint : t.emptyArchiveHint}
+            </p>
           </div>
         ) : (
-          <>
-            {active.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} lang={lang} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
-
-            {archived.length > 0 && (
-              <>
-                <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: '12px 4px 4px' }}>
-                  {t.archived}
-                </p>
-                {archived.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} lang={lang} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)}
-              </>
-            )}
-          </>
+          visible.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} lang={lang} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)
         )}
 
-        <button
-          type="button"
-          onClick={() => { haptic('light'); setSheet({ mode: 'create' }); }}
-          style={{
-            marginTop: 8,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            padding: '14px 16px',
-            borderRadius: R.md,
-            border: `1px solid ${T.accent}`,
-            background: T.accentSoft,
-            color: T.accent,
-            fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <Plus size={16} strokeWidth={2.4} />
-          {t.add}
-        </button>
+        {/* «Добавить услугу» — только на активной вкладке (в архив не создают) */}
+        {tab === 'active' && !loading && (
+          <button
+            type="button"
+            onClick={() => { haptic('light'); setSheet({ mode: 'create' }); }}
+            style={{
+              marginTop: 8,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px 16px',
+              borderRadius: R.md,
+              border: `1px solid ${T.accent}`,
+              background: T.accentSoft,
+              color: T.accent,
+              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <Plus size={16} strokeWidth={2.4} />
+            {t.add}
+          </button>
+        )}
       </div>
 
       <AnimatePresence>
