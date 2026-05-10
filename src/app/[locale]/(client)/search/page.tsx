@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { CATEGORY_TO_VERTICAL, CATEGORY_FALLBACK_TERMS, type CategoryKey } from '@/lib/search/category-vertical';
 import type { MapMarker, SalonMarker } from '@/components/shared/map-view';
 import {
   resolveCardDisplay,
@@ -63,6 +64,8 @@ interface MasterRow {
   salon_id: string | null;
   profiles: { full_name: string | null; avatar_url: string | null } | null;
   salon: { id: string; name: string | null; logo_url: string | null; city: string | null; rating: number | null; slug?: string | null } | null;
+  services?: { price: number }[] | null;
+  priceFrom?: number | null;
 }
 
 interface SalonRow {
@@ -117,7 +120,10 @@ export default function SearchPage() {
   const [category, setCategory] = useState<typeof CATEGORY_KEYS[number]>('all');
   const [minRating, setMinRating] = useState<0 | 4 | 4.5>(0);
   const [radius, setRadius] = useState<typeof RADIUS_PRESETS[number]['key']>('any');
+  const [maxPrice, setMaxPrice] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'default' | 'distance'>('default');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [popularSpecs, setPopularSpecs] = useState<string[]>([]);
 
   const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER);
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -156,7 +162,7 @@ export default function SearchPage() {
       let mQ = supabase
         .from('masters')
         .select(
-          'id, specialization, rating, city, latitude, longitude, display_name, avatar_url, salon_id, is_active, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city)',
+          'id, specialization, rating, city, latitude, longitude, display_name, avatar_url, salon_id, is_active, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url), salon:salons(id, name, logo_url, city), services(price)',
         )
         .eq('is_active', true)
         .limit(60);
@@ -169,7 +175,23 @@ export default function SearchPage() {
           .lte('longitude', opts.lng + radiusDeg);
       }
       if (opts.rating > 0) mQ = mQ.gte('rating', opts.rating);
-      if (opts.cat !== 'all') mQ = mQ.ilike('specialization', `%${tInd(opts.cat)}%`);
+      if (opts.cat !== 'all') {
+        // Точная фильтрация по `masters.vertical` (если для категории есть
+        // соответствие в онбординг-нишах) с fallback на ilike по specialization
+        // для legacy-мастеров, у которых vertical пуст. Раньше тут был только
+        // ilike по переводу одного слова — мастер «Парикмахер Светлана» не
+        // попадал в «Красоту» если в спец-поле не было слова «красота».
+        const vert = CATEGORY_TO_VERTICAL[opts.cat as CategoryKey];
+        const fallbackOr = (CATEGORY_FALLBACK_TERMS[opts.cat as CategoryKey] ?? [])
+          .map((t) => `specialization.ilike.%${t.replace(/([%,()\\])/g, '\\$1')}%`)
+          .join(',');
+        if (vert) {
+          const clause = fallbackOr ? `vertical.eq.${vert},${fallbackOr}` : `vertical.eq.${vert}`;
+          mQ = mQ.or(clause);
+        } else if (fallbackOr) {
+          mQ = mQ.or(fallbackOr);
+        }
+      }
       // Text search is done client-side after fetch so profiles.full_name is included.
 
       // Salons
@@ -213,7 +235,11 @@ export default function SearchPage() {
 
       setMasters(
         ((mRes.data ?? []) as unknown as MasterRow[])
-          .map((r) => ({ ...r, profiles: unwrap(r.profiles), salon: unwrap(r.salon) }))
+          .map((r) => {
+            const prices = (r.services ?? []).map((s) => Number(s.price)).filter((n) => n > 0);
+            const priceFrom = prices.length > 0 ? Math.min(...prices) : null;
+            return { ...r, profiles: unwrap(r.profiles), salon: unwrap(r.salon), priceFrom };
+          })
           .filter(masterMatchesQuery),
       );
       setSalons(((sRes.data ?? []) as unknown as SalonRow[]).filter(salonMatchesQuery));
@@ -322,9 +348,46 @@ export default function SearchPage() {
     );
   }
 
+  // Подсказки популярных специализаций для выбранной ниши.
+  useEffect(() => {
+    const v = CATEGORY_TO_VERTICAL[category as CategoryKey];
+    if (!v) {
+      setPopularSpecs([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/search/popular-specs?vertical=${v}&limit=12`)
+      .then((r) => (r.ok ? r.json() : { specs: [] }))
+      .then((j: { specs?: string[] }) => {
+        if (!cancelled) setPopularSpecs(Array.isArray(j.specs) ? j.specs : []);
+      })
+      .catch(() => { if (!cancelled) setPopularSpecs([]); });
+    return () => { cancelled = true; };
+  }, [category]);
+
+  // Клиентская доводка: цена + сортировка по расстоянию.
+  // Категория/рейтинг/радиус уже применены сервером в fetchData.
+  const displayedMasters = useMemo(() => {
+    let result = masters.filter((m) => {
+      if (maxPrice != null && m.priceFrom != null && m.priceFrom > maxPrice) return false;
+      return true;
+    });
+    if (sortBy === 'distance' && userLocation) {
+      const [ulat, ulng] = userLocation;
+      result = [...result].sort((a, b) => {
+        const da = a.latitude != null && a.longitude != null
+          ? Math.hypot(a.latitude - ulat, a.longitude - ulng) : Infinity;
+        const db = b.latitude != null && b.longitude != null
+          ? Math.hypot(b.latitude - ulat, b.longitude - ulng) : Infinity;
+        return da - db;
+      });
+    }
+    return result;
+  }, [masters, maxPrice, sortBy, userLocation]);
+
   const masterMarkers: MapMarker[] = useMemo(
     () =>
-      masters
+      displayedMasters
         .filter((m) => m.latitude != null && m.longitude != null)
         .map((m) => ({
           lat: m.latitude!,
@@ -334,7 +397,7 @@ export default function SearchPage() {
           specialization: m.specialization ?? undefined,
           masterId: m.id,
         })),
-    [masters],
+    [displayedMasters],
   );
 
   const salonPinMarkers: SalonMarker[] = useMemo(
@@ -350,9 +413,14 @@ export default function SearchPage() {
     [salons],
   );
 
-  const selectedMaster = selectedMasterId ? masters.find((m) => m.id === selectedMasterId) ?? null : null;
-  const activeFilters = (category !== 'all' ? 1 : 0) + (minRating > 0 ? 1 : 0) + (radius !== 'any' ? 1 : 0);
-  const totalResults = masters.length + salons.length;
+  const selectedMaster = selectedMasterId ? displayedMasters.find((m) => m.id === selectedMasterId) ?? null : null;
+  const activeFilters =
+    (category !== 'all' ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
+    (radius !== 'any' ? 1 : 0) +
+    (maxPrice != null ? 1 : 0) +
+    (sortBy !== 'default' ? 1 : 0);
+  const totalResults = displayedMasters.length + salons.length;
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)]">
@@ -514,6 +582,76 @@ export default function SearchPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Price */}
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('price')}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={0}
+                      max={3000}
+                      step={100}
+                      value={maxPrice ?? 3000}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setMaxPrice(v >= 3000 ? null : v);
+                      }}
+                      className="flex-1 accent-foreground"
+                    />
+                    <span className="min-w-[64px] text-right text-xs font-semibold tabular-nums">
+                      {maxPrice == null ? t('priceAny') : `≤ ${maxPrice}₴`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sort */}
+                <div>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {t('sortBy')}
+                  </p>
+                  <div className="flex gap-1.5">
+                    {(['default', 'distance'] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setSortBy(opt)}
+                        className={cn(
+                          'rounded-full border px-3 py-1 text-xs transition-colors',
+                          sortBy === opt
+                            ? 'border-foreground bg-foreground text-background'
+                            : 'border-border/60 text-muted-foreground hover:border-foreground/40 hover:text-foreground',
+                        )}
+                      >
+                        {opt === 'default' ? t('sortDefault') : t('sortDistance')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Popular specializations inside selected category */}
+                {popularSpecs.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {t('popular')}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {popularSpecs.map((spec) => (
+                        <button
+                          key={spec}
+                          onClick={() => {
+                            setQuery(spec);
+                            setFiltersOpen(false);
+                          }}
+                          className="rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-xs text-foreground transition-colors hover:border-foreground/40 hover:bg-muted/60"
+                        >
+                          {spec}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -543,7 +681,7 @@ export default function SearchPage() {
           ) : (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AnimatePresence mode="popLayout">
-                {masters.map((m, i) => (
+                {displayedMasters.map((m, i) => (
                   <motion.div
                     key={`m-${m.id}`}
                     layout
@@ -570,7 +708,7 @@ export default function SearchPage() {
                     key={`s-${s.id}`}
                     layout
                     initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0, transition: { delay: Math.min((masters.length + i) * 0.03, 0.2) } }}
+                    animate={{ opacity: 1, y: 0, transition: { delay: Math.min((displayedMasters.length + i) * 0.03, 0.2) } }}
                     exit={{ opacity: 0, scale: 0.97 }}
                   >
                     <ResultCard

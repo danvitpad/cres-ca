@@ -42,6 +42,7 @@ import { AvatarCircle } from '@/components/miniapp/shells';
 import { AIChatSheet } from '@/components/miniapp/ai-chat-sheet';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { csGet, csSet } from '@/lib/miniapp/cloud-storage';
+import { CATEGORY_TO_VERTICAL } from '@/lib/search/category-vertical';
 
 const MapView = dynamic(() => import('@/components/shared/map-view'), { ssr: false });
 
@@ -78,10 +79,10 @@ const RATING_LABELS: Record<Lang, Record<string, string>> = {
   en: { 'any': 'Any', '4.0+': '4.0+', '4.5+': '4.5+' },
 };
 
-const FILTER_LABELS: Record<Lang, { title: string; category: string; rating: string; price: string; priceAny: string; sortBy: string; sortDefault: string; sortDistance: string; reset: string; apply: string; placeholder: string; filtersAria: string }> = {
-  uk: { title: 'Фільтри', category: 'Категорія', rating: 'Рейтинг', price: 'Ціна (від)', priceAny: 'Будь-яка', sortBy: 'Сортування', sortDefault: 'За умовчанням', sortDistance: 'Поруч зі мною', reset: 'Скинути', apply: 'Показати', placeholder: 'Майстер, послуга, салон…', filtersAria: 'Фільтри' },
-  ru: { title: 'Фильтры', category: 'Категория', rating: 'Рейтинг', price: 'Цена (от)', priceAny: 'Любая', sortBy: 'Сортировка', sortDefault: 'По умолчанию', sortDistance: 'Рядом со мной', reset: 'Сбросить', apply: 'Показать', placeholder: 'Мастер, услуга, салон…', filtersAria: 'Фильтры' },
-  en: { title: 'Filters', category: 'Category', rating: 'Rating', price: 'Price (from)', priceAny: 'Any', sortBy: 'Sort by', sortDefault: 'Default', sortDistance: 'Near me', reset: 'Reset', apply: 'Show', placeholder: 'Master, service, salon…', filtersAria: 'Filters' },
+const FILTER_LABELS: Record<Lang, { title: string; category: string; rating: string; price: string; priceAny: string; sortBy: string; sortDefault: string; sortDistance: string; popular: string; reset: string; apply: string; placeholder: string; filtersAria: string }> = {
+  uk: { title: 'Фільтри', category: 'Категорія', rating: 'Рейтинг', price: 'Ціна (до)', priceAny: 'Будь-яка', sortBy: 'Сортування', sortDefault: 'За умовчанням', sortDistance: 'Поруч зі мною', popular: 'Популярне в категорії', reset: 'Скинути', apply: 'Показати', placeholder: 'Майстер, послуга, салон…', filtersAria: 'Фільтри' },
+  ru: { title: 'Фильтры', category: 'Категория', rating: 'Рейтинг', price: 'Цена (до)', priceAny: 'Любая', sortBy: 'Сортировка', sortDefault: 'По умолчанию', sortDistance: 'Рядом со мной', popular: 'Популярное в категории', reset: 'Сбросить', apply: 'Показать', placeholder: 'Мастер, услуга, салон…', filtersAria: 'Фильтры' },
+  en: { title: 'Filters', category: 'Category', rating: 'Rating', price: 'Price (max)', priceAny: 'Any', sortBy: 'Sort by', sortDefault: 'Default', sortDistance: 'Near me', popular: 'Popular in category', reset: 'Reset', apply: 'Show', placeholder: 'Master, service, salon…', filtersAria: 'Filters' },
 };
 
 const VIEW_LABELS: Record<Lang, { list: string; map: string; route: string }> = {
@@ -234,6 +235,7 @@ export default function MiniAppSearchPage() {
   const [salons, setSalons] = useState<ApiSalonRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<NormMaster | null>(null);
+  const [popularSpecs, setPopularSpecs] = useState<string[]>([]);
 
   // AI consierge state
   const [aiOpen, setAiOpen] = useState(false);
@@ -269,10 +271,11 @@ export default function MiniAppSearchPage() {
   const centerRef = useRef(center);
   centerRef.current = center;
 
-  const fetchData = useCallback(async (searchQuery?: string, lat?: number, lng?: number) => {
+  const fetchData = useCallback(async (searchQuery?: string, lat?: number, lng?: number, verticalKey?: string | null) => {
     setLoading(true);
     try {
       const body: Record<string, unknown> = searchQuery ? { q: searchQuery } : { lat, lng };
+      if (verticalKey) body.vertical = verticalKey;
       const res = await fetch('/api/telegram/nearby', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -381,7 +384,7 @@ export default function MiniAppSearchPage() {
             setCenter(coords);
             setUserLocation(coords);
             setGeoDenied(false);
-            await fetchData(undefined, pos.lat, pos.lng);
+            await fetchData(undefined, pos.lat, pos.lng, CATEGORY_TO_VERTICAL[category]);
             if (interactive) haptic('success');
             return;
           }
@@ -414,7 +417,7 @@ export default function MiniAppSearchPage() {
               setCenter(coords);
               setUserLocation(coords);
               setGeoDenied(true);
-              await fetchData(undefined, r.lat, r.lng);
+              await fetchData(undefined, r.lat, r.lng, CATEGORY_TO_VERTICAL[category]);
               return;
             }
           } catch {
@@ -423,7 +426,7 @@ export default function MiniAppSearchPage() {
         }
 
         setGeoDenied(true);
-        await fetchData(undefined, DEFAULT_CENTER[0], DEFAULT_CENTER[1]);
+        await fetchData(undefined, DEFAULT_CENTER[0], DEFAULT_CENTER[1], CATEGORY_TO_VERTICAL[category]);
       } finally {
         setGeoBusy(false);
       }
@@ -435,35 +438,48 @@ export default function MiniAppSearchPage() {
     locate(false);
   }, [locate]);
 
-  // Debounced name search
+  // Debounced name search + category. Любая смена query или category триггерит
+  // новый запрос на сервер — раньше category фильтровалась только на клиенте
+  // по уже подгруженным 30 строкам, что упускало мастеров другой категории
+  // если они не вошли в первый батч.
   useEffect(() => {
     const trimmed = query.trim();
+    const v = CATEGORY_TO_VERTICAL[category];
     if (trimmed.length === 0) {
-      if (!loading) fetchData(undefined, centerRef.current[0], centerRef.current[1]);
+      if (!loading) fetchData(undefined, centerRef.current[0], centerRef.current[1], v);
       return;
     }
     if (trimmed.length < 2) return;
-    const timer = setTimeout(() => fetchData(trimmed), 350);
+    const timer = setTimeout(() => fetchData(trimmed, undefined, undefined, v), 350);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, category]);
 
-  // Client-side filter by category/rating/price + optional distance sort
+  // Подсказки популярных специализаций для выбранной ниши («Маникюр / Брови …»
+  // под Категорией = Красота). Грузятся из общей таблицы vertical_specializations.
+  useEffect(() => {
+    const v = CATEGORY_TO_VERTICAL[category];
+    if (!v) {
+      setPopularSpecs([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/search/popular-specs?vertical=${v}&limit=12`)
+      .then((r) => (r.ok ? r.json() : { specs: [] }))
+      .then((j: { specs?: string[] }) => {
+        if (!cancelled) setPopularSpecs(Array.isArray(j.specs) ? j.specs : []);
+      })
+      .catch(() => { if (!cancelled) setPopularSpecs([]); });
+    return () => { cancelled = true; };
+  }, [category]);
+
+  // Client-side filter by rating/price + optional distance sort.
+  // Категория уже отфильтрована сервером (по vertical-колонке + ilike-fallback),
+  // поэтому здесь её не дублируем.
   const filteredMasters = useMemo(() => {
     let result = masters.filter((m) => {
       if (minRating > 0 && m.rating < minRating) return false;
       if (maxPrice !== null && m.priceFrom !== null && m.priceFrom > maxPrice) return false;
-      if (category !== 'all') {
-        // Подстрочный матч по специализации мастера. Берём ВСЕ локали ярлыка
-        // (uk/ru/en) — мастер мог написать «Краса» или «Красота» или «Beauty».
-        const targets = [
-          CATEGORY_LABELS.uk[category],
-          CATEGORY_LABELS.ru[category],
-          CATEGORY_LABELS.en[category],
-        ].map((s) => s.toLowerCase());
-        const spec = (m.specialization ?? '').toLowerCase();
-        if (!targets.some((t) => spec.includes(t))) return false;
-      }
       return true;
     });
     if (sortBy === 'distance' && userLocation) {
@@ -477,7 +493,7 @@ export default function MiniAppSearchPage() {
       });
     }
     return result;
-  }, [masters, minRating, category, maxPrice, sortBy, userLocation]);
+  }, [masters, minRating, maxPrice, sortBy, userLocation]);
 
   const filteredSalons = useMemo(() => {
     return salons.filter((s) => {
@@ -1053,6 +1069,40 @@ export default function MiniAppSearchPage() {
               })}
             </div>
           </div>
+
+          {/* Popular specializations for the selected category — клик по чипу
+              подставляет название в строку поиска и закрывает фильтры. */}
+          {popularSpecs.length > 0 && (
+            <div>
+              <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.popular}</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {popularSpecs.map((spec) => (
+                  <button
+                    key={spec}
+                    type="button"
+                    onClick={() => {
+                      haptic('selection');
+                      setQuery(spec);
+                      setFiltersOpen(false);
+                    }}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: R.pill,
+                      border: `1px solid ${T.borderSubtle}`,
+                      background: T.bgSubtle,
+                      color: T.text,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {spec}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <p style={{ ...TYPE.micro, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase' }}>{tFilter.rating}</p>

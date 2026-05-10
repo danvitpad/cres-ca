@@ -100,6 +100,7 @@ export default function SettingsPage() {
   const sections: SettingSection[] = [
     { key: 'profile', icon: UserCircle, title: t('editProfile') },
     { key: 'vertical', icon: Briefcase, title: 'Моя сфера' },
+    { key: 'categories', icon: Layers, title: 'Категории и услуги', desc: 'То, по чему тебя ищут клиенты', href: `/${locale}/settings/categories` },
     { key: 'features', icon: Layers, title: 'Модули' },
     { key: 'hours', icon: CalendarClock, title: t('workingHours') },
     { key: 'security', icon: KeyRound, title: 'Безопасность' },

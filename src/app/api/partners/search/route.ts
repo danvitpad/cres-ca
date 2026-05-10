@@ -1,8 +1,12 @@
 /** --- YAML
  * name: Partner Search API
- * description: Search for masters by name or handle to send partnership invite. Excludes self and existing partners.
+ * description: Search for masters by name, handle, specialization or city to send
+ *              partnership invite. Раньше фильтровало только по name/slug — теперь
+ *              мастер может написать «косметолог Киев» и найти косметолога в Киеве.
+ *              Multi-token AND: каждое слово должно встретиться в name/slug/spec/city.
+ *              Excludes self and existing partners.
  * created: 2026-04-17
- * updated: 2026-04-17
+ * updated: 2026-05-10
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -19,22 +23,33 @@ export async function GET(request: Request) {
   const { data: me } = await supabase.from('masters').select('id').eq('profile_id', user.id).maybeSingle();
   if (!me) return NextResponse.json({ error: 'Profile not set up' }, { status: 403 });
 
-  // Find masters where profile.full_name or profile.slug matches
+  // Find active masters; будем матчить multi-token AND по
+  // (full_name | slug | specialization | city). Загружаем шире и фильтруем
+  // в JS, потому что full_name живёт в смежной таблице profiles.
   const { data: matches } = await supabase
     .from('masters')
     .select(`
       id, specialization, city,
       profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug)
     `)
+    .eq('is_active', true)
     .neq('id', me.id)
-    .limit(20);
+    .limit(80);
+
+  const tokens = q.toLowerCase().split(/\s+/).filter((t) => t.length > 0);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const filtered = ((matches as any[]) || []).filter(m => {
-    const name = (m.profile?.full_name || '').toLowerCase();
-    const slug = (m.profile?.slug || '').toLowerCase();
-    const needle = q.toLowerCase();
-    return name.includes(needle) || slug.includes(needle);
+    const haystack = [
+      m.profile?.full_name,
+      m.profile?.slug,
+      m.specialization,
+      m.city,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return tokens.every((t) => haystack.includes(t));
   });
 
   // Exclude existing partnerships

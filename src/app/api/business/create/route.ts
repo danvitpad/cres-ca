@@ -150,6 +150,27 @@ export async function POST(req: Request) {
     inviteCode = master.invite_code;
   }
 
+  // Auto-link мастера к новой структуре категорий: по legacy_vertical_key
+  // создаём запись master_industry_categories(is_primary=true). Это позволяет
+  // новому поиску сразу видеть мастера; подкатегории мастер выберет в Settings.
+  if (masterId && body.vertical) {
+    const { data: cat } = await supabase
+      .from('industry_categories')
+      .select('id')
+      .eq('legacy_vertical_key', body.vertical)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+    if (cat?.id) {
+      await supabase
+        .from('master_industry_categories')
+        .upsert(
+          { master_id: masterId, category_id: cat.id, is_primary: true },
+          { onConflict: 'master_id,category_id' },
+        );
+    }
+  }
+
   if (body.services && body.services.length > 0 && masterId) {
     const rows = body.services.map((s) => ({
       master_id: masterId,

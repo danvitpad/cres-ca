@@ -133,6 +133,81 @@ async function handleCallback(cb: NonNullable<SuperadminUpdate['callback_query']
     }
     return;
   }
+
+  // Заявка на новую категорию — Принять / Отклонить
+  if (data.startsWith('cat_approve:') || data.startsWith('cat_reject:')) {
+    const [action, categoryId] = data.split(':');
+    if (!categoryId) return;
+    const approve = action === 'cat_approve';
+
+    const supabase = admin();
+    const { data: cat } = await supabase
+      .from('industry_categories')
+      .select('id, name_ru, created_by_master_id')
+      .eq('id', categoryId)
+      .maybeSingle<{ id: string; name_ru: string; created_by_master_id: string | null }>();
+
+    if (!cat) {
+      await tgFetch(token, 'editMessageText', {
+        chat_id: chatId,
+        message_id: cb.message.message_id,
+        text: '⚠️ Заявка не найдена (возможно уже удалена).',
+        parse_mode: 'HTML',
+      }).catch(() => {});
+      return;
+    }
+
+    if (approve) {
+      await supabase
+        .from('industry_categories')
+        .update({ status: 'active', sort_order: 999, icon: 'tag' })
+        .eq('id', categoryId);
+    } else {
+      await supabase
+        .from('industry_categories')
+        .update({ status: 'rejected' })
+        .eq('id', categoryId);
+    }
+
+    const originalText = cb.message.text ?? '';
+    const marker = approve ? '✅ ПРИНЯТО' : '❌ ОТКЛОНЕНО';
+    const newText = `${marker}\n\n${originalText}`;
+    await tgFetch(token, 'editMessageText', {
+      chat_id: chatId,
+      message_id: cb.message.message_id,
+      text: newText,
+      parse_mode: 'HTML',
+    }).catch(() => {});
+
+    // Уведомим мастера-автора через клиентский бот
+    if (cat.created_by_master_id) {
+      const { data: master } = await supabase
+        .from('masters')
+        .select('profile_id')
+        .eq('id', cat.created_by_master_id)
+        .maybeSingle<{ profile_id: string | null }>();
+      if (master?.profile_id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('telegram_id')
+          .eq('id', master.profile_id)
+          .maybeSingle<{ telegram_id: number | null }>();
+        if (profile?.telegram_id) {
+          const clientToken = clientBotToken();
+          if (clientToken) {
+            const userMsg = approve
+              ? `✅ Категория «${cat.name_ru}» добавлена в каталог. Спасибо за идею — теперь её увидят все мастера.`
+              : `❌ Категория «${cat.name_ru}» не добавлена в каталог. Если ты считаешь, что это ошибка — напиши в поддержку.`;
+            await tgFetch(clientToken, 'sendMessage', {
+              chat_id: profile.telegram_id,
+              text: userMsg,
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+    return;
+  }
 }
 
 async function handleMessage(msg: NonNullable<SuperadminUpdate['message']>) {
