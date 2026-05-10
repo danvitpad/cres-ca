@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   User, Phone, Mail, Calendar, Loader2, Check, Send,
@@ -147,7 +147,16 @@ export default function MiniAppRegisterPage() {
   const [stash, setStash] = useState<Stash | null>(null);
   const [lang, setLang] = useState<Lang>('uk');
 
-  const [role, setRole] = useState<'client' | 'master' | 'salon_admin'>('client');
+  // Role pre-selected via ?role=master|client|salon_admin URL param (welcome
+  // page sends explicit choice). Default 'client' для backward-compat если
+  // кто-то открыл /register напрямую без параметра.
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get('role');
+  const initialRole: 'client' | 'master' | 'salon_admin' =
+    roleParam === 'master' ? 'master'
+    : roleParam === 'salon_admin' ? 'salon_admin'
+    : 'client';
+  const [role, setRole] = useState<'client' | 'master' | 'salon_admin'>(initialRole);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [salonName, setSalonName] = useState('');

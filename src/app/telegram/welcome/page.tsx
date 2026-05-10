@@ -48,7 +48,8 @@ const T = {
     f3Text: 'Дані зберігаються у нас і не передаються третім особам.',
     terms: 'Продовжуючи, ви погоджуєтесь з',
     termsLink: 'Умовами використання',
-    create: 'Створити акаунт',
+    iAmClient: 'Я клієнт',
+    iAmMaster: 'Я майстер',
     haveAccount: 'У мене вже є акаунт',
     loginTitle: 'Вхід в акаунт',
     loginSub: 'Зв’яжемо цей Telegram з вашим акаунтом',
@@ -65,7 +66,8 @@ const T = {
     f3Text: 'Данные хранятся у нас и не передаются третьим лицам.',
     terms: 'Продолжая, вы соглашаетесь с',
     termsLink: 'Условиями использования',
-    create: 'Создать аккаунт',
+    iAmClient: 'Я клиент',
+    iAmMaster: 'Я мастер',
     haveAccount: 'У меня уже есть аккаунт',
     loginTitle: 'Вход в аккаунт',
     loginSub: 'Свяжем этот Telegram с вашим аккаунтом',
@@ -82,7 +84,8 @@ const T = {
     f3Text: 'Your data stays with us and is never shared with third parties.',
     terms: 'By continuing you agree to the',
     termsLink: 'Terms of Use',
-    create: 'Create account',
+    iAmClient: 'I am a client',
+    iAmMaster: 'I am a master',
     haveAccount: 'I already have an account',
     loginTitle: 'Sign in',
     loginSub: 'We’ll link this Telegram to your account',
@@ -291,11 +294,15 @@ export default function MiniAppWelcomePage() {
             {t.termsLink}
           </Link>
         </motion.p>
+        {/* Две явные роли вместо одной общей кнопки. Раньше «Создать аккаунт»
+            вел на /register с дефолтом 'client' — пользователи легко получали
+            client когда хотели master, потому что role-tile внутри формы
+            пролистывался незамеченным. */}
         <motion.button
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.45 }}
-          onClick={() => router.push('/telegram/register')}
+          onClick={() => router.push('/telegram/register?role=master')}
           className="w-full rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform"
           style={{
             background: 'var(--primary)',
@@ -303,24 +310,37 @@ export default function MiniAppWelcomePage() {
             boxShadow: '0 6px 20px color-mix(in oklab, var(--primary) 32%, transparent)',
           }}
         >
-          {t.create}
+          {t.iAmMaster}
         </motion.button>
         <motion.button
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.48 }}
+          onClick={() => router.push('/telegram/register?role=client')}
+          className="w-full rounded-2xl border py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform"
+          style={{
+            borderColor: 'color-mix(in oklab, var(--primary) 50%, transparent)',
+            background: 'color-mix(in oklab, var(--primary) 8%, transparent)',
+            color: 'var(--foreground)',
+          }}
+        >
+          {t.iAmClient}
+        </motion.button>
+        <motion.button
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.52 }}
           onClick={() => {
             setLoginOpen(true);
             setErr(null);
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-medium active:scale-[0.98] transition-transform"
           style={{
-            borderColor: 'color-mix(in oklab, var(--foreground) 18%, transparent)',
-            background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
-            color: 'var(--foreground)',
+            background: 'transparent',
+            color: 'color-mix(in oklab, var(--foreground) 65%, transparent)',
           }}
         >
-          <LogIn className="size-4" /> {t.haveAccount}
+          <LogIn className="size-3.5" /> {t.haveAccount}
         </motion.button>
       </div>
 
