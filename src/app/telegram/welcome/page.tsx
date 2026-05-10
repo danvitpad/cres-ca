@@ -223,10 +223,13 @@ export default function MiniAppWelcomePage() {
       className="flex min-h-dvh flex-col"
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
-      {/* Top bar — переключатели темы и языка */}
+      {/* Top bar — переключатель языка. paddingTop = safe-area + 60px чтобы
+          уйти из-под TG bottom-sheet chrome («Закрыть» / «v ...»), которая
+          сидит поверх вебвью на ~60px от верха. Без offset кнопка глобуса
+          оказывалась под TG chrome и пользователь её не видел. */}
       <div
-        className="flex items-center justify-end gap-2 px-5 pt-4"
-        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+        className="flex items-center justify-end gap-2 px-5"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 60px)' }}
       >
         <button
           type="button"
