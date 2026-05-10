@@ -37,6 +37,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T } from '@/components/miniapp/design';
 import { formatMoney } from '@/lib/format/money';
+import { cleanAddress } from '@/lib/format/address';
 import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram, tg } from '@/lib/telegram/webapp';
 
 /* ─────────────────── Types ─────────────────── */
@@ -1715,10 +1716,10 @@ export default function MiniAppBookPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[15px] font-semibold" style={{ color: T.text }}>{masterName}</p>
-                      {master?.address && (
+                      {master?.address && cleanAddress(master.address) && (
                         <div className="mt-0.5 flex items-center gap-1 text-[12px]" style={{ color: T.textSecondary }}>
                           <MapPin className="size-3" />
-                          <span className="truncate">{master.address}</span>
+                          <span className="truncate">{cleanAddress(master.address)}</span>
                         </div>
                       )}
                     </div>
@@ -1920,7 +1921,7 @@ export default function MiniAppBookPage() {
                 onClick={handleConfirm}
                 disabled={submitting}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[15px] font-semibold transition-colors disabled:opacity-60"
-                style={{ background: T.text, color: T.surface }}
+                style={{ background: T.accent, color: T.accentText }}
               >
                 {submitting ? (
                   <Loader2 className="size-4 animate-spin" />

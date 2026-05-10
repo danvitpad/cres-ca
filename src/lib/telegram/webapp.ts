@@ -270,6 +270,14 @@ export const haptic = {
 export function showMainButton(text: string, onClick: () => void) {
   const webapp = tg();
   if (!webapp) return;
+  // Brand colors (CRES-CA teal) — иначе TG отрендерит свою default iOS-cyan
+  // что выглядит чужеродно. Светлый режим — насыщенный teal-600 + белый текст,
+  // тёмный — лайт teal-300 + тёмный текст. Совпадает с --m-accent в globals.css.
+  const isDark = webapp.colorScheme === 'dark';
+  try {
+    webapp.MainButton.color = isDark ? '#2dd4bf' : '#0d9488';
+    webapp.MainButton.textColor = isDark ? '#0a0a0a' : '#ffffff';
+  } catch { /* старые TG-клиенты могут не поддерживать */ }
   webapp.MainButton.setText(text);
   webapp.MainButton.onClick(onClick);
   webapp.MainButton.show();
