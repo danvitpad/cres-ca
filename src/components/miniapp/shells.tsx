@@ -250,15 +250,12 @@ export function MenuList({ items }: { items: MenuItem[] }) {
           >
             <div
               style={{
-                width: 34,
-                height: 34,
-                borderRadius: 9,
-                background: it.iconBg ?? (it.danger ? 'rgba(185,28,28,0.1)' : T.accentSoft),
-                color: it.iconColor ?? (it.danger ? T.danger : T.accent),
+                width: 28,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
+                color: it.iconColor ?? (it.danger ? T.danger : T.textSecondary),
               }}
             >
               {it.icon}

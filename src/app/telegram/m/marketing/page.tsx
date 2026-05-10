@@ -127,8 +127,8 @@ export default function MasterMiniAppMarketing() {
                 key={i}
                 onClick={() => goTo(s.tab)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '14px 14px',
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '14px 16px',
                   borderRadius: R.md,
                   border: `1px solid ${T.borderSubtle}`,
                   background: T.surface,
@@ -138,16 +138,7 @@ export default function MasterMiniAppMarketing() {
                   width: '100%',
                 }}
               >
-                <span
-                  style={{
-                    width: 38, height: 38, borderRadius: 11,
-                    background: T.accentSoft, color: T.accent,
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon size={18} strokeWidth={2.2} />
-                </span>
+                <Icon size={22} strokeWidth={1.8} color={T.textSecondary} style={{ flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>{s.title}</p>
                   <p style={{ fontSize: 12, color: T.textTertiary, margin: '2px 0 0' }}>{s.hint}</p>

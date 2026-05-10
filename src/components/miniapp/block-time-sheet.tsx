@@ -123,7 +123,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
   const [loadingTpl, setLoadingTpl] = useState(false);
   const [title, setTitle] = useState('');
   const [startTime, setStartTime] = useState(defaultTime ?? '12:00');
-  const [duration, setDuration] = useState(30);
+  const [durationStr, setDurationStr] = useState('30');
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -132,7 +132,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
     if (!open) return;
     setTitle('');
     setStartTime(defaultTime ?? '12:00');
-    setDuration(30);
+    setDurationStr('30');
     setErrorText(null);
   }, [open, defaultTime]);
 
@@ -167,10 +167,11 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
   const applyTemplate = useCallback((tpl: Template) => {
     haptic('selection');
     setTitle(tpl.title);
-    setDuration(tpl.duration_minutes);
+    setDurationStr(String(tpl.duration_minutes));
   }, [haptic]);
 
   const handleSave = useCallback(async () => {
+    const duration = parseInt(durationStr, 10) || 0;
     if (duration <= 0) {
       setErrorText(t.errorMissing);
       haptic('error');
@@ -207,7 +208,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
     setSaving(false);
     onSaved();
     onClose();
-  }, [date, duration, startTime, title, haptic, t.errorMissing, t.errorSave, onClose, onSaved]);
+  }, [date, durationStr, startTime, title, haptic, t.errorMissing, t.errorSave, onClose, onSaved]);
 
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 120 || info.velocity.y > 400) onClose();
@@ -215,7 +216,8 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    padding: '12px 14px',
+    height: 48,
+    padding: '0 14px',
     borderRadius: R.sm,
     border: `1px solid ${T.border}`,
     background: T.surface,
@@ -223,6 +225,7 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
     fontSize: 15,
     fontFamily: 'inherit',
     outline: 'none',
+    boxSizing: 'border-box',
   };
 
   const labelStyle: React.CSSProperties = {
@@ -414,10 +417,9 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
                   <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', padding: 0 }}>
                     <input
                       type="number"
-                      min={1}
-                      max={24 * 60}
-                      value={duration}
-                      onChange={(e) => setDuration(Math.max(1, Number(e.target.value) || 0))}
+                      inputMode="numeric"
+                      value={durationStr}
+                      onChange={(e) => setDurationStr(e.target.value)}
                       style={{
                         flex: 1,
                         border: 'none',
@@ -427,8 +429,10 @@ export function BlockTimeSheet({ open, onClose, date, defaultTime, onSaved }: Pr
                         fontFamily: 'inherit',
                         textAlign: 'center',
                         outline: 'none',
-                        padding: '12px 0 12px 14px',
+                        height: '100%',
+                        padding: '0 0 0 14px',
                         minWidth: 0,
+                        boxSizing: 'border-box',
                       }}
                     />
                     <span style={{ color: T.textTertiary, fontSize: 14, fontWeight: 500, paddingRight: 14, flexShrink: 0 }}>
