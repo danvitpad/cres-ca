@@ -53,9 +53,9 @@ const I18N: Record<MiniAppLang, {
     archived: 'В архіві',
     sheetCreate: 'Новий постачальник', sheetEdit: 'Редагувати постачальника',
     fieldName: 'Назва', fieldContact: 'Контактна особа', fieldPhone: 'Телефон', fieldEmail: 'Email',
-    fieldTelegram: 'Telegram (@username)', fieldNote: 'Нотатка',
+    fieldTelegram: 'Telegram chat ID', fieldNote: 'Нотатка',
     placeholderName: 'Salon Pro, Beauty Mart…', placeholderContact: 'Олена', placeholderPhone: '+380...',
-    placeholderEmail: 'order@example.com', placeholderTelegram: '@salonpro_ua', placeholderNote: 'Графік, умови, мінімум…',
+    placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'Графік, умови, мінімум…',
     save: 'Зберегти', saving: 'Зберігаємо…',
     archiveBtn: 'В архів', restoreBtn: 'Активувати',
     errName: 'Введи назву', errSave: 'Не вдалось зберегти',
@@ -69,9 +69,9 @@ const I18N: Record<MiniAppLang, {
     archived: 'В архиве',
     sheetCreate: 'Новый поставщик', sheetEdit: 'Редактировать поставщика',
     fieldName: 'Название', fieldContact: 'Контактное лицо', fieldPhone: 'Телефон', fieldEmail: 'Email',
-    fieldTelegram: 'Telegram (@username)', fieldNote: 'Заметка',
+    fieldTelegram: 'Telegram chat ID', fieldNote: 'Заметка',
     placeholderName: 'Salon Pro, Beauty Mart…', placeholderContact: 'Елена', placeholderPhone: '+380...',
-    placeholderEmail: 'order@example.com', placeholderTelegram: '@salonpro_ua', placeholderNote: 'График, условия, минимум…',
+    placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'График, условия, минимум…',
     save: 'Сохранить', saving: 'Сохраняем…',
     archiveBtn: 'В архив', restoreBtn: 'Активировать',
     errName: 'Введи название', errSave: 'Не удалось сохранить',
@@ -85,9 +85,9 @@ const I18N: Record<MiniAppLang, {
     archived: 'Archived',
     sheetCreate: 'New supplier', sheetEdit: 'Edit supplier',
     fieldName: 'Name', fieldContact: 'Contact person', fieldPhone: 'Phone', fieldEmail: 'Email',
-    fieldTelegram: 'Telegram (@username)', fieldNote: 'Note',
+    fieldTelegram: 'Telegram chat ID', fieldNote: 'Note',
     placeholderName: 'Salon Pro, Beauty Mart…', placeholderContact: 'Helen', placeholderPhone: '+380...',
-    placeholderEmail: 'order@example.com', placeholderTelegram: '@salonpro_ua', placeholderNote: 'Schedule, terms, min order…',
+    placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'Schedule, terms, min order…',
     save: 'Save', saving: 'Saving…',
     archiveBtn: 'Archive', restoreBtn: 'Activate',
     errName: 'Enter name', errSave: 'Failed to save',
@@ -316,7 +316,7 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
         contact_person: contact.trim() || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
-        telegram_id: tg.trim().replace(/^@/, '') || null,
+        telegram_id: tg.trim() || null,
         note: note.trim() || null,
       };
       if (mode === 'create') {
@@ -454,11 +454,16 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
 
           <Field label={t.fieldTelegram} icon={<Send size={14} color={T.textTertiary} />}>
             <input
+              type="text"
+              inputMode="numeric"
               value={tg}
-              onChange={(e) => setTg(e.target.value.slice(0, 64))}
+              onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 32))}
               placeholder={t.placeholderTelegram}
               style={inputStyle}
             />
+            <p style={{ ...TYPE.micro, color: T.textTertiary, marginTop: 6, lineHeight: 1.4 }}>
+              Числовой ID, чтобы бот отправлял заказы автоматически. Получить — переслать своё сообщение боту @userinfobot.
+            </p>
           </Field>
 
           <Field label={t.fieldNote}>
@@ -507,7 +512,7 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
                 style={secondaryBtn(true)}
               >
                 <Trash2 size={14} />
-                {confirmDelete ? '?' : ''}
+                {confirmDelete ? 'Удалить?' : 'Удалить'}
               </button>
             </div>
           )}

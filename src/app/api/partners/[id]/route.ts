@@ -31,11 +31,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       note, contract_terms, commission_percent, promo_code, cross_promotion,
       initiator:masters!master_partnerships_master_id_fkey(
         id, specialization, vertical, bio, team_mode, salon_id,
-        profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug, username)
+        profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug, telegram_username)
       ),
       target:masters!master_partnerships_partner_id_fkey(
         id, specialization, vertical, bio, team_mode, salon_id,
-        profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug, username)
+        profile:profiles!masters_profile_id_fkey(full_name, avatar_url, slug, telegram_username)
       )
     `)
     .eq('id', id)

@@ -48,7 +48,7 @@ export async function POST(req: Request, { params }: RouteContext) {
 
   const { data: master } = await admin
     .from('masters')
-    .select('display_name, profile_id, public_language, profile:profiles!masters_profile_id_fkey(full_name, phone, email, username, telegram_id)')
+    .select('display_name, profile_id, public_language, profile:profiles!masters_profile_id_fkey(full_name, phone, email, telegram_username, telegram_id)')
     .eq('id', order.master_id)
     .maybeSingle();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
