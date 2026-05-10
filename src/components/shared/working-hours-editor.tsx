@@ -462,19 +462,23 @@ function DayColumn({
             }}
           />
         )}
-        {/* Drag preview — пока тянем палец */}
+        {/* Drag preview — пока тянем палец. Время старт-конец компактно
+            одной строкой (раньше justify-between раскидывал числа по углам
+            и при высоком блоке между ними была огромная пустота). */}
         {drag && (
           <div
             className="absolute left-1 right-1 rounded-md border-2 border-dashed border-emerald-600 bg-emerald-200/60 pointer-events-none"
             style={{ top: previewTop, height: previewHeight }}
           >
-            <div className="flex items-start justify-between px-1.5 pt-1 text-[10px] font-bold text-emerald-800 leading-tight">
-              <span className="tabular-nums">{minToHHMM(Math.min(drag.startMin, drag.endMin))}</span>
-              <span className="tabular-nums">{minToHHMM(Math.max(drag.startMin, drag.endMin))}</span>
+            <div className="px-1.5 pt-1 text-[10px] font-bold text-emerald-800 leading-tight tabular-nums">
+              {minToHHMM(Math.min(drag.startMin, drag.endMin))} – {minToHHMM(Math.max(drag.startMin, drag.endMin))}
             </div>
           </div>
         )}
-        {/* Working interval blocks */}
+        {/* Working interval blocks. Start-end в одну строку (с тире), ✕ —
+            компактно справа. Раньше start-end были justify-between разнесены
+            по краям блока + ✕ ещё один в углу — для 9-часового рабочего дня
+            это выглядело как «09:00 . . . . . 18:00» с пустотой посередине. */}
         {enabled && info.intervals.map((iv, i) => {
           const top = m2y(t2m(iv.start));
           const height = Math.max(20, m2y(t2m(iv.end) - t2m(iv.start)));
@@ -483,25 +487,20 @@ function DayColumn({
               key={i}
               type="button"
               onClick={() => onEdit(i)}
-              className="absolute left-1 right-1 flex flex-col items-stretch overflow-hidden rounded-md bg-emerald-500 text-left text-[10px] font-semibold text-white shadow-sm transition hover:bg-emerald-600"
+              className="absolute left-1 right-1 flex items-start justify-between gap-1 overflow-hidden rounded-md bg-emerald-500 px-1.5 pt-1 text-left text-[10px] font-semibold text-white shadow-sm transition hover:bg-emerald-600"
               style={{ top, height }}
               title={`${iv.start} – ${iv.end}`}
             >
-              <div className="flex items-start justify-between px-1.5 pt-1 leading-tight">
-                <span className="tabular-nums">{iv.start}</span>
-                <span
-                  role="button"
-                  onClick={(e) => { e.stopPropagation(); onDelete(i); }}
-                  className="ml-1 -mr-0.5 cursor-pointer rounded-sm p-0.5 hover:bg-emerald-700"
-                >
-                  <X size={10} strokeWidth={3} />
-                </span>
-              </div>
-              {height > 28 && (
-                <div className="px-1.5 pb-1 text-[9px] opacity-80 tabular-nums">
-                  {iv.end}
-                </div>
-              )}
+              <span className="tabular-nums leading-tight">
+                {iv.start} – {iv.end}
+              </span>
+              <span
+                role="button"
+                onClick={(e) => { e.stopPropagation(); onDelete(i); }}
+                className="-mr-0.5 cursor-pointer rounded-sm p-0.5 hover:bg-emerald-700"
+              >
+                <X size={10} strokeWidth={3} />
+              </span>
             </button>
           );
         })}
