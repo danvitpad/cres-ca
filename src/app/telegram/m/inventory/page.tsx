@@ -17,7 +17,6 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
-import { createClient } from '@/lib/supabase/client';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -119,18 +118,18 @@ export default function MasterMiniAppInventory() {
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      const supabase = createClient();
-      const { data: master } = await supabase
-        .from('masters').select('id').eq('profile_id', userId).maybeSingle();
+      const initData = getInitData();
+      if (!initData) { setLoading(false); return; }
+      const res = await fetch('/api/telegram/m/inventory-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
       if (cancelled) return;
-      if (!master) { setLoading(false); return; }
-      const { data } = await supabase
-        .from('inventory_items')
-        .select('id, name, quantity, unit, low_stock_threshold')
-        .eq('master_id', master.id)
-        .order('name', { ascending: true });
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json() as { items: Item[] };
       if (cancelled) return;
-      setItems((data as Item[] | null) ?? []);
+      setItems(json.items ?? []);
       setLoading(false);
     })();
     return () => { cancelled = true; };
