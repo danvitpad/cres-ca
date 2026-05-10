@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ArrowUpRight,
   UserCheck,
+  Package,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -47,6 +48,7 @@ const I18N: Record<MiniAppLang, {
   profile: string; profileHint: string;
   settings: string; settingsHint: string;
   queue: string; queueHint: string;
+  inventory: string; inventoryHint: string;
 }> = {
   uk: {
     title: 'Ще',
@@ -57,6 +59,7 @@ const I18N: Record<MiniAppLang, {
     profile: 'Профіль', profileHint: 'Ім’я, аватар, тариф',
     settings: 'Налаштування', settingsHint: 'Тариф, сповіщення, мова',
     queue: 'Жива черга', queueHint: 'Walk-in клієнти без запису',
+    inventory: 'Склад', inventoryHint: 'Матеріали, залишки, поріг',
   },
   ru: {
     title: 'Ещё',
@@ -67,6 +70,7 @@ const I18N: Record<MiniAppLang, {
     profile: 'Профиль', profileHint: 'Имя, аватар, тариф',
     settings: 'Настройки', settingsHint: 'Тариф, уведомления, язык',
     queue: 'Живая очередь', queueHint: 'Walk-in клиенты без записи',
+    inventory: 'Склад', inventoryHint: 'Материалы, остатки, порог',
   },
   en: {
     title: 'More',
@@ -77,6 +81,7 @@ const I18N: Record<MiniAppLang, {
     profile: 'Profile', profileHint: 'Name, avatar, plan',
     settings: 'Settings', settingsHint: 'Plan, notifications, language',
     queue: 'Live queue', queueHint: 'Walk-in clients without appointment',
+    inventory: 'Inventory', inventoryHint: 'Materials, stock, low threshold',
   },
 };
 
@@ -112,6 +117,7 @@ export default function MasterMiniAppMore() {
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
     { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
+    { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint' },
     { key: 'queue', href: '/telegram/m/queue', icon: UserCheck, labelKey: 'queue', hintKey: 'queueHint' },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
