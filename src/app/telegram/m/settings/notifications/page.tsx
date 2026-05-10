@@ -148,7 +148,7 @@ export default function MiniAppNotificationsPage() {
                 role="switch"
                 aria-checked={prefs[key]}
                 className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                  prefs[key] ? 'bg-violet-500' : 'bg-white/15'
+                  prefs[key] ? 'bg-[var(--m-accent)]' : 'bg-white/15'
                 }`}
               >
                 <span

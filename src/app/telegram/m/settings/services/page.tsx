@@ -102,7 +102,7 @@ export default function MiniAppServicesPage() {
 
       <Link
         href="/ru/services"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-700 active:bg-violet-200 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] py-3.5 text-[14px] font-semibold text-[var(--m-accent)] active:bg-[var(--m-accent-soft)] transition-colors"
       >
         <Plus size={15} weight="bold" />
         Добавить / редактировать

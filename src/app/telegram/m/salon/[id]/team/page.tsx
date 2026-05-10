@@ -214,7 +214,7 @@ export default function MiniAppSalonTeamPage() {
         <TabButton active={tab === 'invites'} onClick={() => setTab('invites')}>
           <Send className="size-3.5" /> Приглашения
           {pendingInvCount > 0 && (
-            <span className="rounded-full bg-indigo-500 px-1.5 text-[10px] font-bold text-white">{pendingInvCount}</span>
+            <span className="rounded-full bg-[var(--m-accent)] px-1.5 text-[10px] font-bold text-white">{pendingInvCount}</span>
           )}
         </TabButton>
         {settings?.team_mode === 'unified' && (
@@ -346,7 +346,7 @@ function MemberRow({ m, isUnified }: { m: Member; isUnified: boolean }) {
           <span className="truncate text-sm font-semibold text-neutral-900">{m.display_name ?? 'Без имени'}</span>
           {m.is_owner && <Crown className="size-3.5 shrink-0 text-amber-500" />}
           {m.status === 'suspended' && <Pause className="size-3.5 shrink-0 text-neutral-400" />}
-          {m.status === 'pending' && <Clock3 className="size-3.5 shrink-0 text-indigo-500" />}
+          {m.status === 'pending' && <Clock3 className="size-3.5 shrink-0 text-[var(--m-accent)]" />}
           {m.status === 'active' && m.role !== 'master' && <UserCheck className="size-3.5 shrink-0 text-emerald-500" />}
         </div>
         <div className="truncate text-[12px] text-neutral-500">
@@ -567,9 +567,9 @@ function InvitesTab({
 
       {pending.length > 0 && (
         <section>
-          <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-700">
+          <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--m-accent)]">
             <Send className="size-3.5" /> Ждут ответа мастера
-            <span className="text-indigo-600">({pending.length})</span>
+            <span className="text-[var(--m-accent)]">({pending.length})</span>
           </h2>
           <ul className="space-y-2">
             {pending.map((i) => (

@@ -119,7 +119,7 @@ export default function MiniAppSalonFinancePage() {
             <TotalCard label="Выручка" value={data.totals.revenue} icon={TrendingUp} tint="text-emerald-400" />
             <TotalCard label="Расходы" value={data.totals.expenses} icon={Receipt} tint="text-rose-400" />
             <TotalCard label="Выплаты" value={data.totals.payouts} icon={Wallet} tint="text-amber-400" />
-            <TotalCard label="Прибыль" value={data.totals.profit} icon={BarChart3} tint="text-violet-400" />
+            <TotalCard label="Прибыль" value={data.totals.profit} icon={BarChart3} tint="text-[var(--m-accent)]" />
           </div>
 
           <section>

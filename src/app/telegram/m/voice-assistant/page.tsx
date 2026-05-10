@@ -103,7 +103,7 @@ export default function VoiceAssistantMiniApp() {
       <header className="mb-5">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-full border border-neutral-200 bg-white flex items-center justify-center">
-            <Mic className="w-5 h-5 text-violet-600" />
+            <Mic className="w-5 h-5 text-[var(--m-accent)]" />
           </div>
           <h1 className="text-xl font-semibold">Голосовой ассистент</h1>
         </div>
@@ -121,7 +121,7 @@ export default function VoiceAssistantMiniApp() {
 
       <section className="mb-6">
         <div className="mb-2 flex items-center gap-2">
-          <Bot className="w-3.5 h-3.5 text-violet-600" />
+          <Bot className="w-3.5 h-3.5 text-[var(--m-accent)]" />
           <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wide">Что я умею</h2>
         </div>
         <div className="grid grid-cols-1 gap-2">

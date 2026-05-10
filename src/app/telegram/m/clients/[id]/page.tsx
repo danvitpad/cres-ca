@@ -271,7 +271,7 @@ export default function MasterMiniAppClientCard() {
           теперь рендерится отдельным цветным бейджем рядом с именем,
           с onClick-объяснением (TG не поддерживает hover tooltip). */}
       <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-3">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-base font-bold">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br bg-[var(--m-accent)] text-base font-bold">
           {client.full_name.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—'}
         </div>
         <div className="min-w-0 flex-1">
@@ -413,7 +413,7 @@ export default function MasterMiniAppClientCard() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <p className="truncate text-[12px] font-semibold">{v.service_name}</p>
-                    {v.voice_transcript && <Mic className="size-2.5 text-violet-600" />}
+                    {v.voice_transcript && <Mic className="size-2.5 text-[var(--m-accent)]" />}
                   </div>
                   <p className="mt-0.5 text-[10px] text-neutral-500">
                     {new Date(v.starts_at).toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short' })}
@@ -475,10 +475,10 @@ function Block({
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white/5 p-3">
       <header className="mb-2 flex items-center gap-1.5">
-        <span className="text-violet-600">{icon}</span>
+        <span className="text-[var(--m-accent)]">{icon}</span>
         <h3 className="text-[12px] font-semibold tracking-tight">{title}</h3>
         {badge && (
-          <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-medium text-violet-700">
+          <span className="ml-auto rounded-full bg-[var(--m-accent-soft)] px-2 py-0.5 text-[9px] font-medium text-[var(--m-accent)]">
             {badge}
           </span>
         )}
@@ -499,8 +499,8 @@ function Field({ label, value }: { label: string; value: string }) {
 
 function AnalyticTile({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="rounded-lg bg-violet-50 px-2.5 py-2">
-      <p className="text-[14px] font-bold leading-tight text-violet-700 [font-variant-numeric:tabular-nums]">{value}</p>
+    <div className="rounded-lg bg-[var(--m-accent-soft)] px-2.5 py-2">
+      <p className="text-[14px] font-bold leading-tight text-[var(--m-accent)] [font-variant-numeric:tabular-nums]">{value}</p>
       <p className="mt-0.5 text-[10px] text-neutral-600">{label}</p>
     </div>
   );
@@ -549,7 +549,7 @@ function NotesBlock({
         {!adding && editingIndex === null && (
           <button
             onClick={() => { haptic('light'); setAdding(true); }}
-            className="flex items-center gap-1 rounded-md bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-700 active:scale-95"
+            className="flex items-center gap-1 rounded-md bg-[var(--m-accent-soft)] px-2 py-1 text-[10px] font-semibold text-[var(--m-accent)] active:scale-95"
           >
             <Plus className="size-3" /> Добавить
           </button>
@@ -581,7 +581,7 @@ function NotesBlock({
                 if (ok) { setAdding(false); setNewDraft(''); }
               }}
               disabled={busy || !newDraft.trim()}
-              className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
+              className="rounded-md bg-[var(--m-accent)] px-2.5 py-1 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
             >Сохранить</button>
           </div>
         </div>
@@ -623,7 +623,7 @@ function NotesBlock({
                           if (ok) { setEditingIndex(null); setDraft(''); }
                         }}
                         disabled={busy || !draft.trim()}
-                        className="flex size-6 items-center justify-center rounded-md bg-violet-500 text-neutral-900 disabled:opacity-40"
+                        className="flex size-6 items-center justify-center rounded-md bg-[var(--m-accent)] text-neutral-900 disabled:opacity-40"
                       ><Check className="size-3" /></button>
                     </div>
                   </>
@@ -710,7 +710,7 @@ function ClientAiChat({
   return (
     <div className="flex items-end gap-2">
       <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/5 px-3 py-2">
-        <Bot className="size-3.5 shrink-0 text-violet-600" />
+        <Bot className="size-3.5 shrink-0 text-[var(--m-accent)]" />
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -723,7 +723,7 @@ function ClientAiChat({
       <button
         onClick={send}
         disabled={busy || text.trim().length < 2}
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-neutral-900 disabled:opacity-40"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--m-accent)] text-neutral-900 disabled:opacity-40"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
       </button>

@@ -92,7 +92,7 @@ export default function MasterMiniAppPartnersList() {
           часть пересекалась с floating-аватаром. Убрано 2026-05-08. */}
 
       <header className="flex items-center gap-2">
-        <Handshake className="size-5 text-violet-600" />
+        <Handshake className="size-5 text-[var(--m-accent)]" />
         <h1 className="text-base font-bold tracking-tight">Партнёрство</h1>
       </header>
 
@@ -141,7 +141,7 @@ function Card({ item, haptic, dim }: { item: PartnershipItem; haptic: (k: 'light
       onClick={() => haptic('light')}
       className={`flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-3 ${dim ? 'opacity-70' : ''}`}
     >
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-[13px] font-bold">
+      <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br bg-[var(--m-accent)] text-[13px] font-bold">
         {initials}
       </div>
       <div className="min-w-0 flex-1">

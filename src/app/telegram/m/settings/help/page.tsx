@@ -83,12 +83,12 @@ export default function MiniAppHelpPage() {
       </ul>
       <Link
         href="/telegram/m/settings/feedback"
-        className="flex items-center gap-3 rounded-2xl border border-violet-300 bg-violet-100 px-4 py-3.5 active:bg-violet-500/25 transition-colors"
+        className="flex items-center gap-3 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] px-4 py-3.5 active:bg-[var(--m-accent)]/25 transition-colors"
       >
-        <ChatCircle size={18} weight="fill" className="text-violet-700" />
+        <ChatCircle size={18} weight="fill" className="text-[var(--m-accent)]" />
         <div>
-          <p className="text-[13px] font-semibold text-violet-700">Нужна помощь с чем-то ещё?</p>
-          <p className="text-[11px] text-violet-600/70">Напиши в обратную связь — отвечу лично</p>
+          <p className="text-[13px] font-semibold text-[var(--m-accent)]">Нужна помощь с чем-то ещё?</p>
+          <p className="text-[11px] text-[var(--m-accent)]/70">Напиши в обратную связь — отвечу лично</p>
         </div>
       </Link>
     </SettingsShell>

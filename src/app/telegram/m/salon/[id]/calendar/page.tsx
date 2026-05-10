@@ -161,7 +161,7 @@ export default function MiniAppSalonCalendar() {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-3"
       >
-        <div className="size-10 rounded-xl bg-violet-100 border border-violet-500/25 flex items-center justify-center text-violet-600">
+        <div className="size-10 rounded-xl bg-[var(--m-accent-soft)] border border-[var(--m-accent)]/25 flex items-center justify-center text-[var(--m-accent)]">
           <Building2 className="size-5" />
         </div>
         <div className="min-w-0">

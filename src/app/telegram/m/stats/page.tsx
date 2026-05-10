@@ -347,7 +347,7 @@ export default function MasterMiniAppStats() {
                           initial={{ width: 0 }}
                           animate={{ width: `${(s.revenue / maxRevenue) * 100}%` }}
                           transition={{ duration: 0.6, ease: 'easeOut' }}
-                          className="h-full rounded-full bg-violet-500"
+                          className="h-full rounded-full bg-[var(--m-accent)]"
                         />
                       </div>
                     </li>
@@ -387,7 +387,7 @@ export default function MasterMiniAppStats() {
                     {filtered.map((op) => {
                       const isDebit = op.kind === 'expense';
                       const tagText = op.kind === 'visit' ? t.opVisit : op.kind === 'income' ? t.opIncome : t.opExpense;
-                      const tagBg = op.kind === 'visit' ? 'bg-violet-100 text-violet-700'
+                      const tagBg = op.kind === 'visit' ? 'bg-[var(--m-accent-soft)] text-[var(--m-accent)]'
                         : op.kind === 'income' ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-rose-100 text-rose-700';
                       const dateLabel = new Date(op.date).toLocaleDateString(lang === 'uk' ? 'uk-UA' : lang === 'en' ? 'en-US' : 'ru-RU', {
@@ -470,7 +470,7 @@ function StatCard({
   sub?: string;
 }) {
   const accents: Record<string, string> = {
-    violet: 'text-violet-600',
+    violet: 'text-[var(--m-accent)]',
     emerald: 'text-emerald-600',
     amber: 'text-amber-600',
     sky: 'text-sky-600',

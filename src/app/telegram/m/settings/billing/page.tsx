@@ -29,7 +29,7 @@ const TIER_LABEL: Record<string, string> = {
 };
 
 const TIER_COLOR: Record<string, string> = {
-  trial: 'from-violet-500/25 to-violet-500/5',
+  trial: 'from-[var(--m-accent)]/25 to-[var(--m-accent)]/5',
   starter: 'from-sky-500/25 to-sky-500/5',
   pro: 'from-amber-500/25 to-amber-500/5',
   business: 'from-rose-500/25 to-rose-500/5',
@@ -112,7 +112,7 @@ export default function MiniAppBillingPage() {
 
       <Link
         href="/ru/settings/billing"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-300 bg-violet-100 py-3.5 text-[14px] font-semibold text-violet-700 active:bg-violet-200 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] py-3.5 text-[14px] font-semibold text-[var(--m-accent)] active:bg-[var(--m-accent-soft)] transition-colors"
       >
         {tier === 'trial' ? 'Выбрать тариф' : 'Управление подпиской'}
         <ArrowSquareOut size={14} weight="bold" />
