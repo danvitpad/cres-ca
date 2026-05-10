@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     .from('masters')
     .select(
       'id, display_name, specialization, bio, city, rating, total_reviews, ' +
-      'avatar_url, cover_url, invite_code, slug, workplace_name, address, social_links, ' +
+      'avatar_url, cover_url, invite_code, slug, workplace_name, address, latitude, longitude, social_links, ' +
       'completed_appointments_count, served_clients_count, working_hours, languages, ' +
       'phone_public, email_public, dob_public, interests, headline, level',
     )
@@ -73,6 +73,8 @@ export async function POST(request: Request) {
       slug: string | null;
       workplace_name: string | null;
       address: string | null;
+      latitude: number | null;
+      longitude: number | null;
       social_links: Record<string, string | null> | null;
       completed_appointments_count: number | null;
       served_clients_count: number | null;
@@ -207,6 +209,8 @@ export async function POST(request: Request) {
     slug: master.slug,
     workplace: master.workplace_name,
     address: master.address,
+    latitude: master.latitude,
+    longitude: master.longitude,
     social_links: master.social_links ?? {},
     languages: master.languages ?? [],
     interests: master.interests ?? [],

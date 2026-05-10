@@ -24,6 +24,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
 import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
+import { AddressPickerSheet } from '@/components/miniapp/address-picker-sheet';
 import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -43,6 +44,8 @@ interface MasterData {
   slug: string | null;
   workplace: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   social_links: Record<string, string | null>;
   working_hours: unknown;
   total_appointments: number;
@@ -251,7 +254,7 @@ export default function MasterMiniAppPublicPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  async function patchMaster(payload: Record<string, string | null>) {
+  async function patchMaster(payload: Record<string, string | number | null>) {
     const initData = getInitData();
     const res = await fetch('/api/telegram/m/master-patch', {
       method: 'POST',
@@ -909,16 +912,18 @@ export default function MasterMiniAppPublicPage() {
           setMaster({ ...master, bio: v.trim() || null });
         }}
       />
-      <MiniAppEditTextSheet
+      <AddressPickerSheet
         open={editField === 'address'}
         title={t.addressEdit}
-        initialValue={master.address ?? ''}
-        multiline
-        maxLength={300}
+        initial={{
+          address: master.address,
+          latitude: master.latitude,
+          longitude: master.longitude,
+        }}
         onClose={() => setEditField(null)}
-        onSave={async (v) => {
-          await patchMaster({ address: v });
-          setMaster({ ...master, address: v.trim() || null });
+        onSave={async ({ address, latitude, longitude }) => {
+          await patchMaster({ address, latitude, longitude });
+          setMaster({ ...master, address: address || null, latitude, longitude });
         }}
       />
       <MiniAppEditTextSheet

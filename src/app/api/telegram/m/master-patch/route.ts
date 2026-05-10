@@ -17,6 +17,9 @@ type Body = {
   headline?: string | null;
   bio?: string | null;
   address?: string | null;
+  /** Geo-coords — пишутся вместе с address когда мастер выбирает точку на карте. */
+  latitude?: number | null;
+  longitude?: number | null;
   workplace_name?: string | null;
   city?: string | null;
   /** JSON {mon: {open,close,closed?}, tue: {...}, ...}. Если поле передано —
@@ -47,6 +50,13 @@ export async function POST(request: Request) {
     if (k in body) {
       const v = body[k];
       masterUpdate[k] = typeof v === 'string' ? v.trim() || null : null;
+    }
+  }
+  // Coords: принимаем NULL чтобы можно было обнулить, или number
+  for (const k of ['latitude', 'longitude'] as const) {
+    if (k in body) {
+      const v = body[k];
+      masterUpdate[k] = typeof v === 'number' && Number.isFinite(v) ? v : null;
     }
   }
   if ('working_hours' in body) {
