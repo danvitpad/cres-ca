@@ -440,7 +440,7 @@ export default function MiniAppRegisterPage() {
         </button>
       </div>
 
-      <div className="flex-1 space-y-6 px-6 pt-6 pb-[140px]">
+      <div className="flex-1 space-y-6 px-6 pt-6 pb-[80px]">
         {/* Header */}
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">{t.title}</h1>
@@ -549,13 +549,14 @@ export default function MiniAppRegisterPage() {
         </p>
       </div>
 
-      {/* Sticky bottom */}
+      {/* Sticky bottom — без bottom-nav на register, отступ standard
+          safe-area + 20px (раньше был 96px под флоат-нав, оставлял пустоту) */}
       <div
         className="fixed inset-x-0 bottom-0 space-y-2 px-6 pb-6 pt-8 transition-opacity duration-200"
         style={{
           opacity: keyboardOpen ? 0 : 1,
           pointerEvents: keyboardOpen ? 'none' : 'auto',
-          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
           background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
         }}
       >
