@@ -75,7 +75,11 @@ async function tryGemini(modelId: string, system: string, history: ChatMessage[]
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents,
-      generationConfig: { temperature: 0.5, maxOutputTokens: 320 },
+      generationConfig: {
+        temperature: 0.5,
+        maxOutputTokens: 600,
+        responseMimeType: 'application/json',
+      },
     }),
   });
   if (res.status === 429 || !res.ok) return '';
@@ -88,7 +92,7 @@ async function tryOpenRouter(modelId: string, system: string, history: ChatMessa
     { role: 'system' as const, content: system },
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
-  const text = (await aiChat(messages, { model: modelId, temperature: 0.5, maxTokens: 320, signal })) || '';
+  const text = (await aiChat(messages, { model: modelId, temperature: 0.5, maxTokens: 600, signal })) || '';
   return text.trim();
 }
 
@@ -223,7 +227,48 @@ export async function POST(request: Request) {
 
   const firstName = profile.full_name?.split(' ')[0] || 'мастер';
 
-  const system = `Ты AI-ассистент мастера ${firstName} в CRM CRES-CA. Отвечай по делу, кратко (2–4 предложения), русским языком, без markdown и списков. Если данных не хватает — честно скажи и предложи что посмотреть.
+  const system = `Ты AI-помощник мастера ${firstName} в CRES-CA. Отвечаешь как умный коллега: тепло, на «ты», коротко (1-3 предложения).
+
+ВАЖНО: возвращаешь ТОЛЬКО JSON — никакого текста до или после, никакого markdown:
+
+{ "action": null, "answer": "..." }                                         ← если просто отвечаешь на вопрос
+{ "action": "expense", "data": {...}, "answer": "..." }                     ← если мастер сказал о трате
+{ "action": "reminder", "data": {...}, "answer": "..." }                    ← если мастер просит напомнить
+{ "action": "note", "data": {...}, "answer": "..." }                        ← если мастер просит запомнить про клиента
+
+КОГДА action="expense" (мастер потратил деньги, купил, заплатил):
+  data: {
+    "amount": число,
+    "currency": "UAH" | "USD" | "EUR",
+    "category": "Расходники" | "Аренда" | "Еда" | "Транспорт" | "Коммунальные" | "Реклама" | "Оборудование" | "Прочее",
+    "description": "коротко что"
+  }
+  answer пример: "Записал расход 500₴ на материалы."
+
+КОГДА action="reminder" (мастер просит напомнить):
+  data: { "text": "что напомнить", "in_days": число (0=сегодня, 1=завтра, 7=через неделю) }
+  answer пример: "Окей, напомню завтра: позвонить Анне."
+
+КОГДА action="note" (мастер просит запомнить про конкретного клиента):
+  data: { "client_hint": "имя клиента", "text": "текст заметки" }
+  answer пример: "Записал в карточку Анны: аллергия на ромашку."
+
+КОГДА action=null:
+  answer — короткий ответ по контексту ниже.
+  Примеры: "За неделю заработал 8400₴, это +15% к прошлой.", "Сегодня записей нет, можно отдохнуть.", "У тебя 3 клиента: Тая, Даня, Денис."
+
+ТОН в answer (КРИТИЧНО):
+- Тепло, по-дружески, как живой человек
+- На «ты», без обращения по имени каждый раз
+- Коротко, без воды
+- БЕЗ канцелярита: НЕ "согласно данным CRM", НЕ "у вас зарегистрировано", НЕ "рекомендую открыть раздел", НЕ "для создания записи мне нужны"
+- БЕЗ markdown, списков, эмодзи
+
+ЧЕГО ТЫ ПОКА НЕ УМЕЕШЬ (если просят — action=null, в answer честно скажи):
+- Создавать запись на клиента (отвечай: "Запись на клиента пока создаётся через раздел «Календарь» или голосом в TG-боте.")
+- Отменять/переносить запись (отвечай: "Перенос — пока через карточку записи в календаре.")
+- Отправлять рассылки (отвечай: "Рассылка — через раздел «Маркетинг».")
+- Списывать материалы со склада (отвечай: "Списание — через TG-бот голосом, тут пока не научили.")
 
 КОНТЕКСТ НА ${now.toLocaleDateString('ru')}:
 
@@ -247,11 +292,7 @@ ${dormantList.join('\n') || 'нет'}
 УСЛУГИ:
 ${svcList.join(', ') || '—'}
 
-Правила:
-- Используй данные. Не выдумывай цифр.
-- Отвечай на языке вопроса.
-- Если мастер спрашивает про конкретного клиента, которого нет в топ-списке — скажи, что нужно зайти в раздел «Клиенты».
-- Без эмодзи в тексте. Без «отлично», «молодец».`;
+Используй данные из контекста. Не выдумывай цифр и имён.`;
 
   const trimmedHistory = (history ?? []).slice(-6);
   const conv: ChatMessage[] = [...trimmedHistory, { role: 'user', content: message.trim() }];
@@ -270,14 +311,113 @@ ${svcList.join(', ') || '—'}
     return NextResponse.json({ error: 'ai_unavailable' }, { status: 503 });
   }
 
+  // Парсим JSON-ответ модели. Если не JSON — используем текст как answer без action.
+  const parsed = parseAiOutput(ai.text);
+  let answer = parsed.answer;
+  let executedAction: string | null = null;
+
+  // Выполняем action если он есть и валиден.
+  if (parsed.action === 'expense' && parsed.data) {
+    const d = parsed.data as { amount?: number; currency?: string; category?: string; description?: string };
+    if (typeof d.amount === 'number' && d.amount > 0) {
+      const allowedCats = ['Расходники', 'Аренда', 'Еда', 'Транспорт', 'Коммунальные', 'Реклама', 'Оборудование', 'Прочее'];
+      const category = allowedCats.includes(d.category || '') ? d.category! : 'Прочее';
+      const today = new Date().toISOString().slice(0, 10);
+      const { error } = await admin.from('expenses').insert({
+        master_id: master.id,
+        date: today,
+        amount: d.amount,
+        currency: d.currency || 'UAH',
+        category,
+        description: d.description || category,
+      });
+      if (!error) executedAction = 'expense';
+      else answer = `Не получилось записать расход: ${error.message}`;
+    }
+  } else if (parsed.action === 'reminder' && parsed.data) {
+    const d = parsed.data as { text?: string; in_days?: number };
+    if (d.text && typeof d.in_days === 'number' && d.in_days >= 0) {
+      const when = new Date();
+      when.setDate(when.getDate() + d.in_days);
+      const { error } = await admin.from('notifications').insert({
+        profile_id: profile.id,
+        channel: 'push',
+        title: 'Напоминание',
+        body: d.text,
+        data: { source: 'mini-app-assistant', original_text: message.slice(0, 200) },
+        status: 'pending',
+        scheduled_for: when.toISOString(),
+      });
+      if (!error) executedAction = 'reminder';
+      else answer = `Не получилось создать напоминание: ${error.message}`;
+    }
+  } else if (parsed.action === 'note' && parsed.data) {
+    const d = parsed.data as { client_hint?: string; text?: string };
+    if (d.client_hint && d.text) {
+      const { data: matches } = await admin.rpc('find_master_clients', {
+        p_master_id: master.id,
+        p_query: d.client_hint,
+        p_limit: 1,
+      });
+      const clientId = (matches as Array<{ id: string }> | null)?.[0]?.id;
+      if (clientId) {
+        const { data: client } = await admin.from('clients').select('notes').eq('id', clientId).maybeSingle<{ notes: string | null }>();
+        const existing = client?.notes ?? '';
+        const stamp = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const stamped = `[${stamp}] ${d.text}`;
+        await admin.from('clients').update({
+          notes: existing ? `${existing}\n${stamped}` : stamped,
+        }).eq('id', clientId);
+        executedAction = 'note';
+      } else {
+        answer = `Не нашёл клиента "${d.client_hint}" — попробуй точное имя или фамилию.`;
+      }
+    }
+  }
+
   await admin.from('ai_actions_log').insert({
     master_id: master.id,
     source: 'telegram_mini',
-    action_type: 'assistant_chat',
+    action_type: executedAction ? `assistant_${executedAction}` : 'assistant_chat',
     input_text: message.trim().slice(0, 500),
-    result: { answer: ai.text.slice(0, 2000), model: ai.model },
+    result: { answer: answer.slice(0, 2000), model: ai.model, action: executedAction },
     status: 'success',
   });
 
-  return NextResponse.json({ answer: ai.text, model: ai.model });
+  return NextResponse.json({ answer, model: ai.model, action: executedAction });
+}
+
+/** Defensive JSON parser — модель может вернуть либо чистый JSON, либо JSON в ```-блоке,
+ *  либо просто текст. Если JSON распарсился — берём оттуда action+data+answer. Если нет —
+ *  весь raw текст идёт как answer без action. */
+function parseAiOutput(raw: string): {
+  action: string | null;
+  data: Record<string, unknown> | null;
+  answer: string;
+} {
+  const cleaned = raw
+    .trim()
+    .replace(/^```json\s*/i, '')
+    .replace(/^```\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  try {
+    const parsed = JSON.parse(cleaned) as {
+      action?: unknown;
+      data?: unknown;
+      answer?: unknown;
+    };
+    if (parsed && typeof parsed === 'object') {
+      return {
+        action: typeof parsed.action === 'string' ? parsed.action : null,
+        data: (parsed.data && typeof parsed.data === 'object') ? parsed.data as Record<string, unknown> : null,
+        answer: typeof parsed.answer === 'string' && parsed.answer.trim() ? parsed.answer.trim() : raw,
+      };
+    }
+  } catch {
+    // не JSON — возвращаем raw как answer
+  }
+
+  return { action: null, data: null, answer: raw };
 }
