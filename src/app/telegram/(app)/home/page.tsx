@@ -414,51 +414,6 @@ export default function MiniAppHomePage() {
           </div>
         )}
 
-        {/* Категории — быстрый разведчик для поиска. Показываем всегда (кроме
-            первой загрузки), даже когда есть слоты, чтобы клиент мог дальше
-            искать новых мастеров через подсказки. Тап → /telegram/search?q=... */}
-        {loaded && (
-          <div>
-            <SectionHeader title={t.explore} rightLabel="" />
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8,
-              padding: `0 ${PAGE_PADDING_X}px`,
-            }}>
-              {([
-                { label: t.topcat.hair },
-                { label: t.cat.beauty },
-                { label: t.topcat.massage },
-                { label: t.cat.health },
-                { label: t.topcat.trainer },
-                { label: t.cat.pets },
-                { label: t.cat.auto },
-                { label: t.cat.home },
-              ] as const).map((c) => (
-                <Link
-                  key={c.label}
-                  href={`/telegram/search?q=${encodeURIComponent(c.label)}`}
-                  onClick={() => haptic('light')}
-                  style={{
-                    padding: '10px 16px',
-                    borderRadius: R.pill,
-                    border: `1px solid ${T.borderSubtle}`,
-                    background: T.surface,
-                    color: T.text,
-                    ...TYPE.bodyStrong,
-                    fontWeight: 500,
-                    textDecoration: 'none',
-                    boxShadow: SHADOW.card,
-                  }}
-                >
-                  {c.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Empty state — показываем ТОЛЬКО когда все три fetch'а уже
             отработали и реально нечего показать. Без флага loaded
             empty-state мигает в первую секунду до прихода данных. */}
