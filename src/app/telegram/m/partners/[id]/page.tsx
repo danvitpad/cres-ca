@@ -1,10 +1,11 @@
 /** --- YAML
  * name: MasterMiniAppPartnerCard
- * description: Master Mini App partner card — vertical mirror of web partner detail. Hero +
- *              4 stacked blocks (Partner info / Notes / Terms / Activity) + AI chat at bottom.
- *              Editable per-entry notes & contract terms; AI parses free-form text into
- *              notes/contract_terms/commission/promo/cross_promotion.
+ * description: Партнёрская карточка мастера в Mini App. Структура: Hero (аватар + имя),
+ *              секции Информация / Статистика / Заметки / Условия / Договорённости / Активность,
+ *              кнопка Прекратить партнёрство, AI-чат внизу. Использует Mini App дизайн-токены
+ *              (T/R/SHADOW/TYPE) — единый стиль с другими экранами.
  * created: 2026-04-25
+ * updated: 2026-05-10
  * --- */
 
 'use client';
@@ -12,14 +13,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Bot, Send, Pencil, Trash2, Plus,
-  Check, X, FileText, Handshake, Megaphone, Percent, TicketPercent,
-  User as UserIcon, Users, BarChart3, XCircle,
+  Check, X, Megaphone, XCircle, ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE } from '@/components/miniapp/design';
+import { AvatarCircle } from '@/components/miniapp/shells';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -82,7 +83,7 @@ function formatDob(iso: string | null): string {
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+    return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
   } catch {
     return '—';
   }
@@ -98,6 +99,31 @@ function parseEntries(s: string | null): NoteEntry[] {
     return { index, date: m ? m[1] : null, body: m ? m[2] : raw };
   }).filter((x): x is NoteEntry => x !== null);
 }
+
+const sectionLabelStyle: React.CSSProperties = {
+  ...TYPE.micro,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  color: T.textTertiary,
+  margin: '4px 4px 8px',
+};
+
+function makeCardStyle(): React.CSSProperties {
+  return {
+    borderRadius: R.lg,
+    border: `1px solid ${T.borderSubtle}`,
+    background: T.surface,
+    boxShadow: SHADOW.card,
+    overflow: 'hidden',
+  };
+}
+
+const dividerStyle: React.CSSProperties = {
+  height: 1,
+  background: T.borderSubtle,
+  margin: '0 16px',
+};
 
 export default function MasterMiniAppPartnerCard() {
   const params = useParams<{ id: string }>();
@@ -148,210 +174,265 @@ export default function MasterMiniAppPartnerCard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-neutral-400" />
+      <div style={{ ...FONT_BASE, background: T.bg, minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={24} color={T.textTertiary} className="animate-spin" />
       </div>
     );
   }
   if (!partnership) {
     return (
-      <div className="px-5 pt-10 text-center">
-        <p className="text-sm text-neutral-600">Партнёрство не найдено</p>
+      <div style={{ ...FONT_BASE, background: T.bg, padding: `60px ${PAGE_PADDING_X}px`, textAlign: 'center' }}>
+        <p style={{ ...TYPE.body, color: T.textSecondary, margin: 0 }}>Партнёрство не найдено</p>
       </div>
     );
   }
 
   const partner = partnership.partner;
   const partnerName = partner.profile?.full_name || 'Партнёр';
-  const initials = partnerName.split(' ').slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '—';
   const isTeam = !!partner.salon_id;
+  const cardStyle = makeCardStyle();
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-3 px-4 pt-4 pb-32"
-    >
-      <button
-        onClick={() => { haptic('light'); router.back(); }}
-        className="flex size-9 items-center justify-center rounded-xl border border-neutral-200 bg-white/5"
-      >
-        <ArrowLeft className="size-4" />
-      </button>
+    <div style={{ ...FONT_BASE, background: T.bg, color: T.text }}>
+      <div style={{
+        padding: `16px ${PAGE_PADDING_X}px 96px`,
+        display: 'flex', flexDirection: 'column', gap: 20,
+      }}>
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={() => { haptic('light'); router.back(); }}
+          aria-label="Назад"
+          style={{
+            width: 40, height: 40, borderRadius: 20,
+            border: `1px solid ${T.border}`, background: T.surface, color: T.text,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: SHADOW.card,
+          }}
+        >
+          <ArrowLeft size={18} strokeWidth={2.4} />
+        </button>
 
-      {/* Hero */}
-      <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white/5 p-3">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-cyan-500 text-base font-bold">
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <h1 className="truncate text-[15px] font-bold">{partnerName}</h1>
-            <span className="flex items-center gap-0.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-medium text-violet-700">
-              {isTeam ? <Users className="size-2.5" /> : <UserIcon className="size-2.5" />}
-              {isTeam ? 'Команда' : 'Соло'}
-            </span>
-            {partnership.status === 'active' && partnership.cross_promotion && (
-              <span className="flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-medium text-emerald-600">
-                <Megaphone className="size-2.5" />Реклама
-              </span>
-            )}
+        {/* Hero — avatar + name + meta */}
+        <div style={{ ...cardStyle, padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <AvatarCircle url={partner.profile?.avatar_url} name={partnerName} size={56} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ ...TYPE.h2, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {partnerName}
+            </h1>
+            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '2px 0 0' }}>
+              {isTeam ? 'Команда' : 'Соло мастер'}{partner.specialization ? ` · ${partner.specialization}` : ''}
+            </p>
           </div>
-          <p className="mt-0.5 truncate text-[11px] text-neutral-500">{partner.specialization || '—'}</p>
         </div>
+
+        {/* Открыть публичный профиль */}
         {partner.profile?.slug && (
           <Link
             href={`/m/${partner.profile.slug}`}
             target="_blank"
             onClick={() => haptic('light')}
-            className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-[10px] font-semibold"
+            style={{
+              ...cardStyle,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '14px 16px',
+              textDecoration: 'none', color: T.text,
+            }}
           >
-            Профиль
+            <span style={{ ...TYPE.bodyStrong, color: T.text }}>Публичный профиль</span>
+            <ExternalLink size={16} color={T.textTertiary} />
           </Link>
         )}
-      </div>
 
-      {/* 1. Partner info — контакты + специализация */}
-      <Block icon={<UserIcon className="size-3.5" />} title={isTeam ? 'О команде' : 'О партнёре'} badge="Партнёр управляет сам">
-        <div className="grid grid-cols-2 gap-3 text-[12px]">
-          <Field label={isTeam ? 'Название' : 'Имя'} value={partnerName} />
-          <Field label="Специализация" value={partner.specialization || '—'} />
-          <Field label="Телефон" value={partner.profile?.phone || '—'} />
-          <Field label="Email" value={partner.profile?.email || '—'} />
-          <Field label="День рождения" value={formatDob(partner.profile?.date_of_birth ?? null)} />
-          <Field label="Telegram" value={partner.profile?.username ? `@${partner.profile.username}` : '—'} />
-        </div>
-        {partner.bio && (
-          <p className="mt-2 border-t border-neutral-200 pt-2 text-[11px] text-neutral-700 leading-relaxed">
-            {partner.bio}
+        {/* ИНФОРМАЦИЯ */}
+        <div>
+          <p style={sectionLabelStyle}>Информация</p>
+          <div style={cardStyle}>
+            <InfoRow label="Телефон" value={partner.profile?.phone || '—'} />
+            <div style={dividerStyle} />
+            <InfoRow label="Email" value={partner.profile?.email || '—'} />
+            <div style={dividerStyle} />
+            <InfoRow label="Telegram" value={partner.profile?.username ? `@${partner.profile.username}` : '—'} />
+            <div style={dividerStyle} />
+            <InfoRow label="День рождения" value={formatDob(partner.profile?.date_of_birth ?? null)} />
+          </div>
+          {partner.bio && (
+            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '10px 4px 0', lineHeight: 1.5 }}>
+              {partner.bio}
+            </p>
+          )}
+          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
+            Эти поля заполняет сам партнёр.
           </p>
-        )}
-      </Block>
-
-      {/* Profit stats — сколько клиентов привёл партнёр и какую выручку. */}
-      {partnership.stats && (
-        <Block icon={<BarChart3 className="size-3.5" />} title="Профит от партнёра">
-          <div className="grid grid-cols-3 gap-2">
-            <Tile label="Клиентов привёл" value={partnership.stats.clients_referred} />
-            <Tile label="Завершённых визитов" value={partnership.stats.appointments_completed} />
-            <Tile label="Выручка, ₴" value={partnership.stats.total_profit} />
-          </div>
-          {!partnership.promo_code && (
-            <p className="mt-2 text-[10px] text-neutral-400 leading-relaxed">
-              Чтобы считать клиентов от партнёра — задай промокод партнёрства ниже. Клиенты используют его при записи, и сюда попадает статистика.
-            </p>
-          )}
-          {partnership.promo_code && partnership.stats.clients_referred === 0 && (
-            <p className="mt-2 text-[10px] text-neutral-400 leading-relaxed">
-              Пока никто не записался по промокоду «{partnership.promo_code}».
-            </p>
-          )}
-        </Block>
-      )}
-
-      {/* 2. Notes */}
-      <NotesBlock
-        title="Заметки о сотрудничестве"
-        icon={<FileText className="size-3.5" />}
-        partnership={partnership}
-        field="note"
-        haptic={haptic}
-        onSaved={reload}
-      />
-
-      {/* 3. Terms */}
-      <Block icon={<Handshake className="size-3.5" />} title="Условия">
-        <div className="space-y-2 text-[12px]">
-          <Row icon={<Percent className="size-3" />} label="Комиссия" value={partnership.commission_percent !== null ? `${partnership.commission_percent}%` : '—'} />
-          <Row icon={<TicketPercent className="size-3" />} label="Промокод нашим" value={partnership.promo_code || '—'} mono={!!partnership.promo_code} />
-          <CrossPromoRow partnership={partnership} haptic={haptic} onSaved={reload} />
         </div>
-        <div className="mt-2 border-t border-neutral-200 pt-2">
-          <p className="mb-1 text-[10px] uppercase tracking-wide text-neutral-400">Договорённости</p>
-          <NotesInline partnership={partnership} field="contract_terms" haptic={haptic} onSaved={reload} />
-        </div>
-      </Block>
 
-      {/* 4. Activity */}
-      <ActivityBlock partnership={partnership} />
-
-      {/* End partnership */}
-      {partnership.status !== 'ended' && (
-        confirmEnd ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center space-y-3">
-            <p className="text-[13px] font-semibold text-rose-700">Прекратить партнёрство?</p>
-            <p className="text-[11px] text-rose-500 leading-relaxed">Действие необратимо. Статус изменится на «Завершён».</p>
-            <div className="flex gap-2 justify-center">
-              <button
-                onClick={() => setConfirmEnd(false)}
-                className="rounded-xl border border-neutral-200 px-4 py-2 text-[12px] font-semibold text-neutral-700"
-              >Отмена</button>
-              <button
-                onClick={endPartnership}
-                disabled={ending}
-                className="flex items-center gap-1.5 rounded-xl bg-rose-500 px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-50"
-              >
-                {ending ? <Loader2 className="size-3.5 animate-spin" /> : <XCircle className="size-3.5" />}
-                Прекратить
-              </button>
+        {/* ПРОФИТ ОТ ПАРТНЁРА */}
+        {partnership.stats && (
+          <div>
+            <p style={sectionLabelStyle}>Профит от партнёра</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <Tile label="Клиентов" value={partnership.stats.clients_referred} />
+              <Tile label="Визитов" value={partnership.stats.appointments_completed} />
+              <Tile label="Выручка, ₴" value={partnership.stats.total_profit} />
             </div>
+            {!partnership.promo_code && (
+              <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '10px 4px 0', lineHeight: 1.5 }}>
+                Чтобы считать клиентов от партнёра — задай промокод партнёрства в разделе «Условия» ниже.
+              </p>
+            )}
+            {partnership.promo_code && partnership.stats.clients_referred === 0 && (
+              <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '10px 4px 0' }}>
+                Пока никто не записался по промокоду «{partnership.promo_code}».
+              </p>
+            )}
           </div>
-        ) : (
-          <button
-            onClick={() => { haptic('light'); setConfirmEnd(true); }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-rose-200 py-3 text-[13px] font-semibold text-rose-500"
-          >
-            <XCircle className="size-4" />
-            Прекратить партнёрство
-          </button>
-        )
-      )}
-
-      {/* AI chat */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">
-        <PartnerAiChat partnershipId={partnership.id} haptic={haptic} onApplied={reload} />
-      </div>
-    </motion.div>
-  );
-}
-
-/* primitives */
-
-function Block({ icon, title, badge, children }: { icon: React.ReactNode; title: string; badge?: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-neutral-200 bg-white/5 p-3">
-      <header className="mb-2 flex items-center gap-1.5">
-        <span className="text-violet-600">{icon}</span>
-        <h3 className="text-[12px] font-semibold tracking-tight">{title}</h3>
-        {badge && (
-          <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[9px] font-medium text-violet-700">
-            {badge}
-          </span>
         )}
-      </header>
-      {children}
-    </section>
-  );
-}
 
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[9px] uppercase tracking-wide text-neutral-400">{label}</p>
-      <p className="mt-0.5 break-words text-[12px] text-neutral-900/95">{value}</p>
+        {/* ЗАМЕТКИ */}
+        <div>
+          <p style={sectionLabelStyle}>Заметки о сотрудничестве</p>
+          <NotesBlock partnership={partnership} field="note" haptic={haptic} onSaved={reload} cardStyle={cardStyle} />
+        </div>
+
+        {/* УСЛОВИЯ */}
+        <div>
+          <p style={sectionLabelStyle}>Условия</p>
+          <div style={cardStyle}>
+            <InfoRow label="Комиссия" value={partnership.commission_percent !== null ? `${partnership.commission_percent}%` : '—'} />
+            <div style={dividerStyle} />
+            <InfoRow
+              label="Промокод нашим"
+              value={partnership.promo_code || '—'}
+              mono={!!partnership.promo_code}
+            />
+            <div style={dividerStyle} />
+            <CrossPromoRow partnership={partnership} haptic={haptic} onSaved={reload} />
+          </div>
+        </div>
+
+        {/* ДОГОВОРЁННОСТИ */}
+        <div>
+          <p style={sectionLabelStyle}>Договорённости</p>
+          <NotesBlock partnership={partnership} field="contract_terms" haptic={haptic} onSaved={reload} cardStyle={cardStyle} />
+        </div>
+
+        {/* АКТИВНОСТЬ */}
+        <div>
+          <p style={sectionLabelStyle}>Активность</p>
+          <ActivityTiles partnership={partnership} />
+        </div>
+
+        {/* End partnership */}
+        {partnership.status !== 'ended' && (
+          confirmEnd ? (
+            <div style={{
+              borderRadius: R.lg, padding: 16, marginTop: 4,
+              border: `1px solid ${T.dangerSoft}`, background: T.dangerSoft,
+              display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'center',
+            }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.danger, margin: 0 }}>Прекратить партнёрство?</p>
+              <p style={{ ...TYPE.caption, color: T.danger, margin: 0, opacity: 0.85 }}>
+                Действие необратимо. Статус изменится на «Завершён».
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 4 }}>
+                <button
+                  onClick={() => setConfirmEnd(false)}
+                  style={{
+                    borderRadius: R.pill, border: `1px solid ${T.border}`,
+                    background: T.surface, color: T.text,
+                    padding: '10px 20px', ...TYPE.bodyStrong,
+                    cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >Отмена</button>
+                <button
+                  onClick={endPartnership}
+                  disabled={ending}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    borderRadius: R.pill, border: 'none',
+                    background: T.danger, color: '#fff',
+                    padding: '10px 20px', ...TYPE.bodyStrong,
+                    cursor: ending ? 'wait' : 'pointer', fontFamily: 'inherit',
+                    opacity: ending ? 0.6 : 1,
+                  }}
+                >
+                  {ending ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
+                  Прекратить
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setConfirmEnd(true); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, width: '100%', padding: '14px 16px', marginTop: 4,
+                borderRadius: R.lg, border: `1px solid ${T.dangerSoft}`,
+                background: T.dangerSoft, color: T.danger,
+                ...TYPE.bodyStrong, cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              <XCircle size={16} strokeWidth={2.4} />
+              Прекратить партнёрство
+            </button>
+          )
+        )}
+      </div>
+
+      {/* AI chat — fixed снизу, focus-aware (поднимается над клавиатурой) */}
+      <PartnerAiChat partnershipId={partnership.id} haptic={haptic} onApplied={reload} />
     </div>
   );
 }
 
-function Row({ icon, label, value, mono }: { icon: React.ReactNode; label: string; value: string; mono?: boolean }) {
+/* ─── Primitives ─── */
+
+function InfoRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-1.5 text-neutral-600">
-        <span className="text-neutral-400">{icon}</span>
-        {label}
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', gap: 12 }}>
+      <span style={{ ...TYPE.body, color: T.textSecondary }}>{label}</span>
+      <span style={{
+        ...TYPE.bodyStrong, color: T.text,
+        fontFamily: mono ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : 'inherit',
+        textAlign: 'right',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        maxWidth: '60%',
+      }}>
+        {value}
       </span>
-      <span className={`font-semibold text-neutral-900 ${mono ? 'font-mono' : ''}`}>{value}</span>
+    </div>
+  );
+}
+
+function Tile({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div style={{
+      borderRadius: R.md, padding: '14px 12px',
+      background: T.surface, border: `1px solid ${T.borderSubtle}`,
+      boxShadow: SHADOW.card,
+    }}>
+      <p style={{ ...TYPE.h3, color: T.text, margin: 0, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+      <p style={{ ...TYPE.caption, margin: '2px 0 0' }}>{label}</p>
+    </div>
+  );
+}
+
+function ActivityTiles({ partnership }: { partnership: Partnership }) {
+  const [days, setDays] = useState(0);
+  useEffect(() => {
+    setDays(Math.floor((Date.now() - new Date(partnership.initiated_at).getTime()) / 86400000)); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [partnership.initiated_at]);
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+      <Tile label="Дней в партнёрстве" value={days} />
+      <Tile
+        label="Статус"
+        value={partnership.status === 'active' ? 'Активен' : partnership.status === 'pending' ? 'Ожидает' : 'Завершён'}
+      />
+      <Tile label="Кросс-реклама" value={partnership.cross_promotion ? 'Вкл.' : 'Выкл.'} />
+      <Tile label="Инициатор" value={partnership.youInitiated ? 'Я' : 'Партнёр'} />
     </div>
   );
 }
@@ -387,36 +468,44 @@ function CrossPromoRow({
 
   const enabled = partnership.cross_promotion;
   return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-1.5 text-neutral-600">
-        <Megaphone className="size-3 text-neutral-400" />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', gap: 12 }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8, ...TYPE.body, color: T.textSecondary }}>
+        <Megaphone size={14} color={T.textTertiary} strokeWidth={2} />
         Взаимная реклама
       </span>
       <button
         onClick={toggle}
         disabled={busy}
-        className={`relative h-5 w-9 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-white/15'}`}
+        aria-label="Взаимная реклама"
+        style={{
+          position: 'relative', width: 44, height: 26, borderRadius: 13,
+          border: 'none',
+          background: enabled ? T.accent : T.borderSubtle,
+          cursor: busy ? 'wait' : 'pointer',
+          transition: 'background 200ms',
+          flexShrink: 0,
+        }}
       >
-        <span
-          className="absolute top-0.5 size-4 rounded-full bg-white transition-all"
-          style={{ left: enabled ? 18 : 2 }}
-        />
+        <span style={{
+          position: 'absolute', top: 3, left: enabled ? 21 : 3,
+          width: 20, height: 20, borderRadius: '50%', background: '#fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
+        }} />
       </button>
     </div>
   );
 }
 
-/* Notes block (full) */
+/* ─── Notes block — multi-entry с inline edit/add/delete ─── */
 
 function NotesBlock({
-  title, icon, partnership, field, haptic, onSaved,
+  partnership, field, haptic, onSaved, cardStyle,
 }: {
-  title: string;
-  icon: React.ReactNode;
   partnership: Partnership;
   field: 'note' | 'contract_terms';
   haptic: (k: 'light' | 'success' | 'error' | 'selection') => void;
   onSaved: () => void;
+  cardStyle: React.CSSProperties;
 }) {
   const value = partnership[field];
   const entries = parseEntries(value ?? null);
@@ -426,7 +515,7 @@ function NotesBlock({
   const [newDraft, setNewDraft] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function persist(nextLines: string[]) {
+  async function persist(nextLines: string[]): Promise<boolean> {
     setBusy(true);
     const initData = getInitData();
     if (!initData) { setBusy(false); return false; }
@@ -435,9 +524,7 @@ function NotesBlock({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        initData,
-        partnership_id: partnership.id,
-        field,
+        initData, partnership_id: partnership.id, field,
         value: next.length ? next : null,
       }),
     });
@@ -448,33 +535,134 @@ function NotesBlock({
     return true;
   }
 
-  return (
-    <Block icon={icon} title={title}>
-      <div className="-mt-1 mb-2 flex justify-end">
-        {!adding && editingIndex === null && (
-          <button
-            onClick={() => { haptic('light'); setAdding(true); }}
-            className="flex items-center gap-1 rounded-md bg-violet-100 px-2 py-1 text-[10px] font-semibold text-violet-700 active:scale-95"
-          >
-            <Plus className="size-3" /> Добавить
-          </button>
-        )}
+  const placeholder = field === 'contract_terms'
+    ? 'Например: «Комиссия 5%, отчёт раз в месяц»'
+    : 'Что-то важное про партнёра...';
+
+  // Empty state
+  if (entries.length === 0 && !adding) {
+    return (
+      <div style={{ ...cardStyle, padding: 16, textAlign: 'center' }}>
+        <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
+          Пусто. Добавь вручную или напиши в чат внизу — AI разнесёт.
+        </p>
+        <button
+          type="button"
+          onClick={() => { haptic('light'); setAdding(true); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '10px 18px', borderRadius: R.pill,
+            border: `1px solid ${T.border}`, background: 'transparent', color: T.text,
+            ...TYPE.bodyStrong, cursor: 'pointer', fontFamily: 'inherit',
+          }}
+        >
+          <Plus size={14} strokeWidth={2.4} /> Добавить
+        </button>
       </div>
+    );
+  }
+
+  return (
+    <div style={cardStyle}>
+      {entries.map((entry, idx) => {
+        const isEditing = editingIndex === entry.index;
+        return (
+          <div key={entry.index} style={{
+            padding: '14px 16px',
+            borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
+          }}>
+            {isEditing ? (
+              <>
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  rows={2}
+                  autoFocus
+                  style={{
+                    width: '100%', padding: 12, borderRadius: R.sm,
+                    border: `1px solid ${T.border}`, background: T.bg, color: T.text,
+                    ...TYPE.body, fontFamily: 'inherit', resize: 'none', outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
+                  <button
+                    onClick={() => { setEditingIndex(null); setDraft(''); }}
+                    style={miniIconBtnStyle('neutral')}
+                    aria-label="Отмена"
+                  ><X size={14} /></button>
+                  <button
+                    onClick={async () => {
+                      if (editingIndex === null) return;
+                      const lines = (value ?? '').split('\n');
+                      const orig = lines[editingIndex] ?? '';
+                      const m = orig.match(/^\s*\[[^\]]+\]\s*/);
+                      const prefix = m ? m[0] : '';
+                      lines[editingIndex] = `${prefix}${draft.trim()}`;
+                      const ok = await persist(lines);
+                      if (ok) { setEditingIndex(null); setDraft(''); }
+                    }}
+                    disabled={busy || !draft.trim()}
+                    style={{ ...miniIconBtnStyle('accent'), opacity: (busy || !draft.trim()) ? 0.5 : 1 }}
+                    aria-label="Сохранить"
+                  ><Check size={14} /></button>
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {entry.date && (
+                    <p style={{ ...TYPE.micro, color: T.textTertiary, margin: 0 }}>{entry.date}</p>
+                  )}
+                  <p style={{ ...TYPE.body, color: T.text, margin: '2px 0 0', lineHeight: 1.5, wordBreak: 'break-word' }}>
+                    {entry.body}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                  <button
+                    onClick={() => { haptic('selection'); setEditingIndex(entry.index); setDraft(entry.body); }}
+                    style={miniIconBtnStyle('neutral')}
+                    aria-label="Редактировать"
+                  ><Pencil size={14} /></button>
+                  <button
+                    onClick={async () => {
+                      const lines = (value ?? '').split('\n');
+                      lines.splice(entry.index, 1);
+                      await persist(lines);
+                    }}
+                    style={miniIconBtnStyle('danger')}
+                    aria-label="Удалить"
+                  ><Trash2 size={14} /></button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {adding && (
-        <div className="mb-2 rounded-lg border border-neutral-200 bg-neutral-100 p-2">
+        <div style={{ padding: '14px 16px', borderTop: entries.length > 0 ? `1px solid ${T.borderSubtle}` : 'none' }}>
           <textarea
             value={newDraft}
             onChange={(e) => setNewDraft(e.target.value)}
-            placeholder={field === 'contract_terms' ? '«Комиссия 5%, отчёт раз в месяц»' : '«Делает скидку 10% нашим»'}
+            placeholder={placeholder}
             rows={2}
             autoFocus
-            className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1.5 text-[12px] outline-none"
+            style={{
+              width: '100%', padding: 12, borderRadius: R.sm,
+              border: `1px solid ${T.border}`, background: T.bg, color: T.text,
+              ...TYPE.body, fontFamily: 'inherit', resize: 'none', outline: 'none',
+              boxSizing: 'border-box',
+            }}
           />
-          <div className="mt-1.5 flex justify-end gap-1.5">
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10 }}>
             <button
               onClick={() => { setAdding(false); setNewDraft(''); }}
-              className="rounded-md border border-neutral-200 px-2 py-1 text-[10px] text-neutral-700"
+              style={{
+                padding: '8px 16px', borderRadius: R.pill,
+                border: `1px solid ${T.border}`, background: T.surface, color: T.textSecondary,
+                ...TYPE.caption, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              }}
             >Отмена</button>
             <button
               onClick={async () => {
@@ -486,219 +674,52 @@ function NotesBlock({
                 if (ok) { setAdding(false); setNewDraft(''); }
               }}
               disabled={busy || !newDraft.trim()}
-              className="rounded-md bg-violet-500 px-2.5 py-1 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
-            >Сохранить</button>
-          </div>
-        </div>
-      )}
-
-      {entries.length === 0 && !adding ? (
-        <p className="text-[11px] leading-relaxed text-neutral-500">
-          Пусто. Добавь вручную или напиши в чат снизу — AI разнесёт.
-        </p>
-      ) : (
-        <div className="space-y-1.5">
-          {entries.map((entry) => {
-            const isEditing = editingIndex === entry.index;
-            return (
-              <div key={entry.index} className="rounded-lg bg-white border-neutral-200 px-2.5 py-1.5">
-                {isEditing ? (
-                  <>
-                    <textarea
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      rows={2}
-                      autoFocus
-                      className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1.5 text-[12px] outline-none"
-                    />
-                    <div className="mt-1 flex justify-end gap-1.5">
-                      <button
-                        onClick={() => { setEditingIndex(null); setDraft(''); }}
-                        className="flex size-6 items-center justify-center rounded-md bg-white/5 text-neutral-700"
-                      ><X className="size-3" /></button>
-                      <button
-                        onClick={async () => {
-                          if (editingIndex === null) return;
-                          const lines = (value ?? '').split('\n');
-                          const orig = lines[editingIndex] ?? '';
-                          const m = orig.match(/^\s*\[[^\]]+\]\s*/);
-                          const prefix = m ? m[0] : '';
-                          lines[editingIndex] = `${prefix}${draft.trim()}`;
-                          const ok = await persist(lines);
-                          if (ok) { setEditingIndex(null); setDraft(''); }
-                        }}
-                        disabled={busy || !draft.trim()}
-                        className="flex size-6 items-center justify-center rounded-md bg-violet-500 text-neutral-900 disabled:opacity-40"
-                      ><Check className="size-3" /></button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      {entry.date && (
-                        <p className="text-[9px] tracking-wide text-neutral-400">{entry.date}</p>
-                      )}
-                      <p className="break-words text-[12px] text-neutral-900 leading-relaxed">{entry.body}</p>
-                    </div>
-                    <div className="flex shrink-0 gap-0.5 opacity-70">
-                      <button
-                        onClick={() => { haptic('selection'); setEditingIndex(entry.index); setDraft(entry.body); }}
-                        className="flex size-6 items-center justify-center rounded-md text-neutral-700"
-                      ><Pencil className="size-3" /></button>
-                      <button
-                        onClick={async () => {
-                          const lines = (value ?? '').split('\n');
-                          lines.splice(entry.index, 1);
-                          await persist(lines);
-                        }}
-                        className="flex size-6 items-center justify-center rounded-md text-rose-400"
-                      ><Trash2 className="size-3" /></button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </Block>
-  );
-}
-
-/* Notes inline (compact, used inside Terms block for contract_terms) */
-
-function NotesInline({
-  partnership, field, haptic, onSaved,
-}: {
-  partnership: Partnership;
-  field: 'contract_terms';
-  haptic: (k: 'light' | 'success' | 'error' | 'selection') => void;
-  onSaved: () => void;
-}) {
-  const value = partnership[field];
-  const entries = parseEntries(value ?? null);
-  const [adding, setAdding] = useState(false);
-  const [newDraft, setNewDraft] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function persist(nextLines: string[]) {
-    setBusy(true);
-    const initData = getInitData();
-    if (!initData) { setBusy(false); return false; }
-    const next = nextLines.map((l) => l.trim()).filter(Boolean).join('\n');
-    const res = await fetch('/api/telegram/m/partners/update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initData,
-        partnership_id: partnership.id,
-        field,
-        value: next.length ? next : null,
-      }),
-    });
-    setBusy(false);
-    if (!res.ok) { haptic('error'); return false; }
-    haptic('success');
-    onSaved();
-    return true;
-  }
-
-  return (
-    <div>
-      {entries.length === 0 && !adding && (
-        <p className="text-[11px] text-neutral-500">Пусто. Опиши условия в AI-чате.</p>
-      )}
-      {entries.length > 0 && (
-        <div className="space-y-1">
-          {entries.map((entry) => (
-            <div key={entry.index} className="flex items-start gap-2 rounded-md bg-white border-neutral-200 px-2 py-1">
-              <div className="min-w-0 flex-1">
-                {entry.date && <p className="text-[9px] text-neutral-400">{entry.date}</p>}
-                <p className="text-[11px] text-neutral-900 leading-relaxed">{entry.body}</p>
-              </div>
-              <button
-                onClick={async () => {
-                  const lines = (value ?? '').split('\n');
-                  lines.splice(entry.index, 1);
-                  await persist(lines);
-                }}
-                className="shrink-0 text-rose-400"
-              ><Trash2 className="size-3" /></button>
-            </div>
-          ))}
-        </div>
-      )}
-      {adding ? (
-        <div className="mt-2 rounded-md border border-neutral-200 bg-neutral-100 p-2">
-          <textarea
-            value={newDraft}
-            onChange={(e) => setNewDraft(e.target.value)}
-            placeholder="Например: «Комиссия 5%, отчёт раз в месяц»"
-            rows={2}
-            autoFocus
-            className="w-full resize-none rounded-md bg-neutral-900/40 px-2 py-1 text-[11px] outline-none"
-          />
-          <div className="mt-1 flex justify-end gap-1.5">
-            <button onClick={() => { setAdding(false); setNewDraft(''); }} className="rounded-md border border-neutral-200 px-2 py-0.5 text-[10px] text-neutral-700">Отмена</button>
-            <button
-              onClick={async () => {
-                const v = newDraft.trim();
-                if (!v) return;
-                const stamp = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                const lines = [...(value ?? '').split('\n'), `[${stamp}] ${v}`];
-                const ok = await persist(lines);
-                if (ok) { setAdding(false); setNewDraft(''); }
+              style={{
+                padding: '8px 16px', borderRadius: R.pill,
+                border: 'none', background: T.accent, color: '#fff',
+                ...TYPE.caption, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                opacity: (busy || !newDraft.trim()) ? 0.5 : 1,
               }}
-              disabled={busy || !newDraft.trim()}
-              className="rounded-md bg-violet-500 px-2 py-0.5 text-[10px] font-semibold text-neutral-900 disabled:opacity-40"
             >Сохранить</button>
           </div>
         </div>
-      ) : (
+      )}
+
+      {!adding && (
         <button
-          onClick={() => setAdding(true)}
-          className="mt-2 flex items-center gap-1 rounded-md border border-dashed border-neutral-200 px-2 py-1 text-[10px] text-neutral-600"
+          type="button"
+          onClick={() => { haptic('light'); setAdding(true); }}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            width: '100%', padding: '14px 16px',
+            borderTop: entries.length > 0 ? `1px solid ${T.borderSubtle}` : 'none',
+            background: 'transparent', border: 'none', color: T.accent,
+            ...TYPE.bodyStrong, cursor: 'pointer', fontFamily: 'inherit',
+          }}
         >
-          <Plus className="size-3" /> Добавить условие
+          <Plus size={14} strokeWidth={2.4} /> Добавить
         </button>
       )}
     </div>
   );
 }
 
-/* Activity block */
-
-function ActivityBlock({ partnership }: { partnership: Partnership }) {
-  const [days, setDays] = useState(0);
-  useEffect(() => {
-    setDays(Math.floor((Date.now() - new Date(partnership.initiated_at).getTime()) / (1000 * 60 * 60 * 24))); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [partnership.initiated_at]);
-
-  return (
-    <Block icon={<BarChart3 className="size-3.5" />} title="Активность">
-      <div className="grid grid-cols-2 gap-2 text-[12px]">
-        <Tile label="Дней в партнёрстве" value={days} />
-        <Tile label="Статус" value={partnership.status === 'active' ? 'Активен' : partnership.status === 'pending' ? 'Ожидает' : 'Завершён'} />
-        <Tile label="Кросс-реклама" value={partnership.cross_promotion ? 'Вкл.' : 'Выкл.'} />
-        <Tile label="Инициатива" value={partnership.youInitiated ? 'Я' : 'Партнёр'} />
-      </div>
-      <p className="mt-2 text-[10px] text-neutral-400 leading-relaxed">
-        Счётчик взаимных рекомендаций появится позже.
-      </p>
-    </Block>
-  );
+function miniIconBtnStyle(kind: 'neutral' | 'accent' | 'danger'): React.CSSProperties {
+  const colors = {
+    neutral: { bg: T.surface, fg: T.textSecondary, border: `1px solid ${T.border}` },
+    accent: { bg: T.accent, fg: '#fff', border: 'none' },
+    danger: { bg: T.dangerSoft, fg: T.danger, border: 'none' },
+  } as const;
+  const c = colors[kind];
+  return {
+    width: 32, height: 32, borderRadius: 8,
+    background: c.bg, color: c.fg, border: c.border,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+  };
 }
 
-function Tile({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg bg-violet-50 px-2.5 py-2">
-      <p className="text-[14px] font-bold leading-tight text-violet-700 [font-variant-numeric:tabular-nums]">{value}</p>
-      <p className="mt-0.5 text-[10px] text-neutral-600">{label}</p>
-    </div>
-  );
-}
-
-/* AI chat */
+/* ─── AI chat — fixed bottom, focus-aware ─── */
 
 function PartnerAiChat({
   partnershipId, haptic, onApplied,
@@ -709,6 +730,7 @@ function PartnerAiChat({
 }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   async function send() {
     const value = text.trim();
@@ -734,24 +756,63 @@ function PartnerAiChat({
   }
 
   return (
-    <div className="flex items-end gap-2">
-      <div className="flex flex-1 items-center gap-1.5 rounded-xl border border-neutral-200 bg-white/5 px-3 py-2">
-        <Bot className="size-3.5 shrink-0 text-violet-600" />
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Что нового про партнёра? AI разнесёт…"
-          rows={1}
-          disabled={busy}
-          className="max-h-[120px] flex-1 resize-none bg-transparent text-[12px] outline-none placeholder:text-neutral-400"
-        />
+    <div
+      style={{
+        position: 'fixed',
+        left: 12, right: 12,
+        bottom: focused
+          ? 'calc(env(safe-area-inset-bottom, 0px) + 8px)'
+          : 'calc(81px + env(safe-area-inset-bottom, 0px) + 8px)',
+        zIndex: 30,
+        background: T.surface,
+        borderRadius: R.pill,
+        boxShadow: SHADOW.elevated,
+        border: `1px solid ${T.borderSubtle}`,
+        padding: 6,
+        display: 'flex', alignItems: 'center', gap: 6,
+        transition: 'bottom 200ms ease',
+      }}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: '50%',
+        background: T.accentSoft, color: T.accent,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        marginLeft: 2,
+      }}>
+        <Bot size={16} strokeWidth={2.2} />
       </div>
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
+        }}
+        disabled={busy}
+        placeholder="Что нового про партнёра?"
+        style={{
+          flex: 1, padding: '10px 4px', borderRadius: R.pill,
+          border: 'none', background: 'transparent',
+          fontSize: 16, color: T.text, outline: 'none', fontFamily: 'inherit',
+        }}
+      />
       <button
+        type="button"
         onClick={send}
         disabled={busy || text.trim().length < 2}
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500 text-neutral-900 disabled:opacity-40"
+        style={{
+          width: 40, height: 40, flexShrink: 0,
+          borderRadius: '50%', border: 'none',
+          background: text.trim() ? T.accent : T.bgSubtle,
+          color: text.trim() ? '#fff' : T.textTertiary,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: text.trim() && !busy ? 'pointer' : 'not-allowed',
+          transition: 'background 200ms ease',
+        }}
+        aria-label="Отправить"
       >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+        {busy ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
       </button>
     </div>
   );
