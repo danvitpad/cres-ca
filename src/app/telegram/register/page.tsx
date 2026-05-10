@@ -449,7 +449,7 @@ export default function MiniAppRegisterPage() {
         </button>
       </div>
 
-      <div className="flex-1 space-y-6 px-6 pt-6 pb-[80px]">
+      <div className="flex-1 space-y-6 px-6 pt-6 pb-[200px]">
         {/* Header */}
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">{t.title}</h1>
@@ -546,20 +546,11 @@ export default function MiniAppRegisterPage() {
           </div>
         )}
 
-        {/* Link to sign-in */}
-        <p className="text-center text-[13px] pb-2"
-          style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}>
-          {t.haveAccount}{' '}
-          <button type="button" onClick={() => router.replace('/telegram/welcome')}
-            className="font-semibold underline underline-offset-2"
-            style={{ color: 'var(--foreground)' }}>
-            {t.signIn}
-          </button>
-        </p>
       </div>
 
       {/* Sticky bottom — без bottom-nav на register, отступ standard
-          safe-area + 20px (раньше был 96px под флоат-нав, оставлял пустоту) */}
+          safe-area + 28px. Login-ссылка внутри блока чтобы не пряталась
+          под фикс-CTA (раньше она была в обычном flow и накрывалась). */}
       <div
         className="fixed inset-x-0 bottom-0 space-y-2 px-6 pb-6 pt-8 transition-opacity duration-200"
         style={{
@@ -592,6 +583,17 @@ export default function MiniAppRegisterPage() {
             )}
           </button>
         )}
+        {/* Sign-in link — moved INTO the fixed block so it's never covered
+            by the gradient/CTA. Sits between CTA and terms. */}
+        <p className="text-center text-[13px]"
+          style={{ color: 'color-mix(in oklab, var(--foreground) 60%, transparent)' }}>
+          {t.haveAccount}{' '}
+          <button type="button" onClick={() => router.replace('/telegram/welcome')}
+            className="font-semibold underline underline-offset-2"
+            style={{ color: 'var(--foreground)' }}>
+            {t.signIn}
+          </button>
+        </p>
         <p className="text-center text-[11px] leading-relaxed"
           style={{ color: 'color-mix(in oklab, var(--foreground) 50%, transparent)' }}>
           {t.terms}{' '}
