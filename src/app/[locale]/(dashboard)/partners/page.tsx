@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Handshake, ArrowRight, Users, Sparkles } from 'lucide-react';
+import { Handshake, ArrowRight, Users, Star } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -233,7 +233,7 @@ function PartnerTile({ card, C }: { card: PartnerCard; C: ReturnType<typeof useP
                 background: C.accentSoft, color: C.accent,
                 fontSize: 10, fontWeight: 600,
               }}>
-                <Sparkles size={10} />
+                <Star size={10} />
                 Реклама
               </span>
             )}

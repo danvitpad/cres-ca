@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Sparkles, Pencil, CheckCircle2, CalendarClock, XCircle } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Pencil, CheckCircle2, CalendarClock, XCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
@@ -75,7 +75,7 @@ const RULES: {
     title: 'Бриф мастеру за 30 мин',
     description: 'TG-пуш с заметкой, аллергиями, числом визитов клиента',
     trigger: 'За 30 минут до визита',
-    icon: Sparkles,
+    icon: CalendarClock,
     accent: '#22d3ee',
   },
   {

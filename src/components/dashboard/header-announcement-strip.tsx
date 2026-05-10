@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, AlertTriangle, ArrowUpCircle, Info } from 'lucide-react';
+import { X, Megaphone, AlertTriangle, ArrowUpCircle, Info } from 'lucide-react';
 import type { FTheme } from '@/lib/dashboard-theme';
 import type { Announcement } from '@/hooks/use-announcements';
 
@@ -21,7 +21,7 @@ interface Props {
 
 const TYPE_CONFIG: Record<string, { icon: typeof Info; color: string; dotColor: string }> = {
   info:    { icon: Info,            color: 'var(--color-accent)', dotColor: 'var(--color-accent)' },
-  promo:   { icon: Sparkles,       color: 'var(--color-accent)', dotColor: 'var(--color-accent)' },
+  promo:   { icon: Megaphone,       color: 'var(--color-accent)', dotColor: 'var(--color-accent)' },
   warning: { icon: AlertTriangle,  color: '#f59e0b', dotColor: '#f59e0b' },
   update:  { icon: ArrowUpCircle,  color: '#10b981', dotColor: '#10b981' },
 };

@@ -8,7 +8,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Lock, Sparkles } from 'lucide-react';
+import { Lock, Zap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { SubscriptionTier } from '@/types';
 
@@ -36,7 +36,7 @@ export function PaywallCard({ feature, requiredTier, title, description }: Props
         href="/settings/billing"
         className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
       >
-        <Sparkles className="size-4" />
+        <Zap className="size-4" />
         {t('upgrade')}
       </Link>
     </div>
