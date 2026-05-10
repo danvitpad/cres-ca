@@ -14,46 +14,41 @@ import { aiChat } from '@/lib/ai/openrouter';
 const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // Единая цепочка моделей: самые сильные сверху, более слабые снизу.
+// Только быстрые non-reasoning модели — отвечают за 1-3 секунды.
 // На каждый запрос идём по порядку — если модель упала / в лимите / зависла,
 // переходим к следующей. Ответ берём от первой которая дала >2 символов.
 //
 // Тип 'gemini' — Google Generative Language API (env: GOOGLE_AI_STUDIO_KEY).
 // Тип 'openrouter' — OpenRouter free-tier (env: OPENROUTER_API_KEY).
 type ModelEntry =
-  | { type: 'gemini'; id: string; reasoningTokens?: number }
-  | { type: 'openrouter'; id: string; reasoningTokens?: number };
+  | { type: 'gemini'; id: string }
+  | { type: 'openrouter'; id: string };
 
 const MODEL_CHAIN: ModelEntry[] = [
-  // 1. DeepSeek R1 — самая сильная свободная модель, reasoning-движок уровня o3.
-  //    Медленнее остальных (10-30 сек), но если стоит первой — даёт лучший ответ.
-  //    reasoningTokens=600 → даём место для внутренних рассуждений + финального ответа.
-  { type: 'openrouter', id: 'deepseek/deepseek-r1-0528:free', reasoningTokens: 1200 },
-
-  // 2. Qwen3 80B Instruct — быстрая и умная, отлично знает русский. Лучшая «не-reasoning» модель.
+  // 1. Qwen3 80B Instruct — самая умная быстрая модель, отлично знает русский.
   { type: 'openrouter', id: 'qwen/qwen3-next-80b-a3b-instruct:free' },
 
-  // 3. Nemotron 3 Super 120B — большая NVIDIA модель, сильный instruction-following.
+  // 2. Nemotron 3 Super 120B — большая NVIDIA модель, сильный instruction-following.
   { type: 'openrouter', id: 'nvidia/nemotron-3-super-120b-a12b:free' },
 
-  // 4. OpenAI gpt-oss-120b — open weights от OpenAI, проверенная.
+  // 3. OpenAI gpt-oss-120b — open weights от OpenAI, проверенная.
   { type: 'openrouter', id: 'openai/gpt-oss-120b:free' },
 
-  // 5. GLM-4.5 Air (Zhipu) — точная, русский ок.
+  // 4. GLM-4.5 Air (Zhipu) — точная, русский ок.
   { type: 'openrouter', id: 'z-ai/glm-4.5-air:free' },
 
-  // 6. Gemini 2.5 Flash — быстрый Google Flash, средняя сила, очень надёжный.
+  // 5. Gemini 2.5 Flash — быстрый Google Flash, средняя сила, очень надёжный.
   { type: 'gemini', id: 'gemini-2.5-flash' },
 
-  // 7. Gemini 2.0 Flash — старее, но всегда онлайн.
+  // 6. Gemini 2.0 Flash — старее, но всегда онлайн.
   { type: 'gemini', id: 'gemini-2.0-flash' },
 
-  // 8. Llama 3.3 70B — последний рубеж. Старее остальных, но почти никогда не падает.
+  // 7. Llama 3.3 70B — последний рубеж. Старее остальных, но почти никогда не падает.
   { type: 'openrouter', id: 'meta-llama/llama-3.3-70b-instruct:free' },
 ];
 
-// Таймаут на одну модель. R1 рассуждает дольше — даём ей 35с, остальным 20с.
-const FAST_TIMEOUT_MS = 20_000;
-const REASONING_TIMEOUT_MS = 35_000;
+// Таймаут на одну модель — если зависла, идём к следующей.
+const MODEL_TIMEOUT_MS = 20_000;
 
 function withTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController();
@@ -88,23 +83,22 @@ async function tryGemini(modelId: string, system: string, history: ChatMessage[]
   return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 }
 
-async function tryOpenRouter(modelId: string, system: string, history: ChatMessage[], signal: AbortSignal, maxTokens: number): Promise<string> {
+async function tryOpenRouter(modelId: string, system: string, history: ChatMessage[], signal: AbortSignal): Promise<string> {
   const messages = [
     { role: 'system' as const, content: system },
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
-  const text = (await aiChat(messages, { model: modelId, temperature: 0.5, maxTokens, signal })) || '';
+  const text = (await aiChat(messages, { model: modelId, temperature: 0.5, maxTokens: 320, signal })) || '';
   return text.trim();
 }
 
 async function runChain(system: string, history: ChatMessage[]): Promise<{ text: string; model: string }> {
   for (const entry of MODEL_CHAIN) {
-    const timeoutMs = entry.reasoningTokens ? REASONING_TIMEOUT_MS : FAST_TIMEOUT_MS;
-    const t = withTimeout(timeoutMs);
+    const t = withTimeout(MODEL_TIMEOUT_MS);
     try {
       const text = entry.type === 'gemini'
         ? await tryGemini(entry.id, system, history, t.signal)
-        : await tryOpenRouter(entry.id, system, history, t.signal, entry.reasoningTokens ?? 320);
+        : await tryOpenRouter(entry.id, system, history, t.signal);
       if (text.length > 2) return { text, model: `${entry.type}/${entry.id}` };
     } catch {
       // 429, network, abort, parsing — идём к следующей модели
