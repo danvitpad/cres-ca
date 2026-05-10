@@ -5,13 +5,14 @@
  *              сгруппированных по категории. Свободный текст «+ Своя» для обоих:
  *              подкатегория уходит pending → автоапрув при 3+ мастерах,
  *              категория верхнего уровня → pending → ручной апрув суперадмина в TG.
- *              Используется в Settings (web и Mini App), будет перенесён в onboarding.
+ *              Используется в Settings (standalone mode) и в onboarding (controlled mode,
+ *              без своей кнопки «Сохранить» — родитель сам собирает финальный submit).
  * created: 2026-05-10
  * --- */
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Check, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,80 +46,147 @@ function localized(name: { name_ru: string; name_uk: string; name_en: string }, 
   return name.name_ru || name.name_en;
 }
 
-interface Props {
-  locale?: Locale;
-  /** Если задан — внешний onSave вместо встроенного PUT. Полезно для онбординга. */
-  onSaved?: () => void;
+/** Локальный текст подкатегории, накопленный в онбординге пока мастер не создан. */
+export interface CustomSubText {
+  categoryId: string;
+  text: string;
 }
 
-export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
+export interface CategoriesSelection {
+  categoryIds: string[];
+  primaryId: string | null;
+  subcategoryIds: string[];
+  customSubs: CustomSubText[];
+}
+
+interface Props {
+  locale?: Locale;
+  /**
+   * 'standalone' (default) — Settings: грузит текущий выбор мастера, имеет кнопку
+   *   «Сохранить», custom-подкатегория сразу создаёт pending через API.
+   * 'onboarding' — мастер ещё не создан. Controlled: state у родителя через
+   *   value/onChange. Без кнопки. «+ Своя подкатегория» накапливается в
+   *   selection.customSubs, родитель отправит их в финальный submit.
+   */
+  mode?: 'standalone' | 'onboarding';
+  value?: CategoriesSelection;
+  onChange?: (v: CategoriesSelection) => void;
+  onSaved?: () => void;
+  /** Из catalog можно скрыть «+ Своя категория» (например, когда родитель сам
+   *  не хочет давать pending-категории в этом потоке). */
+  allowNewCategoryRequest?: boolean;
+}
+
+const EMPTY: CategoriesSelection = {
+  categoryIds: [],
+  primaryId: null,
+  subcategoryIds: [],
+  customSubs: [],
+};
+
+export function CategoriesEditor({
+  locale = 'ru',
+  mode = 'standalone',
+  value,
+  onChange,
+  onSaved,
+  allowNewCategoryRequest = true,
+}: Props) {
   const [catalog, setCatalog] = useState<Category[]>([]);
-  const [selectedCatIds, setSelectedCatIds] = useState<string[]>([]);
-  const [primaryCatId, setPrimaryCatId] = useState<string | null>(null);
-  const [selectedSubIds, setSelectedSubIds] = useState<string[]>([]);
+  const [internalSel, setInternalSel] = useState<CategoriesSelection>(EMPTY);
   const [customSubInput, setCustomSubInput] = useState<Record<string, string>>({});
   const [customCatInput, setCustomCatInput] = useState('');
   const [showCustomCat, setShowCustomCat] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const sel = mode === 'onboarding' ? (value ?? EMPTY) : internalSel;
+
+  function update(patch: Partial<CategoriesSelection> | ((prev: CategoriesSelection) => CategoriesSelection)) {
+    const next = typeof patch === 'function' ? patch(sel) : { ...sel, ...patch };
+    if (mode === 'onboarding') onChange?.(next);
+    else setInternalSel(next);
+  }
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [catRes, meRes] = await Promise.all([
-          fetch('/api/categories?include=subs&order=popular'),
-          fetch('/api/me/categories'),
-        ]);
+        const catRes = await fetch('/api/categories?include=subs&order=popular');
         const catJson = await catRes.json() as { categories: Category[] };
-        const meJson = await meRes.json() as {
-          categories: Array<{ id: string; is_primary: boolean }>;
-          subcategories: Array<{ id: string }>;
-        };
         if (cancelled) return;
         setCatalog(catJson.categories ?? []);
-        setSelectedCatIds((meJson.categories ?? []).map(c => c.id));
-        const primary = (meJson.categories ?? []).find(c => c.is_primary);
-        setPrimaryCatId(primary?.id ?? null);
-        setSelectedSubIds((meJson.subcategories ?? []).map(s => s.id));
+
+        if (mode === 'standalone') {
+          const meRes = await fetch('/api/me/categories');
+          const meJson = await meRes.json() as {
+            categories: Array<{ id: string; is_primary: boolean }>;
+            subcategories: Array<{ id: string }>;
+          };
+          if (cancelled) return;
+          setInternalSel({
+            categoryIds: (meJson.categories ?? []).map(c => c.id),
+            primaryId: (meJson.categories ?? []).find(c => c.is_primary)?.id ?? null,
+            subcategoryIds: (meJson.subcategories ?? []).map(s => s.id),
+            customSubs: [],
+          });
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
-
-  const selectedCats = useMemo(
-    () => catalog.filter(c => selectedCatIds.includes(c.id)),
-    [catalog, selectedCatIds],
-  );
+  }, [mode]);
 
   function toggleCategory(id: string) {
-    setSelectedCatIds(prev => {
-      if (prev.includes(id)) {
-        const next = prev.filter(x => x !== id);
-        if (primaryCatId === id) setPrimaryCatId(next[0] ?? null);
+    update(prev => {
+      if (prev.categoryIds.includes(id)) {
+        const nextIds = prev.categoryIds.filter(x => x !== id);
+        const nextPrimary = prev.primaryId === id ? (nextIds[0] ?? null) : prev.primaryId;
         // Сбросить подкатегории удалённой категории
         const cat = catalog.find(c => c.id === id);
-        if (cat?.subcategories) {
-          const subIds = new Set(cat.subcategories.map(s => s.id));
-          setSelectedSubIds(s => s.filter(x => !subIds.has(x)));
-        }
-        return next;
+        const subIds = new Set((cat?.subcategories ?? []).map(s => s.id));
+        const nextSubs = prev.subcategoryIds.filter(x => !subIds.has(x));
+        const nextCustom = prev.customSubs.filter(c => c.categoryId !== id);
+        return { ...prev, categoryIds: nextIds, primaryId: nextPrimary, subcategoryIds: nextSubs, customSubs: nextCustom };
       }
-      const next = [...prev, id];
-      if (!primaryCatId) setPrimaryCatId(id);
-      return next;
+      return {
+        ...prev,
+        categoryIds: [...prev.categoryIds, id],
+        primaryId: prev.primaryId ?? id,
+      };
     });
   }
 
+  function setPrimary(id: string) {
+    update({ primaryId: id });
+  }
+
   function toggleSubcategory(id: string) {
-    setSelectedSubIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    update(prev => ({
+      ...prev,
+      subcategoryIds: prev.subcategoryIds.includes(id)
+        ? prev.subcategoryIds.filter(x => x !== id)
+        : [...prev.subcategoryIds, id],
+    }));
   }
 
   async function addCustomSubcategory(categoryId: string) {
     const text = (customSubInput[categoryId] || '').trim();
     if (text.length < 2) return;
+
+    if (mode === 'onboarding') {
+      // Накапливаем локально, родитель отправит в финальный submit
+      update(prev => ({
+        ...prev,
+        customSubs: [...prev.customSubs, { categoryId, text }],
+      }));
+      setCustomSubInput(prev => ({ ...prev, [categoryId]: '' }));
+      toast.success(`«${text}» добавлена в твой профиль`);
+      return;
+    }
+
+    // standalone: создаём через API
     const res = await fetch('/api/me/categories/subcategory-request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -135,7 +203,12 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
       if (subs.some(s => s.id === json.subcategory!.id)) return c;
       return { ...c, subcategories: [...subs, json.subcategory!] };
     }));
-    setSelectedSubIds(prev => prev.includes(json.subcategory!.id) ? prev : [...prev, json.subcategory!.id]);
+    update(prev => ({
+      ...prev,
+      subcategoryIds: prev.subcategoryIds.includes(json.subcategory!.id)
+        ? prev.subcategoryIds
+        : [...prev.subcategoryIds, json.subcategory!.id],
+    }));
     setCustomSubInput(prev => ({ ...prev, [categoryId]: '' }));
     if (json.subcategory.status === 'pending') {
       toast.success(`«${text}» добавлена. Когда 3 мастера её выберут — она появится у всех.`);
@@ -162,11 +235,11 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
   }
 
   async function save() {
-    if (selectedCatIds.length === 0) {
+    if (sel.categoryIds.length === 0) {
       toast.error('Выбери хотя бы одну категорию');
       return;
     }
-    if (!primaryCatId) {
+    if (!sel.primaryId) {
       toast.error('Отметь основную категорию');
       return;
     }
@@ -175,9 +248,9 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        categoryIds: selectedCatIds,
-        primaryCategoryId: primaryCatId,
-        subcategoryIds: selectedSubIds,
+        categoryIds: sel.categoryIds,
+        primaryCategoryId: sel.primaryId,
+        subcategoryIds: sel.subcategoryIds,
       }),
     });
     setSaving(false);
@@ -194,9 +267,10 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
     return <div className="p-8 text-center text-muted-foreground">Загружаю категории…</div>;
   }
 
+  const selectedCats = catalog.filter(c => sel.categoryIds.includes(c.id));
+
   return (
     <div className="space-y-6">
-      {/* Категории */}
       <section>
         <div className="mb-2">
           <h3 className="text-base font-semibold">Категории твоих услуг</h3>
@@ -206,8 +280,8 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           {catalog.map(c => {
-            const isSelected = selectedCatIds.includes(c.id);
-            const isPrimary = primaryCatId === c.id;
+            const isSelected = sel.categoryIds.includes(c.id);
+            const isPrimary = sel.primaryId === c.id;
             return (
               <button
                 key={c.id}
@@ -235,7 +309,7 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
                 {isSelected && (
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); setPrimaryCatId(c.id); }}
+                    onClick={(e) => { e.stopPropagation(); setPrimary(c.id); }}
                     className={`mt-1 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors ${
                       isPrimary
                         ? 'bg-primary text-primary-foreground'
@@ -251,49 +325,49 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
           })}
         </div>
 
-        {/* + Своя категория */}
-        <div className="mt-4">
-          {!showCustomCat ? (
-            <button
-              type="button"
-              onClick={() => setShowCustomCat(true)}
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            >
-              <Plus className="size-4" />
-              Не нашёл свою? Предложи свою категорию
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={customCatInput}
-                onChange={(e) => setCustomCatInput(e.target.value)}
-                placeholder="Например: Аэрография, Зооэкзотика"
-                maxLength={60}
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                autoFocus
-              />
+        {allowNewCategoryRequest && (
+          <div className="mt-4">
+            {!showCustomCat ? (
               <button
                 type="button"
-                onClick={requestNewCategory}
-                disabled={customCatInput.trim().length < 2}
-                className="rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+                onClick={() => setShowCustomCat(true)}
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
               >
-                Отправить
+                <Plus className="size-4" />
+                Не нашёл свою? Предложи свою категорию
               </button>
-              <button
-                type="button"
-                onClick={() => { setShowCustomCat(false); setCustomCatInput(''); }}
-                className="rounded-lg border border-border px-3 text-sm transition-colors hover:bg-muted"
-              >
-                Отмена
-              </button>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customCatInput}
+                  onChange={(e) => setCustomCatInput(e.target.value)}
+                  placeholder="Например: Аэрография, Зооэкзотика"
+                  maxLength={60}
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={requestNewCategory}
+                  disabled={customCatInput.trim().length < 2}
+                  className="rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+                >
+                  Отправить
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowCustomCat(false); setCustomCatInput(''); }}
+                  className="rounded-lg border border-border px-3 text-sm transition-colors hover:bg-muted"
+                >
+                  Отмена
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
-      {/* Подкатегории для выбранных категорий */}
       {selectedCats.length > 0 && (
         <section>
           <div className="mb-2">
@@ -303,73 +377,97 @@ export function CategoriesEditor({ locale = 'ru', onSaved }: Props) {
             </p>
           </div>
           <div className="space-y-5">
-            {selectedCats.map(c => (
-              <div key={c.id}>
-                <h4 className="mb-2 text-sm font-medium text-muted-foreground">{localized(c, locale)}</h4>
-                <div className="flex flex-wrap gap-2">
-                  {(c.subcategories ?? []).map(s => {
-                    const isSel = selectedSubIds.includes(s.id);
-                    const isPending = s.status === 'pending';
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => toggleSubcategory(s.id)}
-                        className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
-                          isSel
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                        }`}
+            {selectedCats.map(c => {
+              const localCustomForCat = sel.customSubs.filter(cs => cs.categoryId === c.id);
+              return (
+                <div key={c.id}>
+                  <h4 className="mb-2 text-sm font-medium text-muted-foreground">{localized(c, locale)}</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {(c.subcategories ?? []).map(s => {
+                      const isSel = sel.subcategoryIds.includes(s.id);
+                      const isPending = s.status === 'pending';
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => toggleSubcategory(s.id)}
+                          className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
+                            isSel
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                          }`}
+                        >
+                          {localized(s, locale)}
+                          {isPending && (
+                            <span className="ml-1 text-[10px] opacity-70">· на проверке</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {/* Локальные «свои» (только в onboarding mode) */}
+                    {localCustomForCat.map((cs, i) => (
+                      <span
+                        key={`custom-${i}`}
+                        className="rounded-full border border-primary bg-primary/10 px-3 py-1.5 text-sm text-foreground"
                       >
-                        {localized(s, locale)}
-                        {isPending && (
-                          <span className="ml-1 text-[10px] opacity-70">· на проверке</span>
-                        )}
-                      </button>
-                    );
-                  })}
+                        {cs.text}
+                        <button
+                          type="button"
+                          onClick={() => update(prev => ({
+                            ...prev,
+                            customSubs: prev.customSubs.filter((_, idx) => !(prev.customSubs.indexOf(cs) === idx)),
+                          }))}
+                          className="ml-2 opacity-60 hover:opacity-100"
+                          aria-label="Убрать"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      value={customSubInput[c.id] || ''}
+                      onChange={(e) => setCustomSubInput(prev => ({ ...prev, [c.id]: e.target.value }))}
+                      placeholder="+ Своя услуга, например «Стретчинг»"
+                      maxLength={80}
+                      className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          addCustomSubcategory(c.id);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => addCustomSubcategory(c.id)}
+                      disabled={(customSubInput[c.id] || '').trim().length < 2}
+                      className="rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+                    >
+                      <Plus className="size-4" />
+                    </button>
+                  </div>
                 </div>
-                {/* + Своя подкатегория */}
-                <div className="mt-2 flex gap-2">
-                  <input
-                    type="text"
-                    value={customSubInput[c.id] || ''}
-                    onChange={(e) => setCustomSubInput(prev => ({ ...prev, [c.id]: e.target.value }))}
-                    placeholder="+ Своя услуга, например «Стретчинг»"
-                    maxLength={80}
-                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addCustomSubcategory(c.id);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => addCustomSubcategory(c.id)}
-                    disabled={(customSubInput[c.id] || '').trim().length < 2}
-                    className="rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"
-                  >
-                    <Plus className="size-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}
 
-      <div className="flex justify-end pt-2">
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving || selectedCatIds.length === 0}
-          className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"
-        >
-          {saving ? 'Сохраняю…' : 'Сохранить'}
-        </button>
-      </div>
+      {mode === 'standalone' && (
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving || sel.categoryIds.length === 0}
+            className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-40"
+          >
+            {saving ? 'Сохраняю…' : 'Сохранить'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

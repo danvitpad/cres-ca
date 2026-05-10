@@ -50,13 +50,15 @@ function verticalOrClause(v: VerticalKey): string {
 }
 
 export async function POST(request: Request) {
-  const { lat, lng, q, vertical } = await request.json();
+  const { lat, lng, q, vertical, categoryKey, subcategoryKey } = await request.json();
 
   const hasCoords = typeof lat === 'number' && typeof lng === 'number';
   const hasQuery = typeof q === 'string' && q.trim().length >= 2;
   const verticalFilter = isValidVertical(vertical) ? vertical : null;
+  const catKey = typeof categoryKey === 'string' && categoryKey.length > 0 ? categoryKey : null;
+  const subKey = typeof subcategoryKey === 'string' && subcategoryKey.length > 0 ? subcategoryKey : null;
 
-  if (!hasCoords && !hasQuery) {
+  if (!hasCoords && !hasQuery && !catKey && !subKey) {
     return NextResponse.json({ error: 'invalid_params' }, { status: 400 });
   }
 
@@ -65,6 +67,51 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
+
+  // Если задан categoryKey/subcategoryKey — заранее тянем master_id's из новой
+  // структуры. Применим как .in('id', allowedIds) ко всем masters-запросам.
+  let allowedMasterIds: string[] | null = null;
+  if (catKey || subKey) {
+    if (subKey) {
+      const { data: subRow } = await admin
+        .from('industry_subcategories')
+        .select('id')
+        .eq('key', subKey)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      if (subRow?.id) {
+        const { data: rows } = await admin
+          .from('master_industry_subcategories')
+          .select('master_id')
+          .eq('subcategory_id', subRow.id);
+        allowedMasterIds = (rows ?? []).map(r => r.master_id);
+      } else {
+        allowedMasterIds = [];
+      }
+    } else if (catKey) {
+      const { data: catRow } = await admin
+        .from('industry_categories')
+        .select('id')
+        .eq('key', catKey)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      if (catRow?.id) {
+        const { data: rows } = await admin
+          .from('master_industry_categories')
+          .select('master_id')
+          .eq('category_id', catRow.id);
+        allowedMasterIds = (rows ?? []).map(r => r.master_id);
+      } else {
+        allowedMasterIds = [];
+      }
+    }
+    // Пусто → нечего показывать
+    if (allowedMasterIds && allowedMasterIds.length === 0) {
+      return NextResponse.json({ masters: [], salons: [] });
+    }
+  }
 
   const masterSelect =
     'id, specialization, rating, salon_id, latitude, longitude, address, city, workplace_name, display_name, avatar_url, vertical, profile:profiles!masters_profile_id_fkey(full_name), salon:salons(id, name, logo_url, city), services(price)';
@@ -75,7 +122,9 @@ export async function POST(request: Request) {
 
     // Masters: chain ilike per token across display_name OR specialization OR city
     let mastersQuery = admin.from('masters').select(masterSelect).eq('is_active', true);
-    if (verticalFilter) {
+    if (allowedMasterIds) {
+      mastersQuery = mastersQuery.in('id', allowedMasterIds);
+    } else if (verticalFilter) {
       mastersQuery = mastersQuery.or(verticalOrClause(verticalFilter));
     }
     for (const t of tokens) {
@@ -105,7 +154,9 @@ export async function POST(request: Request) {
       .from('masters')
       .select(masterSelect)
       .eq('is_active', true);
-    if (verticalFilter) {
+    if (allowedMasterIds) {
+      fallbackQuery = fallbackQuery.in('id', allowedMasterIds);
+    } else if (verticalFilter) {
       fallbackQuery = fallbackQuery.or(verticalOrClause(verticalFilter));
     }
     const fallback = await fallbackQuery.limit(200);
@@ -140,7 +191,9 @@ export async function POST(request: Request) {
     .lte('latitude', lat + RADIUS_DEG)
     .gte('longitude', lng - RADIUS_DEG)
     .lte('longitude', lng + RADIUS_DEG);
-  if (verticalFilter) {
+  if (allowedMasterIds) {
+    geoMasters = geoMasters.in('id', allowedMasterIds);
+  } else if (verticalFilter) {
     geoMasters = geoMasters.or(verticalOrClause(verticalFilter));
   }
 
@@ -165,7 +218,9 @@ export async function POST(request: Request) {
       .from('masters')
       .select(masterSelect)
       .eq('is_active', true);
-    if (verticalFilter) {
+    if (allowedMasterIds) {
+      wide = wide.in('id', allowedMasterIds);
+    } else if (verticalFilter) {
       wide = wide.or(verticalOrClause(verticalFilter));
     }
     const fallback = await wide.limit(50);

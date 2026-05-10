@@ -26,6 +26,13 @@ interface Payload {
   customCategoryText?: string | null;
   /** Своя специализация — пишется первой строкой в masters.specialization/specializations */
   customSpecText?: string | null;
+  /** Новая категоризация: список UUID выбранных категорий + основная + подкатегории. */
+  categoryIds?: string[];
+  primaryCategoryId?: string | null;
+  subcategoryIds?: string[];
+  /** Список «своих» подкатегорий (текст), которые мастер ввёл в онбординге.
+   *  Создаются как pending в industry_subcategories и сразу привязываются к мастеру. */
+  customSubcategoryTexts?: Array<{ categoryId: string; text: string }>;
   address: string | null;
   latitude: number | null;
   longitude: number | null;
@@ -150,24 +157,61 @@ export async function POST(req: Request) {
     inviteCode = master.invite_code;
   }
 
-  // Auto-link мастера к новой структуре категорий: по legacy_vertical_key
-  // создаём запись master_industry_categories(is_primary=true). Это позволяет
-  // новому поиску сразу видеть мастера; подкатегории мастер выберет в Settings.
-  if (masterId && body.vertical) {
-    const { data: cat } = await supabase
-      .from('industry_categories')
-      .select('id')
-      .eq('legacy_vertical_key', body.vertical)
-      .eq('status', 'active')
-      .limit(1)
-      .maybeSingle();
-    if (cat?.id) {
-      await supabase
-        .from('master_industry_categories')
-        .upsert(
-          { master_id: masterId, category_id: cat.id, is_primary: true },
-          { onConflict: 'master_id,category_id' },
-        );
+  // Применяем структурированную категоризацию (если мастер выбрал в онбординге)
+  // или fallback на auto-link по legacy_vertical_key.
+  if (masterId) {
+    const hasNewSelection = Array.isArray(body.categoryIds) && body.categoryIds.length > 0 && body.primaryCategoryId;
+    if (hasNewSelection) {
+      const { error: applyErr } = await supabase.rpc('apply_master_categories', {
+        p_master_id: masterId,
+        p_category_ids: body.categoryIds!,
+        p_primary_category_id: body.primaryCategoryId!,
+        p_subcategory_ids: Array.isArray(body.subcategoryIds) ? body.subcategoryIds : [],
+      });
+      if (applyErr) {
+        console.error('[business/create] apply_master_categories failed:', applyErr.message);
+      }
+
+      // «Свои» подкатегории — каждый текст создаёт pending запись + привязку
+      if (Array.isArray(body.customSubcategoryTexts)) {
+        for (const cs of body.customSubcategoryTexts) {
+          if (!cs.text || cs.text.trim().length < 2) continue;
+          await supabase.rpc('request_industry_subcategory', {
+            p_category_id: cs.categoryId,
+            p_text: cs.text.trim(),
+          }).then(() => {}, (e: unknown) => {
+            console.warn('[business/create] custom sub failed:', e);
+          });
+        }
+      }
+
+      // Backward compat: обновляем masters.vertical по legacy_vertical_key основной категории
+      const { data: primary } = await supabase
+        .from('industry_categories')
+        .select('legacy_vertical_key')
+        .eq('id', body.primaryCategoryId!)
+        .maybeSingle();
+      if (primary?.legacy_vertical_key) {
+        await supabase.from('masters').update({ vertical: primary.legacy_vertical_key }).eq('id', masterId);
+        await supabase.from('profiles').update({ vertical: primary.legacy_vertical_key }).eq('id', user.id);
+      }
+    } else if (body.vertical) {
+      // Fallback: только vertical задан → линкуем категорию по legacy_vertical_key
+      const { data: cat } = await supabase
+        .from('industry_categories')
+        .select('id')
+        .eq('legacy_vertical_key', body.vertical)
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle();
+      if (cat?.id) {
+        await supabase
+          .from('master_industry_categories')
+          .upsert(
+            { master_id: masterId, category_id: cat.id, is_primary: true },
+            { onConflict: 'master_id,category_id' },
+          );
+      }
     }
   }
 

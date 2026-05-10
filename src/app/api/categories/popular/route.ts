@@ -13,15 +13,28 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const categoryId = url.searchParams.get('categoryId');
+  let categoryId = url.searchParams.get('categoryId');
+  const categoryKey = url.searchParams.get('categoryKey');
   const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '12', 10), 50);
   const minCount = Math.max(parseInt(url.searchParams.get('minCount') ?? '1', 10), 0);
 
-  if (!categoryId) {
-    return NextResponse.json({ error: 'categoryId_required' }, { status: 400 });
+  const supabase = await createClient();
+
+  // categoryKey удобен в UI: ему не нужно знать UUID
+  if (!categoryId && categoryKey) {
+    const { data: cat } = await supabase
+      .from('industry_categories')
+      .select('id')
+      .eq('key', categoryKey)
+      .eq('status', 'active')
+      .maybeSingle();
+    if (cat?.id) categoryId = cat.id;
   }
 
-  const supabase = await createClient();
+  if (!categoryId) {
+    return NextResponse.json({ error: 'categoryId_or_categoryKey_required' }, { status: 400 });
+  }
+
   const { data, error } = await supabase.rpc('popular_industry_subcategories', {
     p_category_id: categoryId,
     p_min_count: minCount,

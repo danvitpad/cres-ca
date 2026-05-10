@@ -12,6 +12,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getDefaultServices, getServicesForCategories, type DefaultService } from '@/lib/verticals/default-services';
 import { getSpecializations, getSpecializationsForCategories } from '@/lib/verticals/specializations';
+import { getDefaultServicesForSubcategoryKeys } from '@/lib/categories/subcategory-services';
+import { CategoriesEditor, type CategoriesSelection } from '@/components/master/categories-editor';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
@@ -186,6 +188,27 @@ function CreateBusinessWizard() {
   // Свободный ввод когда выбран categoryOther — пишем в БД и показываем на публичке
   const [customCategoryText, setCustomCategoryText] = useState('');
   const [customSpecText, setCustomSpecText] = useState('');
+  // Новая структурированная категоризация (industry_categories + industry_subcategories)
+  const [categoriesSel, setCategoriesSel] = useState<CategoriesSelection>({
+    categoryIds: [],
+    primaryId: null,
+    subcategoryIds: [],
+    customSubs: [],
+  });
+  // Каталог нужен для маппинга subcategory.id → key чтобы подобрать дефолтные услуги
+  const [subKeyById, setSubKeyById] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    fetch('/api/categories?include=subs')
+      .then(r => r.json())
+      .then((j: { categories: Array<{ id: string; subcategories?: Array<{ id: string; key: string }> }> }) => {
+        const map = new Map<string, string>();
+        for (const c of j.categories ?? []) {
+          for (const s of c.subcategories ?? []) map.set(s.id, s.key);
+        }
+        setSubKeyById(map);
+      })
+      .catch(() => {});
+  }, []);
   const [teamType, setTeamType] = useState<'solo' | 'team' | null>(null);
   const [teamMode, setTeamMode] = useState<TeamMode | null>(null);
   // Комиссия/аренда теперь опциональны — null значит «не указано», админ
@@ -241,10 +264,19 @@ function CreateBusinessWizard() {
     );
   }
 
-  // Services derived from selected categories
-  const categoryServices = selectedCategories.length > 0
-    ? getServicesForCategories(selectedCategories)
-    : getDefaultServices(vertical);
+  // Services derived from selected subcategories (новая логика).
+  // Сначала маппим выбранные subcategory.id → key через каталог, потом
+  // тянем дефолтные услуги per-subcategory-key. Если ничего не пришло —
+  // fallback на старый по vertical (на случай редкого race).
+  const subcatKeysSelected = categoriesSel.subcategoryIds
+    .map(id => subKeyById.get(id))
+    .filter((k): k is string => !!k);
+  const newCatalogServices = getDefaultServicesForSubcategoryKeys(subcatKeysSelected);
+  const categoryServices = newCatalogServices.length > 0
+    ? newCatalogServices
+    : (selectedCategories.length > 0
+      ? getServicesForCategories(selectedCategories)
+      : getDefaultServices(vertical));
   const [selectedServiceKeys, setSelectedServiceKeys] = useState<Set<string>>(new Set());
 
   // Re-sync selected services when categories change
@@ -267,6 +299,19 @@ function CreateBusinessWizard() {
     }
   }, [selectedCategories, vertical]);
 
+  // Новая логика: предзаполнить сервисы по подкатегориям при изменении выбора
+  const prevSubKeysRef = useRef<string[]>([]);
+  useEffect(() => {
+    const cur = subcatKeysSelected.slice().sort();
+    const prev = prevSubKeysRef.current;
+    const changed = cur.length !== prev.length || cur.some((k, i) => k !== prev[i]);
+    if (changed && cur.length > 0) {
+      prevSubKeysRef.current = cur;
+      const newServices = getDefaultServicesForSubcategoryKeys(cur);
+      setSelectedServiceKeys(new Set(newServices.map((s) => s.name)));
+    }
+  }, [subcatKeysSelected]);
+
   // Build the ordered list of visible steps (skipping where needed).
   // Шаг 1 (имя + аватар + баннер) показываем всем, включая solo-мастера —
   // у мастера тоже должно быть лицо (фото) и имя для публичной страницы.
@@ -280,7 +325,7 @@ function CreateBusinessWizard() {
   const copy = getVerticalCopy(vertical, isAdminFlow ? 'admin' : 'solo');
   const buildStepSequence = useCallback(() => {
     const steps: number[] = [1]; // name + photos (всем)
-    steps.push(2, 3); // categories, specialization
+    steps.push(12); // новая категоризация: категории + подкатегории + основная (заменяет старые 2 и 3)
     if (!skipTeamStep) steps.push(4); // solo/team
     const effectiveTeamType = skipTeamStep ? inferredTeamType : teamType;
     if (effectiveTeamType === 'team') steps.push(45); // team mode + commission
@@ -299,6 +344,7 @@ function CreateBusinessWizard() {
   const canContinue = () => {
     switch (step) {
       case 1: return businessName.trim().length > 0;
+      case 12: return categoriesSel.categoryIds.length > 0 && !!categoriesSel.primaryId;
       case 2: {
         if (selectedCategories.length === 0) return false;
         // Если выбрано «Другое» — требуем заполнить своё описание
@@ -446,6 +492,11 @@ function CreateBusinessWizard() {
           categories: selectedCategories,
           customCategoryText: selectedCategories.includes('categoryOther') ? customCategoryText.trim() || null : null,
           customSpecText: customSpecText.trim() || null,
+          // Новая структурированная категоризация (industry_categories)
+          categoryIds: categoriesSel.categoryIds,
+          primaryCategoryId: categoriesSel.primaryId,
+          subcategoryIds: categoriesSel.subcategoryIds,
+          customSubcategoryTexts: categoriesSel.customSubs,
           address: selectedAddress?.display_name ?? null,
           latitude: selectedAddress ? parseFloat(selectedAddress.lat) : null,
           longitude: selectedAddress ? parseFloat(selectedAddress.lon) : null,
@@ -706,6 +757,27 @@ function CreateBusinessWizard() {
                       className="w-full rounded-lg border border-border bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground/50 outline-none transition-colors focus:border-primary"
                     />
                   </div>
+                </div>
+              </StepWrapper>
+            )}
+
+            {/* Step 12: Новая категоризация — multi-select из БД + primary + подкатегории + «+ Своя» */}
+            {step === 12 && (
+              <StepWrapper key="step12">
+                <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
+                <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                  Категории и услуги
+                </h1>
+                <p className="mt-2 text-muted-foreground">
+                  Выбери одну или несколько категорий — это то, по чему тебя будут искать клиенты.
+                </p>
+                <div className="mt-6">
+                  <CategoriesEditor
+                    locale="ru"
+                    mode="onboarding"
+                    value={categoriesSel}
+                    onChange={setCategoriesSel}
+                  />
                 </div>
               </StepWrapper>
             )}
