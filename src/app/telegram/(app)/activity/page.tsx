@@ -31,7 +31,6 @@ import { formatMoney } from '@/lib/format/money';
 import {
   MobilePage,
   PageHeader,
-  TabPills,
   EmptyState,
   AvatarCircle,
 } from '@/components/miniapp/shells';
@@ -52,7 +51,7 @@ const I18N: Record<Lang, {
   monthsLong: string[];
 }> = {
   uk: {
-    title: 'Активність',
+    title: 'Мої записи',
     viewList: 'Список', viewCalendar: 'Календар',
     filterUpcoming: 'Майбутні', filterPast: 'Минулі',
     noActivity: 'Немає записів',
@@ -69,7 +68,7 @@ const I18N: Record<Lang, {
                  'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'],
   },
   ru: {
-    title: 'Активность',
+    title: 'Мои записи',
     viewList: 'Список', viewCalendar: 'Календарь',
     filterUpcoming: 'Будущие', filterPast: 'Прошедшие',
     noActivity: 'Нет записей',
@@ -86,7 +85,7 @@ const I18N: Record<Lang, {
                  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
   },
   en: {
-    title: 'Activity',
+    title: 'My bookings',
     viewList: 'List', viewCalendar: 'Calendar',
     filterUpcoming: 'Upcoming', filterPast: 'Past',
     noActivity: 'No appointments',
@@ -294,17 +293,26 @@ export default function MiniAppActivityPage() {
         transition={{ duration: 0.3 }}
         style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
       >
-        <PageHeader title={t.title} />
-
-        {/* Главный toggle: Список / Календар */}
-        <TabPills
-          value={view}
-          onChange={(v) => { setView(v); haptic('selection'); }}
-          options={[
-            { value: 'list', label: t.viewList },
-            { value: 'calendar', label: t.viewCalendar },
-          ]}
-          accent="#0a0a0c"
+        <PageHeader
+          title={t.title}
+          right={
+            <button
+              type="button"
+              onClick={() => { setView(view === 'list' ? 'calendar' : 'list'); haptic('selection'); }}
+              aria-label={view === 'list' ? t.viewCalendar : t.viewList}
+              style={{
+                width: 36, height: 36, borderRadius: 18,
+                border: `1px solid ${T.borderSubtle}`,
+                background: T.surface, color: T.text,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              {view === 'list'
+                ? <CalendarDays size={16} strokeWidth={2} />
+                : <List size={16} strokeWidth={2} />}
+            </button>
+          }
         />
 
         <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 12 }}>

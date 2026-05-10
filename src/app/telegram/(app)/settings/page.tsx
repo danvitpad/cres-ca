@@ -35,7 +35,8 @@ import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
-import { HapticToggle } from '@/components/miniapp/haptic-toggle';
+import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
+import { Vibrate } from 'lucide-react';
 
 type Lang = 'uk' | 'ru' | 'en';
 
@@ -44,21 +45,24 @@ const I18N: Record<Lang, {
   emailLabel: string; phoneLabel: string; notSet: string;
   changePassword: string; reminders: string; reminderDesc: string;
   darkTheme: string; darkManual: string; darkAuto: string;
-  language: string; langOptions: string;
+  language: string;
   privacy: string; privacyDesc: string;
+  hapticLabel: string; hapticHint: string;
   contactSheet: string; save: string;
   pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
   pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
   emailConfirm: string;
   close: string;
+  sectionAccount: string; sectionNotifPrivacy: string; sectionAppearance: string;
 }> = {
   uk: {
     title: 'Налаштування', back: 'Назад',
     emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не вказано',
     changePassword: 'Змінити пароль', reminders: 'Нагадування', reminderDesc: 'Коли і як часто нагадувати про візит',
     darkTheme: 'Темна тема', darkManual: 'Вручну', darkAuto: 'Як у Telegram',
-    language: 'Мова', langOptions: 'Українська · Русский · English',
+    language: 'Мова',
     privacy: 'Приватність', privacyDesc: 'Що бачать майстри та команди',
+    hapticLabel: 'Вібрація на дотик', hapticHint: 'Легкий відгук при натисканнях',
     contactSheet: 'Контактні дані', save: 'Зберегти',
     pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
     pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
@@ -66,14 +70,16 @@ const I18N: Record<Lang, {
     pwSaved: 'Пароль оновлено',
     emailConfirm: 'Листа з підтвердженням надіслано. Відкрийте його, щоб завершити зміну email.',
     close: 'Закрити',
+    sectionAccount: 'Акаунт', sectionNotifPrivacy: 'Сповіщення та приватність', sectionAppearance: 'Зовнішній вигляд',
   },
   ru: {
     title: 'Настройки', back: 'Назад',
     emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не указан',
     changePassword: 'Сменить пароль', reminders: 'Напоминания', reminderDesc: 'Когда и как часто напоминать о визите',
     darkTheme: 'Тёмная тема', darkManual: 'Вручную', darkAuto: 'Как в Telegram',
-    language: 'Язык', langOptions: 'Українська · Русский · English',
+    language: 'Язык',
     privacy: 'Приватность', privacyDesc: 'Что видят мастера и команды',
+    hapticLabel: 'Вибрация на тапах', hapticHint: 'Лёгкая отдача при нажатиях',
     contactSheet: 'Контактные данные', save: 'Сохранить',
     pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
     pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
@@ -81,14 +87,16 @@ const I18N: Record<Lang, {
     pwSaved: 'Пароль обновлён',
     emailConfirm: 'Письмо с подтверждением отправлено. Откройте его, чтобы завершить смену email.',
     close: 'Закрыть',
+    sectionAccount: 'Аккаунт', sectionNotifPrivacy: 'Уведомления и приватность', sectionAppearance: 'Внешний вид',
   },
   en: {
     title: 'Settings', back: 'Back',
     emailLabel: 'Email', phoneLabel: 'Phone', notSet: 'Not set',
     changePassword: 'Change password', reminders: 'Reminders', reminderDesc: 'When and how often to remind about appointments',
     darkTheme: 'Dark theme', darkManual: 'Manual', darkAuto: 'Follow Telegram',
-    language: 'Language', langOptions: 'Українська · Русский · English',
+    language: 'Language',
     privacy: 'Privacy', privacyDesc: 'What masters and teams see',
+    hapticLabel: 'Tap vibration', hapticHint: 'Light haptic response on taps',
     contactSheet: 'Contact info', save: 'Save',
     pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
     pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
@@ -96,7 +104,14 @@ const I18N: Record<Lang, {
     pwSaved: 'Password updated',
     emailConfirm: 'A confirmation email has been sent. Open it to finish changing your email.',
     close: 'Close',
+    sectionAccount: 'Account', sectionNotifPrivacy: 'Notifications & privacy', sectionAppearance: 'Appearance',
   },
+};
+
+const LANG_LABEL: Record<Lang, string> = {
+  uk: 'Українська',
+  ru: 'Русский',
+  en: 'English',
 };
 
 export default function MiniAppSettingsPage() {
@@ -104,9 +119,11 @@ export default function MiniAppSettingsPage() {
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
   const { theme, override, setOverride } = useMiniAppTheme();
+  const { enabled: hapticEnabled, loaded: hapticLoaded, setEnabled: setHapticEnabled } = useHapticPrefs();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [signingOut, setSigningOut] = useState(false);
+  void signingOut; void setSigningOut;
 
   // Contact info
   const [email, setEmail] = useState<string | null>(null);
@@ -296,6 +313,15 @@ export default function MiniAppSettingsPage() {
     margin: '0 16px',
   };
 
+  const sectionLabelStyle: React.CSSProperties = {
+    ...TYPE.micro,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    color: T.textTertiary,
+    margin: '4px 4px 8px',
+  };
+
   return (
     <>
       <motion.div
@@ -332,104 +358,121 @@ export default function MiniAppSettingsPage() {
           <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.title}</h1>
         </div>
 
-        {/* Контактные данные: Email · Телефон · Смена пароля.
-            Email/Телефон редактируются здесь (а не в Профілі) — это контактные
-            настройки, логичнее жить в Налаштування. */}
-        <div style={cardStyle}>
-          <button type="button" onClick={openContactEdit} style={rowStyle}>
-            <div style={iconBox}><Mail size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-          <div style={divider} />
-          <button type="button" onClick={openContactEdit} style={rowStyle}>
-            <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-          <div style={divider} />
-          <button
-            type="button"
-            onClick={() => {
-              setPwNew('');
-              setPwConfirm('');
-              setPwError(null);
-              setPwSuccess(false);
-              setPwOpen(true);
-              haptic('light');
-            }}
-            style={rowStyle}
-          >
-            <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
+        {/* ─── АККАУНТ — Email · Телефон · Сменить пароль ─── */}
+        <div>
+          <p style={sectionLabelStyle}>{t.sectionAccount}</p>
+          <div style={cardStyle}>
+            <button type="button" onClick={openContactEdit} style={rowStyle}>
+              <div style={iconBox}><Mail size={16} color={T.text} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+            <div style={divider} />
+            <button type="button" onClick={openContactEdit} style={rowStyle}>
+              <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+            <div style={divider} />
+            <button
+              type="button"
+              onClick={() => {
+                setPwNew('');
+                setPwConfirm('');
+                setPwError(null);
+                setPwSuccess(false);
+                setPwOpen(true);
+                haptic('light');
+              }}
+              style={rowStyle}
+            >
+              <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+          </div>
         </div>
 
-        {/* General */}
-        <div style={cardStyle}>
-          <Link href="/telegram/settings/notifications" onClick={() => haptic('light')} style={rowStyle}>
-            <div style={iconBox}>
-              <Bell size={16} color={T.text} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.reminders}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.reminderDesc}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </Link>
-          <div style={divider} />
-          {/* Theme toggle */}
-          <button
-            type="button"
-            onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
-            style={{ ...rowStyle, justifyContent: 'flex-start' }}
-          >
-            <div style={iconBox}><Moon size={16} color={T.text} /></div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.darkTheme}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>
-                {override ? t.darkManual : t.darkAuto}
-              </p>
-            </div>
-            <ToggleSwitch on={theme === 'dark'} />
-          </button>
-          <div style={divider} />
-          <Link href="/telegram/settings/language" onClick={() => haptic('light')} style={rowStyle}>
-            <div style={iconBox}><Globe size={16} color={T.text} /></div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.language}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.langOptions}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </Link>
-          <div style={divider} />
-          <Link href="/telegram/settings/privacy" onClick={() => haptic('light')} style={rowStyle}>
-            <div style={iconBox}><Shield size={16} color={T.text} /></div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.privacy}</p>
-              <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.privacyDesc}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </Link>
-          <div style={divider} />
-          {/* «Підтримка» убрана отсюда — она же есть в Профілі (главная
-              страница юзера). Дублирование в двух местах сбивало. */}
+        {/* ─── УВЕДОМЛЕНИЯ И ПРИВАТНОСТЬ ─── */}
+        <div>
+          <p style={sectionLabelStyle}>{t.sectionNotifPrivacy}</p>
+          <div style={cardStyle}>
+            <Link href="/telegram/settings/notifications" onClick={() => haptic('light')} style={rowStyle}>
+              <div style={iconBox}><Bell size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.reminders}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.reminderDesc}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </Link>
+            <div style={divider} />
+            <Link href="/telegram/settings/privacy" onClick={() => haptic('light')} style={rowStyle}>
+              <div style={iconBox}><Shield size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.privacy}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.privacyDesc}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </Link>
+          </div>
         </div>
 
-        {/* Haptic toggle (Phase 4 — Mini App premium speed) */}
-        <HapticToggle lang={lang} />
-
-        {/* «Дії з обліковим записом» / Sign out blocks убраны — Sign out
-            живёт в Профілі, экспорт/удаление аккаунта доступен в веб-версии. */}
+        {/* ─── ВНЕШНИЙ ВИД — Тёмная тема + Язык + Вибрация ─── */}
+        <div>
+          <p style={sectionLabelStyle}>{t.sectionAppearance}</p>
+          <div style={cardStyle}>
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
+              style={rowStyle}
+            >
+              <div style={iconBox}><Moon size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.darkTheme}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>
+                  {override ? t.darkManual : t.darkAuto}
+                </p>
+              </div>
+              <ToggleSwitch on={theme === 'dark'} />
+            </button>
+            <div style={divider} />
+            <Link href="/telegram/settings/language" onClick={() => haptic('light')} style={rowStyle}>
+              <div style={iconBox}><Globe size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.language}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{LANG_LABEL[lang]}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </Link>
+            <div style={divider} />
+            <button
+              type="button"
+              onClick={() => {
+                if (!hapticLoaded) return;
+                const next = !hapticEnabled;
+                setHapticEnabled(next);
+                if (next) haptic('light');
+              }}
+              disabled={!hapticLoaded}
+              style={rowStyle}
+            >
+              <div style={iconBox}><Vibrate size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.hapticLabel}</p>
+                <p style={{ ...TYPE.caption, margin: 0, marginTop: 1 }}>{t.hapticHint}</p>
+              </div>
+              <ToggleSwitch on={hapticEnabled} />
+            </button>
+          </div>
+        </div>
       </motion.div>
 
       {/* Contact edit bottom sheet */}

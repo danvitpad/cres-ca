@@ -42,8 +42,8 @@ import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 type Lang = 'uk' | 'ru' | 'en';
 
 const I18N: Record<Lang, {
-  subtitle: string;
-  menuProfile: string; menuContacts: string; menuSettings: string; menuSupport: string;
+  labelName: string; labelPhone: string; labelEmail: string; notSet: string;
+  myMasters: string; menuSettings: string; menuSupport: string;
   logout: string; loggingOut: string;
   editTitle: string; save: string;
   fieldFirstName: string; fieldLastName: string; fieldEmail: string; fieldPhone: string;
@@ -57,8 +57,8 @@ const I18N: Record<Lang, {
   saveError: string; avatarTitle: string; guest: string;
 }> = {
   uk: {
-    subtitle: 'Особистий профіль',
-    menuProfile: 'Профіль', menuContacts: 'Контакти', menuSettings: 'Налаштування', menuSupport: 'Підтримка',
+    labelName: 'Імʼя', labelPhone: 'Телефон', labelEmail: 'Email', notSet: 'Не вказано',
+    myMasters: 'Мої майстри', menuSettings: 'Налаштування', menuSupport: 'Підтримка',
     logout: 'Вийти', loggingOut: 'Виходимо...',
     editTitle: 'Редагувати профіль', save: 'Зберегти',
     fieldFirstName: 'Ім\'я', fieldLastName: 'Прізвище',
@@ -76,8 +76,8 @@ const I18N: Record<Lang, {
     close: 'Закрити', avatarLabel: 'Змінити аватар',
   },
   ru: {
-    subtitle: 'Личный профиль',
-    menuProfile: 'Профиль', menuContacts: 'Контакты', menuSettings: 'Настройки', menuSupport: 'Поддержка',
+    labelName: 'Имя', labelPhone: 'Телефон', labelEmail: 'Email', notSet: 'Не указано',
+    myMasters: 'Мои мастера', menuSettings: 'Настройки', menuSupport: 'Поддержка',
     logout: 'Выйти', loggingOut: 'Выходим...',
     editTitle: 'Редактировать профиль', save: 'Сохранить',
     fieldFirstName: 'Имя', fieldLastName: 'Фамилия',
@@ -95,8 +95,8 @@ const I18N: Record<Lang, {
     close: 'Закрыть', avatarLabel: 'Изменить аватар',
   },
   en: {
-    subtitle: 'Personal profile',
-    menuProfile: 'Profile', menuContacts: 'Contacts', menuSettings: 'Settings', menuSupport: 'Support',
+    labelName: 'Name', labelPhone: 'Phone', labelEmail: 'Email', notSet: 'Not set',
+    myMasters: 'My masters', menuSettings: 'Settings', menuSupport: 'Support',
     logout: 'Sign out', loggingOut: 'Signing out...',
     editTitle: 'Edit profile', save: 'Save',
     fieldFirstName: 'First name', fieldLastName: 'Last name',
@@ -349,18 +349,14 @@ export default function MiniAppProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoaded]);
 
-  const mainMenu: MenuItem[] = [
+  // Меню «Мои мастера + Настройки» (вместо старых дублирующих
+  // «Профиль / Контакты / Настройки» — теперь личные данные показаны прямо
+  // в карточке выше).
+  const navMenu: MenuItem[] = [
     {
-      key: 'profile',
-      icon: <UserIcon size={22} strokeWidth={1.8} />,
-      label: t.menuProfile,
-      onClick: openEdit,
-      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
-    },
-    {
-      key: 'contacts',
+      key: 'connections',
       icon: <Users size={22} strokeWidth={1.8} />,
-      label: t.menuContacts,
+      label: t.myMasters,
       href: '/telegram/connections',
       rightSlot: (
         <>
@@ -400,6 +396,34 @@ export default function MiniAppProfilePage() {
     },
   ];
 
+  // Стили для блока «Личные данные» — карточка с тремя строками,
+  // каждая строка тапается и открывает edit modal.
+  const dataCardStyle: React.CSSProperties = {
+    borderRadius: R.lg,
+    border: `1px solid ${T.borderSubtle}`,
+    background: T.surface,
+    boxShadow: SHADOW.card,
+    overflow: 'hidden',
+  };
+  const dataRowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    padding: '14px 16px',
+    background: 'transparent',
+    border: 'none',
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    color: T.text,
+  };
+  const dataDivider: React.CSSProperties = {
+    height: 1,
+    background: T.borderSubtle,
+    margin: '0 16px',
+  };
+
   return (
     <MobilePage>
       <motion.div
@@ -410,7 +434,6 @@ export default function MiniAppProfilePage() {
       >
         <PageHeader
           title={displayName || ' '}
-          subtitle={t.subtitle}
           right={
             <button
               type="button"
@@ -418,8 +441,8 @@ export default function MiniAppProfilePage() {
               disabled={avatarBusy}
               style={{
                 position: 'relative',
-                width: 64,
-                height: 64,
+                width: 56,
+                height: 56,
                 borderRadius: '50%',
                 background: 'transparent',
                 border: 'none',
@@ -429,7 +452,7 @@ export default function MiniAppProfilePage() {
               }}
               aria-label={t.avatarLabel}
             >
-              <AvatarCircle url={avatarUrl} name={displayName} size={64} />
+              <AvatarCircle url={avatarUrl} name={displayName} size={56} />
               {avatarBusy && (
                 <span
                   style={{
@@ -469,7 +492,40 @@ export default function MiniAppProfilePage() {
 
         {/* GradientHeroCard (wallet balance) — hidden: loyalty/bonuses temporarily disabled */}
 
-        <MenuList items={mainMenu} />
+        {/* Личные данные — имя / телефон / email прямо в профиле, тап → редактировать */}
+        <div style={dataCardStyle}>
+          <button type="button" onClick={openEdit} style={dataRowStyle}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.labelName}</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {displayName || t.notSet}
+              </p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+          <div style={dataDivider} />
+          <button type="button" onClick={openEdit} style={dataRowStyle}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.labelPhone}</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {phone || t.notSet}
+              </p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+          <div style={dataDivider} />
+          <button type="button" onClick={openEdit} style={dataRowStyle}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.labelEmail}</p>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {email || t.notSet}
+              </p>
+            </div>
+            <ChevronRight size={16} color={T.textTertiary} />
+          </button>
+        </div>
+
+        <MenuList items={navMenu} />
         <MenuList items={supportMenu} />
         <MenuList items={logoutMenu} />
 
