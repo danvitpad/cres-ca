@@ -15,7 +15,7 @@ import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, X, Check, MessageSquare, Plus, RotateCcw,
-  Bell, Clock, Star, Sparkles, Heart, Gauge, Cake,
+  Bell, Clock, Star, Heart, Gauge, Cake,
   CheckCircle2, CalendarClock, XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -137,7 +137,7 @@ const SPECS: KindSpec[] = [
     kind: 'cadence',
     title: 'Умное возвращение',
     description: 'Когда клиент перестал приходить по своей привычке',
-    icon: Sparkles,
+    icon: CalendarClock,
     defaultSubject: '⏰ Пора записаться?',
     defaultContent: 'Обычно интервал между визитами ~{Средний интервал} дней.\nПрошло уже {Дней без визита} — пора записаться?',
     hasSubject: true,

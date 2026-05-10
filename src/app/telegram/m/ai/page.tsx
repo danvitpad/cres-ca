@@ -12,7 +12,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, Send, Trash2, Sparkles, Receipt, Bell, BarChart3, Users, Clock as ClockIcon } from 'lucide-react';
+import { Bot, Send, Trash2, Lightbulb, Receipt, Bell, BarChart3, Users, Clock as ClockIcon } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
@@ -153,7 +153,7 @@ export default function MasterMiniAppAI() {
     { icon: Receipt, label: t.s1 },
     { icon: BarChart3, label: t.s2 },
     { icon: Bell, label: t.s3 },
-    { icon: Sparkles, label: t.s4 },
+    { icon: Lightbulb, label: t.s4 },
     { icon: Users, label: t.s5 },
     { icon: ClockIcon, label: t.s6 },
   ];

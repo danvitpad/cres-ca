@@ -15,7 +15,7 @@ import { format, startOfDay, endOfDay, startOfWeek, differenceInDays, getYear, s
 import { ru } from 'date-fns/locale/ru';
 import { uk } from 'date-fns/locale/uk';
 import { enUS } from 'date-fns/locale/en-US';
-import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Sparkles, Trash2, HelpCircle, Check, CheckCircle2, XCircle, UserX, RotateCcw } from 'lucide-react';
+import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Bot, Trash2, HelpCircle, Check, CheckCircle2, XCircle, UserX, RotateCcw } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
@@ -380,7 +380,7 @@ export default function TodayPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-                <Sparkles className="w-4 h-4" />
+                <Bot className="w-4 h-4" />
               </div>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 AI-помощник
@@ -416,7 +416,7 @@ export default function TodayPage() {
               <div className="flex h-full items-center justify-center">
                 <div className="text-center max-w-md">
                   <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
-                    <Sparkles className="w-5 h-5" />
+                    <Bot className="w-5 h-5" />
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Спроси или поручи — я выполню действие или отвечу по твоим данным.

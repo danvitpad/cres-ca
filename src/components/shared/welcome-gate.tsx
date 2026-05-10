@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Compass } from 'lucide-react';
+import { Compass, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 export function WelcomeGate() {
@@ -181,7 +181,7 @@ export function WelcomeGate() {
                   justifyContent: 'center',
                 }}
               >
-                <Sparkles size={28} />
+                <Compass size={28} />
               </div>
             </div>
 

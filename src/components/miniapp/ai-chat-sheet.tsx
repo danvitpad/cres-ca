@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, X, Star, Calendar, Mic } from 'lucide-react';
+import { Send, Bot, X, Star, Calendar, Mic } from 'lucide-react';
 import { useTelegram } from './telegram-provider';
 import { AvatarCircle } from './shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from './design';
@@ -364,7 +364,7 @@ export function AIChatSheet({ open, onClose, initialPrompt }: Props) {
                     justifyContent: 'center',
                   }}
                 >
-                  <Sparkles size={18} color={T.accent} strokeWidth={2.2} />
+                  <Bot size={18} color={T.accent} strokeWidth={2.2} />
                 </div>
                 <div>
                   <h3 style={{ ...TYPE.h3, fontSize: 16, color: T.text, margin: 0 }}>{t.title}</h3>
@@ -562,7 +562,7 @@ function Welcome({ onPrompt, t }: { onPrompt: (p: string) => void; t: typeof I18
           margin: '0 auto 16px',
         }}
       >
-        <Sparkles size={28} color="#fff" strokeWidth={2} />
+        <Bot size={28} color="#fff" strokeWidth={2} />
       </div>
       <h2 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.welcomeTitle}</h2>
       <p style={{ ...TYPE.body, color: T.textSecondary, marginTop: 6, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
@@ -590,7 +590,7 @@ function Welcome({ onPrompt, t }: { onPrompt: (p: string) => void; t: typeof I18
               textAlign: 'left',
             }}
           >
-            <Sparkles size={14} color={T.accent} />
+            <Bot size={14} color={T.accent} />
             {p}
           </button>
         ))}

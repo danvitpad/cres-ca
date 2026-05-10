@@ -99,28 +99,16 @@ export function MiniAppBottomNav({ tabs, accent = T.accent, hidden = false }: Pr
                   />
                 )}
                 <Icon
-                  size={22}
+                  size={24}
                   strokeWidth={active ? 2.5 : 2}
                   fill="none"
                   style={{ position: 'relative', zIndex: 1 }}
                 />
-                <span
-                  style={{
-                    position: 'relative',
-                    zIndex: 1,
-                    fontSize: 10,
-                    fontWeight: active ? 700 : 500,
-                    letterSpacing: '-0.01em',
-                    lineHeight: 1,
-                    color: active ? accent : T.textTertiary,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxWidth: '100%',
-                  }}
-                >
-                  {tab.label}
-                </span>
+                {/* Подписи под иконками убраны (2026-05-10): по решению Данила
+                    bottom-nav теперь только иконки + активный pill, без текста.
+                    Каждая иконка должна быть однозначной — это правило для
+                    выбора иконок в новых табах. Лейбл остаётся в aria-label
+                    выше для скринридеров. */}
               </NavLink>
             </li>
           );

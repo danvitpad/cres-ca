@@ -13,7 +13,7 @@
 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Megaphone, Send, Tag, Ticket, Sparkles, ChevronRight } from 'lucide-react';
+import { Megaphone, Send, Tag, Ticket, MessageSquareHeart, ChevronRight } from 'lucide-react';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -73,7 +73,7 @@ export default function MasterMiniAppMarketing() {
     { icon: Send, title: t.broadcasts, hint: t.broadcastsHint, tab: 'broadcasts' },
     { icon: Tag, title: t.deals, hint: t.dealsHint, tab: 'deals' },
     { icon: Ticket, title: t.promo, hint: t.promoHint, tab: 'promo' },
-    { icon: Sparkles, title: t.reviews, hint: t.reviewsHint, tab: 'reviews' },
+    { icon: MessageSquareHeart, title: t.reviews, hint: t.reviewsHint, tab: 'reviews' },
   ];
 
   return (
