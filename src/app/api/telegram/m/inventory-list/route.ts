@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await admin
     .from('inventory_items')
-    .select('id, name, quantity, unit, low_stock_threshold')
+    .select('id, name, quantity, unit, low_stock_threshold, cost_per_unit, preferred_supplier_id')
     .eq('master_id', master.id)
     .order('name', { ascending: true });
 

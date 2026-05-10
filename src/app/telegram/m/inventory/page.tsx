@@ -27,6 +27,13 @@ interface Item {
   quantity: number;
   unit: string;
   low_stock_threshold: number | null;
+  cost_per_unit: number | null;
+  preferred_supplier_id: string | null;
+}
+
+interface SupplierOpt {
+  id: string;
+  name: string;
 }
 
 const UNITS: Array<{ value: Item['unit']; label: string }> = [
@@ -45,6 +52,7 @@ const I18N: Record<MiniAppLang, {
   add: string; back: string;
   sheetCreate: string; sheetEdit: string;
   fieldName: string; fieldQuantity: string; fieldUnit: string; fieldThreshold: string;
+  fieldCost: string; fieldSupplier: string; supplierNone: string; suppliersEmptyHint: string;
   thresholdHint: string;
   placeholderName: string;
   save: string; saving: string;
@@ -61,6 +69,9 @@ const I18N: Record<MiniAppLang, {
     sheetCreate: 'Новий матеріал', sheetEdit: 'Редагувати матеріал',
     fieldName: 'Назва', fieldQuantity: 'Залишок', fieldUnit: 'Одиниця',
     fieldThreshold: 'Поріг (опц.)',
+    fieldCost: 'Ціна / од. (₴)', fieldSupplier: 'Постачальник',
+    supplierNone: 'Без постачальника',
+    suppliersEmptyHint: 'Спочатку додай постачальника у вкладці «Постачальники» — тоді при формуванні замовлення сюди потраплять тільки його товари',
     thresholdHint: 'Коли залишок впаде нижче — отримаєш push',
     placeholderName: 'Гель, олія, голка…',
     save: 'Зберегти', saving: 'Зберігаємо…',
@@ -77,6 +88,9 @@ const I18N: Record<MiniAppLang, {
     sheetCreate: 'Новый материал', sheetEdit: 'Редактировать материал',
     fieldName: 'Название', fieldQuantity: 'Остаток', fieldUnit: 'Единица',
     fieldThreshold: 'Порог (опц.)',
+    fieldCost: 'Цена / ед. (₴)', fieldSupplier: 'Поставщик',
+    supplierNone: 'Без поставщика',
+    suppliersEmptyHint: 'Сначала добавь поставщика во вкладке «Поставщики» — тогда при формировании заказа сюда попадут только его товары',
     thresholdHint: 'Когда остаток опустится ниже — получишь push',
     placeholderName: 'Гель, масло, иголка…',
     save: 'Сохранить', saving: 'Сохраняем…',
@@ -93,6 +107,9 @@ const I18N: Record<MiniAppLang, {
     sheetCreate: 'New item', sheetEdit: 'Edit item',
     fieldName: 'Name', fieldQuantity: 'In stock', fieldUnit: 'Unit',
     fieldThreshold: 'Low threshold (optional)',
+    fieldCost: 'Cost / unit (₴)', fieldSupplier: 'Supplier',
+    supplierNone: 'No supplier',
+    suppliersEmptyHint: 'Add a supplier in the Suppliers tab first — then when you form an order only their items will appear here',
     thresholdHint: 'You’ll get a push when stock drops below this',
     placeholderName: 'Gel, oil, needle…',
     save: 'Save', saving: 'Saving…',
@@ -110,6 +127,7 @@ export default function MasterMiniAppInventory() {
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [items, setItems] = useState<Item[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierOpt[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sheet, setSheet] = useState<{ mode: 'create' | 'edit'; item?: Item } | null>(null);
@@ -120,17 +138,28 @@ export default function MasterMiniAppInventory() {
     (async () => {
       const initData = getInitData();
       if (!initData) { setLoading(false); return; }
-      const res = await fetch('/api/telegram/m/inventory-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData }),
-      });
+      // Тянем материалы и поставщиков параллельно — поставщики нужны для
+      // дропдауна «Поставщик» в форме создания/редактирования материала.
+      const [resItems, resSuppliers] = await Promise.all([
+        fetch('/api/telegram/m/inventory-list', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        }),
+        fetch('/api/telegram/m/suppliers-list', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        }),
+      ]);
       if (cancelled) return;
-      if (!res.ok) { setLoading(false); return; }
-      const json = await res.json() as { items: Item[] };
-      if (cancelled) return;
-      setItems(json.items ?? []);
-      setLoading(false);
+      if (resItems.ok) {
+        const json = await resItems.json() as { items: Item[] };
+        if (!cancelled) setItems(json.items ?? []);
+      }
+      if (resSuppliers.ok) {
+        const json = await resSuppliers.json() as { items: Array<{ id: string; name: string; is_active?: boolean }> };
+        if (!cancelled) setSuppliers((json.items ?? []).filter((s) => s.is_active !== false).map((s) => ({ id: s.id, name: s.name })));
+      }
+      if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [userId, refreshKey]);
@@ -212,6 +241,7 @@ export default function MasterMiniAppInventory() {
             mode={sheet.mode}
             item={sheet.item}
             t={t}
+            suppliers={suppliers}
             onClose={() => setSheet(null)}
             onSaved={() => { setSheet(null); setRefreshKey((k) => k + 1); }}
           />
@@ -269,10 +299,11 @@ function ItemRow({ item, i, t, onTap }: { item: Item; i: number; t: typeof I18N[
   );
 }
 
-function ItemSheet({ mode, item, t, onClose, onSaved }: {
+function ItemSheet({ mode, item, t, suppliers, onClose, onSaved }: {
   mode: 'create' | 'edit';
   item?: Item;
   t: typeof I18N['ru'];
+  suppliers: SupplierOpt[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -280,6 +311,8 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
   const [quantity, setQuantity] = useState(String(item?.quantity ?? ''));
   const [unit, setUnit] = useState<Item['unit']>(item?.unit ?? 'pcs');
   const [threshold, setThreshold] = useState(item?.low_stock_threshold != null ? String(item.low_stock_threshold) : '');
+  const [cost, setCost] = useState(item?.cost_per_unit != null && item.cost_per_unit > 0 ? String(item.cost_per_unit) : '');
+  const [supplierId, setSupplierId] = useState<string | null>(item?.preferred_supplier_id ?? null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -311,9 +344,17 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
     const thrRaw = threshold.trim().replace(',', '.');
     const thr = thrRaw === '' ? null : Number(thrRaw);
 
+    const costRaw = cost.trim().replace(',', '.');
+    const costNum = costRaw === '' ? null : Number(costRaw);
+
     setBusy(true);
     try {
-      const common = { name: n, quantity: q, unit, low_stock_threshold: thr };
+      const common = {
+        name: n, quantity: q, unit,
+        low_stock_threshold: thr,
+        cost_per_unit: costNum,
+        preferred_supplier_id: supplierId,
+      };
       if (mode === 'create') {
         await callMutate({ action: 'create', ...common });
       } else if (item) {
@@ -427,6 +468,17 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
           </div>
         </div>
         <FullDivider />
+        <FlatRow label={t.fieldCost}>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={cost}
+            onChange={(e) => setCost(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+            placeholder="—"
+            style={inputStyle}
+          />
+        </FlatRow>
+        <FullDivider />
         <FlatRow label={t.fieldThreshold}>
           <input
             type="text"
@@ -438,6 +490,19 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
           />
         </FlatRow>
         <FullDivider />
+        <FlatRow label={t.fieldSupplier}>
+          <select
+            value={supplierId ?? '__none__'}
+            onChange={(e) => setSupplierId(e.target.value === '__none__' ? null : e.target.value)}
+            style={{ ...inputStyle, fontSize: 16, appearance: 'none' }}
+          >
+            <option value="__none__">{t.supplierNone}</option>
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </FlatRow>
+        <FullDivider />
 
         <p style={{
           ...TYPE.micro, color: T.textTertiary,
@@ -446,6 +511,15 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
         }}>
           {t.thresholdHint}
         </p>
+        {suppliers.length === 0 && (
+          <p style={{
+            ...TYPE.micro, color: T.textTertiary,
+            padding: `4px ${PAGE_PADDING_X}px 0`,
+            margin: 0, lineHeight: 1.5,
+          }}>
+            {t.suppliersEmptyHint}
+          </p>
+        )}
 
         {err && (
           <p style={{

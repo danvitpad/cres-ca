@@ -1,8 +1,11 @@
 /** --- YAML
  * name: Mini App — Inventory Item CRUD
  * description: Создание/обновление/удаление inventory_items для мастера. Auth через initData.
- *              Действия: create / update / delete. Поля: name, quantity, unit, low_stock_threshold (опц).
+ *              Действия: create / update / delete. Поля: name, quantity, unit,
+ *              low_stock_threshold (опц), cost_per_unit (опц), preferred_supplier_id (опц).
+ *              Поля парити с web /[locale]/(dashboard)/inventory/page.tsx.
  * created: 2026-05-10
+ * updated: 2026-05-10
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -16,6 +19,8 @@ interface MutateBody {
   quantity?: number;
   unit?: string;
   low_stock_threshold?: number | null;
+  cost_per_unit?: number | null;
+  preferred_supplier_id?: string | null;
 }
 
 const ALLOWED_UNITS = new Set(['ml', 'g', 'pcs', 'bottles', 'impulses', 'sessions']);
@@ -50,12 +55,17 @@ export async function POST(req: Request) {
     const threshold = body.low_stock_threshold === null || body.low_stock_threshold === undefined
       ? null
       : Math.max(0, Number(body.low_stock_threshold));
+    const cost = body.cost_per_unit === null || body.cost_per_unit === undefined
+      ? 0
+      : Math.max(0, Number(body.cost_per_unit));
     const { data, error } = await admin.from('inventory_items').insert({
       master_id: master.id,
       name,
       quantity: qty,
       unit,
       low_stock_threshold: threshold,
+      cost_per_unit: cost,
+      preferred_supplier_id: body.preferred_supplier_id ?? null,
     }).select('id').single<{ id: string }>();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, id: data?.id });
@@ -92,6 +102,14 @@ export async function POST(req: Request) {
       patch.low_stock_threshold = body.low_stock_threshold === null
         ? null
         : Math.max(0, Number(body.low_stock_threshold));
+    }
+    if (body.cost_per_unit !== undefined) {
+      patch.cost_per_unit = body.cost_per_unit === null
+        ? 0
+        : Math.max(0, Number(body.cost_per_unit));
+    }
+    if (body.preferred_supplier_id !== undefined) {
+      patch.preferred_supplier_id = body.preferred_supplier_id ?? null;
     }
     const { error } = await admin.from('inventory_items').update(patch).eq('id', body.id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
