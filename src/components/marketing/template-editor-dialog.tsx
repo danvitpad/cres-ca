@@ -109,6 +109,58 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
       { key: 'client_name', label: 'Имя клиента' },
     ],
   },
+  // Booking lifecycle templates — DB-trigger driven (dispatch_booking_notification),
+  // не имеют on/off-toggle. Если мастер не сохранил кастом — отправляется
+  // украинский человечный fallback (см. миграции 00149/00151).
+  booking_confirmation: {
+    kind: 'booking_confirmation',
+    title: 'Подтверждение записи',
+    description: 'Уходит клиенту в момент бронирования',
+    defaultSubject: '✅ Запис підтверджено',
+    defaultContent: 'Майстер {master_name} чекає тебе {date} о {time}.\nПослуга: {service_name} ({duration}, {price}).\nАдреса: {address}\n\nЯкщо плани зміняться — повідом заздалегідь 🙏',
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время визита' },
+      { key: 'date', label: 'Дата' },
+      { key: 'price', label: 'Стоимость (с валютой)' },
+      { key: 'address', label: 'Адрес мастера' },
+      { key: 'duration', label: 'Длительность' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'confirm_url', label: 'Ссылка подтверждения' },
+    ],
+  },
+  appointment_rescheduled: {
+    kind: 'appointment_rescheduled',
+    title: 'Перенос записи',
+    description: 'Уходит клиенту когда меняется время визита',
+    defaultSubject: '🔄 Запис перенесено',
+    defaultContent: '{master_name} · {service_name}\nБуло: {old_date} о {old_time}\nСтало: {date} о {time}',
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Новое время' },
+      { key: 'date', label: 'Новая дата' },
+      { key: 'old_time', label: 'Старое время' },
+      { key: 'old_date', label: 'Старая дата' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'address', label: 'Адрес мастера' },
+    ],
+  },
+  appointment_cancelled: {
+    kind: 'appointment_cancelled',
+    title: 'Отмена записи',
+    description: 'Уходит клиенту когда запись отменяется',
+    defaultSubject: '❌ Запис скасовано',
+    defaultContent: 'Майстер: {master_name}\nПослуга: {service_name}\n{date} о {time}\n\nЗапишись на інший час, коли буде зручно 🙂',
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время' },
+      { key: 'date', label: 'Дата' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+    ],
+  },
 };
 
 interface MessageTemplateRow {
@@ -266,6 +318,11 @@ export function TemplateEditorDialog({
       .replace(/\{service_name\}/g, 'Маникюр')
       .replace(/\{time\}/g, '15:30')
       .replace(/\{date\}/g, 'завтра')
+      .replace(/\{old_time\}/g, '14:00')
+      .replace(/\{old_date\}/g, '11 травня')
+      .replace(/\{price\}/g, '500 ₴')
+      .replace(/\{address\}/g, 'вул. Європейська 27, Київ')
+      .replace(/\{duration\}/g, '1 год')
       .replace(/\{confirm_url\}/g, 'cres-ca.com/c/sample')
       .replace(/\{avg\}/g, '21')
       .replace(/\{days\}/g, '28')
@@ -303,9 +360,9 @@ export function TemplateEditorDialog({
           </button>
         </div>
 
-        {/* Subject */}
+        {/* Subject — необязательное поле (если пусто, бот возьмёт стандартный заголовок) */}
         <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Тема
+          Тема <span className="font-normal normal-case tracking-normal text-muted-foreground/70">· необязательно</span>
         </label>
         <input
           ref={subjectRef}

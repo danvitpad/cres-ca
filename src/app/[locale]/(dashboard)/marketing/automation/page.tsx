@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Sparkles, Pencil } from 'lucide-react';
+import { Clock, Star, Heart, TrendingUp, BarChart3, Bell, Settings, Cake, Sparkles, Pencil, CheckCircle2, CalendarClock, XCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { Switch } from '@/components/ui/switch';
@@ -239,6 +239,57 @@ export default function AutomationPage() {
           </button>
         </div>
       </div>
+
+{/* События записи — DB-trigger driven, без on/off (всегда включены).
+    Если шаблон не задан — клиент получит украинский человечный fallback. */}
+{!loading && master?.id && (
+  <div className="space-y-3">
+    <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      События записи
+    </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      {([
+        { kind: 'booking_confirmation', icon: CheckCircle2, accent: '#10b981',
+          title: 'Подтверждение записи', description: 'Уходит клиенту в момент бронирования' },
+        { kind: 'appointment_rescheduled', icon: CalendarClock, accent: '#0d9488',
+          title: 'Перенос записи', description: 'Уходит клиенту когда меняется время визита' },
+        { kind: 'appointment_cancelled', icon: XCircle, accent: '#ef4444',
+          title: 'Отмена записи', description: 'Уходит клиенту когда запись отменяется' },
+      ] as const).map((b) => {
+        const Icon = b.icon;
+        return (
+          <div key={b.kind} className="rounded-2xl border bg-card p-5 transition-shadow hover:shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div
+                className="flex size-10 items-center justify-center rounded-xl"
+                style={{ backgroundColor: `${b.accent}15`, color: b.accent }}
+              >
+                <Icon className="size-5" />
+              </div>
+            </div>
+            <div className="mt-4 font-semibold">{b.title}</div>
+            <div className="mt-1 text-sm text-muted-foreground">{b.description}</div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Settings className="size-3" />
+                Всегда включено
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingKind(b.kind)}
+                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-primary/10 hover:border-primary/40"
+                title="Редактировать текст шаблона"
+              >
+                <Pencil className="size-2.5" />
+                Шаблон
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
 
       {master?.id && (
         <BirthdaySettingsDialog
