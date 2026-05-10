@@ -11,24 +11,49 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { resolveUserId } from '@/lib/auth/resolve-user';
 import { aiChat } from '@/lib/ai/openrouter';
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Цепочка fallback моделей через OpenRouter (все бесплатные на 2026-05).
-// Порядок: быстрые умные → мощные надёжные. Не ставим reasoning-модели первыми
-// (DeepSeek R1 «думает» 10-30 сек — для чата это слишком медленно).
-// Если все 5 упадут одновременно — что-то катастрофически не так с интернетом.
-const FALLBACK_OR_MODELS = [
-  'qwen/qwen3-next-80b-a3b-instruct:free',     // Qwen3 80B — быстрый, отлично знает русский
-  'z-ai/glm-4.5-air:free',                      // GLM-4.5 — точный по фактам, русский ок
-  'nvidia/nemotron-3-super-120b-a12b:free',     // Nemotron 120B — сильное instruction-following
-  'openai/gpt-oss-120b:free',                   // OpenAI open-weights — проверенный
-  'meta-llama/llama-3.3-70b-instruct:free',     // Llama 3.3 — последний рубеж
+// Единая цепочка моделей: самые сильные сверху, более слабые снизу.
+// На каждый запрос идём по порядку — если модель упала / в лимите / зависла,
+// переходим к следующей. Ответ берём от первой которая дала >2 символов.
+//
+// Тип 'gemini' — Google Generative Language API (env: GOOGLE_AI_STUDIO_KEY).
+// Тип 'openrouter' — OpenRouter free-tier (env: OPENROUTER_API_KEY).
+type ModelEntry =
+  | { type: 'gemini'; id: string; reasoningTokens?: number }
+  | { type: 'openrouter'; id: string; reasoningTokens?: number };
+
+const MODEL_CHAIN: ModelEntry[] = [
+  // 1. DeepSeek R1 — самая сильная свободная модель, reasoning-движок уровня o3.
+  //    Медленнее остальных (10-30 сек), но если стоит первой — даёт лучший ответ.
+  //    reasoningTokens=600 → даём место для внутренних рассуждений + финального ответа.
+  { type: 'openrouter', id: 'deepseek/deepseek-r1-0528:free', reasoningTokens: 1200 },
+
+  // 2. Qwen3 80B Instruct — быстрая и умная, отлично знает русский. Лучшая «не-reasoning» модель.
+  { type: 'openrouter', id: 'qwen/qwen3-next-80b-a3b-instruct:free' },
+
+  // 3. Nemotron 3 Super 120B — большая NVIDIA модель, сильный instruction-following.
+  { type: 'openrouter', id: 'nvidia/nemotron-3-super-120b-a12b:free' },
+
+  // 4. OpenAI gpt-oss-120b — open weights от OpenAI, проверенная.
+  { type: 'openrouter', id: 'openai/gpt-oss-120b:free' },
+
+  // 5. GLM-4.5 Air (Zhipu) — точная, русский ок.
+  { type: 'openrouter', id: 'z-ai/glm-4.5-air:free' },
+
+  // 6. Gemini 2.5 Flash — быстрый Google Flash, средняя сила, очень надёжный.
+  { type: 'gemini', id: 'gemini-2.5-flash' },
+
+  // 7. Gemini 2.0 Flash — старее, но всегда онлайн.
+  { type: 'gemini', id: 'gemini-2.0-flash' },
+
+  // 8. Llama 3.3 70B — последний рубеж. Старее остальных, но почти никогда не падает.
+  { type: 'openrouter', id: 'meta-llama/llama-3.3-70b-instruct:free' },
 ];
 
-// На каждый вызов модели даём таймаут — если зависла, идём к следующей
-// вместо того чтобы клиент ждал бесконечно.
-const MODEL_TIMEOUT_MS = 20_000;
+// Таймаут на одну модель. R1 рассуждает дольше — даём ей 35с, остальным 20с.
+const FAST_TIMEOUT_MS = 20_000;
+const REASONING_TIMEOUT_MS = 35_000;
 
 function withTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController();
@@ -41,53 +66,48 @@ interface ChatMessage {
   content: string;
 }
 
-async function callGemini(system: string, history: ChatMessage[]): Promise<{ text: string; model: string }> {
+async function tryGemini(modelId: string, system: string, history: ChatMessage[], signal: AbortSignal): Promise<string> {
   const key = process.env.GOOGLE_AI_STUDIO_KEY || process.env.GEMINI_API_KEY;
-  if (!key) return { text: '', model: '' };
-
+  if (!key) return '';
   const contents = history.map((m) => ({
     role: m.role === 'assistant' ? 'model' : 'user',
     parts: [{ text: m.content }],
   }));
-
-  for (const model of GEMINI_MODELS) {
-    const t = withTimeout(MODEL_TIMEOUT_MS);
-    try {
-      const res = await fetch(`${GOOGLE_AI_BASE}/${model}:generateContent?key=${key}`, {
-        method: 'POST',
-        signal: t.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents,
-          generationConfig: { temperature: 0.5, maxOutputTokens: 320 },
-        }),
-      });
-      if (res.status === 429 || !res.ok) continue;
-      const data = await res.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-      if (text.length > 2) return { text, model: `gemini/${model}` };
-    } catch {
-      continue;
-    } finally {
-      t.clear();
-    }
-  }
-  return { text: '', model: '' };
+  const res = await fetch(`${GOOGLE_AI_BASE}/${modelId}:generateContent?key=${key}`, {
+    method: 'POST',
+    signal,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      generationConfig: { temperature: 0.5, maxOutputTokens: 320 },
+    }),
+  });
+  if (res.status === 429 || !res.ok) return '';
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 }
 
-async function callOpenRouter(system: string, history: ChatMessage[]): Promise<{ text: string; model: string }> {
+async function tryOpenRouter(modelId: string, system: string, history: ChatMessage[], signal: AbortSignal, maxTokens: number): Promise<string> {
   const messages = [
     { role: 'system' as const, content: system },
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
-  for (const model of FALLBACK_OR_MODELS) {
-    const t = withTimeout(MODEL_TIMEOUT_MS);
+  const text = (await aiChat(messages, { model: modelId, temperature: 0.5, maxTokens, signal })) || '';
+  return text.trim();
+}
+
+async function runChain(system: string, history: ChatMessage[]): Promise<{ text: string; model: string }> {
+  for (const entry of MODEL_CHAIN) {
+    const timeoutMs = entry.reasoningTokens ? REASONING_TIMEOUT_MS : FAST_TIMEOUT_MS;
+    const t = withTimeout(timeoutMs);
     try {
-      const text = (await aiChat(messages, { model, temperature: 0.5, maxTokens: 320, signal: t.signal })) || '';
-      if (text.trim().length > 2) return { text: text.trim(), model: `openrouter/${model}` };
+      const text = entry.type === 'gemini'
+        ? await tryGemini(entry.id, system, history, t.signal)
+        : await tryOpenRouter(entry.id, system, history, t.signal, entry.reasoningTokens ?? 320);
+      if (text.length > 2) return { text, model: `${entry.type}/${entry.id}` };
     } catch {
-      continue;
+      // 429, network, abort, parsing — идём к следующей модели
     } finally {
       t.clear();
     }
@@ -242,8 +262,7 @@ ${svcList.join(', ') || '—'}
   const trimmedHistory = (history ?? []).slice(-6);
   const conv: ChatMessage[] = [...trimmedHistory, { role: 'user', content: message.trim() }];
 
-  let ai = await callGemini(system, conv);
-  if (!ai.text) ai = await callOpenRouter(system, conv);
+  const ai = await runChain(system, conv);
 
   if (!ai.text) {
     await admin.from('ai_actions_log').insert({
