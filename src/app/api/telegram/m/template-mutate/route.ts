@@ -19,6 +19,10 @@ const STANDARD_KINDS = new Set([
   'cadence',
   'win_back',
   'nps',
+  // Booking lifecycle (dispatch_booking_notification trigger reads these)
+  'booking_confirmation',
+  'appointment_rescheduled',
+  'appointment_cancelled',
 ]);
 
 // Виртуальный kind «reminder» — Mini App шлёт его как один пункт, а на сервере

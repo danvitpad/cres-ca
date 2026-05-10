@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Loader2, X, Check, MessageSquare, Plus, RotateCcw,
   Bell, Clock, Star, Sparkles, Heart, Gauge, Cake,
+  CheckCircle2, CalendarClock, XCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
@@ -60,6 +61,62 @@ const SPECS: KindSpec[] = [
       { key: 'master_name', label: 'Имя мастера' },
       { key: 'client_name', label: 'Имя клиента' },
       { key: 'confirm_url', label: 'Ссылка подтверждения' },
+    ],
+  },
+  {
+    // Уходит клиенту в момент создания записи. Текст хранится в
+    // message_templates(kind='booking_confirmation'); подставляется триггером
+    // dispatch_booking_notification. Если пусто — fallback «Запись подтверждена».
+    kind: 'booking_confirmation',
+    title: 'Подтверждение записи',
+    description: 'Уходит клиенту в момент бронирования',
+    icon: CheckCircle2,
+    defaultSubject: '✅ Запись подтверждена',
+    defaultContent: 'Вы записаны к {Имя мастера} на {Время}.\nУслуга: {Услуга}\nСтоимость: {Стоимость}\nАдрес: {Адрес}',
+    hasSubject: true,
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'price', label: 'Стоимость' },
+      { key: 'address', label: 'Адрес' },
+      { key: 'confirm_url', label: 'Ссылка подтверждения' },
+    ],
+  },
+  {
+    // Уходит клиенту когда мастер двигает время записи. {Старое время} —
+    // время до переноса, {Время} — новое.
+    kind: 'appointment_rescheduled',
+    title: 'Перенос записи',
+    description: 'Уходит клиенту когда меняется время визита',
+    icon: CalendarClock,
+    defaultSubject: '🔄 Запись перенесена',
+    defaultContent: 'Запись к {Имя мастера} с {Старое время} перенесена на {Время}.\nУслуга: {Услуга}',
+    hasSubject: true,
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время' },
+      { key: 'old_time', label: 'Старое время' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'address', label: 'Адрес' },
+    ],
+  },
+  {
+    // Уходит клиенту когда запись отменяется (любая сторона).
+    kind: 'appointment_cancelled',
+    title: 'Отмена записи',
+    description: 'Уходит клиенту когда запись отменяется',
+    icon: XCircle,
+    defaultSubject: '❌ Запись отменена',
+    defaultContent: 'Запись к {Имя мастера} на {Время} отменена.',
+    hasSubject: true,
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
     ],
   },
   {

@@ -24,6 +24,10 @@ export const TEMPLATE_KINDS = [
   'cadence',
   'win_back',
   'nps',
+  // Booking lifecycle (dispatch_booking_notification trigger reads these)
+  'booking_confirmation',
+  'appointment_rescheduled',
+  'appointment_cancelled',
 ] as const;
 
 export async function POST(req: Request) {
