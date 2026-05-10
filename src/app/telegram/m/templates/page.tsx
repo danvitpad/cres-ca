@@ -1,0 +1,556 @@
+/** --- YAML
+ * name: MasterMiniAppTemplates
+ * description: Шаблоны сообщений мастера в Mini App. Список из 7 типов
+ *              (напоминания за 24/2 ч, запрос отзыва, умное возвращение, win-back,
+ *              NPS, поздравление с ДР). Тап на пункт → bottom-sheet редактор с
+ *              темой + текстом + чипами переменных (тап вставляет {var} в текст).
+ *              Сохранённый кастомный шаблон автоматически берётся cron-задачами,
+ *              приоритет над дефолтным.
+ * created: 2026-05-10
+ * --- */
+
+'use client';
+
+import { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ArrowLeft, Loader2, X, Check, MessageSquare, Plus, RotateCcw,
+  Bell, Clock, Star, Sparkles, Heart, Gauge, Cake,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth-store';
+import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { getInitData } from '@/lib/telegram/webapp';
+import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
+
+interface VariableSpec {
+  key: string;
+  label: string;
+}
+
+interface KindSpec {
+  kind: string;
+  title: string;
+  description: string;
+  icon: typeof Bell;
+  defaultSubject: string;
+  defaultContent: string;
+  hasSubject: boolean;
+  variables: VariableSpec[];
+}
+
+const SPECS: KindSpec[] = [
+  {
+    kind: 'reminder_24h',
+    title: 'Напоминание за 24 часа',
+    description: 'Уходит клиенту за день до визита',
+    icon: Bell,
+    defaultSubject: '📅 Запись на завтра',
+    defaultContent: 'Напоминаю о записи на завтра:\n{service_name} на {time}\nСтоимость: {price}\nАдрес: {address}',
+    hasSubject: true,
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время визита' },
+      { key: 'price', label: 'Стоимость' },
+      { key: 'address', label: 'Адрес' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'confirm_url', label: 'Ссылка подтверждения' },
+    ],
+  },
+  {
+    kind: 'reminder_2h',
+    title: 'Напоминание за 2 часа',
+    description: 'Уходит клиенту за 2 часа до визита',
+    icon: Clock,
+    defaultSubject: '⏰ Через 2 часа — запись',
+    defaultContent: 'Напоминаю — через 2 часа запись:\n{service_name} на {time}\nСтоимость: {price}\nАдрес: {address}',
+    hasSubject: true,
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'time', label: 'Время визита' },
+      { key: 'price', label: 'Стоимость' },
+      { key: 'address', label: 'Адрес' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+    ],
+  },
+  {
+    kind: 'review_request',
+    title: 'Запрос отзыва',
+    description: 'Уходит клиенту через 2 часа после визита',
+    icon: Star,
+    defaultSubject: '⭐ Оцените визит',
+    defaultContent: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста — это помогает другим клиентам.',
+    hasSubject: true,
+    variables: [
+      { key: 'service_name', label: 'Услуга' },
+      { key: 'master_name', label: 'Имя мастера' },
+      { key: 'client_name', label: 'Имя клиента' },
+    ],
+  },
+  {
+    kind: 'cadence',
+    title: 'Умное возвращение',
+    description: 'Когда клиент перестал приходить по своей привычке',
+    icon: Sparkles,
+    defaultSubject: '⏰ Пора записаться?',
+    defaultContent: 'Обычно интервал между визитами ~{avg} дней.\nПрошло уже {days} — пора записаться?',
+    hasSubject: true,
+    variables: [
+      { key: 'avg', label: 'Средний интервал, дн.' },
+      { key: 'days', label: 'Дней с последнего визита' },
+      { key: 'day_name', label: 'День недели' },
+      { key: 'usual_time', label: 'Обычное время' },
+      { key: 'client_name', label: 'Имя клиента' },
+    ],
+  },
+  {
+    kind: 'win_back',
+    title: 'Возврат «спящих»',
+    description: 'Клиент не был 60+ дней',
+    icon: Heart,
+    defaultSubject: '💜 Давно не виделись',
+    defaultContent: 'Давно не виделись 🙂\nЕсть свободные слоты на этой неделе — записаться можно прямо в боте.',
+    hasSubject: true,
+    variables: [
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'master_name', label: 'Имя мастера' },
+    ],
+  },
+  {
+    kind: 'nps',
+    title: 'NPS опрос',
+    description: 'После 3 / 10 / 20 / 50 визитов',
+    icon: Gauge,
+    defaultSubject: '📊 Короткий опрос',
+    defaultContent: 'Уже {total}-й визит — спасибо за доверие!\nОцените от 0 до 10, насколько порекомендовали бы нас друзьям.',
+    hasSubject: true,
+    variables: [
+      { key: 'total', label: 'Всего визитов' },
+      { key: 'client_name', label: 'Имя клиента' },
+    ],
+  },
+  {
+    kind: 'birthday',
+    title: 'Поздравление с ДР',
+    description: 'Уходит клиенту в день его рождения',
+    icon: Cake,
+    defaultSubject: '',
+    defaultContent: '{client_name}, с днём рождения! 🎂\n{discount_text}',
+    hasSubject: false,
+    variables: [
+      { key: 'client_name', label: 'Имя клиента' },
+      { key: 'discount_text', label: 'Подарочная скидка' },
+    ],
+  },
+];
+
+interface SavedTemplate {
+  subject: string | null;
+  content: string;
+}
+
+export default function MasterMiniAppTemplates() {
+  const { userId } = useAuthStore();
+  const { haptic } = useTelegram();
+  const router = useRouter();
+  const [saved, setSaved] = useState<Record<string, SavedTemplate>>({});
+  const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [editing, setEditing] = useState<KindSpec | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const initData = getInitData();
+      if (!initData) { setLoading(false); return; }
+      const res = await fetch('/api/telegram/m/templates-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }),
+      });
+      if (cancelled) return;
+      if (!res.ok) { setLoading(false); return; }
+      const json = await res.json() as { templates: Record<string, SavedTemplate> };
+      if (cancelled) return;
+      setSaved(json.templates ?? {});
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [userId, refreshKey]);
+
+  return (
+    <MobilePage>
+      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
+        <button
+          type="button"
+          onClick={() => { haptic('light'); router.back(); }}
+          aria-label="Назад"
+          style={{
+            width: 40, height: 40, borderRadius: 20,
+            border: `1px solid ${T.border}`, background: T.surface, color: T.text,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', boxShadow: SHADOW.card,
+          }}
+        >
+          <ArrowLeft size={18} strokeWidth={2.4} />
+        </button>
+      </div>
+      <PageHeader title="Шаблоны" subtitle="Тексты автоматических сообщений клиентам" />
+
+      <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {loading ? (
+          [0, 1, 2, 3].map((i) => (
+            <div key={i} style={{ height: 70, borderRadius: R.md, background: T.bgSubtle }} />
+          ))
+        ) : (
+          SPECS.map((spec) => {
+            const Icon = spec.icon;
+            const custom = saved[spec.kind];
+            const hasCustom = !!custom?.content;
+            return (
+              <button
+                type="button"
+                key={spec.kind}
+                onClick={() => { haptic('light'); setEditing(spec); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px', borderRadius: R.md,
+                  border: `1px solid ${T.borderSubtle}`,
+                  background: T.surface,
+                  boxShadow: SHADOW.card,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontFamily: 'inherit',
+                  width: '100%',
+                }}
+              >
+                <div style={{
+                  width: 36, height: 36, borderRadius: R.sm,
+                  background: hasCustom ? T.accentSoft : T.bgSubtle,
+                  color: hasCustom ? T.accent : T.textSecondary,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                  <Icon size={16} strokeWidth={2} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{spec.title}</p>
+                    {hasCustom && (
+                      <span style={{
+                        ...TYPE.micro, fontWeight: 700,
+                        padding: '1px 6px', borderRadius: R.pill,
+                        background: T.accentSoft, color: T.accent,
+                      }}>свой</span>
+                    )}
+                  </div>
+                  <p style={{ ...TYPE.caption, color: T.textTertiary, margin: '2px 0 0' }}>
+                    {spec.description}
+                  </p>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      <AnimatePresence>
+        {editing && (
+          <TemplateSheet
+            spec={editing}
+            saved={saved[editing.kind] ?? null}
+            onClose={() => setEditing(null)}
+            onSaved={() => { setEditing(null); setRefreshKey((k) => k + 1); }}
+          />
+        )}
+      </AnimatePresence>
+    </MobilePage>
+  );
+}
+
+function TemplateSheet({ spec, saved, onClose, onSaved }: {
+  spec: KindSpec;
+  saved: SavedTemplate | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { haptic } = useTelegram();
+  const [subject, setSubject] = useState(saved?.subject ?? spec.defaultSubject);
+  const [content, setContent] = useState(saved?.content ?? spec.defaultContent);
+  const [activeField, setActiveField] = useState<'subject' | 'content'>('content');
+  const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const hasCustom = !!saved?.content;
+
+  function insertVariable(key: string) {
+    const insert = `{${key}}`;
+    haptic('selection');
+    if (activeField === 'subject' && spec.hasSubject) {
+      const el = subjectRef.current;
+      if (!el) { setSubject((s) => s + insert); return; }
+      const start = el.selectionStart ?? subject.length;
+      const end = el.selectionEnd ?? subject.length;
+      const next = subject.slice(0, start) + insert + subject.slice(end);
+      setSubject(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start + insert.length, start + insert.length);
+      });
+    } else {
+      const el = contentRef.current;
+      if (!el) { setContent((s) => s + insert); return; }
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const next = content.slice(0, start) + insert + content.slice(end);
+      setContent(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start + insert.length, start + insert.length);
+      });
+    }
+  }
+
+  async function callMutate(payload: Record<string, unknown>) {
+    const initData = getInitData();
+    const res = await fetch('/api/telegram/m/template-mutate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || 'failed');
+    }
+    return res.json();
+  }
+
+  async function save() {
+    if (busy) return;
+    if (!content.trim()) { haptic('error'); return; }
+    setBusy(true);
+    try {
+      await callMutate({
+        action: 'save',
+        kind: spec.kind,
+        subject: spec.hasSubject ? subject : null,
+        content,
+      });
+      haptic('success');
+      onSaved();
+    } catch {
+      haptic('error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reset() {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      await callMutate({ action: 'reset', kind: spec.kind });
+      haptic('success');
+      onSaved();
+    } catch {
+      haptic('error');
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => !busy && !resetting && onClose()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 80,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+      }}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={SPRING.default}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+          background: T.surface,
+          padding: 0,
+          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          boxShadow: SHADOW.elevated,
+          maxHeight: '90dvh', overflowY: 'auto',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: `18px ${PAGE_PADDING_X}px 14px`,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{spec.title}</h3>
+            <p style={{ ...TYPE.caption, color: T.textTertiary, margin: '2px 0 0' }}>{spec.description}</p>
+          </div>
+          <button
+            type="button" onClick={() => !busy && !resetting && onClose()}
+            aria-label="Закрыть"
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              border: 'none', background: T.bgSubtle, color: T.textSecondary,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <div style={{ height: 1, background: T.borderSubtle }} />
+
+        {/* Subject (если есть) */}
+        {spec.hasSubject && (
+          <>
+            <div style={{ padding: `12px ${PAGE_PADDING_X}px 14px` }}>
+              <p style={labelStyle}>Тема</p>
+              <input
+                ref={subjectRef}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value.slice(0, 200))}
+                onFocus={() => setActiveField('subject')}
+                placeholder={spec.defaultSubject}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ height: 1, background: T.borderSubtle }} />
+          </>
+        )}
+
+        {/* Content */}
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 14px` }}>
+          <p style={labelStyle}>{spec.hasSubject ? 'Текст' : 'Сообщение'}</p>
+          <textarea
+            ref={contentRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value.slice(0, 2000))}
+            onFocus={() => setActiveField('content')}
+            placeholder={spec.defaultContent}
+            rows={6}
+            style={{ ...inputStyle, resize: 'none' as const, minHeight: 120 }}
+          />
+        </div>
+
+        <div style={{ height: 1, background: T.borderSubtle }} />
+
+        {/* Variable chips */}
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 4px` }}>
+          <p style={{
+            ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase',
+            letterSpacing: '0.06em', color: T.textTertiary,
+            margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <MessageSquare size={11} /> Вставить переменную
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {spec.variables.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => insertVariable(v.key)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '6px 12px', borderRadius: R.pill,
+                  border: `1px solid ${T.borderSubtle}`,
+                  background: T.bgSubtle,
+                  color: T.text,
+                  fontSize: 13, fontWeight: 500,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                <Plus size={11} strokeWidth={2.4} color={T.accent} />
+                {v.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p style={{
+          ...TYPE.micro, color: T.textTertiary,
+          padding: `8px ${PAGE_PADDING_X}px 0`, margin: 0, lineHeight: 1.5,
+        }}>
+          Тап на чип — вставит {'{переменную}'} в активное поле. При отправке клиенту переменные заменятся реальными значениями.
+        </p>
+
+        <div style={{ padding: `16px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: '15px 16px', borderRadius: R.lg, border: 'none',
+              background: T.accent, color: '#fff',
+              ...TYPE.bodyStrong, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
+              fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
+            }}
+          >
+            {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {busy ? 'Сохраняем…' : 'Сохранить'}
+          </button>
+
+          {hasCustom && (
+            <button
+              type="button"
+              onClick={reset}
+              disabled={resetting}
+              style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '12px 16px', borderRadius: R.pill,
+                border: `1px solid ${T.border}`,
+                background: T.surface, color: T.textSecondary,
+                ...TYPE.bodyStrong, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
+                marginTop: 4,
+              }}
+            >
+              {resetting ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+              Сбросить к стандартному
+            </button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  color: T.textTertiary,
+  margin: 0,
+  marginBottom: 6,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  background: 'transparent',
+  border: 'none',
+  outline: 'none',
+  fontSize: 16,
+  fontWeight: 500,
+  lineHeight: 1.4,
+  color: T.text,
+  fontFamily: 'inherit',
+  padding: 0,
+};

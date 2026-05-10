@@ -21,6 +21,7 @@ import {
   UserCheck,
   Package,
   Truck,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -51,6 +52,7 @@ const I18N: Record<MiniAppLang, {
   queue: string; queueHint: string;
   inventory: string; inventoryHint: string;
   suppliers: string; suppliersHint: string;
+  templates: string; templatesHint: string;
 }> = {
   uk: {
     title: 'Ще',
@@ -63,6 +65,7 @@ const I18N: Record<MiniAppLang, {
     queue: 'Жива черга', queueHint: 'Walk-in клієнти без запису',
     inventory: 'Склад', inventoryHint: 'Матеріали, залишки, поріг',
     suppliers: 'Постачальники', suppliersHint: 'Контакти, замовлення',
+    templates: 'Шаблони', templatesHint: 'Тексти нагадувань, відгуків, ДР',
   },
   ru: {
     title: 'Ещё',
@@ -75,6 +78,7 @@ const I18N: Record<MiniAppLang, {
     queue: 'Живая очередь', queueHint: 'Walk-in клиенты без записи',
     inventory: 'Склад', inventoryHint: 'Материалы, остатки, порог',
     suppliers: 'Поставщики', suppliersHint: 'Контакты, заказы',
+    templates: 'Шаблоны', templatesHint: 'Тексты напоминаний, отзывов, ДР',
   },
   en: {
     title: 'More',
@@ -87,6 +91,7 @@ const I18N: Record<MiniAppLang, {
     queue: 'Live queue', queueHint: 'Walk-in clients without appointment',
     inventory: 'Inventory', inventoryHint: 'Materials, stock, low threshold',
     suppliers: 'Suppliers', suppliersHint: 'Contacts, orders',
+    templates: 'Templates', templatesHint: 'Reminder, review, birthday texts',
   },
 };
 
@@ -122,6 +127,7 @@ export default function MasterMiniAppMore() {
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
     { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
+    { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint' },
     { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint' },
     { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint' },
     { key: 'queue', href: '/telegram/m/queue', icon: UserCheck, labelKey: 'queue', hintKey: 'queueHint' },
