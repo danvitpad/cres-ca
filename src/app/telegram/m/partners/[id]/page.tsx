@@ -41,7 +41,7 @@ interface Profile {
   full_name: string | null;
   avatar_url: string | null;
   slug: string | null;
-  username: string | null;
+  telegram_username: string | null;
   phone: string | null;
   email: string | null;
   date_of_birth: string | null;
@@ -272,7 +272,7 @@ export default function MasterMiniAppPartnerCard() {
             <div style={dividerStyle} />
             <InfoRow label="Email" value={partner.profile?.email || '—'} />
             <div style={dividerStyle} />
-            <InfoRow label="Telegram" value={partner.profile?.username ? `@${partner.profile.username}` : '—'} />
+            <InfoRow label="Telegram" value={partner.profile?.telegram_username ? `@${partner.profile.telegram_username}` : '—'} />
             <div style={dividerStyle} />
             <InfoRow label="День рождения" value={formatDob(partner.profile?.date_of_birth ?? null)} />
           </div>

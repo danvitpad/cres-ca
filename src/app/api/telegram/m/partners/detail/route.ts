@@ -19,7 +19,7 @@ interface PartnerProfile {
   full_name: string | null;
   avatar_url: string | null;
   slug: string | null;
-  username: string | null;
+  telegram_username: string | null;
   phone: string | null;
   email: string | null;
   date_of_birth: string | null;
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     .select(`
       id, specialization, vertical, bio, team_mode, salon_id, profile_id,
       profile:profiles!masters_profile_id_fkey(
-        full_name, avatar_url, slug, username, phone, email, date_of_birth
+        full_name, avatar_url, slug, telegram_username, phone, email, date_of_birth
       )
     `)
     .eq('id', partnerMasterId)
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
   if (!profile && partnerRow?.profile_id) {
     const { data: prof, error: profErr } = await admin
       .from('profiles')
-      .select('full_name, avatar_url, slug, username, phone, email, date_of_birth')
+      .select('full_name, avatar_url, slug, telegram_username, phone, email, date_of_birth')
       .eq('id', partnerRow.profile_id)
       .maybeSingle<PartnerProfile>();
     if (profErr) {
