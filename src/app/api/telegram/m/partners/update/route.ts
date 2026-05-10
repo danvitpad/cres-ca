@@ -10,7 +10,8 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { resolveUserId } from '@/lib/auth/resolve-user';
 
-const ALLOWED = new Set(['note', 'contract_terms', 'commission_percent', 'promo_code', 'cross_promotion']);
+const ALLOWED = new Set(['note', 'contract_terms', 'commission_percent', 'promo_code', 'cross_promotion', 'status']);
+const ALLOWED_STATUS = new Set(['active', 'paused']);
 
 export async function POST(req: Request) {
   const userId = await resolveUserId(req);
@@ -59,6 +60,11 @@ export async function POST(req: Request) {
   }
   if (body.field === 'promo_code') {
     value = typeof value === 'string' ? value.trim().slice(0, 64) || null : null;
+  }
+  if (body.field === 'status') {
+    if (typeof value !== 'string' || !ALLOWED_STATUS.has(value)) {
+      return NextResponse.json({ error: 'bad_status_value' }, { status: 400 });
+    }
   }
 
   const { error } = await admin

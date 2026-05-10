@@ -15,7 +15,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, Loader2, Bot, Send, Pencil, Trash2, Plus,
-  Check, X, Megaphone, XCircle, ExternalLink,
+  Check, X, XCircle, ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -213,7 +213,7 @@ export default function MasterMiniAppPartnerCard() {
           <ArrowLeft size={18} strokeWidth={2.4} />
         </button>
 
-        {/* Hero — avatar + name + meta */}
+        {/* Hero — avatar + name + meta. Если партнёрство на паузе — отдельный бейдж. */}
         <div style={{ ...cardStyle, padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
           <AvatarCircle url={partner.profile?.avatar_url} name={partnerName} size={56} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,6 +223,26 @@ export default function MasterMiniAppPartnerCard() {
             <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '2px 0 0' }}>
               {isTeam ? 'Команда' : 'Соло мастер'}{partner.specialization ? ` · ${partner.specialization}` : ''}
             </p>
+            {partnership.status === 'paused' && (
+              <span style={{
+                display: 'inline-block', marginTop: 6,
+                padding: '2px 8px', borderRadius: R.pill,
+                background: T.warningSoft, color: T.warning,
+                ...TYPE.micro, fontWeight: 700,
+              }}>
+                На паузе
+              </span>
+            )}
+            {partnership.status === 'pending' && (
+              <span style={{
+                display: 'inline-block', marginTop: 6,
+                padding: '2px 8px', borderRadius: R.pill,
+                background: T.bgSubtle, color: T.textSecondary,
+                ...TYPE.micro, fontWeight: 700,
+              }}>
+                Ожидает подтверждения
+              </span>
+            )}
           </div>
         </div>
 
@@ -305,22 +325,21 @@ export default function MasterMiniAppPartnerCard() {
               value={partnership.promo_code || '—'}
               mono={!!partnership.promo_code}
             />
-            <div style={dividerStyle} />
-            <CrossPromoRow partnership={partnership} haptic={haptic} onSaved={reload} />
           </div>
+          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
+            Промокод нужен чтобы считать клиентов от партнёра.
+          </p>
         </div>
 
-        {/* ДОГОВОРЁННОСТИ */}
-        <div>
-          <p style={sectionLabelStyle}>Договорённости</p>
-          <NotesBlock partnership={partnership} field="contract_terms" haptic={haptic} onSaved={reload} cardStyle={cardStyle} />
-        </div>
-
-        {/* АКТИВНОСТЬ */}
-        <div>
-          <p style={sectionLabelStyle}>Активность</p>
-          <ActivityTiles partnership={partnership} />
-        </div>
+        {/* Тумблер «Активно» / «На паузе» — для активных и приостановленных партнёрств */}
+        {(partnership.status === 'active' || partnership.status === 'paused') && (
+          <StatusToggleRow
+            partnership={partnership}
+            haptic={haptic}
+            onSaved={reload}
+            cardStyle={cardStyle}
+          />
+        )}
 
         {/* End partnership */}
         {partnership.status !== 'ended' && (
@@ -418,33 +437,16 @@ function Tile({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function ActivityTiles({ partnership }: { partnership: Partnership }) {
-  const [days, setDays] = useState(0);
-  useEffect(() => {
-    setDays(Math.floor((Date.now() - new Date(partnership.initiated_at).getTime()) / 86400000)); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [partnership.initiated_at]);
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-      <Tile label="Дней в партнёрстве" value={days} />
-      <Tile
-        label="Статус"
-        value={partnership.status === 'active' ? 'Активен' : partnership.status === 'pending' ? 'Ожидает' : 'Завершён'}
-      />
-      <Tile label="Кросс-реклама" value={partnership.cross_promotion ? 'Вкл.' : 'Выкл.'} />
-      <Tile label="Инициатор" value={partnership.youInitiated ? 'Я' : 'Партнёр'} />
-    </div>
-  );
-}
-
-function CrossPromoRow({
-  partnership, haptic, onSaved,
+function StatusToggleRow({
+  partnership, haptic, onSaved, cardStyle,
 }: {
   partnership: Partnership;
   haptic: (k: 'light' | 'success' | 'error') => void;
   onSaved: () => void;
+  cardStyle: React.CSSProperties;
 }) {
   const [busy, setBusy] = useState(false);
+  const isActive = partnership.status === 'active';
 
   async function toggle() {
     const initData = getInitData();
@@ -457,8 +459,8 @@ function CrossPromoRow({
       body: JSON.stringify({
         initData,
         partnership_id: partnership.id,
-        field: 'cross_promotion',
-        value: !partnership.cross_promotion,
+        field: 'status',
+        value: isActive ? 'paused' : 'active',
       }),
     });
     setBusy(false);
@@ -466,31 +468,41 @@ function CrossPromoRow({
     else { haptic('success'); onSaved(); }
   }
 
-  const enabled = partnership.cross_promotion;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', gap: 12 }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, ...TYPE.body, color: T.textSecondary }}>
-        <Megaphone size={14} color={T.textTertiary} strokeWidth={2} />
-        Взаимная реклама
-      </span>
+    <div style={cardStyle}>
       <button
+        type="button"
         onClick={toggle}
         disabled={busy}
-        aria-label="Взаимная реклама"
         style={{
-          position: 'relative', width: 44, height: 26, borderRadius: 13,
-          border: 'none',
-          background: enabled ? T.accent : T.borderSubtle,
-          cursor: busy ? 'wait' : 'pointer',
-          transition: 'background 200ms',
-          flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', padding: '14px 16px', gap: 12,
+          background: 'transparent', border: 'none',
+          cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit', textAlign: 'left',
         }}
       >
-        <span style={{
-          position: 'absolute', top: 3, left: enabled ? 21 : 3,
-          width: 20, height: 20, borderRadius: '50%', background: '#fff',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
-        }} />
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: 'block', ...TYPE.bodyStrong, color: T.text }}>
+            Активное партнёрство
+          </span>
+          <span style={{ display: 'block', ...TYPE.caption, marginTop: 2 }}>
+            {isActive ? 'Партнёрство работает' : 'Партнёрство приостановлено'}
+          </span>
+        </span>
+        <span
+          aria-hidden
+          style={{
+            position: 'relative', width: 44, height: 26, borderRadius: 13,
+            background: isActive ? T.accent : T.borderSubtle,
+            transition: 'background 200ms', flexShrink: 0,
+          }}
+        >
+          <span style={{
+            position: 'absolute', top: 3, left: isActive ? 21 : 3,
+            width: 20, height: 20, borderRadius: '50%', background: '#fff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)', transition: 'left 0.2s',
+          }} />
+        </span>
       </button>
     </div>
   );

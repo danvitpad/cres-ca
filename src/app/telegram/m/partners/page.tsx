@@ -69,7 +69,7 @@ export default function MasterMiniAppPartnersList() {
     load(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [userId, load]);
 
-  const active = items.filter((i) => i.status === 'active');
+  const active = items.filter((i) => i.status === 'active' || i.status === 'paused');
   const pending = items.filter((i) => i.status === 'pending');
 
   if (loading) {
@@ -108,7 +108,7 @@ export default function MasterMiniAppPartnersList() {
         <>
           {active.length > 0 && (
             <Section title={`Активные (${active.length})`}>
-              {active.map((p) => <Card key={p.id} item={p} haptic={haptic} />)}
+              {active.map((p) => <Card key={p.id} item={p} haptic={haptic} dim={p.status === 'paused'} />)}
             </Section>
           )}
           {pending.length > 0 && (
@@ -153,7 +153,7 @@ function Card({ item, haptic, dim }: { item: PartnershipItem; haptic: (k: 'light
           </span>
         </div>
         <p className="mt-0.5 truncate text-[11px] text-neutral-500">
-          {item.partner.specialization || (item.status === 'pending' ? 'Ждём подтверждения' : 'Мастер')}
+          {item.status === 'pending' ? 'Ждём подтверждения' : item.status === 'paused' ? 'На паузе' : (item.partner.specialization || 'Мастер')}
         </p>
       </div>
       {item.status === 'active' && item.cross_promotion && (

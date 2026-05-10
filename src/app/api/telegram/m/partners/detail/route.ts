@@ -1,13 +1,13 @@
 /** --- YAML
  * name: Mini App — Master Partner Detail
  * description: Single partnership detail with the "other" master expanded plus
- *   contact info (phone/email/dob) and referral stats — how many clients came
- *   via partnership.promo_code and how much profit they brought (sum of
- *   completed appointments price).
- *   Multi-step SELECTs (no PostgREST embedded join) — embedded version returned
- *   null for `target` / `initiator` even when JOIN works in raw SQL.
+ *   contact info (phone/email/dob/username) and referral stats — how many clients
+ *   came via partnership.promo_code and how much profit they brought.
+ *   Uses PostgREST embedded join with explicit FK names (same pattern as list API).
+ *   Earlier two-step fetch lost the profile data; embedded join works reliably
+ *   when FKs are disambiguated.
  * created: 2026-04-25
- * updated: 2026-05-09
+ * updated: 2026-05-10
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -25,6 +25,16 @@ interface PartnerProfile {
 }
 
 interface PartnerMaster {
+  id: string;
+  specialization: string | null;
+  vertical: string | null;
+  bio: string | null;
+  team_mode: string | null;
+  salon_id: string | null;
+  profile: PartnerProfile | null;
+}
+
+interface RowSide {
   id: string;
   specialization: string | null;
   vertical: string | null;
@@ -56,10 +66,27 @@ export async function POST(req: Request) {
     .maybeSingle<{ id: string }>();
   if (!master) return NextResponse.json({ error: 'not_master' }, { status: 403 });
 
-  // 1) Сама строка партнёрства — простой select без embedded join.
+  // Embedded join — обе стороны партнёрства одним запросом, через явные FK имена
+  // (тот же паттерн что в list API, проверенный). Раньше тут был двухступенчатый
+  // запрос — он терял профиль партнёра в некоторых случаях.
   const { data: row } = await admin
     .from('master_partnerships')
-    .select('id, master_id, partner_id, status, initiated_at, accepted_at, ended_at, note, contract_terms, commission_percent, promo_code, cross_promotion')
+    .select(`
+      id, master_id, partner_id, status, initiated_at, accepted_at, ended_at,
+      note, contract_terms, commission_percent, promo_code, cross_promotion,
+      initiator:masters!master_partnerships_master_id_fkey(
+        id, specialization, vertical, bio, team_mode, salon_id,
+        profile:profiles!masters_profile_id_fkey(
+          full_name, avatar_url, slug, username, phone, email, date_of_birth
+        )
+      ),
+      target:masters!master_partnerships_partner_id_fkey(
+        id, specialization, vertical, bio, team_mode, salon_id,
+        profile:profiles!masters_profile_id_fkey(
+          full_name, avatar_url, slug, username, phone, email, date_of_birth
+        )
+      )
+    `)
     .eq('id', body.partnership_id)
     .maybeSingle();
 
@@ -69,51 +96,25 @@ export async function POST(req: Request) {
   }
 
   const youInitiated = row.master_id === master.id;
-  const partnerMasterId = youInitiated ? row.partner_id : row.master_id;
+  const otherSide = (youInitiated ? row.target : row.initiator) as unknown as RowSide | null;
 
-  // 2) Сам мастер-партнёр.
-  const { data: partnerRow } = await admin
-    .from('masters')
-    .select('id, specialization, vertical, bio, team_mode, salon_id, profile_id')
-    .eq('id', partnerMasterId)
-    .maybeSingle<{
-      id: string; specialization: string | null; vertical: string | null;
-      bio: string | null; team_mode: string | null; salon_id: string | null;
-      profile_id: string;
-    }>();
-
-  // 3) Профиль партнёра — телефон, email, dob, slug, username.
-  let profile: PartnerProfile | null = null;
-  if (partnerRow?.profile_id) {
-    const { data: prof } = await admin
-      .from('profiles')
-      .select('full_name, avatar_url, slug, username, phone, email, date_of_birth')
-      .eq('id', partnerRow.profile_id)
-      .maybeSingle<PartnerProfile>();
-    profile = prof ?? null;
-  }
-
-  const partner: PartnerMaster | null = partnerRow ? {
-    id: partnerRow.id,
-    specialization: partnerRow.specialization,
-    vertical: partnerRow.vertical,
-    bio: partnerRow.bio,
-    team_mode: partnerRow.team_mode,
-    salon_id: partnerRow.salon_id,
-    profile,
+  const partner: PartnerMaster | null = otherSide ? {
+    id: otherSide.id,
+    specialization: otherSide.specialization,
+    vertical: otherSide.vertical,
+    bio: otherSide.bio,
+    team_mode: otherSide.team_mode,
+    salon_id: otherSide.salon_id,
+    profile: otherSide.profile,
   } : null;
 
-  // 4) Statistics: сколько клиентов пришло от партнёра + сумма их завершённых
-  //    визитов. Связка через promo_code партнёрства (если задан) — клиенты
-  //    использующие этот код считаются "приведёнными".
+  // Statistics: клиенты пришедшие через promo_code партнёрства + завершённые визиты + выручка.
   let clientsCount = 0;
   let completedCount = 0;
   let totalProfit = 0;
 
   if (row.promo_code && master.id) {
     try {
-      // Колонка appointments.promo_code может отсутствовать в схеме — try/catch
-      // безопасно даст 0 stats вместо ошибки. Когда добавится — заработает.
       const { data: viaPromo } = await admin
         .from('appointments')
         .select('client_id, price, status')
@@ -132,7 +133,7 @@ export async function POST(req: Request) {
       }
       clientsCount = uniqueClients.size;
     } catch {
-      // promo_code column not present yet — silently 0
+      // promo_code column might not exist — silently 0
     }
   }
 
