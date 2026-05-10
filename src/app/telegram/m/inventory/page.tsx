@@ -364,13 +364,16 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
           width: '100%', maxWidth: 480,
           borderRadius: `${R.lg}px ${R.lg}px 0 0`,
           background: T.surface,
-          padding: `20px ${PAGE_PADDING_X}px`,
+          padding: 0,
           paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
           maxHeight: '90dvh', overflowY: 'auto',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: `18px ${PAGE_PADDING_X}px 14px`,
+        }}>
           <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>
             {mode === 'create' ? t.sheetCreate : t.sheetEdit}
           </h3>
@@ -378,80 +381,87 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
             type="button" onClick={() => !busy && onClose()}
             aria-label="Закрыть"
             style={{
-              width: 36, height: 36, borderRadius: '50%',
-              border: `1px solid ${T.border}`, background: T.surface,
+              width: 32, height: 32, borderRadius: '50%',
+              border: 'none', background: T.bgSubtle, color: T.textSecondary,
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
             }}
           >
-            <X size={16} color={T.text} />
+            <X size={14} />
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Все поля одной карточкой с разделителями — iOS Settings style */}
-          <div style={{
-            borderRadius: R.lg,
-            border: `1px solid ${T.borderSubtle}`,
-            background: T.bg,
-            overflow: 'hidden',
-          }}>
-            <FieldRow label={t.fieldName}>
-              <input
-                autoFocus={mode === 'create'}
-                value={name}
-                onChange={(e) => setName(e.target.value.slice(0, 120))}
-                placeholder={t.placeholderName}
-                style={inputStyle}
-              />
-            </FieldRow>
-            <RowDivider />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-              <FieldRow label={t.fieldQuantity}>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
-                  style={inputStyle}
-                />
-              </FieldRow>
-              <FieldRow label={t.fieldUnit}>
-                <select
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value as Item['unit'])}
-                  style={{ ...inputStyle, fontSize: 16, appearance: 'none' }}
-                >
-                  {UNITS.map((u) => (
-                    <option key={u.value} value={u.value}>{u.label}</option>
-                  ))}
-                </select>
-              </FieldRow>
-            </div>
-            <RowDivider />
-            <FieldRow label={t.fieldThreshold}>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
-                placeholder="—"
-                style={inputStyle}
-              />
-            </FieldRow>
+        <FullDivider />
+
+        <FlatRow label={t.fieldName}>
+          <input
+            autoFocus={mode === 'create'}
+            value={name}
+            onChange={(e) => setName(e.target.value.slice(0, 120))}
+            placeholder={t.placeholderName}
+            style={inputStyle}
+          />
+        </FlatRow>
+        <FullDivider />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+          <FlatRow label={t.fieldQuantity}>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+              style={inputStyle}
+            />
+          </FlatRow>
+          <div style={{ borderLeft: `1px solid ${T.borderSubtle}` }}>
+            <FlatRow label={t.fieldUnit}>
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as Item['unit'])}
+                style={{ ...inputStyle, fontSize: 16, appearance: 'none' }}
+              >
+                {UNITS.map((u) => (
+                  <option key={u.value} value={u.value}>{u.label}</option>
+                ))}
+              </select>
+            </FlatRow>
           </div>
-          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '-6px 4px 0', lineHeight: 1.45 }}>
-            {t.thresholdHint}
-          </p>
+        </div>
+        <FullDivider />
+        <FlatRow label={t.fieldThreshold}>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={threshold}
+            onChange={(e) => setThreshold(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+            placeholder="—"
+            style={inputStyle}
+          />
+        </FlatRow>
+        <FullDivider />
 
-          {err && <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{err}</p>}
+        <p style={{
+          ...TYPE.micro, color: T.textTertiary,
+          padding: `12px ${PAGE_PADDING_X}px 4px`,
+          margin: 0, lineHeight: 1.5,
+        }}>
+          {t.thresholdHint}
+        </p>
 
+        {err && (
+          <p style={{
+            ...TYPE.caption, color: T.danger,
+            padding: `0 ${PAGE_PADDING_X}px`, margin: 0,
+          }}>{err}</p>
+        )}
+
+        <div style={{ padding: `16px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button
             type="button"
             onClick={save}
             disabled={busy}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: '14px 16px', borderRadius: R.lg, border: 'none',
+              width: '100%', padding: '15px 16px', borderRadius: R.lg, border: 'none',
               background: T.accent, color: '#fff',
               ...TYPE.bodyStrong, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
               fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
@@ -485,18 +495,18 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
   );
 }
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+function FlatRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: '10px 14px 12px', background: 'transparent' }}>
+    <div style={{ padding: `12px ${PAGE_PADDING_X}px 14px` }}>
       <p
         style={{
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           textTransform: 'uppercase',
-          letterSpacing: '0.08em',
+          letterSpacing: '0.06em',
           color: T.textTertiary,
           margin: 0,
-          marginBottom: 4,
+          marginBottom: 6,
         }}
       >
         {label}
@@ -506,8 +516,8 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
   );
 }
 
-function RowDivider() {
-  return <div style={{ height: 1, background: T.borderSubtle, margin: '0 14px' }} />;
+function FullDivider() {
+  return <div style={{ height: 1, background: T.borderSubtle, width: '100%' }} />;
 }
 
 const inputStyle: React.CSSProperties = {
