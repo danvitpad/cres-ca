@@ -46,7 +46,7 @@ export interface AiMessage { role: AiRole; content: string; }
  */
 export async function aiChat(
   messages: AiMessage[],
-  options?: { model?: string; temperature?: number; maxTokens?: number }
+  options?: { model?: string; temperature?: number; maxTokens?: number; signal?: AbortSignal }
 ): Promise<string> {
   const hasSystem = messages.some(m => m.role === 'system');
   const fullMessages = hasSystem
@@ -55,6 +55,7 @@ export async function aiChat(
 
   const res = await fetch(OPENROUTER_URL, {
     method: 'POST',
+    signal: options?.signal,
     headers: {
       'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',

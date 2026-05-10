@@ -13,10 +13,28 @@ import { aiChat } from '@/lib/ai/openrouter';
 
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+// Цепочка fallback моделей через OpenRouter (все бесплатные на 2026-05).
+// Порядок: быстрые умные → мощные надёжные. Не ставим reasoning-модели первыми
+// (DeepSeek R1 «думает» 10-30 сек — для чата это слишком медленно).
+// Если все 5 упадут одновременно — что-то катастрофически не так с интернетом.
 const FALLBACK_OR_MODELS = [
-  'openai/gpt-oss-120b:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',     // Qwen3 80B — быстрый, отлично знает русский
+  'z-ai/glm-4.5-air:free',                      // GLM-4.5 — точный по фактам, русский ок
+  'nvidia/nemotron-3-super-120b-a12b:free',     // Nemotron 120B — сильное instruction-following
+  'openai/gpt-oss-120b:free',                   // OpenAI open-weights — проверенный
+  'meta-llama/llama-3.3-70b-instruct:free',     // Llama 3.3 — последний рубеж
 ];
+
+// На каждый вызов модели даём таймаут — если зависла, идём к следующей
+// вместо того чтобы клиент ждал бесконечно.
+const MODEL_TIMEOUT_MS = 20_000;
+
+function withTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return { signal: ctrl.signal, clear: () => clearTimeout(timer) };
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -33,9 +51,11 @@ async function callGemini(system: string, history: ChatMessage[]): Promise<{ tex
   }));
 
   for (const model of GEMINI_MODELS) {
+    const t = withTimeout(MODEL_TIMEOUT_MS);
     try {
       const res = await fetch(`${GOOGLE_AI_BASE}/${model}:generateContent?key=${key}`, {
         method: 'POST',
+        signal: t.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: system }] },
@@ -49,6 +69,8 @@ async function callGemini(system: string, history: ChatMessage[]): Promise<{ tex
       if (text.length > 2) return { text, model: `gemini/${model}` };
     } catch {
       continue;
+    } finally {
+      t.clear();
     }
   }
   return { text: '', model: '' };
@@ -60,11 +82,14 @@ async function callOpenRouter(system: string, history: ChatMessage[]): Promise<{
     ...history.map((m) => ({ role: m.role, content: m.content })),
   ];
   for (const model of FALLBACK_OR_MODELS) {
+    const t = withTimeout(MODEL_TIMEOUT_MS);
     try {
-      const text = (await aiChat(messages, { model, temperature: 0.5, maxTokens: 320 })) || '';
+      const text = (await aiChat(messages, { model, temperature: 0.5, maxTokens: 320, signal: t.signal })) || '';
       if (text.trim().length > 2) return { text: text.trim(), model: `openrouter/${model}` };
     } catch {
       continue;
+    } finally {
+      t.clear();
     }
   }
   return { text: '', model: '' };
