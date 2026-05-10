@@ -53,8 +53,8 @@ function getContactsLocale(): Lang {
 
 const STR = {
   uk: {
-    title: 'Контакти',
-    subtitle: 'Твої майстри, салони та друзі',
+    title: 'Мої майстри',
+    subtitle: 'Підписки та найближчі вікна',
     tabMasters: 'Майстри',
     tabSalons: 'Салони',
     tabFriends: 'Друзі',
@@ -77,8 +77,8 @@ const STR = {
     confirmUnfollow: (name: string) => `Відписатися від ${name}?`,
   },
   ru: {
-    title: 'Контакты',
-    subtitle: 'Твои мастера, салоны и друзья',
+    title: 'Мои мастера',
+    subtitle: 'Подписки и ближайшие окна',
     tabMasters: 'Мастера',
     tabSalons: 'Салоны',
     tabFriends: 'Друзья',
@@ -101,8 +101,8 @@ const STR = {
     confirmUnfollow: (name: string) => `Отписаться от ${name}?`,
   },
   en: {
-    title: 'Contacts',
-    subtitle: 'Your masters, salons and friends',
+    title: 'My masters',
+    subtitle: 'Followed masters and nearest openings',
     tabMasters: 'Masters',
     tabSalons: 'Salons',
     tabFriends: 'Friends',
@@ -297,18 +297,12 @@ export default function MiniAppContactsPage() {
       <h1 className="text-[24px] font-bold leading-tight">{t.title}</h1>
       <p className="mt-1 text-[13px] text-neutral-500">{t.subtitle}</p>
 
-      {/* Tabs — Salons таб скрыт (см. комментарий у Tab). */}
-      <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
-        <TabBtn active={tab === 'masters'} onClick={() => { setTab('masters'); haptic('light'); }} icon={User} label={t.tabMasters} count={counts.masters} />
-        <TabBtn active={tab === 'friends'} onClick={() => { setTab('friends'); haptic('light'); }} icon={Users} label={t.tabFriends} count={counts.friends} />
-      </div>
-
       <div className="mt-4">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="size-5 animate-spin text-neutral-400" />
           </div>
-        ) : tab === 'masters' ? (
+        ) : (
           masters.length === 0 ? (
             <EmptyState
               icon={User}
@@ -400,103 +394,6 @@ export default function MiniAppContactsPage() {
               ))}
               </ul>
             </>
-          )
-        ) : false ? (
-          // ── Salons branch (dead code) ──
-          // Логика осталась на случай возврата таба, но условие false
-          // делает её недостижимой. Salons таб скрыт сверху (см. type Tab).
-          salons.length === 0 ? (
-            <EmptyState
-              icon={Building2}
-              title={t.emptySalonsTitle}
-              desc={t.emptySalonsDesc}
-              ctaLabel={t.findSalon}
-              ctaHref="/telegram/search"
-            />
-          ) : (
-            <ul className="space-y-2">
-              {salons.map((s) => (
-                <li key={s.id}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { haptic('light'); router.push(`/telegram/salon/${s.id}`); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/salon/${s.id}`); }}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
-                  >
-                    <Avatar src={s.logo} name={s.name} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-semibold">{s.name}</p>
-                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-neutral-500">
-                        {s.city && (
-                          <span className="inline-flex items-center gap-0.5">
-                            <MapPin className="size-3" />
-                            {s.city}
-                          </span>
-                        )}
-                        {s.rating != null && (
-                          <span className="inline-flex items-center gap-0.5">
-                            <Star className="size-3 fill-amber-400 stroke-amber-400" />
-                            <span className="text-neutral-700">{s.rating.toFixed(1)}</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); unfollowSalon(s.id, s.name); }}
-                      disabled={removing === s.id}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
-                      aria-label={t.removeFromContacts}
-                    >
-                      {removing === s.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )
-        ) : (
-          // friends
-          friends.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title={t.emptyFriendsTitle}
-              desc={t.emptyFriendsDesc}
-              ctaLabel={t.search}
-              ctaHref="/telegram/search"
-            />
-          ) : (
-            <ul className="space-y-2">
-              {friends.map((f) => (
-                <li key={f.id}>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { if (f.publicId) { haptic('light'); router.push(`/telegram/u/${f.publicId}`); } }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && f.publicId) router.push(`/telegram/u/${f.publicId}`); }}
-                    className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-3 active:bg-neutral-50 transition-colors cursor-pointer"
-                  >
-                    <Avatar src={f.avatar} name={f.name} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[14px] font-semibold">{f.name ?? t.userFallback}</p>
-                      <p className="truncate text-[11px] text-neutral-500">
-                        {f.slug ? `@${f.slug}` : f.publicId ?? ''}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); unfollowFriend(f.id, f.name); }}
-                      disabled={removing === f.id}
-                      className="flex size-9 shrink-0 items-center justify-center rounded-full text-neutral-400 hover:bg-red-50 hover:text-red-600 active:bg-red-100 disabled:opacity-50"
-                      aria-label={t.unfollow}
-                    >
-                      {removing === f.id ? <Loader2 className="size-4 animate-spin" /> : <UserMinus className="size-4" />}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
           )
         )}
       </div>

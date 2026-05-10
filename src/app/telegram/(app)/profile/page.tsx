@@ -397,8 +397,10 @@ export default function MiniAppProfilePage() {
   ];
 
   // Стили для блока «Личные данные» — карточка с тремя строками,
-  // каждая строка тапается и открывает edit modal.
+  // каждая строка тапается и открывает edit modal. Горизонтальный margin
+  // совпадает с MenuList (PAGE_PADDING_X), иначе карточка прижимается к краю.
   const dataCardStyle: React.CSSProperties = {
+    margin: `0 ${PAGE_PADDING_X}px`,
     borderRadius: R.lg,
     border: `1px solid ${T.borderSubtle}`,
     background: T.surface,
