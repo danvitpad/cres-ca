@@ -1,11 +1,12 @@
 /** --- YAML
  * name: Mini App — Master Partner Detail
  * description: Single partnership detail with the "other" master expanded plus
- *   contact info (phone/email/dob/username) and referral stats — how many clients
- *   came via partnership.promo_code and how much profit they brought.
- *   Uses PostgREST embedded join with explicit FK names (same pattern as list API).
- *   Earlier two-step fetch lost the profile data; embedded join works reliably
- *   when FKs are disambiguated.
+ *   contact info (phone/email/dob/username) and referral stats.
+ *
+ *   Multi-step SELECTs (no PostgREST embedded join) — embedded version reliably
+ *   returns null for `target` / `initiator` for this table even when raw SQL JOIN
+ *   works. Tried 2026-05-09 and again 2026-05-10 — both times broke the page.
+ *   The two-step (master_partnerships → masters → profiles) is what actually works.
  * created: 2026-04-25
  * updated: 2026-05-10
  * --- */
@@ -25,16 +26,6 @@ interface PartnerProfile {
 }
 
 interface PartnerMaster {
-  id: string;
-  specialization: string | null;
-  vertical: string | null;
-  bio: string | null;
-  team_mode: string | null;
-  salon_id: string | null;
-  profile: PartnerProfile | null;
-}
-
-interface RowSide {
   id: string;
   specialization: string | null;
   vertical: string | null;
@@ -66,27 +57,10 @@ export async function POST(req: Request) {
     .maybeSingle<{ id: string }>();
   if (!master) return NextResponse.json({ error: 'not_master' }, { status: 403 });
 
-  // Embedded join — обе стороны партнёрства одним запросом, через явные FK имена
-  // (тот же паттерн что в list API, проверенный). Раньше тут был двухступенчатый
-  // запрос — он терял профиль партнёра в некоторых случаях.
+  // 1) Сама строка партнёрства.
   const { data: row } = await admin
     .from('master_partnerships')
-    .select(`
-      id, master_id, partner_id, status, initiated_at, accepted_at, ended_at,
-      note, contract_terms, commission_percent, promo_code, cross_promotion,
-      initiator:masters!master_partnerships_master_id_fkey(
-        id, specialization, vertical, bio, team_mode, salon_id,
-        profile:profiles!masters_profile_id_fkey(
-          full_name, avatar_url, slug, username, phone, email, date_of_birth
-        )
-      ),
-      target:masters!master_partnerships_partner_id_fkey(
-        id, specialization, vertical, bio, team_mode, salon_id,
-        profile:profiles!masters_profile_id_fkey(
-          full_name, avatar_url, slug, username, phone, email, date_of_birth
-        )
-      )
-    `)
+    .select('id, master_id, partner_id, status, initiated_at, accepted_at, ended_at, note, contract_terms, commission_percent, promo_code, cross_promotion')
     .eq('id', body.partnership_id)
     .maybeSingle();
 
@@ -96,19 +70,41 @@ export async function POST(req: Request) {
   }
 
   const youInitiated = row.master_id === master.id;
-  const otherSide = (youInitiated ? row.target : row.initiator) as unknown as RowSide | null;
+  const partnerMasterId = youInitiated ? row.partner_id : row.master_id;
 
-  const partner: PartnerMaster | null = otherSide ? {
-    id: otherSide.id,
-    specialization: otherSide.specialization,
-    vertical: otherSide.vertical,
-    bio: otherSide.bio,
-    team_mode: otherSide.team_mode,
-    salon_id: otherSide.salon_id,
-    profile: otherSide.profile,
+  // 2) Сам мастер-партнёр.
+  const { data: partnerRow } = await admin
+    .from('masters')
+    .select('id, specialization, vertical, bio, team_mode, salon_id, profile_id')
+    .eq('id', partnerMasterId)
+    .maybeSingle<{
+      id: string; specialization: string | null; vertical: string | null;
+      bio: string | null; team_mode: string | null; salon_id: string | null;
+      profile_id: string | null;
+    }>();
+
+  // 3) Профиль партнёра.
+  let profile: PartnerProfile | null = null;
+  if (partnerRow?.profile_id) {
+    const { data: prof } = await admin
+      .from('profiles')
+      .select('full_name, avatar_url, slug, username, phone, email, date_of_birth')
+      .eq('id', partnerRow.profile_id)
+      .maybeSingle<PartnerProfile>();
+    profile = prof ?? null;
+  }
+
+  const partner: PartnerMaster | null = partnerRow ? {
+    id: partnerRow.id,
+    specialization: partnerRow.specialization,
+    vertical: partnerRow.vertical,
+    bio: partnerRow.bio,
+    team_mode: partnerRow.team_mode,
+    salon_id: partnerRow.salon_id,
+    profile,
   } : null;
 
-  // Statistics: клиенты пришедшие через promo_code партнёрства + завершённые визиты + выручка.
+  // 4) Statistics: клиенты пришедшие через promo_code партнёрства.
   let clientsCount = 0;
   let completedCount = 0;
   let totalProfit = 0;
