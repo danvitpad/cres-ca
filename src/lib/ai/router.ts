@@ -41,12 +41,25 @@ const OPENROUTER_BASE = 'https://openrouter.ai/api/v1/chat/completions';
 // 1.5-flash — старая, но устойчивая (отдельный бесплатный лимит, реже даёт 429/503).
 const VOICE_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
 
-// Text → JSON / text (ordered by preference)
-const TEXT_GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-const TEXT_OPENROUTER_MODELS = [
-  'deepseek/deepseek-chat-v3.1:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'openai/gpt-oss-120b:free',
+// Унифицированная цепочка для текстовых вызовов: сильные свободные модели сверху,
+// слабые/старые снизу. Те же модели и порядок что в master-ассистенте — Qwen3 и
+// Nemotron мощнее Gemini Flash, поэтому они идут первыми. Если первая в лимите/
+// упала/таймаут — переходим к следующей. Gemini 2.5/2.0 в середине как
+// надёжный fallback (Google free tier стабильный). Llama в конце как последний
+// рубеж.
+type ModelEntry =
+  | { type: 'gemini'; id: string }
+  | { type: 'openrouter'; id: string };
+
+const TEXT_MODEL_CHAIN: ModelEntry[] = [
+  { type: 'openrouter', id: 'qwen/qwen3-next-80b-a3b-instruct:free' },     // 1. Qwen3 80B — сильнее и быстрее Gemini Flash, отлично знает русский
+  { type: 'openrouter', id: 'nvidia/nemotron-3-super-120b-a12b:free' },    // 2. Nemotron 120B — большая NVIDIA, instruction-following
+  { type: 'openrouter', id: 'openai/gpt-oss-120b:free' },                  // 3. OpenAI 120B open weights
+  { type: 'openrouter', id: 'z-ai/glm-4.5-air:free' },                     // 4. GLM-4.5 Air — точная по фактам
+  { type: 'gemini', id: 'gemini-2.5-flash' },                              // 5. Google Flash — стабильный fallback
+  { type: 'gemini', id: 'gemini-2.0-flash' },                              // 6. старый Flash — тоже надёжный
+  { type: 'openrouter', id: 'deepseek/deepseek-chat-v3.1:free' },          // 7. DeepSeek Chat (не R1 — без reasoning-задержки)
+  { type: 'openrouter', id: 'meta-llama/llama-3.3-70b-instruct:free' },    // 8. Llama 3.3 — последний рубеж
 ];
 
 export interface AICallLog {
@@ -150,44 +163,27 @@ export async function textToJSON(params: {
   userMessage: string;
 }): Promise<AICallResult> {
   const log: AICallLog[] = [];
+  const orHasKey = !!OPENROUTER_KEY();
 
-  // Gemini first
-  for (let i = 0; i < TEXT_GEMINI_MODELS.length; i++) {
-    const model = TEXT_GEMINI_MODELS[i];
+  for (let i = 0; i < TEXT_MODEL_CHAIN.length; i++) {
+    const entry = TEXT_MODEL_CHAIN[i];
+    if (entry.type === 'openrouter' && !orHasKey) continue; // skip OR if нет ключа
     const t0 = Date.now();
     try {
-      const text = await callGeminiText(model, params.systemPrompt, [{ role: 'user', content: params.userMessage }]);
+      const text = entry.type === 'gemini'
+        ? await callGeminiText(entry.id, params.systemPrompt, [{ role: 'user', content: params.userMessage }])
+        : await callOpenRouter(entry.id, params.systemPrompt, [{ role: 'user', content: params.userMessage }]);
       if (text) {
-        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-        return { data: text, model: `gemini/${model}`, log };
+        log.push({ provider: entry.type, model: entry.id, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `${entry.type}/${entry.id}`, log };
       }
-      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+      log.push({ provider: entry.type, model: entry.id, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
     } catch (e) {
-      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+      log.push({ provider: entry.type, model: entry.id, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
     }
   }
 
-  // OpenRouter fallback
-  if (!OPENROUTER_KEY()) {
-    throw new AIUnavailableError('All Gemini failed and no OPENROUTER_API_KEY set', log);
-  }
-
-  for (let i = 0; i < TEXT_OPENROUTER_MODELS.length; i++) {
-    const model = TEXT_OPENROUTER_MODELS[i];
-    const t0 = Date.now();
-    try {
-      const text = await callOpenRouter(model, params.systemPrompt, [{ role: 'user', content: params.userMessage }]);
-      if (text) {
-        log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-        return { data: text, model: `openrouter/${model}`, log };
-      }
-      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
-    } catch (e) {
-      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
-    }
-  }
-
-  throw new AIUnavailableError('All 5 models failed', log);
+  throw new AIUnavailableError('All free providers failed', log);
 }
 
 /* ═══════════════ CHAT (text → human-readable reply) ═══════════════ */
@@ -203,38 +199,26 @@ export async function chatCompletion(params: {
   maxTokens?: number;
 }): Promise<AICallResult> {
   const log: AICallLog[] = [];
+  const orHasKey = !!OPENROUTER_KEY();
 
-  // Free-only chain: Gemini (primary) → OpenRouter free models (fallback).
+  // Унифицированная свободная цепочка — сильные модели сверху, более слабые
+  // снизу. Если первая в лимите/упала/таймаут — переходим к следующей.
   // Никаких платных провайдеров — продукт остаётся zero-cost для пользователя.
-  for (let i = 0; i < TEXT_GEMINI_MODELS.length; i++) {
-    const model = TEXT_GEMINI_MODELS[i];
+  for (let i = 0; i < TEXT_MODEL_CHAIN.length; i++) {
+    const entry = TEXT_MODEL_CHAIN[i];
+    if (entry.type === 'openrouter' && !orHasKey) continue;
     const t0 = Date.now();
     try {
-      const text = await callGeminiText(model, params.systemPrompt, params.history, params.maxTokens);
+      const text = entry.type === 'gemini'
+        ? await callGeminiText(entry.id, params.systemPrompt, params.history, params.maxTokens)
+        : await callOpenRouter(entry.id, params.systemPrompt, params.history, params.maxTokens);
       if (text) {
-        log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-        return { data: text, model: `gemini/${model}`, log };
+        log.push({ provider: entry.type, model: entry.id, attempt: i + 1, ms: Date.now() - t0, ok: true });
+        return { data: text, model: `${entry.type}/${entry.id}`, log };
       }
-      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
+      log.push({ provider: entry.type, model: entry.id, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
     } catch (e) {
-      log.push({ provider: 'gemini', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
-    }
-  }
-
-  if (!OPENROUTER_KEY()) throw new AIUnavailableError('All Gemini failed', log);
-
-  for (let i = 0; i < TEXT_OPENROUTER_MODELS.length; i++) {
-    const model = TEXT_OPENROUTER_MODELS[i];
-    const t0 = Date.now();
-    try {
-      const text = await callOpenRouter(model, params.systemPrompt, params.history, params.maxTokens);
-      if (text) {
-        log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: true });
-        return { data: text, model: `openrouter/${model}`, log };
-      }
-      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: 'empty' });
-    } catch (e) {
-      log.push({ provider: 'openrouter', model, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
+      log.push({ provider: entry.type, model: entry.id, attempt: i + 1, ms: Date.now() - t0, ok: false, error: (e as Error).message });
     }
   }
 
