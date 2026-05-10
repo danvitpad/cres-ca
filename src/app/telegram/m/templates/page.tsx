@@ -294,8 +294,8 @@ export default function MasterMiniAppTemplates() {
               >
                 <div style={{
                   width: 36, height: 36, borderRadius: R.sm,
-                  background: hasCustom ? T.accentSoft : T.bgSubtle,
-                  color: hasCustom ? T.accent : T.textSecondary,
+                  background: T.bgSubtle,
+                  color: T.textSecondary,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>
                   <Icon size={16} strokeWidth={2} />
@@ -303,13 +303,6 @@ export default function MasterMiniAppTemplates() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{spec.title}</p>
-                    {hasCustom && (
-                      <span style={{
-                        ...TYPE.micro, fontWeight: 700,
-                        padding: '1px 6px', borderRadius: R.pill,
-                        background: T.accentSoft, color: T.accent,
-                      }}>свой</span>
-                    )}
                   </div>
                   <p style={{ ...TYPE.caption, color: T.textTertiary, margin: '2px 0 0' }}>
                     {spec.description}

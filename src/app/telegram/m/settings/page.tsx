@@ -443,10 +443,14 @@ export default function MasterMiniAppSettings() {
       }}
     >
       <div style={{ padding: `16px ${PAGE_PADDING_X}px 32px`, display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* Back button */}
+        {/* Back button — явный переход на /more, не router.back().
+            Раньше browser-back уходил в history → если зашёл с /more →
+            /settings → /language → back → /settings, то router.back()
+            на /settings возвращал не на /more а обратно на /language.
+            Исправлено: всегда идём на /more напрямую. */}
         <button
           type="button"
-          onClick={() => { haptic('light'); router.back(); }}
+          onClick={() => { haptic('light'); router.push('/telegram/m/more'); }}
           aria-label={t.back}
           style={{
             width: 40,

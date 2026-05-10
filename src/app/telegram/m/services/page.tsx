@@ -319,7 +319,6 @@ function ServiceRowCard({ s, i, t, onTap, lang }: { s: Service; i: number; t: ty
         width: '100%',
       }}
     >
-      <span style={{ width: 10, height: 10, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {getServiceName(s, lang)}

@@ -19,7 +19,6 @@ import {
   Settings as SettingsIcon,
   ChevronRight,
   ArrowUpRight,
-  UserCheck,
   Package,
   Truck,
   MessageSquare,
@@ -165,7 +164,9 @@ export default function MasterMiniAppMore() {
     { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint' },
     { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint' },
     { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint' },
-    { key: 'queue', href: '/telegram/m/queue', icon: UserCheck, labelKey: 'queue', hintKey: 'queueHint' },
+    // 'Живая очередь' убрана 2026-05-10 — фича оказалась не нужна.
+    // Клиент рядом с кабинетом сам видит когда подходит, заранее уведомлять
+    // не успеваем — продакт-ценность не подтвердилась.
     { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint' },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
