@@ -17,23 +17,6 @@ interface BookingItem {
   currency: string;
 }
 
-/** «1440» → «за день», «120» → «за 2 години», «15» → «за 15 хв». Только uk. */
-function formatOffsetLabelUk(min: number): string {
-  if (min >= 1440) {
-    const d = Math.round(min / 1440);
-    if (d === 1) return 'за день';
-    if (d >= 2 && d <= 4) return `за ${d} дні`;
-    return `за ${d} днів`;
-  }
-  if (min >= 60) {
-    const h = Math.round(min / 60);
-    if (h === 1) return 'за годину';
-    if (h >= 2 && h <= 4) return `за ${h} години`;
-    return `за ${h} годин`;
-  }
-  return `за ${min} хв`;
-}
-
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const {
@@ -232,50 +215,15 @@ export async function POST(request: Request) {
     } catch { /* ignore */ }
   }
 
-  // 4b. Notify CLIENT — confirmation DM in their TG
-  // Client has a profile_id, and we can look up their telegram_id directly.
-  try {
-    if (profile.telegram_id) {
-      const masterProfileFetch = await admin
-        .from('masters')
-        .select('display_name, profile:profiles!masters_profile_id_fkey(full_name)')
-        .eq('id', master_id)
-        .maybeSingle();
-      const masterRow = masterProfileFetch.data as { display_name: string | null; profile: { full_name: string | null } | null } | null;
-      const masterName = masterRow?.profile?.full_name ?? masterRow?.display_name ?? 'мастер';
-
-      // Клиенту бот всегда пишет на украинском (правило 2026-05-05).
-      const clientHeading = isReschedule
-        ? `<b>🔄 Запис перенесено</b>`
-        : `<b>✅ Запис підтверджено</b>`;
-
-      // Подтягиваем РЕАЛЬНЫЕ напоминания клиента из notification_preferences
-      // (правило 2026-05-05: клиент в настройках задал «за 15 хв і за 2 хв»,
-      // а в подтверждении видел статичное «за день та за 2 години» — путаница).
-      let reminderTail = '';
-      try {
-        const { data: prefRow } = await admin
-          .from('notification_preferences')
-          .select('offsets_minutes, enabled')
-          .eq('profile_id', profile.id)
-          .maybeSingle<{ offsets_minutes: number[] | null; enabled: boolean | null }>();
-        const offs = (prefRow?.enabled !== false ? prefRow?.offsets_minutes : null) ?? [1440, 120];
-        const labels = offs
-          .filter((m) => Number.isFinite(m) && m > 0)
-          .sort((a, b) => b - a)
-          .map(formatOffsetLabelUk);
-        if (labels.length) {
-          reminderTail = `\n\nНагадаємо ${labels.join(' та ')} до візиту.`;
-        }
-      } catch { /* best-effort */ }
-
-      const clientBody = `${clientHeading}\n\nМайстер: ${masterName}\nПослуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nЧас: ${selected_time ?? '—'}${reminderTail}`;
-
-      await sendMessage(profile.telegram_id as unknown as number, clientBody, { parse_mode: 'HTML' });
-    }
-  } catch (e) {
-    console.error('[book] client TG notify failed:', (e as Error).message);
-  }
+  // 4b. Notify CLIENT — handled by DB trigger dispatch_booking_notification
+  // (event_type='created' or 'rescheduled') which inserts a 'pending' row into
+  // notifications. The cron /api/cron/notifications flushes it within ~1 min.
+  // The trigger reads master's custom message_templates row (kind=
+  // 'booking_confirmation' or 'appointment_rescheduled') and substitutes
+  // {service_name}, {master_name}, {client_name}, {time}, {old_time}, {price},
+  // {address}, {confirm_url}, falling back to the rich 6/4-line default if
+  // master hasn't customized. We INTENTIONALLY do NOT send a direct TG here —
+  // doing so would duplicate the trigger's pending notification.
 
   if (masterProfileId && service_names && date_formatted && selected_time) {
     await admin.from('notifications').insert({
