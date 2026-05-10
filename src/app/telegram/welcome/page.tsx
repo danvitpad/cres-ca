@@ -241,7 +241,7 @@ export default function MiniAppWelcomePage() {
         </button>
       </div>
 
-      <div className="flex-1 space-y-8 px-6 pt-10 pb-[260px]">
+      <div className="flex-1 space-y-8 px-6 pt-10 pb-[200px]">
         <div className="space-y-3 text-center">
           <motion.p
             initial={{ y: 10, opacity: 0 }}
@@ -266,11 +266,12 @@ export default function MiniAppWelcomePage() {
         </motion.ul>
       </div>
 
-      {/* Bottom actions */}
+      {/* Bottom actions — без bottom-nav на welcome page, поэтому отступ
+          стандартный safe-area + 20px (раньше был 96px, оставляло пустоту) */}
       <div
         className="fixed inset-x-0 bottom-0 space-y-3 px-6 pb-6 pt-10"
         style={{
-          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
           background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
         }}
       >
