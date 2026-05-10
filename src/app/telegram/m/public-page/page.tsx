@@ -584,30 +584,6 @@ export default function MasterMiniAppPublicPage() {
           )}
         </SectionWithEdit>
 
-        {/* CRES-ID badge — публичный handle мастера. Тап на pill копирует
-            ссылку, тап на ✎ открывает sheet редактирования slug. */}
-        {master.invite_code && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
-            <button
-              type="button"
-              onClick={copyCresLink}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '8px 14px', borderRadius: R.pill,
-                border: `1px solid ${T.borderSubtle}`,
-                background: T.surface, color: T.text,
-                fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              {cresIdCopied ? <Check size={14} color={T.success} /> : <Copy size={14} color={T.textSecondary} />}
-              <span style={{ color: T.textTertiary, fontWeight: 500 }}>{t.cresIdLabel}</span>
-              <span style={{ fontWeight: 700 }}>@{master.slug || master.invite_code}</span>
-            </button>
-            <PencilBtn onClick={() => { haptic('selection'); setEditField('slug'); }} />
-          </div>
-        )}
-
         {/* Услуги */}
         <Section title={t.services}>
           {services.length === 0 ? (
@@ -623,7 +599,6 @@ export default function MasterMiniAppPublicPage() {
                     border: `1px solid ${T.borderSubtle}`, background: T.surface,
                   }}
                 >
-                  <span style={{ width: 8, height: 8, marginTop: 6, borderRadius: 999, background: s.color || T.accent, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{s.name}</p>
                     {s.category && (

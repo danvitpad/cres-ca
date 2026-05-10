@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Megaphone,
   Users2,
@@ -24,6 +25,7 @@ import {
   MessageSquare,
   Clock,
   Hourglass,
+  LogOut,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -57,6 +59,8 @@ const I18N: Record<MiniAppLang, {
   templates: string; templatesHint: string;
   schedule: string; scheduleHint: string;
   waitlist: string; waitlistHint: string;
+  logout: string;
+  logoutConfirm: string;
 }> = {
   uk: {
     title: 'Ще',
@@ -72,6 +76,8 @@ const I18N: Record<MiniAppLang, {
     templates: 'Шаблони', templatesHint: 'Тексти нагадувань, відгуків, ДР',
     schedule: 'Графік роботи', scheduleHint: 'Дні та робочі години',
     waitlist: 'Лист очікування', waitlistHint: 'Клієнти що чекають твоє вікно',
+    logout: 'Вийти з акаунта',
+    logoutConfirm: 'Точно вийти?',
   },
   ru: {
     title: 'Ещё',
@@ -87,6 +93,8 @@ const I18N: Record<MiniAppLang, {
     templates: 'Шаблоны', templatesHint: 'Тексты напоминаний, отзывов, ДР',
     schedule: 'График работы', scheduleHint: 'Дни и рабочие часы',
     waitlist: 'Лист ожидания', waitlistHint: 'Клиенты что ждут твоё окошко',
+    logout: 'Выйти из аккаунта',
+    logoutConfirm: 'Точно выйти?',
   },
   en: {
     title: 'More',
@@ -102,15 +110,32 @@ const I18N: Record<MiniAppLang, {
     templates: 'Templates', templatesHint: 'Reminder, review, birthday texts',
     schedule: 'Schedule', scheduleHint: 'Days and working hours',
     waitlist: 'Waitlist', waitlistHint: 'Clients waiting for your slot',
+    logout: 'Log out',
+    logoutConfirm: 'Log out?',
   },
 };
 
 export default function MasterMiniAppMore() {
   const { haptic } = useTelegram();
+  const router = useRouter();
   const { userId } = useAuthStore();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [salonId, setSalonId] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (loggingOut) return;
+    if (typeof window !== 'undefined' && !window.confirm(t.logoutConfirm)) return;
+    setLoggingOut(true);
+    haptic('warning');
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch { /* best-effort */ }
+    useAuthStore.getState().clearAuth();
+    router.replace('/telegram');
+  }
 
   useEffect(() => {
     if (!userId) return;
@@ -216,6 +241,36 @@ export default function MasterMiniAppMore() {
           );
         })}
       </div>
+
+      {/* Кнопка выхода — отдельно, красным цветом, ниже всех ссылок */}
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={loggingOut}
+        style={{
+          margin: `16px ${PAGE_PADDING_X}px 0`,
+          width: `calc(100% - ${PAGE_PADDING_X * 2}px)`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          padding: '14px 16px',
+          background: T.surface,
+          border: `1px solid ${T.borderSubtle}`,
+          borderRadius: R.lg,
+          boxShadow: SHADOW.card,
+          color: T.danger ?? '#dc2626',
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: loggingOut ? 'not-allowed' : 'pointer',
+          fontFamily: 'inherit',
+          opacity: loggingOut ? 0.5 : 1,
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <LogOut size={18} strokeWidth={2} />
+        {t.logout}
+      </button>
     </MobilePage>
   );
 }

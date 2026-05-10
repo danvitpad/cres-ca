@@ -189,7 +189,7 @@ export default function MasterOnboardingPage() {
   const [direction, setDirection] = useState(1);
 
   const [vertical, setVertical] = useState<string | null>(null);
-  const [specialization, setSpecialization] = useState<string | null>(null);
+  const [specializations, setSpecializations] = useState<string[]>([]);
   const [workMode, setWorkMode] = useState<WorkMode | null>(null);
   const [address, setAddress] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -256,7 +256,7 @@ export default function MasterOnboardingPage() {
       setVertical(key);
       const defaults = getDefaultServices(key);
       setServices(defaults.map((s, i) => ({ ...s, id: i, enabled: true })));
-      setSpecialization(null);
+      setSpecializations([]);
       setDirection(1);
       setStep(2);
     },
@@ -294,13 +294,17 @@ export default function MasterOnboardingPage() {
           }));
 
     try {
+      // specialization (single) для совместимости — берём первую выбранную;
+      // полный список идёт в specializations[].
+      const primarySpec = specializations[0] ?? undefined;
       await fetch('/api/telegram/master-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
           vertical: vertical ?? undefined,
-          specialization: specialization ?? undefined,
+          specialization: primarySpec,
+          specializations: specializations.length > 0 ? specializations : undefined,
           workMode: workMode ?? undefined,
           address: address.trim() || undefined,
           latitude: coords?.lat ?? undefined,
@@ -433,8 +437,13 @@ export default function MasterOnboardingPage() {
               <Step2Spec
                 t={t}
                 vertical={vertical}
-                selected={specialization}
-                onSelect={(s) => { haptic('selection'); setSpecialization(s); }}
+                selected={specializations}
+                onToggle={(s) => {
+                  haptic('selection');
+                  setSpecializations((prev) =>
+                    prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+                  );
+                }}
                 onNext={goNext}
               />
             </motion.div>
@@ -591,67 +600,75 @@ function Step2Spec({
   t,
   vertical,
   selected,
-  onSelect,
+  onToggle,
   onNext,
 }: {
   t: (typeof T)[Lang];
   vertical: string | null;
-  selected: string | null;
-  onSelect: (s: string) => void;
+  selected: string[];
+  onToggle: (s: string) => void;
   onNext: () => void;
 }) {
   const specs = getSpecializations(vertical);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '8px 20px 20px', flexShrink: 0 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
+      <div style={{ padding: '6px 20px 12px', flexShrink: 0 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2 }}>
           {t.step2Title}
         </h1>
-        <p style={{ fontSize: 14, color: THEME.textSecondary, marginTop: 6, marginBottom: 0 }}>
-          {t.step2Sub}
+        <p style={{ fontSize: 12, color: THEME.textSecondary, marginTop: 4, marginBottom: 0 }}>
+          {t.step2Sub} · можна обрати декілька
         </p>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', paddingBottom: 24 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Сетка 2 колонки — все варианты помещаются на экран без скролла */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px', paddingBottom: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {specs.map((spec) => {
-            const isSelected = selected === spec;
+            const isSelected = selected.includes(spec);
             return (
               <button
                 key={spec}
                 type="button"
-                onClick={() => onSelect(spec)}
+                onClick={() => onToggle(spec)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '14px 16px',
+                  gap: 6,
+                  padding: '10px 12px',
                   borderRadius: R.md,
                   border: `1.5px solid ${isSelected ? THEME.accent : THEME.border}`,
                   background: isSelected ? THEME.accentSoft : THEME.surface,
                   cursor: 'pointer',
                   WebkitTapHighlightColor: 'transparent',
                   transition: 'border-color 0.15s, background 0.15s',
+                  minHeight: 44,
                 }}
               >
                 <span
                   style={{
-                    fontSize: 15,
-                    fontWeight: isSelected ? 600 : 400,
+                    fontSize: 13,
+                    fontWeight: isSelected ? 600 : 500,
                     color: isSelected ? THEME.accent : THEME.text,
+                    textAlign: 'left',
+                    lineHeight: 1.25,
                   }}
                 >
                   {spec}
                 </span>
-                {isSelected && <Check size={18} color={THEME.accent} strokeWidth={2.5} />}
+                {isSelected && <Check size={16} color={THEME.accent} strokeWidth={2.5} style={{ flexShrink: 0 }} />}
               </button>
             );
           })}
         </div>
       </div>
 
-      <BottomCta primary={{ label: t.next, onClick: onNext }} secondary={{ label: t.skip, onClick: onNext }} />
+      <BottomCta
+        primary={{ label: t.next, onClick: onNext, disabled: selected.length === 0 }}
+        secondary={{ label: t.skip, onClick: onNext }}
+      />
     </div>
   );
 }
@@ -1113,7 +1130,7 @@ function BottomCta({
   primary,
   secondary,
 }: {
-  primary: { label: string; onClick: () => void };
+  primary: { label: string; onClick: () => void; disabled?: boolean };
   secondary?: { label: string; onClick: () => void };
 }) {
   return (
@@ -1132,6 +1149,7 @@ function BottomCta({
       <button
         type="button"
         onClick={primary.onClick}
+        disabled={primary.disabled}
         style={{
           width: '100%',
           padding: '15px 0',
@@ -1141,7 +1159,8 @@ function BottomCta({
           fontSize: 16,
           fontWeight: 700,
           border: 'none',
-          cursor: 'pointer',
+          cursor: primary.disabled ? 'not-allowed' : 'pointer',
+          opacity: primary.disabled ? 0.5 : 1,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
