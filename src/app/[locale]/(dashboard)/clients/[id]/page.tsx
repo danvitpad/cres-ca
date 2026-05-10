@@ -31,7 +31,7 @@ import {
   ArrowLeft, RefreshCw, AlertTriangle, ShieldAlert,
   BarChart3, Phone, Mail, Cake,
   Calendar as CalendarIcon, FileText, Heart, User as UserIcon,
-  Pencil, Trash2, Plus, Check, X, Sparkles, Send, Star,
+  Pencil, Trash2, Plus, Check, X, Bot, Send, Star,
   Pin, PinOff,
 } from 'lucide-react';
 import {
@@ -1312,7 +1312,7 @@ function ClientAiChat({
           onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
           onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <Sparkles size={14} />
+          <Bot size={14} />
           AI заметка
         </button>
       ) : (
@@ -1323,7 +1323,7 @@ function ClientAiChat({
           background: C.surface, border: `1px solid ${C.accent}`,
           boxShadow: `0 0 0 4px ${C.accent}15`,
         }}>
-          <Sparkles size={14} style={{ color: C.accent, flexShrink: 0 }} />
+          <Bot size={14} style={{ color: C.accent, flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"

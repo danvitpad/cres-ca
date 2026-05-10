@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles, Loader2, Plus, Trash2,
+  Bot, Loader2, Plus, Trash2,
   Calendar as CalendarIcon, Trophy,
   CreditCard, Receipt, TrendingUp, Wallet, Mic,
   ArrowRight,
@@ -1284,7 +1284,7 @@ function FinanceAiPanel({
           background: C.accentSoft,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Sparkles size={16} style={{ color: C.accent }} />
+          <Bot size={16} style={{ color: C.accent }} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

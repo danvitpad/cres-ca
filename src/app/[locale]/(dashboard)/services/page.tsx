@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
-import { Plus, MoreVertical, Search, Briefcase, Sparkles } from 'lucide-react';
+import { Plus, MoreVertical, Search, Briefcase, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
 
@@ -989,7 +989,7 @@ function ServiceForm({
               className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15 disabled:opacity-40"
               title={!name.trim() ? 'Сначала введи название услуги' : 'AI предложит примерные дозы из твоего склада'}
             >
-              <Sparkles className="size-3" />
+              <Bot className="size-3" />
               {aiSuggesting ? 'AI считает…' : 'Помоги рассчитать (AI)'}
             </button>
           )}

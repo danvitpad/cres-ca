@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertTriangle, Users, Star, Heart, Search,
-  Cake, Clock, Sparkles, Loader2,
+  Cake, Clock, UserPlus, Loader2,
 } from 'lucide-react';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { DateWheelPicker, fromISODay, toISODay } from '@/components/ui/date-wheel-picker';
@@ -144,7 +144,7 @@ function ClientCard({ client, C, isDark, index }: {
   } else if (daysSince !== null && daysSince > 60) {
     badge = { label: 'Просрочка', color: '#fff', bg: C.danger, icon: Clock };
   } else if (client.total_visits === 0) {
-    badge = { label: 'Новый', color: C.accent, bg: C.accentSoft, icon: Sparkles };
+    badge = { label: 'Новый', color: C.accent, bg: C.accentSoft, icon: UserPlus };
   }
 
   return (
