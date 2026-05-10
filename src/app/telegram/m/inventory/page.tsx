@@ -387,53 +387,61 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Field label={t.fieldName}>
-            <input
-              autoFocus={mode === 'create'}
-              value={name}
-              onChange={(e) => setName(e.target.value.slice(0, 120))}
-              placeholder={t.placeholderName}
-              style={inputStyle}
-            />
-          </Field>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <Field label={t.fieldQuantity}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Все поля одной карточкой с разделителями — iOS Settings style */}
+          <div style={{
+            borderRadius: R.lg,
+            border: `1px solid ${T.borderSubtle}`,
+            background: T.bg,
+            overflow: 'hidden',
+          }}>
+            <FieldRow label={t.fieldName}>
+              <input
+                autoFocus={mode === 'create'}
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, 120))}
+                placeholder={t.placeholderName}
+                style={inputStyle}
+              />
+            </FieldRow>
+            <RowDivider />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <FieldRow label={t.fieldQuantity}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+                  style={inputStyle}
+                />
+              </FieldRow>
+              <FieldRow label={t.fieldUnit}>
+                <select
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value as Item['unit'])}
+                  style={{ ...inputStyle, fontSize: 16, appearance: 'none' }}
+                >
+                  {UNITS.map((u) => (
+                    <option key={u.value} value={u.value}>{u.label}</option>
+                  ))}
+                </select>
+              </FieldRow>
+            </div>
+            <RowDivider />
+            <FieldRow label={t.fieldThreshold}>
               <input
                 type="text"
                 inputMode="decimal"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
+                placeholder="—"
                 style={inputStyle}
               />
-            </Field>
-            <Field label={t.fieldUnit}>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as Item['unit'])}
-                style={{ ...inputStyle, fontSize: 16, appearance: 'none' }}
-              >
-                {UNITS.map((u) => (
-                  <option key={u.value} value={u.value}>{u.label}</option>
-                ))}
-              </select>
-            </Field>
+            </FieldRow>
           </div>
-
-          <Field label={t.fieldThreshold}>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))}
-              placeholder="—"
-              style={inputStyle}
-            />
-            <p style={{ ...TYPE.micro, color: T.textTertiary, marginTop: 6 }}>
-              {t.thresholdHint}
-            </p>
-          </Field>
+          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '-6px 4px 0', lineHeight: 1.45 }}>
+            {t.thresholdHint}
+          </p>
 
           {err && <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{err}</p>}
 
@@ -442,9 +450,9 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
             onClick={save}
             disabled={busy}
             style={{
-              marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: '14px 16px', borderRadius: R.md, border: 'none',
-              background: T.text, color: T.bg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: '14px 16px', borderRadius: R.lg, border: 'none',
+              background: T.accent, color: '#fff',
               ...TYPE.bodyStrong, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
               fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
             }}
@@ -477,25 +485,18 @@ function ItemSheet({ mode, item, t, onClose, onSaved }: {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        borderRadius: R.md,
-        border: `1px solid ${T.borderSubtle}`,
-        background: T.bg,
-        padding: '12px 14px 14px',
-      }}
-    >
+    <div style={{ padding: '10px 14px 12px', background: 'transparent' }}>
       <p
         style={{
           fontSize: 10,
-          fontWeight: 700,
+          fontWeight: 600,
           textTransform: 'uppercase',
-          letterSpacing: '0.1em',
+          letterSpacing: '0.08em',
           color: T.textTertiary,
           margin: 0,
-          marginBottom: 8,
+          marginBottom: 4,
         }}
       >
         {label}
@@ -503,6 +504,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function RowDivider() {
+  return <div style={{ height: 1, background: T.borderSubtle, margin: '0 14px' }} />;
 }
 
 const inputStyle: React.CSSProperties = {

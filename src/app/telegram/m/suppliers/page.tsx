@@ -410,71 +410,79 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Field label={t.fieldName}>
-            <input
-              autoFocus={mode === 'create'}
-              value={name}
-              onChange={(e) => setName(e.target.value.slice(0, 120))}
-              placeholder={t.placeholderName}
-              style={inputStyle}
-            />
-          </Field>
-
-          <Field label={t.fieldContact}>
-            <input
-              value={contact}
-              onChange={(e) => setContact(e.target.value.slice(0, 120))}
-              placeholder={t.placeholderContact}
-              style={inputStyle}
-            />
-          </Field>
-
-          <Field label={t.fieldPhone} icon={<Phone size={14} color={T.textTertiary} />}>
-            <input
-              type="tel"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.slice(0, 32))}
-              placeholder={t.placeholderPhone}
-              style={inputStyle}
-            />
-          </Field>
-
-          <Field label={t.fieldEmail} icon={<Mail size={14} color={T.textTertiary} />}>
-            <input
-              type="email"
-              inputMode="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value.slice(0, 120))}
-              placeholder={t.placeholderEmail}
-              style={inputStyle}
-            />
-          </Field>
-
-          <Field label={t.fieldTelegram} icon={<Send size={14} color={T.textTertiary} />}>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={tg}
-              onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 32))}
-              placeholder={t.placeholderTelegram}
-              style={inputStyle}
-            />
-            <p style={{ ...TYPE.micro, color: T.textTertiary, marginTop: 6, lineHeight: 1.4 }}>
-              Числовой ID, чтобы бот отправлял заказы автоматически. Получить — переслать своё сообщение боту @userinfobot.
-            </p>
-          </Field>
-
-          <Field label={t.fieldNote}>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value.slice(0, 500))}
-              placeholder={t.placeholderNote}
-              rows={3}
-              style={{ ...inputStyle, resize: 'none' }}
-            />
-          </Field>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Все поля одной карточкой с разделителями — iOS Settings style */}
+          <div style={{
+            borderRadius: R.lg,
+            border: `1px solid ${T.borderSubtle}`,
+            background: T.bg,
+            overflow: 'hidden',
+          }}>
+            <FieldRow label={t.fieldName}>
+              <input
+                autoFocus={mode === 'create'}
+                value={name}
+                onChange={(e) => setName(e.target.value.slice(0, 120))}
+                placeholder={t.placeholderName}
+                style={inputStyle}
+              />
+            </FieldRow>
+            <RowDivider />
+            <FieldRow label={t.fieldContact}>
+              <input
+                value={contact}
+                onChange={(e) => setContact(e.target.value.slice(0, 120))}
+                placeholder={t.placeholderContact}
+                style={inputStyle}
+              />
+            </FieldRow>
+            <RowDivider />
+            <FieldRow label={t.fieldPhone} icon={<Phone size={13} color={T.textTertiary} />}>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.slice(0, 32))}
+                placeholder={t.placeholderPhone}
+                style={inputStyle}
+              />
+            </FieldRow>
+            <RowDivider />
+            <FieldRow label={t.fieldEmail} icon={<Mail size={13} color={T.textTertiary} />}>
+              <input
+                type="email"
+                inputMode="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value.slice(0, 120))}
+                placeholder={t.placeholderEmail}
+                style={inputStyle}
+              />
+            </FieldRow>
+            <RowDivider />
+            <FieldRow label={t.fieldTelegram} icon={<Send size={13} color={T.textTertiary} />}>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={tg}
+                onChange={(e) => setTg(e.target.value.replace(/\D/g, '').slice(0, 32))}
+                placeholder={t.placeholderTelegram}
+                style={inputStyle}
+              />
+            </FieldRow>
+            <RowDivider />
+            <FieldRow label={t.fieldNote}>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value.slice(0, 500))}
+                placeholder={t.placeholderNote}
+                rows={2}
+                style={{ ...inputStyle, resize: 'none' }}
+              />
+            </FieldRow>
+          </div>
+          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '-6px 4px 0', lineHeight: 1.45 }}>
+            Telegram chat ID — числовой ID для отправки заказов через бота. Узнать — переслать своё сообщение @userinfobot.
+          </p>
 
           {err && <p style={{ ...TYPE.caption, color: T.danger, margin: 0 }}>{err}</p>}
 
@@ -483,9 +491,9 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
             onClick={save}
             disabled={busy}
             style={{
-              marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              width: '100%', padding: '14px 16px', borderRadius: R.md, border: 'none',
-              background: T.text, color: T.bg,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              width: '100%', padding: '14px 16px', borderRadius: R.lg, border: 'none',
+              background: T.accent, color: '#fff',
               ...TYPE.bodyStrong, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
               fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
             }}
@@ -495,7 +503,7 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
           </button>
 
           {mode === 'edit' && supplier && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <button
                 type="button"
                 onClick={archiveOrRestore}
@@ -522,25 +530,18 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
   );
 }
 
-function Field({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
+function FieldRow({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div
-      style={{
-        borderRadius: R.md,
-        border: `1px solid ${T.borderSubtle}`,
-        background: T.bg,
-        padding: '12px 14px 14px',
-      }}
-    >
+    <div style={{ padding: '10px 14px 12px', background: 'transparent' }}>
       <p
         style={{
           fontSize: 10,
-          fontWeight: 700,
+          fontWeight: 600,
           textTransform: 'uppercase',
-          letterSpacing: '0.1em',
+          letterSpacing: '0.08em',
           color: T.textTertiary,
           margin: 0,
-          marginBottom: 8,
+          marginBottom: 4,
           display: 'flex', alignItems: 'center', gap: 6,
         }}
       >
@@ -550,6 +551,10 @@ function Field({ label, icon, children }: { label: string; icon?: React.ReactNod
       {children}
     </div>
   );
+}
+
+function RowDivider() {
+  return <div style={{ height: 1, background: T.borderSubtle, margin: '0 14px' }} />;
 }
 
 const inputStyle: React.CSSProperties = {
