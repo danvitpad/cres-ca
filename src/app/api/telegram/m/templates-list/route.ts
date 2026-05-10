@@ -12,6 +12,11 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { resolveUserId } from '@/lib/auth/resolve-user';
 
+// В Mini App у мастера один пункт «Напоминание о записи» — но в БД исторически
+// два kind'а (reminder_24h и reminder_2h), потому что cron-задачи их так читают.
+// При сохранении из Mini App пишем в обе записи одинаковый текст, при загрузке
+// читаем reminder_24h (после save они идентичны). reminder_2h не показываем
+// в UI отдельно — он зеркало.
 export const TEMPLATE_KINDS = [
   'reminder_24h',
   'reminder_2h',
@@ -49,6 +54,12 @@ export async function POST(req: Request) {
   for (const r of (rows ?? []) as Array<{ kind: string; subject: string | null; content: string }>) {
     byKind[r.kind] = { subject: r.subject, content: r.content };
   }
+
+  // Сводим reminder_24h и reminder_2h в один UI-kind 'reminder' — берём 24h
+  // (после сохранения через Mini App они идентичны). Если есть только 2h —
+  // используем его как fallback.
+  const remind = byKind.reminder_24h ?? byKind.reminder_2h;
+  if (remind) byKind.reminder = remind;
 
   // Birthday — отдельная единица, текст лежит в masters.birthday_settings.greeting_message.
   if (master.birthday_settings?.greeting_message) {

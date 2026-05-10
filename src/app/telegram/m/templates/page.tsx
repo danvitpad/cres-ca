@@ -25,8 +25,8 @@ import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 
 interface VariableSpec {
-  key: string;
-  label: string;
+  key: string;   // техническое имя (напр. service_name)
+  label: string; // русское имя (напр. Услуга) — то что мастер видит и в чипе, и в тексте {Услуга}
 }
 
 interface KindSpec {
@@ -42,16 +42,19 @@ interface KindSpec {
 
 const SPECS: KindSpec[] = [
   {
-    kind: 'reminder_24h',
-    title: 'Напоминание за 24 часа',
-    description: 'Уходит клиенту за день до визита',
+    // ОДИН шаблон напоминания. На сервере пишется и в reminder_24h, и в reminder_2h
+    // одинаковым контентом — cron берёт подходящий по времени за которое клиент
+    // попросил напомнить. Текст один и тот же.
+    kind: 'reminder',
+    title: 'Напоминание о записи',
+    description: 'Клиент сам выбирает за сколько до визита (10 мин — 24 ч)',
     icon: Bell,
-    defaultSubject: '📅 Запись на завтра',
-    defaultContent: 'Напоминаю о записи на завтра:\n{service_name} на {time}\nСтоимость: {price}\nАдрес: {address}',
+    defaultSubject: '📅 Скоро запись',
+    defaultContent: 'Напоминаю о записи:\n{Услуга} на {Время}\nСтоимость: {Стоимость}\nАдрес: {Адрес}',
     hasSubject: true,
     variables: [
       { key: 'service_name', label: 'Услуга' },
-      { key: 'time', label: 'Время визита' },
+      { key: 'time', label: 'Время' },
       { key: 'price', label: 'Стоимость' },
       { key: 'address', label: 'Адрес' },
       { key: 'master_name', label: 'Имя мастера' },
@@ -60,29 +63,12 @@ const SPECS: KindSpec[] = [
     ],
   },
   {
-    kind: 'reminder_2h',
-    title: 'Напоминание за 2 часа',
-    description: 'Уходит клиенту за 2 часа до визита',
-    icon: Clock,
-    defaultSubject: '⏰ Через 2 часа — запись',
-    defaultContent: 'Напоминаю — через 2 часа запись:\n{service_name} на {time}\nСтоимость: {price}\nАдрес: {address}',
-    hasSubject: true,
-    variables: [
-      { key: 'service_name', label: 'Услуга' },
-      { key: 'time', label: 'Время визита' },
-      { key: 'price', label: 'Стоимость' },
-      { key: 'address', label: 'Адрес' },
-      { key: 'master_name', label: 'Имя мастера' },
-      { key: 'client_name', label: 'Имя клиента' },
-    ],
-  },
-  {
     kind: 'review_request',
     title: 'Запрос отзыва',
     description: 'Уходит клиенту через 2 часа после визита',
     icon: Star,
     defaultSubject: '⭐ Оцените визит',
-    defaultContent: 'Как прошёл визит?\nУслуга: {service_name}\nМастер: {master_name}\n\nОцените, пожалуйста — это помогает другим клиентам.',
+    defaultContent: 'Как прошёл визит?\nУслуга: {Услуга}\nМастер: {Имя мастера}\n\nОцените, пожалуйста — это помогает другим клиентам.',
     hasSubject: true,
     variables: [
       { key: 'service_name', label: 'Услуга' },
@@ -96,11 +82,11 @@ const SPECS: KindSpec[] = [
     description: 'Когда клиент перестал приходить по своей привычке',
     icon: Sparkles,
     defaultSubject: '⏰ Пора записаться?',
-    defaultContent: 'Обычно интервал между визитами ~{avg} дней.\nПрошло уже {days} — пора записаться?',
+    defaultContent: 'Обычно интервал между визитами ~{Средний интервал} дней.\nПрошло уже {Дней без визита} — пора записаться?',
     hasSubject: true,
     variables: [
-      { key: 'avg', label: 'Средний интервал, дн.' },
-      { key: 'days', label: 'Дней с последнего визита' },
+      { key: 'avg', label: 'Средний интервал' },
+      { key: 'days', label: 'Дней без визита' },
       { key: 'day_name', label: 'День недели' },
       { key: 'usual_time', label: 'Обычное время' },
       { key: 'client_name', label: 'Имя клиента' },
@@ -125,7 +111,7 @@ const SPECS: KindSpec[] = [
     description: 'После 3 / 10 / 20 / 50 визитов',
     icon: Gauge,
     defaultSubject: '📊 Короткий опрос',
-    defaultContent: 'Уже {total}-й визит — спасибо за доверие!\nОцените от 0 до 10, насколько порекомендовали бы нас друзьям.',
+    defaultContent: 'Уже {Всего визитов}-й визит — спасибо за доверие!\nОцените от 0 до 10, насколько порекомендовали бы нас друзьям.',
     hasSubject: true,
     variables: [
       { key: 'total', label: 'Всего визитов' },
@@ -138,14 +124,35 @@ const SPECS: KindSpec[] = [
     description: 'Уходит клиенту в день его рождения',
     icon: Cake,
     defaultSubject: '',
-    defaultContent: '{client_name}, с днём рождения! 🎂\n{discount_text}',
+    defaultContent: '{Имя клиента}, с днём рождения! 🎂\n{Скидка}',
     hasSubject: false,
     variables: [
       { key: 'client_name', label: 'Имя клиента' },
-      { key: 'discount_text', label: 'Подарочная скидка' },
+      { key: 'discount_text', label: 'Скидка' },
     ],
   },
 ];
+
+/** Двусторонний конвертер. UI оперирует {Имя клиента}; cron-задачи и БД работают
+ *  с {client_name}. При сохранении переводим UI → key, при загрузке key → UI.
+ *  Один глобальный список (объединение всех specs) — все label'ы уникальны. */
+const ALL_VARS: VariableSpec[] = (() => {
+  const map = new Map<string, string>();
+  for (const s of SPECS) for (const v of s.variables) map.set(v.key, v.label);
+  return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+})();
+
+function toStorageFormat(text: string): string {
+  let out = text;
+  for (const v of ALL_VARS) out = out.replaceAll(`{${v.label}}`, `{${v.key}}`);
+  return out;
+}
+
+function toDisplayFormat(text: string): string {
+  let out = text;
+  for (const v of ALL_VARS) out = out.replaceAll(`{${v.key}}`, `{${v.label}}`);
+  return out;
+}
 
 interface SavedTemplate {
   subject: string | null;
@@ -278,8 +285,9 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
   onSaved: () => void;
 }) {
   const { haptic } = useTelegram();
-  const [subject, setSubject] = useState(saved?.subject ?? spec.defaultSubject);
-  const [content, setContent] = useState(saved?.content ?? spec.defaultContent);
+  // saved хранится в storage-формате (с key'ами), default уже в display-формате (с label'ами)
+  const [subject, setSubject] = useState(saved?.subject ? toDisplayFormat(saved.subject) : spec.defaultSubject);
+  const [content, setContent] = useState(saved?.content ? toDisplayFormat(saved.content) : spec.defaultContent);
   const [activeField, setActiveField] = useState<'subject' | 'content'>('content');
   const [busy, setBusy] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -287,8 +295,10 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const hasCustom = !!saved?.content;
 
-  function insertVariable(key: string) {
-    const insert = `{${key}}`;
+  function insertVariable(label: string) {
+    // Вставляем русский label — мастер видит {Имя клиента}, не {client_name}.
+    // На сервер уйдёт уже сконвертированный текст.
+    const insert = `{${label}}`;
     haptic('selection');
     if (activeField === 'subject' && spec.hasSubject) {
       const el = subjectRef.current;
@@ -337,11 +347,13 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
     if (!content.trim()) { haptic('error'); return; }
     setBusy(true);
     try {
+      // Перед отправкой переводим UI-текст ({Имя клиента}) в storage-формат
+      // ({client_name}) — cron-задачи и trigger DB подставляют именно key'и.
       await callMutate({
         action: 'save',
         kind: spec.kind,
-        subject: spec.hasSubject ? subject : null,
-        content,
+        subject: spec.hasSubject ? toStorageFormat(subject) : null,
+        content: toStorageFormat(content),
       });
       haptic('success');
       onSaved();
@@ -466,7 +478,7 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
               <button
                 key={v.key}
                 type="button"
-                onClick={() => insertVariable(v.key)}
+                onClick={() => insertVariable(v.label)}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '6px 12px', borderRadius: R.pill,

@@ -21,6 +21,11 @@ const STANDARD_KINDS = new Set([
   'nps',
 ]);
 
+// Виртуальный kind «reminder» — Mini App шлёт его как один пункт, а на сервере
+// мы зеркалим в reminder_24h и reminder_2h (cron-задачи читают эти исторические kind'ы).
+const REMINDER_VIRTUAL_KIND = 'reminder';
+const REMINDER_REAL_KINDS = ['reminder_24h', 'reminder_2h'];
+
 interface MutateBody {
   action?: 'save' | 'reset';
   kind?: string;
@@ -38,7 +43,8 @@ export async function POST(req: Request) {
   }
   const isStandard = STANDARD_KINDS.has(body.kind);
   const isBirthday = body.kind === 'birthday';
-  if (!isStandard && !isBirthday) {
+  const isReminder = body.kind === REMINDER_VIRTUAL_KIND;
+  if (!isStandard && !isBirthday && !isReminder) {
     return NextResponse.json({ error: 'unknown_kind' }, { status: 400 });
   }
 
@@ -69,33 +75,38 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // Стандартный kind — upsert в message_templates.
+    // Reminder — зеркалим в обе исторических записи (reminder_24h + reminder_2h)
+    // одинаковым текстом. Cron'ы reminders.ts читают каждую по своему расписанию.
     const subject = (body.subject ?? '').trim() || null;
-    const { data: existing } = await admin
-      .from('message_templates')
-      .select('id')
-      .eq('master_id', master.id)
-      .eq('kind', body.kind)
-      .eq('is_active', true)
-      .maybeSingle<{ id: string }>();
-    if (existing) {
-      const { error } = await admin
+    const targetKinds = isReminder ? REMINDER_REAL_KINDS : [body.kind];
+
+    for (const k of targetKinds) {
+      const { data: existing } = await admin
         .from('message_templates')
-        .update({ subject, content })
-        .eq('id', existing.id);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    } else {
-      const { error } = await admin
-        .from('message_templates')
-        .insert({
-          master_id: master.id,
-          kind: body.kind,
-          name: body.kind,
-          subject,
-          content,
-          is_active: true,
-        });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        .select('id')
+        .eq('master_id', master.id)
+        .eq('kind', k)
+        .eq('is_active', true)
+        .maybeSingle<{ id: string }>();
+      if (existing) {
+        const { error } = await admin
+          .from('message_templates')
+          .update({ subject, content })
+          .eq('id', existing.id);
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      } else {
+        const { error } = await admin
+          .from('message_templates')
+          .insert({
+            master_id: master.id,
+            kind: k,
+            name: k,
+            subject,
+            content,
+            is_active: true,
+          });
+        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      }
     }
     return NextResponse.json({ ok: true });
   }
@@ -111,11 +122,13 @@ export async function POST(req: Request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ ok: true });
     }
+    // Reminder reset — удаляем оба зеркальных kind'а.
+    const targetKinds = isReminder ? REMINDER_REAL_KINDS : [body.kind];
     const { error } = await admin
       .from('message_templates')
       .delete()
       .eq('master_id', master.id)
-      .eq('kind', body.kind);
+      .in('kind', targetKinds);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
