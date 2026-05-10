@@ -27,6 +27,7 @@ import {
   Phone as PhoneIcon,
   KeyRound,
   Cake,
+  Vibrate,
   X,
   Check,
 } from 'lucide-react';
@@ -38,7 +39,7 @@ import { mapError } from '@/lib/errors';
 import { getInitData } from '@/lib/telegram/webapp';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
-import { HapticToggle } from '@/components/miniapp/haptic-toggle';
+import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
 import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
 import { Briefcase } from 'lucide-react';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -47,6 +48,7 @@ const I18N: Record<MiniAppLang, {
   back: string;
   schedule: string; billing: string; notifications: string; language: string; help: string; feedback: string;
   themeDark: string; themeManual: string; themeAsTelegram: string;
+  hapticLabel: string; hapticHint: string;
   loggingOut: string; logout: string;
   emailLabel: string; phoneLabel: string; notSet: string;
   changePassword: string;
@@ -58,12 +60,14 @@ const I18N: Record<MiniAppLang, {
   visibilityTitle: string; visibilityHint: string;
   showPhone: string; showEmail: string; showDob: string;
   specTitle: string; specEdit: string; specEmpty: string;
+  sectionProfile: string; sectionAccount: string; sectionAppearance: string;
 }> = {
   uk: {
     back: 'Назад',
     schedule: 'Графік роботи', billing: 'Тариф та платежі', notifications: 'Сповіщення', language: 'Мова',
     help: 'Допомога', feedback: 'Зворотний зв’язок',
     themeDark: 'Темна тема', themeManual: 'Вручну', themeAsTelegram: 'Як в Telegram',
+    hapticLabel: 'Вібрація на дотик', hapticHint: 'Легкий відгук при натисканнях',
     loggingOut: 'Виходимо…', logout: 'Вийти',
     emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не вказано',
     changePassword: 'Змінити пароль',
@@ -74,16 +78,18 @@ const I18N: Record<MiniAppLang, {
     pwSaved: 'Пароль оновлено',
     emailConfirm: 'Лист з підтвердженням надіслано. Відкрий його, щоб завершити зміну email.',
     saveError: 'Не вдалось зберегти',
-    visibilityTitle: 'Що бачать клієнти на публічній сторінці',
+    visibilityTitle: 'Видимість для клієнтів',
     visibilityHint: 'Якщо тумблер вимкнений — поле сховане від клієнтів',
     showPhone: 'Показувати телефон', showEmail: 'Показувати email', showDob: 'Показувати дату народження',
     specTitle: 'Напрямок', specEdit: 'Напрямок майстра', specEmpty: 'Не вказано',
+    sectionProfile: 'Профіль', sectionAccount: 'Акаунт', sectionAppearance: 'Зовнішній вигляд',
   },
   ru: {
     back: 'Назад',
     schedule: 'График работы', billing: 'Тариф и платежи', notifications: 'Уведомления', language: 'Язык',
     help: 'Помощь', feedback: 'Обратная связь',
     themeDark: 'Тёмная тема', themeManual: 'Вручную', themeAsTelegram: 'Как в Telegram',
+    hapticLabel: 'Вибрация на тапах', hapticHint: 'Лёгкая отдача при нажатиях',
     loggingOut: 'Выходим…', logout: 'Выйти',
     emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не указан',
     changePassword: 'Сменить пароль',
@@ -94,16 +100,18 @@ const I18N: Record<MiniAppLang, {
     pwSaved: 'Пароль обновлён',
     emailConfirm: 'Письмо с подтверждением отправлено. Открой его, чтобы завершить смену email.',
     saveError: 'Не удалось сохранить',
-    visibilityTitle: 'Что видят клиенты на публичной странице',
+    visibilityTitle: 'Видимость для клиентов',
     visibilityHint: 'Если тумблер выключен — поле скрыто от клиентов',
     showPhone: 'Показывать телефон', showEmail: 'Показывать email', showDob: 'Показывать дату рождения',
     specTitle: 'Направление', specEdit: 'Направление мастера', specEmpty: 'Не указано',
+    sectionProfile: 'Профиль', sectionAccount: 'Аккаунт', sectionAppearance: 'Внешний вид',
   },
   en: {
     back: 'Back',
     schedule: 'Schedule', billing: 'Plan & billing', notifications: 'Notifications', language: 'Language',
     help: 'Help', feedback: 'Feedback',
     themeDark: 'Dark theme', themeManual: 'Manual', themeAsTelegram: 'Match Telegram',
+    hapticLabel: 'Tap vibration', hapticHint: 'Light haptic response on taps',
     loggingOut: 'Signing out…', logout: 'Sign out',
     emailLabel: 'Email', phoneLabel: 'Phone', notSet: 'Not set',
     changePassword: 'Change password',
@@ -114,10 +122,11 @@ const I18N: Record<MiniAppLang, {
     pwSaved: 'Password updated',
     emailConfirm: 'Confirmation email sent. Open it to finish changing your email.',
     saveError: 'Failed to save',
-    visibilityTitle: 'What clients see on your public page',
+    visibilityTitle: 'Visibility to clients',
     visibilityHint: 'Toggle off to hide a field from clients',
     showPhone: 'Show phone', showEmail: 'Show email', showDob: 'Show birthday',
     specTitle: 'Direction', specEdit: 'Master direction', specEmpty: 'Not set',
+    sectionProfile: 'Profile', sectionAccount: 'Account', sectionAppearance: 'Appearance',
   },
 };
 
@@ -143,6 +152,7 @@ export default function MasterMiniAppSettings() {
   const router = useRouter();
   const { userId, clearAuth } = useAuthStore();
   const { theme, override, setOverride } = useMiniAppTheme();
+  const { enabled: hapticEnabled, loaded: hapticLoaded, setEnabled: setHapticEnabled } = useHapticPrefs();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [loggingOut, setLoggingOut] = useState(false);
@@ -415,6 +425,15 @@ export default function MasterMiniAppSettings() {
     margin: '0 16px',
   };
 
+  const sectionLabelStyle: React.CSSProperties = {
+    ...TYPE.micro,
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    color: T.textTertiary,
+    margin: '4px 4px 8px',
+  };
+
   return (
     <div
       style={{
@@ -423,7 +442,7 @@ export default function MasterMiniAppSettings() {
         color: T.text,
       }}
     >
-      <div style={{ padding: `16px ${PAGE_PADDING_X}px 32px`, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ padding: `16px ${PAGE_PADDING_X}px 32px`, display: 'flex', flexDirection: 'column', gap: 20 }}>
         {/* Back button */}
         <button
           type="button"
@@ -446,70 +465,66 @@ export default function MasterMiniAppSettings() {
           <ArrowLeft size={18} strokeWidth={2.4} />
         </button>
 
-        {/* Контактные данные — Email + Телефон + Сменить пароль (паритет с клиентом) */}
-        <div style={cardStyle}>
-          <button type="button" onClick={openContactEdit} style={rowStyle}>
-            <div style={iconBox}><Mail size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
-              <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-          <div style={divider} />
-          <button type="button" onClick={openContactEdit} style={rowStyle}>
-            <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
-              <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-          <div style={divider} />
-          <button
-            type="button"
-            onClick={() => {
-              setPwNew(''); setPwConfirm('');
-              setPwError(null); setPwSuccess(false);
-              setPwOpen(true);
-              haptic('light');
-            }}
-            style={rowStyle}
-          >
-            <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
-            <div style={{ flex: 1 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
+        {/* ─── ПРОФИЛЬ — личные данные мастера ─── */}
+        <div>
+          <p style={sectionLabelStyle}>{t.sectionProfile}</p>
+          <div style={cardStyle}>
+            <button type="button" onClick={openContactEdit} style={rowStyle}>
+              <div style={iconBox}><Mail size={16} color={T.text} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
+                <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+            <div style={divider} />
+            <button type="button" onClick={openContactEdit} style={rowStyle}>
+              <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
+                <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+            <div style={divider} />
+            <button
+              type="button"
+              onClick={() => {
+                setPwNew(''); setPwConfirm('');
+                setPwError(null); setPwSuccess(false);
+                setPwOpen(true);
+                haptic('light');
+              }}
+              style={rowStyle}
+            >
+              <div style={iconBox}><KeyRound size={16} color={T.text} /></div>
+              <div style={{ flex: 1 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+            <div style={divider} />
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setSpecSheetOpen(true); }}
+              style={rowStyle}
+            >
+              <div style={iconBox}><Briefcase size={16} color={T.text} /></div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.specTitle}</p>
+                <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {specialization || t.specEmpty}
+                </p>
+              </div>
+              <ChevronRight size={16} color={T.textTertiary} />
+            </button>
+          </div>
         </div>
 
-        {/* Направление мастера (specialization) — выбирается при регистрации,
-            меняется тут, а не на публичной странице. */}
-        <div style={cardStyle}>
-          <button
-            type="button"
-            onClick={() => { haptic('light'); setSpecSheetOpen(true); }}
-            style={rowStyle}
-          >
-            <div style={iconBox}><Briefcase size={16} color={T.text} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.specTitle}</p>
-              <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {specialization || t.specEmpty}
-              </p>
-            </div>
-            <ChevronRight size={16} color={T.textTertiary} />
-          </button>
-        </div>
-
-        {/* Видимость на публичной странице — рендерится только после загрузки
-            из БД, иначе flash «выключено → включено» при первом открытии. */}
+        {/* ─── ВИДИМОСТЬ ДЛЯ КЛИЕНТОВ — что показывать на публичной странице ─── */}
         {phonePublic !== null && emailPublic !== null && dobPublic !== null && (
           <div>
-            <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: T.textTertiary, margin: `0 4px 6px` }}>
-              {t.visibilityTitle}
-            </p>
+            <p style={sectionLabelStyle}>{t.visibilityTitle}</p>
             <div style={cardStyle}>
               <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} style={rowStyle}>
                 <div style={iconBox}><PhoneIcon size={16} color={T.text} /></div>
@@ -535,118 +550,75 @@ export default function MasterMiniAppSettings() {
           </div>
         )}
 
-        {/* Master settings list — то что не получило отдельного слота в bottom nav.
-            Профиль / Услуги / Голос убраны:
-              • Профиль — кружок справа сверху на любом табе.
-              • Услуги — отдельный таб.
-              • Голос — только TG-бот. */}
-        <div
-          style={{
-            background: T.surface,
-            borderRadius: R.lg,
-            border: `1px solid ${T.borderSubtle}`,
-            boxShadow: SHADOW.card,
-            overflow: 'hidden',
-          }}
-        >
-          {ITEMS.map((item, idx) => {
-            const Icon = item.Icon;
-            return (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={() => haptic('light')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '14px 16px',
-                  borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
-                  textDecoration: 'none',
-                  color: T.text,
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: T.accentSoft,
-                    color: T.accent,
-                    flexShrink: 0,
-                  }}
+        {/* ─── АККАУНТ — уведомления + подписка ─── */}
+        <div>
+          <p style={sectionLabelStyle}>{t.sectionAccount}</p>
+          <div style={cardStyle}>
+            {ITEMS.map((item, idx) => {
+              const Icon = item.Icon;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  onClick={() => haptic('light')}
+                  style={{ ...rowStyle, borderTop: idx === 0 ? 'none' : undefined }}
                 >
-                  <Icon size={18} strokeWidth={2} />
-                </span>
-                <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: T.text }}>
-                  {t[item.labelKey]}
-                </span>
-                <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} />
-              </Link>
-            );
-          })}
+                  <div style={iconBox}><Icon size={16} color={T.text} /></div>
+                  <span style={{ flex: 1, ...TYPE.bodyStrong, color: T.text }}>
+                    {t[item.labelKey]}
+                  </span>
+                  <ChevronRight size={16} color={T.textTertiary} strokeWidth={2} />
+                </Link>
+              );
+            }).reduce<React.ReactNode[]>((acc, el, i) => {
+              if (i > 0) acc.push(<div key={`d-${i}`} style={divider} />);
+              acc.push(el);
+              return acc;
+            }, [])}
+          </div>
         </div>
 
-        {/* Theme toggle */}
-        <div
-          style={{
-            background: T.surface,
-            borderRadius: R.lg,
-            border: `1px solid ${T.borderSubtle}`,
-            boxShadow: SHADOW.card,
-            overflow: 'hidden',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              padding: '14px 16px',
-              background: 'transparent',
-              border: 'none',
-              width: '100%',
-              textAlign: 'left',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              color: T.text,
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: T.accentSoft,
-                color: T.accent,
-                flexShrink: 0,
-              }}
+        {/* ─── ВНЕШНИЙ ВИД — тема + вибрация ─── */}
+        <div>
+          <p style={sectionLabelStyle}>{t.sectionAppearance}</p>
+          <div style={cardStyle}>
+            <button
+              type="button"
+              onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
+              style={rowStyle}
             >
-              <Moon size={18} strokeWidth={2} />
-            </span>
-            <span style={{ flex: 1 }}>
-              <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: T.text }}>{t.themeDark}</span>
-              <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 1 }}>
-                {override ? t.themeManual : t.themeAsTelegram}
+              <div style={iconBox}><Moon size={16} color={T.text} /></div>
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', ...TYPE.bodyStrong, color: T.text }}>{t.themeDark}</span>
+                <span style={{ display: 'block', ...TYPE.caption, marginTop: 1 }}>
+                  {override ? t.themeManual : t.themeAsTelegram}
+                </span>
               </span>
-            </span>
-            <MiniToggle on={theme === 'dark'} />
-          </button>
+              <MiniToggle on={theme === 'dark'} />
+            </button>
+            <div style={divider} />
+            <button
+              type="button"
+              onClick={() => {
+                if (!hapticLoaded) return;
+                const next = !hapticEnabled;
+                setHapticEnabled(next);
+                if (next) haptic('light');
+              }}
+              disabled={!hapticLoaded}
+              style={rowStyle}
+            >
+              <div style={iconBox}><Vibrate size={16} color={T.text} /></div>
+              <span style={{ flex: 1 }}>
+                <span style={{ display: 'block', ...TYPE.bodyStrong, color: T.text }}>{t.hapticLabel}</span>
+                <span style={{ display: 'block', ...TYPE.caption, marginTop: 1 }}>{t.hapticHint}</span>
+              </span>
+              <MiniToggle on={hapticEnabled} />
+            </button>
+          </div>
         </div>
 
-        {/* Haptic toggle (Phase 4 — Mini App premium speed) */}
-        <HapticToggle lang={lang} />
-
-        {/* Logout */}
+        {/* ─── ВЫХОД — отдельной кнопкой ─── */}
         <button
           type="button"
           onClick={logout}
@@ -658,6 +630,7 @@ export default function MasterMiniAppSettings() {
             gap: 8,
             width: '100%',
             padding: '14px 16px',
+            marginTop: 4,
             borderRadius: R.lg,
             border: `1px solid ${T.dangerSoft}`,
             background: T.dangerSoft,
