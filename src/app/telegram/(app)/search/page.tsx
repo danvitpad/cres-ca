@@ -217,7 +217,8 @@ export default function MiniAppSearchPage() {
   const groupBookingDate = sp.get('date');
 
   const [view, setView] = useState<'list' | 'map'>(sp.get('view') === 'map' ? 'map' : 'list');
-  const [query, setQuery] = useState('');
+  // Pre-fill query из URL (например когда тапнули категорию на Главной → /telegram/search?q=Маникюр)
+  const [query, setQuery] = useState(() => sp.get('q') ?? '');
   const [category, setCategory] = useState<CategoryKey>('all');
   const [minRating, setMinRating] = useState<0 | 4 | 4.5>(0);
   const [maxPrice, setMaxPrice] = useState<number | null>(null);
@@ -739,12 +740,20 @@ export default function MiniAppSearchPage() {
             <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
               <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
             </div>
-          ) : total === 0 ? (
+          ) : total === 0 && query.trim().length > 0 ? (
+            // Empty state ПОСЛЕ ввода запроса — нет совпадений
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '64px 0' }}>
               <Search size={36} color={T.textTertiary} style={{ opacity: 0.4 }} />
               <p style={{ ...TYPE.bodyStrong, color: T.text, marginTop: 12 }}>Ничего не найдено</p>
               <p style={{ ...TYPE.caption, marginTop: 4 }}>Попробуйте изменить запрос или фильтры</p>
             </div>
+          ) : total === 0 ? (
+            // Landing state — пусто на старте, показываем категории + AI prompt
+            <SearchLanding
+              lang={lang}
+              onCategory={(label) => { setQuery(label); haptic('selection'); }}
+              onAi={() => { setAiOpen(true); haptic('light'); }}
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <AnimatePresence mode="popLayout">
@@ -1191,6 +1200,102 @@ export default function MiniAppSearchPage() {
         onClose={() => setAiOpen(false)}
         initialPrompt={aiPrompt}
       />
+    </div>
+  );
+}
+
+/** Лендинг поиска — то что видит клиент когда ничего не введено и нет фильтров.
+ *  Категории-чипы по конкретным услугам (тап → подставляет в строку поиска),
+ *  плюс крупная кнопка AI-помощника. Без этого экран показывал «Ничего не
+ *  найдено» сразу при открытии — выглядело как баг. */
+function SearchLanding({ lang, onCategory, onAi }: {
+  lang: Lang;
+  onCategory: (label: string) => void;
+  onAi: () => void;
+}) {
+  const heading = lang === 'uk'
+    ? 'З чого почати'
+    : lang === 'en' ? 'Where to start' : 'С чего начать';
+  const aiTitle = lang === 'uk'
+    ? 'Запитай AI'
+    : lang === 'en' ? 'Ask AI' : 'Спроси AI';
+  const aiDesc = lang === 'uk'
+    ? 'Опиши що шукаєш — підкажемо майстра'
+    : lang === 'en' ? 'Describe what you need — we’ll find a master' : 'Опиши что ищешь — подберём мастера';
+  const popular = lang === 'uk' ? 'Популярні запити' : lang === 'en' ? 'Popular searches' : 'Популярные запросы';
+
+  // Локализованные названия частых услуг. Тап → подставит в search bar.
+  const QUICK: Record<Lang, string[]> = {
+    uk: ['Манікюр', 'Стрижка', 'Масаж', 'Брови', 'Стоматолог', 'Косметолог', 'Тату', 'Ветеринар'],
+    ru: ['Маникюр', 'Стрижка', 'Массаж', 'Брови', 'Стоматолог', 'Косметолог', 'Тату', 'Ветеринар'],
+    en: ['Manicure', 'Haircut', 'Massage', 'Brows', 'Dentist', 'Skincare', 'Tattoo', 'Veterinary'],
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '12px 0 32px' }}>
+      <h2 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{heading}</h2>
+
+      {/* AI prompt card */}
+      <button
+        type="button"
+        onClick={onAi}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12,
+          padding: 14, borderRadius: R.lg,
+          border: `1px solid ${T.borderSubtle}`,
+          background: T.surface,
+          boxShadow: SHADOW.card,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          textAlign: 'left',
+          width: '100%',
+        }}
+      >
+        <div style={{
+          width: 40, height: 40, borderRadius: '50%',
+          background: T.accentSoft, color: T.accent,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Bot size={20} strokeWidth={2.2} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{aiTitle}</p>
+          <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '2px 0 0' }}>{aiDesc}</p>
+        </div>
+        <ChevronRight size={16} color={T.textTertiary} />
+      </button>
+
+      {/* Quick category chips */}
+      <div>
+        <p style={{
+          ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.08em', color: T.textTertiary,
+          margin: '0 4px 10px',
+        }}>{popular}</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {QUICK[lang].map((label) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => onCategory(label)}
+              style={{
+                padding: '10px 16px',
+                borderRadius: R.pill,
+                border: `1px solid ${T.borderSubtle}`,
+                background: T.surface,
+                color: T.text,
+                ...TYPE.bodyStrong,
+                fontWeight: 500,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: SHADOW.card,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
