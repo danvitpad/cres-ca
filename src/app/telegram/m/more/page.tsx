@@ -22,6 +22,7 @@ import {
   Package,
   Truck,
   MessageSquare,
+  Clock,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -53,6 +54,7 @@ const I18N: Record<MiniAppLang, {
   inventory: string; inventoryHint: string;
   suppliers: string; suppliersHint: string;
   templates: string; templatesHint: string;
+  schedule: string; scheduleHint: string;
 }> = {
   uk: {
     title: 'Ще',
@@ -66,6 +68,7 @@ const I18N: Record<MiniAppLang, {
     inventory: 'Склад', inventoryHint: 'Матеріали, залишки, поріг',
     suppliers: 'Постачальники', suppliersHint: 'Контакти, замовлення',
     templates: 'Шаблони', templatesHint: 'Тексти нагадувань, відгуків, ДР',
+    schedule: 'Графік роботи', scheduleHint: 'Дні та робочі години',
   },
   ru: {
     title: 'Ещё',
@@ -79,6 +82,7 @@ const I18N: Record<MiniAppLang, {
     inventory: 'Склад', inventoryHint: 'Материалы, остатки, порог',
     suppliers: 'Поставщики', suppliersHint: 'Контакты, заказы',
     templates: 'Шаблоны', templatesHint: 'Тексты напоминаний, отзывов, ДР',
+    schedule: 'График работы', scheduleHint: 'Дни и рабочие часы',
   },
   en: {
     title: 'More',
@@ -92,6 +96,7 @@ const I18N: Record<MiniAppLang, {
     inventory: 'Inventory', inventoryHint: 'Materials, stock, low threshold',
     suppliers: 'Suppliers', suppliersHint: 'Contacts, orders',
     templates: 'Templates', templatesHint: 'Reminder, review, birthday texts',
+    schedule: 'Schedule', scheduleHint: 'Days and working hours',
   },
 };
 
@@ -134,6 +139,7 @@ export default function MasterMiniAppMore() {
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
+    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint' },
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
   ];
 
