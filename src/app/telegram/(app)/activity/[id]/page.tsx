@@ -60,7 +60,7 @@ interface DetailRow {
 const STATUS_COLOR: Record<string, string> = {
   booked: 'bg-sky-500/15 text-sky-600 border-sky-500/30',
   confirmed: 'bg-emerald-500/15 text-emerald-600 border-emerald-300',
-  in_progress: 'bg-violet-100 text-violet-600 border-violet-300',
+  in_progress: 'bg-[var(--m-accent-soft)] text-[var(--m-accent)] border-[var(--m-accent)]/30',
   completed: 'bg-emerald-500/15 text-emerald-600 border-emerald-300',
   cancelled: 'bg-rose-500/15 text-rose-600 border-rose-300',
   cancelled_by_client: 'bg-rose-500/15 text-rose-600 border-rose-300',
@@ -391,7 +391,7 @@ export default function MiniAppAppointmentDetail() {
             className="flex w-full items-center gap-3 rounded-2xl bg-white/5 p-3 text-left active:scale-[0.98] transition-transform"
             style={{ minHeight: 56 }}
           >
-            <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-sm font-bold">
+            <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--m-accent)] text-[var(--m-accent-text)] text-sm font-bold">
               {masterAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={masterAvatar} alt="" className="size-full object-cover" />
@@ -440,7 +440,7 @@ export default function MiniAppAppointmentDetail() {
       {row.master?.address && (
         <div className="rounded-2xl border border-neutral-200 bg-white/5 p-4">
           <div className="flex items-start gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[var(--m-accent-soft)] text-[var(--m-accent)]">
               <MapPin className="size-4" />
             </div>
             <div className="min-w-0 flex-1">

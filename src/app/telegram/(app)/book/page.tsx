@@ -1234,7 +1234,7 @@ export default function MiniAppBookPage() {
                           border: `1px solid ${T.borderSubtle}`,
                         }}
                       >
-                        {isSelected && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
+                        {isSelected && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full" style={{ background: T.accent }} />}
                         {/* Checkmark circle */}
                         <div className="mt-0.5 shrink-0">
                           <motion.div
@@ -1524,8 +1524,8 @@ export default function MiniAppBookPage() {
                           {nextAvailableDate && (
                             <button
                               onClick={() => { haptic('light'); handleSelectDate(nextAvailableDate); }}
-                              className="mt-3 rounded-xl px-4 py-2 text-[12px] font-semibold text-violet-600 transition-colors"
-                              style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}
+                              className="mt-3 rounded-xl px-4 py-2 text-[12px] font-semibold transition-colors"
+                              style={{ color: T.accent, border: `1px solid ${T.borderSubtle}`, background: T.surface }}
                             >
                               {t.nearest} {nextAvailableDate.getDate()} {MONTH_NAMES_GENITIVE[nextAvailableDate.getMonth()]}
                             </button>
@@ -1731,7 +1731,7 @@ export default function MiniAppBookPage() {
                   <div className="space-y-3 p-5">
                     <div className="flex items-center gap-3">
                       <div className="flex size-9 items-center justify-center rounded-xl" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
-                        <CalendarIcon className="size-4 text-violet-600" />
+                        <CalendarIcon className="size-4" style={{ color: T.accent }} />
                       </div>
                       <div>
                         <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: T.textTertiary }}>
@@ -1745,7 +1745,7 @@ export default function MiniAppBookPage() {
 
                     <div className="flex items-center gap-3">
                       <div className="flex size-9 items-center justify-center rounded-xl" style={{ border: `1px solid ${T.borderSubtle}`, background: T.surface }}>
-                        <Clock className="size-4 text-violet-600" />
+                        <Clock className="size-4" style={{ color: T.accent }} />
                       </div>
                       <div>
                         <p className="text-[11px] font-medium uppercase tracking-wider" style={{ color: T.textTertiary }}>

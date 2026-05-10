@@ -143,11 +143,13 @@ const NOTIF_ICONS: Record<string, typeof Bell> = {
   added_to_contacts: UserCheck,
 };
 
+// Все «accent» иконки уведомлений — фирменный teal CRES-CA. Зелёный
+// (mutual_follow) оставляем как success-семантика.
 const NOTIF_ICON_COLORS: Record<string, string> = {
-  new_follower: 'text-blue-600',
+  new_follower: 'text-[var(--m-accent)]',
   mutual_follow: 'text-emerald-600',
-  salon_added_you: 'text-violet-600',
-  added_to_contacts: 'text-violet-600',
+  salon_added_you: 'text-[var(--m-accent)]',
+  added_to_contacts: 'text-[var(--m-accent)]',
 };
 
 export default function ClientMiniAppNotifications() {
@@ -296,7 +298,7 @@ export default function ClientMiniAppNotifications() {
                 {g.items.map((n) => {
                   const notifType = n.data?.type ?? '';
                   const Icon = NOTIF_ICONS[notifType] ?? Bell;
-                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-neutral-400' : 'text-violet-600');
+                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-neutral-400' : 'text-[var(--m-accent)]');
                   const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
                   const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
                   const followState = followerProfileId ? followStates[followerProfileId] : undefined;
@@ -313,7 +315,7 @@ export default function ClientMiniAppNotifications() {
                         }}
                         className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 pl-5 text-left active:bg-neutral-50 transition-colors"
                       >
-                        {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-violet-500" />}
+                        {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[var(--m-accent)]" />}
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white">
                           <Icon className={`size-4 ${iconColor}`} />
                         </div>

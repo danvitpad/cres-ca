@@ -315,10 +315,10 @@ export default function MiniAppContactsPage() {
             <>
               {/* Nearest free slots among followed masters */}
               {!slotsLoading && nextSlots.length > 0 && (
-                <div className="mb-4 rounded-2xl border border-neutral-200 bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 p-3">
+                <div className="mb-4 rounded-2xl border border-[var(--m-border-subtle)] bg-[var(--m-accent-soft)] p-3">
                   <div className="mb-2 flex items-center gap-1.5 px-1">
-                    <Clock className="size-3.5 text-violet-600" />
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-violet-700/80">
+                    <Clock className="size-3.5 text-[var(--m-accent)]" />
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--m-accent)]">
                       {t.nearestSlots}
                     </p>
                   </div>

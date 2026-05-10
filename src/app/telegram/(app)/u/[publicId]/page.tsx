@@ -140,7 +140,7 @@ export default function MiniAppPublicProfilePage() {
 
       {/* Avatar + counters */}
       <div className="flex items-start gap-6 px-5">
-        <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-3xl font-bold">
+        <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--m-accent)] text-[var(--m-accent-text)] text-3xl font-bold">
           {profile.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={profile.avatar_url} alt="" className="size-full object-cover" />
@@ -165,7 +165,7 @@ export default function MiniAppPublicProfilePage() {
         )}
         {profile.bio && <p className="text-[13px] leading-relaxed text-neutral-700 whitespace-pre-wrap">{profile.bio}</p>}
         {profile.role === 'master' && (
-          <div className="inline-flex items-center gap-1 rounded-full border border-violet-400/30 bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+          <div className="inline-flex items-center gap-1 rounded-full border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] px-2 py-0.5 text-[10px] font-semibold text-[var(--m-accent)]">
             <MapPin className="size-2.5" /> Мастер CRES-CA
           </div>
         )}

@@ -613,7 +613,7 @@ export default function MiniAppMasterDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-rose-400" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0d9488] via-[#14b8a6] to-[#5eead4]" />
         )}
 
         {/* Top action row */}
@@ -649,7 +649,7 @@ export default function MiniAppMasterDetailPage() {
         className="relative z-10 -mt-12 px-5"
       >
         {/* Avatar — round, centered above name, ring matches page bg */}
-        <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-rose-500 text-3xl font-bold ring-4 ring-white shadow-xl">
+        <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--m-accent)] text-[var(--m-accent-text)] text-3xl font-bold ring-4 ring-white shadow-xl">
           {master.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={master.avatar_url} alt={name} className="size-full object-cover" />
@@ -1162,7 +1162,7 @@ export default function MiniAppMasterDetailPage() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${master.latitude},${master.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-violet-400 active:text-violet-600 transition-colors"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--m-accent)] active:text-[var(--m-accent-hover)] transition-colors"
                       onClick={() => haptic('light')}
                     >
                       Проложить маршрут
