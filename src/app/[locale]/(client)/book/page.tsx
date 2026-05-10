@@ -963,7 +963,9 @@ export default function BookPage() {
               {preselectedMasterId && selectedDate && (
                 <WaitlistButton
                   masterId={preselectedMasterId}
-                  desiredDate={selectedDate.toISOString().split('T')[0]}
+                  masterName={master?.display_name ?? master?.profile?.full_name ?? null}
+                  serviceId={selectedService?.id ?? null}
+                  serviceName={selectedService?.name ?? null}
                 />
               )}
             </div>

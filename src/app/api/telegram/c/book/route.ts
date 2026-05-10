@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     partner_ref_master_id,
     group_booking_id: incomingGroupId,
     gift_cert_code,
+    from_waitlist,
   } = body as {
     initData?: string;
     master_id?: string;
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
     partner_ref_master_id?: string;
     group_booking_id?: string;
     gift_cert_code?: string;
+    from_waitlist?: string;  // ID waitlist-record если клиент пришёл из «Слот відкрився» уведомления
   };
 
   if (!initData || !master_id || !Array.isArray(appointments) || appointments.length === 0) {
@@ -187,6 +189,23 @@ export async function POST(request: Request) {
     if (cancelErr) console.error('[book] cancel old failed:', cancelErr.message);
   }
 
+  // 3b. Если клиент пришёл из «🟢 Слот відкрився» уведомления — закрепить
+  //     новый apt за waitlist-record. Cron больше не откатит резерв (т.к.
+  //     matched_appointment_id теперь поинтит на booked apt).
+  let waitlistMatched = false;
+  if (from_waitlist) {
+    const newAptId = (inserted as Array<{ id: string }>)[0]?.id;
+    if (newAptId) {
+      const { error: wlErr } = await admin
+        .from('waitlist')
+        .update({ matched_appointment_id: newAptId, reserved_until: null })
+        .eq('id', from_waitlist)
+        .eq('client_profile_id', profile.id)  // защита: только своя waitlist-запись
+        .eq('status', 'matched');
+      if (!wlErr) waitlistMatched = true;
+    }
+  }
+
   // 4. Notify master — direct TG (bypass daily cron) + in_app record
   const { data: master } = await admin
     .from('masters')
@@ -196,7 +215,9 @@ export async function POST(request: Request) {
   const masterProfileId = master?.profile_id;
   const masterTg = (master as { profile?: { telegram_id?: number | null } | null } | null)?.profile?.telegram_id;
   const isReschedule = !!reschedule_id;
-  const title = isReschedule ? '🔄 Запись перенесена' : '✨ Новая запись';
+  const title = waitlistMatched
+    ? '🟢 Запис із листа очікування'
+    : (isReschedule ? '🔄 Запись перенесена' : '✨ Новая запись');
   const bodyText = `${service_names ?? 'Услуга'} — ${date_formatted ?? ''} в ${selected_time ?? ''}`;
 
   const { sendMessage } = await import('@/lib/telegram/bot');
@@ -204,9 +225,11 @@ export async function POST(request: Request) {
   if (masterTg) {
     try {
       const clientName = profile.full_name ?? 'Клиент';
-      const heading = isReschedule
-        ? `<b>🔄 Запись перенесена клиентом</b>`
-        : `<b>✨ Новая запись</b>`;
+      const heading = waitlistMatched
+        ? `<b>🟢 Запис із листа очікування</b>\n<i>Клієнт давно чекав на твоє вікно</i>`
+        : (isReschedule
+          ? `<b>🔄 Запись перенесена клиентом</b>`
+          : `<b>✨ Новая запись</b>`);
       await sendMessage(
         masterTg as unknown as number,
         `${heading}\n\nКлиент: ${clientName}\nУслуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nВремя: ${selected_time ?? '—'}`,

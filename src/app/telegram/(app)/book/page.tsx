@@ -423,11 +423,17 @@ export default function MiniAppBookPage() {
   const { haptic } = useTelegram();
   const { userId } = useAuthStore();
 
-  const masterId = searchParams.get('master_id');
-  const preselectedServiceId = searchParams.get('service_id');
+  // Accept both `master_id`/`master` and `service_id`/`service` for compatibility
+  // with TG bot deep-links (waitlist match URL uses short `master=` / `service=`).
+  const masterId = searchParams.get('master_id') ?? searchParams.get('master');
+  const preselectedServiceId = searchParams.get('service_id') ?? searchParams.get('service');
   const rescheduleId = searchParams.get('reschedule');
   const incomingGroupBookingId = searchParams.get('group_booking_id');
   const incomingGroupDate = searchParams.get('date');
+  // ID waitlist-record когда клиент пришёл из «🟢 Слот відкрився» уведомления.
+  // Передаётся в /api/telegram/c/book — закрепит новый apt за waitlist-row +
+  // мастер увидит «Запис із листа очікування» в TG-уведомлении.
+  const fromWaitlist = searchParams.get('from_waitlist');
 
   /* ── State ── */
   const [step, setStep] = useState<Step>('services');
@@ -902,6 +908,7 @@ export default function MiniAppBookPage() {
         partner_ref_master_id: partnerRef ?? undefined,
         gift_cert_code: giftCertDiscount ? giftCertCode.trim().toUpperCase() : undefined,
         group_booking_id: incomingGroupBookingId ?? undefined,
+        from_waitlist: fromWaitlist ?? undefined,
       }),
     });
     if (!res.ok) {

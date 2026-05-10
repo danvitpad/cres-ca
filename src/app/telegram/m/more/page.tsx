@@ -23,6 +23,7 @@ import {
   Truck,
   MessageSquare,
   Clock,
+  Hourglass,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -55,6 +56,7 @@ const I18N: Record<MiniAppLang, {
   suppliers: string; suppliersHint: string;
   templates: string; templatesHint: string;
   schedule: string; scheduleHint: string;
+  waitlist: string; waitlistHint: string;
 }> = {
   uk: {
     title: 'Ще',
@@ -69,6 +71,7 @@ const I18N: Record<MiniAppLang, {
     suppliers: 'Постачальники', suppliersHint: 'Контакти, замовлення',
     templates: 'Шаблони', templatesHint: 'Тексти нагадувань, відгуків, ДР',
     schedule: 'Графік роботи', scheduleHint: 'Дні та робочі години',
+    waitlist: 'Лист очікування', waitlistHint: 'Клієнти що чекають твоє вікно',
   },
   ru: {
     title: 'Ещё',
@@ -83,6 +86,7 @@ const I18N: Record<MiniAppLang, {
     suppliers: 'Поставщики', suppliersHint: 'Контакты, заказы',
     templates: 'Шаблоны', templatesHint: 'Тексты напоминаний, отзывов, ДР',
     schedule: 'График работы', scheduleHint: 'Дни и рабочие часы',
+    waitlist: 'Лист ожидания', waitlistHint: 'Клиенты что ждут твоё окошко',
   },
   en: {
     title: 'More',
@@ -97,6 +101,7 @@ const I18N: Record<MiniAppLang, {
     suppliers: 'Suppliers', suppliersHint: 'Contacts, orders',
     templates: 'Templates', templatesHint: 'Reminder, review, birthday texts',
     schedule: 'Schedule', scheduleHint: 'Days and working hours',
+    waitlist: 'Waitlist', waitlistHint: 'Clients waiting for your slot',
   },
 };
 
@@ -136,6 +141,7 @@ export default function MasterMiniAppMore() {
     { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint' },
     { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint' },
     { key: 'queue', href: '/telegram/m/queue', icon: UserCheck, labelKey: 'queue', hintKey: 'queueHint' },
+    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint' },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },

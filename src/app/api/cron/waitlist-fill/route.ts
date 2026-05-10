@@ -1,11 +1,19 @@
 /** --- YAML
- * name: Waitlist Fill Cron
- * description: Runs every 5 minutes via Supabase pg_cron + cron-job.org redundancy.
- *              Finds appointments cancelled in the last 10 minutes, matches waiting
- *              clients in waitlist for the same master + service, and sends a
- *              Telegram push with a direct booking link.
- *              Idempotent: skips waitlist entries with notified_at already set.
+ * name: Waitlist Fill / Timeout Cron
+ * description: Каждые 5 минут (Supabase pg_cron + cron-job.org redundancy):
+ *              1) Откатывает истёкшие резервы — waitlist.status='matched' с
+ *                 reserved_until < now() → проверяем не успел ли клиент
+ *                 забронировать (matched_appointment_id поинтит на
+ *                 booked/confirmed apt) → если нет, возвращаем status='waiting',
+ *                 чистим reserved_until + notified_at.
+ *              2) Для каждого освобождённого waitlist-record сразу зовём RPC
+ *                 _waitlist_try_match для того же cancelled-apt → следующий
+ *                 в очереди получает резерв.
+ *              Сам матчинг — на стороне БД (helper _waitlist_try_match), здесь
+ *              мы только триггерим повторный матчинг после истечения.
+ *              Идемпотентен.
  * created: 2026-05-09
+ * updated: 2026-05-10
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -21,6 +29,20 @@ function admin() {
   );
 }
 
+interface ExpiredEntry {
+  id: string;
+  master_id: string;
+  matched_appointment_id: string | null;
+}
+
+interface AppointmentRow {
+  id: string;
+  status: string;
+  master_id: string;
+  service_id: string | null;
+  starts_at: string;
+}
+
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization');
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
@@ -28,76 +50,96 @@ export async function GET(req: Request) {
   }
 
   const adm = admin();
-  const windowStart = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-  const now = new Date().toISOString();
+  const nowIso = new Date().toISOString();
 
-  // Find appointments cancelled in the last 10 minutes that are in the future
-  const { data: cancelled } = await adm
-    .from('appointments')
-    .select('id, master_id, service_id, starts_at')
-    .in('status', ['cancelled_by_client', 'cancelled'])
-    .gte('updated_at', windowStart)
-    .gt('starts_at', now);
+  // ---------------------------------------------------------------------------
+  // 1. Найти истёкшие резервы
+  // ---------------------------------------------------------------------------
+  const { data: expired } = await adm
+    .from('waitlist')
+    .select('id, master_id, matched_appointment_id')
+    .eq('status', 'matched')
+    .lt('reserved_until', nowIso) as { data: ExpiredEntry[] | null };
 
-  if (!cancelled?.length) {
-    return NextResponse.json({ ok: true, notified: 0 });
+  if (!expired?.length) {
+    return NextResponse.json({ ok: true, releasedReservations: 0, rematched: 0 });
   }
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  let notified = 0;
+  // Подгружаем статусы matched_appointment_id чтобы понять — успел ли клиент
+  // забронировать. Если apt в статусе booked/confirmed/completed — успел;
+  // если в cancelled* — НЕ успел, slot всё ещё открыт.
+  const aptIds = expired
+    .map((e) => e.matched_appointment_id)
+    .filter((x): x is string => Boolean(x));
 
-  for (const apt of cancelled) {
-    // Find waiting clients for this master + matching service (or any service)
-    const { data: entries } = await adm
-      .from('waitlist')
-      .select('id, client_profile_id, service_id, profiles:client_profile_id(telegram_id)')
-      .eq('master_id', apt.master_id)
-      .eq('status', 'waiting')
-      .is('notified_at', null)
-      .or(`service_id.eq.${apt.service_id},service_id.is.null`)
-      .order('created_at', { ascending: true })
-      .limit(3);
+  const { data: apts } = aptIds.length
+    ? await adm
+        .from('appointments')
+        .select('id, status, master_id, service_id, starts_at')
+        .in('id', aptIds) as { data: AppointmentRow[] | null }
+    : { data: [] };
 
-    if (!entries?.length) continue;
+  const apptById = new Map<string, AppointmentRow>(
+    (apts ?? []).map((a) => [a.id, a]),
+  );
 
-    for (const entry of entries as unknown as Array<{
-      id: string;
-      client_profile_id: string;
-      service_id: string | null;
-      profiles: { telegram_id: number | null } | null;
-    }>) {
-      const tgId = entry.profiles?.telegram_id;
+  // ---------------------------------------------------------------------------
+  // 2. Для каждого истёкшего: освободить + попытаться передать следующему
+  // ---------------------------------------------------------------------------
+  const toRelease: string[] = [];
+  const slotsToRematch: AppointmentRow[] = [];
 
-      if (tgId && botToken) {
-        const bookUrl = entry.service_id
-          ? `${appUrl}/telegram/book?master=${apt.master_id}&service=${entry.service_id}`
-          : `${appUrl}/telegram/book?master=${apt.master_id}`;
+  for (const e of expired) {
+    const apt = e.matched_appointment_id ? apptById.get(e.matched_appointment_id) : null;
+    const cancelStatuses = new Set(['cancelled', 'cancelled_by_client', 'cancelled_by_master', 'no_show']);
+    const slotStillFree = apt && cancelStatuses.has(apt.status) && new Date(apt.starts_at) > new Date();
 
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: tgId,
-            parse_mode: 'HTML',
-            text: '🟢 <b>Слот открылся!</b>\n\nМастер освободился — успей записаться первым.',
-            reply_markup: {
-              inline_keyboard: [[{ text: '📅 Записаться', web_app: { url: bookUrl } }]],
-            },
-          }),
-        }).catch(() => null);
-      }
-
-      // Mark as matched + set notified_at (even if no TG, prevents re-notify)
+    if (apt && (apt.status === 'booked' || apt.status === 'confirmed' || apt.status === 'completed')) {
+      // Клиент успел забронировать — резерв конвертируем в финальный matched.
+      // (matched_appointment_id уже указывает на правильный apt — booking route
+      // обновил его в /api/telegram/c/book когда увидел from_waitlist.)
+      // Просто чистим reserved_until — статус 'matched' остаётся как «успешно».
       await adm
         .from('waitlist')
-        .update({ status: 'matched', notified_at: new Date().toISOString(), matched_appointment_id: apt.id })
-        .eq('id', entry.id)
-        .then(() => null, () => null);
-
-      notified++;
+        .update({ reserved_until: null })
+        .eq('id', e.id);
+      continue;
     }
+
+    // Резерв истёк, клиент НЕ забронировал — возвращаем в очередь.
+    toRelease.push(e.id);
+    if (slotStillFree) slotsToRematch.push(apt!);
   }
 
-  return NextResponse.json({ ok: true, notified, cancelledApts: cancelled.length });
+  if (toRelease.length) {
+    await adm
+      .from('waitlist')
+      .update({
+        status: 'waiting',
+        reserved_until: null,
+        notified_at: null,
+        matched_appointment_id: null,
+      })
+      .in('id', toRelease);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Передать освободившиеся слоты следующему в очереди
+  // ---------------------------------------------------------------------------
+  let rematched = 0;
+  for (const apt of slotsToRematch) {
+    const { data: matched } = await adm.rpc('_waitlist_try_match', {
+      p_master_id: apt.master_id,
+      p_service_id: apt.service_id,
+      p_starts_at: apt.starts_at,
+      p_apt_id: apt.id,
+    });
+    if (matched) rematched++;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    releasedReservations: toRelease.length,
+    rematched,
+  });
 }
