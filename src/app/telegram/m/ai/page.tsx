@@ -102,11 +102,27 @@ export default function MasterMiniAppAI() {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [chat, sending]);
+
+  // Отслеживаем высоту клавиатуры через visualViewport — на iOS Telegram WebApp
+  // фикс-элементы не поднимаются автоматически, поэтому сами считаем сколько
+  // занимает клавиатура и поднимаем поле ввода ровно над ней.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vp = window.visualViewport;
+    const onResize = () => {
+      const diff = window.innerHeight - vp.height;
+      setKeyboardHeight(diff > 80 ? diff : 0);
+    };
+    onResize();
+    vp.addEventListener('resize', onResize);
+    return () => vp.removeEventListener('resize', onResize);
+  }, []);
 
   async function sendMessage(prefilled?: string) {
     const text = (prefilled ?? input).trim();
@@ -297,12 +313,15 @@ export default function MasterMiniAppAI() {
           )}
         </div>
 
-        {/* Input — fixed снизу над bottom-nav, как ChatGPT */}
+        {/* Input — fixed снизу. Если клавиатура открыта — поднимается ровно над ней (visualViewport).
+            Если закрыта — над bottom-nav (81px) с safe-area. */}
         <div
           style={{
             position: 'fixed',
             left: 12, right: 12,
-            bottom: 'calc(81px + env(safe-area-inset-bottom, 0px) + 8px)',
+            bottom: keyboardHeight > 0
+              ? `calc(${keyboardHeight}px + 6px)`
+              : 'calc(81px + env(safe-area-inset-bottom, 0px) + 8px)',
             zIndex: 30,
             background: T.surface,
             borderRadius: R.pill,
@@ -310,6 +329,7 @@ export default function MasterMiniAppAI() {
             border: `1px solid ${T.borderSubtle}`,
             padding: 6,
             display: 'flex', alignItems: 'center', gap: 6,
+            transition: 'bottom 200ms ease',
           }}
         >
           <input

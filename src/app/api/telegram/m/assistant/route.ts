@@ -71,6 +71,9 @@ async function callOpenRouter(system: string, history: ChatMessage[]): Promise<{
 }
 
 export async function POST(request: Request) {
+  const userId = await resolveUserId(request);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
   const body = await request.json().catch(() => ({}));
   const { message, history } = body as {
     message?: string;
@@ -78,9 +81,6 @@ export async function POST(request: Request) {
   };
 
   if (!message || !message.trim()) return NextResponse.json({ error: 'missing_message' }, { status: 400 });
-
-  const userId = await resolveUserId(request);
-  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
