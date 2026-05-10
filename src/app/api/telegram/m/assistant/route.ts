@@ -1,15 +1,19 @@
 /** --- YAML
  * name: Master Mini App AI Assistant
- * description: Conversational Q&A endpoint for the master. Authenticates via Telegram initData,
- *              loads compact business context (today / week / clients), forwards to Gemini→OpenRouter,
- *              logs to ai_actions_log as source=telegram_mini.
+ * description: Conversational endpoint for the master. Auth via Telegram initData. Loads compact
+ *              business context, forwards to model chain (Qwen3 → Nemotron → gpt-oss → GLM-Air →
+ *              Gemini → Llama). Model returns JSON {action, data, answer}. If action present —
+ *              executes it server-side. Supported actions: expense, reminder, note, inventory,
+ *              book, cancel, reschedule, broadcast. Logs everything to ai_actions_log.
  * created: 2026-04-19
+ * updated: 2026-05-10
  * --- */
 
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { resolveUserId } from '@/lib/auth/resolve-user';
 import { aiChat } from '@/lib/ai/openrouter';
+import { sendMessage as sendTelegramMessage } from '@/lib/telegram/bot';
 
 const GOOGLE_AI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -227,48 +231,57 @@ export async function POST(request: Request) {
 
   const firstName = profile.full_name?.split(' ')[0] || 'мастер';
 
+  const tomorrowIso = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const system = `Ты AI-помощник мастера ${firstName} в CRES-CA. Отвечаешь как умный коллега: тепло, на «ты», коротко (1-3 предложения).
 
 ВАЖНО: возвращаешь ТОЛЬКО JSON — никакого текста до или после, никакого markdown:
 
-{ "action": null, "answer": "..." }                                         ← если просто отвечаешь на вопрос
-{ "action": "expense", "data": {...}, "answer": "..." }                     ← если мастер сказал о трате
-{ "action": "reminder", "data": {...}, "answer": "..." }                    ← если мастер просит напомнить
-{ "action": "note", "data": {...}, "answer": "..." }                        ← если мастер просит запомнить про клиента
+{ "action": null, "answer": "..." }                                ← вопрос или общение
+{ "action": "expense", "data": {...}, "answer": "..." }            ← трата
+{ "action": "reminder", "data": {...}, "answer": "..." }           ← напоминание
+{ "action": "note", "data": {...}, "answer": "..." }               ← заметка про клиента
+{ "action": "inventory", "data": {...}, "answer": "..." }          ← списание материала со склада
+{ "action": "book", "data": {...}, "answer": "..." }               ← создать запись клиента
+{ "action": "cancel", "data": {...}, "answer": "..." }             ← отменить запись клиента
+{ "action": "reschedule", "data": {...}, "answer": "..." }         ← перенести запись
+{ "action": "broadcast", "data": {...}, "answer": "..." }          ← отправить рассылку
 
-КОГДА action="expense" (мастер потратил деньги, купил, заплатил):
-  data: {
-    "amount": число,
-    "currency": "UAH" | "USD" | "EUR",
-    "category": "Расходники" | "Аренда" | "Еда" | "Транспорт" | "Коммунальные" | "Реклама" | "Оборудование" | "Прочее",
-    "description": "коротко что"
-  }
-  answer пример: "Записал расход 500₴ на материалы."
+КОГДА action="expense" (мастер потратил, купил, заплатил):
+  data: { "amount": число, "currency": "UAH"|"USD"|"EUR", "category": "Расходники"|"Аренда"|"Еда"|"Транспорт"|"Коммунальные"|"Реклама"|"Оборудование"|"Прочее", "description": "коротко" }
 
-КОГДА action="reminder" (мастер просит напомнить):
-  data: { "text": "что напомнить", "in_days": число (0=сегодня, 1=завтра, 7=через неделю) }
-  answer пример: "Окей, напомню завтра: позвонить Анне."
+КОГДА action="reminder" (просит напомнить):
+  data: { "text": "что", "in_days": число (0=сегодня, 1=завтра, 7=через неделю) }
 
-КОГДА action="note" (мастер просит запомнить про конкретного клиента):
-  data: { "client_hint": "имя клиента", "text": "текст заметки" }
-  answer пример: "Записал в карточку Анны: аллергия на ромашку."
+КОГДА action="note" (просит запомнить про клиента):
+  data: { "client_hint": "имя", "text": "что" }
+
+КОГДА action="inventory" (списать расходник со склада, "потратил 200мл геля", "ушло 3 баночки"):
+  data: { "item_hint": "название материала", "quantity": число, "unit": "ml"|"g"|"pcs"|"bottles"|"impulses"|"sessions" или null }
+
+КОГДА action="book" (создать запись на клиента):
+  data: { "client_hint": "имя клиента", "service_hint": "название услуги или null если не сказал", "date": "YYYY-MM-DD", "time": "HH:MM" }
+  Сегодня = ${todayIso}, завтра = ${tomorrowIso}. Конвертируй относительные даты в ISO.
+  Если клиент новый — создадим автоматически по имени. Если услуги нет — возьмём первую активную.
+
+КОГДА action="cancel" (отменить запись):
+  data: { "client_hint": "имя клиента", "date": "YYYY-MM-DD" or null (берём ближайшую запись если null) }
+
+КОГДА action="reschedule" (перенести запись):
+  data: { "client_hint": "имя", "to_date": "YYYY-MM-DD", "to_time": "HH:MM" }
+
+КОГДА action="broadcast" (мастер просит отправить рассылку клиентам):
+  data: { "audience": "subscribers"|"favorites"|"all_clients", "subject": "тема или null", "body": "текст рассылки" }
+  По умолчанию audience="subscribers" (подписчики мастера). all_clients = все клиенты в CRM.
 
 КОГДА action=null:
   answer — короткий ответ по контексту ниже.
-  Примеры: "За неделю заработал 8400₴, это +15% к прошлой.", "Сегодня записей нет, можно отдохнуть.", "У тебя 3 клиента: Тая, Даня, Денис."
+  Примеры: "За неделю 8400₴, это +15% к прошлой.", "Сегодня записей нет.", "У тебя 3 клиента: Тая, Даня, Денис."
 
 ТОН в answer (КРИТИЧНО):
-- Тепло, по-дружески, как живой человек
-- На «ты», без обращения по имени каждый раз
-- Коротко, без воды
-- БЕЗ канцелярита: НЕ "согласно данным CRM", НЕ "у вас зарегистрировано", НЕ "рекомендую открыть раздел", НЕ "для создания записи мне нужны"
+- Тепло, на «ты», как живой коллега. Кратко, без воды.
+- БЕЗ канцелярита: НЕ "согласно данным CRM", НЕ "у вас зарегистрировано", НЕ "рекомендую открыть раздел"
 - БЕЗ markdown, списков, эмодзи
-
-ЧЕГО ТЫ ПОКА НЕ УМЕЕШЬ (если просят — action=null, в answer честно скажи):
-- Создавать запись на клиента (отвечай: "Запись на клиента пока создаётся через раздел «Календарь» или голосом в TG-боте.")
-- Отменять/переносить запись (отвечай: "Перенос — пока через карточку записи в календаре.")
-- Отправлять рассылки (отвечай: "Рассылка — через раздел «Маркетинг».")
-- Списывать материалы со склада (отвечай: "Списание — через TG-бот голосом, тут пока не научили.")
+- В подтверждении действия — что именно сделал: "Записал расход 500₴ на материалы.", "Создал запись Анне на завтра в 14:00.", "Отменил запись Дениса на сегодня.", "Отправил рассылку 47 подписчикам."
 
 КОНТЕКСТ НА ${now.toLocaleDateString('ru')}:
 
@@ -373,6 +386,190 @@ ${svcList.join(', ') || '—'}
         answer = `Не нашёл клиента "${d.client_hint}" — попробуй точное имя или фамилию.`;
       }
     }
+  } else if (parsed.action === 'inventory' && parsed.data) {
+    const d = parsed.data as { item_hint?: string; quantity?: number; unit?: string };
+    if (d.item_hint && typeof d.quantity === 'number' && d.quantity > 0) {
+      const { data: candidates } = await admin
+        .from('inventory_items')
+        .select('id, name, quantity, unit')
+        .eq('master_id', master.id)
+        .ilike('name', `%${d.item_hint}%`)
+        .limit(3);
+      if (candidates && candidates.length > 0) {
+        const best = candidates.find((c) => d.unit && c.unit === d.unit) || candidates[0];
+        const newQty = Math.max(0, Number(best.quantity) - d.quantity);
+        await admin.from('inventory_items').update({ quantity: newQty, updated_at: new Date().toISOString() }).eq('id', best.id);
+        await admin.from('inventory_usage').insert({ item_id: best.id, quantity_used: d.quantity, recorded_by: profile.id });
+        executedAction = 'inventory';
+        answer = `Списал ${d.quantity}${best.unit ? ' ' + best.unit : ''} из «${best.name}». Остаток: ${newQty}.`;
+      } else {
+        answer = `Не нашёл материал «${d.item_hint}» на складе. Добавь его в Услуги → Склад.`;
+      }
+    }
+  } else if (parsed.action === 'book' && parsed.data) {
+    const d = parsed.data as { client_hint?: string; service_hint?: string; date?: string; time?: string };
+    if (d.client_hint && d.date && d.time && /^\d{4}-\d{2}-\d{2}$/.test(d.date) && /^\d{1,2}:\d{2}$/.test(d.time)) {
+      // 1. Найти или создать клиента
+      let clientId: string | null = null;
+      const { data: matches } = await admin.rpc('find_master_clients', {
+        p_master_id: master.id, p_query: d.client_hint, p_limit: 1,
+      });
+      clientId = (matches as Array<{ id: string }> | null)?.[0]?.id ?? null;
+      if (!clientId) {
+        const { data: created } = await admin.from('clients')
+          .insert({ master_id: master.id, full_name: d.client_hint })
+          .select('id').single();
+        clientId = created?.id ?? null;
+      }
+      if (!clientId) {
+        answer = `Не получилось найти или создать клиента «${d.client_hint}».`;
+      } else {
+        // 2. Найти услугу (либо по hint, либо первую активную)
+        let svc: { id: string; duration_minutes: number; price: number } | null = null;
+        if (d.service_hint) {
+          const { data: svcRow } = await admin.from('services')
+            .select('id, duration_minutes, price')
+            .eq('master_id', master.id).eq('is_active', true)
+            .ilike('name', `%${d.service_hint}%`).limit(1).maybeSingle<{ id: string; duration_minutes: number; price: number }>();
+          svc = svcRow;
+        }
+        if (!svc) {
+          const { data: anySvc } = await admin.from('services')
+            .select('id, duration_minutes, price')
+            .eq('master_id', master.id).eq('is_active', true)
+            .limit(1).maybeSingle<{ id: string; duration_minutes: number; price: number }>();
+          svc = anySvc;
+        }
+        const duration = svc?.duration_minutes || 60;
+        const price = svc?.price || 0;
+        const startsAt = new Date(`${d.date}T${d.time.padStart(5, '0')}:00`);
+        const endsAt = new Date(startsAt.getTime() + duration * 60_000);
+        // 3. Проверка на конфликт
+        const { data: conflict } = await admin.from('appointments')
+          .select('id').eq('master_id', master.id)
+          .not('status', 'in', '(cancelled,rejected,no_show)')
+          .lt('starts_at', endsAt.toISOString())
+          .gt('ends_at', startsAt.toISOString())
+          .limit(1).maybeSingle();
+        if (conflict) {
+          answer = `На ${d.date} в ${d.time} уже есть запись — выбери другое время.`;
+        } else {
+          const { error } = await admin.from('appointments').insert({
+            master_id: master.id, client_id: clientId,
+            service_id: svc?.id ?? null,
+            starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString(),
+            status: 'booked', price, currency: 'UAH',
+            created_by_role: 'ai_assistant',
+          });
+          if (error) answer = `Не получилось создать запись: ${error.message}`;
+          else executedAction = 'book';
+        }
+      }
+    }
+  } else if (parsed.action === 'cancel' && parsed.data) {
+    const d = parsed.data as { client_hint?: string; date?: string };
+    if (d.client_hint) {
+      const { data: matches } = await admin.rpc('find_master_clients', {
+        p_master_id: master.id, p_query: d.client_hint, p_limit: 1,
+      });
+      const clientId = (matches as Array<{ id: string }> | null)?.[0]?.id;
+      if (!clientId) {
+        answer = `Не нашёл клиента «${d.client_hint}».`;
+      } else {
+        let q = admin.from('appointments')
+          .select('id, starts_at')
+          .eq('master_id', master.id).eq('client_id', clientId)
+          .not('status', 'in', '(cancelled,rejected,completed,no_show)')
+          .order('starts_at', { ascending: true });
+        if (d.date && /^\d{4}-\d{2}-\d{2}$/.test(d.date)) {
+          q = q.gte('starts_at', `${d.date}T00:00:00`).lt('starts_at', `${d.date}T23:59:59`);
+        } else {
+          q = q.gte('starts_at', new Date().toISOString());
+        }
+        const { data: appt } = await q.limit(1).maybeSingle<{ id: string; starts_at: string }>();
+        if (!appt) {
+          answer = `Не нашёл активную запись клиента «${d.client_hint}»${d.date ? ` на ${d.date}` : ''}.`;
+        } else {
+          const { error } = await admin.from('appointments').update({ status: 'cancelled' }).eq('id', appt.id);
+          if (error) answer = `Не получилось отменить: ${error.message}`;
+          else executedAction = 'cancel';
+        }
+      }
+    }
+  } else if (parsed.action === 'reschedule' && parsed.data) {
+    const d = parsed.data as { client_hint?: string; to_date?: string; to_time?: string };
+    if (d.client_hint && d.to_date && d.to_time && /^\d{4}-\d{2}-\d{2}$/.test(d.to_date) && /^\d{1,2}:\d{2}$/.test(d.to_time)) {
+      const { data: matches } = await admin.rpc('find_master_clients', {
+        p_master_id: master.id, p_query: d.client_hint, p_limit: 1,
+      });
+      const clientId = (matches as Array<{ id: string }> | null)?.[0]?.id;
+      if (!clientId) {
+        answer = `Не нашёл клиента «${d.client_hint}».`;
+      } else {
+        const { data: appt } = await admin.from('appointments')
+          .select('id, starts_at, ends_at')
+          .eq('master_id', master.id).eq('client_id', clientId)
+          .not('status', 'in', '(cancelled,rejected,completed,no_show)')
+          .gte('starts_at', new Date().toISOString())
+          .order('starts_at', { ascending: true })
+          .limit(1).maybeSingle<{ id: string; starts_at: string; ends_at: string }>();
+        if (!appt) {
+          answer = `Нет активной записи клиента «${d.client_hint}» которую можно перенести.`;
+        } else {
+          const oldDuration = new Date(appt.ends_at).getTime() - new Date(appt.starts_at).getTime();
+          const newStart = new Date(`${d.to_date}T${d.to_time.padStart(5, '0')}:00`);
+          const newEnd = new Date(newStart.getTime() + oldDuration);
+          // Проверка конфликта (исключая саму перемещаемую запись)
+          const { data: conflict } = await admin.from('appointments')
+            .select('id').eq('master_id', master.id).neq('id', appt.id)
+            .not('status', 'in', '(cancelled,rejected,no_show)')
+            .lt('starts_at', newEnd.toISOString())
+            .gt('ends_at', newStart.toISOString())
+            .limit(1).maybeSingle();
+          if (conflict) {
+            answer = `На ${d.to_date} в ${d.to_time} уже есть другая запись.`;
+          } else {
+            const { error } = await admin.from('appointments').update({
+              starts_at: newStart.toISOString(), ends_at: newEnd.toISOString(),
+            }).eq('id', appt.id);
+            if (error) answer = `Не получилось перенести: ${error.message}`;
+            else executedAction = 'reschedule';
+          }
+        }
+      }
+    }
+  } else if (parsed.action === 'broadcast' && parsed.data) {
+    const d = parsed.data as { audience?: string; subject?: string; body?: string };
+    const audience = (['subscribers', 'favorites', 'all_clients'].includes(d.audience || '') ? d.audience : 'subscribers') as 'subscribers' | 'favorites' | 'all_clients';
+    if (!d.body || !d.body.trim()) {
+      answer = 'Текст рассылки пустой — повтори с текстом.';
+    } else {
+      const recipientIds = await resolveBroadcastRecipients(master.id, audience);
+      if (recipientIds.length === 0) {
+        answer = 'В выбранной аудитории нет получателей.';
+      } else {
+        const { data: bc } = await admin.from('master_broadcasts').insert({
+          master_id: master.id,
+          subject: d.subject?.trim() || null,
+          body: d.body.trim(),
+          audience,
+          recipients_count: recipientIds.length,
+          status: 'sending',
+          sent_at: new Date().toISOString(),
+        }).select('id').single<{ id: string }>();
+        if (bc?.id) {
+          await admin.from('master_broadcast_deliveries').insert(
+            recipientIds.map((pid) => ({ broadcast_id: bc.id, profile_id: pid })),
+          );
+          // Fire-and-forget fanout
+          void fanoutBroadcast(bc.id, recipientIds, d.subject?.trim() ?? null, d.body.trim(), firstName);
+          executedAction = 'broadcast';
+          answer = `Отправил рассылку ${recipientIds.length} ${audience === 'subscribers' ? 'подписчикам' : audience === 'favorites' ? 'избранным' : 'клиентам'}.`;
+        } else {
+          answer = 'Не получилось создать рассылку.';
+        }
+      }
+    }
   }
 
   await admin.from('ai_actions_log').insert({
@@ -385,6 +582,86 @@ ${svcList.join(', ') || '—'}
   });
 
   return NextResponse.json({ answer, model: ai.model, action: executedAction });
+}
+
+function makeAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
+}
+
+/** Получатели рассылки — те же 3 аудитории что в /api/marketing/broadcast. */
+async function resolveBroadcastRecipients(
+  masterId: string,
+  audience: 'subscribers' | 'favorites' | 'all_clients',
+): Promise<string[]> {
+  const admin = makeAdmin();
+  if (audience === 'subscribers') {
+    const { data } = await admin.from('client_master_links').select('profile_id').eq('master_id', masterId);
+    return (data ?? []).map((r) => r.profile_id as string).filter(Boolean);
+  }
+  if (audience === 'favorites') {
+    const { data } = await admin.from('client_favorites').select('profile_id').eq('master_id', masterId);
+    return (data ?? []).map((r) => r.profile_id as string).filter(Boolean);
+  }
+  const { data } = await admin.from('clients').select('profile_id').eq('master_id', masterId).not('profile_id', 'is', null);
+  return (data ?? []).map((r) => r.profile_id as string).filter(Boolean);
+}
+
+/** Fire-and-forget рассылка в TG. Берём telegram_id для тех у кого он есть, остальным
+ *  пишем в notifications (видно в Mini App inbox). */
+async function fanoutBroadcast(
+  broadcastId: string,
+  recipientIds: string[],
+  subject: string | null,
+  body: string,
+  masterName: string,
+): Promise<void> {
+  const admin = makeAdmin();
+  try {
+    const { data: profiles } = await admin
+      .from('profiles')
+      .select('id, telegram_id')
+      .in('id', recipientIds);
+    const tgMap = new Map<string, string>();
+    for (const p of (profiles ?? []) as Array<{ id: string; telegram_id: string | null }>) {
+      if (p.telegram_id) tgMap.set(p.id, p.telegram_id);
+    }
+    const tgTitle = subject ? `*${subject}*\n\n` : '';
+    const tgText = `${tgTitle}${body}\n\n— ${masterName}`;
+    let delivered = 0;
+    let failed = 0;
+    for (const pid of recipientIds) {
+      const tgId = tgMap.get(pid);
+      let ok = false;
+      if (tgId) {
+        try {
+          await sendTelegramMessage(tgId, tgText, { parse_mode: 'Markdown' });
+          ok = true;
+        } catch { /* ignore individual failures */ }
+      }
+      await admin.from('notifications').insert({
+        profile_id: pid,
+        channel: tgId ? 'telegram' : 'web',
+        title: subject || `Сообщение от ${masterName}`,
+        body,
+        scheduled_for: new Date().toISOString(),
+        data: { broadcast_id: broadcastId, kind: 'master_broadcast' },
+      });
+      if (!tgId) ok = true;
+      await admin.from('master_broadcast_deliveries')
+        .update({ delivered: ok, delivered_at: ok ? new Date().toISOString() : null })
+        .eq('broadcast_id', broadcastId).eq('profile_id', pid);
+      if (ok) delivered++; else failed++;
+    }
+    await admin.from('master_broadcasts')
+      .update({ status: 'sent', delivered_count: delivered, failed_count: failed })
+      .eq('id', broadcastId);
+  } catch {
+    // Если что-то совсем сломалось — оставляем broadcast в status='sending'
+  }
 }
 
 /** Defensive JSON parser — модель может вернуть либо чистый JSON, либо JSON в ```-блоке,
