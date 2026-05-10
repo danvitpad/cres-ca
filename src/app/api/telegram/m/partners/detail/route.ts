@@ -72,26 +72,59 @@ export async function POST(req: Request) {
   const youInitiated = row.master_id === master.id;
   const partnerMasterId = youInitiated ? row.partner_id : row.master_id;
 
-  // 2) Сам мастер-партнёр.
-  const { data: partnerRow } = await admin
+  // 2+3) Мастер-партнёр + его профиль одним embedded-запросом.
+  //      Это тот же паттерн что работает в list API. PostgREST вернёт
+  //      `profile` как массив при одинаковой FK связке — кастуем безопасно.
+  const { data: partnerRowRaw, error: partnerErr } = await admin
     .from('masters')
-    .select('id, specialization, vertical, bio, team_mode, salon_id, profile_id')
+    .select(`
+      id, specialization, vertical, bio, team_mode, salon_id, profile_id,
+      profile:profiles!masters_profile_id_fkey(
+        full_name, avatar_url, slug, username, phone, email, date_of_birth
+      )
+    `)
     .eq('id', partnerMasterId)
-    .maybeSingle<{
-      id: string; specialization: string | null; vertical: string | null;
-      bio: string | null; team_mode: string | null; salon_id: string | null;
-      profile_id: string | null;
-    }>();
+    .maybeSingle();
 
-  // 3) Профиль партнёра.
+  if (partnerErr) {
+    console.error('[partners/detail] partner master query error:', partnerErr);
+  }
+
+  // PostgREST 1-to-1 embedded может вернуть либо объект, либо массив с одним элементом —
+  // обрабатываем оба случая.
+  type PartnerRowShape = {
+    id: string; specialization: string | null; vertical: string | null;
+    bio: string | null; team_mode: string | null; salon_id: string | null;
+    profile_id: string | null;
+    profile: PartnerProfile | PartnerProfile[] | null;
+  };
+  const partnerRow = partnerRowRaw as unknown as PartnerRowShape | null;
   let profile: PartnerProfile | null = null;
-  if (partnerRow?.profile_id) {
-    const { data: prof } = await admin
+  if (partnerRow?.profile) {
+    profile = Array.isArray(partnerRow.profile) ? (partnerRow.profile[0] ?? null) : partnerRow.profile;
+  }
+
+  // Fallback: если embedded не сработал — отдельный SELECT по profile_id.
+  if (!profile && partnerRow?.profile_id) {
+    const { data: prof, error: profErr } = await admin
       .from('profiles')
       .select('full_name, avatar_url, slug, username, phone, email, date_of_birth')
       .eq('id', partnerRow.profile_id)
       .maybeSingle<PartnerProfile>();
+    if (profErr) {
+      console.error('[partners/detail] profile fallback error:', profErr);
+    }
     profile = prof ?? null;
+  }
+
+  // Диагностика: если у партнёра нет linked profile_id или профиль пустой —
+  // это поможет понять что в данных у мастера в БД.
+  if (!profile) {
+    console.warn('[partners/detail] no profile resolved', {
+      partnerMasterId,
+      hasPartnerRow: !!partnerRow,
+      profile_id: partnerRow?.profile_id ?? null,
+    });
   }
 
   const partner: PartnerMaster | null = partnerRow ? {
