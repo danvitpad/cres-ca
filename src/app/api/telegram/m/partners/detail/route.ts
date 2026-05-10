@@ -35,13 +35,13 @@ interface PartnerMaster {
 }
 
 export async function POST(req: Request) {
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
   const body = await req.json().catch(() => null) as { partnership_id?: string } | null;
   if (!body?.partnership_id) {
     return NextResponse.json({ error: 'missing_params' }, { status: 400 });
   }
-
-  const userId = await resolveUserId(req);
-  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

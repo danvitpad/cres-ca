@@ -16,7 +16,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Loader2, Bot, Send, Pencil, Trash2, Plus,
   Check, X, FileText, Handshake, Megaphone, Percent, TicketPercent,
-  User as UserIcon, Users, BarChart3,
+  User as UserIcon, Users, BarChart3, XCircle,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -106,6 +106,8 @@ export default function MasterMiniAppPartnerCard() {
   const { haptic } = useTelegram();
   const [partnership, setPartnership] = useState<Partnership | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [ending, setEnding] = useState(false);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const reload = useCallback(async () => {
@@ -127,6 +129,22 @@ export default function MasterMiniAppPartnerCard() {
     if (!userId) return;
     reload(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [userId, reload]);
+
+  async function endPartnership() {
+    const initData = getInitData();
+    if (!initData) return;
+    setEnding(true);
+    haptic('light');
+    const res = await fetch('/api/telegram/m/partners/end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData, partnership_id: params.id }),
+    });
+    setEnding(false);
+    if (!res.ok) { haptic('error'); setConfirmEnd(false); return; }
+    haptic('success');
+    router.back();
+  }
 
   if (loading) {
     return (
@@ -257,6 +275,38 @@ export default function MasterMiniAppPartnerCard() {
 
       {/* 4. Activity */}
       <ActivityBlock partnership={partnership} />
+
+      {/* End partnership */}
+      {partnership.status !== 'ended' && (
+        confirmEnd ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-center space-y-3">
+            <p className="text-[13px] font-semibold text-rose-700">Прекратить партнёрство?</p>
+            <p className="text-[11px] text-rose-500 leading-relaxed">Действие необратимо. Статус изменится на «Завершён».</p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={() => setConfirmEnd(false)}
+                className="rounded-xl border border-neutral-200 px-4 py-2 text-[12px] font-semibold text-neutral-700"
+              >Отмена</button>
+              <button
+                onClick={endPartnership}
+                disabled={ending}
+                className="flex items-center gap-1.5 rounded-xl bg-rose-500 px-4 py-2 text-[12px] font-semibold text-white disabled:opacity-50"
+              >
+                {ending ? <Loader2 className="size-3.5 animate-spin" /> : <XCircle className="size-3.5" />}
+                Прекратить
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => { haptic('light'); setConfirmEnd(true); }}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-rose-200 py-3 text-[13px] font-semibold text-rose-500"
+          >
+            <XCircle className="size-4" />
+            Прекратить партнёрство
+          </button>
+        )
+      )}
 
       {/* AI chat */}
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-200 bg-white/95 backdrop-blur px-3 pt-2 pb-[env(safe-area-inset-bottom,12px)]">

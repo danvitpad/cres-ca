@@ -13,6 +13,9 @@ import { resolveUserId } from '@/lib/auth/resolve-user';
 const ALLOWED = new Set(['note', 'contract_terms', 'commission_percent', 'promo_code', 'cross_promotion']);
 
 export async function POST(req: Request) {
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
+
   const body = await req.json().catch(() => null) as
     | { partnership_id?: string; field?: string; value?: unknown }
     | null;
@@ -22,9 +25,6 @@ export async function POST(req: Request) {
   if (!ALLOWED.has(body.field)) {
     return NextResponse.json({ error: 'field_not_allowed' }, { status: 400 });
   }
-
-  const userId = await resolveUserId(req);
-  if (!userId) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
