@@ -225,16 +225,26 @@ export async function POST(request: Request) {
   if (masterTg) {
     try {
       const clientName = profile.full_name ?? 'Клиент';
-      const heading = waitlistMatched
-        ? `<b>🟢 Запис із листа очікування</b>\n<i>Клієнт давно чекав на твоє вікно</i>`
-        : (isReschedule
-          ? `<b>🔄 Запись перенесена клиентом</b>`
-          : `<b>✨ Новая запись</b>`);
-      await sendMessage(
-        masterTg as unknown as number,
-        `${heading}\n\nКлиент: ${clientName}\nУслуга: ${service_names ?? '—'}\nДата: ${date_formatted ?? '—'}\nВремя: ${selected_time ?? '—'}`,
-        { parse_mode: 'HTML' },
-      );
+      const svc = service_names?.trim() || 'услуга';
+      const when = `${date_formatted ?? ''}${selected_time ? ` в ${selected_time}` : ''}`.trim() || 'скоро';
+
+      // Человечный русский тон, как у клиента (правило 2026-05-10):
+      // одна короткая фраза вместо «Клиент: X / Услуга: Y / Дата: Z».
+      let text: string;
+      if (waitlistMatched) {
+        text = `<b>🟢 Запись из листа ожидания</b>\n\n`
+          + `${clientName} записался к тебе на ${svc} ${when}.\n`
+          + `<i>Клиент давно ждал твоё окошко 🙌</i>`;
+      } else if (isReschedule) {
+        text = `<b>🔄 Перенос записи</b>\n\n`
+          + `${clientName} перенёс запись на ${when}.\n`
+          + `Услуга: ${svc}`;
+      } else {
+        text = `<b>✨ Новая запись</b>\n\n`
+          + `${clientName} записался к тебе на ${svc} ${when}.`;
+      }
+
+      await sendMessage(masterTg as unknown as number, text, { parse_mode: 'HTML' });
     } catch { /* ignore */ }
   }
 

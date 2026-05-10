@@ -460,7 +460,9 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
           padding: 0,
           paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
-          maxHeight: '90dvh', overflowY: 'auto',
+          // 85dvh оставляет ~15% сверху на TG chrome (Mini App close-bar) —
+          // иначе заголовок шторки залезает под Telegram-хедер на iOS.
+          maxHeight: '85dvh', overflowY: 'auto',
         }}
       >
         {/* Header */}
@@ -487,11 +489,11 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
 
         <div style={{ height: 1, background: T.borderSubtle }} />
 
-        {/* Subject (если есть) */}
+        {/* Subject (если есть) — необязательное поле */}
         {spec.hasSubject && (
           <>
             <div style={{ padding: `12px ${PAGE_PADDING_X}px 14px` }}>
-              <p style={labelStyle}>Тема</p>
+              <p style={labelStyle}>Тема <span style={{ color: T.textTertiary, fontWeight: 400 }}>· необов&apos;язково</span></p>
               <input
                 ref={subjectRef}
                 value={subject}

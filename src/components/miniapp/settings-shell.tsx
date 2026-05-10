@@ -34,7 +34,7 @@ export function SettingsShell({
       initial={{ opacity: 0, x: 16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.25 }}
-      className="px-5 pt-4 pb-10"
+      className="px-5 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))]"
     >
       <Link
         href={back}

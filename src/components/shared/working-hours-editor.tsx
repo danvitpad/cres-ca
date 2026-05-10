@@ -553,7 +553,7 @@ function EditModal({
       />
       <motion.div
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"
+        className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)] z-50 mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"
         role="dialog"
       >
         <h3 className="mb-4 text-base font-bold text-neutral-900 dark:text-neutral-100">{title}</h3>
@@ -627,7 +627,7 @@ function ConflictModal({
       />
       <motion.div
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-        className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"
+        className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)] z-50 mx-auto max-w-sm rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"
         role="dialog"
       >
         <div className="mb-3 flex items-center gap-2 text-amber-500">
