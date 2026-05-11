@@ -10,13 +10,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, Check } from 'lucide-react';
+import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, Check, SlidersHorizontal } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { MobilePage, PageHeader, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
+import { MobilePage, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached } from '@/lib/miniapp/cache';
+import '@/styles/od-master-clients.css';
 
 const I18N: Record<MiniAppLang, {
   pageTitle: string;
@@ -408,107 +409,79 @@ export default function MasterMiniAppClientsPage() {
   }
 
   return (
-    <MobilePage>
-      <PageHeader title={t.pageTitle} subtitle={rows.length > 0 ? t.clientsCount(rows.length) : undefined} />
-
-      {/* Раньше тут был переключатель «Клиенты / Партнёры», но Партнёры —
-          отдельный раздел в табе «Ещё», ссылка дублировала ту же страницу.
-          Убрано по запросу 2026-05-07. */}
-
-      {/* Universal search — clients filter + people from CRES-CA */}
-      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
-        <div style={{ position: 'relative' }}>
-          <Search
-            size={18}
-            color={T.textTertiary}
-            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t.searchPh}
-            style={{
-              width: '100%',
-              padding: '12px 16px 12px 42px',
-              borderRadius: R.pill,
-              border: `1px solid ${T.border}`,
-              background: T.surfaceElevated,
-              ...TYPE.body,
-              color: T.text,
-              outline: 'none',
-              fontFamily: 'inherit',
-            }}
-          />
-          {searching && (
-            <Loader2
-              size={16}
-              className="animate-spin"
-              color={T.textTertiary}
-              style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)' }}
-            />
-          )}
+    <MobilePage className="od-master-clients">
+      {/* Литерально .ip-hd / .ip-hd-title / .ip-hd-actions / .ip-icon-btn
+          из OD master-clients.html. Кнопка sliders-horizontal — фильтр,
+          пока заглушка (toast). */}
+      <header className="ip-hd">
+        <div className="ip-hd-title">{t.pageTitle}</div>
+        <div className="ip-hd-actions">
+          <button
+            type="button"
+            className="ip-icon-btn"
+            aria-label="Фильтр"
+            onClick={() => haptic('selection')}
+          >
+            <SlidersHorizontal size={17} strokeWidth={2} />
+          </button>
         </div>
+      </header>
+
+      {/* Литерально .ip-search из OD. */}
+      <div className="ip-search">
+        <Search size={15} strokeWidth={2} className="ip-search-ico" />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t.searchPh}
+        />
+        {searching && (
+          <Loader2
+            size={16}
+            className="animate-spin"
+            color={T.textTertiary}
+            style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)' }}
+          />
+        )}
       </div>
 
-      {/* Filter chips — Open Design master-clients mobile. Горизонтальный
-          скролл, 4 чипа: Все / VIP / Новые / Спящие. Один активен в любой
-          момент (radio). Расчёт фильтра — в filtered useMemo. */}
+      {/* Литерально .ip-chips / .chip / .chip.on из OD. 4 чипа Все / VIP /
+          Новые / Спящие. */}
       {rows.length > 0 && !loading && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            padding: `12px ${PAGE_PADDING_X}px 0`,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-          }}
-        >
+        <div className="ip-chips">
           {([
             ['all', t.filterAll],
             ['vip', t.filterVip],
             ['new', t.filterNew],
             ['sleeping', t.filterSleeping],
-          ] as const).map(([key, label]) => {
-            const on = filter === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => { haptic('selection'); setFilter(key); }}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: R.pill,
-                  border: `1.5px solid ${on ? T.accent : T.border}`,
-                  background: on ? T.accent : T.surface,
-                  color: on ? '#fff' : T.textSecondary,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  transition: 'all 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className={`chip${filter === key ? ' on' : ''}`}
+              onClick={() => { haptic('selection'); setFilter(key); }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Stats strip — 3 карточки (Open Design). Показываем когда есть клиенты. */}
+      {/* Литерально .ip-stats / .ip-stat / .ip-stat-val / .ip-stat-lbl */}
       {rows.length > 0 && !loading && (
-        <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: 10,
-          }}>
-            <ClientStatCard label={t.statTotal} value={stats.total} color={T.text} />
-            <ClientStatCard label={t.statVip} value={stats.vip} color={T.accent} />
-            <ClientStatCard label={t.statSleeping} value={stats.sleeping} color={T.danger} />
+        <div className="ip-stats">
+          <div className="ip-stat">
+            <div className="ip-stat-val">{stats.total}</div>
+            <div className="ip-stat-lbl">{t.statTotal}</div>
+          </div>
+          <div className="ip-stat">
+            <div className="ip-stat-val" style={{ color: 'var(--m-accent)' }}>{stats.vip}</div>
+            <div className="ip-stat-lbl">{t.statVip}</div>
+          </div>
+          <div className="ip-stat">
+            <div className="ip-stat-val" style={{ color: 'var(--m-danger, #ef4444)' }}>{stats.sleeping}</div>
+            <div className="ip-stat-lbl">{t.statSleeping}</div>
           </div>
         </div>
       )}
@@ -538,97 +511,82 @@ export default function MasterMiniAppClientsPage() {
                   {t.yourClients}
                 </p>
               )}
-              {/* Open Design master-clients: borderless rows с bottom-border
-                  разделителем (а не отдельные карточки с тенью). Плотнее,
-                  чище, ближе к iOS Contacts. */}
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {/* Литерально .client-list / .client-row / .c-av / .c-body /
+                  .c-name / .c-sub / .c-right из OD master-clients.html. */}
+              <div className="client-list">
                 {filtered.map((c, i) => {
               const isVIP = c.total_visits >= 10;
               const isExcellent = (c.behavior_indicators ?? []).includes('excellent');
               const isRisky = (c.behavior_indicators ?? []).some(
                 (b) => b === 'frequent_canceller' || b === 'rude' || b === 'often_late',
               );
-              const isLast = i === filtered.length - 1;
+              // Avatar color — крутим по 5 OD-цветам c-av-blue/green/amber/purple/red
+              const AV_COLORS = ['c-av-blue', 'c-av-green', 'c-av-amber', 'c-av-purple', 'c-av-red'] as const;
+              const avClass = AV_COLORS[i % AV_COLORS.length];
+              const initial = (initials(c.full_name) || '—').slice(0, 2).toUpperCase();
               return (
-                <motion.li
+                <Link
                   key={c.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i, 20) * 0.02 }}
+                  href={`/telegram/m/clients/${c.id}`}
+                  className="client-row"
+                  onClick={() => haptic('light')}
                 >
-                  <Link
-                    href={`/telegram/m/clients/${c.id}`}
-                    onClick={() => haptic('light')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '12px 0',
-                      borderBottom: isLast ? 'none' : `1px solid ${T.borderSubtle}`,
-                      textDecoration: 'none',
-                      color: T.text,
-                    }}
-                  >
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      <AvatarCircle url={null} name={initials(c.full_name) || '—'} size={48} />
-                      {c.has_health_alert && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: -2,
-                            right: -2,
-                            width: 18,
-                            height: 18,
-                            borderRadius: '50%',
-                            background: T.danger,
-                            border: `2px solid ${T.surface}`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <AlertTriangle size={10} color="#fff" />
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {c.full_name}
-                        </p>
-                        {isVIP && <Crown size={13} color="#f59e0b" fill="#f59e0b" />}
-                        {isExcellent && <Star size={13} color="#f59e0b" fill="#f59e0b" />}
-                      </div>
-                      <p style={{ ...TYPE.caption, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-                        {t.visitsCount(c.total_visits, Number(c.total_spent).toFixed(0))}
-                      </p>
-                      <p style={{ ...TYPE.micro, marginTop: 2 }}>
-                        {c.last_visit_at ? t.wasLast(daysAgo(c.last_visit_at, t.daysAgoLabels)) : t.neverCame}
-                      </p>
-                    </div>
-                    {isRisky && (
+                  <div className={`c-av ${avClass}`} style={{ position: 'relative' }}>
+                    {initial}
+                    {c.has_health_alert && (
                       <span
                         style={{
-                          flexShrink: 0,
-                          padding: '2px 8px',
-                          borderRadius: 999,
-                          border: `1px solid ${T.danger}40`,
-                          background: T.dangerSoft,
-                          color: T.danger,
-                          fontSize: 9,
-                          fontWeight: 700,
-                          letterSpacing: '0.05em',
-                          textTransform: 'uppercase',
+                          position: 'absolute',
+                          top: -2,
+                          right: -2,
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          background: 'var(--m-danger, #ef4444)',
+                          border: `2px solid var(--m-surface)`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}
                       >
-                        {t.riskBadge}
+                        <AlertTriangle size={10} color="#fff" />
                       </span>
                     )}
-                  </Link>
-                </motion.li>
+                  </div>
+                  {/* Литерально .c-body / .c-name / .c-sub */}
+                  <div className="c-body">
+                    <p className="c-name">
+                      {c.full_name}
+                      {isVIP && <Crown size={13} color="#f59e0b" fill="#f59e0b" style={{ marginLeft: 6, verticalAlign: 'middle' }} />}
+                      {isExcellent && <Star size={13} color="#f59e0b" fill="#f59e0b" style={{ marginLeft: 4, verticalAlign: 'middle' }} />}
+                    </p>
+                    <p className="c-sub" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {t.visitsCount(c.total_visits, Number(c.total_spent).toFixed(0))}
+                      {' · '}
+                      {c.last_visit_at ? t.wasLast(daysAgo(c.last_visit_at, t.daysAgoLabels)) : t.neverCame}
+                    </p>
+                  </div>
+                  {/* Литерально .c-right с .badge.badge-{gold|green|grey|red|blue} */}
+                  <div className="c-right">
+                    {isVIP ? (
+                      <span className="badge badge-gold">VIP</span>
+                    ) : c.total_visits <= 1 ? (
+                      <span className="badge badge-green">{t.filterNew}</span>
+                    ) : isRisky ? (
+                      <span className="badge badge-red">{t.riskBadge}</span>
+                    ) : (
+                      <span className="badge badge-grey">{lang === 'uk' ? 'Регуляр' : lang === 'en' ? 'Regular' : 'Регуляр'}</span>
+                    )}
+                    {c.total_spent > 0 && (
+                      <span style={{ fontSize: 11, color: 'var(--m-text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                        ₴ {Number(c.total_spent).toFixed(0)}
+                      </span>
+                    )}
+                  </div>
+                </Link>
               );
             })}
-              </ul>
+              </div>
             </>
           )}
 
@@ -785,35 +743,15 @@ export default function MasterMiniAppClientsPage() {
         )}
       </div>
 
-      {/* FAB — Open Design master-clients mobile. Floating + button bottom-right
-          поверх bottom-nav. Тап открывает manual-add форму (для людей вне
-          CRES-CA). Раньше это была подчёркнутая ссылка в конце списка —
-          невидимая если клиентов нет. */}
+      {/* Литерально .fab из OD master-clients.html. Стили в
+          /styles/od-master-clients.css (адаптирован под наш floating
+          bottom-nav: bottom 88px + safe-area). */}
       {ready && masterId && (
         <button
           type="button"
+          className="fab"
           onClick={() => { haptic('selection'); setShowManual(true); setQuery(''); }}
           aria-label={t.manualHint}
-          style={{
-            position: 'fixed',
-            // 88px = высота floating bottom-nav (~64px) + 16px gap + safe-area.
-            // Совпадает с FAB.bottom в OD master-clients (88px).
-            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
-            right: 20,
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background: T.accent,
-            color: '#fff',
-            border: 'none',
-            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 20,
-            WebkitTapHighlightColor: 'transparent',
-          }}
         >
           <UserPlus size={22} strokeWidth={2} />
         </button>
