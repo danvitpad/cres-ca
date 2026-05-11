@@ -20,6 +20,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE } from '@/components/miniapp/design';
+import '@/styles/od-master-waitlist.css';
 
 interface WaitlistEntry {
   id: string;
@@ -73,7 +74,7 @@ export default function MasterMiniAppWaitlist() {
   const booked = entries.filter((e) => e.status === 'booked');
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-waitlist">
       <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
         <button
           type="button"

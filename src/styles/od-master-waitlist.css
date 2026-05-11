@@ -1,0 +1,138 @@
+/** --- YAML
+ * name: ODMasterWaitlistStyles
+ * description: Дословный перенос CSS из Open Design master-waitlist.html
+ *   мобильного экрана (строки 90-128). Скоуп — `.od-master-waitlist`.
+ * --- */
+
+.od-master-waitlist {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-dim: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-success: #10b981;
+  --od-success-dim: rgba(16, 185, 129, 0.1);
+  --od-warning: #f59e0b;
+  --od-warning-dim: rgba(245, 158, 11, 0.1);
+  --od-text: var(--m-text, #0f172a);
+  --od-text-2: var(--m-text-secondary, #475569);
+  --od-text-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-neutral-100: var(--m-surface-elevated, #f1f5f9);
+  --od-sp-1: 0.25rem;
+  --od-sp-2: 0.5rem;
+  --od-sp-3: 0.75rem;
+  --od-sp-4: 1rem;
+  --od-r-md: 0.75rem;
+  --od-r-lg: 1rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.od-master-waitlist .section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--od-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: var(--od-sp-2) var(--od-sp-4) var(--od-sp-1);
+}
+
+.od-master-waitlist .wait-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-2);
+  padding: 0 var(--od-sp-4) var(--od-sp-3);
+}
+.od-master-waitlist .wait-card {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-3);
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-lg);
+  padding: var(--od-sp-3);
+  cursor: pointer;
+  transition: transform var(--od-dur-fast) var(--od-spring-soft);
+  text-decoration: none;
+  color: inherit;
+}
+.od-master-waitlist .wait-card:active {
+  transform: scale(0.98);
+}
+.od-master-waitlist .wait-position {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--od-r-full);
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.od-master-waitlist .wait-position.high {
+  background: var(--od-warning-dim);
+  color: var(--od-warning);
+}
+.od-master-waitlist .wait-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--od-r-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  background: var(--od-accent);
+}
+.od-master-waitlist .wait-info {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-waitlist .wait-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--od-text);
+  margin: 0;
+}
+.od-master-waitlist .wait-service {
+  font-size: 11px;
+  color: var(--od-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.od-master-waitlist .wait-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+.od-master-waitlist .wait-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--od-text);
+}
+.od-master-waitlist .wait-time {
+  font-size: 11px;
+  color: var(--od-text-2);
+}
+
+.od-master-waitlist .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--od-sp-2);
+  border-radius: var(--od-r-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.od-master-waitlist .badge-success { background: var(--od-success-dim); color: var(--od-success); }
+.od-master-waitlist .badge-warning { background: var(--od-warning-dim); color: var(--od-warning); }
+.od-master-waitlist .badge-accent { background: var(--od-accent-dim); color: var(--od-accent); }
+.od-master-waitlist .badge-neutral { background: var(--od-neutral-100); color: var(--od-text-2); }
