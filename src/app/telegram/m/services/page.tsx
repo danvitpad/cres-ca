@@ -15,7 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2, Package, ArrowRight } from 'lucide-react';
+import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2, Package, ArrowRight, MoreHorizontal } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
@@ -34,12 +34,19 @@ interface Service {
   currency: string;
   is_active: boolean;
   color: string | null;
+  category_id: string | null;
   is_mobile: boolean | null;
   travel_buffer_minutes: number | null;
   requires_prepayment: boolean | null;
   prepayment_amount: number | null;
   name_i18n: Record<string, string> | null;
   description_i18n: Record<string, string> | null;
+}
+
+interface ServiceCategory {
+  id: string;
+  name: string;
+  sort_order: number;
 }
 
 // Палитра 12 цветов — паритет с веб-формой (services dashboard).
@@ -60,6 +67,7 @@ const I18N: Record<MiniAppLang, {
   placeholderName: string; placeholderDescription: string;
   save: string; saving: string;
   archiveBtn: string; restoreBtn: string; deleteBtn: string;
+  uncategorized: string;
   deleteConfirm: string;
   errName: string; errDuration: string; errPrice: string; errSave: string;
   toggleMobile: string; toggleMobileHint: string; fieldTravelBuffer: string;
@@ -79,6 +87,7 @@ const I18N: Record<MiniAppLang, {
     placeholderName: 'Стрижка, манікюр…', placeholderDescription: 'Що включено, особливості…',
     save: 'Зберегти', saving: 'Зберігаємо…',
     archiveBtn: 'В архів', restoreBtn: 'Активувати', deleteBtn: 'Видалити',
+    uncategorized: 'Без категорії',
     deleteConfirm: 'Видалити послугу повністю?',
     errName: 'Введи назву', errDuration: 'Введи тривалість', errPrice: 'Введи ціну', errSave: 'Не вдалось зберегти',
     toggleMobile: 'Виїзна послуга', toggleMobileHint: 'Я їду до клієнта',
@@ -103,6 +112,7 @@ const I18N: Record<MiniAppLang, {
     placeholderName: 'Стрижка, маникюр…', placeholderDescription: 'Что включено, особенности…',
     save: 'Сохранить', saving: 'Сохраняем…',
     archiveBtn: 'В архив', restoreBtn: 'Активировать', deleteBtn: 'Удалить',
+    uncategorized: 'Без категории',
     deleteConfirm: 'Удалить услугу полностью?',
     errName: 'Введи название', errDuration: 'Введи длительность', errPrice: 'Введи цену', errSave: 'Не удалось сохранить',
     toggleMobile: 'Выездная услуга', toggleMobileHint: 'Я еду к клиенту',
@@ -127,6 +137,7 @@ const I18N: Record<MiniAppLang, {
     placeholderName: 'Haircut, manicure…', placeholderDescription: 'What’s included, details…',
     save: 'Save', saving: 'Saving…',
     archiveBtn: 'Archive', restoreBtn: 'Activate', deleteBtn: 'Delete',
+    uncategorized: 'Uncategorized',
     deleteConfirm: 'Delete service permanently?',
     errName: 'Enter name', errDuration: 'Enter duration', errPrice: 'Enter price', errSave: 'Failed to save',
     toggleMobile: 'Mobile service', toggleMobileHint: 'I travel to the client',
@@ -146,10 +157,12 @@ export default function MasterMiniAppServicesTab() {
   const lang = useMiniAppLocale();
   const t = I18N[lang];
   const [items, setItems] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sheet, setSheet] = useState<{ mode: 'create' | 'edit'; service?: Service } | null>(null);
   const [tab, setTab] = useState<'active' | 'archived'>('active');
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!userId) return;
@@ -160,22 +173,77 @@ export default function MasterMiniAppServicesTab() {
         .from('masters').select('id').eq('profile_id', userId).maybeSingle();
       if (cancelled) return;
       if (!master) { setLoading(false); return; }
-      const { data } = await supabase
-        .from('services')
-        .select('id, name, description, duration_minutes, price, currency, is_active, color, is_mobile, travel_buffer_minutes, requires_prepayment, prepayment_amount, name_i18n, description_i18n')
-        .eq('master_id', master.id)
-        .order('is_active', { ascending: false })
-        .order('price', { ascending: false });
+      // Параллельно тянем услуги и категории мастера
+      const [servicesRes, catsRes] = await Promise.all([
+        supabase
+          .from('services')
+          .select('id, name, description, duration_minutes, price, currency, is_active, color, category_id, is_mobile, travel_buffer_minutes, requires_prepayment, prepayment_amount, name_i18n, description_i18n')
+          .eq('master_id', master.id)
+          .order('is_active', { ascending: false })
+          .order('price', { ascending: false }),
+        supabase
+          .from('service_categories')
+          .select('id, name, sort_order')
+          .eq('master_id', master.id)
+          .order('sort_order', { ascending: true }),
+      ]);
       if (cancelled) return;
-      setItems((data as Service[] | null) ?? []);
+      setItems((servicesRes.data as Service[] | null) ?? []);
+      setCategories((catsRes.data as ServiceCategory[] | null) ?? []);
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [userId, refreshKey]);
 
+  // Toggle is_active через Supabase напрямую — RLS пускает мастера на свои.
+  // Optimistic update + откат при ошибке.
+  const toggleActive = async (s: Service) => {
+    if (toggling.has(s.id)) return;
+    haptic('selection');
+    setToggling((p) => new Set(p).add(s.id));
+    const next = !s.is_active;
+    setItems((arr) => arr.map((x) => x.id === s.id ? { ...x, is_active: next } : x));
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from('services').update({ is_active: next }).eq('id', s.id);
+      if (error) {
+        // revert
+        setItems((arr) => arr.map((x) => x.id === s.id ? { ...x, is_active: !next } : x));
+      }
+    } catch {
+      setItems((arr) => arr.map((x) => x.id === s.id ? { ...x, is_active: !next } : x));
+    } finally {
+      setToggling((p) => { const n = new Set(p); n.delete(s.id); return n; });
+    }
+  };
+
   const active = items.filter((s) => s.is_active);
   const archived = items.filter((s) => !s.is_active);
   const visible = tab === 'active' ? active : archived;
+
+  // Группировка услуг по категориям — Open Design master-services mobile.
+  // Категории в порядке sort_order, затем «Без категории» в конце если есть
+  // услуги без category_id. Пустые категории не показываем.
+  const grouped: Array<{ category: ServiceCategory | null; services: Service[] }> = (() => {
+    const byCat = new Map<string, Service[]>();
+    const orphan: Service[] = [];
+    for (const s of visible) {
+      if (s.category_id) {
+        const list = byCat.get(s.category_id) ?? [];
+        list.push(s);
+        byCat.set(s.category_id, list);
+      } else {
+        orphan.push(s);
+      }
+    }
+    const out: Array<{ category: ServiceCategory | null; services: Service[] }> = [];
+    for (const cat of categories) {
+      const list = byCat.get(cat.id);
+      if (list && list.length) out.push({ category: cat, services: list });
+    }
+    if (orphan.length) out.push({ category: null, services: orphan });
+    return out;
+  })();
 
   return (
     <MobilePage>
@@ -230,10 +298,10 @@ export default function MasterMiniAppServicesTab() {
         </div>
       )}
 
-      {/* Open Design master-services mobile: borderless rows с dashed
-          bottom-border, 3px вертикальная color-bar слева. Список читается
-          компактнее — на узком экране помещается на 30% больше услуг.
-          «Добавить услугу» вынесен в FAB (см. ниже), внизу пустоты нет. */}
+      {/* Open Design master-services mobile: услуги сгруппированы по
+          категориям (uppercase header «Нігті», «Волосся» и т.д.). Внутри —
+          borderless rows с dashed bottom-border, 3px color-bar слева,
+          inline toggle is_active и 3-точки. */}
       <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           [0, 1, 2].map((i) => (
@@ -262,19 +330,39 @@ export default function MasterMiniAppServicesTab() {
               {tab === 'active' ? t.emptyHint : t.emptyArchiveHint}
             </p>
           </div>
-        ) : (
-          visible.map((s, i) => (
-            <ServiceRowCard
-              key={s.id}
-              s={s}
-              i={i}
-              t={t}
-              lang={lang}
-              isLast={i === visible.length - 1}
-              onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }}
-            />
+        ) : grouped.length > 0 ? (
+          grouped.map((group, gi) => (
+            <div key={group.category?.id ?? 'orphan'} style={{ marginTop: gi === 0 ? 0 : 4 }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.09em',
+                  textTransform: 'uppercase',
+                  color: T.textTertiary,
+                  padding: '12px 0 6px',
+                  borderBottom: `1px solid ${T.borderSubtle}`,
+                  marginBottom: 4,
+                }}
+              >
+                {group.category?.name ?? t.uncategorized}
+              </div>
+              {group.services.map((s, i) => (
+                <ServiceRowCard
+                  key={s.id}
+                  s={s}
+                  i={i}
+                  t={t}
+                  lang={lang}
+                  isLast={i === group.services.length - 1}
+                  isToggling={toggling.has(s.id)}
+                  onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }}
+                  onToggle={() => toggleActive(s)}
+                />
+              ))}
+            </div>
           ))
-        )}
+        ) : null}
       </div>
 
       {/* FAB — Open Design master-services mobile. Плавающая кнопка
@@ -324,19 +412,19 @@ export default function MasterMiniAppServicesTab() {
   );
 }
 
-function ServiceRowCard({ s, i, t, onTap, lang, isLast }: {
+function ServiceRowCard({ s, i, t, onTap, lang, isLast, isToggling, onToggle }: {
   s: Service;
   i: number;
   t: typeof I18N['ru'];
   onTap: () => void;
   lang: MiniAppLang;
   isLast: boolean;
+  isToggling: boolean;
+  onToggle: () => void;
 }) {
   const color = s.color || T.accent;
   return (
-    <motion.button
-      type="button"
-      onClick={onTap}
+    <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(i, 20) * 0.02 }}
@@ -345,24 +433,12 @@ function ServiceRowCard({ s, i, t, onTap, lang, isLast }: {
         alignItems: 'center',
         gap: 10,
         padding: '11px 0',
-        // dashed bottom-border — signature OD master-services (а не сплошной).
-        // last row без линии чтобы не «висел» хвост.
         borderBottom: isLast ? 'none' : `1px dashed ${T.borderSubtle}`,
-        background: 'transparent',
-        border: '0',
-        borderTop: 0,
-        borderLeft: 0,
-        borderRight: 0,
-        opacity: s.is_active ? 1 : 0.55,
-        cursor: 'pointer',
-        textAlign: 'left',
-        fontFamily: 'inherit',
-        width: '100%',
+        opacity: s.is_active ? 1 : 0.6,
         WebkitTapHighlightColor: 'transparent',
       }}
     >
-      {/* Color bar — 3px vertical как в OD master-services (не 4px заливка
-          всей высоты карточки). Маленький акцент, не доминирует. */}
+      {/* Color bar — 3px vertical как в OD master-services. */}
       <div style={{
         width: 3,
         height: 32,
@@ -370,7 +446,23 @@ function ServiceRowCard({ s, i, t, onTap, lang, isLast }: {
         borderRadius: 2,
         flexShrink: 0,
       }} />
-      <div style={{ flex: 1, minWidth: 0 }}>
+
+      {/* Tap-target: имя + цена + продолжительность. Открывает редактор. */}
+      <button
+        type="button"
+        onClick={onTap}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          background: 'transparent',
+          border: 0,
+          padding: 0,
+          textAlign: 'left',
+          fontFamily: 'inherit',
+          cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
         <p style={{
           margin: 0,
           fontSize: 13.5,
@@ -398,8 +490,74 @@ function ServiceRowCard({ s, i, t, onTap, lang, isLast }: {
             {Number(s.price).toFixed(0)} {s.currency === 'UAH' ? '₴' : s.currency}
           </span>
         </p>
-      </div>
-    </motion.button>
+      </button>
+
+      {/* Toggle активности — Open Design master-services .sw. Тап
+          мгновенно меняет is_active через Supabase (optimistic). При
+          ошибке откатывается. */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
+        aria-pressed={s.is_active}
+        aria-label={s.is_active ? t.archiveBtn : t.restoreBtn}
+        disabled={isToggling}
+        style={{
+          width: 34,
+          height: 19,
+          borderRadius: 999,
+          background: s.is_active ? T.accent : T.border,
+          border: 0,
+          padding: 0,
+          position: 'relative',
+          flexShrink: 0,
+          cursor: 'pointer',
+          opacity: isToggling ? 0.6 : 1,
+          transition: 'background 0.16s cubic-bezier(0.16, 1, 0.3, 1)',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            width: 15,
+            height: 15,
+            borderRadius: '50%',
+            background: '#fff',
+            top: 2,
+            left: 2,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+            transform: s.is_active ? 'translateX(15px)' : 'translateX(0)',
+            transition: 'transform 0.16s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        />
+      </button>
+
+      {/* 3-точки — open редактор (где доступны архив / удалить).
+          Дублирует tap-target row, но даёт визуальную подсказку «здесь
+          ещё действия». */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onTap(); }}
+        aria-label="Действия"
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: 'transparent',
+          border: 0,
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: T.textTertiary,
+          cursor: 'pointer',
+          flexShrink: 0,
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <MoreHorizontal size={16} />
+      </button>
+    </motion.div>
   );
 }
 
