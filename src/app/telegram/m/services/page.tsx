@@ -230,10 +230,14 @@ export default function MasterMiniAppServicesTab() {
         </div>
       )}
 
-      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Open Design master-services mobile: borderless rows с dashed
+          bottom-border, 3px вертикальная color-bar слева. Список читается
+          компактнее — на узком экране помещается на 30% больше услуг.
+          «Добавить услугу» вынесен в FAB (см. ниже), внизу пустоты нет. */}
+      <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column' }}>
         {loading ? (
           [0, 1, 2].map((i) => (
-            <div key={i} style={{ height: 64, borderRadius: R.md, background: T.bgSubtle }} />
+            <div key={i} style={{ height: 56, marginBottom: 4, borderRadius: R.sm, background: T.bgSubtle }} />
           ))
         ) : visible.length === 0 ? (
           <div
@@ -259,30 +263,51 @@ export default function MasterMiniAppServicesTab() {
             </p>
           </div>
         ) : (
-          visible.map((s, i) => <ServiceRowCard key={s.id} s={s} i={i} t={t} lang={lang} onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }} />)
-        )}
-
-        {/* «Добавить услугу» — только на активной вкладке (в архив не создают) */}
-        {tab === 'active' && !loading && (
-          <button
-            type="button"
-            onClick={() => { haptic('light'); setSheet({ mode: 'create' }); }}
-            style={{
-              marginTop: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '14px 16px',
-              borderRadius: R.md,
-              border: `1px solid ${T.accent}`,
-              background: T.accentSoft,
-              color: T.accent,
-              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <Plus size={16} strokeWidth={2.4} />
-            {t.add}
-          </button>
+          visible.map((s, i) => (
+            <ServiceRowCard
+              key={s.id}
+              s={s}
+              i={i}
+              t={t}
+              lang={lang}
+              isLast={i === visible.length - 1}
+              onTap={() => { haptic('light'); setSheet({ mode: 'edit', service: s }); }}
+            />
+          ))
         )}
       </div>
+
+      {/* FAB — Open Design master-services mobile. Плавающая кнопка
+          «+ услуга» в правом нижнем углу поверх bottom-nav. Раньше была
+          внизу списка как полноширинная кнопка с accent-soft фоном —
+          уезжала за пределы экрана если услуг много. */}
+      {!loading && tab === 'active' && (
+        <button
+          type="button"
+          onClick={() => { haptic('selection'); setSheet({ mode: 'create' }); }}
+          aria-label={t.add}
+          style={{
+            position: 'fixed',
+            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+            right: 20,
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: T.accent,
+            color: '#fff',
+            border: 'none',
+            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 20,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <Plus size={22} strokeWidth={2.4} />
+        </button>
+      )}
 
       <AnimatePresence>
         {sheet && (
@@ -299,7 +324,14 @@ export default function MasterMiniAppServicesTab() {
   );
 }
 
-function ServiceRowCard({ s, i, t, onTap, lang }: { s: Service; i: number; t: typeof I18N['ru']; onTap: () => void; lang: MiniAppLang }) {
+function ServiceRowCard({ s, i, t, onTap, lang, isLast }: {
+  s: Service;
+  i: number;
+  t: typeof I18N['ru'];
+  onTap: () => void;
+  lang: MiniAppLang;
+  isLast: boolean;
+}) {
   const color = s.color || T.accent;
   return (
     <motion.button
@@ -307,44 +339,65 @@ function ServiceRowCard({ s, i, t, onTap, lang }: { s: Service; i: number; t: ty
       onClick={onTap}
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: i * 0.02 }}
+      transition={{ delay: Math.min(i, 20) * 0.02 }}
       style={{
-        display: 'flex', alignItems: 'stretch', gap: 0,
-        borderRadius: R.md,
-        border: `1px solid ${T.borderSubtle}`,
-        background: s.is_active ? T.surface : T.bgSubtle,
-        opacity: s.is_active ? 1 : 0.65,
-        boxShadow: SHADOW.card,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '11px 0',
+        // dashed bottom-border — signature OD master-services (а не сплошной).
+        // last row без линии чтобы не «висел» хвост.
+        borderBottom: isLast ? 'none' : `1px dashed ${T.borderSubtle}`,
+        background: 'transparent',
+        border: '0',
+        borderTop: 0,
+        borderLeft: 0,
+        borderRight: 0,
+        opacity: s.is_active ? 1 : 0.55,
         cursor: 'pointer',
         textAlign: 'left',
         fontFamily: 'inherit',
         width: '100%',
-        overflow: 'hidden',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
-      {/* Color bar — Open Design master-services.html signature */}
+      {/* Color bar — 3px vertical как в OD master-services (не 4px заливка
+          всей высоты карточки). Маленький акцент, не доминирует. */}
       <div style={{
-        width: 4,
+        width: 3,
+        height: 32,
         background: color,
+        borderRadius: 2,
         flexShrink: 0,
       }} />
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        flex: 1, padding: '12px 14px', minWidth: 0,
-      }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {getServiceName(s, lang)}
-          </p>
-          <p style={{ margin: '3px 0 0', fontSize: 12, color: T.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Clock size={11} />
-            <span>{s.duration_minutes} {t.minutes}</span>
-            <span style={{ color: T.textTertiary }}>·</span>
-            <span style={{ fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
-              {Number(s.price).toFixed(0)} {s.currency === 'UAH' ? '₴' : s.currency}
-            </span>
-          </p>
-        </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          margin: 0,
+          fontSize: 13.5,
+          fontWeight: 600,
+          color: T.text,
+          letterSpacing: '-0.01em',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          marginBottom: 2,
+        }}>
+          {getServiceName(s, lang)}
+        </p>
+        <p style={{
+          margin: 0,
+          fontSize: 11,
+          color: T.textTertiary,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <span>{s.duration_minutes} {t.minutes}</span>
+          <span style={{ color: T.border }}>—</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+            {Number(s.price).toFixed(0)} {s.currency === 'UAH' ? '₴' : s.currency}
+          </span>
+        </p>
       </div>
     </motion.button>
   );
