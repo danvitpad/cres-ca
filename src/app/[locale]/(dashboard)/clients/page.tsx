@@ -119,12 +119,13 @@ function daysSinceLastVisit(lastVisit: string | null): number | null {
   return Math.floor((Date.now() - new Date(lastVisit).getTime()) / 86400000);
 }
 
-/* ─── Stat card (Open Design KPI tile) ─── */
+/* ─── Stat card (Open Design KPI tile, no icons, with sub) ─── */
 function ClientsStatCard({
-  label, value, color, C, accentLeft,
+  label, value, sub, color, C, accentLeft,
 }: {
   label: string;
   value: number;
+  sub?: string;
   color?: string;
   C: PageTheme;
   accentLeft?: boolean;
@@ -132,7 +133,7 @@ function ClientsStatCard({
   return (
     <div
       style={{
-        padding: '16px 18px',
+        padding: '18px 22px',
         borderRadius: 16,
         background: C.surface,
         border: `1px solid ${C.border}`,
@@ -157,13 +158,138 @@ function ClientsStatCard({
         {label}
       </div>
       <div style={{
-        fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em',
+        fontSize: 32, fontWeight: 700, letterSpacing: '-0.03em',
         color: color ?? C.text, marginTop: 8, lineHeight: 1,
       }}>
         {value}
       </div>
+      {sub && (
+        <div style={{
+          fontSize: 12, color: C.textTertiary, marginTop: 8,
+        }}>
+          {sub}
+        </div>
+      )}
     </div>
   );
+}
+
+/* ─── Client TABLE row (Open Design): avatar+name+visits / phone / last / next / spent / status / actions ─── */
+function ClientRowItem({ client, C }: {
+  client: ClientRow;
+  C: PageTheme;
+}) {
+  const tier = client.manual_tier ?? client.tier;
+  const isVIP = tier === 'vip';
+  const isNew = client.total_visits === 0 || tier === 'new';
+  const isSleeping = client.last_visit_at &&
+    ((Date.now() - new Date(client.last_visit_at).getTime()) / 86400000) > 60;
+
+  const badge = (() => {
+    if (isVIP) return { label: 'VIP', bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' };
+    if (isNew) return { label: 'Новый', bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981' };
+    if (isSleeping) return { label: 'Спящий', bg: 'rgba(239, 68, 68, 0.12)', color: '#ef4444' };
+    return { label: 'Регуляр', bg: 'rgba(37, 99, 235, 0.10)', color: 'var(--color-accent)' };
+  })();
+
+  const lastVisit = client.last_visit_at
+    ? formatDistanceShort(new Date(client.last_visit_at))
+    : '—';
+  const visitsLabel = client.total_visits === 1
+    ? '1 визит'
+    : client.total_visits < 5
+      ? `${client.total_visits} визита`
+      : `${client.total_visits} визитов`;
+
+  return (
+    <Link
+      href={`/clients/${client.id}`}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'minmax(180px, 1.4fr) minmax(120px, 1fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) minmax(90px, 0.7fr) minmax(90px, 0.7fr) 32px',
+        gap: 12,
+        alignItems: 'center',
+        padding: '14px 20px',
+        borderTop: `1px solid ${C.border}`,
+        textDecoration: 'none',
+        color: C.text,
+        background: 'transparent',
+        transition: 'background 0.15s',
+        fontFamily: 'inherit',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = C.surfaceElevated; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+    >
+      {/* Avatar + name + visits */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <div
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: C.accentSoft, color: C.accent,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, fontWeight: 700, flexShrink: 0,
+          }}
+        >
+          {client.full_name.split(/\s+/).map((w) => w[0] ?? '').join('').toUpperCase().slice(0, 2) || '—'}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {client.full_name}
+          </div>
+          <div style={{ fontSize: 11.5, color: C.textTertiary, marginTop: 1 }}>
+            {visitsLabel}
+          </div>
+        </div>
+      </div>
+      {/* Phone */}
+      <div style={{ fontSize: 13, color: C.textSecondary, fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {client.phone || '—'}
+      </div>
+      {/* Last visit */}
+      <div style={{
+        fontSize: 13,
+        color: isSleeping ? '#ef4444' : C.textSecondary,
+      }}>
+        {lastVisit}
+      </div>
+      {/* Next appointment placeholder */}
+      <div style={{ fontSize: 13, color: C.textTertiary }}>
+        —
+      </div>
+      {/* Total spent */}
+      <div style={{ fontSize: 14, fontWeight: 700, color: C.text, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+        {client.total_visits > 0 && client.avg_check > 0
+          ? `${new Intl.NumberFormat('ru-RU').format(client.total_visits * client.avg_check)} ₴`
+          : '—'}
+      </div>
+      {/* Status badge */}
+      <div>
+        <span style={{
+          display: 'inline-block', padding: '3px 9px',
+          borderRadius: 999, fontSize: 11, fontWeight: 700,
+          background: badge.bg, color: badge.color,
+          letterSpacing: '0.02em',
+        }}>
+          {badge.label}
+        </span>
+      </div>
+      {/* Action arrow */}
+      <div style={{ color: C.textTertiary, display: 'flex', justifyContent: 'flex-end' }}>
+        →
+      </div>
+    </Link>
+  );
+}
+
+function formatDistanceShort(d: Date): string {
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  if (diffDays === 0) return 'сегодня';
+  if (diffDays === 1) return 'вчера';
+  if (diffDays < 7) return `${diffDays} дн. назад`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} нед. назад`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} мес. назад`;
+  return `${Math.floor(diffDays / 365)} год.`;
 }
 
 /* ─── Client Card ─── */
@@ -505,7 +631,8 @@ export default function ClientsPage() {
   /* ─── Counts for filter chips ─── */
   const counts = useMemo(() => {
     const now = Date.now();
-    let vip = 0, overdue = 0, risk = 0, newC = 0, birthday = 0;
+    let vip = 0, overdue = 0, risk = 0, newC = 0, newThisWeek = 0, birthday = 0;
+    const weekAgo = now - 7 * 86400000;
     for (const c of clients) {
       if ((c.manual_tier ?? c.tier) === 'vip') vip++;
       if (c.last_visit_at) {
@@ -514,12 +641,13 @@ export default function ClientsPage() {
       }
       if ((c.cancellation_count || 0) + (c.no_show_count || 0) >= 3) risk++;
       if (c.total_visits === 0) newC++;
+      if (new Date(c.created_at).getTime() >= weekAgo) newThisWeek++;
       if (c.date_of_birth) {
         const days = daysUntilBirthday(c.date_of_birth);
         if (days !== null && days <= 14) birthday++;
       }
     }
-    return { all: clients.length, vip, overdue, risk, new: newC, birthday };
+    return { all: clients.length, vip, overdue, risk, new: newC, newThisWeek, birthday };
   }, [clients]);
 
   /* ─── Apply filter ─── */
@@ -584,17 +712,41 @@ export default function ClientsPage() {
             from /clients subtab "Подписчики" or when a user books online. */}
       </div>
 
-      {/* ═══ Stats strip — Open Design (3 cards: Total / VIP / Спящие) ═══ */}
+      {/* ═══ KPI strip — Open Design (4 cards: Всего / VIP / Новые за неделю / Спящих) ═══ */}
       {!loading && counts.all > 0 && (
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: 12,
+          gap: 14,
           marginBottom: 24,
         }}>
-          <ClientsStatCard label="Всего" value={counts.all} C={C} />
-          <ClientsStatCard label="VIP" value={counts.vip} color={C.accent} C={C} accentLeft />
-          <ClientsStatCard label="Давно не были" value={counts.overdue} color="#ef4444" C={C} />
+          <ClientsStatCard
+            label="Всего клиентов"
+            value={counts.all}
+            sub={counts.newThisWeek > 0 ? `+${counts.newThisWeek} за неделю` : undefined}
+            C={C}
+          />
+          <ClientsStatCard
+            label="VIP"
+            value={counts.vip}
+            sub={counts.all > 0 ? `${Math.round((counts.vip / counts.all) * 100 * 10) / 10}% от базы` : undefined}
+            color="#f59e0b"
+            C={C}
+          />
+          <ClientsStatCard
+            label="Новые за неделю"
+            value={counts.newThisWeek}
+            sub={counts.newThisWeek > 0 ? 'свежий поток' : 'пока никого'}
+            color={C.accent}
+            C={C}
+          />
+          <ClientsStatCard
+            label="Спящие"
+            value={counts.overdue}
+            sub="не были 60+ дней"
+            color="#ef4444"
+            C={C}
+          />
         </div>
       )}
 
@@ -728,11 +880,11 @@ export default function ClientsPage() {
             />
           </div>
 
-          {/* Card grid */}
+          {/* Table view (Open Design master-clients.html port) */}
           {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {[...Array(8)].map((_, i) => (
-                <div key={i} style={{ height: 200, background: C.surfaceElevated, borderRadius: 16 }} />
+                <div key={i} style={{ height: 64, background: C.surfaceElevated, borderRadius: i === 0 ? '16px 16px 0 0' : i === 7 ? '0 0 16px 16px' : 0 }} />
               ))}
             </div>
           ) : filteredClients.length === 0 ? (
@@ -749,13 +901,38 @@ export default function ClientsPage() {
                 </p>
               )}
               <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: 14,
+                background: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: 16,
+                overflow: 'hidden',
               }}>
-                {filteredClients.map((c, i) => (
-                  <ClientCard key={c.id} client={c} C={C} isDark={isDark} index={i} />
-                ))}
+                {/* Table header */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(180px, 1.4fr) minmax(120px, 1fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr) minmax(90px, 0.7fr) minmax(90px, 0.7fr) 32px',
+                  gap: 12,
+                  padding: '12px 20px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  color: C.textTertiary,
+                  background: C.surfaceElevated,
+                }}>
+                  <div>Клиент</div>
+                  <div>Телефон</div>
+                  <div>Последний визит</div>
+                  <div>Следующий</div>
+                  <div style={{ textAlign: 'right' }}>Потрачено</div>
+                  <div>Статус</div>
+                  <div></div>
+                </div>
+                {/* Rows */}
+                <div>
+                  {filteredClients.map((c) => (
+                    <ClientRowItem key={c.id} client={c} C={C} />
+                  ))}
+                </div>
               </div>
             </>
           )}

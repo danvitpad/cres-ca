@@ -105,18 +105,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!cancelled) setOwnedSalonId(owned?.id ?? null);
       if (owned?.id) return; // owner не ограничен
 
-      // Member check: ищем salon где user — member (не owner)
-      const { data: member } = await supabase
-        .from('salon_members')
-        .select('salon_id, role, salon:salons(team_mode)')
-        .eq('profile_id', userId)
-        .eq('is_active', true)
-        .maybeSingle();
-      const teamMode = (member?.salon as { team_mode?: string } | null)?.team_mode;
-      const role = member?.role;
-      // Только обычный мастер (не admin/receptionist) в unified-режиме ограничен
-      const limited = teamMode === 'unified' && role === 'master';
-      if (!cancelled) setUnifiedTeamLimited(limited);
+      // Team-mode (unified) проверка временно отключена — релизим только соло.
+      // Раньше делали embed `salon:salons(team_mode)` но он 400 при RLS на salons
+      // для не-owner участников. Возвращать когда команды снова включим.
+      if (!cancelled) setUnifiedTeamLimited(false);
     })();
     return () => { cancelled = true; };
   }, [userId]);
