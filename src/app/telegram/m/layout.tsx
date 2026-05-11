@@ -1,11 +1,11 @@
 /** --- YAML
  * name: TelegramMasterMiniAppLayout
  * description: Master Mini App shell — Fresha-premium light theme. Floating-pill
- *              bottom nav 5 табов: Календарь · Клиенты · Услуги · Финансы · Ещё.
- *              Уведомлений как таба нет — приходят в TG-бот. Профиль открывается
- *              по тапу на кружок аватара справа сверху (HeaderAvatar).
+ *              bottom nav 6 табов: Главная · Календарь · Клиенты · Услуги ·
+ *              Финансы · Ещё. Уведомления приходят в TG-бот (отдельного таба нет).
+ *              Профиль открывается по тапу на кружок аватара справа сверху.
  * created: 2026-04-13
- * updated: 2026-05-07
+ * updated: 2026-05-11
  * --- */
 
 'use client';
@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  Home as HomeIcon,
   CalendarDays,
   Users as UsersIcon,
   Scissors,
@@ -120,6 +121,7 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   }
 
   const tabs: readonly NavTab[] = [
+    { key: 'home', href: '/telegram/m/home', icon: HomeIcon, label: 'Главная' },
     { key: 'calendar', href: '/telegram/m/calendar', icon: CalendarDays, label: 'Календарь' },
     { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, label: 'Клиенты' },
     { key: 'services', href: '/telegram/m/services', icon: Scissors, label: 'Услуги' },
