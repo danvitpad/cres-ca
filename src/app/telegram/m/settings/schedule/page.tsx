@@ -17,6 +17,7 @@ import { getInitData } from '@/lib/telegram/webapp';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { type WorkingHours } from '@/types/working-hours';
 import { normalizeWorkingHours } from '@/lib/working-hours/normalize';
+import '@/styles/od-master-schedule.css';
 
 export default function MiniAppSchedulePage() {
   const { haptic } = useTelegram();
@@ -57,6 +58,7 @@ export default function MiniAppSchedulePage() {
 
   return (
     <SettingsShell title={title} subtitle={subtitle}>
+      <div className="od-master-schedule">
       <WorkingHoursEditor
         initial={hours}
         saveEndpoint="/api/me/working-hours"
@@ -64,6 +66,7 @@ export default function MiniAppSchedulePage() {
         lang={lang}
         onSaved={() => haptic('success')}
       />
+      </div>
     </SettingsShell>
   );
 }

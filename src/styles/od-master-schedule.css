@@ -1,0 +1,131 @@
+/** --- YAML
+ * name: ODMasterScheduleStyles
+ * description: Дословный перенос CSS из Open Design master-schedule.html
+ *   мобильного экрана (строки 82-117). Скоуп — `.od-master-schedule`.
+ * --- */
+
+.od-master-schedule {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-dim: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-warning: #f59e0b;
+  --od-warning-dim: rgba(245, 158, 11, 0.1);
+  --od-text: var(--m-text, #0f172a);
+  --od-text-2: var(--m-text-secondary, #475569);
+  --od-text-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-neutral-100: var(--m-surface-elevated, #f1f5f9);
+  --od-neutral-300: var(--m-border-strong, #cbd5e1);
+  --od-sp-1: 0.25rem;
+  --od-sp-2: 0.5rem;
+  --od-sp-3: 0.75rem;
+  --od-sp-4: 1rem;
+  --od-r-md: 0.75rem;
+  --od-r-lg: 1rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --od-spring-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.od-master-schedule .days-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-2);
+  padding: 0 var(--od-sp-4) var(--od-sp-4);
+}
+.od-master-schedule .day-card {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-lg);
+  padding: var(--od-sp-3) var(--od-sp-4);
+}
+.od-master-schedule .day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--od-sp-2);
+}
+.od-master-schedule .day-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--od-text);
+}
+.od-master-schedule .day-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: var(--od-r-full);
+  position: relative;
+  cursor: pointer;
+  border: none;
+  transition: background var(--od-dur-fast);
+}
+.od-master-schedule .day-switch.on { background: var(--od-accent); }
+.od-master-schedule .day-switch.off { background: var(--od-neutral-300); }
+.od-master-schedule .day-switch-dot {
+  position: absolute;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--od-dur-fast) var(--od-spring-bouncy);
+}
+.od-master-schedule .day-switch.on .day-switch-dot { transform: translateX(23px); }
+.od-master-schedule .day-switch.off .day-switch-dot { transform: translateX(3px); }
+
+.od-master-schedule .time-row {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-3);
+}
+.od-master-schedule .time-label {
+  font-size: 11px;
+  color: var(--od-text-2);
+  min-width: 40px;
+}
+.od-master-schedule .time-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-2);
+  flex: 1;
+  background: var(--od-neutral-100);
+  border-radius: var(--od-r-md);
+  padding: var(--od-sp-2) var(--od-sp-3);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  color: var(--od-text);
+  transition: background var(--od-dur-fast);
+}
+.od-master-schedule .time-pill:active {
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+}
+.od-master-schedule .time-sep {
+  font-size: 13px;
+  color: var(--od-text-3);
+}
+
+.od-master-schedule .day-off-label {
+  font-size: 12px;
+  color: var(--od-text-3);
+  margin-top: var(--od-sp-1);
+}
+
+.od-master-schedule .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--od-sp-2);
+  border-radius: var(--od-r-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.od-master-schedule .badge-warning {
+  background: var(--od-warning-dim);
+  color: var(--od-warning);
+}
