@@ -113,8 +113,8 @@ export default function ReferralPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 pb-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Реферальная программа</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">Реферальная программа</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Поделитесь ссылкой — каждый новый пользователь приносит бонусы вам обоим.
         </p>
       </div>

@@ -130,8 +130,8 @@ export default function NetworkPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Сеть мастеров</h1>
-        <p className="text-sm text-muted-foreground">Рейтинг и сообщество.</p>
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">Сеть мастеров</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Рейтинг и сообщество.</p>
       </div>
 
       <div className="flex gap-2 border-b">

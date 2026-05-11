@@ -116,8 +116,8 @@ export default function PartnersListPage() {
         }}
       >
         <h1 style={{
-          fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px',
-          margin: 0, display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 28, fontWeight: 700, color: C.text, letterSpacing: '-0.02em',
+          margin: 0, display: 'flex', alignItems: 'center', gap: 10, lineHeight: 1,
         }}>
           <Handshake size={24} style={{ color: C.accent }} />
           Партнёры

@@ -101,7 +101,7 @@ export default function QueuePage() {
   return (
     <div className="space-y-6" style={{ padding: '32px 40px' }}>
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{t('title')}</h2>
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">{t('title')}</h1>
         <div className="flex gap-2">
           {waiting.length > 0 && !inService && (
             <button

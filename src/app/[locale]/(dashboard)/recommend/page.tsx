@@ -104,8 +104,8 @@ export default function RecommendPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-8 p-6">
       <div>
-        <h1 className="text-2xl font-semibold">Рекомендации коллегам</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">Рекомендации коллегам</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Направь клиента коллеге и получи бонус, когда они запишутся.
         </p>
       </div>

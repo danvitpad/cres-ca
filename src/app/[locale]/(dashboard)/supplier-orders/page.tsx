@@ -142,11 +142,11 @@ export default function SupplierOrdersPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-6 pb-12">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+        <h1 className="flex items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] leading-none">
           <Package className="size-6 text-primary" />
           Заказы поставщикам
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Низкие остатки → рекомендации по поставщикам → одним кликом черновик + PDF.
         </p>
       </div>
