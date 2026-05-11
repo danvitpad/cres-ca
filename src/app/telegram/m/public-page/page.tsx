@@ -23,6 +23,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, AvatarCircle } from '@/components/miniapp/shells';
+import '@/styles/od-master-public-page.css';
 import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
 import { AddressPickerSheet } from '@/components/miniapp/address-picker-sheet';
 import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
@@ -393,7 +394,7 @@ export default function MasterMiniAppPublicPage() {
 
   if (loading) {
     return (
-      <MobilePage>
+      <MobilePage className="od-master-public-page">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60dvh' }}>
           <Loader2 size={24} className="animate-spin" color={T.textTertiary} />
         </div>
@@ -403,7 +404,7 @@ export default function MasterMiniAppPublicPage() {
 
   if (!master) {
     return (
-      <MobilePage>
+      <MobilePage className="od-master-public-page">
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
           <p style={{ ...TYPE.body, color: T.textSecondary }}>{t.notFound}</p>
         </div>
@@ -424,7 +425,7 @@ export default function MasterMiniAppPublicPage() {
   });
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-public-page">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
