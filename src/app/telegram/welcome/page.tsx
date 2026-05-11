@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { Briefcase, User, LogIn, Loader2, ChevronDown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { mapError } from '@/lib/errors';
+import '@/styles/od-welcome-landing.css';
 
 interface TgData {
   id: number;
@@ -207,7 +208,7 @@ export default function MiniAppWelcomePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative flex min-h-dvh flex-col overflow-hidden"
+      className="od-welcome-landing relative flex min-h-dvh flex-col overflow-hidden"
       style={{ background: bg, color: fg }}
     >
       {/* Cobalt glow — radial accent за центром hero */}
