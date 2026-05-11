@@ -1,0 +1,187 @@
+/** --- YAML
+ * name: ODMasterAIStyles
+ * description: Дословный перенос CSS из Open Design master-ai.html
+ *   мобильного chat экрана (строки 80-155). Скоуп — `.od-master-ai`.
+ * --- */
+
+.od-master-ai {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-dim: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-success: #10b981;
+  --od-danger: #ef4444;
+  --od-danger-dim: rgba(239, 68, 68, 0.1);
+  --od-text: var(--m-text, #0f172a);
+  --od-text-2: var(--m-text-secondary, #475569);
+  --od-text-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-neutral-100: var(--m-surface-elevated, #f1f5f9);
+  --od-sp-1: 0.25rem;
+  --od-sp-2: 0.5rem;
+  --od-sp-3: 0.75rem;
+  --od-sp-4: 1rem;
+  --od-sp-6: 1.5rem;
+  --od-r-sm: 0.5rem;
+  --od-r-lg: 1rem;
+  --od-r-xl: 1.5rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --od-spring-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Messages */
+.od-master-ai .msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  animation: od-ai-msgIn 0.3s var(--od-spring-soft) both;
+}
+@keyframes od-ai-msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.od-master-ai .msg-user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+.od-master-ai .msg-ai {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.od-master-ai .bubble {
+  padding: var(--od-sp-3) var(--od-sp-4);
+  border-radius: var(--od-r-xl);
+  font-size: 13px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+.od-master-ai .bubble-user {
+  background: var(--od-accent);
+  color: #fff;
+  border-bottom-right-radius: var(--od-r-sm);
+}
+.od-master-ai .bubble-ai {
+  background: var(--od-neutral-100);
+  color: var(--od-text);
+  border-bottom-left-radius: var(--od-r-sm);
+}
+.od-master-ai .msg-time {
+  font-size: 10px;
+  color: var(--od-text-3);
+  margin-top: 3px;
+  padding: 0 var(--od-sp-2);
+}
+
+/* Insight card */
+.od-master-ai .insight-card {
+  margin-top: var(--od-sp-3);
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-lg);
+  padding: var(--od-sp-3);
+}
+.od-master-ai .insight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--od-sp-1) 0;
+}
+.od-master-ai .insight-label {
+  font-size: 12px;
+  color: var(--od-text-2);
+}
+.od-master-ai .insight-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--od-text);
+}
+.od-master-ai .insight-val.up { color: var(--od-success); }
+.od-master-ai .insight-val.down { color: var(--od-danger); }
+
+/* Quick replies */
+.od-master-ai .quick-replies {
+  display: flex;
+  gap: var(--od-sp-2);
+  padding: 0 var(--od-sp-4) var(--od-sp-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.od-master-ai .quick-replies::-webkit-scrollbar { display: none; }
+.od-master-ai .qr {
+  flex-shrink: 0;
+  padding: var(--od-sp-2) var(--od-sp-3);
+  border-radius: var(--od-r-full);
+  border: 1.5px solid var(--od-accent);
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+  font-family: inherit;
+}
+.od-master-ai .qr:active {
+  background: var(--od-accent);
+  color: #fff;
+}
+
+/* Chat input */
+.od-master-ai .chat-input-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-2);
+  padding: var(--od-sp-3) var(--od-sp-4) var(--od-sp-6);
+  border-top: 1px solid var(--od-border);
+  background: color-mix(in oklch, var(--od-surface) 90%, transparent);
+  backdrop-filter: blur(16px);
+}
+.od-master-ai .chat-input {
+  flex: 1;
+  background: var(--od-neutral-100);
+  border: none;
+  border-radius: var(--od-r-full);
+  padding: var(--od-sp-3) var(--od-sp-4);
+  font-size: 13px;
+  color: var(--od-text);
+  font-family: inherit;
+  outline: none;
+}
+.od-master-ai .chat-input::placeholder { color: var(--od-text-3); }
+.od-master-ai .send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--od-r-full);
+  border: none;
+  background: var(--od-accent);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--od-dur-fast) var(--od-spring-bouncy);
+  flex-shrink: 0;
+}
+.od-master-ai .send-btn:active { transform: scale(0.9); }
+.od-master-ai .voice-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--od-r-full);
+  border: none;
+  background: var(--od-neutral-100);
+  color: var(--od-text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--od-dur-fast);
+  flex-shrink: 0;
+}
+.od-master-ai .voice-btn:active {
+  background: var(--od-danger-dim);
+  color: var(--od-danger);
+}

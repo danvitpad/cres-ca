@@ -18,6 +18,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, PAGE_PADDING_X, SHADOW, TYPE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import '@/styles/od-master-ai.css';
 
 const I18N: Record<MiniAppLang, {
   title: string; subtitle: string;
@@ -161,7 +162,7 @@ export default function MasterMiniAppAI() {
   const empty = chat.length === 0 && !sending;
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-ai">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
