@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 import { Loader2, Megaphone, Users, User as UserIcon, Handshake } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import '@/styles/od-master-partners.css';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -85,7 +86,7 @@ export default function MasterMiniAppPartnersList() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="space-y-4 px-4 pt-12 pb-24"
+      className="od-master-partners space-y-4 px-4 pt-12 pb-24"
     >
       {/* Раньше тут был таб «Клиенты | Партнёры», но Клиенты — отдельный таб
           в нижней навигации. Дублировать переключатель не нужно, плюс верхняя
