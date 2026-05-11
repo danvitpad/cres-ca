@@ -12,8 +12,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Phone,
   User as UserIcon,
@@ -404,62 +402,15 @@ export default function MasterMiniAppCalendar() {
           <HomeScreenBanner />
         </div>
 
-        {/* Day nav */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
-          <TapButton
-            onClick={() => { haptic('light'); setDay(addDays(day, -1)); }}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <ChevronLeft size={18} color={T.text} />
-          </TapButton>
-          <TapButton
-            onClick={() => { haptic('selection'); setDay(startOfDay(new Date())); }}
-            style={{
-              flex: 1,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              padding: '12px 14px',
-              borderRadius: R.pill,
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              color: T.text,
-              fontSize: 13,
-              fontWeight: 600,
-              fontFamily: 'inherit',
-            }}
-          >
-            <CalendarDays size={14} />
-            {day.toLocaleDateString(t.dateLocale, { day: 'numeric', month: 'short', year: 'numeric' })}
-          </TapButton>
-          <TapButton
-            onClick={() => { haptic('light'); setDay(addDays(day, 1)); }}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              border: `1px solid ${T.border}`,
-              background: T.surface,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <ChevronRight size={18} color={T.text} />
-          </TapButton>
-        </div>
+        {/* 7-day date strip — Open Design pattern. Tap = jump к дате;
+            swipe (touch handler выше) — переход между днями. */}
+        <DateStrip
+          day={day}
+          locale={t.dateLocale}
+          onPick={(d) => { haptic('selection'); setDay(d); }}
+          onJumpToday={() => { haptic('selection'); setDay(startOfDay(new Date())); }}
+          todayLabel={t.today}
+        />
 
         {/* Appointments list */}
         <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
@@ -591,6 +542,32 @@ export default function MasterMiniAppCalendar() {
             </ul>
           )}
         </div>
+
+        {/* FAB — новый запись (Open Design pattern) */}
+        <Link
+          href="/telegram/m/slot/new"
+          onClick={() => haptic('light')}
+          aria-label={t.newBooking}
+          style={{
+            position: 'fixed',
+            right: 16,
+            bottom: 'calc(94px + env(safe-area-inset-bottom, 0px))',
+            zIndex: 40,
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: T.accent,
+            color: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35), 0 4px 12px rgba(0,0,0,0.12)',
+            textDecoration: 'none',
+            transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+        >
+          <Plus size={26} strokeWidth={2.5} />
+        </Link>
 
         {/* Drawer */}
         <AnimatePresence>
@@ -958,3 +935,104 @@ function ServiceTimer({ startsAt, endsAt, labels }: { startsAt: string; endsAt: 
     </div>
   );
 }
+
+/* ═══ DateStrip — 7-day segmented date picker (Open Design) ═══ */
+function DateStrip({
+  day,
+  locale,
+  onPick,
+  onJumpToday,
+  todayLabel,
+}: {
+  day: Date;
+  locale: string;
+  onPick: (d: Date) => void;
+  onJumpToday: () => void;
+  todayLabel: string;
+}) {
+  // Окно из 7 дней: 3 до выбранного, выбранный по центру, 3 после
+  const days = Array.from({ length: 7 }, (_, i) => addDays(day, i - 3));
+  const today = startOfDay(new Date());
+  const isOnToday = isSameDay(day, today);
+
+  return (
+    <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(7, 1fr)',
+          gap: 6,
+        }}
+      >
+        {days.map((d) => {
+          const isSelected = isSameDay(d, day);
+          const isToday = isSameDay(d, today);
+          return (
+            <TapButton
+              key={d.toISOString()}
+              onClick={() => onPick(d)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+                padding: '8px 4px',
+                borderRadius: R.sm,
+                background: isSelected ? T.accent : 'transparent',
+                border: `1px solid ${isSelected ? T.accent : isToday ? T.accentSoft : 'transparent'}`,
+                fontFamily: 'inherit',
+                transition: 'background 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
+                  color: isSelected ? 'rgba(255,255,255,0.85)' : T.textTertiary,
+                  lineHeight: 1,
+                }}
+              >
+                {d.toLocaleDateString(locale, { weekday: 'short' }).slice(0, 2)}
+              </span>
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  letterSpacing: '-0.02em',
+                  color: isSelected ? '#fff' : isToday ? T.accent : T.text,
+                  fontVariantNumeric: 'tabular-nums',
+                  lineHeight: 1,
+                }}
+              >
+                {d.getDate()}
+              </span>
+            </TapButton>
+          );
+        })}
+      </div>
+      {!isOnToday && (
+        <div style={{ textAlign: 'center', marginTop: 8 }}>
+          <TapButton
+            onClick={onJumpToday}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: T.accent,
+              background: 'transparent',
+              border: 0,
+              padding: '4px 12px',
+              borderRadius: R.pill,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+            }}
+          >
+            ← {todayLabel}
+          </TapButton>
+        </div>
+      )}
+    </div>
+  );
+}
+
