@@ -32,6 +32,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
+import '@/styles/od-client-settings.css';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
 
@@ -340,6 +341,7 @@ export default function MiniAppSettingsPage() {
   return (
     <>
       <motion.div
+        className="od-client-settings"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28 }}
