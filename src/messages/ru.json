@@ -445,6 +445,7 @@
     }
   },
   "calendar": {
+    "title": "Календарь",
     "today": "Сегодня",
     "dayView": "День",
     "weekView": "Неделя",

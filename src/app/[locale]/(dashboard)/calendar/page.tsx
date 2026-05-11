@@ -638,7 +638,7 @@ export default function CalendarPage() {
             fontFamily: TS.fontFamily,
           }}
         >
-          {t('title') || 'Календарь'}
+          {t('title')}
         </h1>
         {dayInfo2 && dayInfo2.count > 0 && (
           <div

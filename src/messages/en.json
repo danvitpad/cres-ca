@@ -445,6 +445,7 @@
     }
   },
   "calendar": {
+    "title": "Calendar",
     "today": "Today",
     "dayView": "Day",
     "weekView": "Week",

@@ -445,6 +445,7 @@
     "greetingEvening": "Доброго вечора"
   },
   "calendar": {
+    "title": "Календар",
     "today": "Сьогодні",
     "dayView": "День",
     "weekView": "Тиждень",
