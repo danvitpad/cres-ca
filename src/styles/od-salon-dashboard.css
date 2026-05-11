@@ -1,0 +1,197 @@
+/** --- YAML
+ * name: ODSalonDashboardStyles
+ * description: Дословный перенос CSS из Open Design salon-dashboard.html
+ *   мобильного экрана (строки 291-486). Скоуп — `.od-salon-dashboard`.
+ * --- */
+
+.od-salon-dashboard {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-border: var(--m-accent, rgba(37, 99, 235, 0.3));
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-success-border: rgba(16, 185, 129, 0.3);
+  --od-warning: #f59e0b;
+  --od-danger: #ef4444;
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --od-sh-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.od-salon-dashboard .m-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-top: 4px;
+}
+.od-salon-dashboard .m-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--od-fg);
+  line-height: 1.1;
+}
+.od-salon-dashboard .m-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--od-fg-2);
+  box-shadow: var(--od-sh-sm);
+  position: relative;
+}
+.od-salon-dashboard .m-icon-btn:active { transform: scale(0.94); }
+.od-salon-dashboard .notif-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--od-danger);
+  border: 1.5px solid var(--od-surface);
+}
+
+/* KPI grid */
+.od-salon-dashboard .m-kpi-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.od-salon-dashboard .m-kpi {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 14px;
+  padding: 14px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.od-salon-dashboard .m-kpi-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--od-fg-3);
+  margin-bottom: 6px;
+}
+.od-salon-dashboard .m-kpi-value {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--od-fg);
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.od-salon-dashboard .m-kpi-delta {
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.od-salon-dashboard .m-kpi-delta.up { color: var(--od-success); }
+.od-salon-dashboard .m-kpi-delta.down { color: var(--od-warning); }
+
+/* Section title */
+.od-salon-dashboard .m-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--od-fg);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.od-salon-dashboard .m-section-link {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--od-accent);
+  cursor: pointer;
+}
+
+/* Master list */
+.od-salon-dashboard .m-master-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.od-salon-dashboard .m-master-card {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.od-salon-dashboard .m-av {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  border: 2px solid var(--od-surface);
+}
+.od-salon-dashboard .m-master-body {
+  flex: 1;
+  min-width: 0;
+}
+.od-salon-dashboard .m-master-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--od-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.od-salon-dashboard .m-master-spec {
+  font-size: 11px;
+  color: var(--od-fg-3);
+  margin-top: 1px;
+}
+.od-salon-dashboard .m-master-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.od-salon-dashboard .m-rev-chip {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--od-success);
+  background: var(--od-success-soft);
+  border: 1px solid var(--od-success-border);
+  border-radius: var(--od-r-full);
+  padding: 2px 8px;
+  font-variant-numeric: tabular-nums;
+}
+.od-salon-dashboard .m-appt-count {
+  font-size: 10px;
+  color: var(--od-fg-3);
+  font-variant-numeric: tabular-nums;
+}

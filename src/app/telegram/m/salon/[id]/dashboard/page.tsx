@@ -11,6 +11,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { TrendingUp, Calendar, Users, Building2, ChevronRight } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import '@/styles/od-salon-dashboard.css';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -117,7 +118,7 @@ export default function MiniAppSalonDashboard() {
   const isUnified = data.salon.team_mode === 'unified';
 
   return (
-    <div className="p-4 pb-24 space-y-5">
+    <div className="od-salon-dashboard p-4 pb-24 space-y-5">
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
