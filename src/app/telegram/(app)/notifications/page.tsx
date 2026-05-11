@@ -23,6 +23,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import '@/styles/od-client-notifications.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, TYPE, FONT_BASE, PAGE_PADDING_X } from '@/components/miniapp/design';
 
@@ -280,6 +281,7 @@ export default function ClientMiniAppNotifications() {
 
   return (
     <motion.div
+      className="od-client-notifications"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28 }}
