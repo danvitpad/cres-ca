@@ -1,0 +1,198 @@
+/** --- YAML
+ * name: ODMasterMarketingStyles
+ * description: Дословный перенос CSS из Open Design master-marketing.html
+ *   мобильного экрана (строки 96-168). Скоуп — `.od-master-marketing`.
+ * --- */
+
+.od-master-marketing {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-border: var(--m-accent, rgba(37, 99, 235, 0.3));
+  --od-danger: #ef4444;
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-r-lg: 0.75rem;
+  --od-r-xl: 1rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --od-sh-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Mobile header — OD строки 103-105 */
+.od-master-marketing .ip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+  flex-shrink: 0;
+}
+.od-master-marketing .ip-header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--od-fg);
+}
+
+/* Hero KPI — OD строки 110-118 */
+.od-master-marketing .hero-kpi {
+  background: var(--od-accent);
+  border-radius: var(--od-r-xl);
+  padding: 20px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.od-master-marketing .hero-kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+.od-master-marketing .hero-kpi-val {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.od-master-marketing .hero-kpi-sub {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Grid 2x2 — OD строки 122-135 */
+.od-master-marketing .mkt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.od-master-marketing .mkt-card {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-xl);
+  padding: 16px;
+  cursor: pointer;
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  animation: od-mkt-slideUp 400ms var(--od-spring-soft) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+.od-master-marketing .mkt-card:active {
+  transform: scale(0.97);
+}
+.od-master-marketing .mc-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--od-r-lg);
+  background: var(--od-accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-accent);
+  margin-bottom: 10px;
+}
+.od-master-marketing .mc-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.od-master-marketing .mc-sub {
+  font-size: 0.75rem;
+  color: var(--od-fg-3);
+  margin: 2px 0 0;
+}
+.od-master-marketing .mc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: var(--od-r-full);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+  border: 1px solid var(--od-accent-border);
+}
+
+/* Referral card — OD строки 138-145 */
+.od-master-marketing .ref-card {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-xl);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.od-master-marketing .ref-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--od-r-xl);
+  flex-shrink: 0;
+  background: rgba(239, 68, 68, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-danger);
+}
+.od-master-marketing .ref-body {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-marketing .ref-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  margin: 0;
+}
+.od-master-marketing .ref-stat {
+  font-size: 0.75rem;
+  color: var(--od-fg-2);
+  margin: 2px 0 0;
+}
+
+/* FAB — OD строки 160-168 */
+.od-master-marketing .ip-fab {
+  position: fixed;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--od-accent);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  z-index: 20;
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+  -webkit-tap-highlight-color: transparent;
+}
+.od-master-marketing .ip-fab:active {
+  transform: scale(0.95);
+}
+
+@keyframes od-mkt-slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

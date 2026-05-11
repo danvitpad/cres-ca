@@ -18,6 +18,7 @@ import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import '@/styles/od-master-marketing.css';
 
 const I18N: Record<MiniAppLang, {
   title: string; subtitle: string;
@@ -77,7 +78,7 @@ export default function MasterMiniAppMarketing() {
   ];
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-marketing">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
