@@ -37,6 +37,7 @@ const I18N: Record<MiniAppLang, {
   manualName: string; manualPhone: string; manualEmail: string;
   cancelBtn: string; saveBtn: string;
   statTotal: string; statVip: string; statSleeping: string;
+  filterAll: string; filterVip: string; filterNew: string; filterSleeping: string;
   daysAgoLabels: DaysAgoLabels;
 }> = {
   uk: {
@@ -70,6 +71,7 @@ const I18N: Record<MiniAppLang, {
     manualName: 'Імʼя', manualPhone: 'Телефон', manualEmail: 'Email',
     cancelBtn: 'Скасувати', saveBtn: 'Записати',
     statTotal: 'Всього', statVip: 'VIP', statSleeping: 'Сплячі',
+    filterAll: 'Всі', filterVip: 'VIP', filterNew: 'Нові', filterSleeping: 'Сплячі',
     daysAgoLabels: {
       today: 'сьогодні', yesterday: 'вчора',
       daysAgo: (n) => `${n} дн. тому`,
@@ -109,6 +111,7 @@ const I18N: Record<MiniAppLang, {
     manualName: 'Имя', manualPhone: 'Телефон', manualEmail: 'Email',
     cancelBtn: 'Отмена', saveBtn: 'Записать',
     statTotal: 'Всего', statVip: 'VIP', statSleeping: 'Спящие',
+    filterAll: 'Все', filterVip: 'VIP', filterNew: 'Новые', filterSleeping: 'Спящие',
     daysAgoLabels: {
       today: 'сегодня', yesterday: 'вчера',
       daysAgo: (n) => `${n} дн. назад`,
@@ -138,6 +141,7 @@ const I18N: Record<MiniAppLang, {
     manualName: 'Name', manualPhone: 'Phone', manualEmail: 'Email',
     cancelBtn: 'Cancel', saveBtn: 'Add',
     statTotal: 'Total', statVip: 'VIP', statSleeping: 'Sleeping',
+    filterAll: 'All', filterVip: 'VIP', filterNew: 'New', filterSleeping: 'Sleeping',
     daysAgoLabels: {
       today: 'today', yesterday: 'yesterday',
       daysAgo: (n) => `${n}d ago`,
@@ -239,6 +243,7 @@ export default function MasterMiniAppClientsPage() {
   const [systemResults, setSystemResults] = useState<SystemCard[]>([]);
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<'all' | 'vip' | 'new' | 'sleeping'>('all');
   const [showManual, setShowManual] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
@@ -279,14 +284,25 @@ export default function MasterMiniAppClientsPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    // Multi-word AND: all tokens must appear in name or phone
-    const tokens = q.split(/\s+/).filter(Boolean);
+    const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+    const now = Date.now();
+    const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
     return rows.filter((r) => {
-      const hay = `${r.full_name.toLowerCase()} ${(r.phone ?? '').toLowerCase()}`;
-      return tokens.every((t) => hay.includes(t));
+      // Search by name/phone tokens
+      if (tokens.length) {
+        const hay = `${r.full_name.toLowerCase()} ${(r.phone ?? '').toLowerCase()}`;
+        if (!tokens.every((tok) => hay.includes(tok))) return false;
+      }
+      // Filter chip (Open Design master-clients): all / vip / new / sleeping
+      if (filter === 'vip') return r.total_visits >= 10;
+      if (filter === 'new') return r.total_visits <= 1;
+      if (filter === 'sleeping') {
+        if (!r.last_visit_at) return r.total_visits === 0;
+        return now - new Date(r.last_visit_at).getTime() >= NINETY_DAYS;
+      }
+      return true;
     });
-  }, [rows, query]);
+  }, [rows, query, filter]);
 
   // Stats: VIP = ≥10 visits, Спящий = не было ≥90 дней (или never)
   const stats = useMemo(() => {
@@ -435,6 +451,53 @@ export default function MasterMiniAppClientsPage() {
         </div>
       </div>
 
+      {/* Filter chips — Open Design master-clients mobile. Горизонтальный
+          скролл, 4 чипа: Все / VIP / Новые / Спящие. Один активен в любой
+          момент (radio). Расчёт фильтра — в filtered useMemo. */}
+      {rows.length > 0 && !loading && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            padding: `12px ${PAGE_PADDING_X}px 0`,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {([
+            ['all', t.filterAll],
+            ['vip', t.filterVip],
+            ['new', t.filterNew],
+            ['sleeping', t.filterSleeping],
+          ] as const).map(([key, label]) => {
+            const on = filter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { haptic('selection'); setFilter(key); }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: R.pill,
+                  border: `1.5px solid ${on ? T.accent : T.border}`,
+                  background: on ? T.accent : T.surface,
+                  color: on ? '#fff' : T.textSecondary,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  fontFamily: 'inherit',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  transition: 'all 0.12s cubic-bezier(0.16, 1, 0.3, 1)',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Stats strip — 3 карточки (Open Design). Показываем когда есть клиенты. */}
       {rows.length > 0 && !loading && (
         <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
@@ -475,13 +538,17 @@ export default function MasterMiniAppClientsPage() {
                   {t.yourClients}
                 </p>
               )}
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Open Design master-clients: borderless rows с bottom-border
+                  разделителем (а не отдельные карточки с тенью). Плотнее,
+                  чище, ближе к iOS Contacts. */}
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
                 {filtered.map((c, i) => {
               const isVIP = c.total_visits >= 10;
               const isExcellent = (c.behavior_indicators ?? []).includes('excellent');
               const isRisky = (c.behavior_indicators ?? []).some(
                 (b) => b === 'frequent_canceller' || b === 'rude' || b === 'often_late',
               );
+              const isLast = i === filtered.length - 1;
               return (
                 <motion.li
                   key={c.id}
@@ -496,13 +563,10 @@ export default function MasterMiniAppClientsPage() {
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
-                      padding: 12,
-                      background: T.surface,
-                      border: `1px solid ${T.borderSubtle}`,
-                      borderRadius: R.md,
+                      padding: '12px 0',
+                      borderBottom: isLast ? 'none' : `1px solid ${T.borderSubtle}`,
                       textDecoration: 'none',
                       color: T.text,
-                      boxShadow: SHADOW.card,
                     }}
                   >
                     <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -720,6 +784,40 @@ export default function MasterMiniAppClientsPage() {
           </>
         )}
       </div>
+
+      {/* FAB — Open Design master-clients mobile. Floating + button bottom-right
+          поверх bottom-nav. Тап открывает manual-add форму (для людей вне
+          CRES-CA). Раньше это была подчёркнутая ссылка в конце списка —
+          невидимая если клиентов нет. */}
+      {ready && masterId && (
+        <button
+          type="button"
+          onClick={() => { haptic('selection'); setShowManual(true); setQuery(''); }}
+          aria-label={t.manualHint}
+          style={{
+            position: 'fixed',
+            // 88px = высота floating bottom-nav (~64px) + 16px gap + safe-area.
+            // Совпадает с FAB.bottom в OD master-clients (88px).
+            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
+            right: 20,
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: T.accent,
+            color: '#fff',
+            border: 'none',
+            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 20,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <UserPlus size={22} strokeWidth={2} />
+        </button>
+      )}
     </MobilePage>
   );
 }
