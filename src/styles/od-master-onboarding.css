@@ -1,0 +1,264 @@
+/** --- YAML
+ * name: ODMasterOnboardingStyles
+ * description: Дословный перенос CSS из Open Design master-onboarding.html
+ *   мобильного 4-шагового флоу (строки 70-155). Скоуп —
+ *   `.od-master-onboarding`.
+ * --- */
+
+.od-master-onboarding {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-dim: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-success: #10b981;
+  --od-success-dim: rgba(16, 185, 129, 0.1);
+  --od-text: var(--m-text, #0f172a);
+  --od-text-2: var(--m-text-secondary, #475569);
+  --od-text-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-neutral-200: var(--m-border, #e2e8f0);
+  --od-sp-1: 0.25rem;
+  --od-sp-2: 0.5rem;
+  --od-sp-3: 0.75rem;
+  --od-sp-4: 1rem;
+  --od-sp-5: 1.25rem;
+  --od-sp-6: 1.5rem;
+  --od-sp-8: 2rem;
+  --od-r-md: 0.75rem;
+  --od-r-lg: 1rem;
+  --od-r-xl: 1.5rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-dur-medium: 320ms;
+  --od-dur-slow: 480ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --od-spring-bouncy: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Progress */
+.od-master-onboarding .onboarding-progress {
+  padding: var(--od-sp-4) var(--od-sp-5) var(--od-sp-2);
+}
+.od-master-onboarding .step-dots {
+  display: flex;
+  gap: var(--od-sp-2);
+  align-items: center;
+}
+.od-master-onboarding .step-dot {
+  height: 4px;
+  border-radius: var(--od-r-full);
+  transition: all var(--od-dur-medium) var(--od-spring-soft);
+  flex: 1;
+  background: var(--od-neutral-200);
+}
+.od-master-onboarding .step-dot.done { background: var(--od-success); }
+.od-master-onboarding .step-dot.active { background: var(--od-accent); }
+.od-master-onboarding .step-label {
+  font-size: 11px;
+  color: var(--od-text-2);
+  margin-top: var(--od-sp-2);
+}
+
+/* Step content */
+.od-master-onboarding .step-body {
+  flex: 1;
+  padding: var(--od-sp-4) var(--od-sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-4);
+}
+.od-master-onboarding .step-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--od-r-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+}
+.od-master-onboarding .step-headline {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--od-text);
+}
+.od-master-onboarding .step-sub {
+  font-size: 13px;
+  color: var(--od-text-2);
+  line-height: 1.6;
+}
+
+/* Form */
+.od-master-onboarding .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-1);
+}
+.od-master-onboarding .form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--od-text-2);
+}
+.od-master-onboarding .form-input {
+  padding: var(--od-sp-3);
+  border: 1.5px solid var(--od-border);
+  border-radius: var(--od-r-md);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--od-text);
+  background: var(--od-surface);
+  outline: none;
+  transition: border-color var(--od-dur-fast);
+}
+.od-master-onboarding .form-input:focus {
+  border-color: var(--od-accent);
+}
+.od-master-onboarding .form-input.filled {
+  border-color: var(--od-accent-h);
+}
+
+/* Niche grid */
+.od-master-onboarding .niche-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--od-sp-2);
+}
+.od-master-onboarding .niche-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--od-sp-3) var(--od-sp-2);
+  border-radius: var(--od-r-lg);
+  border: 1.5px solid var(--od-border);
+  background: var(--od-surface);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--od-text-2);
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+  text-align: center;
+  font-family: inherit;
+}
+.od-master-onboarding .niche-btn.selected {
+  border-color: var(--od-accent);
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+}
+
+/* Service chip */
+.od-master-onboarding .service-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-2);
+}
+.od-master-onboarding .service-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--od-sp-3);
+  border-radius: var(--od-r-md);
+  border: 1.5px solid var(--od-border);
+  background: var(--od-surface);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--od-text);
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+}
+.od-master-onboarding .service-chip.selected {
+  border-color: var(--od-accent);
+  background: var(--od-accent-dim);
+}
+.od-master-onboarding .service-chip.selected .chip-check {
+  background: var(--od-accent);
+  border-color: var(--od-accent);
+  color: #fff;
+}
+.od-master-onboarding .chip-check {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--od-r-full);
+  border: 1.5px solid var(--od-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-master-onboarding .chip-price {
+  font-size: 12px;
+  color: var(--od-text-2);
+}
+
+/* Success screen */
+.od-master-onboarding .success-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--od-sp-8) var(--od-sp-5);
+  text-align: center;
+  gap: var(--od-sp-4);
+}
+.od-master-onboarding .success-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--od-r-full);
+  background: var(--od-success-dim);
+  color: var(--od-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: od-onb-popIn var(--od-dur-slow) var(--od-spring-bouncy) both;
+}
+@keyframes od-onb-popIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.od-master-onboarding .success-headline {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--od-text);
+}
+.od-master-onboarding .success-sub {
+  font-size: 14px;
+  color: var(--od-text-2);
+  line-height: 1.6;
+}
+
+/* Footer */
+.od-master-onboarding .step-footer {
+  flex-shrink: 0;
+  padding: var(--od-sp-4) var(--od-sp-5) calc(var(--od-sp-6) + 4px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-2);
+}
+.od-master-onboarding .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--od-sp-2);
+  padding: var(--od-sp-4);
+  border-radius: var(--od-r-xl);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+}
+.od-master-onboarding .btn-primary {
+  background: var(--od-accent);
+  color: #fff;
+}
+.od-master-onboarding .btn-primary:active { transform: scale(0.97); }
+.od-master-onboarding .btn-ghost {
+  background: transparent;
+  color: var(--od-text-2);
+  padding: var(--od-sp-2);
+  font-size: 13px;
+  font-weight: 500;
+}

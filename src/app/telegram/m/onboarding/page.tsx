@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
 const AddressMap = dynamic(() => import('./map'), { ssr: false });
+import '@/styles/od-master-onboarding.css';
 import {
   ArrowLeft, Check, ChevronRight, Loader2, Search, X as XIcon,
   // Vertical icons
@@ -366,7 +367,7 @@ export default function MasterOnboardingPage() {
   }
 
   return (
-    <div style={pageStyle}>
+    <div className="od-master-onboarding" style={pageStyle}>
       <style>{HIDE_SPIN_CSS}</style>
 
       {/* Top bar */}
