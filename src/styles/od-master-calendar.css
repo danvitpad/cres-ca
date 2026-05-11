@@ -1,0 +1,341 @@
+/** --- YAML
+ * name: ODMasterCalendarStyles
+ * description: Дословный перенос CSS из Open Design master-calendar.html
+ *   мобильного экрана (строки 118-253). Скоуп — `.od-master-calendar`.
+ * --- */
+
+.od-master-calendar {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-border: var(--m-accent, rgba(37, 99, 235, 0.3));
+  --od-accent-fg: #ffffff;
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-success-border: rgba(16, 185, 129, 0.3);
+  --od-danger: #ef4444;
+  --od-danger-soft: rgba(239, 68, 68, 0.1);
+  --od-danger-border: rgba(239, 68, 68, 0.3);
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-bg-2: var(--m-surface-elevated, #f1f5f9);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-md: 0.5rem;
+  --od-r-lg: 0.75rem;
+  --od-r-xl: 1rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 120ms;
+  --od-dur-base: 200ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Header — OD строки 125-133 */
+.od-master-calendar .ip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+  flex-shrink: 0;
+}
+.od-master-calendar .ip-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.02em;
+}
+.od-master-calendar .ip-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--od-r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--od-bg-2);
+  border: 1px solid var(--od-border);
+  cursor: pointer;
+  color: var(--od-fg-2);
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+}
+.od-master-calendar .ip-icon-btn:active {
+  transform: scale(0.93);
+  background: var(--od-border);
+}
+
+/* Stat strip — OD строки 136-140 */
+.od-master-calendar .ip-stat-strip {
+  margin: 0 20px 12px;
+  padding: 10px 14px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-lg);
+  font-size: 13px;
+  color: var(--od-fg-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.od-master-calendar .ip-stat-strip strong {
+  color: var(--od-fg);
+  font-weight: 600;
+}
+
+/* Date picker — OD строки 143-154 */
+.od-master-calendar .ip-datepicker {
+  padding: 0 20px 14px;
+  flex-shrink: 0;
+}
+.od-master-calendar .date-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.od-master-calendar .date-strip::-webkit-scrollbar {
+  display: none;
+}
+.od-master-calendar .date-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--od-r-lg);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  color: var(--od-fg);
+}
+.od-master-calendar .date-pill:active {
+  transform: scale(0.94);
+}
+.od-master-calendar .date-pill.today {
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+.od-master-calendar .dp-day {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+.od-master-calendar .date-pill.today .dp-day {
+  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.85);
+}
+.od-master-calendar .dp-num {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Timeline — OD строки 157-164 */
+.od-master-calendar .ip-timeline {
+  padding: 0 20px 0;
+}
+.od-master-calendar .tl-row {
+  display: flex;
+  gap: 12px;
+  min-height: 60px;
+  position: relative;
+}
+.od-master-calendar .tl-row:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 32px;
+  top: 28px;
+  bottom: 0;
+  width: 1px;
+  background: var(--od-border);
+  z-index: 0;
+}
+.od-master-calendar .tl-time {
+  width: 40px;
+  font-size: 11px;
+  color: var(--od-fg-3);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  padding-top: 6px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.od-master-calendar .tl-block {
+  flex: 1;
+  margin-bottom: 8px;
+  min-width: 0;
+}
+
+/* Appointment card — OD строки 167-190 */
+.od-master-calendar .apt-card {
+  border-radius: var(--od-r-lg);
+  padding: 11px 12px;
+  border: 1.5px solid var(--od-border);
+  background: var(--od-surface);
+  cursor: pointer;
+  position: relative;
+  display: block;
+  text-decoration: none;
+  color: var(--od-fg);
+  transition: all var(--od-dur-base) var(--od-ease-out);
+}
+.od-master-calendar .apt-card:active {
+  transform: scale(0.97);
+  box-shadow: var(--od-sh-md);
+}
+.od-master-calendar .apt-card.done {
+  border-color: var(--od-success-border);
+  background: var(--od-success-soft);
+}
+.od-master-calendar .apt-card.now {
+  border-color: var(--od-accent);
+  animation: od-cal-apt-pulse 2.5s ease-in-out infinite;
+}
+.od-master-calendar .apt-card.pending {
+  border-color: var(--od-border-2);
+}
+@keyframes od-cal-apt-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+}
+.od-master-calendar .apt-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.od-master-calendar .apt-av {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-master-calendar .apt-av.done {
+  background: var(--od-success-soft);
+  color: var(--od-success);
+}
+.od-master-calendar .apt-info {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-calendar .apt-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--od-fg);
+  letter-spacing: -0.01em;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.od-master-calendar .apt-svc {
+  font-size: 11px;
+  color: var(--od-fg-2);
+  margin: 1px 0 0;
+}
+.od-master-calendar .apt-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.od-master-calendar .apt-dur {
+  font-size: 10px;
+  color: var(--od-fg-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.od-master-calendar .apt-price {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--od-fg);
+  font-variant-numeric: tabular-nums;
+}
+.od-master-calendar .apt-badge {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--od-r-full);
+}
+.od-master-calendar .badge-done {
+  background: var(--od-success-soft);
+  color: var(--od-success);
+}
+.od-master-calendar .badge-now {
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+}
+.od-master-calendar .badge-pend {
+  background: var(--od-bg-2);
+  color: var(--od-fg-3);
+}
+
+/* Free slot — OD строки 193-196 */
+.od-master-calendar .apt-free {
+  border-radius: var(--od-r-md);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: transparent;
+  border: 1px dashed var(--od-border);
+  font-size: 11px;
+  color: var(--od-fg-3);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* FAB — OD строки 199-207. Адаптирован под наш floating bottom-nav. */
+.od-master-calendar .ip-fab {
+  position: fixed;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  cursor: pointer;
+  z-index: 20;
+  border: none;
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.od-master-calendar .ip-fab:active {
+  transform: scale(0.92);
+}
+
+/* Enter animation */
+@keyframes od-cal-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.od-master-calendar .enter {
+  opacity: 0;
+  animation: od-cal-enter 0.32s var(--od-ease-out) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}

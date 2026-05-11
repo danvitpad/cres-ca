@@ -33,6 +33,7 @@ import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { HomeScreenBanner } from '@/components/miniapp/home-screen-banner';
 import { getCached, setCached, isFresh, invalidateCache } from '@/lib/miniapp/cache';
 import { BlockTimeSheet } from '@/components/miniapp/block-time-sheet';
+import '@/styles/od-master-calendar.css';
 
 type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
@@ -388,7 +389,7 @@ export default function MasterMiniAppCalendar() {
   }
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-calendar">
       <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Кнопка «Новая запись» переехала в floating FAB снизу справа —
             раньше она жила в PageHeader.right и перекрывалась кружком аватара
@@ -450,123 +451,59 @@ export default function MasterMiniAppCalendar() {
               </p>
             </div>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            /* Литерально .apt-card / .apt-row / .apt-av / .apt-info /
+               .apt-name / .apt-svc / .apt-meta / .apt-dur / .apt-price /
+               .apt-badge / .badge-done|now|pend из OD master-calendar.html. */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {rows.map((r, i) => {
-                const meta = { ...STATUS_META_STYLES[r.status], label: t.status[r.status] };
+                const isDone = r.status === 'completed';
+                const isNow = r.status === 'in_progress';
+                const isPending = !isDone && !isNow;
+                const cardCls = isDone ? 'apt-card done' : isNow ? 'apt-card now' : 'apt-card pending';
+                const badgeCls = isDone ? 'badge-done' : isNow ? 'badge-now' : 'badge-pend';
+                const badgeLabel = isDone ? t.status.completed : isNow ? t.inProgress : t.status[r.status];
+                const startTime = new Date(r.starts_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' });
+                const endTime = new Date(r.ends_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' });
+                const initials = (r.client_name || '?').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
                 return (
-                  <motion.li
+                  <motion.div
                     key={r.id}
+                    className={cardCls}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.03 }}
+                    transition={{ delay: Math.min(i, 12) * 0.03 }}
+                    onClick={() => onSelect(r.id)}
                   >
-                    <TapButton
-                      onClick={() => onSelect(r.id)}
-                      style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        width: '100%',
-                        padding: '14px 14px 14px 18px',
-                        borderRadius: R.md,
-                        background: T.surface,
-                        border: `1px solid ${T.borderSubtle}`,
-                        boxShadow: SHADOW.card,
-                        textAlign: 'left',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      <span
-                        style={{
-                          position: 'absolute',
-                          left: 0,
-                          top: 12,
-                          bottom: 12,
-                          width: 4,
-                          borderRadius: '0 4px 4px 0',
-                          background: meta.stripBg,
-                        }}
-                      />
-                      <div
-                        style={{
-                          width: 58,
-                          flexShrink: 0,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          textAlign: 'center',
-                          background: T.bgSubtle,
-                          borderRadius: R.sm,
-                          padding: '8px 4px',
-                        }}
-                      >
-                        <span style={{ fontSize: 15, fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-                          {new Date(r.starts_at).toLocaleTimeString(t.dateLocale, { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <span style={{ fontSize: 10, color: T.textTertiary, marginTop: 3 }}>
-                          {r.duration_min} {t.minutes}
-                        </span>
+                    <div className="apt-row">
+                      <div className={`apt-av${isDone ? ' done' : ''}`}>{initials || '?'}</div>
+                      <div className="apt-info">
+                        <p className="apt-name">{r.client_name}</p>
+                        <p className="apt-svc">{r.service_name} · {r.duration_min} {t.minutes}</p>
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {r.service_name}
-                        </p>
-                        <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {r.client_name}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                          <span
-                            style={{
-                              padding: '3px 8px',
-                              borderRadius: 999,
-                              background: meta.chipBg,
-                              color: meta.chipColor,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              letterSpacing: '0.04em',
-                              textTransform: 'uppercase',
-                            }}
-                          >
-                            {meta.label}
-                          </span>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: T.text }}>
-                            {r.price.toFixed(0)} ₴
-                          </span>
-                        </div>
-                      </div>
-                    </TapButton>
-                  </motion.li>
+                      <span className={`apt-badge ${badgeCls}`}>{badgeLabel}</span>
+                    </div>
+                    <div className="apt-meta">
+                      <span className="apt-dur">
+                        <Clock size={10} strokeWidth={2} />
+                        {startTime}–{endTime}
+                      </span>
+                      <span className="apt-price">{r.price.toFixed(0)} ₴</span>
+                    </div>
+                  </motion.div>
                 );
               })}
-            </ul>
+            </div>
           )}
         </div>
 
-        {/* FAB — новый запись (Open Design pattern) */}
+        {/* Литерально .ip-fab из OD master-calendar.html. */}
         <Link
           href="/telegram/m/slot/new"
           onClick={() => haptic('light')}
           aria-label={t.newBooking}
-          style={{
-            position: 'fixed',
-            right: 16,
-            bottom: 'calc(94px + env(safe-area-inset-bottom, 0px))',
-            zIndex: 40,
-            width: 56,
-            height: 56,
-            borderRadius: '50%',
-            background: T.accent,
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 8px 24px rgba(37, 99, 235, 0.35), 0 4px 12px rgba(0,0,0,0.12)',
-            textDecoration: 'none',
-            transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
+          className="ip-fab"
         >
-          <Plus size={26} strokeWidth={2.5} />
+          <Plus size={22} strokeWidth={2.5} />
         </Link>
 
         {/* Drawer */}
@@ -956,86 +893,31 @@ function DateStrip({
   const isOnToday = isSameDay(day, today);
 
   return (
-    <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
-      {/* Сетка 7 ячеек. Стабильный key=i (а не ISO date) чтобы React не
-          размонтировал ячейку при переключении дня — иначе цифры дёргались,
-          анимации не было. layoutId="cal-day-pill" даёт плавный shared-layout
-          переезд cobalt-подсветки между днями. */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: 6,
-        }}
-      >
+    <div className="ip-datepicker">
+      {/* Литерально .date-strip / .date-pill / .date-pill.today / .dp-day /
+          .dp-num из OD master-calendar.html. Слово «today» в OD обозначает
+          подсветку выбранного дня (не текущей даты) — это контейнер pill
+          с акцент-цветом. */}
+      <div className="date-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
         {days.map((d, i) => {
           const isSelected = isSameDay(d, day);
           const isToday = isSameDay(d, today);
           return (
-            <TapButton
+            <button
               key={i}
+              type="button"
+              className={`date-pill${isSelected ? ' today' : ''}`}
               onClick={() => onPick(d)}
               style={{
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                padding: '8px 4px',
-                borderRadius: R.sm,
-                background: 'transparent',
-                border: `1px solid ${!isSelected && isToday ? T.accentSoft : 'transparent'}`,
-                fontFamily: 'inherit',
-                transition: 'border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                background: isSelected ? undefined : 'transparent',
+                border: !isSelected && isToday ? '1px solid var(--m-accent-soft)' : '1px solid transparent',
               }}
             >
-              {isSelected && (
-                <motion.div
-                  layoutId="cal-day-pill"
-                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: R.sm,
-                    background: T.accent,
-                    zIndex: 0,
-                  }}
-                />
-              )}
-              <span
-                style={{
-                  position: 'relative',
-                  zIndex: 1,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  color: isSelected ? 'rgba(255,255,255,0.85)' : T.textTertiary,
-                  lineHeight: 1,
-                  transition: 'color 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                {d.toLocaleDateString(locale, { weekday: 'short' }).slice(0, 2)}
-              </span>
-              <motion.span
-                key={d.getDate()}
-                initial={{ opacity: 0, y: -3 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                style={{
-                  position: 'relative',
-                  zIndex: 1,
-                  fontSize: 16,
-                  fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  color: isSelected ? '#fff' : isToday ? T.accent : T.text,
-                  fontVariantNumeric: 'tabular-nums',
-                  lineHeight: 1,
-                }}
-              >
+              <span className="dp-day">{d.toLocaleDateString(locale, { weekday: 'short' }).slice(0, 2)}</span>
+              <span className="dp-num" style={!isSelected && isToday ? { color: 'var(--m-accent)' } : undefined}>
                 {d.getDate()}
-              </motion.span>
-            </TapButton>
+              </span>
+            </button>
           );
         })}
       </div>
