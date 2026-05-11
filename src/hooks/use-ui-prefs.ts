@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { defaultLocale } from '@/lib/i18n/config';
 
 export type UiTheme = 'auto' | 'light' | 'dark';
 export type UiLanguage = 'ru' | 'uk' | 'en';
@@ -76,14 +77,21 @@ export function useUiPrefs() {
         body: JSON.stringify({ ui_language: next }),
       });
     } catch { /* offline-tolerant */ }
-    // Переключаем locale в URL без потери текущей страницы:
-    // /ru/today  →  /uk/today (если префикс есть), иначе просто prefix-add.
+    // Переключаем locale в URL без потери текущей страницы.
+    // defaultLocale (UK) — без префикса (`localePrefix: 'as-needed'`).
+    // RU и EN — с префиксом `/ru/` / `/en/`.
     const stripped = stripLocale(pathname);
-    const target = next === 'ru'
-      ? stripped // localePrefix='as-needed' — RU без префикса
-      : `/${next}${stripped === '/' ? '' : stripped}`;
-    router.push(target);
-    router.refresh();
+    const target = next === defaultLocale
+      ? (stripped === '' ? '/' : stripped)
+      : `/${next}${stripped === '/' || stripped === '' ? '' : stripped}`;
+    // Hard reload вместо router.push — next-intl должен подхватить новую локаль
+    // через middleware, а translations серверно пререндерятся под нужный язык.
+    // router.push() оставлял старые server-rendered translations.
+    if (typeof window !== 'undefined') {
+      window.location.href = target;
+    } else {
+      router.push(target);
+    }
   }, [pathname, router]);
 
   return { prefs, loaded, updateTheme, updateLanguage };

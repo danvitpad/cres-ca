@@ -14,12 +14,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Clock, Coins, CalendarDays, CheckCircle2, PlayCircle, Hourglass } from 'lucide-react';
+import { Clock, Coins, CalendarDays, CheckCircle2, PlayCircle, Hourglass, Cake, Lightbulb } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
-import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MobilePage, PageHeader, AvatarCircle } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached } from '@/lib/miniapp/cache';
+import { createClient } from '@/lib/supabase/client';
 
 type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
@@ -136,6 +137,7 @@ export default function MasterMiniAppHome() {
   const initial = cacheKey ? getCached<CachedHome>(cacheKey) : undefined;
   const [rows, setRows] = useState<Appointment[]>(initial?.rows ?? []);
   const [loaded, setLoaded] = useState(!!initial);
+  const [birthdays, setBirthdays] = useState<Array<{ id: string; full_name: string; date_of_birth: string }>>([]);
 
   // Load today via /api/telegram/m/calendar (same endpoint as /m/calendar page)
   useEffect(() => {
@@ -181,6 +183,30 @@ export default function MasterMiniAppHome() {
     return () => { cancelled = true; };
   }, [cacheKey, t.defaultClient]);
 
+  // Load birthdays (отдельный fetch — не блокирует основной timeline)
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      // Получаем master_id через profile_id (userId)
+      const { data: masterRow } = await supabase
+        .from('masters')
+        .select('id')
+        .eq('profile_id', userId)
+        .maybeSingle<{ id: string }>();
+      if (cancelled || !masterRow?.id) return;
+      const { data } = await supabase
+        .from('clients')
+        .select('id, full_name, date_of_birth')
+        .eq('master_id', masterRow.id)
+        .not('date_of_birth', 'is', null);
+      if (cancelled || !data) return;
+      setBirthdays(data as Array<{ id: string; full_name: string; date_of_birth: string }>);
+    })();
+    return () => { cancelled = true; };
+  }, [userId]);
+
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 6) return t.nightHi;
@@ -210,6 +236,46 @@ export default function MasterMiniAppHome() {
     [rows],
   );
 
+  // Upcoming birthdays — ближайшие 5 в окне 90 дней
+  const upcomingBirthdays = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const computed = birthdays
+      .map((b) => {
+        const birth = new Date(b.date_of_birth);
+        const year = today.getFullYear();
+        let nextBd = new Date(year, birth.getMonth(), birth.getDate());
+        if (nextBd < today) nextBd = new Date(year + 1, birth.getMonth(), birth.getDate());
+        const daysUntil = Math.round((nextBd.getTime() - today.getTime()) / 86400000);
+        const age = nextBd.getFullYear() - birth.getFullYear();
+        return { ...b, daysUntil, age, nextBd };
+      })
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+    return computed.filter((b) => b.daysUntil <= 90).slice(0, 5);
+  }, [birthdays]);
+
+  // AI tip — динамическая подсказка из данных дня
+  const aiTip = useMemo(() => {
+    if (upcoming.length > 0) {
+      const nxt = upcoming[0];
+      const d = new Date(nxt.starts_at);
+      const time = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      return `Следующая запись в ${time} — ${nxt.client_name}. Готово ли всё?`;
+    }
+    const birthdayToday = upcomingBirthdays.find((b) => b.daysUntil === 0);
+    if (birthdayToday) {
+      return `У ${birthdayToday.full_name} сегодня день рождения! Поздравь и предложи запись.`;
+    }
+    const birthdaySoon = upcomingBirthdays.find((b) => b.daysUntil > 0 && b.daysUntil <= 7);
+    if (birthdaySoon) {
+      return `У ${birthdaySoon.full_name} ДР через ${birthdaySoon.daysUntil} дн. — поздравь и предложи запись.`;
+    }
+    if (rows.length === 0 && loaded) {
+      return 'Сегодня свободный день. Хороший момент написать спящим клиентам — предложи запись.';
+    }
+    return null;
+  }, [upcoming, upcomingBirthdays, rows.length, loaded]);
+
   const fmtMoney = (n: number) =>
     new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'uk-UA', { maximumFractionDigits: 0 }).format(n) + ' ₴';
   const fmtTime = (iso: string) => {
@@ -231,6 +297,7 @@ export default function MasterMiniAppHome() {
             lang === 'uk' ? 'uk-UA' : lang === 'ru' ? 'ru-RU' : 'en-US',
             { weekday: 'long', day: 'numeric', month: 'long' },
           )}
+          right={fullName ? <AvatarCircle url={null} name={fullName} size={44} /> : undefined}
         />
 
         {/* KPI Strip — 3 cards, accent-left на доходе дня */}
@@ -244,6 +311,41 @@ export default function MasterMiniAppHome() {
           <KpiCard label={t.kpiCompleted} value={String(completed.length)} sub={t.recordsWord(completed.length)} />
           <KpiCard label={t.kpiUpcoming} value={String(upcoming.length)} sub={t.recordsWord(upcoming.length)} />
         </div>
+
+        {/* AI Tip card — Open Design «Нагадування ШИ» */}
+        {aiTip && (
+          <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+            <div style={{
+              display: 'flex',
+              gap: 12,
+              padding: 14,
+              borderRadius: R.md,
+              background: T.accentSoft,
+              border: `1px solid color-mix(in oklab, ${T.accent} 25%, transparent)`,
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: R.sm,
+                background: T.accent, color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <Lightbulb size={18} strokeWidth={2.25} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+                  textTransform: 'uppercase', color: T.accent,
+                  marginBottom: 3,
+                }}>
+                  Подсказка
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.45, color: T.text }}>
+                  {aiTip}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Timeline today */}
         <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
@@ -369,6 +471,64 @@ export default function MasterMiniAppHome() {
             </ul>
           )}
         </div>
+
+        {/* Ближайшие ДР */}
+        {upcomingBirthdays.length > 0 && (
+          <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+            <h2 style={{
+              ...TYPE.h2, color: T.text, marginBottom: 10,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <Cake size={18} color={T.accent} strokeWidth={2} />
+              Ближайшие ДР
+            </h2>
+            <ul style={{
+              listStyle: 'none', padding: 0, margin: 0,
+              display: 'flex', flexDirection: 'column', gap: 6,
+            }}>
+              {upcomingBirthdays.map((b) => {
+                const whenLabel =
+                  b.daysUntil === 0 ? 'сегодня' :
+                  b.daysUntil === 1 ? 'завтра' :
+                  `через ${b.daysUntil} дн.`;
+                const monthNames = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+                const dateLabel = `${b.nextBd.getDate()} ${monthNames[b.nextBd.getMonth()]}`;
+                const ageLabel = b.age % 10 === 1 && b.age % 100 !== 11 ? 'год' :
+                  b.age % 10 >= 2 && b.age % 10 <= 4 && (b.age % 100 < 10 || b.age % 100 >= 20) ? 'года' : 'лет';
+                return (
+                  <li key={b.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: 12, borderRadius: R.md,
+                    background: T.surface, border: `1px solid ${T.borderSubtle}`,
+                    boxShadow: SHADOW.card,
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: R.pill,
+                      background: T.accentSoft, color: T.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <Cake size={15} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{
+                        ...TYPE.bodyStrong, color: T.text, margin: 0,
+                        fontSize: 13.5,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {b.full_name}
+                      </p>
+                      <p style={{ ...TYPE.caption, margin: '2px 0 0', fontSize: 11 }}>
+                        {dateLabel} · {b.age} {ageLabel} · {whenLabel}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
         <div style={{ height: 8 }} />
       </motion.div>
     </MobilePage>

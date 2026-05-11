@@ -14,6 +14,7 @@ import { Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import { useUiPrefs, type UiLanguage } from '@/hooks/use-ui-prefs';
+import { defaultLocale } from '@/lib/i18n/config';
 
 const LOCALES = [
   { code: 'uk', label: 'Українська' },
@@ -28,7 +29,10 @@ export function LanguageSwitcher({ className }: { className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   const segments = pathname.split('/');
-  const currentLocale = LOCALES.find((l) => l.code === segments[1])?.code || 'uk';
+  // Если префикса нет — это defaultLocale (UK, см. proxy.ts `localePrefix: 'as-needed'`).
+  // Раньше падали на 'uk' при отсутствии префикса — было корректно по совпадению,
+  // но если defaultLocale поменяется, всё развалится. Берём из конфига.
+  const currentLocale = LOCALES.find((l) => l.code === segments[1])?.code || defaultLocale;
   const current = LOCALES.find((l) => l.code === currentLocale)!;
 
   useEffect(() => {
