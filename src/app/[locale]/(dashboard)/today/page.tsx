@@ -1,8 +1,11 @@
 /** --- YAML
  * name: Today Page
- * description: Центрированная сводка: приветствие + дата + 3 StatCards, ниже grid (Напоминания | Ближайшие ДР), ниже AI-чат со scoped-ответами по БД мастера. Расписание убрано — оно в /calendar.
+ * description: Open Design alignment — bold 28px заголовок + premium KPI strip
+ *              (border-left accent на выручке, hover-lift, 2rem значения) +
+ *              card sections с header/body split. Grid Напоминания | AI-чат (2col)
+ *              | Ближайшие ДР сохранён. Spring easing cubic-bezier(.16,1,.3,1).
  * created: 2026-04-19
- * updated: 2026-04-20
+ * updated: 2026-05-11
  * --- */
 
 'use client';
@@ -19,7 +22,6 @@ import { Calendar as CalendarIcon, Coins, Users, Cake, Bell, Send, Loader2, Bot,
 
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
-import { StatCard } from '@/components/shared/primitives/stat-card';
 import { EmptyState } from '@/components/shared/primitives/empty-state';
 import { CURRENCY, pageContainer } from '@/lib/dashboard-theme';
 import { RebookPanel, type RebookCardData } from '@/components/rebook/rebook-panel';
@@ -64,10 +66,57 @@ function birthdayMeta(dob: string, dfLoc: typeof ru) {
 }
 
 const stagger = (i: number) => ({
-  initial: { opacity: 0, y: 8 } as const,
+  initial: { opacity: 0, y: 12 } as const,
   animate: { opacity: 1, y: 0 } as const,
-  transition: { delay: i * 0.05, duration: 0.3, ease: [0.23, 1, 0.32, 1] as const },
+  transition: { delay: i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
 });
+
+/** Premium KPI tile — accent-left optional, hover-lift, large tabular value. */
+function KpiTile({
+  label,
+  value,
+  icon,
+  delta,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  delta?: { text: string; positive?: boolean };
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className="group relative rounded-2xl border bg-card p-5 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+      style={{
+        borderLeftWidth: accent ? 3 : 1,
+        borderLeftColor: accent ? 'var(--ds-accent)' : undefined,
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fontVariantNumeric: 'tabular-nums',
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {label}
+        </div>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
+          {icon}
+        </div>
+      </div>
+      <div className="mt-3 text-[28px] font-bold leading-none tracking-tight">
+        {value}
+      </div>
+      {delta && (
+        <div
+          className="mt-2 text-[12px] font-medium"
+          style={{ color: delta.positive === false ? 'var(--m-danger)' : 'var(--m-success)' }}
+        >
+          {delta.text}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function TodayPage() {
   const t = useTranslations('dashboard');
@@ -283,35 +332,36 @@ export default function TodayPage() {
     >
       {/* Greeting */}
       <motion.div {...stagger(0)} className="shrink-0">
-        <h1 className="text-xl font-semibold tracking-tight">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">
           {getGreeting(t)}{firstName ? `, ${firstName}` : ''}
         </h1>
-        <p className="mt-0.5 text-xs text-muted-foreground capitalize">
+        <p className="mt-2 text-sm text-muted-foreground capitalize">
           {format(now, 'EEEE, d MMMM yyyy', { locale: dfLocale })}
         </p>
       </motion.div>
 
-      {/* 4 StatCards */}
-      <motion.div {...stagger(1)} className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard
+      {/* Premium KPI strip — 4 cards, accent-left на сегодняшней выручке */}
+      <motion.div {...stagger(1)} className="shrink-0 grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <KpiTile
           label={t('todayAppointments')}
           value={todayAppts.length}
-          icon={<CalendarIcon className="w-5 h-5" />}
+          icon={<CalendarIcon className="w-4 h-4" />}
         />
-        <StatCard
+        <KpiTile
           label={`${t('revenue')} · ${t('today').toLowerCase()}`}
           value={fmtMoney(todayRevenue)}
-          icon={<Coins className="w-5 h-5" />}
+          icon={<Coins className="w-4 h-4" />}
+          accent
         />
-        <StatCard
+        <KpiTile
           label={t('thisWeek')}
           value={fmtMoney(weekRevenue)}
-          icon={<Coins className="w-5 h-5" />}
+          icon={<Coins className="w-4 h-4" />}
         />
-        <StatCard
+        <KpiTile
           label="Новые клиенты · неделя"
           value={newClientsThisWeek}
-          icon={<Users className="w-5 h-5" />}
+          icon={<Users className="w-4 h-4" />}
         />
       </motion.div>
 
@@ -327,16 +377,19 @@ export default function TodayPage() {
       )}
 
       {/* Row: Reminders | AI chat (wide) | Birthdays — fills remaining viewport */}
-      <motion.div {...stagger(4)} className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-1 min-h-0">
+      <motion.div {...stagger(4)} className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-0">
         {/* Reminders — 1 col, scrolls internally */}
-        <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
-          <div className="flex items-center mb-3 shrink-0">
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Bell className="w-3.5 h-3.5" />
+        <div
+          className="flex flex-col rounded-2xl border bg-card shadow-sm transition-shadow duration-300 hover:shadow-md lg:col-span-1 overflow-hidden min-h-0"
+          style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+        >
+          <div className="flex items-center justify-between px-5 py-3.5 border-b shrink-0">
+            <h2 className="flex items-center gap-2 text-[13px] font-bold tracking-[-0.01em] text-foreground">
+              <Bell className="w-3.5 h-3.5 text-[var(--ds-accent)]" />
               Напоминания
             </h2>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">
             {activeReminders.length === 0 ? (
               <EmptyState
                 icon={<Bell className="w-5 h-5" />}
@@ -376,13 +429,16 @@ export default function TodayPage() {
         </div>
 
         {/* AI chat — 2 cols (widest), fills full block height */}
-        <section className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-2 min-h-0 overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+        <section
+          className="flex flex-col rounded-2xl border bg-card shadow-sm transition-shadow duration-300 hover:shadow-md lg:col-span-2 min-h-0 overflow-hidden"
+          style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+        >
+          <div className="flex items-center justify-between px-5 py-3.5 border-b shrink-0">
+            <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--ds-accent-soft)] text-[var(--ds-accent)]">
                 <Bot className="w-4 h-4" />
               </div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-[13px] font-bold tracking-[-0.01em] text-foreground">
                 AI-помощник
               </h2>
             </div>
@@ -409,7 +465,7 @@ export default function TodayPage() {
           </div>
 
           {/* Chat body OR help panel — fills remaining height */}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-3" style={{ minHeight: 0 }}>
+          <div className="flex-1 overflow-y-auto space-y-2 p-4 pr-3" style={{ minHeight: 0 }}>
             {showHelp ? (
               <VoiceCommandsHelp />
             ) : chat.length === 0 ? (
@@ -450,7 +506,7 @@ export default function TodayPage() {
             )}
           </div>
 
-          <div className="flex items-end gap-2">
+          <div className="flex items-end gap-2 border-t p-4 shrink-0">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -459,13 +515,14 @@ export default function TodayPage() {
               }}
               rows={1}
               placeholder="Напиши команду или вопрос…"
-              className="flex-1 resize-none rounded-lg border bg-background px-3.5 py-3 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[48px] max-h-[140px]"
+              className="flex-1 resize-none rounded-xl border bg-background px-3.5 py-3 text-sm leading-snug outline-none focus:border-[var(--ds-accent)] min-h-[48px] max-h-[140px] transition-colors"
               disabled={sending}
             />
             <button
               onClick={sendChat}
               disabled={sending || !input.trim()}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--ds-accent)] text-white disabled:opacity-40 transition-opacity"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent)] text-white shadow-sm disabled:opacity-40 hover:shadow-md transition-all"
+              style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
               aria-label="Отправить"
             >
               {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -474,14 +531,17 @@ export default function TodayPage() {
         </section>
 
         {/* Birthdays — clients + partners merged. 1 col, scrolls internally */}
-        <div className="flex flex-col rounded-xl border bg-card p-4 lg:col-span-1 overflow-hidden min-h-0">
-          <div className="flex items-center mb-3 shrink-0">
-            <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Cake className="w-3.5 h-3.5" />
+        <div
+          className="flex flex-col rounded-2xl border bg-card shadow-sm transition-shadow duration-300 hover:shadow-md lg:col-span-1 overflow-hidden min-h-0"
+          style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+        >
+          <div className="flex items-center justify-between px-5 py-3.5 border-b shrink-0">
+            <h2 className="flex items-center gap-2 text-[13px] font-bold tracking-[-0.01em] text-foreground">
+              <Cake className="w-3.5 h-3.5 text-[var(--ds-accent)]" />
               Ближайшие ДР
             </h2>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="flex-1 overflow-y-auto min-h-0 p-4">
           {upcomingBirthdays.length === 0 ? (
             <EmptyState
               icon={<Cake className="w-5 h-5" />}
