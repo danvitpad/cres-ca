@@ -1,8 +1,8 @@
 /** --- YAML
  * name: MiniAppWelcomePage
- * description: First-time intro for Telegram users — без приветствия, универсальный текст под любую сферу услуг (не только бьюти). Сверху — переключатели темы и языка. Не залогиненный никаких приветствий не видит.
+ * description: First-time intro for Telegram users. Hero-style без приветствия. Логомарк + заголовок + субтайтл + 3 кнопки выбора роли. Тема следует за TG colorScheme. Язык переключается chip'ом в правом верхнем углу.
  * created: 2026-04-13
- * updated: 2026-04-29
+ * updated: 2026-05-11
  * --- */
 
 'use client';
@@ -11,9 +11,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import {
-  Calendar, ShieldCheck, Heart, LogIn, Loader2, Globe,
-} from 'lucide-react';
+import { Briefcase, User, LogIn, Loader2, Globe, ChevronDown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { mapError } from '@/lib/errors';
 
@@ -39,13 +37,8 @@ const LANG_SHORT: Record<Lang, string> = { uk: 'UA', ru: 'RU', en: 'EN' };
 
 const T = {
   uk: {
-    description: 'CRES-CA — ваш особистий простір для запису до найкращих майстрів.',
-    f1Title: 'Запис у пару кліків',
-    f1Text: 'Обирайте спеціаліста, послугу та час — без дзвінків і листувань.',
-    f2Title: 'Історія ваших візитів',
-    f2Text: 'Улюблені майстри, бонуси та минулі візити — завжди під рукою.',
-    f3Title: 'Надійно і приватно',
-    f3Text: 'Дані зберігаються у нас і не передаються третім особам.',
+    headline: 'Сервіс який знає твоїх клієнтів',
+    sub: 'Записи, нагадування, фінанси і маркетинг — в одному Telegram-боті',
     terms: 'Продовжуючи, ви погоджуєтесь з',
     termsLink: 'Умовами використання',
     iAmClient: 'Я клієнт',
@@ -57,13 +50,8 @@ const T = {
     enter: 'Увійти',
   },
   ru: {
-    description: 'CRES-CA — ваше личное пространство для записи к лучшим мастерам.',
-    f1Title: 'Запись в пару кликов',
-    f1Text: 'Выбирайте специалиста, услугу и время — без звонков и переписок.',
-    f2Title: 'История ваших визитов',
-    f2Text: 'Любимые мастера, бонусы и прошлые визиты — всегда под рукой.',
-    f3Title: 'Надёжно и приватно',
-    f3Text: 'Данные хранятся у нас и не передаются третьим лицам.',
+    headline: 'Сервис, который знает ваших клиентов',
+    sub: 'Записи, напоминания, финансы и маркетинг — в одном Telegram-боте',
     terms: 'Продолжая, вы соглашаетесь с',
     termsLink: 'Условиями использования',
     iAmClient: 'Я клиент',
@@ -75,13 +63,8 @@ const T = {
     enter: 'Войти',
   },
   en: {
-    description: 'CRES-CA — your personal space to book the best specialists.',
-    f1Title: 'Book in two taps',
-    f1Text: 'Pick a specialist, a service and a time — no calls, no chats.',
-    f2Title: 'Your visit history',
-    f2Text: 'Favourite specialists, bonuses and past visits — always at hand.',
-    f3Title: 'Safe and private',
-    f3Text: 'Your data stays with us and is never shared with third parties.',
+    headline: 'The service that knows your clients',
+    sub: 'Bookings, reminders, finances and marketing — all in one Telegram bot',
     terms: 'By continuing you agree to the',
     termsLink: 'Terms of Use',
     iAmClient: 'I am a client',
@@ -111,17 +94,10 @@ export default function MiniAppWelcomePage() {
   useEffect(() => {
     setMounted(true);
     const stored = (typeof window !== 'undefined' && localStorage.getItem('cres:locale')) as Lang | null;
-    if (stored && LANG_CYCLE.includes(stored)) {
-      setLang(stored);
-    } else {
-      // По умолчанию украинский. Дополнительно: если у TG-юзера украинский язык — тоже uk.
-      setLang('uk');
-    }
+    if (stored && LANG_CYCLE.includes(stored)) setLang(stored);
   }, []);
 
-  // Mini App страницы строго следуют за темой Telegram пользователя — без
-  // ручных toggle, без сохранения в localStorage. Игнорируем любое прошлое
-  // значение из localStorage, всегда устанавливаем actual TG colorScheme.
+  // Mini App тема строго из Telegram (см. CLAUDE.md правило 10)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const tg = (window as { Telegram?: { WebApp?: { colorScheme?: 'light' | 'dark' } } }).Telegram?.WebApp;
@@ -135,8 +111,6 @@ export default function MiniAppWelcomePage() {
     }
   }, [setTheme]);
 
-  // Слушаем смену темы Telegram в реальном времени — если user переключит
-  // TG в light/dark пока Mini App открыт, мы тоже мгновенно перекрасимся.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     type TG = { WebApp?: { colorScheme?: 'light' | 'dark'; onEvent?: (e: string, cb: () => void) => void; offEvent?: (e: string, cb: () => void) => void } };
@@ -149,8 +123,6 @@ export default function MiniAppWelcomePage() {
     return () => { tg?.offEvent?.('themeChanged', handler); };
   }, [setTheme]);
 
-  // Перекрашиваем шапку и низ TG в наш цвет фона при каждой смене темы —
-  // иначе остаётся синяя полоска TG, не совпадающая с нашим #141417/#ffffff.
   useEffect(() => {
     if (typeof window === 'undefined' || !mounted) return;
     const tg = (window as {
@@ -163,7 +135,7 @@ export default function MiniAppWelcomePage() {
       };
     }).Telegram?.WebApp;
     if (!tg) return;
-    const bg = resolvedTheme === 'dark' ? '#141417' : '#ffffff';
+    const bg = resolvedTheme === 'dark' ? '#0f172a' : '#ffffff';
     try { tg.setHeaderColor?.(bg); } catch {}
     try { tg.setBackgroundColor?.(bg); } catch {}
     try { tg.setBottomBarColor?.(bg); } catch {}
@@ -214,138 +186,182 @@ export default function MiniAppWelcomePage() {
   }
 
   const t = T[lang];
+  const isDark = resolvedTheme === 'dark';
+
+  // Background — slate gradient в dark, чистый белый в light
+  const bg = isDark
+    ? 'linear-gradient(160deg,#0f172a 0%,#1e293b 60%,#0f172a 100%)'
+    : '#ffffff';
+
+  // Цвета текста и хром-элементов под тему
+  const fg = isDark ? '#ffffff' : '#0f172a';
+  const fgMuted = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(15,23,42,0.55)';
+  const fgDim = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)';
+  const chipBg = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(15,23,42,0.06)';
+  const chipBorder = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.1)';
+  const secondaryBg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(37,99,235,0.06)';
+  const secondaryBorder = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(37,99,235,0.3)';
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="flex min-h-dvh flex-col"
-      style={{ background: 'var(--background)', color: 'var(--foreground)' }}
+      className="relative flex min-h-dvh flex-col overflow-hidden"
+      style={{ background: bg, color: fg }}
     >
-      {/* Top bar — переключатель языка. paddingTop = safe-area + 60px чтобы
-          уйти из-под TG bottom-sheet chrome («Закрыть» / «v ...»), которая
-          сидит поверх вебвью на ~60px от верха. Без offset кнопка глобуса
-          оказывалась под TG chrome и пользователь её не видел. */}
+      {/* Cobalt glow — radial accent за центром hero */}
       <div
-        className="flex items-center justify-end gap-2 px-5"
+        aria-hidden
+        className="pointer-events-none absolute"
+        style={{
+          width: 320,
+          height: 320,
+          borderRadius: '50%',
+          left: '50%',
+          top: '45%',
+          transform: 'translate(-50%,-55%)',
+          background: 'radial-gradient(circle, rgba(37,99,235,0.28) 0%, transparent 70%)',
+        }}
+      />
+
+      {/* Lang chip — правый верхний угол, под TG bottom-sheet chrome (~60px offset) */}
+      <div
+        className="relative z-10 flex items-center justify-end px-5"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 60px)' }}
       >
         <button
           type="button"
           onClick={cycleLang}
           aria-label="Сменить язык"
-          className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-semibold active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold tracking-wider active:scale-95 transition-transform"
           style={{
-            borderColor: 'color-mix(in oklab, var(--foreground) 14%, transparent)',
-            color: 'var(--foreground)',
-            background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
+            background: chipBg,
+            borderColor: chipBorder,
+            color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(15,23,42,0.7)',
           }}
         >
-          <Globe className="size-3.5" />
+          <Globe className="size-3" style={{ color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.55)' }} />
           {LANG_SHORT[lang]}
+          <ChevronDown className="size-2.5" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)' }} />
         </button>
       </div>
 
-      <div className="flex-1 space-y-6 px-6 pt-2 pb-[300px]">
-        <div className="space-y-3 text-center">
-          <motion.p
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="mx-auto max-w-xs text-[15px] leading-relaxed"
-            style={{ color: 'color-mix(in oklab, var(--foreground) 70%, transparent)' }}
-          >
-            {t.description}
-          </motion.p>
-        </div>
-
-        <motion.ul
-          initial={{ y: 16, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.25 }}
-          className="space-y-3"
+      {/* Hero center */}
+      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-7 pb-[260px] text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-5 flex size-[52px] items-center justify-center rounded-[16px]"
+          style={{
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            boxShadow: '0 8px 24px rgba(37,99,235,0.4)',
+          }}
         >
-          <Feature icon={Calendar} title={t.f1Title} text={t.f1Text} />
-          <Feature icon={Heart} title={t.f2Title} text={t.f2Text} />
-          <Feature icon={ShieldCheck} title={t.f3Title} text={t.f3Text} />
-        </motion.ul>
+          <svg width="28" height="20" viewBox="0 0 28 20" fill="none">
+            <path
+              d="M4 10C4 6.686 6.686 4 10 4h8c3.314 0 6 2.686 6 6v0c0 3.314-2.686 6-6 6h-8C6.686 16 4 13.314 4 10z"
+              fill="white"
+              fillOpacity="0.9"
+            />
+            <circle cx="10" cy="10" r="3" fill="white" fillOpacity="0.3" />
+            <circle cx="18" cy="10" r="3" fill="white" fillOpacity="0.3" />
+          </svg>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-2.5 text-[18px] font-bold tracking-tight"
+          style={{ color: fg }}
+        >
+          CRES<span style={{ color: '#60a5fa' }}>-CA</span>
+        </motion.div>
+
+        <motion.h1
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-3 max-w-[280px] text-[24px] font-bold leading-[1.2] tracking-tight"
+          style={{ color: fg }}
+        >
+          {t.headline}
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-[280px] text-[13px] leading-[1.55]"
+          style={{ color: fgMuted }}
+        >
+          {t.sub}
+        </motion.p>
       </div>
 
-      {/* Bottom actions — без bottom-nav на welcome, отступ safe-area + 16px.
-          pt-6 даёт небольшой воздух между last feature и terms. */}
-      <div
-        className="fixed inset-x-0 bottom-0 space-y-2.5 px-6 pb-6 pt-6"
+      {/* Bottom CTAs — sticky над home indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.85, duration: 0.4 }}
+        className="fixed inset-x-0 bottom-0 z-20 space-y-2.5 px-7 pt-6"
         style={{
           paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
-          background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
+          background: isDark
+            ? 'linear-gradient(to top, #0f172a 0%, #0f172a 60%, transparent 100%)'
+            : 'linear-gradient(to top, #ffffff 0%, #ffffff 60%, transparent 100%)',
         }}
       >
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="px-1 text-center text-[11px] leading-relaxed"
-          style={{ color: 'color-mix(in oklab, var(--foreground) 50%, transparent)' }}
-        >
+        <p className="px-1 pb-1 text-center text-[11px] leading-relaxed" style={{ color: fgDim }}>
           {t.terms}{' '}
           <Link
             href="/telegram/terms"
             className="underline"
-            style={{ textDecorationColor: 'color-mix(in oklab, var(--foreground) 30%, transparent)' }}
+            style={{ textDecorationColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(15,23,42,0.3)' }}
           >
             {t.termsLink}
           </Link>
-        </motion.p>
-        {/* Две явные роли вместо одной общей кнопки. Раньше «Создать аккаунт»
-            вел на /register с дефолтом 'client' — пользователи легко получали
-            client когда хотели master, потому что role-tile внутри формы
-            пролистывался незамеченным. */}
-        <motion.button
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.45 }}
+        </p>
+
+        <button
           onClick={() => router.push('/telegram/register?role=master')}
-          className="w-full rounded-2xl py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform"
+          className="flex w-full items-center justify-center gap-2 rounded-[14px] py-3.5 text-[15px] font-semibold active:scale-[0.97] transition-transform"
           style={{
-            background: 'var(--primary)',
-            color: 'var(--primary-foreground)',
-            boxShadow: '0 6px 20px color-mix(in oklab, var(--primary) 32%, transparent)',
+            background: '#2563eb',
+            color: '#ffffff',
+            boxShadow: '0 4px 16px rgba(37,99,235,0.4)',
           }}
         >
+          <Briefcase className="size-4" />
           {t.iAmMaster}
-        </motion.button>
-        <motion.button
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.48 }}
+        </button>
+
+        <button
           onClick={() => router.push('/telegram/register?role=client')}
-          className="w-full rounded-2xl border py-4 text-[16px] font-semibold active:scale-[0.98] transition-transform"
+          className="flex w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] py-3.5 text-[15px] font-medium active:scale-[0.97] transition-transform"
           style={{
-            borderColor: 'color-mix(in oklab, var(--primary) 50%, transparent)',
-            background: 'color-mix(in oklab, var(--primary) 8%, transparent)',
-            color: 'var(--foreground)',
+            background: secondaryBg,
+            borderColor: secondaryBorder,
+            color: fg,
           }}
         >
+          <User className="size-4" style={{ color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.55)' }} />
           {t.iAmClient}
-        </motion.button>
-        <motion.button
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.52 }}
+        </button>
+
+        <button
           onClick={() => {
             setLoginOpen(true);
             setErr(null);
           }}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-medium active:scale-[0.98] transition-transform"
-          style={{
-            background: 'transparent',
-            color: 'color-mix(in oklab, var(--foreground) 65%, transparent)',
-          }}
+          className="flex w-full items-center justify-center gap-1.5 py-2 text-[13px] font-medium underline-offset-[3px] active:scale-[0.97] transition-transform"
+          style={{ color: fgDim, textDecoration: 'underline' }}
         >
           <LogIn className="size-3.5" /> {t.haveAccount}
-        </motion.button>
-      </div>
+        </button>
+      </motion.div>
 
       <AnimatePresence>
         {loginOpen && (
@@ -365,33 +381,28 @@ export default function MiniAppWelcomePage() {
               onClick={(e) => e.stopPropagation()}
               className="w-full rounded-t-3xl px-6 pb-8 pt-5"
               style={{
-                background: 'var(--background)',
-                color: 'var(--foreground)',
+                background: isDark ? '#0f172a' : '#ffffff',
+                color: fg,
                 paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
               }}
             >
               <div
                 className="mx-auto mb-4 h-1 w-10 rounded-full"
-                style={{ background: 'color-mix(in oklab, var(--foreground) 20%, transparent)' }}
+                style={{ background: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(15,23,42,0.2)' }}
               />
               <div className="mb-5 flex items-center gap-3">
                 <div
                   className="flex size-10 items-center justify-center rounded-xl border"
                   style={{
-                    background: 'color-mix(in oklab, var(--color-accent) 15%, transparent)',
-                    borderColor: 'color-mix(in oklab, var(--color-accent) 25%, transparent)',
+                    background: 'rgba(37,99,235,0.15)',
+                    borderColor: 'rgba(37,99,235,0.25)',
                   }}
                 >
-                  <LogIn className="size-5" />
+                  <LogIn className="size-5" style={{ color: '#2563eb' }} />
                 </div>
                 <div>
                   <h2 className="text-[17px] font-semibold">{t.loginTitle}</h2>
-                  <p
-                    className="text-[12px]"
-                    style={{ color: 'color-mix(in oklab, var(--foreground) 50%, transparent)' }}
-                  >
-                    {t.loginSub}
-                  </p>
+                  <p className="text-[12px]" style={{ color: fgMuted }}>{t.loginSub}</p>
                 </div>
               </div>
 
@@ -407,10 +418,10 @@ export default function MiniAppWelcomePage() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-2xl border px-4 py-4 text-[16px] outline-none"
                   style={{
-                    borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
-                    background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
-                    color: 'var(--foreground)',
-                    caretColor: 'var(--color-accent)',
+                    borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.12)',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)',
+                    color: fg,
+                    caretColor: '#2563eb',
                   }}
                 />
                 <input
@@ -420,10 +431,10 @@ export default function MiniAppWelcomePage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-2xl border px-4 py-4 text-[16px] outline-none"
                   style={{
-                    borderColor: 'color-mix(in oklab, var(--foreground) 12%, transparent)',
-                    background: 'color-mix(in oklab, var(--foreground) 5%, transparent)',
-                    color: 'var(--foreground)',
-                    caretColor: 'var(--color-accent)',
+                    borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.12)',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.04)',
+                    color: fg,
+                    caretColor: '#2563eb',
                   }}
                 />
                 {err && (
@@ -443,25 +454,21 @@ export default function MiniAppWelcomePage() {
                   disabled={busy || !email || !password}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[16px] font-semibold disabled:opacity-40 active:scale-[0.98] transition-transform"
                   style={{
-                    background: 'var(--primary)',
-                    color: 'var(--primary-foreground)',
+                    background: '#2563eb',
+                    color: '#ffffff',
                   }}
                 >
                   {busy && <Loader2 className="size-4 animate-spin" />}
                   {t.enter}
                 </button>
 
-                {/* Ссылка на регистрацию — для тех у кого нет аккаунта */}
-                <p
-                  className="text-center text-[13px] pt-1"
-                  style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-                >
+                <p className="pt-1 text-center text-[13px]" style={{ color: fgMuted }}>
                   {lang === 'en' ? "Don't have an account?" : lang === 'uk' ? 'Немає акаунту?' : 'Нет аккаунта?'}{' '}
                   <button
                     type="button"
                     onClick={() => router.push('/telegram/register')}
                     className="font-semibold underline underline-offset-2"
-                    style={{ color: 'var(--foreground)' }}
+                    style={{ color: fg }}
                   >
                     {lang === 'en' ? 'Register' : lang === 'uk' ? 'Зареєструватися' : 'Зарегистрироваться'}
                   </button>
@@ -472,44 +479,5 @@ export default function MiniAppWelcomePage() {
         )}
       </AnimatePresence>
     </motion.div>
-  );
-}
-
-function Feature({
-  icon: Icon,
-  title,
-  text,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  text: string;
-}) {
-  return (
-    <li
-      className="flex items-start gap-3 rounded-2xl border p-4"
-      style={{
-        borderColor: 'color-mix(in oklab, var(--foreground) 10%, transparent)',
-        background: 'color-mix(in oklab, var(--foreground) 4%, transparent)',
-      }}
-    >
-      <div
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl border"
-        style={{
-          background: 'color-mix(in oklab, var(--color-accent) 15%, transparent)',
-          borderColor: 'color-mix(in oklab, var(--color-accent) 25%, transparent)',
-        }}
-      >
-        <Icon className="size-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold">{title}</p>
-        <p
-          className="mt-0.5 text-[12px] leading-snug"
-          style={{ color: 'color-mix(in oklab, var(--foreground) 55%, transparent)' }}
-        >
-          {text}
-        </p>
-      </div>
-    </li>
   );
 }
