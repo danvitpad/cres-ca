@@ -25,7 +25,8 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useMaster } from '@/hooks/use-master';
 import { usePageTheme, FONT, FONT_FEATURES, CURRENCY, pageContainer, type PageTheme } from '@/lib/dashboard-theme';
-import { StatCard } from '@/components/shared/primitives/stat-card';
+// StatCard убран 2026-05-11 — заменён локальным FinKpiCard под Open Design
+// import { StatCard } from '@/components/shared/primitives/stat-card';
 import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
@@ -103,6 +104,88 @@ function pctChange(cur: number, prev: number): number | undefined {
   if (cur === prev) return 0;
   if (prev === 0) return undefined;
   return Math.round(((cur - prev) / Math.abs(prev)) * 100);
+}
+
+/* ─── KPI Card (Open Design master-finances.html port) ─── */
+function FinKpiCard({
+  label, value, delta, deltaLabel, deltaInverted, accentColor, highlight, C,
+}: {
+  label: string;
+  value: string;
+  delta: number | undefined;
+  deltaLabel: string;
+  deltaInverted?: boolean;  // для расходов: рост = плохо (красный)
+  accentColor?: string;
+  highlight?: boolean;       // highlighted card (border-left accent) — для Прибыли
+  C: PageTheme;
+}) {
+  const hasPositive = delta !== undefined && delta > 0;
+  const hasNegative = delta !== undefined && delta < 0;
+  const isGood = deltaInverted ? hasNegative : hasPositive;
+  const isBad = deltaInverted ? hasPositive : hasNegative;
+  const deltaColor = delta === undefined || delta === 0
+    ? C.textTertiary
+    : isGood
+      ? '#10b981'
+      : isBad
+        ? '#ef4444'
+        : C.textTertiary;
+  return (
+    <div
+      style={{
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderLeftWidth: highlight ? 3 : 1,
+        borderLeftColor: highlight ? (accentColor ?? C.accent) : C.border,
+        borderRadius: 16,
+        padding: '18px 22px',
+        fontVariantNumeric: 'tabular-nums',
+        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: C.textTertiary,
+        marginBottom: 8,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 28, fontWeight: 700, letterSpacing: '-0.03em',
+        color: accentColor && !highlight ? accentColor : C.text,
+        lineHeight: 1, marginBottom: 8,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: 12, fontWeight: 600,
+        display: 'flex', alignItems: 'center', gap: 4,
+        color: deltaColor,
+      }}>
+        {delta === undefined ? (
+          <span>—</span>
+        ) : delta === 0 ? (
+          <span>0%</span>
+        ) : (
+          <>
+            <span>{delta > 0 ? '↑' : '↓'}</span>
+            <span>{Math.abs(delta)}%</span>
+          </>
+        )}
+        <span style={{ color: C.textTertiary, fontWeight: 400, marginLeft: 2 }}>
+          {deltaLabel}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function FinancePage() {
@@ -478,31 +561,39 @@ export default function FinancePage() {
         <MyPayoutsBanner />
       </div>
 
-      {/* 4 flat StatCards */}
+      {/* 4 KPI cards — Open Design master-finances.html port */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <StatCard
-          label="Доход"
+        <FinKpiCard
+          label="Доходы за период"
           value={loading ? '—' : `${revenue.toLocaleString()} ${CURRENCY}`}
-          trend={pctChange(revenue, prevRevenue)}
-          icon={<TrendingUp size={18} />}
+          delta={pctChange(revenue, prevRevenue)}
+          deltaLabel="к прошлому периоду"
+          accentColor="#10b981"
+          C={C}
         />
-        <StatCard
+        <FinKpiCard
           label="Расходы"
           value={loading ? '—' : `${expenseTotal.toLocaleString()} ${CURRENCY}`}
-          trend={pctChange(expenseTotal, prevExpense)}
-          icon={<Receipt size={18} />}
+          delta={pctChange(expenseTotal, prevExpense)}
+          deltaLabel="к прошлому периоду"
+          deltaInverted
+          C={C}
         />
-        <StatCard
+        <FinKpiCard
           label="Прибыль"
           value={loading ? '—' : `${profit.toLocaleString()} ${CURRENCY}`}
-          trend={pctChange(profit, prevProfit)}
-          icon={<Wallet size={18} />}
+          delta={pctChange(profit, prevProfit)}
+          deltaLabel="к прошлому периоду"
+          accentColor={C.accent}
+          highlight
+          C={C}
         />
-        <StatCard
-          label="Записи"
+        <FinKpiCard
+          label="Записей"
           value={loading ? '—' : appointmentsCount.toLocaleString()}
-          trend={pctChange(appointmentsCount, prevAppointments)}
-          icon={<CalendarIcon size={18} />}
+          delta={pctChange(appointmentsCount, prevAppointments)}
+          deltaLabel="к прошлому периоду"
+          C={C}
         />
       </div>
 
