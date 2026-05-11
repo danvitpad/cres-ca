@@ -299,10 +299,10 @@ export default function TeamPage() {
 
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none flex items-center gap-2.5">
           <Users className="size-6 text-primary" />
           Я в команде
-        </h2>
+        </h1>
         <Card>
           <CardContent className="p-6 flex items-center justify-between gap-4">
             <div>
@@ -378,10 +378,10 @@ export default function TeamPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none flex items-center gap-2.5">
           <Users className="size-6 text-primary" />
           {t('team')}
-        </h2>
+        </h1>
         <Button onClick={() => setInviteDialogOpen(true)} className="gap-1.5">
           <UserPlus className="size-4" />
           {t('addMaster')}

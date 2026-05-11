@@ -28,8 +28,8 @@ export default function SettingsCategoriesPage() {
       </Link>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Категории и услуги</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">Категории и услуги</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
           Это то, по чему тебя ищут клиенты. Чем точнее — тем лучше попадание.
         </p>
       </div>

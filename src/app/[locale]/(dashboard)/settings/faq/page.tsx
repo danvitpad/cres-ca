@@ -100,11 +100,11 @@ export default function FaqTemplatesPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+        <h1 className="flex items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] leading-none">
           <MessageSquare className="h-6 w-6 text-primary" />
           FAQ-шаблоны
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Быстрые ответы на частые вопросы. Тап → копируется в буфер → вставляете в чат.
         </p>
       </div>

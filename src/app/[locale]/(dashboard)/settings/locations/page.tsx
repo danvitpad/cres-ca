@@ -121,7 +121,7 @@ export default function LocationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">{t('title')}</h2>
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">{t('title')}</h1>
         <button
           onClick={() => openForm()}
           className="inline-flex items-center gap-1.5 rounded-[var(--radius-button)] bg-[var(--ds-accent)] px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--ds-accent-hover)]"

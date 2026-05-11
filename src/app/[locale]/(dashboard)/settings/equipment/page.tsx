@@ -131,10 +131,10 @@ export default function EquipmentPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none flex items-center gap-2.5">
           <Wrench className="size-6 text-primary" />
           {tp('equipmentBooking')}
-        </h2>
+        </h1>
         <Button onClick={openAdd} className="gap-1.5"><Plus className="size-4" />{tc('create')}</Button>
       </div>
 

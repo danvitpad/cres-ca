@@ -85,11 +85,11 @@ export default function PaymentsSettingsPage() {
       </Link>
 
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+        <h1 className="flex items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] leading-none">
           <Landmark className="size-6 text-primary" />
           Платежи и предоплаты
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Включи платформенное эскроу — клиенты будут оставлять предоплату, которая замораживается на платформе и переходит тебе после визита.
           При no-show деньги останутся у тебя.
         </p>

@@ -168,8 +168,8 @@ export default function BillingPage() {
       </Link>
 
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{t('subtitle')}</p>
+        <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">{t('title')}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       {loading ? (

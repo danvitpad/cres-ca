@@ -73,11 +73,11 @@ export default function FeedbackPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6 pb-12">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+        <h1 className="flex items-center gap-2.5 text-[28px] font-bold tracking-[-0.02em] leading-none">
           <MessageSquareHeart className="size-6 text-primary" />
           Обратная связь
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Что улучшить, что сломалось, какая фича нужна — напишите прямо и по делу.
           Текст автоматически очищается от мусора и попадает в нашу внутреннюю ленту.
         </p>
