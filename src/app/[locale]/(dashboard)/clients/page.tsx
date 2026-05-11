@@ -119,6 +119,53 @@ function daysSinceLastVisit(lastVisit: string | null): number | null {
   return Math.floor((Date.now() - new Date(lastVisit).getTime()) / 86400000);
 }
 
+/* ─── Stat card (Open Design KPI tile) ─── */
+function ClientsStatCard({
+  label, value, color, C, accentLeft,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+  C: PageTheme;
+  accentLeft?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        padding: '16px 18px',
+        borderRadius: 16,
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderLeftWidth: accentLeft ? 3 : 1,
+        borderLeftColor: accentLeft ? (color ?? C.accent) : C.border,
+        fontVariantNumeric: 'tabular-nums',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+        textTransform: 'uppercase', color: C.textTertiary,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em',
+        color: color ?? C.text, marginTop: 8, lineHeight: 1,
+      }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Client Card ─── */
 function ClientCard({ client, C, isDark, index }: {
   client: ClientRow;
@@ -517,22 +564,39 @@ export default function ClientsPage() {
       ...pageContainer,
       color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 96,
     }}>
-      {/* ═══ Header ═══ */}
+      {/* ═══ Header (Open Design: 28px bold) ═══ */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        marginBottom: 20,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        marginBottom: 24,
       }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 650, color: C.text, letterSpacing: '-0.5px', margin: 0 }}>
+          <h1 style={{
+            fontSize: 28, fontWeight: 700, color: C.text,
+            letterSpacing: '-0.02em', margin: 0, lineHeight: 1,
+          }}>
             Контакты
           </h1>
-          <p style={{ fontSize: 14, color: C.textTertiary, margin: '4px 0 0' }}>
+          <p style={{ fontSize: 14, color: C.textTertiary, margin: '6px 0 0' }}>
             Всего {counts.all} · активных {counts.all - counts.overdue}
           </p>
         </div>
         {/* Import + manual "Добавить" removed — clients now come via Instagram-style follow/add
             from /clients subtab "Подписчики" or when a user books online. */}
       </div>
+
+      {/* ═══ Stats strip — Open Design (3 cards: Total / VIP / Спящие) ═══ */}
+      {!loading && counts.all > 0 && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 12,
+          marginBottom: 24,
+        }}>
+          <ClientsStatCard label="Всего" value={counts.all} C={C} />
+          <ClientsStatCard label="VIP" value={counts.vip} color={C.accent} C={C} accentLeft />
+          <ClientsStatCard label="Давно не были" value={counts.overdue} color="#ef4444" C={C} />
+        </div>
+      )}
 
 
       {/* ═══ Top tabs (Clients / Partners) — Аудитория removed per product decision ═══ */}
