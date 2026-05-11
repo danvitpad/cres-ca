@@ -399,34 +399,39 @@ function ServicesCatalogueView() {
             (по категории / цене / длительности) и режим drag-to-reorder. */}
       </div>
 
-      {/* ── Main content: categories card + service rows ── */}
-      <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-        {/* Categories card (Fresha style) */}
+      {/* ── Main content: categories sidebar + service TABLE (Open Design) ── */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+        {/* LEFT: Categories panel with colored dots (Open Design) */}
         <div style={{
-          width: 280, flexShrink: 0, maxWidth: '100%',
+          width: 240, flexShrink: 0, maxWidth: '100%',
+          background: C.surface,
           border: `1px solid ${C.border}`, borderRadius: 12,
-          padding: '20px 0', alignSelf: 'flex-start',
+          padding: '14px 10px', alignSelf: 'flex-start',
         }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: '0 20px 16px', fontFamily: FONT }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+            textTransform: 'uppercase', color: C.textTertiary,
+            padding: '4px 10px 10px',
+          }}>
             {t('categories') || 'Категории'}
-          </h3>
+          </div>
           {/* All categories */}
           <button
             onClick={() => setSelectedCategory('all')}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8,
+              width: '100%', padding: '8px 10px', border: 'none', cursor: 'pointer',
               backgroundColor: selectedCategory === 'all' ? C.accentSoft : 'transparent',
-              borderLeft: selectedCategory === 'all' ? `3px solid ${C.accent}` : '3px solid transparent',
               color: selectedCategory === 'all' ? C.accent : C.text,
-              fontSize: 14, fontWeight: selectedCategory === 'all' ? 600 : 400,
+              fontSize: 13.5, fontWeight: selectedCategory === 'all' ? 600 : 500,
               fontFamily: FONT, transition: 'all 150ms',
+              borderRadius: 8, marginBottom: 2,
             }}
           >
-            <span>{t('allCategories') || 'Все категории'}</span>
+            <span style={{ flex: 1, textAlign: 'left' }}>{t('allCategories') || 'Все категории'}</span>
             <span style={{
-              fontSize: 12, fontWeight: 500, color: C.textTertiary,
-              backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '2px 8px',
+              fontSize: 11.5, fontWeight: 600, color: C.textTertiary,
+              backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '1px 8px',
             }}>
               {services.length}
             </span>
@@ -436,19 +441,26 @@ function ServicesCatalogueView() {
               key={key}
               onClick={() => setSelectedCategory(key)}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '8px 10px', border: 'none', cursor: 'pointer',
                 backgroundColor: selectedCategory === key ? C.accentSoft : 'transparent',
-                borderLeft: selectedCategory === key ? `3px solid ${C.accent}` : '3px solid transparent',
                 color: selectedCategory === key ? C.accent : C.text,
-                fontSize: 14, fontWeight: selectedCategory === key ? 600 : 400,
+                fontSize: 13.5, fontWeight: selectedCategory === key ? 600 : 500,
                 fontFamily: FONT, transition: 'all 150ms',
+                borderRadius: 8, marginBottom: 2,
               }}
             >
-              <span>{category?.name}</span>
               <span style={{
-                fontSize: 12, fontWeight: 500, color: C.textTertiary,
-                backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '2px 8px',
+                width: 9, height: 9, borderRadius: '50%',
+                background: category?.color ?? C.accent,
+                flexShrink: 0,
+              }} />
+              <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {category?.name}
+              </span>
+              <span style={{
+                fontSize: 11.5, fontWeight: 600, color: C.textTertiary,
+                backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '1px 8px',
               }}>
                 {catServices.length}
               </span>
@@ -458,143 +470,218 @@ function ServicesCatalogueView() {
             <button
               onClick={() => setSelectedCategory('none')}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                width: '100%', padding: '10px 20px', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '8px 10px', border: 'none', cursor: 'pointer',
                 backgroundColor: selectedCategory === 'none' ? C.accentSoft : 'transparent',
-                borderLeft: selectedCategory === 'none' ? `3px solid ${C.accent}` : '3px solid transparent',
                 color: selectedCategory === 'none' ? C.accent : C.text,
-                fontSize: 14, fontWeight: selectedCategory === 'none' ? 600 : 400,
+                fontSize: 13.5, fontWeight: selectedCategory === 'none' ? 600 : 500,
                 fontFamily: FONT, transition: 'all 150ms',
+                borderRadius: 8, marginBottom: 2,
               }}
             >
-              <span>{t('uncategorized')}</span>
+              <span style={{ width: 9, height: 9, borderRadius: '50%', background: C.border, flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: 'left' }}>{t('uncategorized')}</span>
               <span style={{
-                fontSize: 12, fontWeight: 500, color: C.textTertiary,
-                backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '2px 8px',
+                fontSize: 11.5, fontWeight: 600, color: C.textTertiary,
+                backgroundColor: C.surfaceElevated, borderRadius: 999, padding: '1px 8px',
               }}>
                 {uncategorized.length}
               </span>
             </button>
           )}
-          <div style={{ padding: '12px 20px 0' }}>
+          <div style={{ padding: '12px 4px 0' }}>
             <CategoryManager masterId={master.id} onCategoriesChange={setCategories} />
           </div>
         </div>
 
-        {/* Service rows (Fresha style — left border accent) */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Category group header */}
-          {activeCatName && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: C.text, fontFamily: FONT }}>{activeCatName}</h2>
-            </div>
-          )}
-
+        {/* CENTER: Service TABLE (Open Design master-services.html port) */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filteredServices.length === 0 ? (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               padding: '80px 0', textAlign: 'center',
+              background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
             }}>
               <Briefcase style={{ width: 48, height: 48, color: C.textTertiary, marginBottom: 12 }} />
               <p style={{ fontSize: 16, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t('noServices')}</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {filteredServices.map((s, i) => (
-                <motion.div
-                  key={s.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  style={{
-                    display: 'flex', alignItems: 'center',
-                    padding: '16px 20px', borderRadius: 10,
-                    border: `1px solid ${C.border}`,
-                    borderLeft: `4px solid ${s.color}`,
-                    backgroundColor: C.bg,
-                    cursor: 'pointer', transition: 'background-color 150ms',
-                    position: 'relative',
-                  }}
-                  onClick={() => openEdit(s)}
-                  // На hover карточка подсвечивается своим цветом услуги
-                  // (а не общим серым) — так визуально цвет услуги «оживает»
-                  // как пользователь и просил. Без translate/scale, чтобы
-                  // карточка оставалась на месте.
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      `color-mix(in srgb, ${s.color} 10%, transparent)`;
-                  }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = C.bg; }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT }}>
-                      {s.name}
+            <div style={{
+              background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+              overflow: 'hidden',
+            }}>
+              {/* Table header */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(220px, 1.6fr) 90px 90px 80px 110px 100px 40px',
+                gap: 12, padding: '12px 18px',
+                fontSize: 11, fontWeight: 700,
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+                color: C.textTertiary,
+                background: C.surfaceElevated,
+                borderBottom: `1px solid ${C.border}`,
+              }}>
+                <div>{t('serviceName') || 'Название'}</div>
+                <div style={{ textAlign: 'right' }}>{t('duration') || 'Длительность'}</div>
+                <div style={{ textAlign: 'right' }}>{t('servicePrice') || 'Цена'}</div>
+                <div style={{ textAlign: 'right' }}>Записей</div>
+                <div style={{ textAlign: 'right' }}>Доход</div>
+                <div>Статус</div>
+                <div></div>
+              </div>
+              {filteredServices.map((s, i) => {
+                // Bookings + revenue считаем как 0 пока — нужны отдельные данные по записям
+                // TODO (отдельный pass): fetch appointments aggregated by service_id
+                const bookings: number = 0;
+                const revenue: number = 0;
+                return (
+                  <motion.div
+                    key={s.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(i, 15) * 0.025 }}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(220px, 1.6fr) 90px 90px 80px 110px 100px 40px',
+                      gap: 12, padding: '14px 18px',
+                      borderTop: i > 0 ? `1px solid ${C.border}` : 'none',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s',
+                      position: 'relative',
+                      alignItems: 'center',
+                      fontFamily: FONT,
+                    }}
+                    onClick={() => openEdit(s)}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.surfaceElevated; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {/* Name with color dot */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                      <span style={{
+                        width: 9, height: 9, borderRadius: '50%',
+                        background: s.color, flexShrink: 0,
+                      }} />
+                      <span style={{
+                        fontSize: 14, fontWeight: 600, color: C.text,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {s.name}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 13, color: C.textSecondary, marginTop: 3, fontFamily: FONT }}>
+                    {/* Duration */}
+                    <div style={{ fontSize: 13, color: C.textSecondary, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
                       {formatDuration(s.duration_minutes)}
                     </div>
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginRight: 12, whiteSpace: 'nowrap', fontFamily: FONT }}>
-                    {s.price.toLocaleString()} ₴
-                  </div>
-                  <button
-                    data-service-menu={s.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpenId(menuOpenId === s.id ? null : s.id);
-                    }}
-                    style={{
-                      width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      borderRadius: 6, border: 'none', backgroundColor: 'transparent',
-                      cursor: 'pointer', color: C.textSecondary, transition: 'color 100ms',
-                    }}
-                  >
-                    <MoreVertical style={{ width: 18, height: 18 }} />
-                  </button>
-                  {/* Three-dot dropdown menu */}
-                  {menuOpenId === s.id && (
-                    <div
-                      data-service-menu={s.id}
-                      style={{
-                        position: 'absolute', right: 8, top: '100%', zIndex: 50,
-                        backgroundColor: C.surface, border: `1px solid ${C.border}`,
-                        borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                        overflow: 'hidden', minWidth: 160, fontFamily: FONT,
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => { setMenuOpenId(null); openEdit(s); }}
-                        style={{
-                          display: 'block', width: '100%', padding: '10px 16px',
-                          border: 'none', backgroundColor: 'transparent', textAlign: 'left',
-                          fontSize: 14, color: C.text, cursor: 'pointer', fontFamily: FONT,
-                          transition: 'background-color 100ms',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      >
-                        {tp('editService') || 'Редактировать'}
-                      </button>
-                      <button
-                        onClick={() => { setMenuOpenId(null); handleDelete(s.id); }}
-                        style={{
-                          display: 'block', width: '100%', padding: '10px 16px',
-                          border: 'none', backgroundColor: 'transparent', textAlign: 'left',
-                          fontSize: 14, color: '#d4163a', cursor: 'pointer', fontFamily: FONT,
-                          transition: 'background-color 100ms',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                      >
-                        {tc('delete') || 'Удалить'}
-                      </button>
+                    {/* Price */}
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                      {s.price.toLocaleString()} ₴
                     </div>
-                  )}
-                </motion.div>
-              ))}
+                    {/* Bookings */}
+                    <div style={{ fontSize: 13, color: C.textSecondary, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                      {bookings || '—'}
+                    </div>
+                    {/* Revenue */}
+                    <div style={{ fontSize: 13, color: C.textSecondary, fontVariantNumeric: 'tabular-nums', textAlign: 'right' }}>
+                      {revenue ? `${revenue.toLocaleString()} ₴` : '—'}
+                    </div>
+                    {/* Status */}
+                    <div>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        padding: '3px 8px', borderRadius: 999,
+                        background: s.is_active ? 'rgba(16, 185, 129, 0.12)' : 'rgba(0,0,0,0.06)',
+                        color: s.is_active ? '#10b981' : C.textTertiary,
+                        fontSize: 11, fontWeight: 700, letterSpacing: '0.02em',
+                      }}>
+                        <span style={{
+                          width: 5, height: 5, borderRadius: '50%',
+                          background: 'currentColor', display: 'inline-block',
+                        }} />
+                        {s.is_active ? 'Активна' : 'Архив'}
+                      </span>
+                    </div>
+                    {/* Action menu */}
+                    <button
+                      data-service-menu={s.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMenuOpenId(menuOpenId === s.id ? null : s.id);
+                      }}
+                      style={{
+                        width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderRadius: 6, border: 'none', backgroundColor: 'transparent',
+                        cursor: 'pointer', color: C.textSecondary,
+                      }}
+                    >
+                      <MoreVertical style={{ width: 16, height: 16 }} />
+                    </button>
+                    {/* Dropdown menu */}
+                    {menuOpenId === s.id && (
+                      <div
+                        data-service-menu={s.id}
+                        style={{
+                          position: 'absolute', right: 8, top: '100%', zIndex: 50,
+                          backgroundColor: C.surface, border: `1px solid ${C.border}`,
+                          borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                          overflow: 'hidden', minWidth: 160, fontFamily: FONT,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => { setMenuOpenId(null); openEdit(s); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 16px',
+                            border: 'none', backgroundColor: 'transparent', textAlign: 'left',
+                            fontSize: 14, color: C.text, cursor: 'pointer', fontFamily: FONT,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          {tp('editService') || 'Редактировать'}
+                        </button>
+                        <button
+                          onClick={() => { setMenuOpenId(null); handleDelete(s.id); }}
+                          style={{
+                            display: 'block', width: '100%', padding: '10px 16px',
+                            border: 'none', backgroundColor: 'transparent', textAlign: 'left',
+                            fontSize: 14, color: '#d4163a', cursor: 'pointer', fontFamily: FONT,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = C.rowHover; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                        >
+                          {tc('delete') || 'Удалить'}
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
+
+          {/* Footer stats (Open Design) */}
+          {filteredServices.length > 0 && (() => {
+            const activeOnly = services.filter((s) => s.is_active);
+            const avgPrice = activeOnly.length > 0
+              ? Math.round(activeOnly.reduce((sum, x) => sum + (Number(x.price) || 0), 0) / activeOnly.length)
+              : 0;
+            const avgTime = activeOnly.length > 0
+              ? Math.round(activeOnly.reduce((sum, x) => sum + (Number(x.duration_minutes) || 0), 0) / activeOnly.length)
+              : 0;
+            return (
+              <div style={{
+                display: 'flex', gap: 24, flexWrap: 'wrap',
+                padding: '14px 18px', borderRadius: 12,
+                background: C.surface, border: `1px solid ${C.border}`,
+                fontSize: 13, color: C.textSecondary,
+              }}>
+                <span>Всего услуг: <strong style={{ color: C.text, fontVariantNumeric: 'tabular-nums' }}>{services.length}</strong></span>
+                <span>Активных: <strong style={{ color: C.text, fontVariantNumeric: 'tabular-nums' }}>{activeOnly.length}</strong></span>
+                <span>Средняя цена: <strong style={{ color: C.text, fontVariantNumeric: 'tabular-nums' }}>{new Intl.NumberFormat('ru-RU').format(avgPrice)} ₴</strong></span>
+                <span>Средняя длит.: <strong style={{ color: C.text, fontVariantNumeric: 'tabular-nums' }}>{avgTime} мин</strong></span>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

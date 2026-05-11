@@ -26,7 +26,7 @@ export const F_LIGHT = {
   avatarBorder: '#ffffff',
   badgeBg: '#ef4444',
   badgeText: '#ffffff',
-  contentBg: '#ffffff',
+  contentBg: '#f7f8f9',
   hoverBg: '#f0ecfa',
 } as const;
 
@@ -54,8 +54,8 @@ export type FTheme = { [K in keyof typeof F_LIGHT]: string };
 /* Purple-accent palette: lavender light, navy dark. */
 
 export const PAGE_LIGHT = {
-  // Surfaces
-  bg: '#ffffff',
+  // Surfaces (OD: --n-50 для bg, --surface чистый белый)
+  bg: '#f7f8f9',
   surface: '#ffffff',
   surfaceElevated: '#f4f4f5',
   // Borders
