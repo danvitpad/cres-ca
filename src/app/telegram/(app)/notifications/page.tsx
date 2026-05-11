@@ -1,18 +1,30 @@
 /** --- YAML
  * name: ClientMiniAppNotifications
- * description: Client Mini App inbox — notifications with actionable cards (follow-back, navigate to profile). Group by day, mark read on tap. Flat cards (Phase 7.13).
+ * description: Client Mini App inbox. Header + ghost mark-all + filter chips (Усі/Записи/Бонуси/Підписники/Промо), плоский список карточек с круглой цветной иконкой по категории, unread-точка слева. Дизайн перенесён из Open Design client-notifications.html.
  * created: 2026-04-14
- * updated: 2026-04-18
+ * updated: 2026-05-11
  * --- */
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Bell, Loader2, Inbox, UserPlus, UserCheck, Users } from 'lucide-react';
+import {
+  Bell,
+  Loader2,
+  Inbox,
+  UserPlus,
+  UserCheck,
+  Users,
+  CalendarDays,
+  Gift,
+  Tag,
+  Info,
+} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { T, TYPE, FONT_BASE, PAGE_PADDING_X } from '@/components/miniapp/design';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -48,20 +60,6 @@ interface Notif {
   data: NotifData | null;
 }
 
-function groupByDay(items: Notif[]) {
-  const buckets: Record<string, Notif[]> = {};
-  for (const n of items) {
-    const d = new Date(n.sent_at ?? n.created_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    (buckets[key] ??= []).push(n);
-  }
-  return Object.entries(buckets).map(([k, list]) => {
-    const first = list[0];
-    const d = new Date(first.sent_at ?? first.created_at);
-    return { key: k, date: d, items: list };
-  });
-}
-
 function getLocale(): 'uk' | 'ru' | 'en' {
   if (typeof window === 'undefined') return 'uk';
   try {
@@ -71,40 +69,29 @@ function getLocale(): 'uk' | 'ru' | 'en' {
   return 'uk';
 }
 
-function formatDay(d: Date) {
-  const lang = getLocale();
-  const TODAY: Record<string, string> = { uk: 'Сьогодні', ru: 'Сегодня', en: 'Today' };
-  const YEST: Record<string, string> = { uk: 'Вчора', ru: 'Вчера', en: 'Yesterday' };
-  const LOC: Record<string, string> = { uk: 'uk-UA', ru: 'ru-RU', en: 'en-US' };
-  const today = new Date();
-  const y = new Date(today);
-  y.setDate(y.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return TODAY[lang];
-  if (d.toDateString() === y.toDateString()) return YEST[lang];
-  return d.toLocaleDateString(LOC[lang], { day: 'numeric', month: 'long' });
-}
-
 const STR = {
   uk: {
-    inbox: 'Inbox',
     title: 'Сповіщення',
-    unreadOne: 'непрочитане',
-    unreadFew: 'непрочитаних',
-    unreadMany: 'непрочитаних',
-    markAll: 'Прочитати все',
+    markAll: 'Позначити всі як прочитані',
+    chipAll: 'Усі',
+    chipBooking: 'Записи',
+    chipBonus: 'Бонуси',
+    chipSubscriber: 'Підписники',
+    chipPromo: 'Промо',
     empty: 'Порожньо',
-    emptyDesc: 'Нові записи та події зʼявляться тут',
+    emptyDesc: 'Нові записи та події з\'являться тут',
     mutual: 'Взаємно',
     follow: 'Підписатися',
     locale: 'uk-UA',
   },
   ru: {
-    inbox: 'Inbox',
     title: 'Уведомления',
-    unreadOne: 'непрочитанное',
-    unreadFew: 'непрочитанных',
-    unreadMany: 'непрочитанных',
-    markAll: 'Прочитать всё',
+    markAll: 'Отметить все как прочитанные',
+    chipAll: 'Все',
+    chipBooking: 'Записи',
+    chipBonus: 'Бонусы',
+    chipSubscriber: 'Подписчики',
+    chipPromo: 'Промо',
     empty: 'Пусто',
     emptyDesc: 'Новые записи и события появятся здесь',
     mutual: 'Взаимно',
@@ -112,12 +99,13 @@ const STR = {
     locale: 'ru-RU',
   },
   en: {
-    inbox: 'Inbox',
     title: 'Notifications',
-    unreadOne: 'unread',
-    unreadFew: 'unread',
-    unreadMany: 'unread',
-    markAll: 'Mark all read',
+    markAll: 'Mark all as read',
+    chipAll: 'All',
+    chipBooking: 'Bookings',
+    chipBonus: 'Bonuses',
+    chipSubscriber: 'Followers',
+    chipPromo: 'Promo',
     empty: 'Empty',
     emptyDesc: 'New bookings and events will appear here',
     mutual: 'Mutual',
@@ -126,31 +114,38 @@ const STR = {
   },
 } as const;
 
-function pluralUnread(count: number, lang: 'uk' | 'ru' | 'en'): string {
-  const t = STR[lang];
-  if (lang === 'en') return count === 1 ? t.unreadOne : t.unreadFew;
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return t.unreadOne;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return t.unreadFew;
-  return t.unreadMany;
+type Category = 'all' | 'booking' | 'bonus' | 'subscriber' | 'promo';
+
+const SUBSCRIBER_TYPES = new Set(['new_follower', 'mutual_follow', 'salon_added_you', 'added_to_contacts']);
+
+function categorize(notif: Notif): Exclude<Category, 'all'> | 'other' {
+  const type = notif.data?.type ?? '';
+  if (type.startsWith('appointment') || type.startsWith('booking') || type.includes('reminder')) return 'booking';
+  if (type.startsWith('bonus') || type.startsWith('loyalty') || type.includes('birthday')) return 'bonus';
+  if (SUBSCRIBER_TYPES.has(type)) return 'subscriber';
+  if (type.startsWith('promo') || type.startsWith('deal') || type.includes('discount')) return 'promo';
+  return 'other';
 }
 
-const NOTIF_ICONS: Record<string, typeof Bell> = {
-  new_follower: UserPlus,
-  mutual_follow: Users,
-  salon_added_you: UserCheck,
-  added_to_contacts: UserCheck,
-};
+interface CategoryStyle {
+  Icon: typeof Bell;
+  bg: string;
+  color: string;
+}
 
-// Все «accent» иконки уведомлений — фирменный teal CRES-CA. Зелёный
-// (mutual_follow) оставляем как success-семантика.
-const NOTIF_ICON_COLORS: Record<string, string> = {
-  new_follower: 'text-[var(--m-accent)]',
-  mutual_follow: 'text-emerald-600',
-  salon_added_you: 'text-[var(--m-accent)]',
-  added_to_contacts: 'text-[var(--m-accent)]',
-};
+function categoryStyle(category: ReturnType<typeof categorize>, notifType: string): CategoryStyle {
+  switch (category) {
+    case 'booking': return { Icon: CalendarDays, bg: T.accentSoft, color: T.accent };
+    case 'bonus':   return { Icon: Gift,         bg: T.successSoft, color: T.success };
+    case 'subscriber': {
+      if (notifType === 'mutual_follow') return { Icon: Users, bg: T.successSoft, color: T.success };
+      if (notifType === 'salon_added_you' || notifType === 'added_to_contacts') return { Icon: UserCheck, bg: T.accentSoft, color: T.accent };
+      return { Icon: UserPlus, bg: T.accentSoft, color: T.accent };
+    }
+    case 'promo':   return { Icon: Tag,          bg: T.warningSoft, color: T.warning };
+    default:        return { Icon: Info,         bg: T.bg,          color: T.textSecondary };
+  }
+}
 
 export default function ClientMiniAppNotifications() {
   const router = useRouter();
@@ -159,6 +154,7 @@ export default function ClientMiniAppNotifications() {
   const [items, setItems] = useState<Notif[]>([]);
   const [loading, setLoading] = useState(true);
   const [followStates, setFollowStates] = useState<Record<string, boolean | 'loading'>>({});
+  const [filter, setFilter] = useState<Category>('all');
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -172,7 +168,6 @@ export default function ClientMiniAppNotifications() {
     if (!res.ok) { setLoading(false); return; }
     const json = await res.json();
     setItems((json.notifications ?? []) as Notif[]);
-    // Follow-states are left default; /api/follow handles its own auth if user acts.
     setLoading(false);
   }, [userId]);
 
@@ -181,7 +176,6 @@ export default function ClientMiniAppNotifications() {
   }, [load]);
 
   async function markRead(id: string) {
-    // Optimistic UI; bulk-sync happens on "mark all".
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)));
     haptic('selection');
     const initData = getInitData();
@@ -235,138 +229,321 @@ export default function ClientMiniAppNotifications() {
       .catch(() => { /* silent */ });
   }
 
+  const lang = getLocale();
+  const t = STR[lang];
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return items;
+    return items.filter(n => categorize(n) === filter);
+  }, [items, filter]);
+
+  const unreadCount = items.filter(n => !n.read_at).length;
+
   if (!ready) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-neutral-400" />
+      <div style={{ display: 'flex', minHeight: '60vh', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 className="animate-spin" size={24} color={T.textTertiary} />
       </div>
     );
   }
 
-  const unreadCount = items.filter((n) => !n.read_at).length;
-  const groups = groupByDay(items);
-  const lang = getLocale();
-  const t = STR[lang];
+  const chipBaseStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '6px 14px',
+    borderRadius: 9999,
+    fontSize: 11,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    border: `1.5px solid ${T.border}`,
+    background: T.surface,
+    color: T.textSecondary,
+    cursor: 'pointer',
+    flexShrink: 0,
+    fontFamily: 'inherit',
+  };
+
+  const chipActiveStyle: React.CSSProperties = {
+    ...chipBaseStyle,
+    background: T.accent,
+    borderColor: T.accent,
+    color: T.accentText,
+  };
+
+  const chips: Array<{ id: Category; label: string }> = [
+    { id: 'all', label: t.chipAll },
+    { id: 'booking', label: t.chipBooking },
+    { id: 'bonus', label: t.chipBonus },
+    { id: 'subscriber', label: t.chipSubscriber },
+    { id: 'promo', label: t.chipPromo },
+  ];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-4 px-5 pt-6 pb-10"
+      transition={{ duration: 0.28 }}
+      style={{ ...FONT_BASE, paddingTop: 12 }}
     >
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">{t.inbox}</p>
-          <h1 className="mt-1 text-2xl font-bold">{t.title}</h1>
-          {unreadCount > 0 && (
-            <p className="mt-0.5 text-[11px] text-neutral-500">{unreadCount} {pluralUnread(unreadCount, lang)}</p>
-          )}
+      {/* Header — title + bell + ghost mark-all */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: `4px ${PAGE_PADDING_X}px 8px`,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1 style={{ ...TYPE.h2, color: T.text, margin: 0 }}>{t.title}</h1>
+          <Bell size={18} color={T.accent} strokeWidth={2} />
         </div>
         {unreadCount > 0 && (
           <button
+            type="button"
             onClick={markAllRead}
-            className="rounded-[var(--brand-radius-lg)] border border-neutral-200 bg-white px-3 py-1.5 text-[11px] font-semibold active:bg-neutral-50 transition-colors"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '5px 10px',
+              borderRadius: 9999,
+              border: `1.5px solid ${T.border}`,
+              background: 'transparent',
+              color: T.textSecondary,
+              fontSize: 11,
+              fontWeight: 500,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+            }}
           >
             {t.markAll}
           </button>
         )}
       </div>
 
+      {/* Filter chips */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          overflowX: 'auto',
+          padding: `4px ${PAGE_PADDING_X}px 12px`,
+          scrollbarWidth: 'none',
+        }}
+        className="no-scrollbar"
+      >
+        {chips.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => { haptic('selection'); setFilter(c.id); }}
+            style={filter === c.id ? chipActiveStyle : chipBaseStyle}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
       {loading ? (
-        <div className="space-y-2">
+        <div style={{ padding: `0 ${PAGE_PADDING_X}px`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-white border-neutral-200" />
+            <div
+              key={i}
+              style={{
+                height: 72,
+                borderRadius: 16,
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                opacity: 0.5,
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
           ))}
         </div>
-      ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-10 text-center">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-neutral-200 bg-white">
-            <Inbox className="size-6 text-neutral-600" />
+      ) : filtered.length === 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 32px', textAlign: 'center' }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              background: T.bg,
+              border: `1.5px solid ${T.border}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14,
+            }}
+          >
+            <Inbox size={22} color={T.textSecondary} />
           </div>
-          <p className="mt-4 text-base font-semibold">{t.empty}</p>
-          <p className="mt-1 text-xs text-neutral-500">{t.emptyDesc}</p>
+          <p style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.empty}</p>
+          <p style={{ ...TYPE.caption, color: T.textTertiary, marginTop: 5 }}>{t.emptyDesc}</p>
         </div>
       ) : (
-        <div className="space-y-5">
-          {groups.map((g) => (
-            <div key={g.key}>
-              <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-                {formatDay(g.date)}
-              </p>
-              <ul className="space-y-2">
-                {g.items.map((n) => {
-                  const notifType = n.data?.type ?? '';
-                  const Icon = NOTIF_ICONS[notifType] ?? Bell;
-                  const iconColor = NOTIF_ICON_COLORS[notifType] ?? (n.read_at ? 'text-neutral-400' : 'text-[var(--m-accent)]');
-                  const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
-                  const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
-                  const followState = followerProfileId ? followStates[followerProfileId] : undefined;
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {filtered.map((n, idx) => {
+            const cat = categorize(n);
+            const notifType = n.data?.type ?? '';
+            const style = categoryStyle(cat, notifType);
+            const Icon = style.Icon;
+            const followerProfileId = n.data?.follower_profile_id ?? n.data?.profile_id;
+            const isFollowNotif = (notifType === 'new_follower' || notifType === 'mutual_follow') && followerProfileId;
+            const followState = followerProfileId ? followStates[followerProfileId] : undefined;
+            const isUnread = !n.read_at;
+            const time = new Date(n.sent_at ?? n.created_at).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' });
 
-                  return (
-                    <li key={n.id}>
+            return (
+              <li key={n.id}>
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03 * idx, duration: 0.28 }}
+                  onClick={() => {
+                    haptic('selection');
+                    markRead(n.id);
+                    if (isFollowNotif && followerProfileId) navigateToProfile(followerProfileId);
+                  }}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    width: '100%',
+                    padding: `14px ${PAGE_PADDING_X}px 14px ${PAGE_PADDING_X + 8}px`,
+                    background: T.surface,
+                    border: 'none',
+                    borderBottom: `1px solid ${T.border}`,
+                    borderTop: idx === 0 ? `1px solid ${T.border}` : 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {/* unread dot */}
+                  {isUnread && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        left: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: T.accent,
+                      }}
+                    />
+                  )}
+
+                  {/* round colored icon */}
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      background: style.bg,
+                      color: style.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon size={18} strokeWidth={2} color={style.color} />
+                  </div>
+
+                  {/* body */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: T.text, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {n.title}
+                      </span>
+                      <span style={{ fontSize: 10, color: T.textTertiary, whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 500 }}>
+                        {time}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: T.textSecondary,
+                        lineHeight: 1.45,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        margin: 0,
+                      }}
+                    >
+                      {n.body}
+                    </p>
+
+                    {/* follow-back action chip for new_follower */}
+                    {isFollowNotif && notifType === 'new_follower' && followerProfileId && (
                       <button
-                        onClick={() => {
-                          haptic('selection');
-                          markRead(n.id);
-                          if (isFollowNotif && followerProfileId) {
-                            navigateToProfile(followerProfileId);
-                          }
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFollow(followerProfileId);
                         }}
-                        className="relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white p-4 pl-5 text-left active:bg-neutral-50 transition-colors"
+                        disabled={followState === 'loading'}
+                        style={{
+                          marginTop: 7,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          padding: '4px 10px',
+                          borderRadius: 9999,
+                          border: `1.5px solid ${followState === true ? T.border : T.accent}`,
+                          background: followState === true ? T.surface : T.accentSoft,
+                          color: followState === true ? T.text : T.accent,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          cursor: followState === 'loading' ? 'wait' : 'pointer',
+                          fontFamily: 'inherit',
+                          opacity: followState === 'loading' ? 0.6 : 1,
+                        }}
                       >
-                        {!n.read_at && <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[var(--m-accent)]" />}
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white">
-                          <Icon className={`size-4 ${iconColor}`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px] font-semibold">{n.title}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-neutral-600">{n.body}</p>
-                          <p className="mt-1 text-[10px] text-neutral-400">
-                            {new Date(n.sent_at ?? n.created_at).toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' })}
-                            {' · '}
-                            {n.channel}
-                          </p>
-                        </div>
-
-                        {/* Follow-back button for new_follower notifications */}
-                        {isFollowNotif && notifType === 'new_follower' && followerProfileId && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFollow(followerProfileId);
-                            }}
-                            disabled={followState === 'loading'}
-                            className={`shrink-0 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-60 ${
-                              followState === true
-                                ? 'border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50'
-                                : 'bg-white text-black active:bg-white/80'
-                            }`}
-                          >
-                            {followState === 'loading' ? (
-                              <Loader2 className="size-3 animate-spin" />
-                            ) : followState === true ? (
-                              <><UserCheck className="size-3" /> {t.mutual}</>
-                            ) : (
-                              <><UserPlus className="size-3" /> {t.follow}</>
-                            )}
-                          </button>
-                        )}
-
-                        {/* Mutual badge */}
-                        {notifType === 'mutual_follow' && (
-                          <span className="shrink-0 rounded-full border border-emerald-300 px-2.5 py-1 text-[10px] font-semibold text-emerald-600">
-                            {t.mutual}
-                          </span>
+                        {followState === 'loading' ? (
+                          <Loader2 size={10} className="animate-spin" />
+                        ) : followState === true ? (
+                          <><UserCheck size={10} strokeWidth={2.5} /> {t.mutual}</>
+                        ) : (
+                          <><UserPlus size={10} strokeWidth={2.5} /> {t.follow}</>
                         )}
                       </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
+                    )}
+
+                    {/* Mutual badge */}
+                    {notifType === 'mutual_follow' && (
+                      <span
+                        style={{
+                          marginTop: 7,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          padding: '4px 10px',
+                          borderRadius: 9999,
+                          border: `1.5px solid ${T.success}`,
+                          background: T.successSoft,
+                          color: T.success,
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {t.mutual}
+                      </span>
+                    )}
+                  </div>
+                </motion.button>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </motion.div>
   );
