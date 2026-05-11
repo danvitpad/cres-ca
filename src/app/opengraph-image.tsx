@@ -47,7 +47,7 @@ export default async function OGImage() {
             width: 300,
             height: 300,
             borderRadius: '50%',
-            background: 'rgba(45,212,191, 0.1)',
+            background: 'rgba(96, 165, 250, 0.1)',
             filter: 'blur(60px)',
           }}
         />
@@ -66,7 +66,7 @@ export default async function OGImage() {
               width: 56,
               height: 56,
               borderRadius: 14,
-              background: 'linear-gradient(135deg, #6366f1, #2dd4bf)',
+              background: 'linear-gradient(135deg, #6366f1, #60a5fa)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

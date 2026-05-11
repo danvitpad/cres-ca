@@ -613,7 +613,7 @@ export default function MiniAppMasterDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0d9488] via-[#14b8a6] to-[#5eead4]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#2563eb] via-[#14b8a6] to-[#93c5fd]" />
         )}
 
         {/* Top action row */}

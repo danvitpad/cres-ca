@@ -134,7 +134,7 @@ function BioSheet({
       }
     >
       <p className="mb-3 inline-flex items-center gap-1.5 text-[12px] text-neutral-500">
-        <Bot className="size-3.5 text-teal-500" />
+        <Bot className="size-3.5 text-blue-500" />
         Расскажи коротко: атмосфера, специализация, что важно вашей команде.
       </p>
       <textarea

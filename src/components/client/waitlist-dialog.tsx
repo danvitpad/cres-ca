@@ -102,7 +102,7 @@ export function WaitlistDialog({ open, onClose, masterId, masterName, serviceId,
           >
             <header className="flex items-start justify-between gap-3 border-b p-5">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-600 dark:text-teal-400">
+                <div className="flex size-10 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
                   <Clock4 className="size-5" />
                 </div>
                 <div>
@@ -124,7 +124,7 @@ export function WaitlistDialog({ open, onClose, masterId, masterName, serviceId,
             </header>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              <div className="rounded-2xl border border-teal-500/30 bg-teal-500/5 p-3 text-xs text-teal-800 dark:text-teal-300">
+              <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-3 text-xs text-blue-800 dark:text-blue-300">
                 Когда у мастера освободится слот в выбранное вами окно — вы первым получите уведомление в Telegram. На ответ даётся 30 минут, потом слот предлагается следующему в очереди.
               </div>
 
@@ -140,7 +140,7 @@ export function WaitlistDialog({ open, onClose, masterId, masterName, serviceId,
                       onClick={() => toggleDay(d.value)}
                       className={`flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition-colors ${
                         days.includes(d.value)
-                          ? 'border-teal-500/50 bg-teal-500/15 text-teal-700 dark:text-teal-300'
+                          ? 'border-blue-500/50 bg-blue-500/15 text-blue-700 dark:text-blue-300'
                           : 'border-muted text-muted-foreground hover:border-muted-foreground/30'
                       }`}
                     >
@@ -162,7 +162,7 @@ export function WaitlistDialog({ open, onClose, masterId, masterName, serviceId,
                       onClick={() => setTimeWindow(w.value)}
                       className={`rounded-xl border px-3 py-2.5 text-xs font-medium transition-colors ${
                         timeWindow === w.value
-                          ? 'border-teal-500/50 bg-teal-500/15 text-teal-700 dark:text-teal-300'
+                          ? 'border-blue-500/50 bg-blue-500/15 text-blue-700 dark:text-blue-300'
                           : 'border-muted text-muted-foreground hover:border-muted-foreground/30'
                       }`}
                     >
@@ -186,7 +186,7 @@ export function WaitlistDialog({ open, onClose, masterId, masterName, serviceId,
                 type="button"
                 onClick={submit}
                 disabled={days.length === 0 || submitting}
-                className="flex-1 rounded-2xl bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex-1 rounded-2xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? 'Добавляем…' : 'Встать в очередь'}
               </button>

@@ -36,7 +36,7 @@ const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
   border: '#1a1a1a',
-  accent: '#2dd4bf',
+  accent: '#60a5fa',
   accentSoft: '#2a2545',
   success: '#22c55e',
   danger: '#ef4444',

@@ -49,9 +49,9 @@ const DARK = {
   textMuted: '#8a8a8a',
   activeBg: '#2d2a4e',
   activeText: '#e5e5e5',
-  activeBorder: '#2dd4bf',
+  activeBorder: '#60a5fa',
   hoverBg: '#0a0a0a',
-  badgeBg: '#2dd4bf',
+  badgeBg: '#60a5fa',
   badgeText: '#ffffff',
   headingText: '#e5e5e5',
 };

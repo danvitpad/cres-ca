@@ -396,10 +396,10 @@ export default function WalletPage() {
           </div>
 
           {familyBudget.length > 0 && (
-            <div className="rounded-3xl border bg-gradient-to-br from-teal-500/8 via-card to-card p-6 shadow-[var(--shadow-card)]">
+            <div className="rounded-3xl border bg-gradient-to-br from-blue-500/8 via-card to-card p-6 shadow-[var(--shadow-card)]">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-teal-500/15 text-teal-600 dark:text-teal-300">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-300">
                     <Users className="size-6" />
                   </div>
                   <div>
@@ -431,7 +431,7 @@ export default function WalletPage() {
                           {row.relationship}
                         </p>
                       </div>
-                      <span className="shrink-0 rounded-full bg-teal-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-teal-600 dark:text-teal-300">
+                      <span className="shrink-0 rounded-full bg-blue-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-blue-600 dark:text-blue-300">
                         {row.visits} {t('familyVisits')}
                       </span>
                     </div>
@@ -446,7 +446,7 @@ export default function WalletPage() {
                             width: `${Math.min(100, (row.total / familyTotal) * 100)}%`,
                           }}
                           transition={{ duration: 0.8, ease: 'easeOut' }}
-                          className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-500"
+                          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500"
                         />
                       </div>
                     )}
@@ -573,7 +573,7 @@ function StatCard({
 const earnTints: Record<string, string> = {
   emerald: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
   amber: 'bg-amber-500/15 text-amber-600 dark:text-amber-300',
-  violet: 'bg-teal-500/15 text-teal-600 dark:text-teal-300',
+  violet: 'bg-blue-500/15 text-blue-600 dark:text-blue-300',
 };
 
 function EarnRow({

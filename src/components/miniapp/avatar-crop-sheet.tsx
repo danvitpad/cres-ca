@@ -118,7 +118,7 @@ export function MiniAppAvatarCropSheet({
             width: 36,
             height: 36,
             borderRadius: '50%',
-            background: !area || busy ? 'rgba(255,255,255,0.2)' : '#2dd4bf',
+            background: !area || busy ? 'rgba(255,255,255,0.2)' : '#60a5fa',
             color: !area || busy ? 'rgba(255,255,255,0.5)' : '#000',
             border: 'none',
             display: 'inline-flex',

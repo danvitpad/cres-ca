@@ -94,7 +94,7 @@ export default function MiniAppLanguagePage() {
               style={{ color: labelColor }}
             >
               <span className="flex-1 text-left text-[14px] font-medium">{l.label}</span>
-              {current === l.code && <Check size={16} weight="bold" className="text-teal-500" />}
+              {current === l.code && <Check size={16} weight="bold" className="text-blue-500" />}
             </button>
           </li>
         ))}

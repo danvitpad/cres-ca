@@ -346,7 +346,7 @@ function MasterMiniAppQuickBookingInner() {
           {!isTelegram() && (
             <button
               onClick={save}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-500 py-4 text-[15px] font-semibold text-white shadow-md shadow-teal-500/20 active:scale-[0.98] active:bg-teal-600 transition-all"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-500 py-4 text-[15px] font-semibold text-white shadow-md shadow-blue-500/20 active:scale-[0.98] active:bg-blue-600 transition-all"
             >
               <Check className="size-4" /> Создать запись · {Number(selectedService.price).toFixed(0)} ₴
             </button>

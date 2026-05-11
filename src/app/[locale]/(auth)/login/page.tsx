@@ -54,7 +54,7 @@ const AUTH_CSS = `
 }
 html.dark .auth-glass {
   --acard: color-mix(in oklab, var(--abg) 88%, white);
-  --aviolet: #2dd4bf; --aviolet-l: rgba(45,212,191,.12);
+  --aviolet: #60a5fa; --aviolet-l: rgba(96, 165, 250,.12);
   --adanger: #f87171;
 }
 .auth-glass input, .auth-glass button, .auth-glass select { font-family: var(--af); }

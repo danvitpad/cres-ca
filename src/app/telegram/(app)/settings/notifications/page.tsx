@@ -61,7 +61,7 @@ export default function MiniAppNotificationsPage() {
         </button>
         <div>
           <h1 className="flex items-center gap-2 text-[22px] font-bold">
-            <Bell className="size-5 text-teal-500" />
+            <Bell className="size-5 text-blue-500" />
             Уведомления
           </h1>
           <p className="text-[12px] text-neutral-500">
@@ -92,7 +92,7 @@ export default function MiniAppNotificationsPage() {
               role="switch"
               aria-checked={friendBday}
               className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                friendBday ? 'bg-teal-500' : 'bg-neutral-300'
+                friendBday ? 'bg-blue-500' : 'bg-neutral-300'
               }`}
             >
               <span

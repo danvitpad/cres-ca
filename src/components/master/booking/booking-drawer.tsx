@@ -636,7 +636,7 @@ function TimeStep({
                 className={
                   'flex size-14 shrink-0 flex-col items-center justify-center rounded-full transition-colors ' +
                   (isActive
-                    ? 'bg-teal-600 text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50')
                 }
               >
@@ -672,7 +672,7 @@ function TimeStep({
                     className={
                       'block w-full rounded-2xl border px-5 py-4 text-left transition-all ' +
                       (isSelected
-                        ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-200'
+                        ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200'
                         : 'border-neutral-200 bg-white hover:border-neutral-300')
                     }
                   >

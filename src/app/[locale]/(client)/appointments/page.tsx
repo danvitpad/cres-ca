@@ -104,7 +104,7 @@ function StatusChip({ status, label }: { status: string; label: string }) {
   const map: Record<string, { text: string; border: string; icon: React.ElementType; bg: string }> = {
     booked: { text: 'text-sky-600', border: 'border-sky-500/30', bg: 'bg-sky-500/10', icon: Clock3 },
     confirmed: { text: 'text-emerald-600', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', icon: CheckCircle2 },
-    in_progress: { text: 'text-teal-600', border: 'border-teal-500/30', bg: 'bg-teal-500/10', icon: Clock3 },
+    in_progress: { text: 'text-blue-600', border: 'border-blue-500/30', bg: 'bg-blue-500/10', icon: Clock3 },
     completed: { text: 'text-emerald-600', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10', icon: CheckCircle2 },
     cancelled: { text: 'text-rose-600', border: 'border-rose-500/30', bg: 'bg-rose-500/10', icon: XCircle },
     cancelled_by_client: { text: 'text-rose-600', border: 'border-rose-500/30', bg: 'bg-rose-500/10', icon: XCircle },

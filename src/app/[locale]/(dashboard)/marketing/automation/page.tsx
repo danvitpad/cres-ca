@@ -68,7 +68,7 @@ const RULES: {
     description: 'TG-пуш клиенту за 2 часа до визита',
     trigger: 'За 2 часа до визита',
     icon: Bell,
-    accent: '#2dd4bf',
+    accent: '#60a5fa',
   },
   {
     key: 'pre_visit_master',
@@ -251,7 +251,7 @@ export default function AutomationPage() {
       {([
         { kind: 'booking_confirmation', icon: CheckCircle2, accent: '#10b981',
           title: 'Подтверждение записи', description: 'Уходит клиенту в момент бронирования' },
-        { kind: 'appointment_rescheduled', icon: CalendarClock, accent: '#0d9488',
+        { kind: 'appointment_rescheduled', icon: CalendarClock, accent: '#2563eb',
           title: 'Перенос записи', description: 'Уходит клиенту когда меняется время визита' },
         { kind: 'appointment_cancelled', icon: XCircle, accent: '#ef4444',
           title: 'Отмена записи', description: 'Уходит клиенту когда запись отменяется' },

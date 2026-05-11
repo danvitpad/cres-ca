@@ -32,7 +32,7 @@ const DARK = {
   textMuted: '#8a8a8a',
   border: '#1a1a1a',
   sectionBg: '#000000',
-  accent: '#2dd4bf',
+  accent: '#60a5fa',
   btnBg: 'var(--color-accent)',
   btnText: '#ffffff',
   btnOutlineBg: 'transparent',

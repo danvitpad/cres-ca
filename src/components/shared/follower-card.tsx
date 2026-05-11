@@ -44,13 +44,13 @@ function getInitials(name: string) {
 function hashColor(name: string) {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  const colors = ['#3b82f6', '#2dd4bf', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'];
+  const colors = ['#3b82f6', '#60a5fa', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#6366f1', '#ec4899'];
   return colors[Math.abs(hash) % colors.length];
 }
 
 const ENTITY_BADGE: Record<EntityType, { bg: string; color: string; Icon: typeof User }> = {
   client: { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6', Icon: User },
-  master: { bg: 'rgba(45,212,191,0.12)', color: '#2dd4bf', Icon: Scissors },
+  master: { bg: 'rgba(96, 165, 250,0.12)', color: '#60a5fa', Icon: Scissors },
   salon: { bg: 'rgba(16,185,129,0.12)', color: '#10b981', Icon: Building2 },
 };
 

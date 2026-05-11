@@ -41,7 +41,7 @@ export default function AccountTypePage() {
   if (!ready) {
     return (
       <div className="fixed inset-0" style={{
-        background: 'radial-gradient(120% 80% at 50% -10%, rgba(45,212,191,0.10), transparent 60%), #141417',
+        background: 'radial-gradient(120% 80% at 50% -10%, rgba(96, 165, 250,0.10), transparent 60%), #141417',
       }} />
     );
   }
@@ -51,7 +51,7 @@ export default function AccountTypePage() {
       className="fixed inset-0 overflow-y-auto"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% -10%, rgba(45,212,191,0.10), transparent 60%), #141417',
+          'radial-gradient(120% 80% at 50% -10%, rgba(96, 165, 250,0.10), transparent 60%), #141417',
       }}
     >
       <div className="mx-auto flex min-h-full max-w-xl flex-col justify-center px-6 py-12 md:py-16">
@@ -61,8 +61,8 @@ export default function AccountTypePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto mb-8 flex size-14 items-center justify-center rounded-2xl"
           style={{
-            background: 'rgba(45,212,191,0.14)',
-            border: '1px solid rgba(45,212,191,0.3)',
+            background: 'rgba(96, 165, 250,0.14)',
+            border: '1px solid rgba(96, 165, 250,0.3)',
           }}
         >
           <span className="text-xl font-bold" style={{ color: 'var(--color-accent-text)', letterSpacing: '-0.02em' }}>
@@ -101,20 +101,20 @@ export default function AccountTypePage() {
             className="group flex items-center gap-4 rounded-2xl p-5 text-left transition-all"
             style={{
               background: '#1a1a1d',
-              border: '1px solid rgba(45,212,191,0.16)',
+              border: '1px solid rgba(96, 165, 250,0.16)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#1f1f22';
-              e.currentTarget.style.borderColor = 'rgba(45,212,191,0.35)';
+              e.currentTarget.style.borderColor = 'rgba(96, 165, 250,0.35)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = '#1a1a1d';
-              e.currentTarget.style.borderColor = 'rgba(45,212,191,0.16)';
+              e.currentTarget.style.borderColor = 'rgba(96, 165, 250,0.16)';
             }}
           >
             <div
               className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'rgba(45,212,191,0.12)', color: 'var(--color-accent-text)' }}
+              style={{ background: 'rgba(96, 165, 250,0.12)', color: 'var(--color-accent-text)' }}
             >
               <Building2 className="size-5" />
             </div>
@@ -143,20 +143,20 @@ export default function AccountTypePage() {
             className="group flex items-center gap-4 rounded-2xl p-5 text-left transition-all"
             style={{
               background: '#1a1a1d',
-              border: '1px solid rgba(45,212,191,0.16)',
+              border: '1px solid rgba(96, 165, 250,0.16)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#1f1f22';
-              e.currentTarget.style.borderColor = 'rgba(45,212,191,0.35)';
+              e.currentTarget.style.borderColor = 'rgba(96, 165, 250,0.35)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = '#1a1a1d';
-              e.currentTarget.style.borderColor = 'rgba(45,212,191,0.16)';
+              e.currentTarget.style.borderColor = 'rgba(96, 165, 250,0.16)';
             }}
           >
             <div
               className="flex size-12 shrink-0 items-center justify-center rounded-xl"
-              style={{ background: 'rgba(45,212,191,0.12)', color: 'var(--color-accent-text)' }}
+              style={{ background: 'rgba(96, 165, 250,0.12)', color: 'var(--color-accent-text)' }}
             >
               <Users className="size-5" />
             </div>

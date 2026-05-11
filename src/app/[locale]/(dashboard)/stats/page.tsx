@@ -33,7 +33,7 @@ interface Appointment {
 type StatsPeriod = 'day' | 'week' | 'month';
 
 const ACCENT_BG: Record<string, string> = {
-  violet: 'bg-teal-500/10 text-teal-500',
+  violet: 'bg-blue-500/10 text-blue-500',
   blue: 'bg-blue-500/10 text-blue-500',
   emerald: 'bg-emerald-500/10 text-emerald-600',
   rose: 'bg-rose-500/10 text-rose-500',
@@ -171,7 +171,7 @@ export default function StatsPage() {
       if (!svc) continue;
       const e = byId.get(svc.id);
       if (e) e.count += 1;
-      else byId.set(svc.id, { id: svc.id, name: svc.name, color: svc.color ?? '#2dd4bf', count: 1 });
+      else byId.set(svc.id, { id: svc.id, name: svc.name, color: svc.color ?? '#60a5fa', count: 1 });
     }
     const arr = Array.from(byId.values()).sort((a, b) => b.count - a.count).slice(0, 8);
     const total = arr.reduce((s, x) => s + x.count, 0);

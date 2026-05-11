@@ -318,7 +318,7 @@ function SlotCard({ item }: { item: FeedItem }) {
             )}
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
               {startsAt && (
-                <span className="inline-flex items-center gap-1 text-[13px] font-medium text-teal-700 dark:text-teal-300">
+                <span className="inline-flex items-center gap-1 text-[13px] font-medium text-blue-700 dark:text-blue-300">
                   <Calendar className="size-3.5" />
                   {formatDateTime(startsAt)}
                 </span>
@@ -398,14 +398,14 @@ function EmptyCard({
 }) {
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center">
-      <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
         <Heart className="size-5" />
       </div>
       <h2 className="mt-4 text-[16px] font-semibold text-neutral-900">{title}</h2>
       <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-neutral-500">{desc}</p>
       <Link
         href={ctaHref}
-        className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-teal-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-teal-700"
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-blue-700"
       >
         <Search className="size-4" />
         {ctaLabel}

@@ -21,21 +21,21 @@ type SettingsDrawerProps = {
 const LIGHT = {
   text: '#0a0a0a',
   textMuted: '#64607a',
-  border: 'rgba(13,148,136,0.13)',
+  border: 'rgba(37, 99, 235,0.13)',
   surface: '#ffffff',
   surfaceElevated: '#fafafa',
   accent: 'var(--color-accent)',
-  accentSoft: 'rgba(13,148,136,0.08)',
+  accentSoft: 'rgba(37, 99, 235,0.08)',
 };
 
 const DARK = {
   text: '#fafafa',
   textMuted: '#a1a1aa',
-  border: 'rgba(45,212,191,0.16)',
+  border: 'rgba(96, 165, 250,0.16)',
   surface: '#1a1a1d',
   surfaceElevated: '#1f1f22',
-  accent: '#2dd4bf',
-  accentSoft: 'rgba(45,212,191,0.12)',
+  accent: '#60a5fa',
+  accentSoft: 'rgba(96, 165, 250,0.12)',
 };
 
 const SCALE_OPTIONS = [

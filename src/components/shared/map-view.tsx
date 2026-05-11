@@ -73,11 +73,11 @@ function createIcon(rating: number) {
 
 const salonIcon = L.divIcon({
   html: `<div style="
-    background:#2dd4bf;
+    background:#60a5fa;
     width:36px;height:36px;
     border-radius:10px;
     border:3px solid white;
-    box-shadow:0 2px 10px rgba(45,212,191,0.45);
+    box-shadow:0 2px 10px rgba(96, 165, 250,0.45);
     display:flex;align-items:center;justify-content:center;
     color:white;font-size:16px;font-weight:800;
   ">S</div>`,
@@ -217,7 +217,7 @@ export default function MapView({
           display: none !important;
         }
         .cres-marker-label-salon {
-          background: rgba(45, 212, 191, 0.95);
+          background: rgba(96, 165, 250, 0.95);
           color: white;
         }
         .cres-zoom-far .cres-marker-label {

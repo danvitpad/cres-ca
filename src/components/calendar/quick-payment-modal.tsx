@@ -30,7 +30,7 @@ const DARK = {
   border: '#1a1a1a',
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
-  accent: '#2dd4bf',
+  accent: '#60a5fa',
   keyBg: '#000000',
   keyHover: '#1a1a1a',
   keyText: '#e5e5e5',

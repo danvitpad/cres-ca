@@ -75,7 +75,7 @@ export function MiniAppBackBar() {
           borderRadius: 999,
           border: '1px solid rgba(0,0,0,0.08)',
           background: '#fff',
-          color: '#0d9488',
+          color: '#2563eb',
           fontSize: 14,
           fontWeight: 600,
           cursor: 'pointer',

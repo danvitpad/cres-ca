@@ -17,7 +17,7 @@ export const F_LIGHT = {
   headerBorder: '#ece8f4',
   sidebarBg: '#141417',
   sidebarBorder: '#1f1f22',
-  sidebarActiveBg: '#0d9488',
+  sidebarActiveBg: '#2563eb',
   sidebarActiveIconColor: '#ffffff',
   sidebarInactiveIconColor: '#a1a1aa',
   textPrimary: '#0a0a0a',
@@ -35,7 +35,7 @@ export const F_DARK = {
   headerBorder: '#1f1f22',
   sidebarBg: '#0f0f12',
   sidebarBorder: '#27272a',
-  sidebarActiveBg: '#2dd4bf',
+  sidebarActiveBg: '#60a5fa',
   sidebarActiveIconColor: '#ffffff',
   sidebarInactiveIconColor: '#a1a1aa',
   textPrimary: '#fafafa',
@@ -59,16 +59,16 @@ export const PAGE_LIGHT = {
   surface: '#ffffff',
   surfaceElevated: '#f4f4f5',
   // Borders
-  border: 'rgba(13,148,136,0.07)',
-  borderStrong: 'rgba(13,148,136,0.13)',
+  border: 'rgba(37, 99, 235,0.07)',
+  borderStrong: 'rgba(37, 99, 235,0.13)',
   // Text
   text: '#0a0a0a',
   textSecondary: '#64607a',
   textTertiary: '#9994ad',
   // Accent (vivid purple)
-  accent: '#0d9488',
-  accentHover: '#0f766e',
-  accentSoft: 'rgba(13,148,136,0.08)',
+  accent: '#2563eb',
+  accentHover: '#1d4ed8',
+  accentSoft: 'rgba(37, 99, 235,0.08)',
   // Status
   success: '#10b981',
   successSoft: 'rgba(16,185,129,0.08)',
@@ -79,11 +79,11 @@ export const PAGE_LIGHT = {
   // Tables & lists
   rowHover: '#fafafa',
   // AI surfaces
-  aiGradient: 'linear-gradient(135deg, rgba(13,148,136,0.07) 0%, rgba(168,85,247,0.04) 100%)',
-  aiBorder: 'rgba(13,148,136,0.15)',
+  aiGradient: 'linear-gradient(135deg, rgba(37, 99, 235,0.07) 0%, rgba(168,85,247,0.04) 100%)',
+  aiBorder: 'rgba(37, 99, 235,0.15)',
   // Badges
-  badgeBg: 'rgba(13,148,136,0.08)',
-  badgeText: '#0d9488',
+  badgeBg: 'rgba(37, 99, 235,0.08)',
+  badgeText: '#2563eb',
 } as const;
 
 export const PAGE_DARK = {
@@ -92,16 +92,16 @@ export const PAGE_DARK = {
   surface: '#1a1a1d',
   surfaceElevated: '#1f1f22',
   // Borders — purple-tinted
-  border: 'rgba(45,212,191,0.08)',
-  borderStrong: 'rgba(45,212,191,0.16)',
+  border: 'rgba(96, 165, 250,0.08)',
+  borderStrong: 'rgba(96, 165, 250,0.16)',
   // Text — slightly warm
   text: '#fafafa',
   textSecondary: '#a1a1aa',
   textTertiary: '#5c5876',
   // Accent (bright purple)
-  accent: '#2dd4bf',
-  accentHover: '#5eead4',
-  accentSoft: 'rgba(45,212,191,0.12)',
+  accent: '#60a5fa',
+  accentHover: '#93c5fd',
+  accentSoft: 'rgba(96, 165, 250,0.12)',
   // Status
   success: '#34d399',
   successSoft: 'rgba(52,211,153,0.12)',
@@ -112,11 +112,11 @@ export const PAGE_DARK = {
   // Tables & lists
   rowHover: '#151830',
   // AI surfaces
-  aiGradient: 'linear-gradient(135deg, rgba(45,212,191,0.1) 0%, rgba(13,148,136,0.05) 100%)',
-  aiBorder: 'rgba(45,212,191,0.2)',
+  aiGradient: 'linear-gradient(135deg, rgba(96, 165, 250,0.1) 0%, rgba(37, 99, 235,0.05) 100%)',
+  aiBorder: 'rgba(96, 165, 250,0.2)',
   // Badges
-  badgeBg: 'rgba(45,212,191,0.12)',
-  badgeText: '#2dd4bf',
+  badgeBg: 'rgba(96, 165, 250,0.12)',
+  badgeText: '#60a5fa',
 } as const;
 
 export type PageTheme = { [K in keyof typeof PAGE_LIGHT]: string };

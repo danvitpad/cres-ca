@@ -60,7 +60,7 @@ export default function OnboardingVerticalPage() {
       className="fixed inset-0 overflow-y-auto"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% -10%, rgba(45,212,191,0.10), transparent 60%), #141417',
+          'radial-gradient(120% 80% at 50% -10%, rgba(96, 165, 250,0.10), transparent 60%), #141417',
       }}
     >
       {/* Back button — absolutely positioned в верхнем-левом углу страницы,
@@ -70,7 +70,7 @@ export default function OnboardingVerticalPage() {
         aria-label="Назад"
         className="fixed left-4 top-4 z-10 flex size-10 items-center justify-center rounded-xl transition-colors md:left-8 md:top-8"
         style={{
-          border: '1px solid rgba(45,212,191,0.16)',
+          border: '1px solid rgba(96, 165, 250,0.16)',
           background: '#1a1a1d',
           color: '#fafafa',
         }}
@@ -116,10 +116,10 @@ export default function OnboardingVerticalPage() {
                 disabled={!!selected}
                 className="group relative flex items-center gap-4 overflow-hidden rounded-2xl p-5 text-left transition-all"
                 style={{
-                  background: isSelected ? 'rgba(45,212,191,0.14)' : '#1a1a1d',
-                  border: `1px solid ${isSelected ? '#2dd4bf' : 'rgba(45,212,191,0.16)'}`,
+                  background: isSelected ? 'rgba(96, 165, 250,0.14)' : '#1a1a1d',
+                  border: `1px solid ${isSelected ? '#60a5fa' : 'rgba(96, 165, 250,0.16)'}`,
                   boxShadow: isSelected
-                    ? '0 0 0 4px rgba(45,212,191,0.15), 0 8px 24px rgba(45,212,191,0.18)'
+                    ? '0 0 0 4px rgba(96, 165, 250,0.15), 0 8px 24px rgba(96, 165, 250,0.18)'
                     : 'none',
                   cursor: selected && !isSelected ? 'default' : 'pointer',
                   opacity: selected && !isSelected ? 0.5 : 1,
@@ -127,19 +127,19 @@ export default function OnboardingVerticalPage() {
                 onMouseEnter={(e) => {
                   if (selected) return;
                   e.currentTarget.style.background = '#1f1f22';
-                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.35)';
+                  e.currentTarget.style.borderColor = 'rgba(96, 165, 250,0.35)';
                 }}
                 onMouseLeave={(e) => {
                   if (selected) return;
                   e.currentTarget.style.background = '#1a1a1d';
-                  e.currentTarget.style.borderColor = 'rgba(45,212,191,0.16)';
+                  e.currentTarget.style.borderColor = 'rgba(96, 165, 250,0.16)';
                 }}
               >
                 {/* Icon bubble — soft purple */}
                 <div
                   className="flex size-12 shrink-0 items-center justify-center rounded-xl transition-colors"
                   style={{
-                    background: isSelected ? 'rgba(45,212,191,0.22)' : 'rgba(45,212,191,0.10)',
+                    background: isSelected ? 'rgba(96, 165, 250,0.22)' : 'rgba(96, 165, 250,0.10)',
                     color: isSelected ? 'var(--color-accent-text)' : 'var(--color-accent-text)',
                   }}
                 >
@@ -163,7 +163,7 @@ export default function OnboardingVerticalPage() {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                     className="flex size-7 shrink-0 items-center justify-center rounded-full"
-                    style={{ background: '#2dd4bf', color: '#ffffff' }}
+                    style={{ background: '#60a5fa', color: '#ffffff' }}
                   >
                     <Check className="size-4" />
                   </motion.div>

@@ -33,7 +33,7 @@ const DARK = {
   tabInactive: '#8a8a8a',
   tabIndicator: '#e5e5e5',
   bgSubtle: '#000000',
-  accent: '#2dd4bf',
+  accent: '#60a5fa',
   btnBg: 'var(--color-accent)',
   btnText: '#ffffff',
 };

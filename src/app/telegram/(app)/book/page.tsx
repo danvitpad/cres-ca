@@ -296,7 +296,7 @@ const MONTH_NAMES_FULL: string[] = new Proxy([] as string[], {
   },
 });
 
-const VIOLET = '#2dd4bf';
+const VIOLET = '#60a5fa';
 const _VIOLET_DARK = 'var(--color-accent)';
 
 const DEFAULT_WORKING_HOURS: NonNullable<MasterInfo['working_hours']> = {

@@ -33,14 +33,14 @@ const DARK = {
   text: '#e5e5e5',
   textMuted: '#8a8a8a',
   border: '#1a1a1a',
-  accent: '#2dd4bf',
+  accent: '#60a5fa',
   accentSoft: '#2a2545',
   success: '#22c55e',
   successSoft: '#052e16',
   danger: '#ef4444',
   dangerSoft: '#450a0a',
   cardBg: '#000000',
-  chartBar: '#2dd4bf',
+  chartBar: '#60a5fa',
   chartBarMuted: '#1a1a1a',
   purpleCard: 'var(--color-accent)',
   purpleCardText: '#ffffff',
@@ -57,7 +57,7 @@ const CHANNELS = [
   { key: 'online', label: 'Онлайн запись', color: 'var(--color-accent)' },
   { key: 'manual', label: 'Ручная запись', color: '#f59e0b' },
   { key: 'telegram', label: 'Telegram', color: '#0ea5e9' },
-  { key: 'walk_in', label: 'Без записи', color: '#2dd4bf' },
+  { key: 'walk_in', label: 'Без записи', color: '#60a5fa' },
 ];
 
 interface AnalyticsDrawerContentProps {

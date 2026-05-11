@@ -537,11 +537,11 @@ html.dark .landing-v6 {
 .landing-v6 .btn-pill-primary {
   background: var(--color-accent);
   color: #fff;
-  box-shadow: 0 4px 20px rgba(13, 148, 136, 0.25);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
 }
 .landing-v6 .btn-pill-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 8px 28px rgba(13, 148, 136, 0.35);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.35);
 }
 .landing-v6 .btn-pill-primary:active { transform: translateY(0); }
 
@@ -563,7 +563,7 @@ html.dark .landing-v6 {
 .landing-v6 .btn-pill-primary.btn-pill-nav {
   padding: 8px 18px;
   font-size: 13px;
-  box-shadow: 0 2px 12px rgba(13, 148, 136, 0.25);
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.25);
 }
 
 /* Pill во всю ширину (на карточке тарифа) */
@@ -1002,11 +1002,11 @@ html.dark .landing-v6 .hero-mock {
 
 .landing-v6 .price-card.price-popular {
   border: 2px solid var(--color-accent);
-  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.10);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10);
 }
 .landing-v6 .price-card.price-popular:hover {
   transform: translateY(-8px);
-  box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.10), 0 20px 48px rgba(13, 148, 136, 0.14);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.10), 0 20px 48px rgba(37, 99, 235, 0.14);
 }
 
 /* ─── 23. LANDING LAYOUT FOOTER ─── */

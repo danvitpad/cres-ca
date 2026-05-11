@@ -52,7 +52,7 @@ const AVATAR_GRADIENTS_LIGHT = [
   'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
   'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
   'linear-gradient(135deg, #ef4444 0%, #fb7185 100%)',
-  'linear-gradient(135deg, #2dd4bf 0%, var(--color-accent-text) 100%)',
+  'linear-gradient(135deg, #60a5fa 0%, var(--color-accent-text) 100%)',
 ];
 
 interface ClientRow {
@@ -172,7 +172,7 @@ function ClientCard({ client, C, isDark, index }: {
           e.currentTarget.style.transform = 'translateY(-2px)';
           e.currentTarget.style.boxShadow = isDark
             ? '0 8px 24px rgba(0,0,0,0.3)'
-            : '0 8px 24px rgba(13,148,136,0.08)';
+            : '0 8px 24px rgba(37, 99, 235,0.08)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.borderColor = C.border as string;

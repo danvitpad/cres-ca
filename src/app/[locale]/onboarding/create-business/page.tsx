@@ -1327,7 +1327,7 @@ function InviteScreen({
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-        className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-teal-500"
+        className="flex size-16 items-center justify-center rounded-full bg-gradient-to-br from-primary/80 to-blue-500"
       >
         <Check className="size-8 text-white" strokeWidth={3} />
       </motion.div>

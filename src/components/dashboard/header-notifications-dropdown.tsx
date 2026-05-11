@@ -187,7 +187,7 @@ export function HeaderNotificationsDropdown({
                         style={{
                           display: 'flex', alignItems: 'flex-start', gap: 10,
                           padding: '10px 16px', cursor: 'pointer',
-                          backgroundColor: isUnread ? (isDark ? 'rgba(13,148,136,0.06)' : 'rgba(13,148,136,0.04)') : 'transparent',
+                          backgroundColor: isUnread ? (isDark ? 'rgba(37, 99, 235,0.06)' : 'rgba(37, 99, 235,0.04)') : 'transparent',
                           transition: 'background-color 100ms',
                           borderLeft: isUnread ? '3px solid var(--color-accent)' : '3px solid transparent',
                         }}

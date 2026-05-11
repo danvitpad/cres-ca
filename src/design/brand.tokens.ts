@@ -18,12 +18,12 @@
 
 export const colors = {
   accent: {
-    DEFAULT: '#0d9488',
-    hover:   '#0f766e',
+    DEFAULT: '#2563eb',
+    hover:   '#1d4ed8',
     active:  '#115e59',
-    soft:    'rgba(13, 148, 136, 0.1)',
-    border:  'rgba(13, 148, 136, 0.3)',
-    text:    '#5eead4',  // for use on dark bg
+    soft:    'rgba(37, 99, 235, 0.1)',
+    border:  'rgba(37, 99, 235, 0.3)',
+    text:    '#93c5fd',  // for use on dark bg
   },
 
   dark: {
@@ -137,7 +137,7 @@ export const shadow = {
   md:   '0 4px 8px rgba(10, 10, 10, 0.08)',
   lg:   '0 8px 24px rgba(10, 10, 10, 0.10)',
   xl:   '0 16px 48px rgba(10, 10, 10, 0.18)',
-  glow: '0 0 0 3px rgba(13, 148, 136, 0.20)', // focus ring, teal
+  glow: '0 0 0 3px rgba(37, 99, 235, 0.20)', // focus ring, cobalt
 } as const;
 
 // ══════════════════════ 6. MOTION ══════════════════════

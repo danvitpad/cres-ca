@@ -134,7 +134,7 @@ export default function CompleteProfilePage() {
       className="fixed inset-0 overflow-y-auto"
       style={{
         background:
-          'radial-gradient(120% 80% at 50% -10%, rgba(45,212,191,0.10), transparent 60%), #141417',
+          'radial-gradient(120% 80% at 50% -10%, rgba(96, 165, 250,0.10), transparent 60%), #141417',
       }}
     >
       <div className="mx-auto flex min-h-full max-w-md flex-col justify-center px-6 py-12 md:py-16">
@@ -143,11 +143,11 @@ export default function CompleteProfilePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mx-auto mb-6 flex size-14 items-center justify-center rounded-2xl"
           style={{
-            background: 'rgba(45,212,191,0.14)',
-            border: '1px solid rgba(45,212,191,0.3)',
+            background: 'rgba(96, 165, 250,0.14)',
+            border: '1px solid rgba(96, 165, 250,0.3)',
           }}
         >
-          <span className="text-xl font-bold" style={{ color: '#2dd4bf', letterSpacing: '-0.02em' }}>
+          <span className="text-xl font-bold" style={{ color: '#60a5fa', letterSpacing: '-0.02em' }}>
             C
           </span>
         </motion.div>
@@ -270,7 +270,7 @@ export default function CompleteProfilePage() {
                   type="checkbox"
                   checked={terms}
                   onChange={(e) => setTerms(e.target.checked)}
-                  style={{ marginTop: 2, accentColor: '#2dd4bf', width: 14, height: 14, cursor: 'pointer' }}
+                  style={{ marginTop: 2, accentColor: '#60a5fa', width: 14, height: 14, cursor: 'pointer' }}
                 />
                 <span>
                   Я принимаю{' '}
@@ -294,12 +294,12 @@ export default function CompleteProfilePage() {
               disabled={saving}
               className="mt-2 h-12 rounded-2xl font-semibold transition-all"
               style={{
-                background: '#2dd4bf',
+                background: '#60a5fa',
                 color: '#0a0a0a',
                 opacity: saving ? 0.55 : 1,
                 cursor: saving ? 'not-allowed' : 'pointer',
                 fontSize: 14,
-                boxShadow: '0 8px 24px rgba(45,212,191,0.25)',
+                boxShadow: '0 8px 24px rgba(96, 165, 250,0.25)',
               }}
             >
               {saving ? 'Сохраняю…' : needsPassword ? 'Создать аккаунт' : 'Продолжить'}
@@ -321,7 +321,7 @@ export default function CompleteProfilePage() {
         }
         .cp-input::placeholder { color: rgba(250,250,250,0.35); }
         .cp-input:focus {
-          border-color: rgba(45,212,191,0.7);
+          border-color: rgba(96, 165, 250,0.7);
           background: #1f1f22;
         }
         .cp-phone-wrap {
@@ -333,7 +333,7 @@ export default function CompleteProfilePage() {
           transition: border-color .15s ease, background .15s ease;
         }
         .cp-phone-wrap:focus-within {
-          border-color: rgba(45,212,191,0.7);
+          border-color: rgba(96, 165, 250,0.7);
           background: #1f1f22;
         }
         .cp-phone-prefix {
