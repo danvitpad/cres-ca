@@ -1,8 +1,11 @@
 /** --- YAML
  * name: HeaderAiAssistant
- * description: AI-помощник в шапке dashboard. Кнопка в центре header → открывает
- *              модальное окно с чатом. Использует /api/ai/assistant endpoint.
- *              Заменяет inline-чат на /today и LostRevenueCard на /finance.
+ * description: AI-помощник в шапке dashboard. Кнопка в шапке открывает плавающее
+ *              окно с чатом — non-modal (без блокирующего фона), draggable за
+ *              header, кнопки «свернуть» и «закрыть». Свёрнутое окно — пилюля
+ *              справа внизу. Положение окна + история чата сохраняются в
+ *              localStorage: переживает перезагрузки, переключение вкладок,
+ *              перезаход в браузер.
  * created: 2026-05-11
  * --- */
 
@@ -10,11 +13,21 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Send, Loader2, X, Trash2, HelpCircle } from 'lucide-react';
+import { Bot, Send, Loader2, X, Trash2, HelpCircle, Minus, Move } from 'lucide-react';
 import type { FTheme } from '@/lib/dashboard-theme';
 
-// Палитра под header (берётся из дизайн-токенов, не из FTheme — у FTheme
-// нет accent / cardBg / textMuted полей).
+interface ChatMsg {
+  role: 'user' | 'assistant';
+  content: string;
+  ts: number;
+}
+
+interface Props {
+  theme: FTheme;
+  isDark: boolean;
+}
+
+// Палитра для попапа — независимо от FTheme (header-only).
 const P = {
   light: {
     accent: '#2563eb',
@@ -31,6 +44,7 @@ const P = {
     shadow: '0 24px 60px rgba(16, 24, 40, 0.18), 0 8px 16px rgba(16, 24, 40, 0.08)',
     boxShadowSmall: '0 2px 8px rgba(37, 99, 235, 0.10)',
     boxShadowHover: '0 4px 12px rgba(37, 99, 235, 0.16)',
+    dragHandleBg: 'rgba(0,0,0,0.02)',
   },
   dark: {
     accent: '#60a5fa',
@@ -47,54 +61,159 @@ const P = {
     shadow: '0 24px 60px rgba(0,0,0,0.6), 0 8px 16px rgba(0,0,0,0.3)',
     boxShadowSmall: '0 2px 8px rgba(96, 165, 250, 0.15)',
     boxShadowHover: '0 4px 12px rgba(96, 165, 250, 0.25)',
+    dragHandleBg: 'rgba(255,255,255,0.03)',
   },
 };
 
-interface ChatMsg {
-  role: 'user' | 'assistant';
-  content: string;
-  ts: number;
+const WINDOW_W = 420;
+const WINDOW_H = 580;
+const MINIMIZED_W = 220;
+const STORAGE_KEY = 'cres:ai-assistant:v1';
+
+type WindowState = 'closed' | 'open' | 'minimized';
+
+interface PersistedState {
+  state: WindowState;
+  position: { x: number; y: number };
+  chat: ChatMsg[];
 }
 
-interface Props {
-  theme: FTheme;
-  isDark: boolean;
+function loadPersisted(): PersistedState {
+  if (typeof window === 'undefined') return { state: 'closed', position: { x: 0, y: 0 }, chat: [] };
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { state: 'closed', position: { x: 0, y: 0 }, chat: [] };
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    return {
+      state: (parsed.state === 'minimized' || parsed.state === 'open') ? parsed.state : 'closed',
+      position: parsed.position ?? { x: 0, y: 0 },
+      chat: Array.isArray(parsed.chat) ? parsed.chat : [],
+    };
+  } catch {
+    return { state: 'closed', position: { x: 0, y: 0 }, chat: [] };
+  }
+}
+
+function savePersisted(s: PersistedState) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  } catch { /* quota / private mode */ }
+}
+
+function clampPosition(pos: { x: number; y: number }, w: number, h: number): { x: number; y: number } {
+  if (typeof window === 'undefined') return pos;
+  const maxX = window.innerWidth - w;
+  const maxY = window.innerHeight - h;
+  return {
+    x: Math.max(0, Math.min(maxX, pos.x)),
+    y: Math.max(0, Math.min(maxY, pos.y)),
+  };
+}
+
+function defaultPosition(): { x: number; y: number } {
+  if (typeof window === 'undefined') return { x: 0, y: 0 };
+  return {
+    x: Math.max(0, window.innerWidth - WINDOW_W - 32),
+    y: 90,
+  };
 }
 
 export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _unused = _F; // theme не используется напрямую — палитра через P[isDark]
+  const _unused = _F;
   const C = isDark ? P.dark : P.light;
-  const [open, setOpen] = useState(false);
+
+  // Mount guard — localStorage доступен только на клиенте
+  const [mounted, setMounted] = useState(false);
+  const [winState, setWinState] = useState<WindowState>('closed');
+  const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [chat, setChat] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const dragStartRef = useRef<{ mouseX: number; mouseY: number; winX: number; winY: number } | null>(null);
 
+  // Initial mount — load persisted state
   useEffect(() => {
-    if (open) {
-      // small delay чтобы dialog успел отрендериться
+    const persisted = loadPersisted();
+    setWinState(persisted.state);
+    setChat(persisted.chat);
+    // Clamp position to current viewport (window could've resized since save)
+    const pos = persisted.position.x === 0 && persisted.position.y === 0
+      ? defaultPosition()
+      : clampPosition(persisted.position, WINDOW_W, WINDOW_H);
+    setPosition(pos);
+    setMounted(true);
+  }, []);
+
+  // Persist on any state change
+  useEffect(() => {
+    if (!mounted) return;
+    savePersisted({ state: winState, position, chat });
+  }, [mounted, winState, position, chat]);
+
+  // Re-clamp position on window resize
+  useEffect(() => {
+    const onResize = () => {
+      setPosition((p) => clampPosition(p, WINDOW_W, WINDOW_H));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Focus textarea when opened
+  useEffect(() => {
+    if (winState === 'open') {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [open]);
+  }, [winState]);
 
+  // Scroll to bottom on new message
   useEffect(() => {
+    if (winState !== 'open') return;
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [chat.length, sending]);
+  }, [chat.length, sending, winState]);
 
-  // Esc → close
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+  // Drag handlers
+  const startDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      winX: position.x,
+      winY: position.y,
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open]);
+    setIsDragging(true);
+  }, [position.x, position.y]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const onMove = (e: MouseEvent) => {
+      if (!dragStartRef.current) return;
+      const dx = e.clientX - dragStartRef.current.mouseX;
+      const dy = e.clientY - dragStartRef.current.mouseY;
+      setPosition(clampPosition({
+        x: dragStartRef.current.winX + dx,
+        y: dragStartRef.current.winY + dy,
+      }, WINDOW_W, WINDOW_H));
+    };
+    const onUp = () => {
+      setIsDragging(false);
+      dragStartRef.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isDragging]);
 
   const sendChat = useCallback(async () => {
     const trimmed = input.trim();
@@ -124,11 +243,52 @@ export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
     }
   }, [input, sending, chat]);
 
-  return (
-    <>
+  const openWindow = useCallback(() => {
+    setWinState('open');
+    // Если позиция «свёрнутая» (внизу справа) — восстановим default
+    if (typeof window !== 'undefined') {
+      setPosition((p) => clampPosition(p.x === 0 && p.y === 0 ? defaultPosition() : p, WINDOW_W, WINDOW_H));
+    }
+  }, []);
+
+  const minimizeWindow = useCallback(() => setWinState('minimized'), []);
+  const closeWindow = useCallback(() => setWinState('closed'), []);
+
+  // Если ещё не смонтировано — рендерим только заглушку-кнопку (SSR-safe)
+  if (!mounted) {
+    return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        aria-label="AI-помощник"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 18px',
+          height: 38,
+          borderRadius: 999,
+          background: C.buttonGradient,
+          border: `1px solid ${C.accent}`,
+          color: C.accent,
+          fontFamily: 'inherit',
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: 'pointer',
+          opacity: 0.9,
+        }}
+      >
+        <Bot style={{ width: 16, height: 16 }} />
+        <span>AI-помощник</span>
+      </button>
+    );
+  }
+
+  return (
+    <>
+      {/* Кнопка в header */}
+      <button
+        type="button"
+        onClick={openWindow}
         aria-label="AI-помощник"
         style={{
           display: 'inline-flex',
@@ -159,69 +319,284 @@ export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
       >
         <Bot style={{ width: 16, height: 16 }} />
         <span>AI-помощник</span>
+        {chat.length > 0 && winState === 'closed' && (
+          <span style={{
+            background: C.accent,
+            color: '#fff',
+            fontSize: 10,
+            fontWeight: 700,
+            borderRadius: 999,
+            padding: '2px 7px',
+            minWidth: 18,
+            textAlign: 'center',
+            lineHeight: 1.2,
+            marginLeft: 2,
+          }}>
+            {chat.filter((m) => m.role === 'assistant').length}
+          </span>
+        )}
       </button>
 
+      {/* Свёрнутая пилюля в правом нижнем углу */}
       <AnimatePresence>
-        {open && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setOpen(false)}
+        {winState === 'minimized' && (
+          <motion.button
+            type="button"
+            onClick={openWindow}
+            aria-label="Развернуть AI-помощник"
+            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              position: 'fixed',
+              right: 20,
+              bottom: 20,
+              zIndex: 9998,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 16px 10px 12px',
+              borderRadius: 999,
+              background: C.cardBg,
+              border: `1px solid ${C.accent}`,
+              color: C.text,
+              fontFamily: 'inherit',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: C.shadow,
+              minWidth: MINIMIZED_W,
+              maxWidth: 280,
+            }}
+          >
+            <div style={{
+              width: 28,
+              height: 28,
+              borderRadius: 999,
+              background: C.iconBg,
+              color: C.accent,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Bot style={{ width: 15, height: 15 }} />
+            </div>
+            <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              AI-помощник
+            </span>
+            {sending && (
+              <Loader2 style={{ width: 14, height: 14, color: C.accent }} className="animate-spin" />
+            )}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); closeWindow(); }}
+              aria-label="Закрыть"
               style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(15, 18, 24, 0.55)',
-                backdropFilter: 'blur(4px)',
-                zIndex: 9998,
-              }}
-            />
-
-            {/* Modal */}
-            <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-label="AI-помощник"
-              initial={{ opacity: 0, scale: 0.96, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 8 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 'min(640px, calc(100vw - 32px))',
-                maxHeight: 'min(720px, calc(100vh - 64px))',
-                background: C.cardBg,
-                borderRadius: 20,
-                boxShadow: C.shadow,
-                border: `1px solid ${C.border}`,
+                width: 24,
+                height: 24,
                 display: 'flex',
-                flexDirection: 'column',
-                zIndex: 9999,
-                fontFamily: 'inherit',
-                color: C.text,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: 999,
+                border: 'none',
+                background: 'transparent',
+                color: C.textMuted,
+                cursor: 'pointer',
+                flexShrink: 0,
               }}
             >
-              {/* Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '18px 22px',
-                  borderBottom: `1px solid ${C.border}`,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <X style={{ width: 14, height: 14 }} />
+            </button>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Плавающее окно (non-modal, draggable) */}
+      <AnimatePresence>
+        {winState === 'open' && (
+          <motion.div
+            role="dialog"
+            aria-label="AI-помощник"
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              position: 'fixed',
+              top: position.y,
+              left: position.x,
+              width: WINDOW_W,
+              maxWidth: 'calc(100vw - 24px)',
+              height: WINDOW_H,
+              maxHeight: 'calc(100vh - 24px)',
+              background: C.cardBg,
+              borderRadius: 16,
+              boxShadow: C.shadow,
+              border: `1px solid ${C.border}`,
+              display: 'flex',
+              flexDirection: 'column',
+              zIndex: 9998,
+              fontFamily: 'inherit',
+              color: C.text,
+              userSelect: isDragging ? 'none' : 'auto',
+            }}
+          >
+            {/* Header — drag handle */}
+            <div
+              onMouseDown={startDrag}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderBottom: `1px solid ${C.border}`,
+                background: C.dragHandleBg,
+                cursor: isDragging ? 'grabbing' : 'grab',
+                userSelect: 'none',
+                borderRadius: '16px 16px 0 0',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, pointerEvents: 'none' }}>
+                <div
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 9,
+                    background: C.iconBg,
+                    color: C.accent,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Bot style={{ width: 16, height: 16 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em' }}>
+                    AI-помощник
+                  </div>
+                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Move style={{ width: 10, height: 10 }} />
+                    потяни чтобы переместить
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 2 }} onMouseDown={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => setShowHelp((v) => !v)}
+                  aria-label="Команды"
+                  title="Команды"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: showHelp ? C.hoverBg : 'transparent',
+                    color: C.textMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <HelpCircle style={{ width: 14, height: 14 }} />
+                </button>
+                {chat.length > 0 && (
+                  <button
+                    onClick={() => setChat([])}
+                    aria-label="Очистить"
+                    title="Очистить чат"
+                    style={{
+                      width: 30,
+                      height: 30,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: 'transparent',
+                      color: C.textMuted,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
+                )}
+                <button
+                  onClick={minimizeWindow}
+                  aria-label="Свернуть"
+                  title="Свернуть"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: 'transparent',
+                    color: C.textMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Minus style={{ width: 16, height: 16 }} />
+                </button>
+                <button
+                  onClick={closeWindow}
+                  aria-label="Закрыть"
+                  title="Закрыть"
+                  style={{
+                    width: 30,
+                    height: 30,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: 'transparent',
+                    color: C.textMuted,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <X style={{ width: 16, height: 16 }} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                padding: '16px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              {showHelp ? (
+                <VoiceCommandsHelp C={C} />
+              ) : chat.length === 0 ? (
+                <div
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    textAlign: 'center',
+                    color: C.textMuted,
+                    padding: '12px 8px',
+                  }}
+                >
                   <div
                     style={{
-                      width: 38,
-                      height: 38,
+                      width: 44,
+                      height: 44,
                       borderRadius: 12,
                       background: C.iconBg,
                       color: C.accent,
@@ -233,238 +608,126 @@ export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
                     <Bot style={{ width: 20, height: 20 }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em' }}>
-                      AI-помощник
-                    </div>
-                    <div style={{ fontSize: 12, color: C.textMuted, marginTop: 1 }}>
-                      Спроси по своим данным или поручи действие
-                    </div>
+                    <p style={{ fontSize: 13.5, fontWeight: 600, color: C.text, margin: 0 }}>
+                      Начни разговор
+                    </p>
+                    <p style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5 }}>
+                      «Кто из клиентов не был 2 месяца?» или «Напомни завтра позвонить Анне в 10:00».
+                    </p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <button
-                    onClick={() => setShowHelp((v) => !v)}
-                    aria-label="Команды"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 10,
-                      border: 'none',
-                      background: showHelp ? C.hoverBg : 'transparent',
-                      color: C.textMuted,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <HelpCircle style={{ width: 16, height: 16 }} />
-                  </button>
-                  {chat.length > 0 && (
-                    <button
-                      onClick={() => setChat([])}
-                      aria-label="Очистить"
+              ) : (
+                <>
+                  {chat.map((m, i) => (
+                    <div
+                      key={i}
                       style={{
-                        width: 36,
-                        height: 36,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 10,
-                        border: 'none',
-                        background: 'transparent',
-                        color: C.textMuted,
-                        cursor: 'pointer',
+                        alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%',
+                        background: m.role === 'user' ? C.accent : C.bubbleBg,
+                        color: m.role === 'user' ? '#ffffff' : C.text,
+                        padding: '8px 12px',
+                        borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                        fontSize: 13.5,
+                        lineHeight: 1.45,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
                       }}
                     >
-                      <Trash2 style={{ width: 16, height: 16 }} />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setOpen(false)}
-                    aria-label="Закрыть"
-                    style={{
-                      width: 36,
-                      height: 36,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: 10,
-                      border: 'none',
-                      background: 'transparent',
-                      color: C.textMuted,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <X style={{ width: 18, height: 18 }} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div
-                style={{
-                  flex: 1,
-                  minHeight: 240,
-                  maxHeight: 480,
-                  overflowY: 'auto',
-                  padding: '20px 22px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                }}
-              >
-                {showHelp ? (
-                  <VoiceCommandsHelp C={C} />
-                ) : chat.length === 0 ? (
-                  <div
-                    style={{
-                      flex: 1,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 12,
-                      textAlign: 'center',
-                      color: C.textMuted,
-                    }}
-                  >
+                      {m.content}
+                    </div>
+                  ))}
+                  {sending && (
                     <div
                       style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 14,
-                        background: C.iconBg,
-                        color: C.accent,
-                        display: 'flex',
+                        alignSelf: 'flex-start',
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
+                        gap: 6,
+                        padding: '8px 12px',
+                        background: C.bubbleBg,
+                        borderRadius: '14px 14px 14px 4px',
+                        fontSize: 12.5,
+                        color: C.textMuted,
                       }}
                     >
-                      <Bot style={{ width: 22, height: 22 }} />
+                      <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" />
+                      думаю…
                     </div>
-                    <div>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>
-                        Начни разговор
-                      </p>
-                      <p style={{ fontSize: 13, marginTop: 6, maxWidth: 340 }}>
-                        Спроси «Кто из клиентов не был 2 месяца?» или поручи «Напомни завтра позвонить Анне в 10:00».
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {chat.map((m, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                          maxWidth: '80%',
-                          background: m.role === 'user' ? C.accent : C.bubbleBg,
-                          color: m.role === 'user' ? '#ffffff' : C.text,
-                          padding: '10px 14px',
-                          borderRadius: m.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                          fontSize: 14,
-                          lineHeight: 1.5,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {m.content}
-                      </div>
-                    ))}
-                    {sending && (
-                      <div
-                        style={{
-                          alignSelf: 'flex-start',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          padding: '10px 14px',
-                          background: C.bubbleBg,
-                          borderRadius: '16px 16px 16px 4px',
-                          fontSize: 13,
-                          color: C.textMuted,
-                        }}
-                      >
-                        <Loader2 style={{ width: 14, height: 14 }} className="animate-spin" />
-                        думаю…
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </>
-                )}
-              </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </>
+              )}
+            </div>
 
-              {/* Input */}
-              <div
+            {/* Input */}
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'flex-end',
+                padding: '12px 14px 14px',
+                borderTop: `1px solid ${C.border}`,
+              }}
+            >
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChat();
+                  }
+                }}
+                rows={1}
+                placeholder="Напиши команду или вопрос…"
+                disabled={sending}
                 style={{
+                  flex: 1,
+                  resize: 'none',
+                  borderRadius: 10,
+                  border: `1px solid ${C.inputBorder}`,
+                  background: C.inputBg,
+                  color: C.text,
+                  padding: '10px 12px',
+                  fontFamily: 'inherit',
+                  fontSize: 13.5,
+                  lineHeight: 1.45,
+                  outline: 'none',
+                  minHeight: 42,
+                  maxHeight: 100,
+                }}
+              />
+              <button
+                onClick={sendChat}
+                disabled={sending || !input.trim()}
+                aria-label="Отправить"
+                style={{
+                  width: 42,
+                  height: 42,
+                  flexShrink: 0,
                   display: 'flex',
-                  gap: 8,
-                  alignItems: 'flex-end',
-                  padding: '14px 22px 20px',
-                  borderTop: `1px solid ${C.border}`,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: C.accent,
+                  color: '#ffffff',
+                  cursor: sending || !input.trim() ? 'not-allowed' : 'pointer',
+                  opacity: sending || !input.trim() ? 0.4 : 1,
+                  transition: 'opacity 150ms',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.20)',
                 }}
               >
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendChat();
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Напиши команду или вопрос…"
-                  disabled={sending}
-                  style={{
-                    flex: 1,
-                    resize: 'none',
-                    borderRadius: 12,
-                    border: `1px solid ${C.inputBorder}`,
-                    background: C.inputBg,
-                    color: C.text,
-                    padding: '12px 14px',
-                    fontFamily: 'inherit',
-                    fontSize: 14,
-                    lineHeight: 1.45,
-                    outline: 'none',
-                    minHeight: 46,
-                    maxHeight: 140,
-                  }}
-                />
-                <button
-                  onClick={sendChat}
-                  disabled={sending || !input.trim()}
-                  aria-label="Отправить"
-                  style={{
-                    width: 46,
-                    height: 46,
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 12,
-                    border: 'none',
-                    background: C.accent,
-                    color: '#ffffff',
-                    cursor: sending || !input.trim() ? 'not-allowed' : 'pointer',
-                    opacity: sending || !input.trim() ? 0.4 : 1,
-                    transition: 'opacity 150ms',
-                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.20)',
-                  }}
-                >
-                  {sending ? (
-                    <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />
-                  ) : (
-                    <Send style={{ width: 16, height: 16 }} />
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </>
+                {sending ? (
+                  <Loader2 style={{ width: 15, height: 15 }} className="animate-spin" />
+                ) : (
+                  <Send style={{ width: 15, height: 15 }} />
+                )}
+              </button>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
@@ -514,33 +777,33 @@ function VoiceCommandsHelp({ C }: { C: typeof P.light }) {
     },
   ];
   return (
-    <div style={{ fontSize: 13, color: C.text }}>
-      <p style={{ fontSize: 13, color: C.textMuted, marginBottom: 16, lineHeight: 1.5 }}>
+    <div style={{ fontSize: 12.5, color: C.text }}>
+      <p style={{ fontSize: 12.5, color: C.textMuted, marginBottom: 14, lineHeight: 1.45 }}>
         AI распознаёт свободную речь. Эти примеры — форматы, которые точно поймёт.
       </p>
       {groups.map((g) => (
-        <div key={g.title} style={{ marginBottom: 18 }}>
+        <div key={g.title} style={{ marginBottom: 14 }}>
           <p
             style={{
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: 700,
               textTransform: 'uppercase',
               letterSpacing: '0.05em',
               color: C.textMuted,
-              marginBottom: 8,
+              marginBottom: 6,
             }}
           >
             {g.title}
           </p>
-          <ul style={{ display: 'flex', flexDirection: 'column', gap: 4, listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul style={{ display: 'flex', flexDirection: 'column', gap: 3, listStyle: 'none', padding: 0, margin: 0 }}>
             {g.items.map((it, i) => (
               <li
                 key={i}
                 style={{
-                  padding: '8px 12px',
+                  padding: '6px 10px',
                   background: C.bubbleBg,
                   borderRadius: 8,
-                  fontSize: 13,
+                  fontSize: 12.5,
                   lineHeight: 1.4,
                 }}
               >
