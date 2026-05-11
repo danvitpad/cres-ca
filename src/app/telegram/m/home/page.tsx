@@ -236,6 +236,49 @@ export default function MasterMiniAppHome() {
     [rows],
   );
 
+  // Время-диапазон рабочего дня по факту записей: первое начало → последнее
+  // окончание. Используется в section-header «09:00–19:00 · 4 записи»
+  // (Open Design master-dashboard mobile). Если записей нет — null.
+  const dayRange = useMemo(() => {
+    if (visibleRows.length === 0) return null;
+    const first = visibleRows[0];
+    const last = visibleRows[visibleRows.length - 1];
+    const fmt = (iso: string) => {
+      const d = new Date(iso);
+      return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    };
+    return `${fmt(first.starts_at)}–${fmt(last.ends_at)}`;
+  }, [visibleRows]);
+
+  // Гэп = разрыв ≥ 30 минут от конца предыдущего визита до начала следующего.
+  // Между такими визитами рендерим тонкую горизонтальную линию с подписью
+  // «10:00 · 11:00» (как в OD master-dashboard mobile). Без гэпа клиент
+  // воспринимает день как «один длинный блок» — теряется ощущение пауз.
+  type TimelineItem =
+    | { kind: 'appt'; appt: Appointment }
+    | { kind: 'gap'; from: string; to: string };
+  const timelineItems = useMemo<TimelineItem[]>(() => {
+    const out: TimelineItem[] = [];
+    for (let i = 0; i < visibleRows.length; i++) {
+      const cur = visibleRows[i];
+      if (i > 0) {
+        const prev = visibleRows[i - 1];
+        const prevEnd = new Date(prev.ends_at).getTime();
+        const curStart = new Date(cur.starts_at).getTime();
+        const gapMin = (curStart - prevEnd) / 60000;
+        if (gapMin >= 30) {
+          const fmt = (ms: number) => {
+            const d = new Date(ms);
+            return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+          };
+          out.push({ kind: 'gap', from: fmt(prevEnd), to: fmt(curStart) });
+        }
+      }
+      out.push({ kind: 'appt', appt: cur });
+    }
+    return out;
+  }, [visibleRows]);
+
   // Upcoming birthdays — ближайшие 5 в окне 90 дней
   const upcomingBirthdays = useMemo(() => {
     const today = new Date();
@@ -349,19 +392,37 @@ export default function MasterMiniAppHome() {
           </div>
         )}
 
-        {/* Timeline today */}
+        {/* Timeline today — Open Design master-dashboard mobile.
+            Section title: «09:00–19:00» (диапазон рабочего дня) · «4 записи»
+            справа. Без записей — только «Сегодня». Линка «Открыть календарь»
+            нет — клиент уже на табе «Главная», календарь живёт под bottom-nav
+            рядом, поэтому inline-counter информативнее. */}
         <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
           <div style={{
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
             marginBottom: 10,
           }}>
-            <h2 style={{ ...TYPE.h2, color: T.text }}>{t.todayTimeline}</h2>
-            <Link
-              href="/telegram/m/calendar"
-              style={{ fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}
-            >
-              {t.openCalendar} →
-            </Link>
+            <h2 style={{
+              ...TYPE.h2, color: T.text,
+              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
+            }}>
+              {dayRange ?? t.todayTimeline}
+            </h2>
+            {visibleRows.length > 0 && (
+              <span style={{
+                fontSize: 12, fontWeight: 500, color: T.textTertiary,
+              }}>
+                {visibleRows.length} {t.recordsWord(visibleRows.length)}
+              </span>
+            )}
+            {visibleRows.length === 0 && (
+              <Link
+                href="/telegram/m/calendar"
+                style={{ fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}
+              >
+                {t.openCalendar} →
+              </Link>
+            )}
           </div>
 
           {!loaded ? (
@@ -398,7 +459,28 @@ export default function MasterMiniAppHome() {
               listStyle: 'none', margin: 0, padding: 0,
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
-              {visibleRows.map((r) => {
+              {timelineItems.map((item, idx) => {
+                if (item.kind === 'gap') {
+                  return (
+                    <li
+                      key={`gap-${idx}`}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '2px 4px',
+                      }}
+                    >
+                      <span style={{ flex: 1, height: 1, background: T.borderSubtle }} />
+                      <span style={{
+                        fontSize: 10, color: T.textTertiary, whiteSpace: 'nowrap',
+                        fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {item.from} · {item.to}
+                      </span>
+                      <span style={{ flex: 1, height: 1, background: T.borderSubtle }} />
+                    </li>
+                  );
+                }
+                const r = item.appt;
                 const startMs = new Date(r.starts_at).getTime();
                 const endMs = new Date(r.ends_at).getTime();
                 const isCurrent = r.status === 'in_progress' || (startMs <= now && endMs >= now && r.status !== 'completed');
