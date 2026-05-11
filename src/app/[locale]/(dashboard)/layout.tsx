@@ -44,6 +44,7 @@ import { useNotifications } from '@/hooks/use-notifications';
 import { useAnnouncements } from '@/hooks/use-announcements';
 import { HeaderNotificationsDropdown } from '@/components/dashboard/header-notifications-dropdown';
 import { HeaderAnnouncementStrip } from '@/components/dashboard/header-announcement-strip';
+import { HeaderAiAssistant } from '@/components/dashboard/header-ai-assistant';
 // PublicPageDropdown header chip retired — public page is reachable via «Мой профиль» in user menu.
 // Component file kept for now in case we want to re-introduce it as a separate widget.
 import { SessionNavBar, type SidebarNavItem } from '@/components/ui/sidebar';
@@ -180,8 +181,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <TrialBadge />
           </div>
 
-          {/* Center: announcement strip */}
-          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 0 }}>
+          {/* Center: AI-помощник + announcement strip */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minWidth: 0, gap: 12 }}>
+            <HeaderAiAssistant theme={F} isDark={isDark} />
             <HeaderAnnouncementStrip
               announcements={announcements}
               dismiss={dismissAnnouncement}

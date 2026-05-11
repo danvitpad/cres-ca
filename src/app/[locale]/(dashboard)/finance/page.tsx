@@ -29,7 +29,8 @@ import { StatCard } from '@/components/shared/primitives/stat-card';
 import { type PillTabItem } from '@/components/shared/pill-tabs';
 import { PeriodSelector, makePeriod, type Period, type PeriodKey } from '@/components/shared/period-selector';
 import { MyPayoutsBanner } from '@/components/finance/my-payouts-banner';
-import { LostRevenueCard } from '@/components/shared/lost-revenue-card';
+// LostRevenueCard убрана 2026-05-11 (AI переехал в header)
+// import { LostRevenueCard } from '@/components/shared/lost-revenue-card';
 // import { ExportMenu } from '@/components/finance/export-menu'; // v1: hidden
 import { RecurringExpensesTab } from '@/components/catalogue/recurring-expenses-tab';
 import { humanizeError } from '@/lib/format/error';
@@ -578,15 +579,9 @@ export default function FinancePage() {
         );
       })()}
 
-      {/* Lost-revenue insights — где теряются деньги (дыры в расписании,
-          спящие клиенты, апсейл, цены). Дополняет свободный AI-чат ниже. */}
-      <div style={{ marginBottom: 24 }}>
-        <LostRevenueCard />
-      </div>
-
-      {/* AI-помощник убран — дублировал LostRevenueCard (тоже AI-аналитика дохода).
-          Free-form Q&A доступен через TG-бот @crescacom_bot. Функция определения
-          FinanceAiPanel оставлена внизу файла на случай возврата фичи. */}
+      {/* LostRevenueCard убрана 2026-05-11 — AI-помощник переехал в шапку dashboard
+          (HeaderAiAssistant). Бесплатный Q&A теперь доступен из любой страницы через
+          кнопку «AI-помощник» в центре header'а. */}
 
       {/* Tabs — Обзор / Доходы / Расходы (underline style matching dashboard) */}
       <div style={{
