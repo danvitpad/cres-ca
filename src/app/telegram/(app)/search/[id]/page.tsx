@@ -92,6 +92,9 @@ interface MasterDetail {
   rating: number;
   total_reviews: number;
   avatar_url: string | null;
+  workplace_photo_url: string | null;
+  served_clients_count: number;
+  completed_appointments_count: number;
   full_name: string | null;
   /** CRES-CA публичный handle. Берём slug, иначе invite_code. Используется
    *  для копирования ссылки на публичную страницу мастера. */
@@ -154,6 +157,7 @@ const STR_BY_LANG: Record<Lang, {
   notFound: string; back: string; book: string; servicesCount: (n: number) => string;
   recommendTitle: string; recommendDesc: string; portfolioTitle: string;
   reviewsTitle: string; addressTitle: string; servicesTitle: string;
+  metricClients: string; metricBookings: string; metricReviews: string;
 }> = {
   uk: {
     noSchedule: 'Графіка немає', dayOff: 'Сьогодні вихідний',
@@ -164,6 +168,7 @@ const STR_BY_LANG: Record<Lang, {
     servicesCount: (n) => n === 1 ? 'послуга' : (n < 5 ? 'послуги' : 'послуг'),
     recommendTitle: 'Рекомендую', recommendDesc: 'Майстри, з якими я працюю і кому довіряю.',
     portfolioTitle: 'Роботи', reviewsTitle: 'Відгуки', addressTitle: 'Адреса', servicesTitle: 'Послуги',
+    metricClients: 'клієнти', metricBookings: 'записи', metricReviews: 'відгуки',
   },
   ru: {
     noSchedule: 'Нет расписания', dayOff: 'Сегодня выходной',
@@ -174,6 +179,7 @@ const STR_BY_LANG: Record<Lang, {
     servicesCount: (n) => n === 1 ? 'услуга' : (n < 5 ? 'услуги' : 'услуг'),
     recommendTitle: 'Рекомендую', recommendDesc: 'Мастера, с которыми я работаю и кому доверяю.',
     portfolioTitle: 'Работы', reviewsTitle: 'Отзывы', addressTitle: 'Адрес', servicesTitle: 'Услуги',
+    metricClients: 'клиенты', metricBookings: 'записи', metricReviews: 'отзывы',
   },
   en: {
     noSchedule: 'No schedule', dayOff: 'Closed today',
@@ -184,6 +190,7 @@ const STR_BY_LANG: Record<Lang, {
     servicesCount: () => 'services',
     recommendTitle: 'Recommends', recommendDesc: 'Masters I work with and trust.',
     portfolioTitle: 'Portfolio', reviewsTitle: 'Reviews', addressTitle: 'Address', servicesTitle: 'Services',
+    metricClients: 'clients', metricBookings: 'bookings', metricReviews: 'reviews',
   },
 };
 
@@ -274,7 +281,7 @@ export default function MiniAppMasterDetailPage() {
       const [masterRes, portfolioRes, reviewsRes, categoriesRes, partnersRes] = await Promise.all([
         supabase
           .from('masters')
-          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, working_hours, latitude, longitude, slug, invite_code, profile:profiles!masters_profile_id_fkey(first_name, last_name, full_name, avatar_url), services!services_master_id_fkey(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
+          .select('id, display_name, specialization, bio, city, address, rating, total_reviews, avatar_url, workplace_photo_url, served_clients_count, completed_appointments_count, working_hours, latitude, longitude, slug, invite_code, profile:profiles!masters_profile_id_fkey(first_name, last_name, full_name, avatar_url), services!services_master_id_fkey(id, name, price, currency, duration_minutes, description, color, category_id, is_active)')
           .eq('id', params.id)
           .eq('is_active', true)
           .maybeSingle(),
@@ -325,6 +332,9 @@ export default function MiniAppMasterDetailPage() {
         rating: number | null;
         total_reviews: number | null;
         avatar_url: string | null;
+        workplace_photo_url: string | null;
+        served_clients_count: number | null;
+        completed_appointments_count: number | null;
         working_hours: WorkingHoursMap | null;
         latitude: number | null;
         longitude: number | null;
@@ -399,6 +409,9 @@ export default function MiniAppMasterDetailPage() {
         rating: Number(m.rating ?? 0),
         total_reviews: Number(m.total_reviews ?? 0),
         avatar_url: m.avatar_url ?? p?.avatar_url ?? null,
+        workplace_photo_url: m.workplace_photo_url ?? null,
+        served_clients_count: Number(m.served_clients_count ?? 0),
+        completed_appointments_count: Number(m.completed_appointments_count ?? 0),
         full_name: p?.full_name ?? null,
         cresHandle: m.slug ?? m.invite_code ?? null,
         working_hours: m.working_hours,
@@ -597,19 +610,22 @@ export default function MiniAppMasterDetailPage() {
         paddingBottom: 'calc(160px + env(safe-area-inset-bottom, 0px))',
       }}
     >
-      {/* ━━━ HERO BANNER ━━━ */}
+      {/* ━━━ HERO BANNER ━━━
+          Cover показывает workplace_photo_url (фото места работы) если есть,
+          иначе cobalt→teal градиент. Аватар (avatar_url) НЕ используется как
+          cover — он живёт в круге ниже. Так клиент видит studio/кабинет, а
+          не растянутую фотку лица. */}
       <div ref={heroRef} className="relative h-[170px] overflow-hidden">
-        {master.avatar_url ? (
+        {master.workplace_photo_url ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={master.avatar_url}
+              src={master.workplace_photo_url}
               alt=""
               className="absolute inset-0 size-full object-cover"
             />
-            {/* Тёмное затемнение снизу — чтобы белый круглый аватар, который
-                перекрывает hero на -mt-12, читался ровным кольцом, и top-buttons
-                «назад/поделиться» оставались видны на любом фото. */}
+            {/* Тёмное затемнение снизу — для читаемости top-buttons «назад/
+                поделиться» поверх любого фото. */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35" />
           </>
         ) : (
@@ -717,6 +733,24 @@ export default function MiniAppMasterDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Metrics strip — социальная валидация: сколько клиентов обслужил,
+            сколько визитов выполнил, сколько отзывов получил. Показываем
+            только если есть хотя бы одна метрика > 0, чтобы новые мастера
+            не показывали полосу нулей. */}
+        {(master.served_clients_count > 0 || master.completed_appointments_count > 0 || master.total_reviews > 0) && (
+          <div
+            className="mt-4 grid grid-cols-3 overflow-hidden rounded-2xl border"
+            style={{
+              background: 'var(--m-surface)',
+              borderColor: 'var(--m-border)',
+            }}
+          >
+            <MetricCell value={master.served_clients_count} label={tStr.metricClients} />
+            <MetricCell value={master.completed_appointments_count} label={tStr.metricBookings} divider />
+            <MetricCell value={master.total_reviews} label={tStr.metricReviews} divider />
+          </div>
+        )}
 
         {/* Bio — поднят ПЕРЕД кнопками, чтобы клиент сначала прочитал кто
             такой мастер, а потом решал «записаться/подписаться». Сворачивается
@@ -1276,6 +1310,23 @@ export default function MiniAppMasterDetailPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function MetricCell({ value, label, divider }: { value: number; label: string; divider?: boolean }) {
+  const formatted = value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1).replace(/\.0$/, '')}K` : String(value);
+  return (
+    <div
+      className="flex flex-col items-center justify-center px-2 py-3"
+      style={divider ? { borderLeft: '1px solid var(--m-border)' } : undefined}
+    >
+      <span className="text-[16px] font-bold tabular-nums" style={{ color: 'var(--m-text)' }}>
+        {formatted}
+      </span>
+      <span className="mt-0.5 text-[10px] font-medium" style={{ color: 'var(--m-text-tertiary)' }}>
+        {label}
+      </span>
     </div>
   );
 }
