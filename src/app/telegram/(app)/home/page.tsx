@@ -1,10 +1,11 @@
 /** --- YAML
  * name: MiniAppHomePage
- * description: «Для вас» — Fresha-premium домашний экран клиента. Next appointment
- *              hero + свободные окна у контактов + Рекомендуемые мастера + Explore
- *              категории. Светлая тема, premium-карточки, анимация.
+ * description: «Для вас» — Open Design alignment. Header с user-аватаром справа,
+ *              hero ближайшей записи с master-блоком + pills + Подробнее CTA,
+ *              regular masters carousel + free slots list с явной кнопкой
+ *              «Записаться →». Категории/AI-консьерж — на Tab «Найти».
  * created: 2026-04-13
- * updated: 2026-04-26
+ * updated: 2026-05-11
  * --- */
 
 'use client';
@@ -68,6 +69,7 @@ const I18N: Record<Lang, {
   topcat: { hair: string; massage: string; trainer: string; grooming: string; repair: string };
   today: string; tomorrow: string;
   aiConcierge: string; minSuffix: string; masterFallback: string;
+  bookCta: string;
   // Empty state — когда у клиента нет ни записей, ни постоянных, ни слотов.
   emptyTitle: string; emptyText: string; emptyCta: string;
 }> = {
@@ -83,6 +85,7 @@ const I18N: Record<Lang, {
     topcat: { hair: 'Стрижка та укладка', massage: 'Масаж', trainer: 'Тренер', grooming: 'Грумінг', repair: 'Ремонт' },
     today: 'Сьогодні', tomorrow: 'Завтра',
     aiConcierge: 'AI-консьєрж', minSuffix: 'хв', masterFallback: 'Майстер',
+    bookCta: 'Записатися',
     emptyTitle: 'Поки що порожньо',
     emptyText: 'У тебе ще немає записів. Знайди майстра — і запишись прямо звідси.',
     emptyCta: 'Знайти майстра',
@@ -99,6 +102,7 @@ const I18N: Record<Lang, {
     topcat: { hair: 'Стрижка и укладка', massage: 'Массаж', trainer: 'Тренер', grooming: 'Груминг', repair: 'Ремонт' },
     today: 'Сегодня', tomorrow: 'Завтра',
     aiConcierge: 'AI-консьерж', minSuffix: 'мин', masterFallback: 'Мастер',
+    bookCta: 'Записаться',
     emptyTitle: 'Здесь пока пусто',
     emptyText: 'У тебя ещё нет записей. Найди мастера — и запишись прямо отсюда.',
     emptyCta: 'Найти мастера',
@@ -115,6 +119,7 @@ const I18N: Record<Lang, {
     topcat: { hair: 'Hair & styling', massage: 'Massage', trainer: 'Trainer', grooming: 'Grooming', repair: 'Repair' },
     today: 'Today', tomorrow: 'Tomorrow',
     aiConcierge: 'AI concierge', minSuffix: 'min', masterFallback: 'Master',
+    bookCta: 'Book',
     emptyTitle: 'Nothing here yet',
     emptyText: 'You don’t have any appointments yet. Find a master — and book right from here.',
     emptyCta: 'Find a master',
@@ -272,14 +277,16 @@ export default function MiniAppHomePage() {
           title={firstName ? `${t.title}, ${firstName}` : t.title}
           subtitle={greeting}
           /* AI-консьерж переехал в Tab «Найти» как главный CTA сверху —
-             на личной главной шапка чистая. */
+             на личной главной шапка чистая. Аватар справа — личный акцент. */
+          right={fullName ? <AvatarCircle url={null} name={fullName} size={44} /> : undefined}
         />
 
         <div style={{ paddingLeft: PAGE_PADDING_X, paddingRight: PAGE_PADDING_X }}>
           <HomeScreenBanner />
         </div>
 
-        {/* Next appointment hero — gradient when есть, обычный если нет */}
+        {/* Next appointment hero — Open Design layout:
+            label · master block (avatar+name+service) · pills row · Подробнее CTA */}
         {next ? (
           <Link
             href={`/telegram/activity/${next.id}`}
@@ -295,21 +302,62 @@ export default function MiniAppHomePage() {
               display: 'block',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <Calendar size={13} /> {t.upcoming}
+            <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.82, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              {t.upcoming}
             </div>
-            <p style={{ fontSize: 22, fontWeight: 800, marginTop: 8, marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-              {next.service_name}
-            </p>
-            <p style={{ fontSize: 14, opacity: 0.95, margin: 0 }}>
-              {formatDateTime(next.starts_at, lang)} · {next.master_name}
-            </p>
-            {next.salon?.name && (
-              <p style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>
-                {next.salon.name}{next.salon.city ? ` · ${next.salon.city}` : ''}
-              </p>
-            )}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 14, fontSize: 13, fontWeight: 700 }}>
+
+            {/* Master block */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
+              <AvatarCircle url={next.master_avatar} name={next.master_name} size={48} />
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {next.master_name}
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.92, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {next.service_name}
+                </div>
+              </div>
+            </div>
+
+            {/* Pills row */}
+            <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: R.pill,
+                background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)',
+                fontSize: 12, fontWeight: 600, letterSpacing: '-0.005em',
+              }}>
+                <Calendar size={12} strokeWidth={2.25} />
+                {formatDateTime(next.starts_at, lang)}
+              </span>
+              {next.price > 0 && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  padding: '6px 12px', borderRadius: R.pill,
+                  background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)',
+                  fontSize: 12, fontWeight: 700, letterSpacing: '-0.005em',
+                }}>
+                  {formatMoney(next.price, next.currency)}
+                </span>
+              )}
+              {next.salon?.name && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center',
+                  padding: '6px 12px', borderRadius: R.pill,
+                  background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)',
+                  fontSize: 12, fontWeight: 600, letterSpacing: '-0.005em',
+                  maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {next.salon.name}
+                </span>
+              )}
+            </div>
+
+            {/* CTA */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              marginTop: 18, fontSize: 13, fontWeight: 700,
+            }}>
               {t.details} <ChevronRight size={14} />
             </div>
           </Link>
@@ -394,6 +442,8 @@ export default function MiniAppHomePage() {
                       borderRadius: R.md,
                       textDecoration: 'none',
                       color: T.text,
+                      boxShadow: SHADOW.card,
+                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
                     }}
                   >
                     <AvatarCircle url={s.avatar} name={s.name ?? t.masterFallback} size={44} />
@@ -406,7 +456,13 @@ export default function MiniAppHomePage() {
                         {formatSlotDate(s.date, s.time, lang)}
                       </div>
                     </div>
-                    <ChevronRight size={18} color={T.textTertiary} />
+                    <div style={{
+                      fontSize: 12, fontWeight: 700, color: T.accent,
+                      display: 'inline-flex', alignItems: 'center', gap: 2,
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {t.bookCta} <ChevronRight size={13} strokeWidth={2.5} />
+                    </div>
                   </Link>
                 </li>
               ))}
