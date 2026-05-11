@@ -1,9 +1,11 @@
 /** --- YAML
- * name: Landing Page v9
- * description: Premium landing — solo master focus. No mockup, no emoji-tile bar.
- *              Hero is text-only with CTA + reassurance line. Pricing 3 tiers.
+ * name: Landing Page v10
+ * description: Open Design alignment — hero-split с tilted dashboard mockup,
+ *              proof bar, niche chips, features grid, 4-step how-it-works,
+ *              3-tier pricing, FAQ accordion, CTA. Spring анимации,
+ *              cubic-bezier(.16,1,.3,1) ease-out по всему лендингу.
  * created: 2026-04-18
- * updated: 2026-05-01
+ * updated: 2026-05-11
  * --- */
 
 'use client';
@@ -12,10 +14,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTheme } from 'next-themes';
 import { useLocale } from 'next-intl';
+import {
+  Calendar, User, Bot, Wallet, Bell, BarChart3, Plus,
+  Scissors, Car, BookOpen, PawPrint, Dumbbell, Zap, HeartPulse, PenTool,
+} from 'lucide-react';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { ThemeSwitchCircular } from '@/components/ui/theme-switch-circular';
 
-/* ═══ Reveal on scroll ═══ */
+/* ═══ Reveal on scroll (spring ease-out) ═══ */
 function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [vis, setVis] = useState(false);
@@ -29,21 +35,121 @@ function Reveal({ children, delay = 0 }: { children: ReactNode; delay?: number }
     return () => io.disconnect();
   }, [delay]);
   return (
-    <div ref={ref} style={{
-      opacity: vis ? 1 : 0,
-      transform: vis ? 'none' : 'translateY(20px)',
-      transition: `opacity .7s cubic-bezier(.22,1,.36,1) ${delay}ms, transform .7s cubic-bezier(.22,1,.36,1) ${delay}ms`,
-    }}>
+    <div
+      ref={ref}
+      style={{
+        opacity: vis ? 1 : 0,
+        transform: vis ? 'none' : 'translateY(24px)',
+        transition: `opacity .7s cubic-bezier(.16,1,.3,1) ${delay}ms, transform .7s cubic-bezier(.16,1,.3,1) ${delay}ms`,
+      }}
+    >
       {children}
     </div>
   );
 }
 
+/* ═══ Dashboard mockup (tilted) ═══ */
+function DashMockup() {
+  return (
+    <div className="dash-mockup" aria-hidden="true">
+      <div className="dm-topbar">
+        <span className="dm-dot" style={{ background: '#ff5f57' }} />
+        <span className="dm-dot" style={{ background: '#ffbd2e' }} />
+        <span className="dm-dot" style={{ background: '#28c840' }} />
+        <span className="dm-bar" />
+      </div>
+      <div className="dm-body">
+        <div className="dm-nav">
+          <div className="dm-brand">CRES-CA</div>
+          <div className="dm-navitem act">Сегодня</div>
+          <div className="dm-navitem">Календарь</div>
+          <div className="dm-navitem">Клиенты</div>
+          <div className="dm-navitem">Услуги</div>
+          <div className="dm-navitem">Финансы</div>
+          <div className="dm-navitem">Маркетинг</div>
+        </div>
+        <div className="dm-content">
+          <div className="dm-kpi-row">
+            <div className="dm-kpi">
+              <div className="dm-kpi-label">Доход</div>
+              <div className="dm-kpi-val">4 800 ₴</div>
+              <div className="dm-kpi-delta">+12%</div>
+            </div>
+            <div className="dm-kpi">
+              <div className="dm-kpi-label">Записей</div>
+              <div className="dm-kpi-val">8</div>
+              <div className="dm-kpi-delta" style={{ color: 'var(--color-accent)' }}>сегодня</div>
+            </div>
+            <div className="dm-kpi">
+              <div className="dm-kpi-label">Клиенты</div>
+              <div className="dm-kpi-val">142</div>
+              <div className="dm-kpi-delta">+3 за неделю</div>
+            </div>
+          </div>
+          <div className="dm-grid">
+            <div className="dm-schedule">
+              <div className="dm-sched-title">Расписание</div>
+              <div className="dm-apt hi">
+                <span className="dm-apt-time">09:00</span>
+                <span>
+                  <span className="dm-apt-name">Олена М.</span><br />
+                  <span className="dm-apt-svc">Стрижка · 60 мин</span>
+                </span>
+              </div>
+              <div className="dm-apt">
+                <span className="dm-apt-time">11:00</span>
+                <span>
+                  <span className="dm-apt-name">Богдан К.</span><br />
+                  <span className="dm-apt-svc">Окрашивание · 90 мин</span>
+                </span>
+              </div>
+              <div className="dm-apt">
+                <span className="dm-apt-time">14:00</span>
+                <span>
+                  <span className="dm-apt-name">София П.</span><br />
+                  <span className="dm-apt-svc">Маникюр · 60 мин</span>
+                </span>
+              </div>
+              <div className="dm-apt">
+                <span className="dm-apt-time">17:00</span>
+                <span>
+                  <span className="dm-apt-name">Алексей З.</span><br />
+                  <span className="dm-apt-svc">Барбер · 30 мин</span>
+                </span>
+              </div>
+            </div>
+            <div className="dm-side">
+              <div className="dm-ai">
+                <div className="dm-ai-label">AI-подсказка</div>
+                <div className="dm-ai-txt">Богдан не был 2 месяца — напомни</div>
+              </div>
+              <div>
+                <div style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
+                  textTransform: 'uppercase', color: 'var(--lfg3)', marginBottom: 4,
+                }}>Быстро</div>
+                <div className="dm-quick">
+                  <div className="dm-quick-btn">+ Запись</div>
+                  <div className="dm-quick-btn">+ Клиент</div>
+                  <div className="dm-quick-btn">Доход</div>
+                  <div className="dm-quick-btn">Расход</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══ Feature card ═══ */
-function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
+function FeatureCard({ icon: Icon, title, desc }: { icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; title: string; desc: string }) {
   return (
     <div className="feature-card">
-      <div className="feature-icon">{icon}</div>
+      <div className="feature-icon">
+        <Icon size={24} strokeWidth={1.75} />
+      </div>
       <h3>{title}</h3>
       <p>{desc}</p>
     </div>
@@ -94,18 +200,56 @@ function PriceCard({
   );
 }
 
+/* ═══ FAQ item (controlled accordion) ═══ */
+function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
+  return (
+    <div className={`faq-item${open ? ' open' : ''}`}>
+      <button type="button" className="faq-q" onClick={onToggle} aria-expanded={open}>
+        <span>{q}</span>
+        <span className="faq-icon" aria-hidden="true">
+          <Plus size={18} strokeWidth={2} />
+        </span>
+      </button>
+      <div className="faq-a-wrap">
+        <div className="faq-a">
+          <div className="faq-a-inner">{a}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══ Main page ═══ */
 export default function LandingPage() {
   const locale = useLocale();
   useTheme(); // keep hook active for theme awareness
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const proofs = [
+    { v: '1 200+', l: 'мастеров' },
+    { v: '18 000', l: 'записей в месяц' },
+    { v: '4.9', l: 'средний рейтинг' },
+    { v: '9 ниш', l: 'поддерживаем' },
+  ];
+
+  const niches = [
+    { icon: Scissors,   label: 'Красота и стиль' },
+    { icon: Car,        label: 'Авто-сервис' },
+    { icon: BookOpen,   label: 'Репетиторы' },
+    { icon: PawPrint,   label: 'Грумеры' },
+    { icon: Dumbbell,   label: 'Фитнес' },
+    { icon: Zap,        label: 'Электрики' },
+    { icon: HeartPulse, label: 'Медицина' },
+    { icon: PenTool,    label: 'Тату' },
+  ];
 
   const features = [
-    { icon: '📅', title: 'Умный календарь',    desc: 'Клиенты записываются сами — через ссылку или Telegram. Конфликты и задвоения исключены автоматически.' },
-    { icon: '👤', title: 'Карточки клиентов',  desc: 'История посещений, предпочтения, заметки и бонусы. Каждый клиент — в одном месте, всегда под рукой.' },
-    { icon: '🤖', title: 'Telegram-бот',        desc: 'Управляйте записями и расходами голосом прямо из Telegram. Бот понимает команды и действует за вас.' },
-    { icon: '💰', title: 'Финансы',             desc: 'Доходы, расходы, маржа по услугам и складу. Понятные отчёты без Excel и бухгалтера.' },
-    { icon: '🔔', title: 'Авто-напоминания',   desc: 'Уведомление за 24 ч и 2 ч до визита. Клиент выбирает канал сам. Неявок становится в разы меньше.' },
-    { icon: '📊', title: 'Маркетинг и рост',   desc: 'Реферальные ссылки, акции, рассылки и бонусная программа — клиенты возвращаются и приводят друзей.' },
+    { icon: Calendar,  title: 'Умный календарь',    desc: 'Клиенты записываются сами — через ссылку или Telegram. Конфликты и задвоения исключены автоматически.' },
+    { icon: User,      title: 'Карточки клиентов',  desc: 'История посещений, предпочтения, заметки и бонусы. Каждый клиент — в одном месте, всегда под рукой.' },
+    { icon: Bot,       title: 'Telegram-бот',        desc: 'Управляйте записями и расходами голосом прямо из Telegram. Бот понимает команды и действует за вас.' },
+    { icon: Wallet,    title: 'Финансы',             desc: 'Доходы, расходы, маржа по услугам и складу. Понятные отчёты без Excel и бухгалтера.' },
+    { icon: Bell,      title: 'Авто-напоминания',   desc: 'Уведомление за 24 ч и 2 ч до визита. Клиент выбирает канал сам. Неявок становится в разы меньше.' },
+    { icon: BarChart3, title: 'Маркетинг и рост',   desc: 'Реферальные ссылки, акции, рассылки и бонусная программа — клиенты возвращаются и приводят друзей.' },
   ];
 
   const steps = [
@@ -165,6 +309,29 @@ export default function LandingPage() {
     },
   ];
 
+  const FAQ = [
+    {
+      q: 'Можно без Telegram?',
+      a: 'Можно. Клиенты записываются на вашу публичную страницу cres-ca.com/m/handle прямо в браузере — без Telegram. Но бот значительно упрощает процесс и для вас, и для клиента.',
+    },
+    {
+      q: 'Подходит ли для моей ниши?',
+      a: 'CRES-CA работает для любого сервисного бизнеса: красота, здоровье, ремонт, репетиторство, фитнес, ветеринария, тату, груминг и другие. Каталог услуг и шаблоны сообщений настраиваются под вашу специфику.',
+    },
+    {
+      q: 'Как перенести клиентов из другой CRM?',
+      a: 'Поддерживаем импорт из Excel/CSV. Также помогаем напрямую перенести данные из популярных CRM — напишите в поддержку, поможем бесплатно.',
+    },
+    {
+      q: 'Где хранятся данные?',
+      a: 'Серверы в Евросоюзе, соответствие GDPR. Мы не продаём и не передаём ваши данные третьим лицам. Резервные копии — ежедневно.',
+    },
+    {
+      q: 'Что после 14 дней пробного периода?',
+      a: 'Если не подойдёт — просто не продлеваете. Без привязки карты, без авто-списаний. Если подойдёт — выбираете удобный тариф в один клик.',
+    },
+  ];
+
   return (
     <>
       {/* eslint-disable-next-line @next/next/no-page-custom-font */}
@@ -182,6 +349,7 @@ export default function LandingPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <a href="#features" className="nav-link">Возможности</a>
               <a href="#pricing"  className="nav-link">Тарифы</a>
+              <a href="#faq"      className="nav-link">Вопросы</a>
               <LanguageSwitcher />
               <ThemeSwitchCircular size="sm" aria-label="Переключить тему" />
               <Link href="/login"    className="nav-link" style={{ marginLeft: 4 }}>Войти</Link>
@@ -192,39 +360,87 @@ export default function LandingPage() {
           </div>
         </nav>
 
-        {/* ─── HERO ─── */}
-        <section className="landing-section section-hero">
+        {/* ─── HERO (split) ─── */}
+        <section className="landing-section section-hero-split">
           <div className="hero-glow" />
           <div className="landing-container" style={{ position: 'relative' }}>
+            <div className="hero-split">
+              <div className="hero-text">
+                <Reveal>
+                  <div className="hero-badge">Платформа для специалистов услуг</div>
+                </Reveal>
+                <Reveal delay={80}>
+                  <h1 className="heading-hero">
+                    Меньше рутины.<br />
+                    <span className="accent">Больше клиентов.</span>
+                  </h1>
+                </Reveal>
+                <Reveal delay={160}>
+                  <p className="hero-lead">
+                    Расписание, CRM, финансы и маркетинг — в одном месте.
+                    Плюс Telegram-бот с голосовым управлением.
+                  </p>
+                </Reveal>
+                <Reveal delay={240}>
+                  <div className="hero-ctas-row">
+                    <Link href="/register" className="btn-pill-primary">Начать — 14 дней бесплатно</Link>
+                    <a    href="#features"  className="btn-pill-ghost">Смотреть возможности</a>
+                  </div>
+                </Reveal>
+                <Reveal delay={300}>
+                  <p className="micro-note">Без привязки карты · Отмена в один клик · Поддержка на родном языке</p>
+                </Reveal>
+              </div>
+              <Reveal delay={200}>
+                <DashMockup />
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        {/* ─── PROOF BAR ─── */}
+        <section className="landing-section" style={{ padding: '0', position: 'relative' }}>
+          <div className="landing-container">
+            <div className="proof-bar">
+              {proofs.map((p, i) => (
+                <Reveal key={p.l} delay={i * 60}>
+                  <div className="proof-item">
+                    <div className="proof-val">{p.v}</div>
+                    <div className="proof-label">{p.l}</div>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── ДЛЯ КОГО (niches) ─── */}
+        <section className="landing-section">
+          <div className="landing-container">
             <Reveal>
-              <div className="hero-badge">Платформа для специалистов услуг</div>
-            </Reveal>
-            <Reveal delay={80}>
-              <h1 className="heading-hero">
-                Меньше рутины.<br />
-                <span className="accent">Больше клиентов.</span>
-              </h1>
-            </Reveal>
-            <Reveal delay={160}>
-              <p className="hero-lead">
-                Расписание, CRM, финансы и маркетинг — в одном месте.
-                Плюс Telegram-бот с голосовым управлением.
-              </p>
-            </Reveal>
-            <Reveal delay={240}>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 32, flexWrap: 'wrap' }}>
-                <Link href="/register" className="btn-pill-primary">Начать — 14 дней бесплатно</Link>
-                <a    href="#features"  className="btn-pill-ghost">Смотреть возможности</a>
+              <div className="section-header">
+                <span className="section-eyebrow">Для кого</span>
+                <h2 className="heading-section-lg">Любая ниша. Один инструмент.</h2>
+                <p className="section-lead">
+                  Стрижёте, ремонтируете, лечите, учите — CRES-CA подстраивается под вашу работу.
+                </p>
               </div>
             </Reveal>
-            <Reveal delay={300}>
-              <p className="micro-note">Без привязки карты · Отмена в один клик · Поддержка на родном языке</p>
+            <Reveal delay={80}>
+              <div className="niche-chips">
+                {niches.map((n) => (
+                  <span key={n.label} className="niche-chip">
+                    <n.icon size={16} strokeWidth={1.75} />
+                    {n.label}
+                  </span>
+                ))}
+              </div>
             </Reveal>
           </div>
         </section>
 
         {/* ─── FEATURES ─── */}
-        <section id="features" className="landing-section">
+        <section id="features" className="landing-section section-tinted">
           <div className="landing-container">
             <Reveal>
               <div className="section-header">
@@ -244,7 +460,7 @@ export default function LandingPage() {
         </section>
 
         {/* ─── HOW IT WORKS ─── */}
-        <section className="landing-section section-tinted">
+        <section className="landing-section">
           <div className="landing-container">
             <Reveal>
               <div className="section-header">
@@ -263,7 +479,7 @@ export default function LandingPage() {
         </section>
 
         {/* ─── PRICING ─── */}
-        <section id="pricing" className="landing-section">
+        <section id="pricing" className="landing-section section-tinted">
           <div className="landing-container">
             <Reveal>
               <div className="section-header">
@@ -286,6 +502,30 @@ export default function LandingPage() {
                 * 14 дней пробного периода на любом тарифе. Без привязки карты. Отмена в один клик.
               </p>
             </Reveal>
+          </div>
+        </section>
+
+        {/* ─── FAQ ─── */}
+        <section id="faq" className="landing-section">
+          <div className="landing-container">
+            <Reveal>
+              <div className="section-header">
+                <span className="section-eyebrow">Вопросы</span>
+                <h2 className="heading-section-lg">Частые вопросы</h2>
+              </div>
+            </Reveal>
+            <div className="faq-list">
+              {FAQ.map((item, i) => (
+                <Reveal key={item.q} delay={i * 50}>
+                  <FaqItem
+                    q={item.q}
+                    a={item.a}
+                    open={openFaq === i}
+                    onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+                  />
+                </Reveal>
+              ))}
+            </div>
           </div>
         </section>
 
