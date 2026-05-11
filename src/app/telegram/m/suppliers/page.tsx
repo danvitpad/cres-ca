@@ -19,6 +19,7 @@ import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import '@/styles/od-master-suppliers.css';
 
 interface Supplier {
   id: string;
@@ -131,7 +132,7 @@ export default function MasterMiniAppSuppliers() {
   const archived = items.filter((s) => !s.is_active);
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-suppliers">
       <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
         <button
           type="button"

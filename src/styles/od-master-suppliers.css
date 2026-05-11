@@ -1,0 +1,227 @@
+/** --- YAML
+ * name: ODMasterSuppliersStyles
+ * description: Дословный перенос CSS из Open Design master-suppliers.html
+ *   мобильного экрана (строки 89-156). Скоуп — `.od-master-suppliers`.
+ * --- */
+
+.od-master-suppliers {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-dim: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-success: #10b981;
+  --od-success-dim: rgba(16, 185, 129, 0.1);
+  --od-warning: #f59e0b;
+  --od-warning-dim: rgba(245, 158, 11, 0.1);
+  --od-danger: #ef4444;
+  --od-danger-dim: rgba(239, 68, 68, 0.1);
+  --od-text: var(--m-text, #0f172a);
+  --od-text-2: var(--m-text-secondary, #475569);
+  --od-text-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-neutral-100: var(--m-surface-elevated, #f1f5f9);
+  --od-neutral-800: rgba(15, 23, 42, 0.06);
+  --od-sp-1: 0.25rem;
+  --od-sp-2: 0.5rem;
+  --od-sp-3: 0.75rem;
+  --od-sp-4: 1rem;
+  --od-r-md: 0.75rem;
+  --od-r-lg: 1rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mobile header — OD строки 89-104 */
+.od-master-suppliers .m-header {
+  padding: var(--od-sp-4) var(--od-sp-4) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-3);
+}
+.od-master-suppliers .m-back-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--od-r-full);
+  border: none;
+  background: var(--od-neutral-100);
+  color: var(--od-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-master-suppliers .m-title {
+  font-size: 18px;
+  font-weight: 700;
+  flex: 1;
+  color: var(--od-text);
+}
+.od-master-suppliers .m-action-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--od-r-full);
+  border: none;
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Search bar — OD строки 106-114 */
+.od-master-suppliers .search-bar {
+  margin: var(--od-sp-3) var(--od-sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-2);
+  background: var(--od-neutral-100);
+  border-radius: var(--od-r-full);
+  padding: var(--od-sp-2) var(--od-sp-4);
+}
+.od-master-suppliers .search-bar input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--od-text);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+.od-master-suppliers .search-bar input::placeholder {
+  color: var(--od-text-3);
+}
+
+/* Filter chips — OD строки 116-125 */
+.od-master-suppliers .filter-chips {
+  display: flex;
+  gap: var(--od-sp-2);
+  padding: 0 var(--od-sp-4) var(--od-sp-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.od-master-suppliers .filter-chips::-webkit-scrollbar {
+  display: none;
+}
+.od-master-suppliers .chip {
+  flex-shrink: 0;
+  padding: var(--od-sp-1) var(--od-sp-3);
+  border-radius: var(--od-r-full);
+  border: 1.5px solid var(--od-border);
+  background: var(--od-surface);
+  color: var(--od-text-2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+  white-space: nowrap;
+  font-family: inherit;
+}
+.od-master-suppliers .chip.active {
+  border-color: var(--od-accent);
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+}
+
+/* Supplier cards — OD строки 127-147 */
+.od-master-suppliers .supplier-list {
+  padding: var(--od-sp-3) var(--od-sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-3);
+}
+.od-master-suppliers .supplier-card {
+  background: var(--od-surface);
+  border-radius: var(--od-r-lg);
+  padding: var(--od-sp-4);
+  border: 1px solid var(--od-border);
+  cursor: pointer;
+  transition: transform var(--od-dur-fast) var(--od-spring-soft);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.od-master-suppliers .supplier-card:active {
+  transform: scale(0.98);
+}
+.od-master-suppliers .supplier-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-3);
+}
+.od-master-suppliers .supplier-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--od-r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+  background: var(--od-accent-dim);
+  color: var(--od-accent);
+}
+.od-master-suppliers .supplier-info {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-suppliers .supplier-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--od-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.od-master-suppliers .supplier-category {
+  font-size: 12px;
+  color: var(--od-text-2);
+  margin: 0;
+}
+.od-master-suppliers .supplier-card-bottom {
+  margin-top: var(--od-sp-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.od-master-suppliers .supplier-stat {
+  font-size: 12px;
+  color: var(--od-text-2);
+}
+.od-master-suppliers .supplier-stat strong {
+  color: var(--od-text);
+  font-weight: 600;
+}
+
+/* Badges — OD строки 148-156 */
+.od-master-suppliers .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px var(--od-sp-2);
+  border-radius: var(--od-r-full);
+  font-size: 11px;
+  font-weight: 600;
+}
+.od-master-suppliers .badge-success {
+  background: var(--od-success-dim);
+  color: var(--od-success);
+}
+.od-master-suppliers .badge-warning {
+  background: var(--od-warning-dim);
+  color: var(--od-warning);
+}
+.od-master-suppliers .badge-danger {
+  background: var(--od-danger-dim);
+  color: var(--od-danger);
+}
+.od-master-suppliers .badge-neutral {
+  background: var(--od-neutral-100);
+  color: var(--od-text-2);
+}
