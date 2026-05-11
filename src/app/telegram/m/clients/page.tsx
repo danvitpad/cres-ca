@@ -36,6 +36,7 @@ const I18N: Record<MiniAppLang, {
   manualLink: string; manualHint: string;
   manualName: string; manualPhone: string; manualEmail: string;
   cancelBtn: string; saveBtn: string;
+  statTotal: string; statVip: string; statSleeping: string;
   daysAgoLabels: DaysAgoLabels;
 }> = {
   uk: {
@@ -68,6 +69,7 @@ const I18N: Record<MiniAppLang, {
     manualHint: 'Записати вручну (для тих, хто не в CRES-CA)',
     manualName: 'Імʼя', manualPhone: 'Телефон', manualEmail: 'Email',
     cancelBtn: 'Скасувати', saveBtn: 'Записати',
+    statTotal: 'Всього', statVip: 'VIP', statSleeping: 'Сплячі',
     daysAgoLabels: {
       today: 'сьогодні', yesterday: 'вчора',
       daysAgo: (n) => `${n} дн. тому`,
@@ -106,6 +108,7 @@ const I18N: Record<MiniAppLang, {
     manualHint: 'Записать вручную (для тех, кто не в CRES-CA)',
     manualName: 'Имя', manualPhone: 'Телефон', manualEmail: 'Email',
     cancelBtn: 'Отмена', saveBtn: 'Записать',
+    statTotal: 'Всего', statVip: 'VIP', statSleeping: 'Спящие',
     daysAgoLabels: {
       today: 'сегодня', yesterday: 'вчера',
       daysAgo: (n) => `${n} дн. назад`,
@@ -134,6 +137,7 @@ const I18N: Record<MiniAppLang, {
     manualHint: 'Add manually (for people outside CRES-CA)',
     manualName: 'Name', manualPhone: 'Phone', manualEmail: 'Email',
     cancelBtn: 'Cancel', saveBtn: 'Add',
+    statTotal: 'Total', statVip: 'VIP', statSleeping: 'Sleeping',
     daysAgoLabels: {
       today: 'today', yesterday: 'yesterday',
       daysAgo: (n) => `${n}d ago`,
@@ -284,6 +288,21 @@ export default function MasterMiniAppClientsPage() {
     });
   }, [rows, query]);
 
+  // Stats: VIP = ≥10 visits, Спящий = не было ≥90 дней (или never)
+  const stats = useMemo(() => {
+    let vip = 0, sleeping = 0;
+    const now = Date.now();
+    const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
+    for (const r of rows) {
+      if (r.total_visits >= 10) vip++;
+      if (r.last_visit_at) {
+        const last = new Date(r.last_visit_at).getTime();
+        if (now - last >= NINETY_DAYS) sleeping++;
+      }
+    }
+    return { total: rows.length, vip, sleeping };
+  }, [rows]);
+
   // Live API search: 200ms debounce, only when query >= 2 chars
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -415,6 +434,21 @@ export default function MasterMiniAppClientsPage() {
           )}
         </div>
       </div>
+
+      {/* Stats strip — 3 карточки (Open Design). Показываем когда есть клиенты. */}
+      {rows.length > 0 && !loading && (
+        <div style={{ padding: `12px ${PAGE_PADDING_X}px 0` }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 10,
+          }}>
+            <ClientStatCard label={t.statTotal} value={stats.total} color={T.text} />
+            <ClientStatCard label={t.statVip} value={stats.vip} color={T.accent} />
+            <ClientStatCard label={t.statSleeping} value={stats.sleeping} color={T.danger} />
+          </div>
+        </div>
+      )}
 
       <div style={{ padding: `16px ${PAGE_PADDING_X}px 0` }}>
         {loading ? (
@@ -687,6 +721,38 @@ export default function MasterMiniAppClientsPage() {
         )}
       </div>
     </MobilePage>
+  );
+}
+
+function ClientStatCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div style={{
+      padding: 12,
+      borderRadius: R.md,
+      background: T.surface,
+      border: `1px solid ${T.borderSubtle}`,
+      boxShadow: SHADOW.card,
+      textAlign: 'center',
+      fontVariantNumeric: 'tabular-nums',
+    }}>
+      <div style={{
+        fontSize: 20,
+        fontWeight: 800,
+        letterSpacing: '-0.02em',
+        color,
+        lineHeight: 1.1,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: 11,
+        color: T.textTertiary,
+        marginTop: 3,
+        fontWeight: 600,
+      }}>
+        {label}
+      </div>
+    </div>
   );
 }
 
