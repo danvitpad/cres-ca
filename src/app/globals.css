@@ -12,13 +12,13 @@
  * ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* Brand accent — deep teal (m0038 rebrand) */
-  --color-accent:          #0d9488;
-  --color-accent-hover:    #0f766e;
-  --color-accent-active:   #115e59;
-  --color-accent-soft:     rgba(13, 148, 136, 0.1);
-  --color-accent-border:   rgba(13, 148, 136, 0.3);
-  --color-accent-text:     #5eead4;
+  /* Brand accent — cobalt blue (Open Design rebrand 2026-05-11, ранее был teal) */
+  --color-accent:          #2563eb;
+  --color-accent-hover:    #1d4ed8;
+  --color-accent-active:   #1e40af;
+  --color-accent-soft:     rgba(37, 99, 235, 0.1);
+  --color-accent-border:   rgba(37, 99, 235, 0.3);
+  --color-accent-text:     #93c5fd;
 
   /* Semantic */
   --color-success:         #10b981;
@@ -58,17 +58,18 @@
   /* Phase 1.5: brand accent unification Web ↔ Mini App.
      Tailwind's default violet palette is overridden so bg-violet-* / text-violet-*
      in legacy Mini App code renders the new teal accent (rebrand m0038). */
-  --color-violet-200: #99f6e4;
-  --color-violet-300: #5eead4;
-  --color-violet-400: #2dd4bf;
-  --color-violet-500: #14b8a6;
-  --color-violet-600: #0d9488;
-  --color-violet-700: #0f766e;
+  /* Legacy violet-*-* alias (CRES-CA rebrand 2026-05-11 — cobalt blue, ранее teal) */
+  --color-violet-200: #bfdbfe;
+  --color-violet-300: #93c5fd;
+  --color-violet-400: #60a5fa;
+  --color-violet-500: #3b82f6;
+  --color-violet-600: #2563eb;
+  --color-violet-700: #1d4ed8;
 
-  /* Canonical brand token — deep teal #0d9488. */
-  --cres-accent: #0d9488;
-  --cres-accent-soft: rgba(13, 148, 136, 0.12);
-  --cres-accent-hover: #0f766e;
+  /* Canonical brand token — cobalt blue #2563eb. */
+  --cres-accent: #2563eb;
+  --cres-accent-soft: rgba(37, 99, 235, 0.12);
+  --cres-accent-hover: #1d4ed8;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -114,7 +115,7 @@
   --card-foreground: #0a0a0a;
   --popover: #ffffff;
   --popover-foreground: #0a0a0a;
-  --primary: #0d9488;
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
   --secondary: #f4f4f5;
   --secondary-foreground: #0a0a0a;
@@ -125,9 +126,9 @@
   --destructive: #b91c1c;
   --border: rgba(10,10,10,0.07);
   --input: rgba(10,10,10,0.07);
-  --ring: #0d9488;
-  /* Multicolour categorical palette — no purple/pink (matches design-system) */
-  --chart-1: #0d9488;
+  --ring: #2563eb;
+  /* Multicolour categorical palette */
+  --chart-1: #2563eb;
   --chart-2: #d97706;
   --chart-3: #2563eb;
   --chart-4: #ea580c;
@@ -135,12 +136,12 @@
   --radius: 0.625rem;
   --sidebar: #0a0a0a;
   --sidebar-foreground: #a1a1aa;
-  --sidebar-primary: #0d9488;
+  --sidebar-primary: #2563eb;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(13,148,136,0.12);
+  --sidebar-accent: rgba(37, 99, 235, 0.12);
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #27272a;
-  --sidebar-ring: #0d9488;
+  --sidebar-ring: #2563eb;
 
   /* Design system — Surfaces */
   --surface-primary: #ffffff;
@@ -148,10 +149,10 @@
   --surface-elevated: #ffffff;
   --surface-overlay: rgba(255, 255, 255, 0.85);
 
-  /* Design system — Accent */
-  --ds-accent: #0d9488;
-  --ds-accent-soft: rgba(13,148,136,0.08);
-  --ds-accent-hover: #0f766e;
+  /* Design system — Accent (cobalt blue, ранее teal) */
+  --ds-accent: #2563eb;
+  --ds-accent-soft: rgba(37, 99, 235, 0.08);
+  --ds-accent-hover: #1d4ed8;
 
   /* Design system — Semantic */
   --ds-success: #15803d;
@@ -182,7 +183,7 @@
   --card-foreground: #fafafa;
   --popover: #1f1f22;
   --popover-foreground: #fafafa;
-  --primary: #2dd4bf;
+  --primary: #60a5fa;
   --primary-foreground: #0a0a0a;
   --secondary: #1f1f22;
   --secondary-foreground: #fafafa;
@@ -194,21 +195,21 @@
   --border: rgba(255,255,255,0.08);
   /* Input must stand off the popover/card bg so fields are actually visible inside dialogs */
   --input: #2a2a2e;
-  --ring: #2dd4bf;
+  --ring: #60a5fa;
   /* Multicolour categorical palette (dark variants) */
-  --chart-1: #2dd4bf;
+  --chart-1: #60a5fa;
   --chart-2: #fbbf24;
-  --chart-3: #60a5fa;
+  --chart-3: #93c5fd;
   --chart-4: #fb923c;
   --chart-5: #4ade80;
   --sidebar: #0f0f12;
   --sidebar-foreground: #a1a1aa;
-  --sidebar-primary: #2dd4bf;
+  --sidebar-primary: #60a5fa;
   --sidebar-primary-foreground: #0a0a0a;
-  --sidebar-accent: rgba(45,212,191,0.12);
+  --sidebar-accent: rgba(96, 165, 250, 0.12);
   --sidebar-accent-foreground: #fafafa;
   --sidebar-border: #27272a;
-  --sidebar-ring: #2dd4bf;
+  --sidebar-ring: #60a5fa;
 
   /* Design system — Surfaces (dark) */
   --surface-primary: #1a1a1d;
@@ -216,10 +217,10 @@
   --surface-elevated: #1f1f22;
   --surface-overlay: rgba(20, 20, 23, 0.9);
 
-  /* Design system — Accent (dark) */
-  --ds-accent: #2dd4bf;
-  --ds-accent-soft: rgba(45,212,191,0.12);
-  --ds-accent-hover: #5eead4;
+  /* Design system — Accent (dark, cobalt blue) */
+  --ds-accent: #60a5fa;
+  --ds-accent-soft: rgba(96, 165, 250, 0.12);
+  --ds-accent-hover: #93c5fd;
 
   /* Design system — Shadows (dark) */
   --shadow-card: 0 1px 3px rgba(0,0,0,0.3);
@@ -245,9 +246,10 @@
   --m-text-secondary: #52525b;
   --m-text-tertiary: #71717a;
   --m-text-disabled: #d4d4d8;
-  --m-accent: #0d9488;
-  --m-accent-hover: #0f766e;
-  --m-accent-soft: #f0fdfa;
+  /* Бренд CRES-CA — cobalt blue (Open Design выбор 2026-05-11). Раньше был teal #0d9488 */
+  --m-accent: #2563eb;
+  --m-accent-hover: #1d4ed8;
+  --m-accent-soft: #dbeafe;
   --m-accent-text: #ffffff;
   --m-success: #15803d;
   --m-success-soft: #dcfce7;
@@ -268,9 +270,9 @@
   --m-text-secondary: #c1c5cd;
   --m-text-tertiary: #828791;
   --m-text-disabled: #4b5260;
-  --m-accent: #2dd4bf;
-  --m-accent-hover: #5eead4;
-  --m-accent-soft: rgba(45, 212, 191, 0.18);
+  --m-accent: #60a5fa;
+  --m-accent-hover: #93c5fd;
+  --m-accent-soft: rgba(96, 165, 250, 0.18);
   --m-accent-text: #0a0a0a;
   --m-success: #4ade80;
   --m-success-soft: rgba(74, 222, 128, 0.24);
@@ -300,9 +302,9 @@ html.dark {
   --m-text-secondary: #c1c5cd;
   --m-text-tertiary: #828791;
   --m-text-disabled: #4b5260;
-  --m-accent: #2dd4bf;
-  --m-accent-hover: #5eead4;
-  --m-accent-soft: rgba(45, 212, 191, 0.18);
+  --m-accent: #60a5fa;
+  --m-accent-hover: #93c5fd;
+  --m-accent-soft: rgba(96, 165, 250, 0.18);
   --m-accent-text: #0a0a0a;
   --m-success: #4ade80;
   --m-success-soft: rgba(74, 222, 128, 0.24);
@@ -324,16 +326,16 @@ html.dark {
     --m-text-secondary: #c1c5cd;
     --m-text-tertiary: #828791;
     --m-text-disabled: #4b5260;
-    --m-accent: #2dd4bf;
-    --m-accent-hover: #5eead4;
-    --m-accent-soft: rgba(45, 212, 191, 0.18);
+    --m-accent: #60a5fa;
+    --m-accent-hover: #93c5fd;
+    --m-accent-soft: rgba(96, 165, 250, 0.18);
     --m-accent-text: #0a0a0a;
-    --m-success: #34d399;
-    --m-success-soft: rgba(52, 211, 153, 0.16);
-    --m-warning: #fbbf24;
-    --m-warning-soft: rgba(251, 191, 36, 0.16);
-    --m-danger: #f87171;
-    --m-danger-soft: rgba(248, 113, 113, 0.16);
+    --m-success: #4ade80;
+    --m-success-soft: rgba(74, 222, 128, 0.24);
+    --m-warning: #facc15;
+    --m-warning-soft: rgba(250, 204, 21, 0.24);
+    --m-danger: #fb7185;
+    --m-danger-soft: rgba(251, 113, 133, 0.24);
     --m-nav-bg: rgba(20, 20, 23, 0.92);
   }
 }
