@@ -20,6 +20,7 @@ import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import '@/styles/od-master-inventory.css';
 
 interface Item {
   id: string;
@@ -167,7 +168,7 @@ export default function MasterMiniAppInventory() {
   const lowCount = items.filter((i) => i.low_stock_threshold != null && Number(i.quantity) <= Number(i.low_stock_threshold)).length;
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-inventory">
       <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
         <button
           type="button"
