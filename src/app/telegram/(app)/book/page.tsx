@@ -39,6 +39,7 @@ import { T } from '@/components/miniapp/design';
 import { formatMoney } from '@/lib/format/money';
 import { cleanAddress } from '@/lib/format/address';
 import { showMainButton, hideMainButton, setMainButtonLoading, isTelegram, tg } from '@/lib/telegram/webapp';
+import '@/styles/od-client-booking-flow.css';
 
 /* ─────────────────── Types ─────────────────── */
 
@@ -1116,7 +1117,7 @@ export default function MiniAppBookPage() {
 
   return (
     <>
-      <div className="flex min-h-full flex-col" style={{ background: T.bg, color: T.text }}>
+      <div className="od-client-booking-flow flex min-h-full flex-col" style={{ background: T.bg, color: T.text }}>
         {/* ── Header ── */}
         <motion.div
           initial={{ opacity: 0, y: -8 }}

@@ -1,0 +1,380 @@
+/** --- YAML
+ * name: ODClientBookingFlowStyles
+ * description: Дословный перенос CSS из Open Design client-booking-flow.html
+ *   мобильного 4-step booking wizard (строки 100-260). Скоуп —
+ *   `.od-client-booking-flow`.
+ * --- */
+
+.od-client-booking-flow {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-fg: #ffffff;
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-cs-bg: var(--m-bg, #f5f7fa);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-md: 0.5rem;
+  --od-r-lg: 0.75rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --od-sh-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Screen header */
+.od-client-booking-flow .sc-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 6px;
+}
+.od-client-booking-flow .sc-hd-back {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.od-client-booking-flow .sc-hd-back:active { transform: scale(0.93); }
+.od-client-booking-flow .sc-hd-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.015em;
+  flex: 1;
+}
+
+/* Progress */
+.od-client-booking-flow .progress-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 20px 8px;
+}
+.od-client-booking-flow .prog-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--od-r-full);
+  background: var(--od-border-2);
+  transition: all var(--od-dur-base) var(--od-ease-out);
+  flex-shrink: 0;
+}
+.od-client-booking-flow .prog-dot.done { background: var(--od-success); width: 20px; }
+.od-client-booking-flow .prog-dot.active { background: var(--od-accent); width: 24px; }
+.od-client-booking-flow .prog-connector {
+  flex: 1;
+  max-width: 24px;
+  height: 2px;
+  background: var(--od-border);
+  border-radius: 1px;
+}
+.od-client-booking-flow .prog-connector.done { background: var(--od-success); }
+
+/* Avatars */
+.od-client-booking-flow .av {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.od-client-booking-flow .av-sm { width: 28px; height: 28px; font-size: 0.5625rem; }
+.od-client-booking-flow .av-md { width: 40px; height: 40px; font-size: 0.75rem; }
+.od-client-booking-flow .av-lg { width: 56px; height: 56px; font-size: 0.9375rem; }
+.od-client-booking-flow .av-xl { width: 72px; height: 72px; font-size: 1.125rem; }
+.od-client-booking-flow .av-cobalt {
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+  border: 2px solid var(--od-surface);
+}
+
+/* Section label */
+.od-client-booking-flow .sec-lbl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--od-fg-3);
+}
+
+/* Chips */
+.od-client-booking-flow .hscroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 20px 8px;
+  scrollbar-width: none;
+}
+.od-client-booking-flow .hscroll::-webkit-scrollbar { display: none; }
+.od-client-booking-flow .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--od-r-full);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1.5px solid var(--od-border-2);
+  background: var(--od-surface);
+  color: var(--od-fg-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.od-client-booking-flow .chip.active {
+  background: var(--od-accent);
+  border-color: var(--od-accent);
+  color: var(--od-accent-fg);
+}
+
+/* Category grid */
+.od-client-booking-flow .cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 0 16px 4px;
+}
+.od-client-booking-flow .cat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border-radius: 14px;
+  background: var(--od-surface);
+  border: 1.5px solid var(--od-border);
+  cursor: pointer;
+}
+.od-client-booking-flow .cat-cell.active {
+  border-color: var(--od-accent);
+  background: var(--od-accent-soft);
+}
+.od-client-booking-flow .cat-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--od-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-fg-2);
+}
+.od-client-booking-flow .cat-cell.active .cat-icon {
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+}
+.od-client-booking-flow .cat-name {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: var(--od-fg-2);
+  text-align: center;
+}
+.od-client-booking-flow .cat-cell.active .cat-name {
+  color: var(--od-accent);
+}
+
+/* Master cards */
+.od-client-booking-flow .mhcard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  min-width: 148px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-booking-flow .mhcard-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.od-client-booking-flow .mhcard-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.01em;
+}
+.od-client-booking-flow .mhcard-spec {
+  font-size: 0.6875rem;
+  color: var(--od-fg-3);
+  margin-top: 1px;
+}
+.od-client-booking-flow .mhcard-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.od-client-booking-flow .star { font-size: 0.625rem; color: #f59e0b; }
+.od-client-booking-flow .star-txt {
+  font-size: 0.625rem;
+  color: var(--od-fg-3);
+  font-weight: 600;
+}
+.od-client-booking-flow .dist-lbl {
+  font-size: 0.625rem;
+  color: var(--od-fg-3);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Sticky bottom CTA */
+.od-client-booking-flow .sticky-cta {
+  position: sticky;
+  bottom: 0;
+  padding: 8px 16px;
+  background: linear-gradient(to top, var(--od-cs-bg) 60%, transparent);
+  z-index: 4;
+}
+.od-client-booking-flow .btn-cta {
+  width: 100%;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.od-client-booking-flow .btn-cta:active { transform: scale(0.97); }
+
+/* Profile cover */
+.od-client-booking-flow .prof-cover {
+  height: 160px;
+  position: relative;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  margin-bottom: 44px;
+}
+.od-client-booking-flow .prof-av-wrap {
+  position: absolute;
+  bottom: -40px;
+  left: 20px;
+}
+.od-client-booking-flow .prof-info {
+  padding: 0 20px 8px;
+  margin-top: 4px;
+}
+.od-client-booking-flow .prof-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.02em;
+}
+.od-client-booking-flow .prof-spec {
+  font-size: 0.75rem;
+  color: var(--od-fg-3);
+  margin-top: 2px;
+}
+.od-client-booking-flow .prof-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.od-client-booking-flow .prof-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  color: var(--od-fg-2);
+  font-weight: 500;
+}
+
+/* Tabs pill */
+.od-client-booking-flow .tabs-p {
+  display: flex;
+  gap: 4px;
+  margin: 8px 16px;
+  background: var(--od-bg);
+  border: 1px solid var(--od-border);
+  border-radius: 10px;
+  padding: 3px;
+}
+.od-client-booking-flow .tab-p {
+  flex: 1;
+  padding: 7px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--od-fg-3);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+}
+.od-client-booking-flow .tab-p.on {
+  background: var(--od-surface);
+  color: var(--od-fg);
+  box-shadow: var(--od-sh-sm);
+}
+
+/* Service rows */
+.od-client-booking-flow .svc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 8px;
+  padding: 14px 16px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-booking-flow .svc-body {
+  flex: 1;
+  min-width: 0;
+}
+.od-client-booking-flow .svc-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  letter-spacing: -0.01em;
+}
+.od-client-booking-flow .svc-dur {
+  font-size: 0.6875rem;
+  color: var(--od-fg-3);
+  margin-top: 2px;
+}
+.od-client-booking-flow .svc-price {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--od-accent);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
