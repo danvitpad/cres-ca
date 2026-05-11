@@ -34,7 +34,7 @@ import {
 import { CategoryManager, type Category } from '@/components/shared/category-manager';
 import { Plus, MoreVertical, Search, Briefcase, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { usePageTheme, FONT, FONT_FEATURES, pageContainer } from '@/lib/dashboard-theme';
+import { usePageTheme, FONT, FONT_FEATURES, pageContainer, type PageTheme } from '@/lib/dashboard-theme';
 
 /**
  * Convert a quantity from one unit to a compatible base unit.
@@ -97,6 +97,52 @@ interface ServiceRow {
   aftercare: string | null;
   faq: FaqItem[] | null;
   category: { name: string; color: string } | null;
+}
+
+/* ─── KPI tile (Open Design) ─── */
+function ServiceKpiTile({
+  label, value, accent, C,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  C: PageTheme;
+}) {
+  return (
+    <div
+      style={{
+        padding: '16px 18px',
+        borderRadius: 16,
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderLeftWidth: accent ? 3 : 1,
+        borderLeftColor: accent ? C.accent : C.border,
+        fontVariantNumeric: 'tabular-nums',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.06)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      <div style={{
+        fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+        textTransform: 'uppercase', color: C.textTertiary,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em',
+        color: accent ? C.accent : C.text, marginTop: 8, lineHeight: 1,
+      }}>
+        {value}
+      </div>
+    </div>
+  );
 }
 
 function ServicesCatalogueView() {
@@ -304,6 +350,31 @@ function ServicesCatalogueView() {
           </button>
         </div>
       </div>
+
+      {/* ── KPI strip (Open Design): Услуг · Категорий · Ср. цена ── */}
+      {!loading && services.length > 0 && (() => {
+        const activeServices = services.filter((s) => s.is_active);
+        const avgPrice = activeServices.length > 0
+          ? activeServices.reduce((s, x) => s + (Number(x.price) || 0), 0) / activeServices.length
+          : 0;
+        return (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: 12,
+            marginBottom: 24,
+          }}>
+            <ServiceKpiTile label="Услуг" value={String(activeServices.length)} C={C} />
+            <ServiceKpiTile label="Категорий" value={String(categories.length)} C={C} />
+            <ServiceKpiTile
+              label="Средняя цена"
+              value={`${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(avgPrice)} ₴`}
+              accent
+              C={C}
+            />
+          </div>
+        );
+      })()}
 
       {/* ── Search bar (Fresha style) ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
@@ -1258,10 +1329,13 @@ export default function ServicesPage() {
   return (
     <div style={{ ...pageContainer, background: C.bg, color: C.text, minHeight: '100%' }}>
       <div style={{ marginBottom: 8 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 600, color: C.text, margin: 0, letterSpacing: '-0.3px' }}>
+        <h1 style={{
+          fontSize: 28, fontWeight: 700, color: C.text,
+          margin: 0, letterSpacing: '-0.02em', lineHeight: 1,
+        }}>
           Каталог
         </h1>
-        <p style={{ fontSize: 13, color: C.textTertiary, margin: '4px 0 0 0' }}>
+        <p style={{ fontSize: 14, color: C.textTertiary, margin: '6px 0 0' }}>
           Услуги, склад и заказы поставщикам
         </p>
       </div>
