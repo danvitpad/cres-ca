@@ -7,7 +7,7 @@
 
 'use client';
 
-import { Clock, Sparkles } from 'lucide-react';
+import { Clock, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type AppointmentStatus = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
@@ -87,7 +87,7 @@ export function AppointmentCard({
         )}
         {aiHint && (
           <div className="flex items-start gap-1 mt-1 text-xs text-[var(--f-accent,hsl(var(--primary)))]">
-            <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
+            <Lightbulb className="w-3 h-3 shrink-0 mt-0.5" />
             <span className="truncate">{aiHint}</span>
           </div>
         )}

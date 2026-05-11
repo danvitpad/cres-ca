@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { ChevronRight, CheckCircle2, Lightbulb } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 interface ChecklistItem {
@@ -165,7 +165,7 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
       <div className="flex items-start justify-between gap-3 px-5 py-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4" style={{ color: 'var(--m-text-secondary)' }} />
+            <Lightbulb className="size-4" style={{ color: 'var(--m-text-secondary)' }} />
             <p className="text-sm font-bold" style={{ color: 'var(--m-text)' }}>
               Сделай страницу премиум · {pct}%
             </p>

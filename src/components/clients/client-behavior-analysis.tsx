@@ -9,7 +9,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Brain, Loader2, AlertTriangle, Crown, Sparkles, RefreshCw } from 'lucide-react';
+import { Brain, Loader2, AlertTriangle, Crown, Lightbulb, RefreshCw } from 'lucide-react';
 
 interface Analysis {
   risk_level: 'low' | 'medium' | 'high';
@@ -85,7 +85,7 @@ export function ClientBehaviorAnalysis({ clientId }: { clientId: string }) {
             Риск ухода, готовность стать VIP, что предложить
           </div>
         </div>
-        <Sparkles className="w-4 h-4 text-violet-500 group-hover:scale-110 transition" />
+        <Lightbulb className="w-4 h-4 text-violet-500 group-hover:scale-110 transition" />
       </button>
     );
   }

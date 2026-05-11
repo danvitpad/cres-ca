@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Sparkles, User, Calendar as CalendarIcon, Gift, ChevronRight, ChevronLeft, X, Check } from 'lucide-react';
+import { PartyPopper, User, Calendar as CalendarIcon, Gift, ChevronRight, ChevronLeft, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ function WizardBody({ onClose, initial }: Omit<Props, 'open'>) {
   const [busy, setBusy] = useState(false);
 
   const steps = [
-    { icon: Sparkles, key: 'welcome' as const },
+    { icon: PartyPopper, key: 'welcome' as const },
     { icon: User, key: 'profile' as const },
     { icon: CalendarIcon, key: 'birthday' as const },
     { icon: Gift, key: 'rewards' as const },
