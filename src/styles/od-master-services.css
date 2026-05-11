@@ -1,0 +1,304 @@
+/** --- YAML
+ * name: ODMasterServicesStyles
+ * description: Дословный перенос CSS из Open Design master-services.html
+ *   мобильного экрана. Все правила и значения один-в-один с эталоном.
+ *   Скоупом служит `.od-master-services` контейнер на странице, чтобы
+ *   правила не утекали в другие места.
+ *
+ *   Маппинг OD-токенов → наши CSS-переменные:
+ *   --accent      → var(--m-accent)
+ *   --accent-h    → var(--m-accent-hover)
+ *   --accent-soft → var(--m-accent-soft)
+ *   --accent-fg   → #fff
+ *   --fg          → var(--m-text)
+ *   --fg-2        → var(--m-text-secondary)
+ *   --fg-3        → var(--m-text-tertiary)
+ *   --bg          → var(--m-bg)
+ *   --bg-2        → var(--m-surface-elevated)
+ *   --surface     → var(--m-surface)
+ *   --border      → var(--m-border)
+ *   --border-2    → var(--m-border-strong)
+ *   --r-md        → 0.5rem
+ *   --r-lg        → 0.75rem
+ *   --r-full      → 9999px
+ *   --dur-fast    → 120ms
+ *   --ease-out    → cubic-bezier(.16,1,.3,1)
+ *   --sh-sm       → 0 1px 2px rgba(0,0,0,.05)
+ * --- */
+
+.od-master-services {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-fg: #ffffff;
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-bg-2: var(--m-surface-elevated, #f1f5f9);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-md: 0.5rem;
+  --od-r-lg: 0.75rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 120ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Mobile Header — OD master-services.html строки 297-318 */
+.od-master-services .mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-top: 4px;
+}
+.od-master-services .mobile-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--od-fg);
+}
+.od-master-services .mobile-header-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--od-bg-2);
+  border: 1px solid var(--od-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-fg-2);
+  cursor: pointer;
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+}
+.od-master-services .mobile-header-icon:active {
+  transform: scale(0.94);
+  background: var(--od-border);
+  color: var(--od-fg);
+}
+
+/* Pill Tab Switcher — OD строки 320-345 */
+.od-master-services .pill-tabs {
+  display: inline-flex;
+  background: var(--od-bg-2);
+  border-radius: var(--od-r-lg);
+  padding: 3px;
+  gap: 2px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+.od-master-services .pill-tab {
+  flex: 1;
+  text-align: center;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--od-fg-2);
+  border-radius: calc(var(--od-r-lg) - 2px);
+  cursor: pointer;
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+  border: none;
+  background: none;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.od-master-services .pill-tab.active {
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  box-shadow: var(--od-sh-sm);
+}
+
+/* Category Header — OD строки 347-356 */
+.od-master-services .cat-header {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--od-fg-3);
+  padding: 12px 0 6px;
+  border-bottom: 1px solid var(--od-border);
+  margin-bottom: 4px;
+}
+
+/* Service Row — OD строки 358-378 */
+.od-master-services .service-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 8px;
+  border-bottom: 1px dashed var(--od-border);
+  cursor: pointer;
+  transition: transform var(--od-dur-fast) var(--od-ease-out),
+              background var(--od-dur-fast) var(--od-ease-out);
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--od-r-md) var(--od-r-md) 0;
+  margin-left: -8px;
+  background: transparent;
+}
+.od-master-services .service-row:active {
+  transform: scale(0.97);
+  background: var(--od-bg-2);
+}
+.od-master-services .service-row:last-child {
+  border-bottom: none;
+}
+
+/* Color bar — OD строки 379-382 */
+.od-master-services .service-color-bar {
+  width: 3px;
+  height: 36px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+/* Service info — OD строки 383-394 */
+.od-master-services .service-info {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.od-master-services .service-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--od-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 0 2px;
+}
+.od-master-services .service-meta {
+  font-size: 11px;
+  color: var(--od-fg-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.od-master-services .service-meta-sep {
+  color: var(--od-border-2);
+}
+
+/* Toggle Switch — OD строки 396-415 */
+.od-master-services .sw {
+  width: 34px;
+  height: 19px;
+  border-radius: var(--od-r-full);
+  background: var(--od-border-2);
+  position: relative;
+  flex-shrink: 0;
+  transition: background var(--od-dur-fast) var(--od-ease-out);
+  cursor: pointer;
+  border: 0;
+  padding: 0;
+}
+.od-master-services .sw.on {
+  background: var(--od-accent);
+}
+.od-master-services .sw::after {
+  content: '';
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px;
+  left: 2px;
+  box-shadow: var(--od-sh-sm);
+  transition: transform var(--od-dur-fast) var(--od-ease-out);
+}
+.od-master-services .sw.on::after {
+  transform: translateX(15px);
+}
+.od-master-services .sw[disabled] {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* More button — OD строки 416-425 */
+.od-master-services .more-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--od-r-md);
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-fg-3);
+  cursor: pointer;
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+}
+.od-master-services .more-btn:active {
+  background: var(--od-bg-2);
+  color: var(--od-fg-2);
+}
+.od-master-services .more-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* FAB — OD строки 427-445 */
+.od-master-services .fab {
+  position: fixed;
+  /* Поднят над floating bottom-nav Mini App (~64px + 16px gap + safe-area).
+     В оригинальном OD HTML было bottom:100px относительно iphone-screen.
+     У нас bottom-nav плавающий — нужен запас safe-area. */
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  z-index: 20;
+  transition: transform var(--od-dur-fast) var(--od-ease-out),
+              background var(--od-dur-fast) var(--od-ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.od-master-services .fab:active {
+  transform: scale(0.94);
+}
+.od-master-services .fab svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Stagger animation — OD строки 217-225 общая стаггер-анимация */
+@keyframes od-staggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.od-master-services .stagger-item {
+  opacity: 0;
+  animation: od-staggerIn 0.35s var(--od-ease-out) both;
+}
+.od-master-services .stagger-item.s0 { animation-delay: 0s; }
+.od-master-services .stagger-item.s1 { animation-delay: 0.04s; }
+.od-master-services .stagger-item.s2 { animation-delay: 0.08s; }
+.od-master-services .stagger-item.s3 { animation-delay: 0.12s; }
+.od-master-services .stagger-item.s4 { animation-delay: 0.16s; }
+.od-master-services .stagger-item.s5 { animation-delay: 0.20s; }
+.od-master-services .stagger-item.s6 { animation-delay: 0.24s; }
+.od-master-services .stagger-item.s7 { animation-delay: 0.28s; }
+.od-master-services .stagger-item.s8 { animation-delay: 0.32s; }

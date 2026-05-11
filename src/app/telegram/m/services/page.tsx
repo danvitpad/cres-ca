@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2, Package, ArrowRight, MoreHorizontal } from 'lucide-react';
+import '@/styles/od-master-services.css';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
@@ -246,18 +247,17 @@ export default function MasterMiniAppServicesTab() {
   })();
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-services">
       <PageHeader title={t.title} />
 
-      {/* Tab switcher: «Активные (N)» | «В архиве (N)» */}
+      {/* Pill Tabs — литерально из OD master-services.html (.pill-tabs / .pill-tab).
+          В оригинале «Активні (8)» / «В архіві (2)» — мы добавили count'ы в
+          скобки чтобы текст 1-в-1 совпадал. */}
       {!loading && (
         <div
           role="tablist"
-          style={{
-            margin: `4px ${PAGE_PADDING_X}px 0`,
-            display: 'flex', gap: 4, padding: 4,
-            borderRadius: R.pill, background: T.bgSubtle,
-          }}
+          className="pill-tabs"
+          style={{ margin: `4px ${PAGE_PADDING_X}px 0` }}
         >
           {([
             { key: 'active' as const, label: t.tabActive, count: active.length },
@@ -270,28 +270,10 @@ export default function MasterMiniAppServicesTab() {
                 role="tab"
                 aria-selected={isActive}
                 type="button"
+                className={`pill-tab${isActive ? ' active' : ''}`}
                 onClick={() => { haptic('selection'); setTab(it.key); }}
-                style={{
-                  flex: 1, padding: '8px 12px', borderRadius: R.pill, border: 'none',
-                  background: isActive ? T.surface : 'transparent',
-                  color: isActive ? T.text : T.textSecondary,
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                  boxShadow: isActive ? SHADOW.card : 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  transition: 'background 0.15s, color 0.15s',
-                }}
               >
-                <span>{it.label}</span>
-                <span
-                  style={{
-                    minWidth: 20, padding: '0 6px', borderRadius: R.pill,
-                    fontSize: 11, fontWeight: 700,
-                    background: isActive ? T.accentSoft : 'transparent',
-                    color: isActive ? T.accent : T.textTertiary,
-                  }}
-                >
-                  {it.count}
-                </span>
+                {it.label} ({it.count})
               </button>
             );
           })}
@@ -333,18 +315,8 @@ export default function MasterMiniAppServicesTab() {
         ) : grouped.length > 0 ? (
           grouped.map((group, gi) => (
             <div key={group.category?.id ?? 'orphan'} style={{ marginTop: gi === 0 ? 0 : 4 }}>
-              <div
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.09em',
-                  textTransform: 'uppercase',
-                  color: T.textTertiary,
-                  padding: '12px 0 6px',
-                  borderBottom: `1px solid ${T.borderSubtle}`,
-                  marginBottom: 4,
-                }}
-              >
+              {/* Литерально .cat-header из OD master-services.html */}
+              <div className="cat-header">
                 {group.category?.name ?? t.uncategorized}
               </div>
               {group.services.map((s, i) => (
@@ -365,35 +337,17 @@ export default function MasterMiniAppServicesTab() {
         ) : null}
       </div>
 
-      {/* FAB — Open Design master-services mobile. Плавающая кнопка
-          «+ услуга» в правом нижнем углу поверх bottom-nav. Раньше была
-          внизу списка как полноширинная кнопка с accent-soft фоном —
-          уезжала за пределы экрана если услуг много. */}
+      {/* FAB — литерально .fab из OD master-services.html. Стили в
+          /styles/od-master-services.css (position:fixed + bottom над
+          bottom-nav + safe-area). */}
       {!loading && tab === 'active' && (
         <button
           type="button"
+          className="fab"
           onClick={() => { haptic('selection'); setSheet({ mode: 'create' }); }}
           aria-label={t.add}
-          style={{
-            position: 'fixed',
-            bottom: 'calc(88px + env(safe-area-inset-bottom, 0px))',
-            right: 20,
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background: T.accent,
-            color: '#fff',
-            border: 'none',
-            boxShadow: '0 4px 16px rgba(37, 99, 235, 0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 20,
-            WebkitTapHighlightColor: 'transparent',
-          }}
         >
-          <Plus size={22} strokeWidth={2.4} />
+          <Plus strokeWidth={2.4} />
         </button>
       )}
 
@@ -422,138 +376,57 @@ function ServiceRowCard({ s, i, t, onTap, lang, isLast, isToggling, onToggle }: 
   isToggling: boolean;
   onToggle: () => void;
 }) {
-  const color = s.color || T.accent;
+  const color = s.color || 'var(--m-accent)';
+  // Литеральная разметка из Open Design master-services.html (мобильный
+  // экран, строки 1061-1075). Класс .service-row, .service-color-bar,
+  // .service-info, .service-name, .service-meta, .sw, .more-btn.
+  // Стили живут в /styles/od-master-services.css, импорт в этом файле сверху.
   return (
     <motion.div
-      initial={{ opacity: 0, y: 4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(i, 20) * 0.02 }}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '11px 0',
-        borderBottom: isLast ? 'none' : `1px dashed ${T.borderSubtle}`,
-        opacity: s.is_active ? 1 : 0.6,
-        WebkitTapHighlightColor: 'transparent',
-      }}
+      className={`service-row stagger-item s${Math.min(i, 8)}`}
+      initial={false}
+      animate={{ opacity: s.is_active ? 1 : 0.55 }}
+      transition={{ duration: 0.18 }}
+      // last child СNS-правило `:last-child` срабатывает на DOM-узле, но
+      // когда у нас несколько групп категорий — последний row в каждой
+      // группе всё равно нуждается в убирании bottom-border. Делаем явно.
+      style={isLast ? { borderBottom: 'none' } : undefined}
     >
-      {/* Color bar — 3px vertical как в OD master-services. */}
-      <div style={{
-        width: 3,
-        height: 32,
-        background: color,
-        borderRadius: 2,
-        flexShrink: 0,
-      }} />
+      <span
+        className="service-color-bar"
+        style={{ background: color }}
+        aria-hidden
+      />
 
-      {/* Tap-target: имя + цена + продолжительность. Открывает редактор. */}
       <button
         type="button"
+        className="service-info"
         onClick={onTap}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          background: 'transparent',
-          border: 0,
-          padding: 0,
-          textAlign: 'left',
-          fontFamily: 'inherit',
-          cursor: 'pointer',
-          WebkitTapHighlightColor: 'transparent',
-        }}
       >
-        <p style={{
-          margin: 0,
-          fontSize: 13.5,
-          fontWeight: 600,
-          color: T.text,
-          letterSpacing: '-0.01em',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          marginBottom: 2,
-        }}>
-          {getServiceName(s, lang)}
-        </p>
-        <p style={{
-          margin: 0,
-          fontSize: 11,
-          color: T.textTertiary,
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
+        <p className="service-name">{getServiceName(s, lang)}</p>
+        <p className="service-meta">
           <span>{s.duration_minutes} {t.minutes}</span>
-          <span style={{ color: T.border }}>—</span>
+          <span className="service-meta-sep">—</span>
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>
             {Number(s.price).toFixed(0)} {s.currency === 'UAH' ? '₴' : s.currency}
           </span>
         </p>
       </button>
 
-      {/* Toggle активности — Open Design master-services .sw. Тап
-          мгновенно меняет is_active через Supabase (optimistic). При
-          ошибке откатывается. */}
       <button
         type="button"
+        className={`sw${s.is_active ? ' on' : ''}`}
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         aria-pressed={s.is_active}
         aria-label={s.is_active ? t.archiveBtn : t.restoreBtn}
         disabled={isToggling}
-        style={{
-          width: 34,
-          height: 19,
-          borderRadius: 999,
-          background: s.is_active ? T.accent : T.border,
-          border: 0,
-          padding: 0,
-          position: 'relative',
-          flexShrink: 0,
-          cursor: 'pointer',
-          opacity: isToggling ? 0.6 : 1,
-          transition: 'background 0.16s cubic-bezier(0.16, 1, 0.3, 1)',
-          WebkitTapHighlightColor: 'transparent',
-        }}
-      >
-        <span
-          style={{
-            position: 'absolute',
-            width: 15,
-            height: 15,
-            borderRadius: '50%',
-            background: '#fff',
-            top: 2,
-            left: 2,
-            boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
-            transform: s.is_active ? 'translateX(15px)' : 'translateX(0)',
-            transition: 'transform 0.16s cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-        />
-      </button>
+      />
 
-      {/* 3-точки — open редактор (где доступны архив / удалить).
-          Дублирует tap-target row, но даёт визуальную подсказку «здесь
-          ещё действия». */}
       <button
         type="button"
+        className="more-btn"
         onClick={(e) => { e.stopPropagation(); onTap(); }}
         aria-label="Действия"
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 8,
-          background: 'transparent',
-          border: 0,
-          padding: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: T.textTertiary,
-          cursor: 'pointer',
-          flexShrink: 0,
-          WebkitTapHighlightColor: 'transparent',
-        }}
       >
         <MoreHorizontal size={16} />
       </button>
