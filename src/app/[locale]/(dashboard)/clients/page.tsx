@@ -635,6 +635,72 @@ export default function ClientsPage() {
       {/* ═══ CLIENTS TAB ═══ */}
       {tab === 'clients' && (
         <>
+          {/* Filter chips (Open Design) — все/VIP/новые/спящие/риск/ДР */}
+          {!loading && counts.all > 0 && (
+            <div style={{
+              display: 'flex', gap: 8, flexWrap: 'wrap',
+              marginBottom: 16, fontFamily: FONT,
+            }}>
+              {([
+                { key: 'all' as FilterKey, label: 'Все', count: counts.all },
+                { key: 'vip' as FilterKey, label: 'VIP', count: counts.vip },
+                { key: 'new' as FilterKey, label: 'Новые', count: counts.new },
+                { key: 'overdue' as FilterKey, label: 'Спящие', count: counts.overdue },
+                { key: 'risk' as FilterKey, label: 'Риск', count: counts.risk },
+                { key: 'birthday' as FilterKey, label: 'ДР скоро', count: counts.birthday },
+              ]).filter((chip) => chip.key === 'all' || chip.count > 0).map((chip) => {
+                const isActive = filter === chip.key;
+                return (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={() => setFilter(chip.key)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '7px 14px',
+                      borderRadius: 999,
+                      border: `1.5px solid ${isActive ? C.accent : C.border}`,
+                      background: isActive ? C.accent : C.surface,
+                      color: isActive ? '#fff' : C.text,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      fontFamily: FONT,
+                      transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.borderColor = C.accent;
+                        e.currentTarget.style.color = C.accent;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) {
+                        e.currentTarget.style.borderColor = C.border as string;
+                        e.currentTarget.style.color = C.text as string;
+                      }
+                    }}
+                  >
+                    {chip.label}
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: 22, height: 20,
+                      padding: '0 6px',
+                      borderRadius: 999,
+                      background: isActive ? 'rgba(255,255,255,0.22)' : C.surfaceElevated,
+                      color: isActive ? '#fff' : C.textTertiary,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}>
+                      {chip.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Search */}
           <div style={{
             position: 'relative', marginBottom: 16,
@@ -661,8 +727,6 @@ export default function ClientsPage() {
               onBlur={e => { e.currentTarget.style.borderColor = C.border as string; }}
             />
           </div>
-
-          {/* Filter chips removed per product decision */}
 
           {/* Card grid */}
           {loading ? (

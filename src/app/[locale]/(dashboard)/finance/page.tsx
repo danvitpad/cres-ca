@@ -505,6 +505,79 @@ export default function FinancePage() {
         />
       </div>
 
+      {/* Expense breakdown by category (Open Design) — top 5 категорий с прогресс-барами */}
+      {!loading && expenses.length > 0 && (() => {
+        const byCategory: Record<string, number> = {};
+        for (const e of expenses) {
+          const cat = e.category || 'Прочее';
+          byCategory[cat] = (byCategory[cat] || 0) + Number(e.amount);
+        }
+        const total = Object.values(byCategory).reduce((s, n) => s + n, 0);
+        const top = Object.entries(byCategory)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5);
+        const CAT_COLORS = ['var(--color-accent)', '#10b981', '#f59e0b', '#8b5cf6', '#a1a1aa'];
+        return (
+          <div style={{
+            marginBottom: 24,
+            background: C.surface,
+            border: `1px solid ${C.border}`,
+            borderRadius: 16,
+            padding: '20px 24px',
+            fontFamily: FONT,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+              marginBottom: 16,
+            }}>
+              <div style={{
+                fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: '-0.01em',
+              }}>
+                Структура расходов
+              </div>
+              <div style={{ fontSize: 12, color: C.textTertiary, fontVariantNumeric: 'tabular-nums' }}>
+                Всего: <span style={{ fontWeight: 700, color: C.text }}>
+                  {new Intl.NumberFormat('ru-RU').format(total)} ₴
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {top.map(([cat, amount], i) => {
+                const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+                return (
+                  <div key={cat}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontSize: 13, marginBottom: 6,
+                    }}>
+                      <span style={{ color: C.text, fontWeight: 500 }}>{cat}</span>
+                      <span style={{
+                        color: C.textTertiary, fontVariantNumeric: 'tabular-nums',
+                      }}>
+                        {pct}% · <span style={{ color: C.text, fontWeight: 700 }}>
+                          {new Intl.NumberFormat('ru-RU').format(amount)} ₴
+                        </span>
+                      </span>
+                    </div>
+                    <div style={{
+                      height: 6, borderRadius: 4,
+                      background: C.surfaceElevated, overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%', width: `${pct}%`,
+                        background: CAT_COLORS[i] ?? CAT_COLORS[CAT_COLORS.length - 1],
+                        borderRadius: 4,
+                        transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Lost-revenue insights — где теряются деньги (дыры в расписании,
           спящие клиенты, апсейл, цены). Дополняет свободный AI-чат ниже. */}
       <div style={{ marginBottom: 24 }}>
