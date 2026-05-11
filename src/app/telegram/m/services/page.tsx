@@ -299,6 +299,7 @@ export default function MasterMiniAppServicesTab() {
 }
 
 function ServiceRowCard({ s, i, t, onTap, lang }: { s: Service; i: number; t: typeof I18N['ru']; onTap: () => void; lang: MiniAppLang }) {
+  const color = s.color || T.accent;
   return (
     <motion.button
       type="button"
@@ -307,33 +308,43 @@ function ServiceRowCard({ s, i, t, onTap, lang }: { s: Service; i: number; t: ty
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.02 }}
       style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 14px', borderRadius: R.md,
+        display: 'flex', alignItems: 'stretch', gap: 0,
+        borderRadius: R.md,
         border: `1px solid ${T.borderSubtle}`,
         background: s.is_active ? T.surface : T.bgSubtle,
-        opacity: s.is_active ? 1 : 0.6,
+        opacity: s.is_active ? 1 : 0.65,
         boxShadow: SHADOW.card,
         cursor: 'pointer',
         textAlign: 'left',
         fontFamily: 'inherit',
         width: '100%',
+        overflow: 'hidden',
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {getServiceName(s, lang)}
-        </p>
-        <p style={{ margin: '2px 0 0', fontSize: 11, color: T.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Clock size={11} />
-          {s.duration_minutes} {t.minutes}
-        </p>
+      {/* Color bar — Open Design master-services.html signature */}
+      <div style={{
+        width: 4,
+        background: color,
+        flexShrink: 0,
+      }} />
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        flex: 1, padding: '12px 14px', minWidth: 0,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: T.text, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {getServiceName(s, lang)}
+          </p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: T.textTertiary, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Clock size={11} />
+            <span>{s.duration_minutes} {t.minutes}</span>
+            <span style={{ color: T.textTertiary }}>·</span>
+            <span style={{ fontWeight: 700, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
+              {Number(s.price).toFixed(0)} {s.currency === 'UAH' ? '₴' : s.currency}
+            </span>
+          </p>
+        </div>
       </div>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: T.text, fontVariantNumeric: 'tabular-nums' }}>
-        {Number(s.price).toFixed(0)}{' '}
-        <span style={{ fontSize: 11, fontWeight: 500, color: T.textTertiary }}>
-          {s.currency === 'UAH' ? '₴' : s.currency}
-        </span>
-      </p>
     </motion.button>
   );
 }
