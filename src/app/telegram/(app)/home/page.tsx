@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
 import {
@@ -266,7 +267,7 @@ export default function MiniAppHomePage() {
   }, [t]);
 
   return (
-    <MobilePage>
+    <MobilePage className="od-client-mini-app">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

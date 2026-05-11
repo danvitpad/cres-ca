@@ -1,0 +1,255 @@
+/** --- YAML
+ * name: ODClientMiniAppStyles
+ * description: Дословный перенос CSS из Open Design client-mini-app.html
+ *   мобильного экрана (строки 90-186). Скоуп — `.od-client-mini-app`.
+ * --- */
+
+.od-client-mini-app {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-fg: #ffffff;
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-cs-bg: var(--m-bg, #f5f7fa);
+  --od-r-md: 0.5rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Screen header */
+.od-client-mini-app .sc-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 8px;
+}
+.od-client-mini-app .sc-hd-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.015em;
+}
+.od-client-mini-app .sc-hd-sub {
+  font-size: 0.6875rem;
+  color: var(--od-fg-3);
+  margin-top: 2px;
+}
+
+/* Avatars */
+.od-client-mini-app .av {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.od-client-mini-app .av-sm { width: 28px; height: 28px; font-size: 0.5625rem; }
+.od-client-mini-app .av-md { width: 40px; height: 40px; font-size: 0.75rem; }
+.od-client-mini-app .av-lg { width: 56px; height: 56px; font-size: 0.9375rem; }
+.od-client-mini-app .av-xl { width: 72px; height: 72px; font-size: 1.125rem; }
+.od-client-mini-app .av-cobalt {
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+  border: 2px solid var(--od-surface);
+}
+
+/* Section label */
+.od-client-mini-app .sec-lbl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--od-fg-3);
+}
+.od-client-mini-app .sec-lbl-link {
+  color: var(--od-accent);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* Next visit hero */
+.od-client-mini-app .vh-card {
+  margin: 4px 16px 0;
+  padding: 18px;
+  border-radius: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+}
+.od-client-mini-app .vh-label {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+  margin-bottom: 12px;
+}
+.od-client-mini-app .vh-master {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.od-client-mini-app .vh-master .av {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.od-client-mini-app .vh-name {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.od-client-mini-app .vh-svc {
+  font-size: 0.75rem;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+.od-client-mini-app .vh-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.od-client-mini-app .vh-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  opacity: 0.85;
+  font-weight: 500;
+}
+.od-client-mini-app .vh-actions {
+  display: flex;
+  gap: 8px;
+}
+.od-client-mini-app .vh-btn {
+  flex: 1;
+  padding: 9px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.od-client-mini-app .vh-btn:active { transform: scale(0.97); }
+.od-client-mini-app .vh-btn.primary {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+.od-client-mini-app .vh-btn.secondary {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2563eb;
+}
+
+/* Horizontal scroll */
+.od-client-mini-app .hscroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 20px 8px;
+  scrollbar-width: none;
+}
+.od-client-mini-app .hscroll::-webkit-scrollbar { display: none; }
+
+/* Master circle card */
+.od-client-mini-app .mcard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 72px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-mini-app .mcard-name {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  text-align: center;
+  max-width: 72px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.od-client-mini-app .mcard-niche {
+  font-size: 0.5625rem;
+  color: var(--od-fg-3);
+  text-align: center;
+}
+
+/* Slot card */
+.od-client-mini-app .slot-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px 8px;
+  padding: 14px 16px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-mini-app .sc-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--od-fg);
+}
+.od-client-mini-app .sc-sub {
+  font-size: 0.6875rem;
+  color: var(--od-fg-3);
+  margin-top: 2px;
+}
+.od-client-mini-app .sc-price {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--od-accent);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.od-client-mini-app .sc-book {
+  font-size: 0.625rem;
+  color: var(--od-success);
+  text-align: right;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* FAB */
+.od-client-mini-app .fab {
+  position: fixed;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
+  border: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.od-client-mini-app .fab:active { transform: scale(0.93); }
