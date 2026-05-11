@@ -91,9 +91,9 @@ export default function MasterMiniAppPartnersList() {
           в нижней навигации. Дублировать переключатель не нужно, плюс верхняя
           часть пересекалась с floating-аватаром. Убрано 2026-05-08. */}
 
-      <header className="flex items-center gap-2">
-        <Handshake className="size-5 text-[var(--m-accent)]" />
-        <h1 className="text-base font-bold tracking-tight">Партнёрство</h1>
+      <header className="flex items-center gap-2.5">
+        <Handshake className="size-6 text-[var(--m-accent)]" />
+        <h1 className="text-[28px] font-extrabold tracking-[-0.02em] leading-none">Партнёрство</h1>
       </header>
 
       {items.length === 0 ? (
