@@ -454,13 +454,16 @@ export default function FinancePage() {
 
   return (
     <div style={{ ...pageContainer, color: C.text, background: C.bg, minHeight: '100%', paddingBottom: 96 }}>
-      {/* Header: title + period dropdown */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      {/* Header: title + period dropdown (Open Design: 28px bold) */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 600, color: C.text, margin: 0, letterSpacing: '-0.3px' }}>
+          <h1 style={{
+            fontSize: 28, fontWeight: 700, color: C.text,
+            margin: 0, letterSpacing: '-0.02em', lineHeight: 1,
+          }}>
             Финансы
           </h1>
-          <p style={{ fontSize: 13, color: C.textTertiary, margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: 14, color: C.textTertiary, margin: '6px 0 0' }}>
             {format(period.start, 'd MMM', { locale: dfLocale })} — {format(period.end, 'd MMM yyyy', { locale: dfLocale })}
           </p>
         </div>

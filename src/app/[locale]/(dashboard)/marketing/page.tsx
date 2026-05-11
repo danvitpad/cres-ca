@@ -66,15 +66,15 @@ export default function MarketingPage() {
       background: C.bg,
       minHeight: '100%',
     }}>
-      {/* Header */}
+      {/* Header (Open Design: 28px bold) */}
       <div style={{ marginBottom: 8 }}>
         <h1 style={{
-          fontSize: 24, fontWeight: 600, color: C.text, letterSpacing: '-0.3px',
-          margin: 0,
+          fontSize: 28, fontWeight: 700, color: C.text,
+          letterSpacing: '-0.02em', margin: 0, lineHeight: 1,
         }}>
           Маркетинг
         </h1>
-        <p style={{ fontSize: 13, color: C.textTertiary, margin: '4px 0 0' }}>
+        <p style={{ fontSize: 14, color: C.textTertiary, margin: '6px 0 0' }}>
           Рассылки, автоматика, акции, отзывы и рекомендации
         </p>
       </div>
