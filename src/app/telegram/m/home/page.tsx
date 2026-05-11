@@ -16,11 +16,12 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Clock, Coins, CalendarDays, CheckCircle2, PlayCircle, Hourglass, Cake, Lightbulb } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
-import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import { MobilePage } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached } from '@/lib/miniapp/cache';
 import { createClient } from '@/lib/supabase/client';
+import '@/styles/od-master-dashboard.css';
 
 type Status = 'booked' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show' | 'cancelled_by_client';
 
@@ -327,238 +328,161 @@ export default function MasterMiniAppHome() {
   };
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-dashboard">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+        style={{ padding: `8px ${PAGE_PADDING_X}px 0` }}
       >
-        {/* Аватар справа не передаём — глобальный <MiniAppHeaderAvatar /> уже
-            рендерит фикс-круг в правом верхнем углу на каждом табе мастера
-            (см. layout.tsx). Дубликат удалён 2026-05-11. */}
-        <PageHeader
-          title={firstName ? `${greeting}, ${firstName}` : greeting}
-          subtitle={new Date().toLocaleDateString(
-            lang === 'uk' ? 'uk-UA' : lang === 'ru' ? 'ru-RU' : 'en-US',
-            { weekday: 'long', day: 'numeric', month: 'long' },
-          )}
-        />
-
-        {/* KPI Strip — 3 cards, accent-left на доходе дня */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 10,
-          padding: `0 ${PAGE_PADDING_X}px`,
-        }}>
-          <KpiCard label={t.kpiRevenue} value={fmtMoney(revenue)} accent />
-          <KpiCard label={t.kpiCompleted} value={String(completed.length)} sub={t.recordsWord(completed.length)} />
-          <KpiCard label={t.kpiUpcoming} value={String(upcoming.length)} sub={t.recordsWord(upcoming.length)} />
+        {/* Литерально .mobile-header из OD master-dashboard.html (два
+            .mobile-greeting на двух строках: «Доброго дня,» / «Имя!»).
+            Avatar справа не рендерим — глобальный MiniAppHeaderAvatar
+            уже сидит фикс top-right. */}
+        <div className="mobile-header card-enter" style={{ ['--i' as 'i']: 0 } as React.CSSProperties}>
+          <div>
+            <div className="mobile-greeting">{greeting},</div>
+            {firstName && <div className="mobile-greeting">{firstName}!</div>}
+          </div>
         </div>
 
-        {/* AI Tip card — Open Design «Нагадування ШИ» */}
+        {/* Литерально .mobile-kpi-strip — 3 карточки. Revenue с .kpi-success
+            (зелёный левый border). */}
+        <div className="mobile-kpi-strip">
+          <div className="mobile-kpi-card kpi-success card-enter" style={{ ['--i' as 'i']: 1 } as React.CSSProperties}>
+            <div className="mobile-kpi-label">{t.kpiRevenue}</div>
+            <div className="mobile-kpi-value">{fmtMoney(revenue)}</div>
+            <div className="mobile-kpi-sub">{t.recordsWord(completed.length)}</div>
+          </div>
+          <div className="mobile-kpi-card card-enter" style={{ ['--i' as 'i']: 2 } as React.CSSProperties}>
+            <div className="mobile-kpi-label">{t.kpiCompleted}</div>
+            <div className="mobile-kpi-value">{completed.length}</div>
+            <div className="mobile-kpi-sub">{t.recordsWord(completed.length)}</div>
+          </div>
+          <div className="mobile-kpi-card card-enter" style={{ ['--i' as 'i']: 3 } as React.CSSProperties}>
+            <div className="mobile-kpi-label">{t.kpiUpcoming}</div>
+            <div className="mobile-kpi-value">{upcoming.length}</div>
+            <div className="mobile-kpi-sub">{t.recordsWord(upcoming.length)}</div>
+          </div>
+        </div>
+
+        {/* AI Tip — литерально .ai-tip-card / .ai-tip-icon / .ai-tip-label /
+            .ai-tip-text из OD. Иконка Lightbulb (Sparkles запрещён правилом
+            CLAUDE.md). */}
         {aiTip && (
-          <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
-            <div style={{
-              display: 'flex',
-              gap: 12,
-              padding: 14,
-              borderRadius: R.md,
-              background: T.accentSoft,
-              border: `1px solid color-mix(in oklab, ${T.accent} 25%, transparent)`,
-            }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: R.sm,
-                background: T.accent, color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <Lightbulb size={18} strokeWidth={2.25} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-                  textTransform: 'uppercase', color: T.accent,
-                  marginBottom: 3,
-                }}>
-                  Подсказка
-                </div>
-                <div style={{ fontSize: 13, lineHeight: 1.45, color: T.text }}>
-                  {aiTip}
-                </div>
-              </div>
+          <div className="ai-tip-card card-enter" style={{ ['--i' as 'i']: 4 } as React.CSSProperties}>
+            <div className="ai-tip-icon">
+              <Lightbulb strokeWidth={2.25} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="ai-tip-label">{lang === 'uk' ? 'Нагадування' : lang === 'en' ? 'Reminder' : 'Подсказка'}</div>
+              <div className="ai-tip-text">{aiTip}</div>
             </div>
           </div>
         )}
 
-        {/* Timeline today — Open Design master-dashboard mobile.
-            Section title: «09:00–19:00» (диапазон рабочего дня) · «4 записи»
-            справа. Без записей — только «Сегодня». Линка «Открыть календарь»
-            нет — клиент уже на табе «Главная», календарь живёт под bottom-nav
-            рядом, поэтому inline-counter информативнее. */}
-        <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
-          <div style={{
-            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            marginBottom: 10,
-          }}>
-            <h2 style={{
-              ...TYPE.h2, color: T.text,
-              fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em',
-            }}>
-              {dayRange ?? t.todayTimeline}
-            </h2>
-            {visibleRows.length > 0 && (
-              <span style={{
-                fontSize: 12, fontWeight: 500, color: T.textTertiary,
-              }}>
-                {visibleRows.length} {t.recordsWord(visibleRows.length)}
-              </span>
-            )}
-            {visibleRows.length === 0 && (
-              <Link
-                href="/telegram/m/calendar"
-                style={{ fontSize: 12, fontWeight: 600, color: T.accent, textDecoration: 'none' }}
-              >
-                {t.openCalendar} →
-              </Link>
-            )}
-          </div>
-
-          {!loaded ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {[0, 1, 2].map((i) => (
-                <div key={i} style={{
-                  height: 76, borderRadius: R.md,
-                  background: T.surfaceElevated, opacity: 0.5,
-                }} />
-              ))}
-            </div>
-          ) : visibleRows.length === 0 ? (
-            <div style={{
-              padding: 24,
-              borderRadius: R.md,
-              background: T.surface,
-              border: `1px solid ${T.borderSubtle}`,
-              textAlign: 'center',
-              boxShadow: SHADOW.card,
-            }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: R.pill,
-                background: T.surfaceElevated, color: T.textTertiary,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 12px',
-              }}>
-                <CalendarDays size={20} />
-              </div>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emptyTitle}</p>
-              <p style={{ ...TYPE.caption, marginTop: 4 }}>{t.emptyText}</p>
-            </div>
+        {/* Section Title — литерально .section-title / .section-title-muted */}
+        <div className="section-title card-enter" style={{ ['--i' as 'i']: 5 } as React.CSSProperties}>
+          <span>{dayRange ?? t.todayTimeline}</span>
+          {visibleRows.length > 0 ? (
+            <span className="section-title-muted">
+              {visibleRows.length} {t.recordsWord(visibleRows.length)}
+            </span>
           ) : (
-            <ul style={{
-              listStyle: 'none', margin: 0, padding: 0,
-              display: 'flex', flexDirection: 'column', gap: 8,
-            }}>
-              {timelineItems.map((item, idx) => {
-                if (item.kind === 'gap') {
-                  return (
-                    <li
-                      key={`gap-${idx}`}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '2px 4px',
-                      }}
-                    >
-                      <span style={{ flex: 1, height: 1, background: T.borderSubtle }} />
-                      <span style={{
-                        fontSize: 10, color: T.textTertiary, whiteSpace: 'nowrap',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}>
-                        {item.from} · {item.to}
-                      </span>
-                      <span style={{ flex: 1, height: 1, background: T.borderSubtle }} />
-                    </li>
-                  );
-                }
-                const r = item.appt;
-                const startMs = new Date(r.starts_at).getTime();
-                const endMs = new Date(r.ends_at).getTime();
-                const isCurrent = r.status === 'in_progress' || (startMs <= now && endMs >= now && r.status !== 'completed');
-                return (
-                  <li key={r.id}>
-                    <Link
-                      href={`/telegram/m/calendar?id=${r.id}`}
-                      style={{
-                        display: 'flex', gap: 12, padding: 14,
-                        background: T.surface,
-                        border: `1px solid ${isCurrent ? T.accent : T.borderSubtle}`,
-                        borderRadius: R.md,
-                        textDecoration: 'none',
-                        color: T.text,
-                        boxShadow: isCurrent ? SHADOW.cardHover : SHADOW.card,
-                        transition: 'box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }}
-                    >
-                      <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center',
-                        minWidth: 46, gap: 2,
-                      }}>
-                        <span style={{
-                          fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em',
-                          fontVariantNumeric: 'tabular-nums',
-                          color: isCurrent ? T.accent : T.text,
-                        }}>
-                          {fmtTime(r.starts_at)}
-                        </span>
-                        <span style={{ fontSize: 11, color: T.textTertiary }}>
-                          {r.duration_min}m
-                        </span>
-                      </div>
-                      <div style={{
-                        width: 1, alignSelf: 'stretch',
-                        background: isCurrent ? T.accent : T.borderSubtle,
-                      }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{
-                          ...TYPE.bodyStrong, color: T.text, margin: 0,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {r.client_name}
-                        </p>
-                        <p style={{
-                          ...TYPE.caption, margin: '2px 0 0',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {r.service_name}
-                        </p>
-                        <div style={{
-                          display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
-                          flexWrap: 'wrap',
-                        }}>
-                          {r.price > 0 && (
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 3,
-                              fontSize: 12, fontWeight: 700, color: T.text,
-                              fontVariantNumeric: 'tabular-nums',
-                            }}>
-                              <Coins size={11} strokeWidth={2.25} />
-                              {fmtMoney(r.price)}
-                            </span>
-                          )}
-                          <StatusBadge status={r.status} isCurrent={isCurrent} t={t} />
-                        </div>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <Link
+              href="/telegram/m/calendar"
+              className="section-title-muted"
+              style={{ textDecoration: 'none', color: 'var(--m-accent)' }}
+            >
+              {t.openCalendar} →
+            </Link>
           )}
         </div>
 
-        {/* Ближайшие ДР */}
+        {!loaded ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[0, 1, 2].map((i) => (
+              <div key={i} style={{
+                height: 76, borderRadius: 12,
+                background: 'var(--m-surface-elevated)', opacity: 0.5,
+              }} />
+            ))}
+          </div>
+        ) : visibleRows.length === 0 ? (
+          <div style={{
+            padding: 24,
+            borderRadius: 12,
+            background: 'var(--m-surface)',
+            border: `1px solid var(--m-border)`,
+            textAlign: 'center',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: 'var(--m-surface-elevated)', color: 'var(--m-text-tertiary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 12px',
+            }}>
+              <CalendarDays size={20} />
+            </div>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text)', margin: 0 }}>{t.emptyTitle}</p>
+            <p style={{ fontSize: 12, color: 'var(--m-text-tertiary)', marginTop: 4 }}>{t.emptyText}</p>
+          </div>
+        ) : (
+          /* Литерально .mobile-appt-list — flex column gap:8px.
+             Внутри .mobile-appt-card / .mobile-appt-card.current с time-col,
+             divider, body (client / service / meta + badge). Между не
+             соседними визитами — .time-gap (line + label). */
+          <div className="mobile-appt-list">
+            {timelineItems.map((item, idx) => {
+              if (item.kind === 'gap') {
+                return (
+                  <div className="time-gap" key={`gap-${idx}`}>
+                    <div className="time-gap-line" />
+                    <span className="time-gap-label">{item.from} · {item.to}</span>
+                    <div className="time-gap-line" />
+                  </div>
+                );
+              }
+              const r = item.appt;
+              const startMs = new Date(r.starts_at).getTime();
+              const endMs = new Date(r.ends_at).getTime();
+              const isCurrent = r.status === 'in_progress' || (startMs <= now && endMs >= now && r.status !== 'completed');
+              return (
+                <Link
+                  key={r.id}
+                  href={`/telegram/m/calendar?id=${r.id}`}
+                  className={`mobile-appt-card card-enter${isCurrent ? ' current' : ''}`}
+                  style={{ ['--i' as 'i']: 6 + idx } as React.CSSProperties}
+                >
+                  <div className="appt-time-col">
+                    <div className="appt-time" style={isCurrent ? { color: 'var(--m-accent)' } : undefined}>
+                      {fmtTime(r.starts_at)}
+                    </div>
+                  </div>
+                  <div className="appt-divider" style={isCurrent ? { background: 'var(--m-accent)' } : undefined} />
+                  <div className="appt-body">
+                    <div className="appt-client">{r.client_name}</div>
+                    <div className="appt-service">{r.service_name}</div>
+                    <div className="appt-meta">
+                      <span className="appt-duration">
+                        <Clock />
+                        {r.duration_min} {lang === 'en' ? 'min' : 'мин'}
+                      </span>
+                      {r.price > 0 && (
+                        <span className="appt-price">{fmtMoney(r.price)}</span>
+                      )}
+                      <StatusBadge status={r.status} isCurrent={isCurrent} t={t} />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Ближайшие ДР — наша секция вне OD эталона, сохраняем как есть */}
         {upcomingBirthdays.length > 0 && (
-          <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+          <div style={{ marginTop: 20 }}>
             <h2 style={{
               ...TYPE.h2, color: T.text, marginBottom: 10,
               display: 'flex', alignItems: 'center', gap: 8,
@@ -619,56 +543,32 @@ export default function MasterMiniAppHome() {
   );
 }
 
+/**
+ * Литерально .mobile-kpi-card / .mobile-kpi-label / .mobile-kpi-value /
+ * .mobile-kpi-sub из OD master-dashboard.html. accent — добавляет
+ * .kpi-success (зелёный left-border).
+ */
 function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
   return (
-    <div style={{
-      padding: 14,
-      borderRadius: R.md,
-      background: T.surface,
-      border: `1px solid ${T.borderSubtle}`,
-      borderLeft: accent ? `3px solid ${T.accent}` : undefined,
-      boxShadow: SHADOW.card,
-      fontVariantNumeric: 'tabular-nums',
-      minWidth: 0,
-    }}>
-      <div style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: '0.08em',
-        textTransform: 'uppercase', color: T.textTertiary,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em',
-        color: T.text, marginTop: 6, lineHeight: 1.1,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {value}
-      </div>
-      {sub && (
-        <div style={{ fontSize: 11, color: T.textTertiary, marginTop: 3 }}>
-          {sub}
-        </div>
-      )}
+    <div className={`mobile-kpi-card${accent ? ' kpi-success' : ''}`}>
+      <div className="mobile-kpi-label">{label}</div>
+      <div className="mobile-kpi-value">{value}</div>
+      {sub && <div className="mobile-kpi-sub">{sub}</div>}
     </div>
   );
 }
 
+/**
+ * Литерально .badge / .badge-current / .badge-done / .badge-next из OD
+ * master-dashboard.html. Маппинг наших статусов в OD классы:
+ *   in_progress / isCurrent → .badge-current («Зараз»)
+ *   completed              → .badge-done    («Завершено»)
+ *   booked / confirmed      → .badge-next    («Очікує»)
+ *   cancelled / no_show     → .badge-next (нейтрально серый)
+ */
 function StatusBadge({ status, isCurrent, t }: { status: Status; isCurrent: boolean; t: typeof I18N['ru'] }) {
   const isDone = status === 'completed';
-  const Icon = isCurrent ? PlayCircle : isDone ? CheckCircle2 : Hourglass;
+  const cls = isCurrent ? 'badge-current' : isDone ? 'badge-done' : 'badge-next';
   const label = isCurrent ? t.now : t.status[status];
-  const bg = isCurrent ? T.accentSoft : isDone ? T.successSoft : T.surfaceElevated;
-  const color = isCurrent ? T.accent : isDone ? T.success : T.textSecondary;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 8px', borderRadius: R.pill,
-      background: bg, color,
-      fontSize: 11, fontWeight: 600, letterSpacing: '-0.005em',
-    }}>
-      <Icon size={11} strokeWidth={2.5} />
-      {label}
-    </span>
-  );
+  return <span className={`badge ${cls}`}>{label}</span>;
 }

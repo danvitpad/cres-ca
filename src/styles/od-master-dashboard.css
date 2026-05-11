@@ -1,0 +1,303 @@
+/** --- YAML
+ * name: ODMasterDashboardStyles
+ * description: Дословный перенос CSS из Open Design master-dashboard.html
+ *   мобильного экрана (iPhone 15 Pro frame, строки 296-577). Скоуп —
+ *   `.od-master-dashboard` контейнер.
+ * --- */
+
+.od-master-dashboard {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-border: var(--m-accent, rgba(37, 99, 235, 0.3));
+  --od-accent-fg: #ffffff;
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-bg-2: var(--m-surface-elevated, #f1f5f9);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-sh-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --od-dur-base: 200ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-r-full: 9999px;
+}
+
+/* Mobile Header — OD master-dashboard.html строки 324-351 */
+.od-master-dashboard .mobile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-top: 4px;
+}
+.od-master-dashboard .mobile-greeting {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--od-fg);
+  line-height: 1.2;
+}
+.od-master-dashboard .avatar-sm {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+/* Mobile KPI Strip — OD строки 353-404 */
+.od-master-dashboard .mobile-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.od-master-dashboard .mobile-kpi-card {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 12px;
+  padding: 14px 12px;
+  font-variant-numeric: tabular-nums;
+  transition: transform var(--od-dur-base) var(--od-ease-out),
+              box-shadow var(--od-dur-base) var(--od-ease-out),
+              border-color var(--od-dur-base) var(--od-ease-out);
+  cursor: pointer;
+}
+.od-master-dashboard .mobile-kpi-card.kpi-success {
+  border-left: 3px solid var(--od-success);
+}
+.od-master-dashboard .mobile-kpi-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--od-fg-3);
+  margin-bottom: 4px;
+}
+.od-master-dashboard .mobile-kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--od-fg);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.od-master-dashboard .mobile-kpi-sub {
+  font-size: 10px;
+  color: var(--od-fg-3);
+}
+.od-master-dashboard .mobile-kpi-delta {
+  font-size: 10px;
+  color: var(--od-success);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* AI Tip Card — OD строки 406-441 */
+.od-master-dashboard .ai-tip-card {
+  background: var(--od-accent-soft);
+  border: 1px solid var(--od-accent-border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.od-master-dashboard .ai-tip-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-master-dashboard .ai-tip-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.od-master-dashboard .ai-tip-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--od-accent);
+  margin-bottom: 4px;
+}
+.od-master-dashboard .ai-tip-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--od-fg-2);
+}
+
+/* Timeline Section Title — OD строки 443-458 */
+.od-master-dashboard .section-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--od-fg);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.od-master-dashboard .section-title-muted {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--od-fg-3);
+}
+
+/* Appointment Cards — OD строки 460-538 */
+.od-master-dashboard .mobile-appt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.od-master-dashboard .mobile-appt-card {
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  transition: transform var(--od-dur-base) var(--od-ease-out),
+              box-shadow var(--od-dur-base) var(--od-ease-out),
+              border-color var(--od-dur-base) var(--od-ease-out);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--od-fg);
+}
+.od-master-dashboard .mobile-appt-card:active {
+  transform: scale(0.98);
+  box-shadow: var(--od-sh-lg);
+  border-color: var(--od-border-2);
+}
+.od-master-dashboard .mobile-appt-card.current {
+  background: var(--od-accent-soft);
+  border: 1px solid var(--od-accent-border);
+  border-left: 3px solid var(--od-accent);
+}
+.od-master-dashboard .appt-time-col {
+  min-width: 38px;
+  text-align: right;
+}
+.od-master-dashboard .appt-time {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--od-fg-3);
+  font-variant-numeric: tabular-nums;
+}
+.od-master-dashboard .appt-divider {
+  width: 1px;
+  background: var(--od-border);
+  align-self: stretch;
+  flex-shrink: 0;
+}
+.od-master-dashboard .appt-body {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-dashboard .appt-client {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--od-fg);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.od-master-dashboard .appt-service {
+  font-size: 11px;
+  color: var(--od-fg-3);
+  margin-bottom: 4px;
+}
+.od-master-dashboard .appt-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.od-master-dashboard .appt-duration {
+  font-size: 10px;
+  color: var(--od-fg-3);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.od-master-dashboard .appt-duration svg {
+  width: 10px;
+  height: 10px;
+}
+.od-master-dashboard .appt-price {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--od-fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status Badges — OD строки 540-559 */
+.od-master-dashboard .badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: var(--od-r-full);
+}
+.od-master-dashboard .badge-current {
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+}
+.od-master-dashboard .badge-done {
+  background: var(--od-success-soft);
+  color: var(--od-success);
+}
+.od-master-dashboard .badge-next {
+  background: var(--od-bg-2);
+  color: var(--od-fg-3);
+}
+
+/* Time Gap — OD строки 561-577 */
+.od-master-dashboard .time-gap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.od-master-dashboard .time-gap-line {
+  flex: 1;
+  height: 1px;
+  background: var(--od-border);
+}
+.od-master-dashboard .time-gap-label {
+  font-size: 10px;
+  color: var(--od-fg-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card Enter Animation — OD строки 68-84 */
+@keyframes od-md-slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.od-master-dashboard .card-enter {
+  animation: od-md-slideUp 400ms var(--od-ease-out) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
