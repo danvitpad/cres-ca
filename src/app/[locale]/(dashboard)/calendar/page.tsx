@@ -534,8 +534,8 @@ export default function CalendarPage() {
 
   const masterName = master.profile?.full_name || '';
 
-  /* ═══ Сводка дня — для page title chip (только когда view=day) ═══ */
-  const daySummary = (() => {
+  /* ═══ Сводка дня (Open Design: page title chip + right-side panel) ═══ */
+  const dayInfo2 = (() => {
     if (view !== 'day') return null;
     const dayStart = new Date(currentDate);
     dayStart.setHours(0, 0, 0, 0);
@@ -545,10 +545,59 @@ export default function CalendarPage() {
       const d = new Date(a.starts_at);
       return d >= dayStart && d <= dayEnd && a.status !== 'cancelled' && a.status !== 'cancelled_by_client';
     });
-    const revenue = todayAppts
-      .filter((a) => a.status === 'completed')
-      .reduce((s, a) => s + (Number(a.price) || 0), 0);
-    return { count: todayAppts.length, revenue };
+    const completed = todayAppts.filter((a) => a.status === 'completed');
+    const revenue = completed.reduce((s, a) => s + (Number(a.price) || 0), 0);
+    // Occupancy: занятые минуты vs рабочие минуты
+    const workMinutesTotal = dayWorkIntervals.reduce((s, iv) => s + (iv.endMin - iv.startMin), 0);
+    let occupiedMinutes = 0;
+    for (const a of todayAppts) {
+      const s = new Date(a.starts_at).getTime();
+      const e = new Date(a.ends_at).getTime();
+      occupiedMinutes += Math.max(0, Math.round((e - s) / 60000));
+    }
+    const occupancy = workMinutesTotal > 0
+      ? Math.min(100, Math.round((occupiedMinutes / workMinutesTotal) * 100))
+      : 0;
+    // Next free slot: ближайший gap в рабочих интервалах после current time
+    const now = new Date();
+    const isToday = currentDate.toDateString() === now.toDateString();
+    const nowMin = isToday ? now.getHours() * 60 + now.getMinutes() : 0;
+    const sortedAppts = [...todayAppts].sort((a, b) =>
+      new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+    );
+    let nextFree: { start: number; end: number } | null = null;
+    for (const iv of dayWorkIntervals) {
+      let cursor = Math.max(iv.startMin, nowMin);
+      const intervalAppts = sortedAppts.filter((a) => {
+        const s = new Date(a.starts_at);
+        const m = s.getHours() * 60 + s.getMinutes();
+        return m >= iv.startMin && m < iv.endMin;
+      });
+      for (const a of intervalAppts) {
+        const s = new Date(a.starts_at);
+        const e = new Date(a.ends_at);
+        const sMin = s.getHours() * 60 + s.getMinutes();
+        const eMin = e.getHours() * 60 + e.getMinutes();
+        if (sMin >= cursor + 15) {
+          nextFree = { start: cursor, end: sMin };
+          break;
+        }
+        cursor = Math.max(cursor, eMin);
+      }
+      if (nextFree) break;
+      if (cursor + 15 <= iv.endMin) {
+        nextFree = { start: cursor, end: iv.endMin };
+        break;
+      }
+    }
+    return {
+      count: todayAppts.length,
+      completed: completed.length,
+      revenue,
+      occupancy,
+      nextFree,
+      workMinutesTotal,
+    };
   })();
 
   const wordRecords = (n: number) => {
@@ -556,6 +605,12 @@ export default function CalendarPage() {
     if (m10 === 1 && m100 !== 11) return 'запись';
     if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'записи';
     return 'записей';
+  };
+
+  const fmtMin = (totalMin: number) => {
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
 
   return (
@@ -585,7 +640,7 @@ export default function CalendarPage() {
         >
           {t('title') || 'Календарь'}
         </h1>
-        {daySummary && daySummary.count > 0 && (
+        {dayInfo2 && dayInfo2.count > 0 && (
           <div
             style={{
               display: 'inline-flex',
@@ -604,9 +659,9 @@ export default function CalendarPage() {
           >
             <CalendarDays style={{ width: 14, height: 14, color: F.accent }} />
             <span>
-              {daySummary.count} {wordRecords(daySummary.count)}
-              {daySummary.revenue > 0 && (
-                <> · <span style={{ color: F.accent }}>{new Intl.NumberFormat('ru-RU').format(daySummary.revenue)} ₴</span></>
+              {dayInfo2.count} {wordRecords(dayInfo2.count)}
+              {dayInfo2.revenue > 0 && (
+                <> · <span style={{ color: F.accent }}>{new Intl.NumberFormat('ru-RU').format(dayInfo2.revenue)} ₴</span></>
               )}
             </span>
           </div>
@@ -887,7 +942,7 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Calendar grid + side panel */}
+      {/* Calendar grid + side panel + day stats panel */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
         {/* Calendar */}
         <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
@@ -959,6 +1014,181 @@ export default function CalendarPage() {
             />
           )}
         </div>
+
+        {/* ═══ Day Stats Panel (Open Design): show on day view when booking panel closed ═══ */}
+        {view === 'day' && !sidePanelOpen && dayInfo2 && (
+          <aside
+            className="hidden xl:flex"
+            style={{
+              width: 280,
+              flexShrink: 0,
+              borderLeft: `0.8px solid ${F.toolbarBorder}`,
+              padding: '20px 18px',
+              flexDirection: 'column',
+              gap: 22,
+              overflowY: 'auto',
+              backgroundColor: F.toolbarBg,
+              fontFamily: TS.fontFamily,
+            }}
+          >
+            {/* Quick Actions */}
+            <div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+                textTransform: 'uppercase', color: F.textMuted, marginBottom: 10,
+              }}>
+                Быстрые действия
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => { setNewDrawerGroup(false); setNewDrawerOpen(true); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '11px 14px', borderRadius: 12,
+                    background: F.btnBg, border: `1px solid ${F.btnBorder}`,
+                    color: F.text, fontSize: 13, fontWeight: 500, fontFamily: TS.fontFamily,
+                    cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = F.accentSoft;
+                    e.currentTarget.style.borderColor = F.accent;
+                    e.currentTarget.style.color = F.accent;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = F.btnBg;
+                    e.currentTarget.style.borderColor = F.btnBorder;
+                    e.currentTarget.style.color = F.text;
+                  }}
+                >
+                  <CalendarPlus style={{ width: 15, height: 15 }} />
+                  Новая запись
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlockTimeDefault(undefined);
+                    setEditingBlock(undefined);
+                    setActiveDrawer('blockTime');
+                  }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '11px 14px', borderRadius: 12,
+                    background: F.btnBg, border: `1px solid ${F.btnBorder}`,
+                    color: F.text, fontSize: 13, fontWeight: 500, fontFamily: TS.fontFamily,
+                    cursor: 'pointer', textAlign: 'left',
+                    transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = F.accentSoft;
+                    e.currentTarget.style.borderColor = F.accent;
+                    e.currentTarget.style.color = F.accent;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = F.btnBg;
+                    e.currentTarget.style.borderColor = F.btnBorder;
+                    e.currentTarget.style.color = F.text;
+                  }}
+                >
+                  <Lock style={{ width: 15, height: 15 }} />
+                  Заблокировать время
+                </button>
+              </div>
+            </div>
+
+            {/* Day Stats */}
+            <div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+                textTransform: 'uppercase', color: F.textMuted, marginBottom: 10,
+              }}>
+                Статистика дня
+              </div>
+              <div style={{
+                background: F.popoverBg, border: `1px solid ${F.popoverBorder}`,
+                borderRadius: 14, padding: '14px 16px', fontVariantNumeric: 'tabular-nums',
+              }}>
+                <DayStatRow label="Записи" value={String(dayInfo2.count)} F={F} />
+                <DayStatRow
+                  label="Доход"
+                  value={`${new Intl.NumberFormat('ru-RU').format(dayInfo2.revenue)} ₴`}
+                  valueColor="#10b981"
+                  F={F}
+                />
+                <DayStatRow
+                  label="Завершено"
+                  value={`${dayInfo2.completed} / ${dayInfo2.count}`}
+                  F={F}
+                />
+                <DayStatRow
+                  label="Занятость"
+                  value={`${dayInfo2.occupancy}%`}
+                  valueColor={F.accent}
+                  last
+                  F={F}
+                />
+                {dayInfo2.workMinutesTotal > 0 && (
+                  <div style={{
+                    height: 4, marginTop: 10, borderRadius: 4,
+                    background: F.toolbarBorder, overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      height: '100%', width: `${dayInfo2.occupancy}%`,
+                      background: F.accent, borderRadius: 4,
+                      transition: 'width 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }} />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Next free slot */}
+            {dayInfo2.nextFree && (
+              <div>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
+                  textTransform: 'uppercase', color: F.textMuted, marginBottom: 10,
+                }}>
+                  Следующий свободный
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidePanelTime(fmtMin(dayInfo2.nextFree!.start));
+                    setSidePanelOpen(true);
+                  }}
+                  style={{
+                    width: '100%', padding: '12px 14px',
+                    borderRadius: 12, background: F.popoverBg,
+                    border: `1px solid ${F.popoverBorder}`,
+                    cursor: 'pointer', textAlign: 'left',
+                    fontFamily: TS.fontFamily,
+                    transition: 'all 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = F.accent;
+                    e.currentTarget.style.background = F.accentSoft;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = F.popoverBorder;
+                    e.currentTarget.style.background = F.popoverBg;
+                  }}
+                >
+                  <div style={{
+                    fontSize: 14, fontWeight: 700, color: F.text,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {fmtMin(dayInfo2.nextFree.start)} — {fmtMin(dayInfo2.nextFree.end)}
+                  </div>
+                  <div style={{ fontSize: 12, color: F.textMuted, marginTop: 2 }}>
+                    {dayInfo2.nextFree.end - dayInfo2.nextFree.start} мин · нажмите чтобы записать
+                  </div>
+                </button>
+              </div>
+            )}
+          </aside>
+        )}
 
         {/* ═══ Fresha-style side panel — two columns: clients LEFT, services RIGHT ═══ */}
         {sidePanelOpen && (
@@ -1343,6 +1573,39 @@ export default function CalendarPage() {
         target='[data-tour="calendar-add"]'
         text="Здесь создаются записи и блоки нерабочего времени"
       />
+    </div>
+  );
+}
+
+/* ─── Day Stats row (Open Design panel) ─── */
+function DayStatRow({
+  label, value, valueColor, last, F,
+}: {
+  label: string;
+  value: string;
+  valueColor?: string;
+  last?: boolean;
+  F: TTheme;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '6px 0',
+        marginBottom: last ? 0 : 0,
+        borderBottom: last ? 'none' : `1px solid ${F.toolbarBorder}`,
+      }}
+    >
+      <span style={{ fontSize: 12, color: F.textMuted }}>{label}</span>
+      <span style={{
+        fontSize: 13, fontWeight: 700,
+        color: valueColor ?? F.text,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {value}
+      </span>
     </div>
   );
 }
