@@ -9,7 +9,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pencil, Plus, Loader2, Sparkles } from 'lucide-react';
+import { Pencil, Plus, Loader2, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useIsSalonOwner } from './use-is-salon-owner';
@@ -134,7 +134,7 @@ function BioSheet({
       }
     >
       <p className="mb-3 inline-flex items-center gap-1.5 text-[12px] text-neutral-500">
-        <Sparkles className="size-3.5 text-teal-500" />
+        <Bot className="size-3.5 text-teal-500" />
         Расскажи коротко: атмосфера, специализация, что важно вашей команде.
       </p>
       <textarea

@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
-  ChevronRight, ChevronLeft, Sparkles, Check,
+  ChevronRight, ChevronLeft, Star, Check,
   Loader2, Copy, Send, Clock, Share2, PartyPopper,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -264,7 +264,7 @@ export function OnboardingDialog() {
               {currentStep === 'vertical' && (
                 <>
                   <div className="flex items-center gap-2 mb-1">
-                    <Sparkles className="size-5 text-primary" />
+                    <Star className="size-5 text-primary" />
                     <h3 className="text-lg font-bold tracking-tight">Добро пожаловать!</h3>
                   </div>
                   <p className="text-sm text-muted-foreground mb-5">
@@ -478,7 +478,7 @@ export function OnboardingDialog() {
                     </div>
 
                     <div className="mt-4 rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground flex items-start gap-2">
-                      <Sparkles className="size-3.5 text-primary mt-0.5 shrink-0" />
+                      <Star className="size-3.5 text-primary mt-0.5 shrink-0" />
                       <span>
                         Эти ссылки всегда доступны в <b>Настройках → Приглашение</b>. Можно добавить в Instagram bio или визитку.
                       </span>

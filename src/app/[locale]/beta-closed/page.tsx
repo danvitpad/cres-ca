@@ -8,7 +8,7 @@
  * --- */
 
 import Link from 'next/link';
-import { ArrowLeft, Send, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, Send, ShieldCheck, PartyPopper } from 'lucide-react';
 
 const BOT_BETA_URL = 'https://t.me/crescacom_bot?start=beta';
 
@@ -47,7 +47,7 @@ export default async function BetaClosedPage({
         {/* Benefits of joining beta */}
         <div className="mb-10 rounded-2xl border border-[color-mix(in_oklab,var(--foreground)_12%,transparent)] bg-[color-mix(in_oklab,var(--foreground)_3%,transparent)] p-6">
           <div className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-accent)]">
-            <Sparkles size={16} />
+            <PartyPopper size={16} />
             Что вы получаете как бета-тестировщик
           </div>
           <ul className="space-y-3 text-sm leading-relaxed">

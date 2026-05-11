@@ -18,7 +18,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  ArrowLeft, FileText, Handshake, Sparkles, Send,
+  ArrowLeft, FileText, Handshake, Gift, Send,
   User as UserIcon, Pencil, Trash2, Plus, Check, X,
   TicketPercent, Percent, Megaphone, BarChart3, Users,
 } from 'lucide-react';
@@ -1030,7 +1030,7 @@ function PartnerAiChat({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <Sparkles size={14} style={{ color: C.accent }} />
+        <Gift size={14} style={{ color: C.accent }} />
         <h3 style={{ fontSize: 13, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.1px' }}>
           Запиши в чат всё что знаешь о партнёре
         </h3>

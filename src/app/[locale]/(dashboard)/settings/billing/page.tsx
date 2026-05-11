@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Check, Sparkles, Clock, AlertTriangle, Infinity as InfinityIcon, Receipt, XCircle } from 'lucide-react';
+import { ChevronLeft, Check, Zap, Clock, AlertTriangle, Infinity as InfinityIcon, Receipt, XCircle } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { SUBSCRIPTION_CONFIG, type SubscriptionTier } from '@/types';
@@ -344,7 +344,7 @@ export default function BillingPage() {
                     }`}
                     onClick={() => handleUpgrade(tier)}
                   >
-                    <Sparkles className="size-4" />
+                    <Zap className="size-4" />
                     {upgrading === tier ? t('upgrading') : t('upgradeTo', { tier })}
                   </button>
                 )}

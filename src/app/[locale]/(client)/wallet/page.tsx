@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import {
   Copy,
   Check,
-  Sparkles,
+  Gift,
   UserPlus,
   Star,
   CalendarCheck,
@@ -340,7 +340,7 @@ export default function WalletPage() {
                 </div>
               </div>
               <div className="flex size-14 items-center justify-center rounded-2xl bg-white/12 backdrop-blur ring-1 ring-white/15">
-                <Sparkles className="size-7" />
+                <Gift className="size-7" />
               </div>
             </div>
 
@@ -537,7 +537,7 @@ export default function WalletPage() {
                 value={String(data.invitedCount)}
               />
               <StatCard
-                icon={Sparkles}
+                icon={Gift}
                 label={t('earnedFromReferrals')}
                 value={`${data.referralEarned.toFixed(0)} ₴`}
               />

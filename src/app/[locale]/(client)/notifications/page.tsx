@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Sparkles, Star, Sliders, UserPlus, UserCheck, Users, Loader2, X, Check } from 'lucide-react';
+import { Send, Mail, MessageSquare, Smartphone, Clock, Megaphone, Bell, Inbox, Calendar, Tag, Star, Sliders, UserPlus, UserCheck, Users, Loader2, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { Switch } from '@/components/ui/switch';
@@ -81,7 +81,7 @@ function categorize(n: NotifRow): Exclude<Category, 'all' | 'important'> | 'syst
 const CATEGORY_META: Record<Exclude<Category, 'all' | 'important'> | 'system' | 'social', { icon: React.ComponentType<{ className?: string }>; color: string }> = {
   bookings: { icon: Calendar, color: 'oklch(0.65 0.2 264)' },
   reminders: { icon: Clock, color: 'oklch(0.7 0.18 75)' },
-  promos: { icon: Sparkles, color: 'oklch(0.65 0.22 320)' },
+  promos: { icon: Tag, color: 'oklch(0.65 0.22 320)' },
   reviews: { icon: Star, color: 'oklch(0.75 0.18 75)' },
   social: { icon: UserPlus, color: 'oklch(0.65 0.18 250)' },
   system: { icon: Bell, color: 'oklch(0.6 0 0)' },

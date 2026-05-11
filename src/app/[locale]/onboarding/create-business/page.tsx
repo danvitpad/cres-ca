@@ -24,7 +24,7 @@ import {
   ImagePlus,
   X as XIcon,
   Scissors,
-  Sparkles,
+  Brush,
   Eye,
   Star,
   Stethoscope,
@@ -69,7 +69,7 @@ type CategoryDef = {
 const CATEGORIES: readonly CategoryDef[] = [
   // Beauty
   { key: 'categoryHairdressing', icon: Scissors, verticals: ['beauty'] },
-  { key: 'categoryNails', icon: Sparkles, verticals: ['beauty'] },
+  { key: 'categoryNails', icon: Brush, verticals: ['beauty'] },
   { key: 'categoryBrowsLashes', icon: Eye, verticals: ['beauty'] },
   { key: 'categoryBeautySalon', icon: Star, verticals: ['beauty'] },
   { key: 'categoryBarber', icon: UserRound, verticals: ['beauty'] },
@@ -82,7 +82,7 @@ const CATEGORIES: readonly CategoryDef[] = [
   { key: 'categoryPhysio', icon: Activity, verticals: ['health'] },
   { key: 'categoryMedical', icon: Heart, verticals: ['health'] },
   // Tattoo
-  { key: 'categoryTattoo', icon: Sparkles, verticals: ['tattoo'] },
+  { key: 'categoryTattoo', icon: Brush, verticals: ['tattoo'] },
   // Fitness
   { key: 'categoryFitness', icon: Dumbbell, verticals: ['fitness'] },
   // Pets

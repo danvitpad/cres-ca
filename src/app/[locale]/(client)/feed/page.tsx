@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin, Sparkles, ChevronRight, Loader2, Search, Users, Wallet } from 'lucide-react';
+import { Calendar, Clock, MapPin, Heart, ChevronRight, Loader2, Search, Users, Wallet } from 'lucide-react';
 import { FeaturedMastersStrip } from '@/components/client/featured-masters-strip';
 import { createClient } from '@/lib/supabase/client';
 
@@ -399,7 +399,7 @@ function EmptyCard({
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-10 text-center">
       <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-teal-100 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300">
-        <Sparkles className="size-5" />
+        <Heart className="size-5" />
       </div>
       <h2 className="mt-4 text-[16px] font-semibold text-neutral-900">{title}</h2>
       <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-neutral-500">{desc}</p>

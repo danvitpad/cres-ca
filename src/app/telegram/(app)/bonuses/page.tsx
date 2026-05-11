@@ -13,7 +13,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Gift } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R, FONT_BASE, PAGE_PADDING_X } from '@/components/miniapp/design';
@@ -74,7 +74,7 @@ export default function MiniAppBonusesPage() {
           marginBottom: 16,
         }}
       >
-        <Sparkles size={26} strokeWidth={2.2} />
+        <Gift size={26} strokeWidth={2.2} />
       </div>
       <h1 style={{ fontSize: 20, fontWeight: 800, color: T.text, margin: 0, letterSpacing: '-0.02em' }}>
         {t.title}

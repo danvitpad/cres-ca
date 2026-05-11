@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Gift, Copy, Check, Send, MessageCircle, Mail, Users, Sparkles } from 'lucide-react';
+import { Gift, Copy, Check, Send, MessageCircle, Mail, Users, Heart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface BonusTx {
@@ -127,7 +127,7 @@ export default function ReferralPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              <Sparkles className="size-3.5 text-primary" />
+              <Heart className="size-3.5 text-primary" />
               Ваш бонусный баланс
             </div>
             <div className="mt-2 text-3xl font-bold text-primary">
