@@ -23,6 +23,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
+import '@/styles/od-master-templates.css';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, SPRING, FONT_BASE } from '@/components/miniapp/design';
 
 interface VariableSpec {
@@ -247,7 +248,7 @@ export default function MasterMiniAppTemplates() {
   }, [userId, refreshKey]);
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-templates">
       <div style={{ padding: `12px ${PAGE_PADDING_X}px 0`, ...FONT_BASE }}>
         <button
           type="button"

@@ -1,0 +1,150 @@
+/** --- YAML
+ * name: ODMasterTemplatesStyles
+ * description: Дословный перенос CSS из Open Design master-templates.html
+ *   мобильного экрана (строки 93-198). Скоуп — `.od-master-templates`.
+ * --- */
+
+.od-master-templates {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-border: var(--m-accent, rgba(37, 99, 235, 0.3));
+  --od-accent-fg: #ffffff;
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-bg-2: var(--m-surface-elevated, #f1f5f9);
+  --od-r-md: 0.5rem;
+  --od-r-lg: 0.75rem;
+  --od-r-xl: 1rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --od-sh-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.od-master-templates .ip-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 8px;
+  flex-shrink: 0;
+}
+.od-master-templates .ip-hd-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--od-fg);
+}
+
+.od-master-templates .ip-tpl-list {
+  padding: 8px 16px 0;
+}
+.od-master-templates .ip-tpl-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-xl);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all var(--od-dur-base) var(--od-ease-out);
+  text-decoration: none;
+  color: inherit;
+}
+.od-master-templates .ip-tpl-item:active {
+  transform: scale(0.97);
+}
+.od-master-templates .ip-tpl-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--od-r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-master-templates .tpl-icon-green { background: var(--od-success-soft); color: var(--od-success); }
+.od-master-templates .tpl-icon-blue { background: var(--od-accent-soft); color: var(--od-accent); }
+.od-master-templates .tpl-icon-red { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+.od-master-templates .tpl-icon-amber { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.od-master-templates .tpl-icon-neutral { background: var(--od-bg-2); color: var(--od-fg-3); }
+
+.od-master-templates .ip-tpl-body {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-templates .ip-tpl-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.od-master-templates .ip-tpl-sub {
+  font-size: 0.75rem;
+  color: var(--od-fg-2);
+  margin: 1px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Switch */
+.od-master-templates .sw {
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--od-border-2);
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  transition: background var(--od-dur-fast) var(--od-ease-out);
+}
+.od-master-templates .sw.on { background: var(--od-accent); }
+.od-master-templates .sw::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px;
+  left: 2px;
+  box-shadow: var(--od-sh-sm);
+  transition: transform var(--od-dur-fast) var(--od-ease-out);
+}
+.od-master-templates .sw.on::after {
+  transform: translateX(16px);
+}
+
+/* Variable chips */
+.od-master-templates .var-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.od-master-templates .var-chip {
+  padding: 4px 10px;
+  border-radius: var(--od-r-full);
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+  border: 1px solid var(--od-accent-border);
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+}
