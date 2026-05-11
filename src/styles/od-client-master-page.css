@@ -1,0 +1,346 @@
+/** --- YAML
+ * name: ODClientMasterPageStyles
+ * description: Дословный перенос CSS из Open Design client-master-page.html
+ *   мобильного экрана (строки 90-230). Скоуп — `.od-client-master-page`.
+ * --- */
+
+.od-client-master-page {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-border: var(--m-accent, rgba(37, 99, 235, 0.3));
+  --od-accent-fg: #ffffff;
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-md: 0.5rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Cover */
+.od-client-master-page .cover {
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, #2563eb 0%, #14b8a6 100%);
+  position: relative;
+  flex-shrink: 0;
+}
+.od-client-master-page .cover-back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  margin: 12px 0 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Profile header */
+.od-client-master-page .profile-hd {
+  padding: 0 20px 0;
+  position: relative;
+  background: var(--od-surface);
+}
+.od-client-master-page .avatar-wrap {
+  position: absolute;
+  top: -44px;
+  left: 20px;
+}
+.od-client-master-page .avatar-ring {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #14b8a6);
+  padding: 3px;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+}
+.od-client-master-page .avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--od-accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--od-accent);
+  border: 2.5px solid var(--od-surface);
+}
+.od-client-master-page .profile-name-row {
+  padding-top: 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.od-client-master-page .profile-name {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.od-client-master-page .profile-niche {
+  font-size: 0.875rem;
+  color: var(--od-fg-2);
+  margin-top: 1px;
+}
+.od-client-master-page .profile-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+}
+.od-client-master-page .star-icon {
+  color: #f59e0b;
+  font-size: 0.875rem;
+}
+.od-client-master-page .rating-val {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--od-fg);
+}
+.od-client-master-page .rating-count {
+  font-size: 0.8125rem;
+  color: var(--od-fg-3);
+}
+
+/* Action row */
+.od-client-master-page .action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px 14px;
+  background: var(--od-surface);
+  border-bottom: 1px solid var(--od-border);
+}
+.od-client-master-page .btn-follow {
+  flex: 1;
+  padding: 9px 16px;
+  border-radius: var(--od-r-full);
+  border: 1.5px solid var(--od-accent);
+  background: transparent;
+  color: var(--od-accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.od-client-master-page .btn-follow.following {
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  border-color: var(--od-accent);
+}
+.od-client-master-page .btn-share {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid var(--od-border-2);
+  background: var(--od-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-fg-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Metrics strip */
+.od-client-master-page .metrics {
+  display: flex;
+  align-items: stretch;
+  background: var(--od-surface);
+  border-bottom: 1px solid var(--od-border);
+}
+.od-client-master-page .metric-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  position: relative;
+}
+.od-client-master-page .metric-item + .metric-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 1px;
+  background: var(--od-border);
+}
+.od-client-master-page .metric-val {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.od-client-master-page .metric-lbl {
+  font-size: 0.625rem;
+  color: var(--od-fg-3);
+  margin-top: 3px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-align: center;
+}
+
+/* Sticky tabs */
+.od-client-master-page .tabs-bar {
+  display: flex;
+  background: var(--od-surface);
+  border-bottom: 2px solid var(--od-border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.od-client-master-page .tabs-bar::-webkit-scrollbar { display: none; }
+.od-client-master-page .tab-item {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 6px 10px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--od-fg-3);
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+}
+.od-client-master-page .tab-item.active {
+  color: var(--od-accent);
+  font-weight: 600;
+}
+.od-client-master-page .tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: var(--od-accent);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Service content */
+.od-client-master-page .svc-content { padding: 0 0 8px; }
+.od-client-master-page .svc-category { margin: 12px 16px 6px; }
+.od-client-master-page .svc-cat-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--od-fg-3);
+  padding: 0 0 6px;
+}
+.od-client-master-page .svc-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 16px 6px;
+  padding: 14px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: 14px;
+}
+.od-client-master-page .svc-info {
+  flex: 1;
+  min-width: 0;
+}
+.od-client-master-page .svc-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  letter-spacing: -0.01em;
+}
+.od-client-master-page .svc-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+}
+.od-client-master-page .svc-dur {
+  font-size: 0.6875rem;
+  color: var(--od-fg-3);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.od-client-master-page .svc-price {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--od-accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+.od-client-master-page .btn-book {
+  padding: 7px 14px;
+  border-radius: var(--od-r-full);
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Sticky bottom CTA */
+.od-client-master-page .bottom-cta {
+  position: sticky;
+  bottom: 0;
+  padding: 10px 16px 20px;
+  background: color-mix(in srgb, var(--od-bg) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid var(--od-border);
+  z-index: 5;
+}
+.od-client-master-page .cta-btn {
+  width: 100%;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: -0.01em;
+}
+.od-client-master-page .cta-btn:active { transform: scale(0.98); }

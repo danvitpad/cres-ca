@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
+import '@/styles/od-client-master-page.css';
 
 /* ─── types ─── */
 
@@ -597,7 +598,7 @@ export default function MiniAppMasterDetailPage() {
   return (
     <div
       ref={scrollContainerRef}
-      className="relative min-h-screen"
+      className="od-client-master-page relative min-h-screen"
       style={{
         // overflow-x: clip обрезает горизонтальное переполнение, но НЕ создаёт
         // scroll context (как overflow-hidden) — sticky-табы продолжают
