@@ -14,6 +14,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import '@/styles/od-master-settings.css';
 import {
   CreditCard,
   Bell,
@@ -436,6 +437,7 @@ export default function MasterMiniAppSettings() {
 
   return (
     <div
+      className="od-master-settings"
       style={{
         ...FONT_BASE,
         background: T.bg,
