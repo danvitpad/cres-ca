@@ -1,0 +1,103 @@
+/** --- YAML
+ * name: ODSalonCalendarStyles
+ * description: Дословный перенос CSS из Open Design salon-calendar.html
+ *   мобильного экрана (строки 138-231). Скоуп — `.od-salon-calendar`.
+ *   Основные классы (ip-header / date-strip / tl-row / apt-card / ip-fab)
+ *   совпадают с master-calendar.html — переиспользуем shared.
+ * --- */
+
+.od-salon-calendar {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-fg: #ffffff;
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg-2: var(--m-surface-elevated, #f1f5f9);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-lg: 0.75rem;
+  --od-r-xl: 1rem;
+  --od-r-md: 0.5rem;
+  --od-dur-fast: 140ms;
+  --od-dur-base: 240ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --od-sh-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Header */
+.od-salon-calendar .ip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 10px;
+  flex-shrink: 0;
+}
+.od-salon-calendar .ip-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.02em;
+}
+
+/* Master selector */
+.od-salon-calendar .ip-master-sel { position: relative; }
+.od-salon-calendar .ip-master-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border-2);
+  border-radius: var(--od-r-lg);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--od-fg);
+  cursor: pointer;
+}
+.od-salon-calendar .ip-master-trigger:active { transform: scale(0.96); }
+.od-salon-calendar .ip-master-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.od-salon-calendar .ip-master-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-lg);
+  box-shadow: var(--od-sh-lg);
+  z-index: 40;
+  min-width: 190px;
+  overflow: hidden;
+}
+.od-salon-calendar .ip-master-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--od-fg);
+  cursor: pointer;
+}
+.od-salon-calendar .ip-master-opt.active {
+  background: var(--od-accent-soft);
+  color: var(--od-accent);
+}
+
+/* Reuse OD master-calendar classes (apt-card, date-pill, tl-row etc.)
+   — добавляем только salon-specific .apt-master */
+.od-salon-calendar .apt-master {
+  font-size: 10px;
+  font-weight: 600;
+  margin-top: 2px;
+  letter-spacing: 0.01em;
+}

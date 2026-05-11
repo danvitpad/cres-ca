@@ -12,6 +12,8 @@ import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Building2, Users } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import '@/styles/od-master-calendar.css';
+import '@/styles/od-salon-calendar.css';
 
 function getInitData(): string | null {
   if (typeof window === 'undefined') return null;
@@ -155,7 +157,7 @@ export default function MiniAppSalonCalendar() {
   }
 
   return (
-    <div className="p-4 pb-24 space-y-4">
+    <div className="od-master-calendar od-salon-calendar p-4 pb-24 space-y-4">
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
