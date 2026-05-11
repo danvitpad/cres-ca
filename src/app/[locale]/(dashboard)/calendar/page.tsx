@@ -1,6 +1,10 @@
 /** --- YAML
  * name: Calendar Page
- * description: Fresha-exact calendar page — white toolbar with pill buttons, view/team/add dropdowns, day/week views
+ * description: Fresha + Open Design — page title 28px bold + сводка дня (chip
+ *              «N записей · X ₴» справа). Под ним — toolbar с pill buttons,
+ *              view/team/add dropdowns, day/3day/week/month/list views.
+ *              Drawer-система не тронута (settings/filters/analytics/block-time).
+ * updated: 2026-05-11
  * --- */
 
 'use client';
@@ -530,8 +534,85 @@ export default function CalendarPage() {
 
   const masterName = master.profile?.full_name || '';
 
+  /* ═══ Сводка дня — для page title chip (только когда view=day) ═══ */
+  const daySummary = (() => {
+    if (view !== 'day') return null;
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(currentDate);
+    dayEnd.setHours(23, 59, 59, 999);
+    const todayAppts = appointments.filter((a) => {
+      const d = new Date(a.starts_at);
+      return d >= dayStart && d <= dayEnd && a.status !== 'cancelled' && a.status !== 'cancelled_by_client';
+    });
+    const revenue = todayAppts
+      .filter((a) => a.status === 'completed')
+      .reduce((s, a) => s + (Number(a.price) || 0), 0);
+    return { count: todayAppts.length, revenue };
+  })();
+
+  const wordRecords = (n: number) => {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'запись';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'записи';
+    return 'записей';
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* ═══ Page title bar — Open Design (Календарь + day summary chip) ═══ */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '24px 24px 16px',
+          backgroundColor: F.toolbarBg,
+          gap: 16,
+          flexShrink: 0,
+        }}
+      >
+        <h1
+          style={{
+            fontSize: 28,
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            color: F.text,
+            margin: 0,
+            lineHeight: 1,
+            fontFamily: TS.fontFamily,
+          }}
+        >
+          {t('title') || 'Календарь'}
+        </h1>
+        {daySummary && daySummary.count > 0 && (
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 999,
+              background: F.accentSoft,
+              border: `1px solid ${F.btnBorder}`,
+              color: F.text,
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: TS.fontFamily,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            <CalendarDays style={{ width: 14, height: 14, color: F.accent }} />
+            <span>
+              {daySummary.count} {wordRecords(daySummary.count)}
+              {daySummary.revenue > 0 && (
+                <> · <span style={{ color: F.accent }}>{new Intl.NumberFormat('ru-RU').format(daySummary.revenue)} ₴</span></>
+              )}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* ═══ Toolbar — Fresha: white bg, 52px content, border-bottom ═══ */}
       <div
         style={{
