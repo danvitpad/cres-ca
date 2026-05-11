@@ -19,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { MiniAppThemeProvider } from '@/components/miniapp/theme';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import '@/styles/od-auth-login-register.css';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import type { UserRole, SubscriptionTier } from '@/types';
 
@@ -269,6 +270,7 @@ export default function MiniAppLoginPage() {
 
   return (
     <MiniAppThemeProvider
+      className="od-auth-login-register"
       style={{
         ...FONT_BASE,
         minHeight: '100dvh',

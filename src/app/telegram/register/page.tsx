@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { mapError } from '@/lib/errors';
 import { useAuthStore } from '@/stores/auth-store';
+import '@/styles/od-auth-login-register.css';
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 type Lang = 'uk' | 'ru' | 'en';
@@ -426,7 +427,7 @@ export default function MiniAppRegisterPage() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="flex min-h-dvh flex-col"
+      className="od-auth-login-register flex min-h-dvh flex-col"
       style={{ background: 'var(--background)', color: 'var(--foreground)' }}
     >
       {/* Back button */}

@@ -1,0 +1,252 @@
+/** --- YAML
+ * name: ODAuthLoginRegisterStyles
+ * description: Дословный перенос CSS из Open Design auth-login-register.html
+ *   мобильного экрана (строки 68-141). Скоуп — `.od-auth-login-register`.
+ * --- */
+
+.od-auth-login-register {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-dim: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-success: #10b981;
+  --od-success-dim: rgba(16, 185, 129, 0.1);
+  --od-danger: #ef4444;
+  --od-text: var(--m-text, #0f172a);
+  --od-text-2: var(--m-text-secondary, #475569);
+  --od-text-3: var(--m-text-tertiary, #94a3b8);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-neutral-100: var(--m-surface-elevated, #f1f5f9);
+  --od-sp-1: 0.25rem;
+  --od-sp-2: 0.5rem;
+  --od-sp-3: 0.75rem;
+  --od-sp-4: 1rem;
+  --od-sp-5: 1.25rem;
+  --od-sp-6: 1.5rem;
+  --od-r-md: 0.75rem;
+  --od-r-xl: 1.5rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 140ms;
+  --od-spring-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --od-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.od-auth-login-register .auth-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--od-sp-6) var(--od-sp-5);
+  gap: var(--od-sp-5);
+}
+.od-auth-login-register .auth-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-2);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--od-accent);
+}
+.od-auth-login-register .auth-tabs {
+  display: flex;
+  background: var(--od-neutral-100);
+  border-radius: var(--od-r-xl);
+  padding: 4px;
+  gap: 4px;
+}
+.od-auth-login-register .auth-tab {
+  flex: 1;
+  padding: var(--od-sp-2) var(--od-sp-3);
+  border-radius: calc(var(--od-r-xl) - 4px);
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--od-text-2);
+  transition: all var(--od-dur-fast) var(--od-spring-soft);
+}
+.od-auth-login-register .auth-tab.active {
+  background: var(--od-surface);
+  color: var(--od-text);
+  box-shadow: var(--od-shadow-md);
+}
+
+.od-auth-login-register .auth-headline {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--od-text);
+}
+.od-auth-login-register .auth-sub {
+  font-size: 13px;
+  color: var(--od-text-2);
+  line-height: 1.5;
+}
+
+.od-auth-login-register .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--od-sp-1);
+}
+.od-auth-login-register .form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--od-text-2);
+}
+.od-auth-login-register .form-input-wrap {
+  position: relative;
+}
+.od-auth-login-register .form-input {
+  width: 100%;
+  padding: var(--od-sp-3) var(--od-sp-3);
+  border: 1.5px solid var(--od-border);
+  border-radius: var(--od-r-md);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--od-text);
+  background: var(--od-surface);
+  outline: none;
+  transition: border-color var(--od-dur-fast);
+}
+.od-auth-login-register .form-input:focus { border-color: var(--od-accent); }
+.od-auth-login-register .form-input.error { border-color: var(--od-danger); }
+.od-auth-login-register .form-input-icon {
+  position: absolute;
+  right: var(--od-sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--od-text-3);
+  cursor: pointer;
+}
+.od-auth-login-register .form-error {
+  font-size: 11px;
+  color: var(--od-danger);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.od-auth-login-register .form-hint {
+  font-size: 11px;
+  color: var(--od-text-2);
+  margin-top: 2px;
+}
+
+/* Divider */
+.od-auth-login-register .divider {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-3);
+}
+.od-auth-login-register .divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--od-border);
+}
+.od-auth-login-register .divider-text {
+  font-size: 12px;
+  color: var(--od-text-3);
+  white-space: nowrap;
+}
+
+/* OAuth */
+.od-auth-login-register .oauth-row {
+  display: flex;
+  gap: var(--od-sp-3);
+}
+.od-auth-login-register .oauth-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--od-sp-2);
+  padding: var(--od-sp-3);
+  border: 1.5px solid var(--od-border);
+  border-radius: var(--od-r-md);
+  background: var(--od-surface);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--od-text);
+}
+.od-auth-login-register .oauth-btn:active { transform: scale(0.97); }
+
+/* Primary button */
+.od-auth-login-register .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--od-sp-2);
+  padding: var(--od-sp-4);
+  border-radius: var(--od-r-xl);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  width: 100%;
+}
+.od-auth-login-register .btn-primary {
+  background: var(--od-accent);
+  color: #fff;
+}
+.od-auth-login-register .btn-primary:active { transform: scale(0.97); }
+.od-auth-login-register .btn-ghost-link {
+  background: transparent;
+  color: var(--od-accent);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+/* SMS code inputs */
+.od-auth-login-register .code-inputs {
+  display: flex;
+  gap: var(--od-sp-3);
+  justify-content: center;
+}
+.od-auth-login-register .code-input {
+  width: 48px;
+  height: 56px;
+  border: 1.5px solid var(--od-border);
+  border-radius: var(--od-r-md);
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: inherit;
+  color: var(--od-text);
+  background: var(--od-surface);
+  outline: none;
+  transition: border-color var(--od-dur-fast);
+}
+.od-auth-login-register .code-input:focus { border-color: var(--od-accent); }
+.od-auth-login-register .code-input.filled {
+  border-color: var(--od-accent);
+  background: var(--od-accent-dim);
+}
+
+/* Success */
+.od-auth-login-register .success-row {
+  display: flex;
+  align-items: center;
+  gap: var(--od-sp-3);
+  background: var(--od-success-dim);
+  border-radius: 0.75rem;
+  padding: var(--od-sp-3);
+}
+.od-auth-login-register .success-icon-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--od-r-full);
+  background: var(--od-success);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
