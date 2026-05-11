@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Clock, Coins, CalendarDays, CheckCircle2, PlayCircle, Hourglass, Cake, Lightbulb } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
-import { MobilePage, PageHeader, AvatarCircle } from '@/components/miniapp/shells';
+import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached } from '@/lib/miniapp/cache';
@@ -291,13 +291,15 @@ export default function MasterMiniAppHome() {
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
       >
+        {/* Аватар справа не передаём — глобальный <MiniAppHeaderAvatar /> уже
+            рендерит фикс-круг в правом верхнем углу на каждом табе мастера
+            (см. layout.tsx). Дубликат удалён 2026-05-11. */}
         <PageHeader
           title={firstName ? `${greeting}, ${firstName}` : greeting}
           subtitle={new Date().toLocaleDateString(
             lang === 'uk' ? 'uk-UA' : lang === 'ru' ? 'ru-RU' : 'en-US',
             { weekday: 'long', day: 'numeric', month: 'long' },
           )}
-          right={fullName ? <AvatarCircle url={null} name={fullName} size={44} /> : undefined}
         />
 
         {/* KPI Strip — 3 cards, accent-left на доходе дня */}

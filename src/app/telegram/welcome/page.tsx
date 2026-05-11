@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Briefcase, User, LogIn, Loader2, Globe, ChevronDown } from 'lucide-react';
+import { Briefcase, User, LogIn, Loader2, ChevronDown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { mapError } from '@/lib/errors';
 
@@ -225,7 +225,10 @@ export default function MiniAppWelcomePage() {
         }}
       />
 
-      {/* Lang chip — правый верхний угол, под TG bottom-sheet chrome (~60px offset) */}
+      {/* Lang chip — правый верхний угол, под TG bottom-sheet chrome (~60px offset).
+          Минималистичный pill: только код языка + крошечный chevron.
+          Globe убран 2026-05-11 (выбивался — три элемента в маленьком чипе
+          выглядели тяжело). */}
       <div
         className="relative z-10 flex items-center justify-end px-5"
         style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 60px)' }}
@@ -234,16 +237,15 @@ export default function MiniAppWelcomePage() {
           type="button"
           onClick={cycleLang}
           aria-label="Сменить язык"
-          className="flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold tracking-wider active:scale-95 transition-transform"
+          className="flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-medium active:scale-95 transition-transform"
           style={{
             background: chipBg,
             borderColor: chipBorder,
-            color: isDark ? 'rgba(255,255,255,0.8)' : 'rgba(15,23,42,0.7)',
+            color: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(15,23,42,0.75)',
           }}
         >
-          <Globe className="size-3" style={{ color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,42,0.55)' }} />
           {LANG_SHORT[lang]}
-          <ChevronDown className="size-2.5" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(15,23,42,0.4)' }} />
+          <ChevronDown className="size-3" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(15,23,42,0.45)' }} />
         </button>
       </div>
 

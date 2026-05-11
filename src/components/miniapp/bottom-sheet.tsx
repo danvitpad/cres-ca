@@ -51,7 +51,7 @@ export function MiniBottomSheet({
           <motion.div
             className={cn(
               'fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-white text-neutral-900',
-              'max-h-[90dvh] overflow-hidden flex flex-col',
+              'overflow-hidden flex flex-col',
               className,
             )}
             initial={{ y: '100%' }}
@@ -63,6 +63,11 @@ export function MiniBottomSheet({
             dragElastic={{ top: 0, bottom: 0.6 }}
             onDragEnd={handleDragEnd}
             style={{
+              // Резервируем сверху место под Telegram chrome (× Закрыть, ⋯).
+              // --tg-content-top подставляется telegram-provider'ом. Без
+              // этого title шторки залезал под чрезкие кнопки TG (см. скрин
+              // 2026-05-11). 12px минимум на случай браузера без TG.
+              maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
               paddingBottom: 'max(var(--tg-safe-bottom, 0px), env(safe-area-inset-bottom, 0px))',
             }}
           >

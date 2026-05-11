@@ -957,6 +957,10 @@ function DateStrip({
 
   return (
     <div style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
+      {/* Сетка 7 ячеек. Стабильный key=i (а не ISO date) чтобы React не
+          размонтировал ячейку при переключении дня — иначе цифры дёргались,
+          анимации не было. layoutId="cal-day-pill" даёт плавный shared-layout
+          переезд cobalt-подсветки между днями. */}
       <div
         style={{
           display: 'grid',
@@ -964,40 +968,63 @@ function DateStrip({
           gap: 6,
         }}
       >
-        {days.map((d) => {
+        {days.map((d, i) => {
           const isSelected = isSameDay(d, day);
           const isToday = isSameDay(d, today);
           return (
             <TapButton
-              key={d.toISOString()}
+              key={i}
               onClick={() => onPick(d)}
               style={{
+                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: 4,
                 padding: '8px 4px',
                 borderRadius: R.sm,
-                background: isSelected ? T.accent : 'transparent',
-                border: `1px solid ${isSelected ? T.accent : isToday ? T.accentSoft : 'transparent'}`,
+                background: 'transparent',
+                border: `1px solid ${!isSelected && isToday ? T.accentSoft : 'transparent'}`,
                 fontFamily: 'inherit',
-                transition: 'background 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                transition: 'border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
+              {isSelected && (
+                <motion.div
+                  layoutId="cal-day-pill"
+                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    borderRadius: R.sm,
+                    background: T.accent,
+                    zIndex: 0,
+                  }}
+                />
+              )}
               <span
                 style={{
+                  position: 'relative',
+                  zIndex: 1,
                   fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: '0.04em',
                   textTransform: 'uppercase',
                   color: isSelected ? 'rgba(255,255,255,0.85)' : T.textTertiary,
                   lineHeight: 1,
+                  transition: 'color 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
                 }}
               >
                 {d.toLocaleDateString(locale, { weekday: 'short' }).slice(0, 2)}
               </span>
-              <span
+              <motion.span
+                key={d.getDate()}
+                initial={{ opacity: 0, y: -3 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                 style={{
+                  position: 'relative',
+                  zIndex: 1,
                   fontSize: 16,
                   fontWeight: 800,
                   letterSpacing: '-0.02em',
@@ -1007,7 +1034,7 @@ function DateStrip({
                 }}
               >
                 {d.getDate()}
-              </span>
+              </motion.span>
             </TapButton>
           );
         })}

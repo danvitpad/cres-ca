@@ -13,8 +13,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2, Package } from 'lucide-react';
+import { Scissors, Clock, Plus, X, Check, Loader2, Archive, RotateCcw, Trash2, Package, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { getInitData } from '@/lib/telegram/webapp';
@@ -86,7 +87,7 @@ const I18N: Record<MiniAppLang, {
     fieldPrepaymentAmount: 'Сума передоплати, ₴',
     materialsTitle: 'Витратники на 1 візит',
     materialsHint: 'Автоматично спишеться зі складу коли візит «Виконано»',
-    materialsEmpty: 'Спочатку додай матеріали у склад (веб-кабінет)',
+    materialsEmpty: 'Додати матеріали на склад',
     materialsStock: 'на складі',
   },
   ru: {
@@ -110,7 +111,7 @@ const I18N: Record<MiniAppLang, {
     fieldPrepaymentAmount: 'Сумма предоплаты, ₴',
     materialsTitle: 'Расходники на 1 визит',
     materialsHint: 'Автоматически спишется со склада когда визит «Выполнено»',
-    materialsEmpty: 'Сначала добавь материалы в склад (веб-кабинет)',
+    materialsEmpty: 'Добавить материалы на склад',
     materialsStock: 'на складе',
   },
   en: {
@@ -134,7 +135,7 @@ const I18N: Record<MiniAppLang, {
     fieldPrepaymentAmount: 'Prepayment amount, ₴',
     materialsTitle: 'Supplies per visit',
     materialsHint: 'Auto-deducted from inventory when visit marked «Completed»',
-    materialsEmpty: 'Add materials to inventory first (web dashboard)',
+    materialsEmpty: 'Add materials to inventory',
     materialsStock: 'in stock',
   },
 };
@@ -356,6 +357,7 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const router = useRouter();
   const [name, setName] = useState(service?.name ?? '');
   const [duration, setDuration] = useState(String(service?.duration_minutes ?? 60));
   const [price, setPrice] = useState(String(service?.price ?? ''));
@@ -517,9 +519,16 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
           borderRadius: `${R.lg}px ${R.lg}px 0 0`,
           background: T.surface,
           padding: `20px ${PAGE_PADDING_X}px`,
-          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          // 24px минимум под home-indicator — раньше было 96px, давало
+          // огромное пустое пространство ниже кнопок «Удалить» (см. скрин
+          // 2026-05-11). Шторка модальная, bottom-nav закрыт backdrop'ом —
+          // лишнего запаса не нужно.
+          paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
-          maxHeight: '90dvh', overflowY: 'auto',
+          // Учитываем top-chrome Telegram (× Закрыть, ⋯) — иначе шапка
+          // шторки залезает под кнопки TG.
+          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+          overflowY: 'auto',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -647,9 +656,39 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
             <p style={{ fontSize: 11, color: T.textTertiary, margin: 0 }}>{t.materialsHint}</p>
 
             {inventory.length === 0 ? (
-              <p style={{ fontSize: 12, color: T.textTertiary, marginTop: 10, fontStyle: 'italic' }}>
-                {t.materialsEmpty}
-              </p>
+              // Раньше тут был курсивный hint в одну строку — клиент не понимал
+              // что с ним делать. Теперь — tappable кнопка прямо на склад в
+              // Mini App (см. скрин 2026-05-11 «не вижу возможности добавить
+              // расходник»). После добавления материалов мастер вернётся сюда
+              // и увидит список с количеством.
+              <button
+                type="button"
+                onClick={() => router.push('/telegram/m/inventory')}
+                style={{
+                  marginTop: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  padding: '12px 14px',
+                  borderRadius: R.sm,
+                  border: `1px dashed ${T.accent}`,
+                  background: T.accentSoft,
+                  color: T.accent,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Plus size={14} />
+                  {t.materialsEmpty}
+                </span>
+                <ArrowRight size={14} />
+              </button>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
                 {inventory.map((it) => {
