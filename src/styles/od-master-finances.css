@@ -1,0 +1,305 @@
+/** --- YAML
+ * name: ODMasterFinancesStyles
+ * description: Дословный перенос CSS из Open Design master-finances.html
+ *   мобильного экрана (строки 113-245). Скоуп — `.od-master-finances`.
+ * --- */
+
+.od-master-finances {
+  --od-accent: var(--m-accent, #2563eb);
+  --od-accent-h: var(--m-accent-hover, #1d4ed8);
+  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
+  --od-accent-fg: #ffffff;
+  --od-success: #10b981;
+  --od-success-soft: rgba(16, 185, 129, 0.1);
+  --od-danger: #ef4444;
+  --od-danger-soft: rgba(239, 68, 68, 0.1);
+  --od-fg: var(--m-text, #0f172a);
+  --od-fg-2: var(--m-text-secondary, #475569);
+  --od-fg-3: var(--m-text-tertiary, #94a3b8);
+  --od-bg: var(--m-bg, #f8fafc);
+  --od-bg-2: var(--m-surface-elevated, #f1f5f9);
+  --od-surface: var(--m-surface, #ffffff);
+  --od-border: var(--m-border, #e2e8f0);
+  --od-border-2: var(--m-border-strong, #cbd5e1);
+  --od-r-lg: 0.75rem;
+  --od-r-xl: 1rem;
+  --od-r-2xl: 1.5rem;
+  --od-r-full: 9999px;
+  --od-dur-fast: 120ms;
+  --od-dur-base: 200ms;
+  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --od-sh-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Mobile header — OD строки 113-121 */
+.od-master-finances .ip-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 20px 0.5rem;
+  flex-shrink: 0;
+}
+.od-master-finances .ip-hd-title {
+  font-size: 1.1875rem;
+  font-weight: 700;
+  color: var(--od-fg);
+  letter-spacing: -0.02em;
+}
+.od-master-finances .ip-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--od-bg-2);
+  border: 1px solid var(--od-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--od-fg-2);
+  cursor: pointer;
+  transition: all var(--od-dur-fast);
+}
+.od-master-finances .ip-icon-btn:active {
+  transform: scale(0.93);
+}
+
+/* Period strip — OD строки 123-129 */
+.od-master-finances .period-strip {
+  display: flex;
+  gap: 6px;
+  padding: 0 20px 0.875rem;
+  flex-shrink: 0;
+}
+.od-master-finances .period-pill {
+  flex: 1;
+  padding: 0.375rem 0;
+  text-align: center;
+  border-radius: var(--od-r-full);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1.5px solid var(--od-border);
+  background: var(--od-surface);
+  color: var(--od-fg-2);
+  cursor: pointer;
+  transition: all var(--od-dur-fast);
+  white-space: nowrap;
+  font-family: inherit;
+}
+.od-master-finances .period-pill.on {
+  background: var(--od-accent);
+  border-color: var(--od-accent);
+  color: var(--od-accent-fg);
+}
+
+/* Summary card — OD строки 131-149 */
+.od-master-finances .ip-summary {
+  margin: 0 20px 0.875rem;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-2xl);
+  padding: 1rem;
+  box-shadow: var(--od-sh-sm);
+  transition: box-shadow var(--od-dur-base), transform var(--od-dur-base);
+}
+.od-master-finances .summary-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.875rem;
+}
+.od-master-finances .summary-half {
+  flex: 1;
+}
+.od-master-finances .summary-lbl {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--od-fg-3);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+.od-master-finances .summary-val {
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.od-master-finances .summary-val.income {
+  color: var(--od-success);
+}
+.od-master-finances .summary-val.expense {
+  color: var(--od-fg-2);
+}
+.od-master-finances .summary-divider {
+  height: 1px;
+  background: var(--od-border);
+  margin-bottom: 0.875rem;
+}
+.od-master-finances .summary-profit {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.od-master-finances .summary-profit-lbl {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--od-fg-3);
+}
+.od-master-finances .summary-profit-val {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--od-accent);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bar chart — OD строки 151-163 */
+.od-master-finances .chart-wrap {
+  margin: 0 20px 0.875rem;
+  background: var(--od-surface);
+  border: 1px solid var(--od-border);
+  border-radius: var(--od-r-2xl);
+  padding: 0.875rem;
+}
+.od-master-finances .chart-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--od-fg-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+.od-master-finances .bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+}
+.od-master-finances .bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.od-master-finances .bar-inner {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  transition: opacity var(--od-dur-fast);
+}
+.od-master-finances .bar-day-lbl {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--od-fg-3);
+}
+.od-master-finances .bar-col.today .bar-day-lbl {
+  color: var(--od-accent);
+  font-weight: 700;
+}
+.od-master-finances .bar-col.today .bar-inner {
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+/* Transactions list — OD строки 165-184 */
+.od-master-finances .ip-section-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--od-fg-3);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0 20px 0.5rem;
+}
+.od-master-finances .txn-list {
+  padding: 0 20px;
+}
+.od-master-finances .txn-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--od-border);
+  cursor: pointer;
+  transition: background var(--od-dur-fast);
+  text-decoration: none;
+  color: var(--od-fg);
+}
+.od-master-finances .txn-row:last-child {
+  border-bottom: none;
+}
+.od-master-finances .txn-row:active {
+  background: var(--od-bg-2);
+}
+.od-master-finances .txn-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--od-r-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-master-finances .txn-ico.income {
+  background: var(--od-success-soft);
+  color: var(--od-success);
+}
+.od-master-finances .txn-ico.expense {
+  background: var(--od-danger-soft);
+  color: var(--od-danger);
+}
+.od-master-finances .txn-body {
+  flex: 1;
+  min-width: 0;
+}
+.od-master-finances .txn-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--od-fg);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.od-master-finances .txn-sub {
+  font-size: 0.75rem;
+  color: var(--od-fg-3);
+  margin: 1px 0 0;
+}
+.od-master-finances .txn-amount {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.od-master-finances .txn-amount.income {
+  color: var(--od-success);
+}
+.od-master-finances .txn-amount.expense {
+  color: var(--od-danger);
+}
+
+/* FAB extended — OD строки 186-195 (pill с label) */
+.od-master-finances .fab {
+  position: fixed;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.125rem;
+  border-radius: var(--od-r-full);
+  background: var(--od-accent);
+  color: var(--od-accent-fg);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  cursor: pointer;
+  transition: all var(--od-dur-fast) var(--od-ease-out);
+  z-index: 20;
+  border: none;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+.od-master-finances .fab:active {
+  transform: scale(0.97);
+}

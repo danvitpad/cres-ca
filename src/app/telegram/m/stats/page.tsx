@@ -16,6 +16,7 @@ import { MiniBottomSheet } from '@/components/miniapp/bottom-sheet';
 import { PageHeader } from '@/components/miniapp/shells';
 import { useEscapeKey } from '@/hooks/use-keyboard-shortcuts';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import '@/styles/od-master-finances.css';
 
 const I18N: Record<MiniAppLang, {
   paymentMethods: readonly string[];
@@ -250,7 +251,7 @@ export default function MasterMiniAppStats() {
   const titleByLang = { uk: 'Фінанси', ru: 'Финансы', en: 'Finance' } as const;
 
   return (
-    <>
+    <div className="od-master-finances">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -265,18 +266,17 @@ export default function MasterMiniAppStats() {
         transition={{ duration: 0.3, delay: 0.05 }}
         className="space-y-5 px-5 pt-2 pb-10"
       >
-        {/* Period tabs — Today / 7 / 30 */}
-        <div className="flex gap-1 rounded-2xl border border-neutral-200 bg-white p-1">
+        {/* Литерально .period-strip / .period-pill / .period-pill.on из OD */}
+        <div className="period-strip" style={{ padding: 0 }}>
           {(['today', 'week', 'month'] as const).map((p) => (
             <button
               key={p}
+              type="button"
+              className={`period-pill${period === p ? ' on' : ''}`}
               onClick={() => {
                 haptic('light');
                 setPeriod(p);
               }}
-              className={`flex-1 rounded-xl py-2 text-[12px] font-semibold transition-colors ${
-                period === p ? 'bg-white text-black' : 'text-neutral-600'
-              }`}
             >
               {p === 'today' ? t.periodToday : p === 'week' ? t.periodWeek : t.periodMonth}
             </button>
@@ -452,7 +452,7 @@ export default function MasterMiniAppStats() {
           onSuccess={() => { setSheetOpen(null); setRefreshKey((k) => k + 1); }}
         />
       </MiniBottomSheet>
-    </>
+    </div>
   );
 }
 
