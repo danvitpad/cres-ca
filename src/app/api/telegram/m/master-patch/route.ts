@@ -22,6 +22,8 @@ type Body = {
   longitude?: number | null;
   workplace_name?: string | null;
   city?: string | null;
+  /** masters.interests text[] — теги-увлечения мастера. NULL/[] = удалить все. */
+  interests?: string[] | null;
   /** JSON {mon: {open,close,closed?}, tue: {...}, ...}. Если поле передано —
    *  пишется целиком, без слияния (мастер всегда отправляет полную неделю). */
   working_hours?: Record<string, { open?: string; close?: string; closed?: boolean } | null> | null;
@@ -61,6 +63,18 @@ export async function POST(request: Request) {
   }
   if ('working_hours' in body) {
     masterUpdate.working_hours = body.working_hours ?? null;
+  }
+  if ('interests' in body) {
+    const arr = Array.isArray(body.interests) ? body.interests : null;
+    if (arr) {
+      const cleaned = arr
+        .map((s) => typeof s === 'string' ? s.trim() : '')
+        .filter(Boolean)
+        .slice(0, 10);
+      masterUpdate.interests = cleaned.length ? cleaned : null;
+    } else {
+      masterUpdate.interests = null;
+    }
   }
   if (typeof body.slug === 'string') {
     const slug = body.slug.trim().toLowerCase();

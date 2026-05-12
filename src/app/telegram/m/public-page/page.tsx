@@ -51,6 +51,7 @@ interface MasterData {
   working_hours: unknown;
   total_appointments: number;
   total_clients: number;
+  interests: string[];
 }
 
 interface ServiceRow {
@@ -105,6 +106,8 @@ const I18N: Record<MiniAppLang, {
   cresIdLabel: string; cresIdCopied: string;
   worksLabel: string; clientsLabel: string; rating: string; reviews: (n: number) => string;
   bio: string; bioEmpty: string; bioEdit: string;
+  interests: string; interestsEmpty: string; interestsHint: string;
+  interestsAdd: string; interestsPh: string;
   name: string; nameEdit: string; nameFirst: string; nameLast: string;
   specialization: string; specEmpty: string; specEdit: string;
   services: string; servicesEmpty: string;
@@ -125,6 +128,9 @@ const I18N: Record<MiniAppLang, {
     worksLabel: 'Робіт', clientsLabel: 'Клієнтів', rating: 'Рейтинг',
     reviews: (n) => `${n} відгуків`,
     bio: 'Про себе', bioEmpty: 'Тапни ✎ щоб додати опис', bioEdit: 'Про себе',
+    interests: 'Інтереси', interestsEmpty: 'Тапни ✎ щоб додати інтереси',
+    interestsHint: 'Що любиш окрім роботи — спорт, кава, подорожі. До 10 тегів.',
+    interestsAdd: 'Додати', interestsPh: 'Введи та натисни ↵',
     name: 'Імʼя', nameEdit: 'Імʼя та прізвище', nameFirst: 'Імʼя', nameLast: 'Прізвище',
     specialization: 'Спеціалізація', specEmpty: 'Тапни ✎ щоб задати', specEdit: 'Спеціалізація',
     services: 'Послуги', servicesEmpty: 'Послуг поки немає',
@@ -146,6 +152,9 @@ const I18N: Record<MiniAppLang, {
     worksLabel: 'Работ', clientsLabel: 'Клиентов', rating: 'Рейтинг',
     reviews: (n) => `${n} отзывов`,
     bio: 'О себе', bioEmpty: 'Тапни ✎ чтобы добавить описание', bioEdit: 'О себе',
+    interests: 'Интересы', interestsEmpty: 'Тапни ✎ чтобы добавить интересы',
+    interestsHint: 'Что любишь кроме работы — спорт, кофе, путешествия. До 10 тегов.',
+    interestsAdd: 'Добавить', interestsPh: 'Введи и нажми ↵',
     name: 'Имя', nameEdit: 'Имя и фамилия', nameFirst: 'Имя', nameLast: 'Фамилия',
     specialization: 'Специализация', specEmpty: 'Тапни ✎ чтобы задать', specEdit: 'Специализация',
     services: 'Услуги', servicesEmpty: 'Услуг пока нет',
@@ -167,6 +176,9 @@ const I18N: Record<MiniAppLang, {
     worksLabel: 'Visits', clientsLabel: 'Clients', rating: 'Rating',
     reviews: (n) => `${n} reviews`,
     bio: 'About', bioEmpty: 'Tap ✎ to add description', bioEdit: 'About',
+    interests: 'Interests', interestsEmpty: 'Tap ✎ to add interests',
+    interestsHint: 'What you love outside work — sport, coffee, travel. Up to 10 tags.',
+    interestsAdd: 'Add', interestsPh: 'Type and hit ↵',
     name: 'Name', nameEdit: 'First & last name', nameFirst: 'First name', nameLast: 'Last name',
     specialization: 'Specialization', specEmpty: 'Tap ✎ to set', specEdit: 'Specialization',
     services: 'Services', servicesEmpty: 'No services yet',
@@ -196,7 +208,7 @@ function openExternal(href: string) {
 // 'specialization' (направление мастера) удалён из inline-edit на публичке —
 // направление выбирается при регистрации и меняется в Настройках, а не на
 // публичной странице (по запросу 2026-05-08).
-type EditField = null | 'name' | 'bio' | 'address' | 'slug';
+type EditField = null | 'name' | 'bio' | 'address' | 'slug' | 'interests';
 
 export default function MasterMiniAppPublicPage() {
   const router = useRouter();
@@ -255,7 +267,7 @@ export default function MasterMiniAppPublicPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  async function patchMaster(payload: Record<string, string | number | null>) {
+  async function patchMaster(payload: Record<string, string | number | string[] | null>) {
     const initData = getInitData();
     const res = await fetch('/api/telegram/m/master-patch', {
       method: 'POST',
@@ -489,22 +501,34 @@ export default function MasterMiniAppPublicPage() {
         <div
           style={{
             display: 'flex', flexDirection: 'column',
+            alignItems: 'flex-start',
             padding: `0 ${PAGE_PADDING_X}px`,
             marginTop: -40,
           }}
         >
-          <div style={{ position: 'relative', width: 92, height: 92 }}>
+          {/* Avatar wrap — фиксированные 92×92, position:relative для pencil-кнопки.
+              flexShrink: 0 — защита от стретча в flex-column родителе.
+              Pencil переехал с right/bottom на explicit left/top чтобы исключить
+              баги stretch + absolute. */}
+          <div
+            style={{
+              position: 'relative',
+              width: 92, height: 92,
+              flexShrink: 0,
+              alignSelf: 'flex-start',
+            }}
+          >
             <div
               style={{
                 width: 92, height: 92, borderRadius: '50%',
-                border: `4px solid ${T.bg}`, overflow: 'hidden', flexShrink: 0,
+                border: `4px solid ${T.bg}`, overflow: 'hidden',
                 background: T.surface,
-                boxShadow: SHADOW.card,
               }}
             >
               <AvatarCircle url={master.avatar_url} name={displayName} size={84} />
             </div>
-            {/* Edit avatar — маленький pencil справа снизу */}
+            {/* Edit avatar — pencil bottom-right (66, 66) от верх-лев угла 92×92.
+                28×28 → пересекает контур круга в углу bottom-right. */}
             <button
               type="button"
               onClick={() => { haptic('light'); avatarInputRef.current?.click(); }}
@@ -512,7 +536,7 @@ export default function MasterMiniAppPublicPage() {
               disabled={imageBusy}
               style={{
                 position: 'absolute',
-                right: -2, bottom: -2,
+                left: 64, top: 64,
                 width: 28, height: 28,
                 borderRadius: '50%',
                 border: `2px solid ${T.bg}`,
@@ -585,6 +609,35 @@ export default function MasterMiniAppPublicPage() {
             <p style={{ ...TYPE.body, color: T.text, whiteSpace: 'pre-wrap', margin: 0 }}>{master.bio}</p>
           ) : (
             <Empty text={t.bioEmpty} />
+          )}
+        </SectionWithEdit>
+
+        {/* Интересы — как в вебе (interests-block.tsx). Хранится в
+            masters.interests text[]. Клиент видит чипы, владелец — pencil
+            → bottom-sheet редактор. */}
+        <SectionWithEdit title={t.interests} onEdit={() => setEditField('interests')}>
+          {master.interests.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {master.interests.map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '5px 12px',
+                    borderRadius: 999,
+                    border: `1px solid ${T.border}`,
+                    background: T.surface,
+                    fontSize: 13,
+                    color: T.text,
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <Empty text={t.interestsEmpty} />
           )}
         </SectionWithEdit>
 
@@ -954,6 +1007,18 @@ export default function MasterMiniAppPublicPage() {
         />
       )}
 
+      {editField === 'interests' && (
+        <InterestsEditSheet
+          t={t}
+          initial={master.interests}
+          onClose={() => setEditField(null)}
+          onSave={async (tags) => {
+            await patchMaster({ interests: tags });
+            setMaster({ ...master, interests: tags });
+          }}
+        />
+      )}
+
       {/* Portfolio lightbox */}
       <AnimatePresence>
         {lightboxItem && (
@@ -1204,6 +1269,195 @@ function Stat({ value, label, withStar }: { value: string; label: string; withSt
 
 function Empty({ text }: { text: string }) {
   return <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{text}</p>;
+}
+
+function InterestsEditSheet({
+  t,
+  initial,
+  onClose,
+  onSave,
+}: {
+  t: typeof I18N['ru'];
+  initial: string[];
+  onClose: () => void;
+  onSave: (tags: string[]) => Promise<void>;
+}) {
+  const [tags, setTags] = useState<string[]>(initial);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  function add() {
+    const v = input.trim().slice(0, 32);
+    if (!v) return;
+    if (tags.includes(v)) { setInput(''); return; }
+    if (tags.length >= 10) return;
+    setTags([...tags, v]);
+    setInput('');
+  }
+
+  async function submit() {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await onSave(tags);
+      onClose();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => !busy && onClose()}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 80,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+      }}
+    >
+      <motion.div
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={SPRING.default}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 480,
+          borderRadius: `${R.lg}px ${R.lg}px 0 0`,
+          background: T.surface,
+          padding: `20px ${PAGE_PADDING_X}px`,
+          paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+          boxShadow: SHADOW.elevated,
+          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+          overflowY: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.interests}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Закрыть"
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              border: `1px solid ${T.border}`, background: T.surface,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            }}
+          >
+            <X size={16} color={T.text} />
+          </button>
+        </div>
+
+        <p style={{ ...TYPE.caption, marginBottom: 12, lineHeight: 1.5 }}>
+          {t.interestsHint}
+        </p>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value.slice(0, 32))}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+            placeholder={t.interestsPh}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              borderRadius: R.md,
+              border: `1px solid ${T.border}`,
+              background: T.bg,
+              color: T.text,
+              fontSize: 14,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+          <button
+            type="button"
+            onClick={add}
+            disabled={!input.trim() || tags.length >= 10}
+            style={{
+              padding: '10px 16px',
+              borderRadius: R.md,
+              background: T.accent,
+              color: '#fff',
+              border: 0,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              opacity: !input.trim() || tags.length >= 10 ? 0.5 : 1,
+            }}
+          >
+            {t.interestsAdd}
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, minHeight: 40 }}>
+          {tags.map((tag, i) => (
+            <span
+              key={`${tag}-${i}`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '5px 8px 5px 12px',
+                borderRadius: 999,
+                border: `1px solid ${T.border}`,
+                background: T.surface,
+                fontSize: 13,
+                color: T.text,
+              }}
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
+                aria-label={`Убрать ${tag}`}
+                style={{
+                  width: 18, height: 18, borderRadius: '50%',
+                  background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                  border: 0, padding: 0, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+        </div>
+
+        <p style={{ ...TYPE.micro, marginTop: 8, textAlign: 'right' }}>
+          {tags.length} / 10
+        </p>
+
+        {err && <p style={{ ...TYPE.caption, color: T.danger, marginTop: 8 }}>{err}</p>}
+
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy}
+          style={{
+            marginTop: 12,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            width: '100%', padding: '14px 16px',
+            borderRadius: R.md, border: 'none',
+            background: T.text, color: T.bg,
+            fontSize: 15, fontWeight: 700, cursor: busy ? 'wait' : 'pointer',
+            fontFamily: 'inherit', opacity: busy ? 0.6 : 1,
+          }}
+        >
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+          Сохранить
+        </button>
+      </motion.div>
+    </motion.div>
+  );
 }
 
 function NameEditSheet({
