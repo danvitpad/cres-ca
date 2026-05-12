@@ -30,6 +30,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { showConfirm } from '@/lib/telegram/webapp';
 import { mapError } from '@/lib/errors';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X, FONT_BASE, SPRING } from '@/components/miniapp/design';
 import '@/styles/od-client-settings.css';
@@ -57,7 +58,7 @@ const I18N: Record<Lang, {
   privacy: string; privacyDesc: string;
   writeSupport: string;
   about: string; version: string;
-  signOut: string;
+  signOut: string; signOutConfirm: string;
   contactSheet: string; save: string; emailLabel: string; phoneLabel: string;
   pwSheet: string; pwNew: string; pwRepeat: string; pwMinLen: string; pwMismatch: string;
   pwNewPlaceholder: string; pwRepeatPlaceholder: string; pwSaved: string;
@@ -84,7 +85,7 @@ const I18N: Record<Lang, {
     privacy: 'Приватність', privacyDesc: 'Що бачать майстри та команди',
     writeSupport: 'Написати в підтримку',
     about: 'Про застосунок', version: 'v1.4',
-    signOut: 'Вийти з акаунта',
+    signOut: 'Вийти з акаунта', signOutConfirm: 'Точно вийти?',
     contactSheet: 'Контактні дані', save: 'Зберегти', emailLabel: 'Email', phoneLabel: 'Телефон',
     pwSheet: 'Змінити пароль', pwNew: 'Новий пароль', pwRepeat: 'Повторіть пароль',
     pwMinLen: 'Пароль має бути не менше 8 символів', pwMismatch: 'Паролі не збігаються',
@@ -113,7 +114,7 @@ const I18N: Record<Lang, {
     privacy: 'Приватность', privacyDesc: 'Что видят мастера и команды',
     writeSupport: 'Написать в поддержку',
     about: 'О приложении', version: 'v1.4',
-    signOut: 'Выйти из аккаунта',
+    signOut: 'Выйти из аккаунта', signOutConfirm: 'Точно выйти?',
     contactSheet: 'Контактные данные', save: 'Сохранить', emailLabel: 'Email', phoneLabel: 'Телефон',
     pwSheet: 'Сменить пароль', pwNew: 'Новый пароль', pwRepeat: 'Повторите пароль',
     pwMinLen: 'Пароль должен быть не короче 8 символов', pwMismatch: 'Пароли не совпадают',
@@ -142,7 +143,7 @@ const I18N: Record<Lang, {
     privacy: 'Privacy', privacyDesc: 'What masters and teams see',
     writeSupport: 'Contact support',
     about: 'About', version: 'v1.4',
-    signOut: 'Sign out',
+    signOut: 'Sign out', signOutConfirm: 'Log out?',
     contactSheet: 'Contact info', save: 'Save', emailLabel: 'Email', phoneLabel: 'Phone',
     pwSheet: 'Change password', pwNew: 'New password', pwRepeat: 'Repeat password',
     pwMinLen: 'Password must be at least 8 characters', pwMismatch: 'Passwords do not match',
@@ -293,6 +294,8 @@ export default function MiniAppSettingsPage() {
 
   async function signOut() {
     if (signingOut) return;
+    const ok = await showConfirm(t.signOutConfirm);
+    if (!ok) return;
     haptic('medium');
     setSigningOut(true);
     try {

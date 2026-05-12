@@ -31,7 +31,7 @@ import { OnboardingDialog } from '@/components/shared/onboarding-dialog';
 import { WelcomeGate } from '@/components/shared/welcome-gate';
 import { TourOverlay } from '@/components/shared/tour-overlay';
 import { LanguageSwitcher } from '@/components/shared/language-switcher';
-import { ConfirmProvider } from '@/hooks/use-confirm';
+import { ConfirmProvider, useConfirm } from '@/hooks/use-confirm';
 import { UserCircle, Settings as SettingsIcon, LogOut, Moon, Sun, BarChart3 } from 'lucide-react';
 import { RouteFeatureGate } from '@/components/subscription/route-feature-gate';
 import { TrialBadge } from '@/components/subscription/trial-badge';
@@ -63,9 +63,78 @@ function getInitials(name: string): string {
   return name.split(' ').map((w) => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
 }
 
+/**
+ * SessionNavBar wrapper, который живёт ВНУТРИ ConfirmProvider — чтобы можно было
+ * звать useConfirm() в onClick «Выход» (правило CLAUDE.md: useConfirm вместо
+ * window.confirm). Сам DashboardLayout — родитель провайдера, поэтому хук там
+ * вызвать нельзя.
+ */
+function DashboardSidebar({
+  navItems, bottomItems, isDark, setTheme, persistTheme,
+  masterName, master, signOutLabel,
+}: {
+  navItems: SidebarNavItem[];
+  bottomItems: SidebarNavItem[];
+  isDark: boolean;
+  setTheme: (t: string) => void;
+  persistTheme: (t: 'light' | 'dark') => void;
+  masterName: string;
+  master: { slug?: string | null; profile?: { avatar_url?: string | null } | null } | null;
+  signOutLabel: string;
+}) {
+  const router = useRouter();
+  const confirm = useConfirm();
+
+  return (
+    <SessionNavBar
+      navItems={navItems}
+      bottomItems={bottomItems}
+      themeToggle={{
+        isDark,
+        onToggle: () => {
+          const next = isDark ? 'light' : 'dark';
+          setTheme(next);
+          persistTheme(next);
+        },
+        lightIcon: Sun,
+        darkIcon: Moon,
+        label: 'Тема',
+      }}
+      account={{
+        name: masterName,
+        initials: getInitials(masterName),
+        avatarUrl: master?.profile?.avatar_url || null,
+        menuItems: [
+          {
+            icon: UserCircle,
+            label: 'Мой профиль',
+            href: master?.slug ? `/m/${master.slug}` : '/settings?section=profile',
+          },
+          { icon: SettingsIcon, label: 'Настройки', href: '/settings' },
+          {
+            icon: LogOut,
+            label: signOutLabel,
+            destructive: true,
+            onClick: async () => {
+              const ok = await confirm({
+                title: 'Точно выйти?',
+                confirmLabel: 'Выйти',
+                destructive: true,
+              });
+              if (!ok) return;
+              const supabase = createClient();
+              await supabase.auth.signOut();
+              router.push('/login');
+            },
+          },
+        ],
+      }}
+    />
+  );
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('dashboard');
-  const router = useRouter();
   const { master } = useMaster();
   const { open: cmdOpen, setOpen: setCmdOpen } = useCommandPalette();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -285,46 +354,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* ═══ Below header: sidebar + content ═══ */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
           {/* ═══ Hover-expand sidebar (3rem → 15rem) ═══ */}
-          <SessionNavBar
+          <DashboardSidebar
             navItems={navItems}
             bottomItems={bottomItems}
-            themeToggle={{
-              isDark,
-              onToggle: () => {
-                const next = isDark ? 'light' : 'dark';
-                setTheme(next);
-                // Зеркалим выбор в profiles.ui_theme — Mini App увидит то же
-                persistTheme(next);
-              },
-              lightIcon: Sun,
-              darkIcon: Moon,
-              label: 'Тема',
-            }}
-            account={{
-              name: masterName,
-              initials: getInitials(masterName),
-              avatarUrl: master?.profile?.avatar_url || null,
-              menuItems: [
-                // «Мой профиль» = публичная страница мастера (/m/{slug}). Если slug не задан —
-                // ведём в настройки чтобы мастер заполнил профиль и slug сгенерировался.
-                {
-                  icon: UserCircle,
-                  label: 'Мой профиль',
-                  href: master?.slug ? `/m/${master.slug}` : '/settings?section=profile',
-                },
-                { icon: SettingsIcon, label: 'Настройки', href: '/settings' },
-                {
-                  icon: LogOut,
-                  label: t('header.signOut') || 'Выход',
-                  destructive: true,
-                  onClick: async () => {
-                    const supabase = createClient();
-                    await supabase.auth.signOut();
-                    router.push('/login');
-                  },
-                },
-              ],
-            }}
+            isDark={isDark}
+            setTheme={setTheme}
+            persistTheme={persistTheme}
+            masterName={masterName}
+            master={master ?? null}
+            signOutLabel={t('header.signOut') || 'Выход'}
           />
 
           {/* ═══ Content area ═══ */}

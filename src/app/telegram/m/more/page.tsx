@@ -10,7 +10,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Megaphone,
   Users2,
@@ -28,7 +27,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { showConfirm } from '@/lib/telegram/webapp';
+import { showConfirm, getInitData } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
@@ -120,7 +119,6 @@ const I18N: Record<MiniAppLang, {
 
 export default function MasterMiniAppMore() {
   const { haptic } = useTelegram();
-  const router = useRouter();
   const { userId } = useAuthStore();
   const lang = useMiniAppLocale();
   const t = I18N[lang];
@@ -133,12 +131,24 @@ export default function MasterMiniAppMore() {
     if (!ok) return;
     setLoggingOut(true);
     haptic('warning');
+    // Паритет с /m/settings logout: одного signOut + router.replace мало —
+    // Mini App при заходе на /telegram снова логинит по initData. Нужна
+    // отвязка telegram_id через /api/telegram/unlink, очистка sessionStorage,
+    // и hard-redirect window.location на /telegram/welcome.
     try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-    } catch { /* best-effort */ }
-    useAuthStore.getState().clearAuth();
-    router.replace('/telegram');
+      const initData = getInitData();
+      if (initData) {
+        await fetch('/api/telegram/unlink', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+        });
+      }
+    } catch { /* ignore */ }
+    try { await createClient().auth.signOut(); } catch { /* ignore */ }
+    try { useAuthStore.getState().clearAuth(); } catch { /* ignore */ }
+    try { sessionStorage.removeItem('cres:tg'); } catch { /* ignore */ }
+    window.location.replace('/telegram/welcome');
   }
 
   useEffect(() => {

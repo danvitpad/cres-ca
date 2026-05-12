@@ -28,7 +28,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MiniAppAvatarCropSheet } from '@/components/miniapp/avatar-crop-sheet';
 import { mapError } from '@/lib/errors';
-import { getInitData } from '@/lib/telegram/webapp';
+import { getInitData, showConfirm } from '@/lib/telegram/webapp';
 import {
   MobilePage,
   PageHeader,
@@ -44,7 +44,7 @@ type Lang = 'uk' | 'ru' | 'en';
 const I18N: Record<Lang, {
   labelName: string; labelPhone: string; labelEmail: string; notSet: string;
   myMasters: string; menuSettings: string; menuSupport: string;
-  logout: string; loggingOut: string;
+  logout: string; loggingOut: string; logoutConfirm: string;
   editTitle: string; save: string;
   fieldFirstName: string; fieldLastName: string; fieldEmail: string; fieldPhone: string;
   fieldSlug: string; fieldBio: string;
@@ -59,7 +59,7 @@ const I18N: Record<Lang, {
   uk: {
     labelName: 'Імʼя', labelPhone: 'Телефон', labelEmail: 'Email', notSet: 'Не вказано',
     myMasters: 'Мої майстри', menuSettings: 'Налаштування', menuSupport: 'Підтримка',
-    logout: 'Вийти', loggingOut: 'Виходимо...',
+    logout: 'Вийти', loggingOut: 'Виходимо...', logoutConfirm: 'Точно вийти?',
     editTitle: 'Редагувати профіль', save: 'Зберегти',
     fieldFirstName: 'Ім\'я', fieldLastName: 'Прізвище',
     fieldEmail: 'Email', fieldPhone: 'Телефон',
@@ -78,7 +78,7 @@ const I18N: Record<Lang, {
   ru: {
     labelName: 'Имя', labelPhone: 'Телефон', labelEmail: 'Email', notSet: 'Не указано',
     myMasters: 'Мои мастера', menuSettings: 'Настройки', menuSupport: 'Поддержка',
-    logout: 'Выйти', loggingOut: 'Выходим...',
+    logout: 'Выйти', loggingOut: 'Выходим...', logoutConfirm: 'Точно выйти?',
     editTitle: 'Редактировать профиль', save: 'Сохранить',
     fieldFirstName: 'Имя', fieldLastName: 'Фамилия',
     fieldEmail: 'Email', fieldPhone: 'Телефон',
@@ -97,7 +97,7 @@ const I18N: Record<Lang, {
   en: {
     labelName: 'Name', labelPhone: 'Phone', labelEmail: 'Email', notSet: 'Not set',
     myMasters: 'My masters', menuSettings: 'Settings', menuSupport: 'Support',
-    logout: 'Sign out', loggingOut: 'Signing out...',
+    logout: 'Sign out', loggingOut: 'Signing out...', logoutConfirm: 'Log out?',
     editTitle: 'Edit profile', save: 'Save',
     fieldFirstName: 'First name', fieldLastName: 'Last name',
     fieldEmail: 'Email', fieldPhone: 'Phone',
@@ -264,6 +264,8 @@ export default function MiniAppProfilePage() {
 
   async function signOut() {
     if (signingOut) return;
+    const ok = await showConfirm(t.logoutConfirm);
+    if (!ok) return;
     haptic('medium');
     setSigningOut(true);
     try {

@@ -37,7 +37,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { useAuthStore } from '@/stores/auth-store';
 import { mapError } from '@/lib/errors';
-import { getInitData } from '@/lib/telegram/webapp';
+import { getInitData, showConfirm } from '@/lib/telegram/webapp';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
@@ -50,7 +50,7 @@ const I18N: Record<MiniAppLang, {
   schedule: string; billing: string; notifications: string; language: string; help: string; feedback: string;
   themeDark: string; themeManual: string; themeAsTelegram: string;
   hapticLabel: string; hapticHint: string;
-  loggingOut: string; logout: string;
+  loggingOut: string; logout: string; logoutConfirm: string;
   emailLabel: string; phoneLabel: string; notSet: string;
   changePassword: string;
   contactSheet: string; save: string; close: string;
@@ -69,7 +69,7 @@ const I18N: Record<MiniAppLang, {
     help: 'Допомога', feedback: 'Зворотний зв’язок',
     themeDark: 'Темна тема', themeManual: 'Вручну', themeAsTelegram: 'Як в Telegram',
     hapticLabel: 'Вібрація на дотик', hapticHint: 'Легкий відгук при натисканнях',
-    loggingOut: 'Виходимо…', logout: 'Вийти',
+    loggingOut: 'Виходимо…', logout: 'Вийти', logoutConfirm: 'Точно вийти?',
     emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не вказано',
     changePassword: 'Змінити пароль',
     contactSheet: 'Контактні дані', save: 'Зберегти', close: 'Закрити',
@@ -91,7 +91,7 @@ const I18N: Record<MiniAppLang, {
     help: 'Помощь', feedback: 'Обратная связь',
     themeDark: 'Тёмная тема', themeManual: 'Вручную', themeAsTelegram: 'Как в Telegram',
     hapticLabel: 'Вибрация на тапах', hapticHint: 'Лёгкая отдача при нажатиях',
-    loggingOut: 'Выходим…', logout: 'Выйти',
+    loggingOut: 'Выходим…', logout: 'Выйти', logoutConfirm: 'Точно выйти?',
     emailLabel: 'Email', phoneLabel: 'Телефон', notSet: 'Не указан',
     changePassword: 'Сменить пароль',
     contactSheet: 'Контактные данные', save: 'Сохранить', close: 'Закрыть',
@@ -113,7 +113,7 @@ const I18N: Record<MiniAppLang, {
     help: 'Help', feedback: 'Feedback',
     themeDark: 'Dark theme', themeManual: 'Manual', themeAsTelegram: 'Match Telegram',
     hapticLabel: 'Tap vibration', hapticHint: 'Light haptic response on taps',
-    loggingOut: 'Signing out…', logout: 'Sign out',
+    loggingOut: 'Signing out…', logout: 'Sign out', logoutConfirm: 'Log out?',
     emailLabel: 'Email', phoneLabel: 'Phone', notSet: 'Not set',
     changePassword: 'Change password',
     contactSheet: 'Contact info', save: 'Save', close: 'Close',
@@ -363,6 +363,8 @@ export default function MasterMiniAppSettings() {
 
   async function logout() {
     if (loggingOut) return;
+    const ok = await showConfirm(t.logoutConfirm);
+    if (!ok) return;
     setLoggingOut(true);
     haptic('warning');
     // Паритет с клиентским logout: сначала /api/telegram/unlink (отвязка
