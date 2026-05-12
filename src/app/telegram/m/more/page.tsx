@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { showConfirm } from '@/lib/telegram/webapp';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { T, R, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
@@ -128,7 +129,8 @@ export default function MasterMiniAppMore() {
 
   async function handleLogout() {
     if (loggingOut) return;
-    if (typeof window !== 'undefined' && !window.confirm(t.logoutConfirm)) return;
+    const ok = await showConfirm(t.logoutConfirm);
+    if (!ok) return;
     setLoggingOut(true);
     haptic('warning');
     try {
