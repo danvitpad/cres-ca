@@ -23,7 +23,7 @@ const I18N: Record<MiniAppLang, {
   expenseCategories: readonly string[];
   defaultExpenseCat: string;
   periodToday: string; periodWeek: string; periodMonth: string;
-  income: string; expense: string;
+  income: string; expense: string; profit: string;
   kpiRevenue: string; kpiBookings: string; kpiAvgCheck: string; kpiCompleted: string;
   kpiCompletedSub: (done: number, total: number) => string;
   noShowText: (n: number) => string; noShowHint: string;
@@ -46,7 +46,7 @@ const I18N: Record<MiniAppLang, {
     expenseCategories: ['Витратники', 'Оренда', 'Податки', 'Реклама', 'Обладнання', 'Їжа', 'Транспорт', 'Комунальні', 'Інше'],
     defaultExpenseCat: 'Інше',
     periodToday: 'Сьогодні', periodWeek: '7 днів', periodMonth: '30 днів',
-    income: 'Дохід', expense: 'Витрата',
+    income: 'Дохід', expense: 'Витрата', profit: 'Прибуток',
     kpiRevenue: 'Виручка', kpiBookings: 'Записів', kpiAvgCheck: 'Середній чек', kpiCompleted: 'Виконано',
     kpiCompletedSub: (d, t) => `${d} із ${t}`,
     noShowText: (n) => `${n} не прийшло`,
@@ -73,7 +73,7 @@ const I18N: Record<MiniAppLang, {
     expenseCategories: ['Расходники', 'Аренда', 'Налоги', 'Реклама', 'Оборудование', 'Еда', 'Транспорт', 'Коммунальные', 'Другое'],
     defaultExpenseCat: 'Другое',
     periodToday: 'Сегодня', periodWeek: '7 дней', periodMonth: '30 дней',
-    income: 'Доход', expense: 'Расход',
+    income: 'Доход', expense: 'Расход', profit: 'Прибыль',
     kpiRevenue: 'Выручка', kpiBookings: 'Записей', kpiAvgCheck: 'Средний чек', kpiCompleted: 'Выполнено',
     kpiCompletedSub: (d, t) => `${d} из ${t}`,
     noShowText: (n) => `${n} не пришло`,
@@ -100,7 +100,7 @@ const I18N: Record<MiniAppLang, {
     expenseCategories: ['Supplies', 'Rent', 'Taxes', 'Marketing', 'Equipment', 'Food', 'Transport', 'Utilities', 'Other'],
     defaultExpenseCat: 'Other',
     periodToday: 'Today', periodWeek: '7 days', periodMonth: '30 days',
-    income: 'Income', expense: 'Expense',
+    income: 'Income', expense: 'Expense', profit: 'Profit',
     kpiRevenue: 'Revenue', kpiBookings: 'Bookings', kpiAvgCheck: 'Avg check', kpiCompleted: 'Completed',
     kpiCompletedSub: (d, t) => `${d} of ${t}`,
     noShowText: (n) => `${n} no-shows`,
@@ -218,10 +218,12 @@ export default function MasterMiniAppStats() {
     const noShow = rows.filter((r) => r.status === 'no_show').length;
     const aptRevenue = completed.reduce((a, r) => a + r.price, 0);
     const revenue = aptRevenue + manualIncomeTotal;
+    const expense = operations.filter((op) => op.kind === 'expense').reduce((a, op) => a + op.amount, 0);
+    const profit = revenue - expense;
     const avg = completed.length > 0 ? aptRevenue / completed.length : 0;
     const completionRate = active.length > 0 ? Math.round((completed.length / active.length) * 100) : 0;
-    return { total: active.length, completed: completed.length, revenue, avg, completionRate, noShow };
-  }, [rows, manualIncomeTotal]);
+    return { total: active.length, completed: completed.length, revenue, expense, profit, avg, completionRate, noShow };
+  }, [rows, manualIncomeTotal, operations]);
 
   const topServices = useMemo(() => {
     const byService = new Map<string, { count: number; revenue: number }>();
@@ -283,7 +285,27 @@ export default function MasterMiniAppStats() {
           ))}
         </div>
 
-        {/* Income / expense actions */}
+        {/* Литерально .ip-summary из OD master-finances. Доход / Расход
+            (две колонки) + divider + ПРИБЫЛЬ большой суммой. */}
+        <div className="ip-summary" style={{ margin: 0 }}>
+          <div className="summary-row">
+            <div className="summary-half">
+              <div className="summary-lbl">{t.income}</div>
+              <div className="summary-val income">{kpi.revenue.toFixed(0)} ₴</div>
+            </div>
+            <div className="summary-half">
+              <div className="summary-lbl">{t.expense}</div>
+              <div className="summary-val expense">{kpi.expense.toFixed(0)} ₴</div>
+            </div>
+          </div>
+          <div className="summary-divider" />
+          <div className="summary-profit">
+            <span className="summary-profit-lbl">{t.profit}</span>
+            <span className="summary-profit-val">{kpi.profit.toFixed(0)} ₴</span>
+          </div>
+        </div>
+
+        {/* + Доход / + Расход — быстрые actions */}
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => { haptic('selection'); setSheetOpen('income'); }}
@@ -382,41 +404,35 @@ export default function MasterMiniAppStats() {
                 if (filtered.length === 0) {
                   return <p className="text-[12px] text-neutral-500">{t.opEmpty}</p>;
                 }
+                /* Литерально .txn-list / .txn-row / .txn-ico.income|expense /
+                   .txn-body / .txn-name / .txn-sub / .txn-amount.income|expense
+                   из OD master-finances. */
                 return (
-                  <ul className="space-y-1.5">
+                  <div className="txn-list" style={{ padding: 0 }}>
                     {filtered.map((op) => {
                       const isDebit = op.kind === 'expense';
-                      const tagText = op.kind === 'visit' ? t.opVisit : op.kind === 'income' ? t.opIncome : t.opExpense;
-                      const tagBg = op.kind === 'visit' ? 'bg-[var(--m-accent-soft)] text-[var(--m-accent)]'
-                        : op.kind === 'income' ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-rose-100 text-rose-700';
+                      const Icon = isDebit ? Minus : Plus;
                       const dateLabel = new Date(op.date).toLocaleDateString(lang === 'uk' ? 'uk-UA' : lang === 'en' ? 'en-US' : 'ru-RU', {
                         day: 'numeric', month: 'short',
                       });
                       return (
-                        <li
-                          key={op.id}
-                          className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white px-3 py-2.5"
-                        >
-                          <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tagBg}`}>
-                            {tagText}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-[13px] font-semibold">{op.label}</p>
-                            {op.sublabel && (
-                              <p className="truncate text-[11px] text-neutral-500">{op.sublabel}</p>
-                            )}
+                        <div key={op.id} className="txn-row">
+                          <div className={`txn-ico ${isDebit ? 'expense' : 'income'}`}>
+                            <Icon className="size-4" />
                           </div>
-                          <div className="shrink-0 text-right">
-                            <p className={`text-[13px] font-bold tabular-nums ${isDebit ? 'text-rose-600' : 'text-neutral-900'}`}>
-                              {isDebit ? '−' : '+'}{op.amount.toFixed(0)}₴
+                          <div className="txn-body">
+                            <p className="txn-name">{op.label}</p>
+                            <p className="txn-sub">
+                              {op.sublabel ? `${op.sublabel} · ` : ''}{dateLabel}
                             </p>
-                            <p className="text-[10px] text-neutral-400">{dateLabel}</p>
                           </div>
-                        </li>
+                          <span className={`txn-amount ${isDebit ? 'expense' : 'income'}`}>
+                            {isDebit ? '−' : '+'}{op.amount.toFixed(0)} ₴
+                          </span>
+                        </div>
                       );
                     })}
-                  </ul>
+                  </div>
                 );
               })()}
             </div>
