@@ -59,6 +59,9 @@
   transition: all var(--od-dur-base) var(--od-ease-out);
   text-decoration: none;
   color: inherit;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
 }
 .od-master-templates .ip-tpl-item:active {
   transform: scale(0.97);
