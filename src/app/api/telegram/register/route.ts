@@ -152,6 +152,10 @@ export async function POST(request: Request) {
   // Only store TG identifiers if user opted in (per consent checkbox).
   // Always stash the numeric id so we can recognize this user on next entry,
   // but skip username/photo/language if linkTelegram === false.
+  // Включаем full_name + first_name + last_name на ВСЕХ ветках (byTg/byPhone/new):
+  // раньше byTg/byPhone обновляли только phone/email/dob — имя/фамилию,
+  // которые пользователь только что ввёл в форме регистрации, тихо теряли.
+  // Для salon_admin full_name = salon name (как раньше), first/last_name = ФИО владельца.
   const tgPatch: Record<string, unknown> = {
     telegram_id: tg.id,
     telegram_username: linkTelegram ? (tg.username ?? null) : null,
@@ -161,6 +165,9 @@ export async function POST(request: Request) {
     phone: normalizedPhone,
     email: email || null,
     date_of_birth: dateOfBirth || null,
+    full_name: fullName,
+    first_name: firstName?.trim() || null,
+    last_name: lastName?.trim() || null,
   };
 
   // 1. Already linked by telegram_id → update missing fields
