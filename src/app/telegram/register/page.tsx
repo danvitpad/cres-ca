@@ -336,7 +336,7 @@ export default function MiniAppRegisterPage() {
     } catch {}
   }
 
-  if (!stash) return <div className="min-h-dvh" style={{ background: 'var(--background)' }} />;
+  if (!stash) return <div className="min-h-dvh" style={{ background: 'var(--m-bg, var(--background))' }} />;
 
   // ─── OTP screen ─────────────────────────────────────────────────────────────
   if (otpStage === 'otp') {
@@ -345,7 +345,7 @@ export default function MiniAppRegisterPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex min-h-dvh flex-col"
-        style={{ background: 'var(--background)', color: 'var(--foreground)' }}
+        style={{ background: 'var(--m-bg, var(--background))', color: 'var(--foreground)' }}
       >
         <div className="flex-1 space-y-6 px-6 pt-16">
           <div className="space-y-3 text-center">
@@ -558,7 +558,7 @@ export default function MiniAppRegisterPage() {
           opacity: keyboardOpen ? 0 : 1,
           pointerEvents: keyboardOpen ? 'none' : 'auto',
           paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
-          background: 'linear-gradient(to top, var(--background) 0%, var(--background) 60%, transparent 100%)',
+          background: 'linear-gradient(to top, var(--m-bg, var(--background)) 0%, var(--m-bg, var(--background)) 60%, transparent 100%)',
         }}
       >
         {done ? (

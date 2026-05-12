@@ -49,6 +49,10 @@ export default function TelegramEntryPage() {
         webapp.expand();
         try { webapp.disableVerticalSwipes(); } catch {}
         try {
+          // Hex ТОЧНО совпадает с --m-bg (см. globals.css). Один цвет
+          // во всех точках входа Mini App: telegram/page → welcome →
+          // register → layout. Раньше welcome форсировал #0f172a (slate),
+          // а Mini App layout — #141417, шапка/тело не сходились.
           const isDark = (webapp as { colorScheme?: 'light' | 'dark' }).colorScheme === 'dark';
           const bg = isDark ? '#141417' : '#ffffff';
           webapp.setHeaderColor(bg);

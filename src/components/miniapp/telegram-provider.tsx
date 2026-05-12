@@ -92,13 +92,18 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       // Re-sync insets after fullscreen animation settles (~400ms)
       setTimeout(() => syncSafeArea(webapp), 400);
       try { webapp.onEvent('fullscreenChanged' as Parameters<typeof webapp.onEvent>[0], () => syncSafeArea(webapp)); } catch {}
-      // Initial chrome paint — keyword 'bg_color', не hex.
-      // Telegram сам подбирает цвет под текущую тему (тёмная/светлая)
-      // и под THEME_PARAMS пользователя. Hex'ом мы рисковали выйти за тон
-      // (шапка темнее body), потому что наш hex не совпадал с tg bg.
-      try { webapp.setHeaderColor('bg_color'); } catch {}
-      try { webapp.setBackgroundColor('bg_color'); } catch {}
-      try { webapp.setBottomBarColor('bg_color'); } catch {}
+      // Initial chrome paint — hex, точно совпадает с --m-bg в globals.css.
+      // Один цвет во всех точках входа Mini App (telegram/page → welcome →
+      // register → m/layout). Раньше keyword 'bg_color' возвращал тон
+      // Telegram-темы пользователя, который не совпадал с нашим --m-bg
+      // (#141417), и было видно «горб» при переходе welcome → m/layout.
+      try {
+        const isDark = (webapp as { colorScheme?: 'light' | 'dark' }).colorScheme === 'dark';
+        const bg = isDark ? '#141417' : '#ffffff';
+        webapp.setHeaderColor(bg);
+        webapp.setBackgroundColor(bg);
+        webapp.setBottomBarColor(bg);
+      } catch {}
 
       syncSafeArea(webapp);
       syncTheme(webapp);

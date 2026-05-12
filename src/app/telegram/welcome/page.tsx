@@ -136,7 +136,11 @@ export default function MiniAppWelcomePage() {
       };
     }).Telegram?.WebApp;
     if (!tg) return;
-    const bg = resolvedTheme === 'dark' ? '#0f172a' : '#ffffff';
+    // Hex ТОЧНО совпадает с --m-bg в globals.css (см. MiniAppThemeProvider).
+    // Раньше welcome ставил #0f172a (slate-blue) → на переходе в register/
+    // login Telegram chrome оставался slate, body уже #141417 — visible
+    // «горб». Унифицировано: один hex везде.
+    const bg = resolvedTheme === 'dark' ? '#141417' : '#ffffff';
     try { tg.setHeaderColor?.(bg); } catch {}
     try { tg.setBackgroundColor?.(bg); } catch {}
     try { tg.setBottomBarColor?.(bg); } catch {}
@@ -189,10 +193,11 @@ export default function MiniAppWelcomePage() {
   const t = T[lang];
   const isDark = resolvedTheme === 'dark';
 
-  // Background — slate gradient в dark, чистый белый в light
-  const bg = isDark
-    ? 'linear-gradient(160deg,#0f172a 0%,#1e293b 60%,#0f172a 100%)'
-    : '#ffffff';
+  // Background — solid hex, ТОЧНО совпадает с --m-bg (см. MiniAppThemeProvider
+  // + globals.css). Раньше был градиент 0f172a→1e293b→0f172a — середина
+  // светлее, а chrome был #0f172a из этого же hex'а: на переходе на другую
+  // страницу chrome оставался slate, body уже #141417 — visible «горб».
+  const bg = isDark ? '#141417' : '#ffffff';
 
   // Цвета текста и хром-элементов под тему
   const fg = isDark ? '#ffffff' : '#0f172a';
@@ -313,7 +318,7 @@ export default function MiniAppWelcomePage() {
         style={{
           paddingBottom: 'calc(28px + env(safe-area-inset-bottom, 0px))',
           background: isDark
-            ? 'linear-gradient(to top, #0f172a 0%, #0f172a 60%, transparent 100%)'
+            ? 'linear-gradient(to top, #141417 0%, #141417 60%, transparent 100%)'
             : 'linear-gradient(to top, #ffffff 0%, #ffffff 60%, transparent 100%)',
         }}
       >
