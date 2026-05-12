@@ -26,6 +26,8 @@ type Body = {
   travel_buffer_minutes?: number;
   requires_prepayment?: boolean;
   prepayment_amount?: number;
+  /** ID категории из service_categories. null = убрать категорию (Без категории). */
+  category_id?: string | null;
   /** Расходники привязанные к услуге. При передаче — полная замена
    *  service_materials (delete-then-insert), как в веб-форме. */
   materials?: Array<{ material_id: string; quantity: number }>;
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
     if (typeof body.travel_buffer_minutes === 'number') p.travel_buffer_minutes = body.travel_buffer_minutes;
     if (typeof body.requires_prepayment === 'boolean') p.requires_prepayment = body.requires_prepayment;
     if (typeof body.prepayment_amount === 'number') p.prepayment_amount = body.prepayment_amount;
+    if ('category_id' in body) p.category_id = body.category_id ?? null;
     return p;
   }
 

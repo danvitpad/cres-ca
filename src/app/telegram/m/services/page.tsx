@@ -69,6 +69,8 @@ const I18N: Record<MiniAppLang, {
   save: string; saving: string;
   archiveBtn: string; restoreBtn: string; deleteBtn: string;
   uncategorized: string;
+  categoryLabel: string; categoryManage: string; categoryDone: string;
+  categoryNewPh: string; categoryAdd: string; categoryDelete: string;
   deleteConfirm: string;
   errName: string; errDuration: string; errPrice: string; errSave: string;
   toggleMobile: string; toggleMobileHint: string; fieldTravelBuffer: string;
@@ -89,6 +91,8 @@ const I18N: Record<MiniAppLang, {
     save: 'Зберегти', saving: 'Зберігаємо…',
     archiveBtn: 'В архів', restoreBtn: 'Активувати', deleteBtn: 'Видалити',
     uncategorized: 'Без категорії',
+    categoryLabel: 'Категорія', categoryManage: 'Керувати', categoryDone: 'Готово',
+    categoryNewPh: 'Назва нової категорії', categoryAdd: 'Додати', categoryDelete: 'Видалити',
     deleteConfirm: 'Видалити послугу повністю?',
     errName: 'Введи назву', errDuration: 'Введи тривалість', errPrice: 'Введи ціну', errSave: 'Не вдалось зберегти',
     toggleMobile: 'Виїзна послуга', toggleMobileHint: 'Я їду до клієнта',
@@ -114,6 +118,8 @@ const I18N: Record<MiniAppLang, {
     save: 'Сохранить', saving: 'Сохраняем…',
     archiveBtn: 'В архив', restoreBtn: 'Активировать', deleteBtn: 'Удалить',
     uncategorized: 'Без категории',
+    categoryLabel: 'Категория', categoryManage: 'Управлять', categoryDone: 'Готово',
+    categoryNewPh: 'Название новой категории', categoryAdd: 'Добавить', categoryDelete: 'Удалить',
     deleteConfirm: 'Удалить услугу полностью?',
     errName: 'Введи название', errDuration: 'Введи длительность', errPrice: 'Введи цену', errSave: 'Не удалось сохранить',
     toggleMobile: 'Выездная услуга', toggleMobileHint: 'Я еду к клиенту',
@@ -139,6 +145,8 @@ const I18N: Record<MiniAppLang, {
     save: 'Save', saving: 'Saving…',
     archiveBtn: 'Archive', restoreBtn: 'Activate', deleteBtn: 'Delete',
     uncategorized: 'Uncategorized',
+    categoryLabel: 'Category', categoryManage: 'Manage', categoryDone: 'Done',
+    categoryNewPh: 'New category name', categoryAdd: 'Add', categoryDelete: 'Delete',
     deleteConfirm: 'Delete service permanently?',
     errName: 'Enter name', errDuration: 'Enter duration', errPrice: 'Enter price', errSave: 'Failed to save',
     toggleMobile: 'Mobile service', toggleMobileHint: 'I travel to the client',
@@ -357,6 +365,8 @@ export default function MasterMiniAppServicesTab() {
             mode={sheet.mode}
             service={sheet.service}
             t={t}
+            categories={categories}
+            onCategoriesChange={(next) => setCategories(next)}
             onClose={() => setSheet(null)}
             onSaved={() => { setSheet(null); setRefreshKey((k) => k + 1); }}
           />
@@ -434,10 +444,12 @@ function ServiceRowCard({ s, i, t, onTap, lang, isLast, isToggling, onToggle }: 
   );
 }
 
-function ServiceSheet({ mode, service, t, onClose, onSaved }: {
+function ServiceSheet({ mode, service, t, categories, onCategoriesChange, onClose, onSaved }: {
   mode: 'create' | 'edit';
   service?: Service;
   t: typeof I18N['ru'];
+  categories: ServiceCategory[];
+  onCategoriesChange: (next: ServiceCategory[]) => void;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -447,6 +459,7 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
   const [price, setPrice] = useState(String(service?.price ?? ''));
   const [description, setDescription] = useState(service?.description ?? '');
   const [color, setColor] = useState<string>(service?.color ?? COLORS[0]);
+  const [categoryId, setCategoryId] = useState<string | null>(service?.category_id ?? null);
   const [isMobile, setIsMobile] = useState(!!service?.is_mobile);
   const [travelBuffer, setTravelBuffer] = useState(String(service?.travel_buffer_minutes ?? 0));
   const [requiresPrepayment, setRequiresPrepayment] = useState(!!service?.requires_prepayment);
@@ -454,6 +467,12 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Категория-CRUD состояние
+  const [catManageOpen, setCatManageOpen] = useState(false);
+  const [catBusy, setCatBusy] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [renameId, setRenameId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   // Расходники: список доступного склада + map material_id → quantity_per_visit.
   // Загружаются при открытии sheet'а одним запросом /service-options.
   const [inventory, setInventory] = useState<Array<{ id: string; name: string; unit: string; quantity: number }>>([]);
@@ -527,6 +546,7 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
         price: pr,
         description: description.trim() || null,
         color,
+        category_id: categoryId,
         is_mobile: isMobile,
         travel_buffer_minutes: isMobile ? Math.max(0, Number(travelBuffer.replace(',', '.')) || 0) : 0,
         requires_prepayment: requiresPrepayment,
@@ -577,6 +597,71 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
       setErr(e instanceof Error ? e.message : t.errSave);
     } finally {
       setBusy(false);
+    }
+  }
+
+  // ─── CRUD категорий ──────────────────────────────────────────────────
+  async function callCatMutate(payload: Record<string, unknown>) {
+    const initData = getInitData();
+    const res = await fetch('/api/telegram/m/service-category-mutate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(initData ? { 'X-TG-Init-Data': initData } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.detail || j.error || 'failed');
+    }
+    return res.json();
+  }
+
+  async function createCategory() {
+    const n = newCatName.trim();
+    if (!n || catBusy) return;
+    setCatBusy(true);
+    try {
+      const j = await callCatMutate({ action: 'create', name: n }) as { category: ServiceCategory };
+      const next = [...categories, j.category];
+      onCategoriesChange(next);
+      setCategoryId(j.category.id);
+      setNewCatName('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.errSave);
+    } finally {
+      setCatBusy(false);
+    }
+  }
+
+  async function renameCategory(id: string) {
+    const n = renameValue.trim();
+    if (!n || catBusy) return;
+    setCatBusy(true);
+    try {
+      await callCatMutate({ action: 'rename', id, name: n });
+      onCategoriesChange(categories.map((c) => (c.id === id ? { ...c, name: n } : c)));
+      setRenameId(null);
+      setRenameValue('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.errSave);
+    } finally {
+      setCatBusy(false);
+    }
+  }
+
+  async function deleteCategory(id: string) {
+    if (catBusy) return;
+    setCatBusy(true);
+    try {
+      await callCatMutate({ action: 'delete', id });
+      onCategoriesChange(categories.filter((c) => c.id !== id));
+      if (categoryId === id) setCategoryId(null);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t.errSave);
+    } finally {
+      setCatBusy(false);
     }
   }
 
@@ -692,6 +777,219 @@ function ServiceSheet({ mode, service, t, onClose, onSaved }: {
               ))}
             </div>
           </Field>
+
+          {/* Категория услуги ─────────────────────────────────────────
+              Выбор существующей категории (чипсы) + раскладушка-управление
+              «Управлять» с create / rename / delete. */}
+          <div
+            style={{
+              borderRadius: R.md,
+              border: `1px solid ${T.borderSubtle}`,
+              background: T.bg,
+              padding: '12px 14px 14px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 8,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: T.textTertiary,
+                  margin: 0,
+                }}
+              >
+                {t.categoryLabel}
+              </p>
+              <button
+                type="button"
+                onClick={() => setCatManageOpen((v) => !v)}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: T.accent,
+                  background: 'transparent',
+                  border: 0,
+                  padding: 0,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {catManageOpen ? t.categoryDone : t.categoryManage}
+              </button>
+            </div>
+
+            {/* Чипсы выбора */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setCategoryId(null)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: R.pill,
+                  border: `1.5px solid ${categoryId === null ? T.accent : T.border}`,
+                  background: categoryId === null ? T.accentSoft : T.surface,
+                  color: categoryId === null ? T.accent : T.textSecondary,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                {t.uncategorized}
+              </button>
+              {categories.map((c) => {
+                const on = categoryId === c.id;
+                if (catManageOpen) {
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '6px 8px 6px 12px',
+                        borderRadius: R.pill,
+                        border: `1.5px solid ${T.border}`,
+                        background: T.surface,
+                      }}
+                    >
+                      {renameId === c.id ? (
+                        <input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value.slice(0, 60))}
+                          onBlur={() => { if (renameValue.trim()) renameCategory(c.id); else setRenameId(null); }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') renameCategory(c.id);
+                            if (e.key === 'Escape') { setRenameId(null); setRenameValue(''); }
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: T.text,
+                            fontFamily: 'inherit',
+                            width: Math.max(80, renameValue.length * 8),
+                          }}
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => { setRenameId(c.id); setRenameValue(c.name); }}
+                          style={{
+                            background: 'transparent',
+                            border: 0,
+                            padding: 0,
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: T.text,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {c.name}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => deleteCategory(c.id)}
+                        disabled={catBusy}
+                        aria-label={t.categoryDelete}
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          background: T.dangerSoft ?? 'rgba(239, 68, 68, 0.1)',
+                          color: T.danger ?? '#ef4444',
+                          border: 0,
+                          padding: 0,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  );
+                }
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategoryId(c.id)}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: R.pill,
+                      border: `1.5px solid ${on ? T.accent : T.border}`,
+                      background: on ? T.accentSoft : T.surface,
+                      color: on ? T.accent : T.textSecondary,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Создание новой категории — видно только в режиме «Управлять» */}
+            {catManageOpen && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                <input
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value.slice(0, 60))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') createCategory(); }}
+                  placeholder={t.categoryNewPh}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: R.md,
+                    border: `1px solid ${T.border}`,
+                    background: T.surface,
+                    color: T.text,
+                    fontSize: 13,
+                    fontFamily: 'inherit',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={createCategory}
+                  disabled={catBusy || !newCatName.trim()}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: R.md,
+                    background: T.accent,
+                    color: '#fff',
+                    border: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    opacity: catBusy || !newCatName.trim() ? 0.5 : 1,
+                  }}
+                >
+                  {t.categoryAdd}
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Тумблеры — выездная услуга и предоплата. Open conditional fields ниже. */}
           <ToggleRow
