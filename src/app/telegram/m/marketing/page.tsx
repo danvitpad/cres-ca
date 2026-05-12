@@ -118,33 +118,26 @@ export default function MasterMiniAppMarketing() {
           </div>
         </div>
 
-        {/* Что будет внутри */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: `0 ${PAGE_PADDING_X}px` }}>
+        {/* Литерально .mkt-grid + .mkt-card из OD master-marketing.html.
+            2-колоночная сетка с иконкой в кружке наверху, title + sub
+            под ней, опциональным бэйджем. Заменили вертикальный список
+            строк на компактные карточки. */}
+        <div className="mkt-grid" style={{ padding: `0 ${PAGE_PADDING_X}px` }}>
           {sections.map((s, i) => {
             const Icon = s.icon;
             return (
               <button
                 type="button"
                 key={i}
+                className="mkt-card"
+                style={{ ['--i' as 'i']: i } as React.CSSProperties}
                 onClick={() => goTo(s.tab)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 16px',
-                  borderRadius: R.md,
-                  border: `1px solid ${T.borderSubtle}`,
-                  background: T.surface,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  textAlign: 'left',
-                  width: '100%',
-                }}
               >
-                <Icon size={22} strokeWidth={1.8} color={T.textSecondary} style={{ flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: T.text, margin: 0 }}>{s.title}</p>
-                  <p style={{ fontSize: 12, color: T.textTertiary, margin: '2px 0 0' }}>{s.hint}</p>
+                <div className="mc-icon-wrap">
+                  <Icon size={18} strokeWidth={2} />
                 </div>
-                <ChevronRight size={16} color={T.textTertiary} />
+                <p className="mc-title">{s.title}</p>
+                <p className="mc-sub">{s.hint}</p>
               </button>
             );
           })}

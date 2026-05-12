@@ -266,48 +266,37 @@ export default function MasterMiniAppTemplates() {
       </div>
       <PageHeader title="Шаблоны" subtitle="Тексты автоматических сообщений клиентам" />
 
-      <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {/* Литерально .ip-tpl-list / .ip-tpl-item / .ip-tpl-icon /
+          .tpl-icon-{green|blue|red|amber|neutral} / .ip-tpl-body /
+          .ip-tpl-name / .ip-tpl-sub из OD master-templates.html. */}
+      <div className="ip-tpl-list">
         {loading ? (
           [0, 1, 2, 3].map((i) => (
-            <div key={i} style={{ height: 70, borderRadius: R.md, background: T.bgSubtle }} />
+            <div key={i} style={{ height: 70, borderRadius: 8, background: 'var(--m-surface-elevated)', marginBottom: 8 }} />
           ))
         ) : (
           SPECS.map((spec) => {
             const Icon = spec.icon;
-            const custom = saved[spec.kind];
-            const hasCustom = !!custom?.content;
+            // Раскраска иконки по типу шаблона (OD palette):
+            const iconClass =
+              spec.kind === 'reminder' || spec.kind === 'booking_confirmation' ? 'tpl-icon-blue' :
+              spec.kind === 'review_request' || spec.kind === 'birthday' ? 'tpl-icon-amber' :
+              spec.kind === 'win_back' || spec.kind === 'cadence' ? 'tpl-icon-green' :
+              spec.kind === 'appointment_cancelled' ? 'tpl-icon-red' :
+              'tpl-icon-neutral';
             return (
               <button
                 type="button"
                 key={spec.kind}
+                className="ip-tpl-item"
                 onClick={() => { haptic('light'); setEditing(spec); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '14px 16px', borderRadius: R.md,
-                  border: `1px solid ${T.borderSubtle}`,
-                  background: T.surface,
-                  boxShadow: SHADOW.card,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                  width: '100%',
-                }}
               >
-                <div style={{
-                  width: 36, height: 36, borderRadius: R.sm,
-                  background: T.bgSubtle,
-                  color: T.textSecondary,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
+                <div className={`ip-tpl-icon ${iconClass}`}>
                   <Icon size={16} strokeWidth={2} />
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{spec.title}</p>
-                  </div>
-                  <p style={{ ...TYPE.caption, color: T.textTertiary, margin: '2px 0 0' }}>
-                    {spec.description}
-                  </p>
+                <div className="ip-tpl-body">
+                  <p className="ip-tpl-name">{spec.title}</p>
+                  <p className="ip-tpl-sub">{spec.description}</p>
                 </div>
               </button>
             );

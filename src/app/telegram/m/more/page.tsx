@@ -33,6 +33,7 @@ import { T, R, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useAuthStore } from '@/stores/auth-store';
 import { createClient } from '@/lib/supabase/client';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
+import '@/styles/od-master-settings.css';
 
 interface MoreLinkRaw {
   key: string;
@@ -40,6 +41,8 @@ interface MoreLinkRaw {
   icon: LucideIcon;
   labelKey: keyof typeof I18N['ru'];
   hintKey: keyof typeof I18N['ru'];
+  /** OD цветовая раскраска иконки: cobalt/emerald/amber/danger/info/purple */
+  iconColor: 'cobalt' | 'emerald' | 'amber' | 'danger' | 'info' | 'purple';
   /** true → открывать во внешнем браузере (web-страница, не Mini App page). */
   external?: boolean;
 }
@@ -160,19 +163,17 @@ export default function MasterMiniAppMore() {
   // тариф, био, контакты) живёт на публичной странице (открывается тапом
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
-    { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint' },
-    { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint' },
-    { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint' },
-    { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint' },
+    { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', iconColor: 'purple' },
+    { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint', iconColor: 'cobalt' },
+    { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint', iconColor: 'emerald' },
+    { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint', iconColor: 'amber' },
     // 'Живая очередь' убрана 2026-05-10 — фича оказалась не нужна.
-    // Клиент рядом с кабинетом сам видит когда подходит, заранее уведомлять
-    // не успеваем — продакт-ценность не подтвердилась.
-    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint' },
-    { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint' },
-    ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const }] : []),
-    { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint' },
-    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint' },
-    { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint' },
+    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'info' },
+    { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint', iconColor: 'cobalt' },
+    ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const, iconColor: 'purple' as const }] : []),
+    { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint', iconColor: 'cobalt' },
+    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint', iconColor: 'amber' },
+    { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint', iconColor: 'emerald' },
   ];
 
   function openExternal(href: string) {
@@ -187,86 +188,62 @@ export default function MasterMiniAppMore() {
   }
 
   return (
-    <MobilePage>
+    <MobilePage className="od-master-settings">
       <PageHeader title={t.title} />
-      <div
-        style={{
-          margin: `4px ${PAGE_PADDING_X}px 0`,
-          background: T.surface,
-          border: `1px solid ${T.borderSubtle}`,
-          borderRadius: R.lg,
-          boxShadow: SHADOW.card,
-          overflow: 'hidden',
-        }}
-      >
-        {links.map((it, idx) => {
-          const Icon = it.icon;
-          const RightIcon = it.external ? ArrowUpRight : ChevronRight;
-          const rowStyle: React.CSSProperties = {
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            padding: '16px 16px',
-            borderTop: idx === 0 ? 'none' : `1px solid ${T.borderSubtle}`,
-            textDecoration: 'none',
-            color: T.text,
-            WebkitTapHighlightColor: 'transparent',
-            background: 'transparent',
-            border: 'none',
-            width: '100%',
-            textAlign: 'left',
-            fontFamily: 'inherit',
-            cursor: 'pointer',
-          };
-          const inner = (
-            <>
-              <Icon size={22} strokeWidth={1.8} color={T.textSecondary} style={{ flexShrink: 0 }} />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: T.text }}>{t[it.labelKey]}</span>
-                <span style={{ display: 'block', fontSize: 12, color: T.textTertiary, marginTop: 2 }}>{t[it.hintKey]}</span>
-              </span>
-              <RightIcon size={16} color={T.textTertiary} strokeWidth={2} />
-            </>
-          );
-          if (it.external) {
-            return (
-              <button key={it.key} type="button" onClick={() => openExternal(it.href)} style={rowStyle}>
-                {inner}
-              </button>
+
+      {/* Литерально .settings-card + .settings-row из OD master-settings.html.
+          Иконка слева — .settings-row-icon с одной из цветовых классов
+          (icon-cobalt/emerald/amber/danger/info/purple). Заголовок +
+          подзаголовок — .settings-row-title + .settings-row-sub. Справа —
+          .settings-row-chevron. Разделители — handled by
+          .settings-row:not(:last-child)::after. */}
+      <div style={{ padding: `0 ${PAGE_PADDING_X}px`, marginTop: 4 }}>
+        <div className="settings-card">
+          {links.map((it) => {
+            const Icon = it.icon;
+            const RightIcon = it.external ? ArrowUpRight : ChevronRight;
+            const inner = (
+              <>
+                <div className={`settings-row-icon icon-${it.iconColor}`}>
+                  <Icon size={16} strokeWidth={2} />
+                </div>
+                <div className="settings-row-body">
+                  <div className="settings-row-title">{t[it.labelKey]}</div>
+                  <div className="settings-row-sub" style={{ fontSize: 11, color: 'var(--m-text-tertiary)', marginTop: 2 }}>
+                    {t[it.hintKey]}
+                  </div>
+                </div>
+                <span className="settings-row-chevron">
+                  <RightIcon size={16} strokeWidth={2} />
+                </span>
+              </>
             );
-          }
-          return (
-            <Link key={it.key} href={it.href} onClick={() => haptic('light')} style={rowStyle as React.CSSProperties}>
-              {inner}
-            </Link>
-          );
-        })}
+            if (it.external) {
+              return (
+                <button key={it.key} type="button" className="settings-row" onClick={() => openExternal(it.href)}>
+                  {inner}
+                </button>
+              );
+            }
+            return (
+              <Link key={it.key} href={it.href} className="settings-row" onClick={() => haptic('light')}>
+                {inner}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Кнопка выхода — отдельно, красным цветом, ниже всех ссылок */}
+      {/* Литерально .settings-logout-row из OD master-settings.html */}
       <button
         type="button"
         onClick={handleLogout}
         disabled={loggingOut}
+        className="settings-logout-row"
         style={{
-          margin: `16px ${PAGE_PADDING_X}px 0`,
-          width: `calc(100% - ${PAGE_PADDING_X * 2}px)`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          padding: '14px 16px',
-          background: T.surface,
-          border: `1px solid ${T.borderSubtle}`,
-          borderRadius: R.lg,
-          boxShadow: SHADOW.card,
-          color: T.danger ?? '#dc2626',
-          fontSize: 14,
-          fontWeight: 600,
+          marginTop: 16,
           cursor: loggingOut ? 'not-allowed' : 'pointer',
-          fontFamily: 'inherit',
           opacity: loggingOut ? 0.5 : 1,
-          WebkitTapHighlightColor: 'transparent',
         }}
       >
         <LogOut size={18} strokeWidth={2} />
