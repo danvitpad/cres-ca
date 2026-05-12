@@ -231,7 +231,7 @@ export async function POST(request: Request) {
       // не трогая код.
       const betaMode = process.env.BETA_MODE !== 'false';
       const welcomeText = betaMode
-        ? `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nСервис сейчас в стадии бета-тестирования. Открой приложение, если ты уже бета-тестировщик. Если нет — напиши «Хочу попасть в бета» и я возьму твою заявку.`
+        ? `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nСервис сейчас в стадии бета-тестирования. Откройте приложение, если вы уже бета-тестировщик. Если нет — напишите «Хочу попасть в бета» и я возьму твою заявку.`
         : `Добро пожаловать в <b>CRES-CA</b>, ${firstName}.\n\nОткрой приложение, чтобы начать.`;
       await sendMessage(
         chatId,
@@ -299,10 +299,10 @@ export async function POST(request: Request) {
       chatId,
       `💡 <b>Что я умею</b>
 
-Просто пиши или говори голосом — AI сам поймёт.
+Просто пишите или говори голосом — AI сам поймёт.
 
 <b>👤 Для клиентов</b> (записаться к мастеру):
-• «Запиши меня к Тане на маникюр завтра в 14»
+• «Запишите меня к Тане на маникюр завтра в 14»
 • «Какие у меня записи?» / «Когда я к Тане?»
 • «Отмени запись на завтра»
 • «Перенеси на пятницу 16:00»
@@ -310,7 +310,7 @@ export async function POST(request: Request) {
 • «Найди мне маникюр в центре» / /find
 
 <b>💼 Для мастеров</b> (управление бизнесом):
-• «Запиши Таю на маникюр в четверг 10:00»
+• «Запишите Таю на маникюр в четверг 10:00»
 • «Перенеси Таю на пятницу 12:00»
 • «Отмени запись Тани»
 • «Сколько у меня сегодня записей?»
@@ -321,10 +321,10 @@ export async function POST(request: Request) {
 • /today, /tomorrow, /clients, /finance
 
 <b>💬 Обратная связь</b>
-Если хочешь сообщить о баге, написать благодарность или предложение — начни сообщение со слов «обратная связь» / «жалоба» / «идея», или используй /feedback.
+Если хотите сообщить о баге, написать благодарность или предложение — начните сообщение со слов «обратная связь» / «жалоба» / «идея», или используй /feedback.
 
 <b>🎤 Голос</b>
-Просто отправь голосовое — AI поймёт что тебе нужно.`,
+Просто отправь голосовое — AI поймёт что вам нужно.`,
       { parse_mode: 'HTML' },
     );
     return NextResponse.json({ ok: true });
@@ -337,7 +337,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  await sendMessage(chatId, '🎤 Отправь голосовое или напиши текстом — я пойму и выполню.\n\nИли нажми /help для списка команд.', {
+  await sendMessage(chatId, '🎤 Отправь голосовое или напишите текстом — я пойму и выполню.\n\nИли нажми /help для списка команд.', {
     reply_markup: {
       inline_keyboard: [[{ text: '✨ CRES-CA', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram` } }]],
     },
@@ -408,7 +408,7 @@ async function handleTextIntent(chatId: number, text: string) {
       await appendClientTgExchange(supabase, session.profile_id, text, result.reply, intent.action);
     } catch (err) {
       console.error('[client-text] intent failed:', (err as Error)?.message);
-      await sendMessage(chatId, '❌ AI временно перегружен. Попробуй через 10-20 секунд или нажми /help.');
+      await sendMessage(chatId, '❌ AI временно перегружен. Попробуйте через 10-20 секунд или нажми /help.');
     }
     return;
   }
@@ -422,11 +422,11 @@ async function handleTextIntent(chatId: number, text: string) {
   } catch (err) {
     const msg = (err as Error)?.message ?? '';
     console.error('Text intent processing error:', err);
-    let userMsg = '❌ Не понял команду. Попробуй переформулировать или /help для списка.';
+    let userMsg = '❌ Не понял команду. Попробуйте переформулировать или /help для списка.';
     if (msg.includes('All Gemini') || msg.includes('Gemini unavailable')) {
-      userMsg = '❌ AI временно перегружен. Попробуй через 10-20 секунд.';
+      userMsg = '❌ AI временно перегружен. Попробуйте через 10-20 секунд.';
     } else if (msg.includes('unparseable')) {
-      userMsg = '❌ AI не понял команду. Опиши конкретнее: «напомни ...», «запиши ... на ...», «потратил ... на ...».';
+      userMsg = '❌ AI не понял команду. Опиши конкретнее: «напомни ...», «запишите ... на ...», «потратил ... на ...».';
     }
     await sendMessage(chatId, userMsg);
   }
@@ -464,7 +464,7 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     mimeType = dl.mimeType;
   } catch (err) {
     console.error('[voice] download failed:', err);
-    await sendMessage(chatId, '❌ Не удалось скачать голосовое из Telegram. Запиши заново.');
+    await sendMessage(chatId, '❌ Не удалось скачать голосовое из Telegram. Запишите заново.');
     return;
   }
 
@@ -476,7 +476,7 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     .maybeSingle();
 
   // ── Client path: AI-агент (action router). Раньше всё голосовое от
-  // клиента уходило в feedback, и клиент не мог попросить «запиши меня»,
+  // клиента уходило в feedback, и клиент не мог попросить «запишите меня»,
   // «когда у меня записи», «сколько потратил». Теперь Gemini сам определяет
   // намерение → handleClientVoiceIntent выполняет действие, либо если это
   // действительно feedback — старый flow.
@@ -490,7 +490,7 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
       if (intent.action === 'feedback') {
         const text = (intent.text || transcript).trim();
         if (text.length < 4) {
-          await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуй сказать чётче или напиши текстом командой /feedback');
+          await sendMessage(chatId, '❌ Не удалось распознать голосовое. Попробуйте сказать чётче или напишите текстом командой /feedback');
           return;
         }
         await saveFeedbackAndNotify(session.profile_id, text, 'telegram_voice', {
@@ -507,7 +507,7 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
       await sendMessage(chatId, result.reply);
     } catch (err) {
       console.error('[voice] client intent failed:', (err as Error)?.message);
-      await sendMessage(chatId, '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.');
+      await sendMessage(chatId, '❌ AI-сервис временно перегружен. Попробуйте через 10-20 секунд.');
     }
     return;
   }
@@ -540,15 +540,15 @@ async function handleVoiceMessage(chatId: number, telegramId: number, fileId: st
     if (aiErr.log) {
       for (const a of aiErr.log) console.error(`[voice] ${a.model} → ${a.error ?? 'ok'}`);
     }
-    let userMsg = '❌ Не удалось обработать голосовое. Попробуй ещё раз, говори чётче.';
+    let userMsg = '❌ Не удалось обработать голосовое. Попробуйте ещё раз, говори чётче.';
     if (msg.includes('All Gemini') || msg.includes('Gemini unavailable')) {
-      userMsg = '❌ AI-сервис временно перегружен. Попробуй через 10-20 секунд.';
+      userMsg = '❌ AI-сервис временно перегружен. Попробуйте через 10-20 секунд.';
     } else if (msg.includes('Gemini 4')) {
-      userMsg = '❌ AI не смог разобрать аудио (формат или квота). Запиши заново более чётко.';
+      userMsg = '❌ AI не смог разобрать аудио (формат или квота). Запишите заново более чётко.';
     } else if (msg.includes('Could not get Telegram file')) {
-      userMsg = '❌ Не удалось скачать голосовое из Telegram. Запиши заново.';
+      userMsg = '❌ Не удалось скачать голосовое из Telegram. Запишите заново.';
     } else if (msg.includes('unparseable')) {
-      userMsg = '❌ AI не понял что нужно сделать. Опиши конкретнее: "напомни", "запиши", "потратил", "добавь день рождения" и т.д.';
+      userMsg = '❌ AI не понял что нужно сделать. Опиши конкретнее: "напомни", "запишите", "потратил", "добавьте день рождения" и т.д.';
     }
     await sendMessage(chatId, userMsg);
   }
@@ -664,7 +664,7 @@ async function routeVoiceAction(
         });
       } else {
         await logAiAction(supabase, masterId, { actionType: 'expense_created', inputText: intent.raw_transcript || intent.text, status: 'needs_confirmation', errorMessage: 'amount_not_detected' });
-        await sendMessage(chatId, `❓ Не удалось определить сумму. Скажи ещё раз с суммой.`);
+        await sendMessage(chatId, `❓ Не удалось определить сумму. Скажите ещё раз с суммой.`);
       }
       break;
     }
@@ -748,7 +748,7 @@ async function routeVoiceAction(
             errorMessage: 'client_not_found',
             result: { client_name: intent.client_name, fallback: 'reminder' },
           });
-          await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден. Сохранил как напоминание — добавь клиента в базу и перенесёшь.\n\n📝 ${intent.text}`, {
+          await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден. Сохранил как напоминание — добавьте клиента в базу и перенесёшь.\n\n📝 ${intent.text}`, {
             parse_mode: 'HTML',
           });
         }
@@ -759,7 +759,7 @@ async function routeVoiceAction(
           status: 'needs_confirmation',
           errorMessage: 'client_name_not_detected',
         });
-        await sendMessage(chatId, `❓ Не понял имя клиента. Скажи: «У [имя] аллергия на...»`);
+        await sendMessage(chatId, `❓ Не понял имя клиента. Скажите: «У [имя] аллергия на...»`);
       }
       break;
     }
@@ -780,7 +780,7 @@ async function routeVoiceAction(
           status: 'needs_confirmation',
           errorMessage: !intent.client_name ? 'client_name_missing' : 'due_at_missing',
         });
-        await sendMessage(chatId, `⚠️ Нужно больше деталей. Скажи: «Запиши [имя] на [услугу] в [время/дату]».\n\nПока сохранил как напоминание.`);
+        await sendMessage(chatId, `⚠️ Нужно больше деталей. Скажите: «Запишите [имя] на [услугу] в [время/дату]».\n\nПока сохранил как напоминание.`);
         break;
       }
 
@@ -795,7 +795,7 @@ async function routeVoiceAction(
           errorMessage: 'client_not_found',
           result: { client_name: intent.client_name },
         });
-        await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден в базе.\n\nДобавь клиента и повтори, или запиши через календарь.`, {
+        await sendMessage(chatId, `⚠️ Клиент «${intent.client_name}» не найден в базе.\n\nДобавь клиента и повтори, или запишите через календарь.`, {
           reply_markup: {
             inline_keyboard: [[{ text: '📅 Календарь', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
           },
@@ -820,7 +820,7 @@ async function routeVoiceAction(
         });
         await sendMessage(
           chatId,
-          `🤔 Нашёл несколько клиентов с именем «${escapeHtml(intent.client_name)}»:\n\n${list}\n\nПовтори голосом с фамилией — например: «Запиши Анну Иванову...»`,
+          `🤔 Нашёл несколько клиентов с именем «${escapeHtml(intent.client_name)}»:\n\n${list}\n\nПовтори голосом с фамилией — например: «Запишите Анну Иванову...»`,
           { parse_mode: 'HTML' },
         );
         break;
@@ -942,7 +942,7 @@ async function routeVoiceAction(
       const serviceLine = service
         ? `💇 ${service.name}`
         : intent.service_name
-          ? `💇 ${intent.service_name} <i>(услуги нет в каталоге — добавь в /services)</i>`
+          ? `💇 ${intent.service_name} <i>(услуги нет в каталоге — добавьте в /services)</i>`
           : `💇 <i>(услуга не указана)</i>`;
       await sendMessage(chatId, `✅ <b>Запись создана</b>\n\n👤 ${client.full_name}\n${serviceLine}\n⏰ ${dateStr}\n\nКлиент получит уведомление.`, { parse_mode: 'HTML' });
 
@@ -997,7 +997,7 @@ async function routeVoiceAction(
         status: 'failed',
         errorMessage: 'item_not_found',
       });
-      await sendMessage(chatId, `❓ Не нашёл такой материал в складе. Добавь его в /inventory и повтори.`);
+      await sendMessage(chatId, `❓ Не нашёл такой материал в складе. Добавьте его в /inventory и повтори.`);
       break;
     }
 
@@ -1055,14 +1055,14 @@ async function routeVoiceAction(
           status: 'needs_confirmation',
           errorMessage: 'amount_not_detected',
         });
-        await sendMessage(chatId, `❓ Не удалось определить суммы. Скажи ещё раз с суммами.`);
+        await sendMessage(chatId, `❓ Не удалось определить суммы. Скажите ещё раз с суммами.`);
       }
       break;
     }
 
     case 'cancel': {
       if (!intent.client_name) {
-        await sendMessage(chatId, '⚠️ Скажи имя клиента: «Отмени Анну на завтра».');
+        await sendMessage(chatId, '⚠️ Скажите имя клиента: «Отмени Анну на завтра».');
         await logAiAction(supabase, masterId, { actionType: 'appointment_cancel', inputText: intent.raw_transcript, status: 'needs_confirmation' });
         break;
       }
@@ -1121,7 +1121,7 @@ async function routeVoiceAction(
 
     case 'reschedule': {
       if (!intent.client_name || !intent.new_due_at) {
-        await sendMessage(chatId, '⚠️ Скажи кого и на когда: «Перенеси Анну на пятницу на 15».');
+        await sendMessage(chatId, '⚠️ Скажите кого и на когда: «Перенеси Анну на пятницу на 15».');
         await logAiAction(supabase, masterId, { actionType: 'appointment_reschedule', inputText: intent.raw_transcript, status: 'needs_confirmation' });
         break;
       }
@@ -1186,7 +1186,7 @@ async function routeVoiceAction(
 
     case 'create_client': {
       if (!intent.client_name) {
-        await sendMessage(chatId, '⚠️ Скажи имя клиента: «Новая клиентка Марина, телефон 0671234567».');
+        await sendMessage(chatId, '⚠️ Скажите имя клиента: «Новая клиентка Марина, телефон 0671234567».');
         await logAiAction(supabase, masterId, { actionType: 'client_created', inputText: intent.raw_transcript, status: 'needs_confirmation' });
         break;
       }
@@ -1229,7 +1229,7 @@ async function routeVoiceAction(
 
     case 'query': {
       // For queries — acknowledge and redirect to app
-      await sendMessage(chatId, `📊 Открой дашборд для полной аналитики:\n\n💬 «${intent.raw_transcript}»`, {
+      await sendMessage(chatId, `📊 Откройте дашборд для полной аналитики:\n\n💬 «${intent.raw_transcript}»`, {
         reply_markup: {
           inline_keyboard: [[{ text: '📊 Открыть дашборд', web_app: { url: `${process.env.NEXT_PUBLIC_APP_URL}/telegram/m/home` } }]],
         },
@@ -1240,12 +1240,12 @@ async function routeVoiceAction(
 
     case 'client_update': {
       if (!intent.client_name) {
-        await sendMessage(chatId, '❓ Скажи имя клиента: «добавь Таисии день рождения 5 марта 1998».');
+        await sendMessage(chatId, '❓ Скажите имя клиента: «добавьте Таисии день рождения 5 марта 1998».');
         await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'needs_confirmation', errorMessage: 'no_client_name' });
         break;
       }
       if (!intent.field || !intent.value) {
-        await sendMessage(chatId, '❓ Не понял что именно обновить. Попробуй: «у Ани телефон 0671234567», «добавь Маше день рождения 12 мая 1990».');
+        await sendMessage(chatId, '❓ Не понял что именно обновить. Попробуйте: «у Ани телефон 0671234567», «добавьте Маше день рождения 12 мая 1990».');
         await logAiAction(supabase, masterId, { actionType: 'client_update', inputText: intent.raw_transcript, status: 'needs_confirmation', errorMessage: 'no_field_or_value' });
         break;
       }
@@ -1314,7 +1314,7 @@ async function routeVoiceAction(
 
     case 'expense_recurring': {
       if (!intent.amount || !intent.day_of_month) {
-        await sendMessage(chatId, '❓ Скажи сумму и день месяца: «аренда 5000 каждое 1-е число».');
+        await sendMessage(chatId, '❓ Скажите сумму и день месяца: «аренда 5000 каждое 1-е число».');
         await logAiAction(supabase, masterId, { actionType: 'expense_recurring', inputText: intent.raw_transcript, status: 'needs_confirmation' });
         break;
       }
@@ -1352,7 +1352,7 @@ async function routeVoiceAction(
       const supplierName = intent.supplier_name || intent.client_name;
       const items = Array.isArray(intent.items) ? intent.items : [];
       if (!supplierName || items.length === 0) {
-        await sendMessage(chatId, '❓ Скажи: «Заказать у [имя поставщика] 5 кг краски, 3 щётки, на телеграм».');
+        await sendMessage(chatId, '❓ Скажите: «Заказать у [имя поставщика] 5 кг краски, 3 щётки, на телеграм».');
         await logAiAction(supabase, masterId, { actionType: 'supplier_order', inputText: intent.raw_transcript, status: 'needs_confirmation' });
         break;
       }
@@ -1424,7 +1424,7 @@ async function routeVoiceAction(
         ? 'Телеграм предложен, готов отправить.'
         : intent.channel === 'email'
           ? 'Email предложен, готов отправить.'
-          : 'Выбери канал доставки.';
+          : 'Выберите канал доставки.';
 
       const buttons: Array<Array<{ text: string; callback_data: string }>> = [];
       if (supplier.telegram_id) buttons.push([{ text: '📱 Telegram', callback_data: `so_tg:${order.id}` }]);
@@ -1456,7 +1456,7 @@ async function routeVoiceAction(
         });
         await sendMessage(chatId, `📌 Не понял точно что нужно, но сохранил как заметку:\n\n«${intent.raw_transcript}»`);
       } else {
-        await sendMessage(chatId, '❌ Не удалось разобрать аудио. Попробуй ещё раз, говори чётче.');
+        await sendMessage(chatId, '❌ Не удалось разобрать аудио. Попробуйте ещё раз, говори чётче.');
       }
     }
   }
@@ -1494,7 +1494,7 @@ async function handleMasterAccountLink(chatId: number, telegramId: number, token
     .eq('id', tokenRow.profile_id);
 
   if (profErr) {
-    await sendMessage(chatId, '❌ Не получилось связать аккаунт. Попробуй ещё раз.');
+    await sendMessage(chatId, '❌ Не получилось связать аккаунт. Попробуйте ещё раз.');
     return;
   }
 
@@ -1508,7 +1508,7 @@ async function handleMasterAccountLink(chatId: number, telegramId: number, token
 
   await sendMessage(
     chatId,
-    '✅ <b>Telegram подключён!</b>\n\nТеперь ты будешь получать уведомления о новых записях и отменах прямо сюда.\n\n🎤 Отправляй голосовые — я создам напоминания и заметки.',
+    '✅ <b>Telegram подключён!</b>\n\nТеперь вы будешь получать уведомления о новых записях и отменах прямо сюда.\n\n🎤 Отправляй голосовые — я создам напоминания и заметки.',
     {
       parse_mode: 'HTML',
       reply_markup: {
@@ -1548,7 +1548,7 @@ async function handleMasterLink(chatId: number, telegramId: number, inviteCode: 
     }, { onConflict: 'profile_id,master_id' });
   }
 
-  await sendMessage(chatId, `✅ Ты подписан на <b>${masterName}</b>!\n\nОткрой приложение, чтобы записаться:`, {
+  await sendMessage(chatId, `✅ Вы подписан на <b>${masterName}</b>!\n\nОткрой приложение, чтобы записаться:`, {
     parse_mode: 'HTML',
     reply_markup: {
       inline_keyboard: [[
@@ -2017,7 +2017,7 @@ async function handleCallbackQuery(cb: NonNullable<TelegramUpdate['callback_quer
 async function handleClientSearch(chatId: number, query: string) {
   if (!query || query.length < 3) {
     await sendMessage(chatId,
-      '🔍 <b>Найти мастера</b>\n\nНапиши что хочешь, например:\n<code>найди маникюр в центре Киева до 800 грн</code>\n<code>ищу парикмахера во Львове</code>\n<code>/find педикюр</code>',
+      '🔍 <b>Найти мастера</b>\n\nНапиши что хотите, например:\n<code>найди маникюр в центре Киева до 800 грн</code>\n<code>ищу парикмахера во Львове</code>\n<code>/find педикюр</code>',
       { parse_mode: 'HTML' });
     return;
   }
@@ -2031,7 +2031,7 @@ async function handleClientSearch(chatId: number, query: string) {
     const intent = await parseClientConciergeText(query);
     if (!isConciergeUsable(intent)) {
       await sendMessage(chatId,
-        '🤔 Не понял что искать. Попробуй указать услугу или город:\n<code>маникюр Киев</code>',
+        '🤔 Не понял что искать. Попробуйте указать услугу или город:\n<code>маникюр Киев</code>',
         { parse_mode: 'HTML' });
       return;
     }
@@ -2092,13 +2092,13 @@ async function handleClientSearch(chatId: number, query: string) {
     });
   } catch (e) {
     console.error('[concierge] failed:', e);
-    await sendMessage(chatId, '❌ AI-консьерж временно недоступен. Попробуй открыть приложение и искать вручную.');
+    await sendMessage(chatId, '❌ AI-консьерж временно недоступен. Попробуйте открыть приложение и искать вручную.');
   }
 }
 
 /* ─── Feedback via bot ─── */
 
-const FEEDBACK_PROMPT = 'Запиши голосовое или напиши текстом — расскажи что улучшить, что сломалось, какая фича нужна. Твой отзыв прочитает команда CRES-CA лично.';
+const FEEDBACK_PROMPT = 'Запишите голосовое или напишите текстом — расскажите что улучшить, что сломалось, какая фича нужна. Ваш отзыв прочитает команда CRES-CA лично.';
 
 const FEEDBACK_THANKS = 'Команда CRES-CA благодарит вас за отзыв 💜\n\nМы стараемся сделать сервис максимально удобным и полезным. Ваш отзыв очень ценен для нас — мы прочитаем каждое сообщение лично!';
 
@@ -2212,7 +2212,7 @@ async function handleTextFeedback(chatId: number, telegramId: number, text: stri
   }
 
   if (text.length < 4) {
-    await sendMessage(chatId, '❌ Слишком коротко. Напиши хотя бы пару фраз.');
+    await sendMessage(chatId, '❌ Слишком коротко. Напишите хотя бы пару фраз.');
     return;
   }
 
@@ -2267,7 +2267,7 @@ async function handleReviewStars(chatId: number, telegramId: number, apptId: str
   if (row.clients?.profile_id !== profile.id) return;
   if (row.status !== 'completed') return;
   if (row.review_submitted_at) {
-    await sendMessage(chatId, '⚠️ Ты уже оставил оценку для этого визита.');
+    await sendMessage(chatId, '⚠️ Вы уже оставил оценку для этого визита.');
     return;
   }
 
@@ -2294,8 +2294,8 @@ async function handleReviewStars(chatId: number, telegramId: number, apptId: str
     .eq('id', row.id);
 
   const thanks = score >= 4
-    ? `💜 Спасибо за ${score} ${score === 5 ? 'звёзд' : 'звезды'}! Если хочешь — напиши пару слов комментария ответом на это сообщение, мастер увидит.`
-    : `Спасибо за оценку. Если было что-то не так — напиши ответом, я передам мастеру чтобы исправил.`;
+    ? `💜 Спасибо за ${score} ${score === 5 ? 'звёзд' : 'звезды'}! Если хотите — напишите пару слов комментария ответом на это сообщение, мастер увидит.`
+    : `Спасибо за оценку. Если было что-то не так — напишите ответом, я передам мастеру чтобы исправил.`;
   await sendMessage(chatId, thanks);
 }
 
@@ -2311,7 +2311,7 @@ async function handleRebookAccept(chatId: number, telegramId: number, suggestion
     .eq('telegram_id', telegramId)
     .maybeSingle();
   if (!profile) {
-    await sendMessage(chatId, '❌ Не удалось определить твой аккаунт. Открой приложение заново.');
+    await sendMessage(chatId, '❌ Не удалось определить ваш аккаунт. Откройте приложение заново.');
     return;
   }
 
@@ -2347,7 +2347,7 @@ async function handleRebookAccept(chatId: number, telegramId: number, suggestion
     return;
   }
   if (row.clients?.profile_id && row.clients.profile_id !== profile.id) {
-    await sendMessage(chatId, '❌ Это предложение не для тебя.');
+    await sendMessage(chatId, '❌ Это предложение не для вас.');
     return;
   }
 
@@ -2366,7 +2366,7 @@ async function handleRebookAccept(chatId: number, telegramId: number, suggestion
   });
   if (isFree !== true) {
     await supabase.from('rebook_suggestions').update({ status: 'stale' }).eq('id', row.id);
-    await sendMessage(chatId, '😔 Этот слот только что заняли. Напиши мастеру напрямую — подберём другое время.');
+    await sendMessage(chatId, '😔 Этот слот только что заняли. Напишите мастеру напрямую — подберём другое время.');
     return;
   }
 
@@ -2397,7 +2397,7 @@ async function handleRebookAccept(chatId: number, telegramId: number, suggestion
 
   if (apptErr || !appt) {
     console.error('[rebook-accept] appointment insert failed:', apptErr);
-    await sendMessage(chatId, '❌ Не удалось создать запись. Попробуй позже.');
+    await sendMessage(chatId, '❌ Не удалось создать запись. Попробуйте позже.');
     return;
   }
 
@@ -2448,7 +2448,7 @@ async function handleRebookDecline(chatId: number, telegramId: number, suggestio
     .update({ status: 'declined', client_responded_at: new Date().toISOString() })
     .eq('id', row.id);
 
-  await sendMessage(chatId, '👌 Хорошо, напишу позже. Если захочешь записаться сама — просто открой приложение.');
+  await sendMessage(chatId, '👌 Хорошо, напишу позже. Если захочешь записаться сама — просто откройте приложение.');
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -2671,7 +2671,7 @@ function fmtTime(iso: string): string {
 async function handleMasterDayList(chatId: number, telegramId: number, day: 'today' | 'tomorrow') {
   const m = await resolveMaster(telegramId);
   if (!m) {
-    await sendMessage(chatId, '⚠️ Эта команда доступна только мастерам. Открой /telegram чтобы стать мастером.');
+    await sendMessage(chatId, '⚠️ Эта команда доступна только мастерам. Откройте /telegram чтобы стать мастером.');
     return;
   }
 

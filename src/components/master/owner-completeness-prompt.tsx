@@ -96,7 +96,7 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
     {
       key: 'bio',
       label: 'Описание о себе',
-      hint: 'Расскажи в 2–3 предложениях про опыт и подход',
+      hint: 'Расскажите в 2–3 предложениях про опыт и подход',
       done: !!data.bio && data.bio.trim().length >= 30,
       href: '#inline-bio',
     },
@@ -110,7 +110,7 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
     {
       key: 'services',
       label: 'Услуги с ценами',
-      hint: counts.services === 0 ? 'Добавь хотя бы 3 услуги — что ты умеешь делать' : `Сейчас услуг: ${counts.services}`,
+      hint: counts.services === 0 ? 'Добавьте хотя бы 3 услуги — что вы умеешь делать' : `Сейчас услуг: ${counts.services}`,
       done: counts.services >= 3,
       href: servicesHref,
     },
@@ -124,7 +124,7 @@ export function OwnerCompletenessPrompt({ masterProfileId }: { masterProfileId: 
     {
       key: 'hours',
       label: 'Часы работы',
-      hint: 'Когда тебе можно записаться — клиент должен видеть',
+      hint: 'Когда вам можно записаться — клиент должен видеть',
       done: !!data.working_hours && Object.values(data.working_hours).some(
         (v) => v && typeof v === 'object' && !((v as { closed?: boolean }).closed),
       ),

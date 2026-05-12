@@ -113,7 +113,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
     };
     const mins = offsetToMinutes(o);
     if (mins <= 0) {
-      toast.error('Укажи хотя бы 1 минуту');
+      toast.error('Укажите хотя бы 1 минуту');
       return;
     }
     if (offsets.length >= 10) {
@@ -227,7 +227,7 @@ export function NotificationPreferencesEditor({ theme = 'light' }: { theme?: 'li
           <div>
             <p className="text-sm font-semibold">Получать напоминания о записях</p>
             <p className={`text-[12px] ${textMuted}`}>
-              Если выключить — ты не будешь получать уведомления в Telegram / email.
+              Если выключить — вы не будешь получать уведомления в Telegram / email.
             </p>
           </div>
         </label>

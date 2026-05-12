@@ -44,7 +44,7 @@ export default function SuperadminLoginPage() {
       // Hard reload — чтобы серверные компоненты увидели новые cookies
       window.location.href = data.redirectTo || '/ru/superadmin/dashboard';
     } catch {
-      setError('Сетевая ошибка. Попробуй ещё раз.');
+      setError('Сетевая ошибка. Попробуйте ещё раз.');
       setBusy(false);
     }
   };

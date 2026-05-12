@@ -236,7 +236,7 @@ export function ContactSearchSheet({
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: 12 }}>
           {query.trim().length < 2 ? (
             <p style={{ ...TYPE.caption, color: T.textTertiary, textAlign: 'center', padding: '24px 0', margin: 0 }}>
-              Начни вводить — найдём по имени, телефону, email или cres-id.
+              Начните вводить — найдём по имени, телефону, email или cres-id.
             </p>
           ) : loading && results.length === 0 ? (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>

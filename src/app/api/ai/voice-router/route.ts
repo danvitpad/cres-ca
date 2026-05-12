@@ -79,7 +79,7 @@ async function callOpenRouter(prompt: string): Promise<string> {
   try {
     return await aiChat(
       [
-        { role: 'system', content: 'Ты JSON-классификатор. Отвечай ТОЛЬКО валидным JSON, без markdown, без комментариев, без бэктиков.' },
+        { role: 'system', content: 'Вы JSON-классификатор. Отвечай ТОЛЬКО валидным JSON, без markdown, без комментариев, без бэктиков.' },
         { role: 'user', content: prompt },
       ],
       { model: 'openai/gpt-oss-120b:free', temperature: 0.3, maxTokens: 400 },

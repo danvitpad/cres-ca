@@ -27,8 +27,8 @@ interface ParseResult {
   summary?: string;                // short human-readable confirmation
 }
 
-const SYSTEM_PROMPT = `Ты помощник CRESCA. Мастер записывает свободным текстом информацию про клиента.
-Твоя задача — классифицировать сказанное и вернуть строго JSON следующей формы:
+const SYSTEM_PROMPT = `Вы помощник CRESCA. Мастер записывает свободным текстом информацию про клиента.
+Ваша задача — классифицировать сказанное и вернуть строго JSON следующей формы:
 
 {
   "notes": [
@@ -146,7 +146,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({
       applied: false,
-      summary: parsed.summary || 'Не нашёл что сохранить — попробуй переформулировать.',
+      summary: parsed.summary || 'Не нашёл что сохранить — попробуйте переформулировать.',
     });
   }
 

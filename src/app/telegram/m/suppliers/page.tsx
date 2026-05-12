@@ -49,7 +49,7 @@ const I18N: Record<MiniAppLang, {
   uk: {
     title: 'Постачальники',
     subtitle: (a, ar) => ar > 0 ? `${a} активних · ${ar} в архіві` : `${a} активних`,
-    empty: 'Поки немає постачальників', emptyHint: 'Додай першого — тапни «+ Додати»',
+    empty: 'Поки немає постачальників', emptyHint: 'Додайте першого — тапните «+ Додати»',
     add: 'Додати постачальника', back: 'Назад',
     archived: 'В архіві',
     sheetCreate: 'Новий постачальник', sheetEdit: 'Редагувати постачальника',
@@ -59,13 +59,13 @@ const I18N: Record<MiniAppLang, {
     placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'Графік, умови, мінімум…',
     save: 'Зберегти', saving: 'Зберігаємо…',
     archiveBtn: 'В архів', restoreBtn: 'Активувати',
-    errName: 'Введи назву', errSave: 'Не вдалось зберегти',
+    errName: 'Введите назву', errSave: 'Не вдалось зберегти',
     noContact: 'без контактів',
   },
   ru: {
     title: 'Поставщики',
     subtitle: (a, ar) => ar > 0 ? `${a} активных · ${ar} в архиве` : `${a} активных`,
-    empty: 'Пока нет поставщиков', emptyHint: 'Добавь первого — тапни «+ Добавить»',
+    empty: 'Пока нет поставщиков', emptyHint: 'Добавьте первого — тапните «+ Добавить»',
     add: 'Добавить поставщика', back: 'Назад',
     archived: 'В архиве',
     sheetCreate: 'Новый поставщик', sheetEdit: 'Редактировать поставщика',
@@ -75,7 +75,7 @@ const I18N: Record<MiniAppLang, {
     placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'График, условия, минимум…',
     save: 'Сохранить', saving: 'Сохраняем…',
     archiveBtn: 'В архив', restoreBtn: 'Активировать',
-    errName: 'Введи название', errSave: 'Не удалось сохранить',
+    errName: 'Введите название', errSave: 'Не удалось сохранить',
     noContact: 'без контактов',
   },
   en: {

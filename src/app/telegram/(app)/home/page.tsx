@@ -78,8 +78,8 @@ const I18N: Record<Lang, {
     title: 'Привіт',
     morningHi: 'Доброго ранку', dayHi: 'Доброго дня', eveningHi: 'Доброго вечора', nightHi: 'Доброї ночі',
     upcoming: 'Найближчий запис', details: 'Детальніше',
-    regulars: 'Твої постійні', atMaster: 'у',
-    freeSlots: 'Вільні слоти твоїх майстрів', allContacts: 'Мої майстри',
+    regulars: 'Ваші постійні', atMaster: 'у',
+    freeSlots: 'Вільні слоти ваших майстрів', allContacts: 'Мої майстри',
     recommended: 'Рекомендуємо', viewAll: 'Дивитися всі', from: 'від',
     explore: 'Категорії', topCats: 'Популярне',
     cat: { beauty: 'Краса', health: "Здоров'я", pets: 'Тварини', fitness: 'Фітнес', auto: 'Авто', home: 'Дім' },
@@ -88,15 +88,15 @@ const I18N: Record<Lang, {
     aiConcierge: 'AI-консьєрж', minSuffix: 'хв', masterFallback: 'Майстер',
     bookCta: 'Записатися',
     emptyTitle: 'Поки що порожньо',
-    emptyText: 'У тебе ще немає записів. Знайди майстра — і запишись прямо звідси.',
+    emptyText: 'У вам ще немає записів. Знайди майстра — і запишись прямо звідси.',
     emptyCta: 'Знайти майстра',
   },
   ru: {
     title: 'Привет',
     morningHi: 'Доброе утро', dayHi: 'Добрый день', eveningHi: 'Добрый вечер', nightHi: 'Доброй ночи',
     upcoming: 'Ближайшая запись', details: 'Подробнее',
-    regulars: 'Твои постоянные', atMaster: 'у',
-    freeSlots: 'Свободные слоты твоих мастеров', allContacts: 'Мои мастера',
+    regulars: 'Ваши постоянные', atMaster: 'у',
+    freeSlots: 'Свободные слоты ваших мастеров', allContacts: 'Мои мастера',
     recommended: 'Рекомендуем', viewAll: 'Посмотреть все', from: 'от',
     explore: 'Категории', topCats: 'Популярное',
     cat: { beauty: 'Красота', health: 'Здоровье', pets: 'Питомцы', fitness: 'Фитнес', auto: 'Авто', home: 'Дом' },
@@ -105,7 +105,7 @@ const I18N: Record<Lang, {
     aiConcierge: 'AI-консьерж', minSuffix: 'мин', masterFallback: 'Мастер',
     bookCta: 'Записаться',
     emptyTitle: 'Здесь пока пусто',
-    emptyText: 'У тебя ещё нет записей. Найди мастера — и запишись прямо отсюда.',
+    emptyText: 'У вас ещё нет записей. Найди мастера — и запишись прямо отсюда.',
     emptyCta: 'Найти мастера',
   },
   en: {
@@ -364,7 +364,7 @@ export default function MiniAppHomePage() {
           </Link>
         ) : null}
 
-        {/* Твои постоянные — мастер+услуга где было ≥3 визитов.
+        {/* Ваши постоянные — мастер+услуга где было ≥3 визитов.
             paddingX добавлен чтобы заголовок и первая карточка не лепились
             к левому краю экрана (раньше прилипало в Mini App клиента). */}
         {regulars.length > 0 && (

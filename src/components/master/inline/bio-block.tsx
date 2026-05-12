@@ -2,7 +2,7 @@
  * name: InlineBioBlock
  * description: Блок «О мастере» с inline-редактированием. Для клиента: показывает bio
  *              если есть, иначе скрыт. Для владельца: pencil-icon top-right; если bio
- *              пуст — большой CTA «+ Добавь описание о себе».
+ *              пуст — большой CTA «+ Добавьте описание о себе».
  * created: 2026-04-26
  * --- */
 
@@ -76,7 +76,7 @@ export function InlineBioBlock({ masterId, masterProfileId, initialBio }: Props)
             <Plus className="size-5" />
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-bold text-neutral-900">Добавь описание о себе</span>
+            <span className="block text-[15px] font-bold text-neutral-900">Добавьте описание о себе</span>
             <span className="mt-1 block text-[13px] text-neutral-500">
               2–3 предложения про опыт и подход. Клиенты доверяют заполненным страницам.
             </span>
@@ -163,7 +163,7 @@ function BioSheet({
     >
       <p className="mb-3 inline-flex items-center gap-1.5 text-[12px] text-neutral-500">
         <Bot className="size-3.5 text-blue-500" />
-        Расскажи коротко: опыт, подход, чем отличаешься. 2–3 предложения.
+        Расскажите коротко: опыт, подход, чем отличаешься. 2–3 предложения.
       </p>
       <textarea
         value={draft}

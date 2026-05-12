@@ -38,7 +38,7 @@ const LANG_SHORT: Record<Lang, string> = { uk: 'UA', ru: 'RU', en: 'EN' };
 
 const T = {
   uk: {
-    headline: 'Сервіс який знає твоїх клієнтів',
+    headline: 'Сервіс який знає ваших клієнтів',
     sub: 'Записи, нагадування, фінанси і маркетинг — в одному Telegram-боті',
     terms: 'Продовжуючи, ви погоджуєтесь з',
     termsLink: 'Умовами використання',

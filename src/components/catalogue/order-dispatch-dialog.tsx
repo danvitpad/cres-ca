@@ -77,7 +77,7 @@ export function OrderDispatchDialog({
         const code = (data as { error?: string }).error || '';
         const detail = (data as { detail?: string }).detail || '';
         toast.error(
-          code === 'no_supplier_email' ? 'У поставщика не указан email — добавь его в карточке поставщика'
+          code === 'no_supplier_email' ? 'У поставщика не указан email — добавьте его в карточке поставщика'
           : code === 'email_send_failed' ? `Email: ${detail || 'не удалось отправить'}`
           : detail || 'Не удалось отправить',
         );
@@ -95,7 +95,7 @@ export function OrderDispatchDialog({
           if (shareUrl) {
             window.open(shareUrl, '_blank', 'noopener');
             const hint = (data as { hint?: string }).hint;
-            toast.success(hint || 'Telegram открыт — выбери контакт поставщика');
+            toast.success(hint || 'Telegram открыт — выберите контакт поставщика');
             setSentChannel('telegram');
           } else {
             toast.success('Готово');
@@ -174,7 +174,7 @@ export function OrderDispatchDialog({
               Заказ готов
             </h2>
             <p style={{ marginTop: 4, marginBottom: 16, fontSize: 13, color: 'var(--muted-foreground, #888)' }}>
-              Проверь данные и отправь поставщику одним кликом.
+              Проверьте данные и отправь поставщику одним кликом.
             </p>
 
             {/* Preview */}
@@ -299,7 +299,7 @@ export function OrderDispatchDialog({
 
             {!canEmail && supplier && (
               <p style={{ marginTop: 10, fontSize: 11.5, color: 'var(--muted-foreground, #888)' }}>
-                У этого поставщика не указан email — кнопка недоступна. Добавь email
+                У этого поставщика не указан email — кнопка недоступна. Добавьте email
                 в карточке поставщика, чтобы включить отправку на почту.
               </p>
             )}

@@ -5,7 +5,7 @@
  *                idle: Кнопка «Запросить вступление в команду»
  *                form: textarea с message + Отправить/Отмена
  *                pending: «Заявка отправлена · ждёт ответа админа»
- *                approved: «Тебя приняли · открой кабинет команды»
+ *                approved: «Вас приняли · откройте кабинет команды»
  *                rejected: «Админ отклонил» + reason если есть + «Запросить заново»
  *              Если recruitment_open=false и нет существующей заявки — показывает
  *              note «Набор временно закрыт».
@@ -264,9 +264,9 @@ export function SalonJoinRequestCard({
   // Form open
   return (
     <div className="rounded-2xl border border-neutral-300 bg-white p-5">
-      <p className="text-[14px] font-semibold text-neutral-900">Расскажи о себе админу</p>
+      <p className="text-[14px] font-semibold text-neutral-900">Расскажите о себе админу</p>
       <p className="mt-1 text-[13px] text-neutral-500">
-        Опыт, специализация, почему хочешь в эту команду. Можно пропустить.
+        Опыт, специализация, почему хотите в эту команду. Можно пропустить.
       </p>
       <textarea
         value={draft}

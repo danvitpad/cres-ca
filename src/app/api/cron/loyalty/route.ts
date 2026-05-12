@@ -70,7 +70,7 @@ export async function GET(request: Request) {
       profile_id: c.profile_id,
       channel: 'telegram',
       title: '🎂 С Днём рождения!',
-      body: `Поздравляем! У тебя личный промокод ${promo.code} — скидка ${promo.discount_percent}% на следующую запись. Действует до ${new Date(promo.valid_until).toLocaleDateString('ru-RU')}.`,
+      body: `Поздравляем! У вас личный промокод ${promo.code} — скидка ${promo.discount_percent}% на следующую запись. Действует до ${new Date(promo.valid_until).toLocaleDateString('ru-RU')}.`,
       scheduled_for: new Date().toISOString(),
       data: {
         kind: 'birthday_promo',

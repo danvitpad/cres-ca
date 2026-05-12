@@ -8,7 +8,7 @@
  *     creates salon_join_requests row (status=pending) — RLS гарантирует что
  *     один pending на пару salon+master.
  *   GET /api/salon/[id]/join-request — список заявок этого мастера в этот салон
- *     (для UI: «у тебя уже отправлена заявка»).
+ *     (для UI: «у вас уже отправлена заявка»).
  * created: 2026-04-26
  * --- */
 
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
 
   if (master.salon_id === salonId) {
     return NextResponse.json(
-      { error: 'already_member', message: 'Ты уже состоишь в этой команде.' },
+      { error: 'already_member', message: 'Вы уже состоишь в этой команде.' },
       { status: 400 },
     );
   }
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
 
   if (salon.owner_id === user.id) {
     return NextResponse.json(
-      { error: 'self_join', message: 'Ты владелец — состоишь в команде по умолчанию.' },
+      { error: 'self_join', message: 'Вы владелец — состоишь в команде по умолчанию.' },
       { status: 400 },
     );
   }
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     .maybeSingle();
   if (existingMember) {
     return NextResponse.json(
-      { error: 'already_member', message: 'Ты уже в команде этого салона.' },
+      { error: 'already_member', message: 'Вы уже в команде этого салона.' },
       { status: 400 },
     );
   }

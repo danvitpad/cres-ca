@@ -68,20 +68,20 @@ export default function ReferralPage() {
 
   function shareTelegram() {
     if (!data?.link) return;
-    const text = encodeURIComponent(`Приглашаю тебя в CRES-CA — получим оба бонус: ${data.link}`);
+    const text = encodeURIComponent(`Приглашаю вас в CRES-CA — получим оба бонус: ${data.link}`);
     window.open(`https://t.me/share/url?url=${encodeURIComponent(data.link)}&text=${text}`, '_blank');
   }
 
   function shareWhatsApp() {
     if (!data?.link) return;
-    const text = encodeURIComponent(`Приглашаю тебя в CRES-CA — получим оба бонус: ${data.link}`);
+    const text = encodeURIComponent(`Приглашаю вас в CRES-CA — получим оба бонус: ${data.link}`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   }
 
   function shareEmail() {
     if (!data?.link) return;
     const subject = encodeURIComponent('Приглашение в CRES-CA');
-    const body = encodeURIComponent(`Привет!\n\nПриглашаю тебя в CRES-CA — универсальный сервис для записей.\nПерейди по ссылке, зарегистрируйся — оба получим бонусы: ${data.link}\n`);
+    const body = encodeURIComponent(`Привет!\n\nПриглашаю вас в CRES-CA — универсальный сервис для записей.\nПерейди по ссылке, зарегистрируйся — оба получим бонусы: ${data.link}\n`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   }
 

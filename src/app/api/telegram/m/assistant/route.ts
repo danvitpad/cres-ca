@@ -232,7 +232,7 @@ export async function POST(request: Request) {
   const firstName = profile.full_name?.split(' ')[0] || 'мастер';
 
   const tomorrowIso = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const system = `Ты AI-помощник мастера ${firstName} в CRES-CA. Отвечаешь как умный коллега: тепло, на «ты», коротко (1-3 предложения).
+  const system = `Вы AI-помощник мастера ${firstName} в CRES-CA. Отвечаешь как умный коллега: тепло, на «вы», коротко (1-3 предложения).
 
 ВАЖНО: возвращаешь ТОЛЬКО JSON — никакого текста до или после, никакого markdown:
 
@@ -275,10 +275,10 @@ export async function POST(request: Request) {
 
 КОГДА action=null:
   answer — короткий ответ по контексту ниже.
-  Примеры: "За неделю 8400₴, это +15% к прошлой.", "Сегодня записей нет.", "У тебя 3 клиента: Тая, Даня, Денис."
+  Примеры: "За неделю 8400₴, это +15% к прошлой.", "Сегодня записей нет.", "У вас 3 клиента: Тая, Даня, Денис."
 
 ТОН в answer (КРИТИЧНО):
-- Тепло, на «ты», как живой коллега. Кратко, без воды.
+- Тепло, на «вы», как живой коллега. Кратко, без воды.
 - БЕЗ канцелярита: НЕ "согласно данным CRM", НЕ "у вас зарегистрировано", НЕ "рекомендую открыть раздел"
 - БЕЗ markdown, списков, эмодзи
 - В подтверждении действия — что именно сделал: "Записал расход 500₴ на материалы.", "Создал запись Анне на завтра в 14:00.", "Отменил запись Дениса на сегодня.", "Отправил рассылку 47 подписчикам."
@@ -383,7 +383,7 @@ ${svcList.join(', ') || '—'}
         }).eq('id', clientId);
         executedAction = 'note';
       } else {
-        answer = `Не нашёл клиента "${d.client_hint}" — попробуй точное имя или фамилию.`;
+        answer = `Не нашёл клиента "${d.client_hint}" — попробуйте точное имя или фамилию.`;
       }
     }
   } else if (parsed.action === 'inventory' && parsed.data) {
@@ -403,7 +403,7 @@ ${svcList.join(', ') || '—'}
         executedAction = 'inventory';
         answer = `Списал ${d.quantity}${best.unit ? ' ' + best.unit : ''} из «${best.name}». Остаток: ${newQty}.`;
       } else {
-        answer = `Не нашёл материал «${d.item_hint}» на складе. Добавь его в Услуги → Склад.`;
+        answer = `Не нашёл материал «${d.item_hint}» на складе. Добавьте его в Услуги → Склад.`;
       }
     }
   } else if (parsed.action === 'book' && parsed.data) {
@@ -452,7 +452,7 @@ ${svcList.join(', ') || '—'}
           .gt('ends_at', startsAt.toISOString())
           .limit(1).maybeSingle();
         if (conflict) {
-          answer = `На ${d.date} в ${d.time} уже есть запись — выбери другое время.`;
+          answer = `На ${d.date} в ${d.time} уже есть запись — выберите другое время.`;
         } else {
           const { error } = await admin.from('appointments').insert({
             master_id: master.id, client_id: clientId,

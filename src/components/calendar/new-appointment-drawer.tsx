@@ -168,7 +168,7 @@ export function NewAppointmentDrawer({
         // Surface friendly message for our overlap trigger
         const msg = error.message || '';
         if (msg.includes('time_slot_taken')) {
-          toast.error('Это время уже занято — выбери другое');
+          toast.error('Это время уже занято — выберите другое');
         } else if (msg.includes('time_slot_blocked')) {
           toast.error('Это время заблокировано (обед / перерыв)');
         } else {
@@ -453,7 +453,7 @@ export function NewAppointmentDrawer({
             })}
             {filteredServices.length === 0 && (
               <div style={{ padding: 16, textAlign: 'center', color: C.textSecondary, fontSize: 13 }}>
-                {serviceSearch.trim() ? 'Не нашлось — измени запрос' : 'Нет услуг — добавь их в разделе «Услуги»'}
+                {serviceSearch.trim() ? 'Не нашлось — измени запрос' : 'Нет услуг — добавьте их в разделе «Услуги»'}
               </div>
             )}
           </div>

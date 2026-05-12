@@ -158,10 +158,10 @@ export default function CampaignsPage() {
   }
 
   async function send() {
-    if (!subject.trim()) { toast.error('Введи тему сообщения'); return; }
-    if (!content.trim()) { toast.error('Введи текст сообщения'); return; }
+    if (!subject.trim()) { toast.error('Введите тему сообщения'); return; }
+    if (!content.trim()) { toast.error('Введите текст сообщения'); return; }
     if (!targets.length) {
-      toast.error(mode === 'segment' ? 'Пустой сегмент' : 'Выбери получателей');
+      toast.error(mode === 'segment' ? 'Пустой сегмент' : 'Выберите получателей');
       return;
     }
     const scheduledIso = scheduleAt ? new Date(scheduleAt).toISOString() : new Date().toISOString();
@@ -256,8 +256,8 @@ export default function CampaignsPage() {
           <div className="flex items-center gap-1.5">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Получатели</h2>
             <HelpHint title="Как работают рассылки">
-              <p><b>Кому уйдёт сообщение:</b> ты выбираешь сегмент (например, «спящие 30+ дней») или конкретных клиентов вручную. Видят сообщение только те, кто привязал Telegram к твоему профилю.</p>
-              <p><b>Что увидит клиент:</b> сообщение приходит в TG-бот @cres_ca_bot от твоего имени с твоим аватаром, как личное сообщение. Если клиент не подписан — сообщение не доходит (это не email).</p>
+              <p><b>Кому уйдёт сообщение:</b> вы выбираешь сегмент (например, «спящие 30+ дней») или конкретных клиентов вручную. Видят сообщение только те, кто привязал Telegram к вашему профилю.</p>
+              <p><b>Что увидит клиент:</b> сообщение приходит в TG-бот @cres_ca_bot от вашего имени с вашим аватаром, как личное сообщение. Если клиент не подписан — сообщение не доходит (это не email).</p>
               <p><b>Зачем мастеру/команде:</b> вернуть «спящих» клиентов одной рассылкой за 5 секунд вместо ручного обзвона. Хорошо работает с акцией («Только до пятницы — стрижка по старой цене»).</p>
               <p><b>Что в финансах:</b> рассылка сама по себе бесплатная (в TG нет оплаты за сообщение). Учитывается только «доход» от записей которые клиенты сделают после рассылки.</p>
             </HelpHint>
@@ -363,7 +363,7 @@ export default function CampaignsPage() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={10}
-          placeholder="Напиши текст рассылки…"
+          placeholder="Напишите текст рассылки…"
           className="w-full px-4 py-3 text-sm bg-transparent border-0 outline-none resize-none placeholder:text-muted-foreground"
         />
 

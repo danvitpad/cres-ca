@@ -233,7 +233,7 @@ export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
       const answer = res.ok && json.answer
         ? json.answer
         : (json.error === 'ai_unavailable'
-            ? 'AI временно недоступен. Попробуй позже.'
+            ? 'AI временно недоступен. Попробуйте позже.'
             : 'Что-то пошло не так.');
       setChat((prev) => [...prev, { role: 'assistant', content: answer, ts: Date.now() }]);
     } catch {
@@ -609,7 +609,7 @@ export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
                   </div>
                   <div>
                     <p style={{ fontSize: 13.5, fontWeight: 600, color: C.text, margin: 0 }}>
-                      Начни разговор
+                      Начните разговор
                     </p>
                     <p style={{ fontSize: 12.5, marginTop: 6, lineHeight: 1.5 }}>
                       «Кто из клиентов не был 2 месяца?» или «Напомни завтра позвонить Анне в 10:00».
@@ -681,7 +681,7 @@ export function HeaderAiAssistant({ theme: _F, isDark }: Props) {
                   }
                 }}
                 rows={1}
-                placeholder="Напиши команду или вопрос…"
+                placeholder="Напишите команду или вопрос…"
                 disabled={sending}
                 style={{
                   flex: 1,
@@ -746,7 +746,7 @@ function VoiceCommandsHelp({ C }: { C: typeof P.light }) {
     {
       title: 'Записи',
       items: [
-        '«Запиши Машу на стрижку в пятницу 15:00»',
+        '«Запишите Машу на стрижку в пятницу 15:00»',
         '«Отмени Колю завтра»',
         '«Перенеси Иру с пятницы на субботу 14:00»',
       ],
@@ -755,7 +755,7 @@ function VoiceCommandsHelp({ C }: { C: typeof P.light }) {
       title: 'Клиенты',
       items: [
         '«Новая клиентка Марина, телефон 0671234567»',
-        '«Добавь Таисии день рождения 5 марта 1998»',
+        '«Добавьте Таисии день рождения 5 марта 1998»',
         '«У Анны теперь телефон 0671234567»',
       ],
     },

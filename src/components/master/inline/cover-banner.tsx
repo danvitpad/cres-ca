@@ -168,7 +168,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
       }
     >
       <p className="mb-3 text-[13px] text-neutral-500">
-        Большое фото на шапке страницы. Лицо твоего бренда. Рекомендуем 16:9.
+        Большое фото на шапке страницы. Лицо вашего бренда. Рекомендуем 16:9.
       </p>
 
       <input
@@ -258,7 +258,7 @@ export function InlineCoverBanner({ masterId, masterProfileId, initialCoverUrl, 
           }}
         >
           <Plus className="size-5" />
-          <span className="text-[14px] font-semibold">Добавь обложку</span>
+          <span className="text-[14px] font-semibold">Добавьте обложку</span>
         </button>
         {sheet}
       </>

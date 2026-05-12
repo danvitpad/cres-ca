@@ -198,7 +198,7 @@ export async function POST(
       stage: 'auth_delete',
       error: authErr.message,
       log,
-      hint: 'Часть таблиц подчищена, но auth.users удалить не удалось. Проверь логи.',
+      hint: 'Часть таблиц подчищена, но auth.users удалить не удалось. Проверьте логи.',
     }, { status: 500 });
   }
 

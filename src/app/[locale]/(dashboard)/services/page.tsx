@@ -890,7 +890,7 @@ function ServiceForm({
 
   async function suggestMaterialsWithAi() {
     if (!name.trim()) {
-      toast.error('Сначала введи название услуги');
+      toast.error('Сначала введите название услуги');
       return;
     }
     setAiSuggesting(true);
@@ -913,7 +913,7 @@ function ServiceForm({
       type S = { item_id: string; quantity: number };
       const suggestions = (data.suggestions ?? []) as S[];
       if (suggestions.length === 0) {
-        toast(data.summary || 'AI не нашёл подходящих расходников из твоего склада', { icon: '🤔' });
+        toast(data.summary || 'AI не нашёл подходящих расходников из вашего склада', { icon: '🤔' });
         setAiSummary(data.summary ?? null);
         return;
       }
@@ -923,7 +923,7 @@ function ServiceForm({
         return next;
       });
       setAiSummary(data.summary ?? null);
-      toast.success(`AI предложил ${suggestions.length} ${suggestions.length === 1 ? 'расходник' : 'расходников'} — проверь и сохрани`);
+      toast.success(`AI предложил ${suggestions.length} ${suggestions.length === 1 ? 'расходник' : 'расходников'} — проверьте и сохраните`);
     } catch (e) {
       toast.error((e as Error).message || 'Ошибка');
     } finally {
@@ -1145,17 +1145,17 @@ function ServiceForm({
               onClick={suggestMaterialsWithAi}
               disabled={aiSuggesting || !name.trim()}
               className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15 disabled:opacity-40"
-              title={!name.trim() ? 'Сначала введи название услуги' : 'AI предложит примерные дозы из твоего склада'}
+              title={!name.trim() ? 'Сначала введите название услуги' : 'AI предложит примерные дозы из вашего склада'}
             >
               <Bot className="size-3" />
-              {aiSuggesting ? 'AI считает…' : 'Помоги рассчитать (AI)'}
+              {aiSuggesting ? 'AI считает…' : 'Помогите рассчитать (AI)'}
             </button>
           )}
         </div>
 
         {inventoryItems.length === 0 ? (
           <p className="text-[11px] text-muted-foreground">
-            На складе пока нет материалов. Добавь их в разделе «Склад» — тогда сможешь связать с услугой.
+            На складе пока нет материалов. Добавьте их в разделе «Склад» — тогда сможете связать с услугой.
           </p>
         ) : (
           <>

@@ -336,7 +336,7 @@ export default function TodayPage() {
               <EmptyState
                 icon={<CalendarIcon className="w-5 h-5" />}
                 title="Сегодня записей нет"
-                description="Свободный день. Добавь запись или жди онлайн-бронирования."
+                description="Свободный день. Добавьте запись или ждите онлайн-бронирования."
               />
             ) : (
               <DesktopTimeline items={timelineItems} dfLocale={dfLocale} />
@@ -370,7 +370,7 @@ export default function TodayPage() {
               <EmptyState
                 icon={<Cake className="w-5 h-5" />}
                 title="Нет дат рождения"
-                description="Добавь дату рождения клиенту в его карточке."
+                description="Добавьте дату рождения клиенту в его карточке."
               />
             ) : (
               <ul className="space-y-2.5">
@@ -425,7 +425,7 @@ export default function TodayPage() {
               <EmptyState
                 icon={<Bell className="w-5 h-5" />}
                 title="Нет напоминаний"
-                description="Добавь голосом в Telegram-боте."
+                description="Добавьте голосом в Telegram-боте."
               />
             ) : (
               <ul className="space-y-2.5">

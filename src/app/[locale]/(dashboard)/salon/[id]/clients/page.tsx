@@ -314,7 +314,7 @@ export default function SalonClientsPage() {
           <Users className="size-10 mx-auto text-muted-foreground mb-3" />
           <h2 className="text-base font-semibold">Пока нет клиентов команды</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Начни искать — найдём людей в CRES-CA, или запиши вручную.
+            Начните искать — найдём людей в CRES-CA, или запишите вручную.
           </p>
         </div>
       )}

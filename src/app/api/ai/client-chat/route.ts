@@ -50,8 +50,8 @@ function buildSystemPrompt(locale: Locale, defaultCity: string | null): string {
     ? `Город пользователя по умолчанию: «${defaultCity}». Если он не уточнил другой город — используй этот.`
     : 'Город пользователя неизвестен. НЕ спрашивай его — ищи без фильтра по городу. Если пользователь сам указал город — используй его.';
 
-  return `Ты — AI-консьерж в приложении CRES-CA (универсальная платформа для бронирования услуг: красота, здоровье, фитнес, образование, авто, дом, репетиторы, тренеры, ветеринары и др.).
-Клиент общается с тобой в Mini App. Ты помогаешь ему: найти мастера/специалиста, записаться, отменить/перенести, узнать когда визит, как подготовиться, как ухаживать после, и т.д.
+  return `Вы — AI-консьерж в приложении CRES-CA (универсальная платформа для бронирования услуг: красота, здоровье, фитнес, образование, авто, дом, репетиторы, тренеры, ветеринары и др.).
+Клиент общается с вами в Mini App. Вы помогаешь ему: найти мастера/специалиста, записаться, отменить/перенести, узнать когда визит, как подготовиться, как ухаживать после, и т.д.
 
 ${langInstruction}
 
@@ -184,7 +184,7 @@ export async function POST(req: Request) {
           ? 'Не впевнений що зрозумів. Спробуй переформулювати.'
           : locale === 'en'
           ? "Not sure I understood. Could you rephrase?"
-          : 'Не уверен что понял. Попробуй переформулировать.');
+          : 'Не уверен что понял. Попробуйте переформулировать.');
       // Persist даже невалидные ответы — модель такое тоже использует как контекст.
       if (body.userId) {
         await saveMessage(body.userId, 'user', userMessage);
@@ -202,7 +202,7 @@ export async function POST(req: Request) {
     let serverReply: string | null = null;
 
     // Алиас find → find_master (старые сессии)
-    // book → find_slots — клиент сказал «запиши на маникюр завтра», мы должны
+    // book → find_slots — клиент сказал «запишите на маникюр завтра», мы должны
     // вернуть КЛИКАБЕЛЬНЫЕ слот-карточки (а не просто текст «ищу окна…»). После
     // клика по карточке /api/ai/client-action создаёт реальную запись.
     let intent = parsed.intent === 'find' ? 'find_master' : parsed.intent;
@@ -304,7 +304,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: 'ai_unavailable',
-          message: 'AI сейчас недоступен — попробуй чуть позже.',
+          message: 'AI сейчас недоступен — попробуйте чуть позже.',
         },
         { status: 503 },
       );
@@ -397,7 +397,7 @@ async function handleFindSlots(
         ? `У цього майстра немає послуги «${serviceQuery}». Подивись список на його сторінці.`
         : locale === 'en'
         ? `This master doesn't offer "${serviceQuery}". Check their profile for the full list.`
-        : `У этого мастера нет услуги «${serviceQuery}». Посмотри список на его странице.`,
+        : `У этого мастера нет услуги «${serviceQuery}». Посмотрите список на его странице.`,
       actions: [],
     };
   }
@@ -577,7 +577,7 @@ async function handleNextDue(
       ? 'Підкажи, що саме ти зазвичай робиш — стрижка, манікюр, масаж?'
       : locale === 'en'
       ? 'What service do you usually book — haircut, manicure, massage?'
-      : 'Подскажи, что ты обычно делаешь — стрижка, маникюр, массаж?';
+      : 'Подскажи, что вы обычно делаешь — стрижка, маникюр, массаж?';
   }
   const db = admin();
   const est = await getNextDueEstimate(db, profileId, serviceQuery);
@@ -610,7 +610,7 @@ async function handleNextDue(
       ? `Зазвичай ти робиш «${serviceQuery}» раз на ${est.intervalDays} дн. Минулий візит — ${daysSince} дн тому. Уже час 🙂`
       : locale === 'en'
       ? `You usually book "${serviceQuery}" every ${est.intervalDays} days. Last visit was ${daysSince} days ago — time to book.`
-      : `Обычно ты делаешь «${serviceQuery}» раз в ${est.intervalDays} дн. Прошлый визит — ${daysSince} дн назад. Уже пора 🙂`;
+      : `Обычно вы делаешь «${serviceQuery}» раз в ${est.intervalDays} дн. Прошлый визит — ${daysSince} дн назад. Уже пора 🙂`;
   }
 
   return locale === 'uk'

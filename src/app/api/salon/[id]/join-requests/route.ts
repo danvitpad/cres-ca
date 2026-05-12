@@ -139,10 +139,10 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     await notifyUser(supabase, {
       profileId: masterProfile.profile_id,
       title: body.action === 'approve'
-        ? `Тебя приняли в ${salonName}`
+        ? `Вас приняли в ${salonName}`
         : `Заявка в ${salonName} отклонена`,
       body: body.action === 'approve'
-        ? 'Теперь ты в команде. Открой кабинет команды.'
+        ? 'Теперь вы в команде. Откройте кабинет команды.'
         : (body.reason || 'Админ отклонил твою заявку.'),
       data: {
         type: body.action === 'approve' ? 'salon_join_approved' : 'salon_join_rejected',

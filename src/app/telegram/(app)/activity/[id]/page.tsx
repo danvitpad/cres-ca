@@ -93,7 +93,7 @@ const I18N: Record<MiniAppLang, {
     cancelTitle: 'Скасувати запис?', cancelHint: 'Майстер отримає сповіщення про скасування',
     feeFree: 'Скасування безкоштовне', feePartial: (s) => `Часткова оплата: ${s}`, feeFull: (s) => `Повна вартість: ${s}`,
     cancelConfirmBack: 'Назад', cancelConfirm: 'Скасувати',
-    rateTitle: "Оцініть візит", ratePlaceholder: "Розкажи про візит (необов’язково)", submitReview: "Відправити відгук",
+    rateTitle: "Оцініть візит", ratePlaceholder: "Розкажіть про візит (необов’язково)", submitReview: "Відправити відгук",
     share: "Поділитись", shareText: (s, m, d) => `Записався до ${m} на ${s} — ${d}`,
     addToCalendar: "До календаря",
     status: { booked: "Записано", confirmed: "Підтверджено", in_progress: "Йде", completed: "Завершено", cancelled: "Скасовано", cancelled_by_client: "Скасовано", no_show: "Не прийшов" },
@@ -108,7 +108,7 @@ const I18N: Record<MiniAppLang, {
     cancelTitle: 'Отменить запись?', cancelHint: 'Мастер получит уведомление об отмене',
     feeFree: 'Отмена бесплатна', feePartial: (s) => `Частичная оплата: ${s}`, feeFull: (s) => `Полная стоимость: ${s}`,
     cancelConfirmBack: 'Назад', cancelConfirm: 'Отменить',
-    rateTitle: 'Оцените визит', ratePlaceholder: 'Расскажи о визите (необязательно)', submitReview: 'Отправить отзыв',
+    rateTitle: 'Оцените визит', ratePlaceholder: 'Расскажите о визите (необязательно)', submitReview: 'Отправить отзыв',
     share: 'Поделиться', shareText: (s, m, d) => `Записался к ${m} на ${s} — ${d}`,
     addToCalendar: 'В календарь',
     status: { booked: 'Записан', confirmed: 'Подтверждено', in_progress: 'Идёт', completed: 'Завершено', cancelled: 'Отменено', cancelled_by_client: 'Отменено', no_show: 'Не пришёл' },
@@ -710,7 +710,7 @@ export default function MiniAppAppointmentDetail() {
               <textarea
                 value={ratingComment}
                 onChange={(e) => setRatingComment(e.target.value)}
-                placeholder="Расскажи о визите (необязательно)"
+                placeholder="Расскажите о визите (необязательно)"
                 rows={3}
                 className="w-full resize-none rounded-2xl border border-neutral-200 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-neutral-400 focus:border-neutral-300"
               />

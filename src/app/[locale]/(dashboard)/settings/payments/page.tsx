@@ -90,8 +90,8 @@ export default function PaymentsSettingsPage() {
           Платежи и предоплаты
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Включи платформенное эскроу — клиенты будут оставлять предоплату, которая замораживается на платформе и переходит тебе после визита.
-          При no-show деньги останутся у тебя.
+          Включи платформенное эскроу — клиенты будут оставлять предоплату, которая замораживается на платформе и переходит вам после визита.
+          При no-show деньги останутся у вас.
         </p>
       </div>
 
@@ -148,7 +148,7 @@ export default function PaymentsSettingsPage() {
             placeholder="UA75 6..."
             className="mt-1.5 w-full rounded-xl border border-border bg-background p-2 text-sm outline-none focus:border-primary"
           />
-          <p className="mt-1 text-[11px] text-muted-foreground">IBAN / номер карты / e-wallet. Видно только тебе и суперадмину.</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">IBAN / номер карты / e-wallet. Видно только вам и суперадмину.</p>
         </div>
 
         <div>
@@ -177,8 +177,8 @@ export default function PaymentsSettingsPage() {
         <ol className="list-decimal space-y-1 pl-4">
           <li>Клиент записывается → видит кнопку «Оплатить предоплату».</li>
           <li>Оплачивает через LiqPay → деньги замораживаются на платформе.</li>
-          <li>Визит состоялся → через 24ч деньги автоматом уходят на твой счёт (минус 1.5% комиссии).</li>
-          <li>No-show → вся сумма твоя.</li>
+          <li>Визит состоялся → через 24ч деньги автоматом уходят на ваш счёт (минус 1.5% комиссии).</li>
+          <li>No-show → вся сумма ваша.</li>
           <li>Отмена за 24+ часа → возврат клиенту.</li>
         </ol>
       </div>

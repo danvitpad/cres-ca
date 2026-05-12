@@ -214,7 +214,7 @@ export async function handleClientVoiceIntent(
   // saveFeedbackAndNotify путь в webhook'е, unknown → подсказка.
   return {
     ok: false,
-    reply: '🤔 Не понял. Скажи: «запиши к Анне на маникюр завтра в 14», «когда у меня записи», «сколько потратил за май», «отмени запись на завтра», «сколько у меня бонусов», «кто мои мастера». Или напиши «помощь» — я расскажу всё что умею.',
+    reply: '🤔 Не понял. Скажите: «запишите к Анне на маникюр завтра в 14», «когда у меня записи», «сколько потратил за май», «отмени запись на завтра», «сколько у меня бонусов», «кто мои мастера». Или напишите «помощь» — я расскажу всё что умею.',
   };
 }
 
@@ -263,7 +263,7 @@ async function myBonuses(admin: SupabaseClient, profileId: string, masterHint: s
   }
 
   const lines = filtered.map((r) => `• ${r.masterName} — ${r.balance} баллов${r.locked > 0 ? ` (ещё ${r.locked} в ожидании)` : ''}`);
-  return { ok: true, reply: `🎁 Твои бонусы:\n${lines.join('\n')}` };
+  return { ok: true, reply: `🎁 Ваши бонусы:\n${lines.join('\n')}` };
 }
 
 /** Список мастеров, к которым клиент уже ходил (clients) или на которых
@@ -271,10 +271,10 @@ async function myBonuses(admin: SupabaseClient, profileId: string, masterHint: s
 async function myMasters(admin: SupabaseClient, profileId: string): Promise<HandlerResult> {
   const masters = await findMastersForClient(admin, profileId);
   if (masters.length === 0) {
-    return { ok: true, reply: '👥 У тебя пока нет мастеров — ни в записях, ни в подписках. Открой Mini App, найди подходящего и подпишись.' };
+    return { ok: true, reply: '👥 У вас пока нет мастеров — ни в записях, ни в подписках. Откройте Mini App, найди подходящего и подпишись.' };
   }
   const lines = masters.map((m) => `• ${m.master_display_name}`);
-  return { ok: true, reply: `👥 Твои мастера:\n${lines.join('\n')}` };
+  return { ok: true, reply: `👥 Ваши мастера:\n${lines.join('\n')}` };
 }
 
 /** Что умеет клиентский AI. Текст синхронизирован с /help в TG-боте. */
@@ -284,7 +284,7 @@ function helpReply(): HandlerResult {
     reply: `💡 Что я умею (текстом или голосом):
 
 📅 Записи
-• «Запиши меня к Тане на маникюр завтра в 14»
+• «Запишите меня к Тане на маникюр завтра в 14»
 • «Какие у меня записи?»
 • «Отмени запись на завтра»
 • «Перенеси на пятницу 16:00»
@@ -297,7 +297,7 @@ function helpReply(): HandlerResult {
 • «Кто мои мастера?»
 
 💬 Обратная связь
-Хочешь сообщить о баге или предложить идею — начни со слов «жалоба» / «идея» / «не работает», или используй /feedback.`,
+Хотите сообщить о баге или предложить идею — начните со слов «жалоба» / «идея» / «не работает», или используй /feedback.`,
   };
 }
 
@@ -339,7 +339,7 @@ async function listAppointments(admin: SupabaseClient, profileId: string, period
     const masterName = mas?.display_name || masProf?.full_name || 'мастер';
     return `• ${fmtDate(r.starts_at)} ${fmtTime(r.starts_at)} — ${svc?.name ?? 'визит'} (${masterName})`;
   });
-  return { ok: true, reply: `📅 Твои записи ${label}:\n${lines.join('\n')}` };
+  return { ok: true, reply: `📅 Ваши записи ${label}:\n${lines.join('\n')}` };
 }
 
 async function spendingTotal(admin: SupabaseClient, profileId: string, period: Period): Promise<HandlerResult> {
@@ -365,7 +365,7 @@ async function cancelAppointment(admin: SupabaseClient, profileId: string, inten
   const { data: clientRows } = await admin.from('clients').select('id').eq('profile_id', profileId);
   const clientIds = ((clientRows ?? []) as Array<{ id: string }>).map((c) => c.id);
   if (clientIds.length === 0) {
-    return { ok: false, reply: '❌ У тебя нет активных записей.' };
+    return { ok: false, reply: '❌ У вас нет активных записей.' };
   }
   const { data: apts } = await admin
     .from('appointments')
@@ -382,7 +382,7 @@ async function cancelAppointment(admin: SupabaseClient, profileId: string, inten
   };
   const list = (apts ?? []) as Row[];
   if (list.length === 0) {
-    return { ok: false, reply: '❌ У тебя нет предстоящих записей для отмены.' };
+    return { ok: false, reply: '❌ У вас нет предстоящих записей для отмены.' };
   }
 
   // Если указан hint (дата/мастер) — попробуем матчить, иначе берём ближайшую.
@@ -403,7 +403,7 @@ async function cancelAppointment(admin: SupabaseClient, profileId: string, inten
     .update({ status: 'cancelled_by_client' })
     .eq('id', target.id);
   if (error) {
-    return { ok: false, reply: '❌ Не удалось отменить запись. Попробуй из приложения.' };
+    return { ok: false, reply: '❌ Не удалось отменить запись. Попробуйте из приложения.' };
   }
 
   const svc = Array.isArray(target.service) ? target.service[0] : target.service;
@@ -416,14 +416,14 @@ async function cancelAppointment(admin: SupabaseClient, profileId: string, inten
 
 async function rescheduleAppointment(admin: SupabaseClient, profileId: string, intent: ClientVoiceIntent): Promise<HandlerResult> {
   if (!intent.starts_at) {
-    return { ok: false, reply: '🤔 Скажи на какую дату и время перенести: «перенеси на пятницу в 14».' };
+    return { ok: false, reply: '🤔 Скажите на какую дату и время перенести: «перенеси на пятницу в 14».' };
   }
   // Сначала отменяем существующую (находим аналогично cancel)
   const { data: clientRows } = await admin.from('clients').select('id, master_id').eq('profile_id', profileId);
   type C = { id: string; master_id: string };
   const clients = (clientRows ?? []) as C[];
   if (clients.length === 0) {
-    return { ok: false, reply: '❌ У тебя нет активных записей для переноса.' };
+    return { ok: false, reply: '❌ У вас нет активных записей для переноса.' };
   }
   const clientIds = clients.map((c) => c.id);
   const { data: apts } = await admin
@@ -438,7 +438,7 @@ async function rescheduleAppointment(admin: SupabaseClient, profileId: string, i
   type R = { id: string; starts_at: string; ends_at: string; status: string; service_id: string; client_id: string; price: number | null; currency: string };
   const target = ((apts ?? []) as R[])[0];
   if (!target) {
-    return { ok: false, reply: '❌ У тебя нет предстоящих записей для переноса.' };
+    return { ok: false, reply: '❌ У вас нет предстоящих записей для переноса.' };
   }
 
   const oldStart = new Date(target.starts_at).getTime();
@@ -452,7 +452,7 @@ async function rescheduleAppointment(admin: SupabaseClient, profileId: string, i
     .update({ starts_at: newStart.toISOString(), ends_at: newEnd.toISOString() })
     .eq('id', target.id);
   if (error) {
-    return { ok: false, reply: '❌ Не удалось перенести. Попробуй из приложения.' };
+    return { ok: false, reply: '❌ Не удалось перенести. Попробуйте из приложения.' };
   }
   return {
     ok: true,
@@ -462,19 +462,19 @@ async function rescheduleAppointment(admin: SupabaseClient, profileId: string, i
 
 async function bookAppointment(admin: SupabaseClient, profileId: string, intent: ClientVoiceIntent): Promise<HandlerResult> {
   if (!intent.starts_at) {
-    return { ok: false, reply: '🤔 Скажи когда: «запиши на завтра в 14».' };
+    return { ok: false, reply: '🤔 Скажите когда: «запишите на завтра в 14».' };
   }
 
   const masters = await findMastersForClient(admin, profileId);
   if (masters.length === 0) {
-    return { ok: false, reply: '❌ У тебя нет мастеров в кабинете и ты ни на кого не подписан. Открой Mini App, найди мастера и подпишись.' };
+    return { ok: false, reply: '❌ У вас нет мастеров в кабинете и вы ни на кого не подписан. Откройте Mini App, найди мастера и подпишись.' };
   }
 
   // Match по имени
   const candidates = intent.master_hint ? matchByHint(masters, intent.master_hint) : masters;
   if (candidates.length === 0) {
     const names = masters.map((m) => m.master_display_name).join(', ');
-    return { ok: false, reply: `❌ Мастер не найден среди твоих: ${names}. Уточни имя.` };
+    return { ok: false, reply: `❌ Мастер не найден среди ваших: ${names}. Уточни имя.` };
   }
   if (candidates.length > 1 && intent.master_hint) {
     const names = candidates.map((m) => m.master_display_name).join(', ');
@@ -482,7 +482,7 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
   }
   if (candidates.length > 1) {
     const names = candidates.map((m) => m.master_display_name).join(', ');
-    return { ok: false, reply: `🤔 У тебя несколько мастеров (${names}). Скажи к кому: «запиши к Анне на …».` };
+    return { ok: false, reply: `🤔 У вас несколько мастеров (${names}). Скажите к кому: «запишите к Анне на …».` };
   }
   const target = candidates[0];
 
@@ -511,8 +511,8 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
   if (!hint) {
     const names = svcList.map((s) => s.name).slice(0, 6).join(', ');
     const onlyOne = svcList.length === 1
-      ? `Подтверди — записать на «${svcList[0].name}»? Скажи: «запиши на ${svcList[0].name}».`
-      : `Скажи какую: «запиши на ${svcList[0].name}».`;
+      ? `Подтверди — записать на «${svcList[0].name}»? Скажите: «запишите на ${svcList[0].name}».`
+      : `Скажите какую: «запишите на ${svcList[0].name}».`;
     return { ok: false, reply: `🤔 На какую услугу? У ${target.master_display_name} есть: ${names}. ${onlyOne}` };
   }
   if (matched.length > 1) {
@@ -534,7 +534,7 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
     .gt('ends_at', startsAt.toISOString())
     .limit(1);
   if (clash && clash.length > 0) {
-    return { ok: false, reply: `❌ ${fmtDate(startsAt.toISOString())} в ${fmtTime(startsAt.toISOString())} у ${target.master_display_name} занято. Скажи другое время.` };
+    return { ok: false, reply: `❌ ${fmtDate(startsAt.toISOString())} в ${fmtTime(startsAt.toISOString())} у ${target.master_display_name} занято. Скажите другое время.` };
   }
 
   // Если клиент только подписан и нет clients-row — создаём её прозрачно.
@@ -542,7 +542,7 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
   if (!clientId) {
     clientId = await ensureClientRow(admin, profileId, target.master_id);
     if (!clientId) {
-      return { ok: false, reply: `❌ Не удалось создать карточку клиента у ${target.master_display_name}. Попробуй из приложения.` };
+      return { ok: false, reply: `❌ Не удалось создать карточку клиента у ${target.master_display_name}. Попробуйте из приложения.` };
     }
   }
 
@@ -562,7 +562,7 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
     .select('id')
     .single();
   if (error) {
-    return { ok: false, reply: '❌ Не получилось создать запись. Попробуй из приложения.' };
+    return { ok: false, reply: '❌ Не получилось создать запись. Попробуйте из приложения.' };
   }
 
   // Уведомление мастеру: клиент записался сам, мастеру нужно знать.
@@ -606,6 +606,6 @@ async function bookAppointment(admin: SupabaseClient, profileId: string, intent:
 
   return {
     ok: true,
-    reply: `✅ Записал тебя: ${svc.name} у ${target.master_display_name}, ${fmtDate(startsAt.toISOString())} в ${fmtTime(startsAt.toISOString())}.`,
+    reply: `✅ Записал вас: ${svc.name} у ${target.master_display_name}, ${fmtDate(startsAt.toISOString())} в ${fmtTime(startsAt.toISOString())}.`,
   };
 }

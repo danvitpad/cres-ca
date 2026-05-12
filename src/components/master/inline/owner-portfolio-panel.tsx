@@ -231,7 +231,7 @@ export function OwnerPortfolioPanel({
             <Plus className="size-5" />
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-bold text-neutral-900">Добавь работы в портфолио</span>
+            <span className="block text-[15px] font-bold text-neutral-900">Добавьте работы в портфолио</span>
             <span className="mt-1 block text-[13px] text-neutral-500">
               Фотографии работ — клиенты выбирают глазами. Рекомендуем формат 9:16.
             </span>

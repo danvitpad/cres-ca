@@ -853,7 +853,7 @@ function TimeStep({
         ) : !slots || slots.length === 0 ? (
           <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-8 text-center">
             <p className="text-[15px] font-semibold text-neutral-900">Нет свободных слотов</p>
-            <p className="mt-1 text-[13px] text-neutral-500">Выбери другой день — свободное время появится.</p>
+            <p className="mt-1 text-[13px] text-neutral-500">Выберите другой день — свободное время появится.</p>
           </div>
         ) : (
           <ul className="space-y-2">

@@ -198,7 +198,7 @@ export async function POST(request: Request) {
   const svcList = (services ?? []).slice(0, 10).map((s) => `${s.name} (${s.price ?? '—'} ₴)`);
   const firstName = profile.full_name?.split(' ')[0] || 'мастер';
 
-  const system = `Ты AI-ассистент мастера ${firstName} в CRM CRES-CA. Отвечай по делу, кратко (2–4 предложения), на языке вопроса, без markdown и списков. Если данных не хватает — честно скажи.
+  const system = `Вы AI-ассистент мастера ${firstName} в CRM CRES-CA. Отвечай по делу, кратко (2–4 предложения), на языке вопроса, без markdown и списков. Если данных не хватает — честно скажите.
 
 КОНТЕКСТ НА ${now.toLocaleDateString('ru')}:
 
@@ -335,7 +335,7 @@ async function executeTextAction(
     case 'revenue': {
       const items = Array.isArray(intent.items) ? intent.items : [];
       if (items.length === 0) {
-        return { ok: false, answer: '❓ Скажи кто и сколько: «Аня стрижка 1200, Маша окрашивание 2500».' };
+        return { ok: false, answer: '❓ Скажите кто и сколько: «Аня стрижка 1200, Маша окрашивание 2500».' };
       }
       const todayIso = new Date().toISOString().slice(0, 10);
       const rows = items
@@ -360,7 +360,7 @@ async function executeTextAction(
     }
 
     case 'client_note': {
-      if (!intent.client_name) return { ok: false, answer: '❓ Укажи имя клиента.' };
+      if (!intent.client_name) return { ok: false, answer: '❓ Укажите имя клиента.' };
       // Use fuzzy search RPC: handles declension (Таисию→Таисия), latin↔cyrillic
       // (Taisia↔Таисия), и ukr/rus (Ірина↔Ирина). Strictly scoped to this master.
       const { data: matches } = await admin.rpc('find_master_clients', {
@@ -382,7 +382,7 @@ async function executeTextAction(
 
     case 'inventory': {
       if (!intent.service_name || !intent.amount) {
-        return { ok: false, answer: '❓ Скажи что и сколько: «списал 200 мл краски».' };
+        return { ok: false, answer: '❓ Скажите что и сколько: «списал 200 мл краски».' };
       }
       const { data: items } = await admin
         .from('inventory_items').select('id, name, quantity')

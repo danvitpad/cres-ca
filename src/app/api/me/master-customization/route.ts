@@ -43,7 +43,7 @@ function validateSlug(raw: unknown): { ok: true; slug: string } | { ok: false; e
   if (!/^[a-z0-9-]+$/.test(slug)) return { ok: false, error: 'Только латинские буквы, цифры и дефис' };
   if (/--/.test(slug)) return { ok: false, error: 'Не используй два дефиса подряд' };
   if (slug.endsWith('-')) return { ok: false, error: 'Не может заканчиваться на дефис' };
-  if (RESERVED_SLUGS.has(slug)) return { ok: false, error: 'Это зарезервированное слово, выбери другое' };
+  if (RESERVED_SLUGS.has(slug)) return { ok: false, error: 'Это зарезервированное слово, выберите другое' };
   return { ok: true, slug };
 }
 

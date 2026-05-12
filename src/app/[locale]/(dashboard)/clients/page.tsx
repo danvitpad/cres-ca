@@ -393,7 +393,7 @@ function ClientCard({ client, C, isDark, index }: {
             {client.full_name}
             {client.has_health_alert && (
               <span
-                title="Есть аллергии или противопоказания — открой карточку, чтобы увидеть детали"
+                title="Есть аллергии или противопоказания — откройте карточку, чтобы увидеть детали"
                 style={{ display: 'inline-flex', alignItems: 'center' }}
               >
                 <AlertTriangle size={13} style={{ color: C.danger, flexShrink: 0 }} />

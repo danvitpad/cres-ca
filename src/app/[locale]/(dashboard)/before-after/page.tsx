@@ -126,7 +126,7 @@ export default function BeforeAfterPage() {
       <div>
         <h1 className="text-[28px] font-bold tracking-[-0.02em] leading-none">До и После</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Покажи результаты работы. Клиенты увидят слайдер на твоей странице.
+          Покажи результаты работы. Клиенты увидят слайдер на вашей странице.
         </p>
       </div>
 

@@ -490,7 +490,7 @@ function NotesBlock({
           <textarea
             value={newDraft}
             onChange={(e) => setNewDraft(e.target.value)}
-            placeholder={placeholder ?? 'Запиши что хочешь'}
+            placeholder={placeholder ?? 'Запишите что хотите'}
             rows={2}
             autoFocus
             style={{
@@ -524,7 +524,7 @@ function NotesBlock({
 
       {entries.length === 0 && !adding ? (
         <p style={{ fontSize: 12, color: C.textTertiary, margin: 0, lineHeight: 1.5 }}>
-          {emptyHint ?? 'Пусто. Добавь вручную или просто напиши в чат снизу — AI разнесёт.'}
+          {emptyHint ?? 'Пусто. Добавьте вручную или просто напишите в чат снизу — AI разнесёт.'}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
@@ -1032,7 +1032,7 @@ function PartnerAiChat({
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Gift size={14} style={{ color: C.accent }} />
         <h3 style={{ fontSize: 13, fontWeight: 650, color: C.text, margin: 0, letterSpacing: '-0.1px' }}>
-          Запиши в чат всё что знаешь о партнёре
+          Запишите в чат всё что знаете о партнёре
         </h3>
         <span style={{ marginLeft: 'auto', fontSize: 11, color: C.textTertiary }}>
           AI разнесёт по полям

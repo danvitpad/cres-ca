@@ -182,7 +182,7 @@ export function CategoriesEditor({
         customSubs: [...prev.customSubs, { categoryId, text }],
       }));
       setCustomSubInput(prev => ({ ...prev, [categoryId]: '' }));
-      toast.success(`«${text}» добавлена в твой профиль`);
+      toast.success(`«${text}» добавлена в ваш профиль`);
       return;
     }
 
@@ -213,7 +213,7 @@ export function CategoriesEditor({
     if (json.subcategory.status === 'pending') {
       toast.success(`«${text}» добавлена. Когда 3 мастера её выберут — она появится у всех.`);
     } else {
-      toast.success(`«${text}» добавлена в твой профиль.`);
+      toast.success(`«${text}» добавлена в ваш профиль.`);
     }
   }
 
@@ -236,11 +236,11 @@ export function CategoriesEditor({
 
   async function save() {
     if (sel.categoryIds.length === 0) {
-      toast.error('Выбери хотя бы одну категорию');
+      toast.error('Выберите хотя бы одну категорию');
       return;
     }
     if (!sel.primaryId) {
-      toast.error('Отметь основную категорию');
+      toast.error('Отметьте основную категорию');
       return;
     }
     setSaving(true);
@@ -273,9 +273,9 @@ export function CategoriesEditor({
     <div className="space-y-6">
       <section>
         <div className="mb-2">
-          <h3 className="text-base font-semibold">Категории твоих услуг</h3>
+          <h3 className="text-base font-semibold">Категории ваших услуг</h3>
           <p className="text-sm text-muted-foreground">
-            Можно выбрать несколько. Одну отметь как <span className="font-medium">основную</span> — её увидят первой в поиске.
+            Можно выбрать несколько. Одну отметьте как <span className="font-medium">основную</span> — её увидят первой в поиске.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -371,9 +371,9 @@ export function CategoriesEditor({
       {selectedCats.length > 0 && (
         <section>
           <div className="mb-2">
-            <h3 className="text-base font-semibold">Что именно ты делаешь?</h3>
+            <h3 className="text-base font-semibold">Что именно вы делаешь?</h3>
             <p className="text-sm text-muted-foreground">
-              Чтобы клиенты находили тебя по запросу типа «парикмахер» или «груминг кошек».
+              Чтобы клиенты находили вас по запросу типа «парикмахер» или «груминг кошек».
             </p>
           </div>
           <div className="space-y-5">

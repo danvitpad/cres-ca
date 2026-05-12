@@ -233,15 +233,15 @@ export async function POST(request: Request) {
       let text: string;
       if (waitlistMatched) {
         text = `<b>🟢 Запись из листа ожидания</b>\n\n`
-          + `${clientName} записался к тебе на ${svc} ${when}.\n`
-          + `<i>Клиент давно ждал твоё окошко 🙌</i>`;
+          + `${clientName} записался к вам на ${svc} ${when}.\n`
+          + `<i>Клиент давно ждал ваше окошко 🙌</i>`;
       } else if (isReschedule) {
         text = `<b>🔄 Перенос записи</b>\n\n`
           + `${clientName} перенёс запись на ${when}.\n`
           + `Услуга: ${svc}`;
       } else {
         text = `<b>✨ Новая запись</b>\n\n`
-          + `${clientName} записался к тебе на ${svc} ${when}.`;
+          + `${clientName} записался к вам на ${svc} ${when}.`;
       }
 
       await sendMessage(masterTg as unknown as number, text, { parse_mode: 'HTML' });

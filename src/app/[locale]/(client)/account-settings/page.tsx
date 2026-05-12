@@ -504,14 +504,14 @@ export default function ClientSettingsPage() {
           <DialogHeader>
             <DialogTitle className="text-destructive">Удалить аккаунт</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed">
-              Аккаунт будет помечен на удаление. У тебя есть <strong>30 дней на восстановление</strong> — просто войди снова под этим email и пароль.
+              Аккаунт будет помечен на удаление. У вас есть <strong>30 дней на восстановление</strong> — просто войди снова под этим email и пароль.
               <br /><br />
               После 30 дней все данные (записи, история, бонусы, заметки) удаляются безвозвратно.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="del-confirm">Введи слово «УДАЛИТЬ» для подтверждения</Label>
+              <Label htmlFor="del-confirm">Введите слово «УДАЛИТЬ» для подтверждения</Label>
               <Input
                 id="del-confirm"
                 value={deleteConfirmation}

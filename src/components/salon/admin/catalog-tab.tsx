@@ -115,7 +115,7 @@ export function SalonCatalogTab({ salonId }: Props) {
 
       {services.length === 0 && !adding && (
         <div className="rounded-xl border border-dashed border-neutral-300 p-5 text-center text-[12px] text-neutral-500">
-          Каталог пуст. Добавь первую услугу — она появится на публичной странице салона
+          Каталог пуст. Добавьте первую услугу — она появится на публичной странице салона
           и будет доступна всем мастерам команды.
         </div>
       )}
@@ -252,7 +252,7 @@ function ServiceForm({
 
   async function save() {
     if (!name.trim()) {
-      toast.error('Введи название');
+      toast.error('Введите название');
       return;
     }
     setBusy(true);

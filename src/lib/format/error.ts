@@ -11,13 +11,13 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
   // ─── Supabase Auth ───
   { match: /Invalid login credentials/i, ru: 'Неверный email или пароль' },
   { match: /Email not confirmed/i, ru: 'Подтвердите email — мы отправили письмо со ссылкой' },
-  { match: /Email rate limit exceeded/i, ru: 'Слишком много попыток. Подожди минуту и попробуй снова' },
+  { match: /Email rate limit exceeded/i, ru: 'Слишком много попыток. Подожди минуту и попробуйте снова' },
   { match: /User already registered/i, ru: 'Аккаунт с этим email уже существует' },
   { match: /already registered/i, ru: 'Аккаунт с этим email уже существует' },
   { match: /User not found/i, ru: 'Аккаунт не найден' },
   { match: /Password should be at least \d+ characters/i, ru: 'Пароль должен быть не короче 6 символов' },
-  { match: /Password is too weak/i, ru: 'Пароль слишком простой — добавь букв и цифр' },
-  { match: /weak password/i, ru: 'Пароль слишком простой — добавь букв и цифр' },
+  { match: /Password is too weak/i, ru: 'Пароль слишком простой — добавьте букв и цифр' },
+  { match: /weak password/i, ru: 'Пароль слишком простой — добавьте букв и цифр' },
   { match: /Token has expired or is invalid/i, ru: 'Сессия истекла. Войди заново' },
   { match: /JWT expired/i, ru: 'Сессия истекла. Войди заново' },
   { match: /jwt expired/i, ru: 'Сессия истекла. Войди заново' },
@@ -39,10 +39,10 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
   { match: /no rows returned/i, ru: 'Запись не найдена' },
 
   // ─── Network / fetch ───
-  { match: /Failed to fetch/i, ru: 'Нет связи. Проверь интернет' },
-  { match: /Network request failed/i, ru: 'Нет связи. Проверь интернет' },
-  { match: /NetworkError/i, ru: 'Нет связи. Проверь интернет' },
-  { match: /timeout/i, ru: 'Сервер слишком долго отвечает. Попробуй ещё раз' },
+  { match: /Failed to fetch/i, ru: 'Нет связи. Проверьте интернет' },
+  { match: /Network request failed/i, ru: 'Нет связи. Проверьте интернет' },
+  { match: /NetworkError/i, ru: 'Нет связи. Проверьте интернет' },
+  { match: /timeout/i, ru: 'Сервер слишком долго отвечает. Попробуйте ещё раз' },
   { match: /AbortError/i, ru: 'Запрос отменён' },
 
   // ─── HTTP коды (если строка содержит код) ───
@@ -52,8 +52,8 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
   { match: /\b404\b/, ru: 'Не нашёл что искал' },
   { match: /\b409\b/, ru: 'Конфликт — такая запись уже есть' },
   { match: /\b429\b/, ru: 'Слишком часто. Подожди минуту' },
-  { match: /\b500\b/, ru: 'Сервер задумался. Попробуй ещё раз' },
-  { match: /\b502\b/, ru: 'Сервер ненадолго прилёг. Попробуй через минуту' },
+  { match: /\b500\b/, ru: 'Сервер задумался. Попробуйте ещё раз' },
+  { match: /\b502\b/, ru: 'Сервер ненадолго прилёг. Попробуйте через минуту' },
   { match: /\b503\b/, ru: 'Сервис временно недоступен' },
   { match: /\b504\b/, ru: 'Сервер слишком долго отвечает' },
 
@@ -61,13 +61,13 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
   { match: /promo_below_material_cost/i, ru: 'Этот промокод сделает услугу убыточной — финальная цена ниже расходников. Уменьши скидку.' },
   { match: /promo_negative_price/i, ru: 'Скидка больше цены услуги — это бесплатно или с доплатой. Уменьши скидку.' },
   { match: /promo_discount_too_large/i, ru: 'Скидка больше 95% — слишком много. Максимум 95%.' },
-  { match: /cyclic_referral_blocked/i, ru: 'Нельзя пригласить того, кто уже пригласил тебя — это циклическая цепь.' },
+  { match: /cyclic_referral_blocked/i, ru: 'Нельзя пригласить того, кто уже пригласил вас — это циклическая цепь.' },
   { match: /self_referral_blocked/i, ru: 'Нельзя пригласить самого себя.' },
   { match: /redeem_disabled_by_master/i, ru: 'Мастер пока не разрешает тратить баллы у себя.' },
-  { match: /redeem_min_visits_not_met/i, ru: 'Сначала нужно выполнить визит у этого мастера, потом сможешь тратить баллы.' },
+  { match: /redeem_min_visits_not_met/i, ru: 'Сначала нужно выполнить визит у этого мастера, потом сможете тратить баллы.' },
 
   // ─── Default fallback ───
-  { match: /Internal Server Error/i, ru: 'Сервер задумался. Попробуй ещё раз' },
+  { match: /Internal Server Error/i, ru: 'Сервер задумался. Попробуйте ещё раз' },
 ];
 
 /**
@@ -78,7 +78,7 @@ const HUMAN_PATTERNS: { match: RegExp | string; ru: string }[] = [
  *   try { ... } catch (e) { toast.error(humanizeError(e)); }
  *   if (error) { toast.error(humanizeError(error)); }
  */
-export function humanizeError(input: unknown, fallback = 'Что-то пошло не так. Попробуй ещё раз'): string {
+export function humanizeError(input: unknown, fallback = 'Что-то пошло не так. Попробуйте ещё раз'): string {
   if (input == null) return fallback;
 
   let raw = '';

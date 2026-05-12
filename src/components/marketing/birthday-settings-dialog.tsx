@@ -35,7 +35,7 @@ interface BirthdaySettings {
 const DEFAULT: BirthdaySettings = {
   enabled: true,
   send_tg_greeting: true,
-  // Без приветствия — чтобы работало и на «ты», и на «Вы».
+  // Без приветствия — чтобы работало и на «вы», и на «Вы».
   greeting_message: 'С днём рождения! 🎉\nВ подарок: {discount_text}',
   offer_discount: true,
   discount_percent: 15,

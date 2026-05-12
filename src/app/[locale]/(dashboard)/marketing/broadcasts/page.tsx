@@ -39,7 +39,7 @@ interface BroadcastRow {
 }
 
 const AUDIENCE_OPTIONS: { value: Audience; label: string; desc: string; icon: typeof Users }[] = [
-  { value: 'subscribers', label: 'Подписчики', desc: 'Те кто follow\'нул тебя', icon: UserCheck },
+  { value: 'subscribers', label: 'Подписчики', desc: 'Те кто follow\'нул вас', icon: UserCheck },
   { value: 'favorites', label: 'Избранное', desc: 'Добавили в favorites', icon: Heart },
   { value: 'all_clients', label: 'Все клиенты', desc: 'Все кто записывался', icon: Users },
 ];
@@ -205,7 +205,7 @@ export default function BroadcastsPage() {
               value={body}
               onChange={(e) => setBody(e.target.value.slice(0, 2000))}
               rows={6}
-              placeholder="Текст рассылки. Без приветствий типа «Привет» — клиент уже знает кто ты. Сразу к делу: что нового, акция, изменение и т.д."
+              placeholder="Текст рассылки. Без приветствий типа «Привет» — клиент уже знает кто вы. Сразу к делу: что нового, акция, изменение и т.д."
               style={{
                 ...settingsInputStyle(C),
                 resize: 'vertical',
@@ -231,7 +231,7 @@ export default function BroadcastsPage() {
             >
               <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
               <div style={{ fontSize: 13, lineHeight: 1.4 }}>
-                В выбранной аудитории пока нет получателей. Поделись ссылкой на свой профиль — клиенты добавят тебя в подписки или избранное.
+                В выбранной аудитории пока нет получателей. Поделись ссылкой на свой профиль — клиенты добавят вас в подписки или избранное.
               </div>
             </div>
           )}
@@ -268,7 +268,7 @@ export default function BroadcastsPage() {
         {historyLoading ? (
           <p style={{ fontSize: 13, color: C.textTertiary, padding: 12 }}>Загрузка...</p>
         ) : history.length === 0 ? (
-          <p style={{ fontSize: 13, color: C.textTertiary, padding: 12 }}>Ещё ни одной рассылки. Напиши первое сообщение выше.</p>
+          <p style={{ fontSize: 13, color: C.textTertiary, padding: 12 }}>Ещё ни одной рассылки. Напишите первое сообщение выше.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {history.map((b, idx) => (

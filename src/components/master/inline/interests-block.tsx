@@ -99,9 +99,9 @@ export function InlineInterestsBlock({ masterId, masterProfileId, initialInteres
             <Plus className="size-5" />
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-bold text-neutral-900">Расскажи об интересах</span>
+            <span className="block text-[15px] font-bold text-neutral-900">Расскажите об интересах</span>
             <span className="mt-1 block text-[13px] text-neutral-500">
-              Что любишь кроме работы — путешествия, спорт, кофе. Помогает клиенту почувствовать тебя как человека.
+              Что любишь кроме работы — путешествия, спорт, кофе. Помогает клиенту почувствовать вас как человека.
             </span>
           </span>
         </button>
@@ -195,7 +195,7 @@ function InterestsSheet({
       }
     >
       <p className="mb-3 text-[13px] text-neutral-500">
-        Добавь до {MAX_INTERESTS} интересов. Например: «йога», «путешествия», «кофе».
+        Добавьте до {MAX_INTERESTS} интересов. Например: «йога», «путешествия», «кофе».
       </p>
       <div className="flex gap-2">
         <input

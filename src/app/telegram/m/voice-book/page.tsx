@@ -1,6 +1,6 @@
 /** --- YAML
  * name: Voice Booking Mini App
- * description: Голосовая команда «запиши X на завтра 3 часа» → AI парсит → подтверждение → создание appointment. Flat cards (Phase 7.8).
+ * description: Голосовая команда «запишите X на завтра 3 часа» → AI парсит → подтверждение → создание appointment. Flat cards (Phase 7.8).
  * created: 2026-04-13
  * updated: 2026-04-18
  * --- */
@@ -135,7 +135,7 @@ export default function VoiceBookPage() {
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400">Голос</p>
         <h1 className="mt-1 text-2xl font-bold">Голосовая запись</h1>
-        <p className="mt-0.5 text-[12px] text-neutral-500">Нажми микрофон и скажи: «Запиши Машу на завтра в 15:00 на стрижку».</p>
+        <p className="mt-0.5 text-[12px] text-neutral-500">Нажми микрофон и скажите: «Запишите Машу на завтра в 15:00 на стрижку».</p>
       </div>
 
       <div className="flex flex-col items-center gap-3">
@@ -155,7 +155,7 @@ export default function VoiceBookPage() {
 
       {text && (
         <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm">
-          <div className="text-[10px] uppercase tracking-wide text-neutral-400">Ты сказал</div>
+          <div className="text-[10px] uppercase tracking-wide text-neutral-400">Вы сказал</div>
           <div className="mt-1">{text}</div>
         </div>
       )}

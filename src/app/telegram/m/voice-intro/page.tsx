@@ -15,7 +15,7 @@ import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { T, R } from '@/components/miniapp/design';
 
 const SAMPLES = [
-  { icon: Calendar, title: 'Запись', text: '«Запиши Марию на окрашивание в пятницу в 3»' },
+  { icon: Calendar, title: 'Запись', text: '«Запишите Марию на окрашивание в пятницу в 3»' },
   { icon: Receipt, title: 'Расход', text: '«Потратил 500 грн на краску»' },
   { icon: UserPlus, title: 'Клиент', text: '«Новая клиентка Марина, телефон 0671234567»' },
   { icon: NotebookPen, title: 'Заметка', text: '«У Ани аллергия на аммиак»' },
@@ -108,8 +108,8 @@ export default function VoiceAssistantIntro() {
             className="mt-2 space-y-1.5 text-[13px]"
             style={{ color: T.textSecondary }}
           >
-            <li><span style={{ color: T.textTertiary }}>1.</span> Открой чат бота в Telegram</li>
-            <li><span style={{ color: T.textTertiary }}>2.</span> Запиши голосовое — одна фраза</li>
+            <li><span style={{ color: T.textTertiary }}>1.</span> Откройте чат бота в Telegram</li>
+            <li><span style={{ color: T.textTertiary }}>2.</span> Запишите голосовое — одна фраза</li>
             <li><span style={{ color: T.textTertiary }}>3.</span> Получи подтверждение — запись в базе</li>
           </ol>
         </div>
@@ -120,7 +120,7 @@ export default function VoiceAssistantIntro() {
           className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-wide"
           style={{ color: T.textTertiary }}
         >
-          Попробуй одну из команд
+          Попробуйте одну из команд
         </p>
         <ul className="space-y-2">
           {SAMPLES.map((s, i) => {

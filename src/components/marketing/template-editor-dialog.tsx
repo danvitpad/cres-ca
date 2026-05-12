@@ -26,7 +26,7 @@ export interface AutomationKindSpec {
   variables: { key: string; label: string }[];
 }
 
-/* Дефолтные шаблоны — без приветствий типа «Привет», нейтрально для «ты» и «Вы».
+/* Дефолтные шаблоны — без приветствий типа «Привет», нейтрально для «вы» и «Вы».
    Структурированный формат: услуга на время / стоимость / адрес. Мастер может
    переопределить любой шаблон в диалоге. */
 export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
@@ -117,7 +117,7 @@ export const AUTOMATION_KIND_SPECS: Record<string, AutomationKindSpec> = {
     title: 'Подтверждение записи',
     description: 'Уходит клиенту в момент бронирования',
     defaultSubject: '✅ Запис підтверджено',
-    defaultContent: 'Майстер {master_name} чекає тебе {date} о {time}.\nПослуга: {service_name} ({duration}, {price}).\nАдреса: {address}\n\nЯкщо плани зміняться — повідом заздалегідь 🙏',
+    defaultContent: 'Майстер {master_name} чекає вам {date} о {time}.\nПослуга: {service_name} ({duration}, {price}).\nАдреса: {address}\n\nЯкщо плани зміняться — повідом заздалегідь 🙏',
     variables: [
       { key: 'service_name', label: 'Услуга' },
       { key: 'time', label: 'Время визита' },
@@ -386,7 +386,7 @@ export function TemplateEditorDialog({
           onFocus={() => setActiveField('content')}
           rows={5}
           disabled={loading}
-          placeholder="Введи текст или нажми на переменную ниже"
+          placeholder="Введите текст или нажми на переменную ниже"
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
         />
 

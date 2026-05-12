@@ -171,7 +171,7 @@ export function SalonInlineCoverBanner({ salonId, salonOwnerId, initialCoverUrl 
           className="group flex h-32 w-full items-center justify-center gap-3 border-y-2 border-dashed border-neutral-300 bg-neutral-50 text-neutral-700 transition-colors hover:border-neutral-900 hover:bg-neutral-100 sm:h-44"
         >
           <Plus className="size-5" />
-          <span className="text-[14px] font-semibold">Добавь обложку</span>
+          <span className="text-[14px] font-semibold">Добавьте обложку</span>
         </button>
         {sheet}
       </>

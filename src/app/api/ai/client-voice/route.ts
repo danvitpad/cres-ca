@@ -30,7 +30,7 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof AIUnavailableError) {
       return NextResponse.json(
-        { error: 'ai_unavailable', message: 'Голос сейчас не распознаётся, попробуй позже' },
+        { error: 'ai_unavailable', message: 'Голос сейчас не распознаётся, попробуйте позже' },
         { status: 503 },
       );
     }

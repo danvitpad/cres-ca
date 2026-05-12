@@ -99,7 +99,7 @@ export default function MasterMiniAppPartnersList() {
 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-neutral-200 bg-white/5 p-6 text-center">
-          <p className="text-[13px] text-neutral-700">У тебя пока нет партнёрств.</p>
+          <p className="text-[13px] text-neutral-700">У вас пока нет партнёрств.</p>
           <p className="mt-1.5 text-[11px] text-neutral-500 leading-relaxed">
             Партнёр — другой мастер или команда (салон, клиника) для бесплатной взаимной рекламы.
             Найди коллег в веб-кабинете и отправь приглашение.

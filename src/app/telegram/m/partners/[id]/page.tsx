@@ -466,7 +466,7 @@ function NotesBlock({
     return (
       <div style={{ ...cardStyle, padding: 16, textAlign: 'center' }}>
         <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
-          Пусто. Добавь вручную или напиши в чат внизу — AI разнесёт.
+          Пусто. Добавьте вручную или напишите в чат внизу — AI разнесёт.
         </p>
         <button
           type="button"

@@ -135,7 +135,7 @@ export function PublicPageDropdown() {
               <>
                 <div style={{ padding: '10px 12px 8px 12px', borderBottom: '1px solid var(--border, rgba(0,0,0,0.06))' }}>
                   <p style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted-foreground, #64748b)', margin: 0 }}>
-                    Твоя публичная страница
+                    Ваша публичная страница
                   </p>
                   <code style={{ display: 'block', fontSize: 12, marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {state.url!.replace(/^https?:\/\//, '')}
@@ -171,7 +171,7 @@ export function PublicPageDropdown() {
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Профиль скрыт из поиска</p>
                     <p style={{ fontSize: 12, color: 'var(--muted-foreground, #64748b)', margin: '4px 0 0 0', lineHeight: 1.4 }}>
-                      Активируй подписку, чтобы клиенты находили тебя через Google и AI-консьерж.
+                      Активируй подписку, чтобы клиенты находили вас через Google и AI-консьерж.
                     </p>
                   </div>
                 </div>

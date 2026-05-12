@@ -82,7 +82,7 @@ async function notifyMasters(db: ReturnType<typeof admin>) {
           text:
             `🔄 <b>Клиентам пора вернуться</b>\n\n` +
             `AI нашёл ${count} ${count === 1 ? 'клиент' : count < 5 ? 'клиентов' : 'клиентов'} которые обычно ` +
-            `к тебе возвращаются сейчас. Проверь предложения и одобри в 1 клик.`,
+            `к вам возвращаются сейчас. Проверьте предложения и одобри в 1 клик.`,
           reply_markup: {
             inline_keyboard: [[{ text: '📋 Посмотреть', web_app: { url: `${appUrl}/telegram/m/rebook` } }]],
           },

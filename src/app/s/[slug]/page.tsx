@@ -327,7 +327,7 @@ export default async function PublicSalonPage({ params }: PageProps) {
                 </div>
                 {masters.length > 1 && (
                   <p className="mb-4 text-[14px] text-neutral-600">
-                    Выбери мастера, чтобы записаться — у каждого своё расписание и свои услуги.
+                    Выберите мастера, чтобы записаться — у каждого своё расписание и свои услуги.
                   </p>
                 )}
                 <SalonTeamGrid members={masters} />

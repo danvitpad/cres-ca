@@ -2,7 +2,7 @@
  * name: Regular Services for Client
  * description: GET → returns up to 5 master×service pairs where the current
  *              client has ≥3 completed visits. Used by client home widget
- *              "Твои постоянные" — one-tap rebook.
+ *              "Ваши постоянные" — one-tap rebook.
  * created: 2026-04-30
  * --- */
 

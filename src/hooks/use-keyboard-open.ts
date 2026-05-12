@@ -2,7 +2,7 @@
  * name: useIsKeyboardOpen
  * description: Возвращает true когда экранная клавиатура (мобильная)
  *              открыта. Работает на iOS/Android через visualViewport API:
- *              если visualViewport.height стал заметно меньше
+ *              если visualViewport.height стали заметно меньше
  *              window.innerHeight — клавиатура подняла часть экрана.
  *              Используется в bottom-sheet'ах TG Mini App чтобы скрыть
  *              CTA-кнопки на время ввода (они всё равно прижаты под

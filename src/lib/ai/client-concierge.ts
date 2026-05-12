@@ -15,7 +15,7 @@ export interface ConciergeIntent {
   raw: string;                 // original transcript
 }
 
-const PROMPT = `Ты — AI-консьерж в приложении CRES-CA (услуги beauty/красоты). Клиент пишет или говорит голосом что хочет найти.
+const PROMPT = `Вы — AI-консьерж в приложении CRES-CA (услуги beauty/красоты). Клиент пишет или говорит голосом что хочет найти.
 
 Извлеки параметры поиска и верни СТРОГО JSON:
 {

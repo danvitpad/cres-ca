@@ -364,7 +364,7 @@ export async function GET(request: Request) {
       prefsMap.set(p.profile_id, p.notif_friend_birthdays !== false);
     }
 
-    const targetName = target.full_name || 'твой друг';
+    const targetName = target.full_name || 'ваш друг';
     for (const friendId of friendIds) {
       const opted = prefsMap.has(friendId) ? prefsMap.get(friendId)! : true;
       if (!opted) continue;
@@ -374,7 +374,7 @@ export async function GET(request: Request) {
         profile_id: friendId,
         channel: 'telegram',
         title: '🎂 День народження у друга',
-        body: `Сьогодні день народження у ${targetName}! Не забудь привітати. ${marker}`,
+        body: `Сьогодні день народження у ${targetName}! Не забудьте привітати. ${marker}`,
         scheduled_for: new Date().toISOString(),
       });
     }

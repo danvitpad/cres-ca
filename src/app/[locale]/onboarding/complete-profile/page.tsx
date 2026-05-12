@@ -83,11 +83,11 @@ export default function CompleteProfilePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!firstName.trim()) { toast.error('Введи имя'); return; }
-    if (!lastName.trim()) { toast.error('Введи фамилию'); return; }
-    if (!phone.trim() || phone.length < 9) { toast.error('Введи телефон'); return; }
-    if (role !== 'salon_admin' && !dob) { toast.error('Введи дату рождения'); return; }
-    if (needsPassword && password.length < 8) { toast.error('Придумай пароль (минимум 8 символов)'); return; }
+    if (!firstName.trim()) { toast.error('Введите имя'); return; }
+    if (!lastName.trim()) { toast.error('Введите фамилию'); return; }
+    if (!phone.trim() || phone.length < 9) { toast.error('Введите телефон'); return; }
+    if (role !== 'salon_admin' && !dob) { toast.error('Введите дату рождения'); return; }
+    if (needsPassword && password.length < 8) { toast.error('Придумайте пароль (минимум 8 символов)'); return; }
     if (needsPassword && !terms) { toast.error('Прими условия использования'); return; }
     setSaving(true);
 
@@ -159,7 +159,7 @@ export default function CompleteProfilePage() {
           className="text-center text-3xl font-semibold leading-tight tracking-tight md:text-4xl"
           style={{ color: '#fafafa', letterSpacing: '-0.02em' }}
         >
-          Расскажи о себе
+          Расскажите о себе
         </motion.h1>
         <motion.p
           initial={{ opacity: 0 }}

@@ -147,7 +147,7 @@ export async function GET() {
 
     const body = supplierLines.join('\n')
       + (draftsCreatedForThisMaster > 0
-        ? `\n\nЯ подготовил ${draftsCreatedForThisMaster} ${draftsCreatedForThisMaster === 1 ? 'черновик заказа' : 'черновиков заказов'}. Открой и отправь.`
+        ? `\n\nЯ подготовил ${draftsCreatedForThisMaster} ${draftsCreatedForThisMaster === 1 ? 'черновик заказа' : 'черновиков заказов'}. Откройте и отправь.`
         : '\n\nДобавь поставщиков, чтобы я подготавливал черновики автоматически.');
 
     await supabase.from('notifications').insert({

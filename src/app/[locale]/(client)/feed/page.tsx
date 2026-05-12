@@ -83,7 +83,7 @@ export default function ClientFeedPage() {
       }
     })();
 
-    // Load "Твои постоянные" (≥3 completed visits)
+    // Load "Ваши постоянные" (≥3 completed visits)
     (async () => {
       try {
         const res = await fetch('/api/me/regular-services');
@@ -145,7 +145,7 @@ export default function ClientFeedPage() {
           {greeting}{firstName ? `, ${firstName}` : ''} 👋
         </h1>
         <p className="mt-1 text-[14px] text-muted-foreground">
-          Ближайшие свободные окна, твои постоянные мастера и быстрые действия — всё на одном экране.
+          Ближайшие свободные окна, ваши постоянные мастера и быстрые действия — всё на одном экране.
         </p>
         {stats && (
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -176,15 +176,15 @@ export default function ClientFeedPage() {
       <header className="mb-4">
         <h2 className="text-[18px] font-bold tracking-tight">Свободные окна</h2>
         <p className="mt-0.5 text-[13px] text-muted-foreground">
-          У твоих контактов — мастеров, салонов и команд.
+          У ваших контактов — мастеров, салонов и команд.
         </p>
       </header>
 
-      {/* Твои постоянные — мастер+услуга где было ≥3 визитов */}
+      {/* Ваши постоянные — мастер+услуга где было ≥3 визитов */}
       {regulars.length > 0 && (
         <section className="mb-6">
           <h2 className="mb-3 text-[14px] font-semibold uppercase tracking-wide text-neutral-700 dark:text-neutral-300">
-            Твои постоянные
+            Ваши постоянные
           </h2>
           <div className="flex gap-2 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch] [scroll-snap-type:x_mandatory]">
             {regulars.map((r) => (
@@ -224,8 +224,8 @@ export default function ClientFeedPage() {
       ) : items.length === 0 ? (
         <>
           <EmptyCard
-            title="Пока нет твоих контактов"
-            desc="Добавь в контакты любимых мастеров и салоны — здесь будут их ближайшие свободные окна и акции."
+            title="Пока нет ваших контактов"
+            desc="Добавьте в контакты любимых мастеров и салоны — здесь будут их ближайшие свободные окна и акции."
             ctaHref="/search"
             ctaLabel="Найти мастеров"
           />

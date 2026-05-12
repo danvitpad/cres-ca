@@ -18,8 +18,8 @@ import { T, R, TYPE } from '@/components/miniapp/design';
 const STORAGE_KEY = 'cres:hsp'; // home screen prompt dismissed
 
 const I18N = {
-  uk: { text: 'Додай на головний екран — одне торкання і ти тут', add: 'Додати' },
-  ru: { text: 'Добавь на главный экран — один тап и ты здесь', add: 'Добавить' },
+  uk: { text: 'Додайте на головний екран — одне торкання і ви тут', add: 'Додати' },
+  ru: { text: 'Добавьте на главный экран — один тап и вы здесь', add: 'Добавить' },
   en: { text: 'Add to home screen — one tap and you\'re here', add: 'Add' },
 };
 

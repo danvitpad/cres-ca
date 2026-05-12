@@ -191,7 +191,7 @@ function AddForm({ onDone }: { onDone: () => void }) {
 
   const submit = () => {
     if (!email.trim() && !tgId.trim()) {
-      toast.error('Укажи email или Telegram ID');
+      toast.error('Укажите email или Telegram ID');
       return;
     }
     startTransition(async () => {

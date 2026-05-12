@@ -67,7 +67,7 @@ export default function PortfolioPage() {
 
   async function handleUpload() {
     if (!file || !master?.id) {
-      toast.error('Выбери фото');
+      toast.error('Выберите фото');
       return;
     }
     setUploading(true);

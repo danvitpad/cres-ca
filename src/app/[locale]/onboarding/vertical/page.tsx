@@ -90,7 +90,7 @@ export default function OnboardingVerticalPage() {
             className="text-3xl font-semibold leading-tight tracking-tight md:text-4xl"
             style={{ color: '#fafafa', letterSpacing: '-0.02em' }}
           >
-            Какой у тебя профиль?
+            Какой у вас профиль?
           </h1>
           <p
             className="mt-3 text-sm md:text-[15px]"

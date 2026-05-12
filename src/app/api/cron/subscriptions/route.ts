@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     const isTrial = sub.tier === 'trial';
     const title = isTrial ? '⏰ 3 дня до конца пробного периода' : '⏰ 3 дня до окончания подписки';
     const body = isTrial
-      ? 'Чтобы не потерять доступ к платным функциям — выбери тариф в Биллинге.'
+      ? 'Чтобы не потерять доступ к платным функциям — выберите тариф в Биллинге.'
       : 'Подписка скоро продлится автоматически. Если способ оплаты сменился — обнови в Биллинге.';
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
     const title = isTrial ? '🔔 Завтра закончится пробный период' : '🔔 Завтра спишется оплата подписки';
     const body = isTrial
       ? 'Если не выберешь тариф — после окончания пробника платные функции отключатся.'
-      : 'Проверь карту в Биллинге — если она удалена / просрочена, подписка перейдёт в просрочку.';
+      : 'Проверьте карту в Биллинге — если она удалена / просрочена, подписка перейдёт в просрочку.';
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,
       channel: 'in_app',
@@ -177,7 +177,7 @@ export async function GET(request: Request) {
 
   for (const sub of expiredActive) {
     const title = 'Оплата просрочена';
-    const body = 'Не удалось продлить подписку. Обнови способ оплаты в Биллинге — у тебя 7 дней до отключения платных функций.';
+    const body = 'Не удалось продлить подписку. Обнови способ оплаты в Биллинге — у вас 7 дней до отключения платных функций.';
     await supabase.from('subscriptions').update({ status: 'past_due' }).eq('id', sub.id);
     await supabase.from('notifications').insert({
       profile_id: sub.profile_id,

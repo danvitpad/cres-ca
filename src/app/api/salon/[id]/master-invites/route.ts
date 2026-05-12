@@ -112,8 +112,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const salonName = (salon as { name: string } | null)?.name ?? 'команда';
     await notifyUser(supabase, {
       profileId: masterRow.profile_id,
-      title: `Тебя приглашают в ${salonName}`,
-      body: body.message?.trim() || 'Открой приложение чтобы принять или отклонить.',
+      title: `Вас приглашают в ${salonName}`,
+      body: body.message?.trim() || 'Откройте приложение чтобы принять или отклонить.',
       data: { type: 'salon_invite', salon_id: salonId, invite_id: inviteRow.id, master_id: masterRow.id },
       deepLinkPath: '/telegram/m/invites',
       deepLinkLabel: 'Открыть приглашение',

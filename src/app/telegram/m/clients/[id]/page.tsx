@@ -589,7 +589,7 @@ function NotesBlock({
 
       {entries.length === 0 && !adding ? (
         <p className="text-[11px] leading-relaxed text-neutral-500">
-          Пусто. Добавь вручную или напиши в чат снизу — AI разнесёт.
+          Пусто. Добавьте вручную или напишите в чат снизу — AI разнесёт.
         </p>
       ) : (
         <div className="space-y-1.5">

@@ -197,7 +197,7 @@ async function handleCallback(cb: NonNullable<SuperadminUpdate['callback_query']
           if (clientToken) {
             const userMsg = approve
               ? `✅ Категория «${cat.name_ru}» добавлена в каталог. Спасибо за идею — теперь её увидят все мастера.`
-              : `❌ Категория «${cat.name_ru}» не добавлена в каталог. Если ты считаешь, что это ошибка — напиши в поддержку.`;
+              : `❌ Категория «${cat.name_ru}» не добавлена в каталог. Если вы считаешь, что это ошибка — напишите в поддержку.`;
             await tgFetch(clientToken, 'sendMessage', {
               chat_id: profile.telegram_id,
               text: userMsg,

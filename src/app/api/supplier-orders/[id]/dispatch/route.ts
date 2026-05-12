@@ -206,8 +206,8 @@ export async function POST(req: Request, { params }: RouteContext) {
       share_url: shareUrl,
       pdf_url: publicPdfUrl,
       hint: supplierTg
-        ? 'Не удалось отправить через бота — открой Telegram и переслай заказ контакту вручную'
-        : 'У поставщика не указан Telegram chat_id для прямой отправки. Открой Telegram и перешли заказ контакту',
+        ? 'Не удалось отправить через бота — откройте Telegram и переслай заказ контакту вручную'
+        : 'У поставщика не указан Telegram chat_id для прямой отправки. Откройте Telegram и перешли заказ контакту',
     });
   }
 

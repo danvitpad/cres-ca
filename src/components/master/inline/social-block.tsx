@@ -5,7 +5,7 @@
  *              whatsapp, viber, tiktok, youtube, facebook, website). Клиент видит
  *              кликабельные иконки. Владелец — pencil → bottom-sheet с полями.
  *              Если ничего не заполнено: для клиента блок скрыт, владелец видит
- *              CTA «+ Добавь способы связи». Иконки — фирменные SVG-логотипы.
+ *              CTA «+ Добавьте способы связи». Иконки — фирменные SVG-логотипы.
  * created: 2026-05-02
  * updated: 2026-05-05
  * --- */
@@ -177,9 +177,9 @@ export function InlineSocialBlock({ masterId, masterProfileId, initialSocialLink
             <Plus className="size-5" />
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-bold text-neutral-900">Добавь способы связи</span>
+            <span className="block text-[15px] font-bold text-neutral-900">Добавьте способы связи</span>
             <span className="mt-1 block text-[13px] text-neutral-500">
-              Telegram, Instagram, WhatsApp, сайт — клиенту проще написать тебе там, где он привык.
+              Telegram, Instagram, WhatsApp, сайт — клиенту проще написать вам там, где он привык.
             </span>
           </span>
         </button>

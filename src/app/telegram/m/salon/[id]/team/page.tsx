@@ -767,7 +767,7 @@ function InviteSearchSheet({
             </div>
             <div className="mt-3 max-h-80 overflow-y-auto">
               {q.length < 2 ? (
-                <p className="py-6 text-center text-[12px] text-neutral-400">Введи минимум 2 символа</p>
+                <p className="py-6 text-center text-[12px] text-neutral-400">Введите минимум 2 символа</p>
               ) : searching ? (
                 <p className="py-6 text-center text-[12px] text-neutral-400">Ищу…</p>
               ) : results.length === 0 ? (

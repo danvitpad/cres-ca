@@ -44,7 +44,7 @@ function shouldFire(minutesUntil: number, off: number): boolean {
 
 /* Локализованные fallback-шаблоны напоминаний. Применяются когда мастер не задал
    свой message_template — выбираются по masters.public_language.
-   Формат: без приветствия (чтобы работал и на «ты» и на «Вы»),
+   Формат: без приветствия (чтобы работал и на «вы» и на «Вы»),
    структурированный: услуга на время / стоимость / адрес.
    Линии стоимости/адреса включаются только если значения непустые. */
 
@@ -438,7 +438,7 @@ export async function GET(request: Request) {
       // как мастер написал), но системные fallback'и — всегда uk.
       const lang: Lang = 'uk';
       const t = L10N[lang];
-      // Прекомпилируем дефолтные тела (без приветствия, на ты+вы нейтрально)
+      // Прекомпилируем дефолтные тела (без приветствия, на вы+вы нейтрально)
       const fbBody24 = buildFallbackBody(lang, t.reminder24h, reminderCtx);
       const fbBody2  = buildFallbackBody(lang, t.reminder2h, reminderCtx);
       const fbBodyGen = buildFallbackBody(lang, t.reminderGeneric(reminderCtx), reminderCtx);
@@ -523,7 +523,7 @@ export async function GET(request: Request) {
 
     const time = new Date(apt.starts_at).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Kyiv' });
     const parts: string[] = [`${client?.full_name ?? 'Клиент'} — ${service?.name ?? 'услуга'} в ${time}`];
-    if (client?.has_health_alert) parts.push('⚠️ Health alert — проверь карту клиента');
+    if (client?.has_health_alert) parts.push('⚠️ Health alert — проверьте карту клиента');
     if (client?.allergies?.length) parts.push(`Аллергии: ${client.allergies.join(', ')}`);
     if (client?.notes) {
       const last = client.notes.split('\n').slice(-1)[0].trim();

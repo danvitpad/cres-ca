@@ -60,7 +60,7 @@ const I18N: Record<MiniAppLang, {
     saveBtn: 'Заблокувати',
     savingBtn: 'Збереження…',
     errorMissing: 'Вкажіть тривалість більше 0 хв',
-    errorSave: 'Не вдалось зберегти. Спробуй ще раз.',
+    errorSave: 'Не вдалось зберегти. Спробуйте ще раз.',
     dateLocale: 'uk-UA',
   },
   ru: {
@@ -75,7 +75,7 @@ const I18N: Record<MiniAppLang, {
     saveBtn: 'Заблокировать',
     savingBtn: 'Сохранение…',
     errorMissing: 'Длительность должна быть больше 0 мин',
-    errorSave: 'Не удалось сохранить. Попробуй ещё раз.',
+    errorSave: 'Не удалось сохранить. Попробуйте ещё раз.',
     dateLocale: 'ru-RU',
   },
   en: {

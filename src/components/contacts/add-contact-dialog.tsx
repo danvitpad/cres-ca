@@ -195,7 +195,7 @@ export function AddContactDialog({
         <div className="flex-1 min-h-0 overflow-y-auto px-5 py-3">
           {query.trim().length < 2 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              Начни вводить — найдём по имени, телефону, email или cres-id.
+              Начните вводить — найдём по имени, телефону, email или cres-id.
             </p>
           ) : loading && results.length === 0 ? (
             <div className="flex justify-center py-8">

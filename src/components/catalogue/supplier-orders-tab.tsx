@@ -357,7 +357,7 @@ export function SupplierOrdersTab() {
 
             {suppliers.length === 0 ? (
               <p style={{ fontSize: 13, color: C.textTertiary, margin: '12px 0' }}>
-                Сначала добавь хотя бы одного поставщика на вкладке «Склад → Поставщики».
+                Сначала добавьте хотя бы одного поставщика на вкладке «Склад → Поставщики».
               </p>
             ) : (
               <>

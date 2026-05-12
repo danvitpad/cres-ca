@@ -287,7 +287,7 @@ function MasterMiniAppQuickBookingInner() {
               </li>
             ))}
             {services.length === 0 && (
-              <p className="py-6 text-center text-[12px] text-neutral-400">Нет активных услуг. Добавь в dashboard.</p>
+              <p className="py-6 text-center text-[12px] text-neutral-400">Нет активных услуг. Добавьте в dashboard.</p>
             )}
           </ul>
         </>

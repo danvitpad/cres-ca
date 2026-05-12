@@ -82,7 +82,7 @@ export default function MiniAppNotificationsPage() {
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-semibold text-neutral-900">Дни рождения друзей</p>
               <p className="text-[11px] text-neutral-500 mt-0.5">
-                Утренний пуш когда у твоего друга (взаимная подписка) день рождения
+                Утренний пуш когда у вашего друга (взаимная подписка) день рождения
               </p>
             </div>
             <button

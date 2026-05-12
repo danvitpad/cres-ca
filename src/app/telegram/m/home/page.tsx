@@ -63,7 +63,7 @@ const I18N: Record<MiniAppLang, {
     },
     todayTimeline: 'Сьогодні',
     emptyTitle: 'Сьогодні записів немає',
-    emptyText: 'Додай запис у календарі або чекай онлайн-бронювання.',
+    emptyText: 'Додайте запис у календарі або чекайте онлайн-бронювання.',
     status: {
       booked: 'Заплановано', confirmed: 'Підтверджено', in_progress: 'Зараз',
       completed: 'Завершено', cancelled: 'Скасовано',
@@ -84,7 +84,7 @@ const I18N: Record<MiniAppLang, {
     },
     todayTimeline: 'Сегодня',
     emptyTitle: 'Сегодня записей нет',
-    emptyText: 'Добавь запись в календаре или жди онлайн-бронирования.',
+    emptyText: 'Добавьте запись в календаре или ждите онлайн-бронирования.',
     status: {
       booked: 'Запланировано', confirmed: 'Подтверждено', in_progress: 'Сейчас',
       completed: 'Завершено', cancelled: 'Отменено',

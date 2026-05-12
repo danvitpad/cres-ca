@@ -629,7 +629,7 @@ export default async function MasterShowcasePage({ params }: PageProps) {
       />
 
       {/* Cover banner — inline-editable для owner. Если cover_url пуст и
-          текущий пользователь — owner, показывается dashed-CTA «Добавь обложку».
+          текущий пользователь — owner, показывается dashed-CTA «Добавьте обложку».
           Иначе для клиента — image либо ничего. */}
       <div id="inline-cover" className="scroll-mt-24">
         <InlineCoverBanner

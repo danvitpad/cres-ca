@@ -58,7 +58,7 @@ export function InlineHoursBlock({ masterProfileId, initialHours }: Props) {
       title="Часы работы"
     >
       <p className="mb-4 text-[13px] text-neutral-500">
-        Когда тебе можно записаться. Клиенты увидят свободные слоты только в эти часы.
+        Когда вам можно записаться. Клиенты увидят свободные слоты только в эти часы.
         Можно задать несколько окон в одном дне (например, до обеда + после).
       </p>
       <WorkingHoursEditor

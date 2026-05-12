@@ -100,7 +100,7 @@ export default function SettingsPage() {
   const sections: SettingSection[] = [
     { key: 'profile', icon: UserCircle, title: t('editProfile') },
     { key: 'vertical', icon: Briefcase, title: 'Моя сфера' },
-    { key: 'categories', icon: Layers, title: 'Категории и услуги', desc: 'То, по чему тебя ищут клиенты', href: `/${locale}/settings/categories` },
+    { key: 'categories', icon: Layers, title: 'Категории и услуги', desc: 'То, по чему вас ищут клиенты', href: `/${locale}/settings/categories` },
     { key: 'features', icon: Layers, title: 'Модули' },
     { key: 'hours', icon: CalendarClock, title: t('workingHours') },
     { key: 'security', icon: KeyRound, title: 'Безопасность' },
@@ -504,7 +504,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
         </SettingsField>
       </SettingsBlock>
 
-      <SettingsBlock title="Профессиональная информация" subtitle="Видна на твоей публичной странице" C={C}>
+      <SettingsBlock title="Профессиональная информация" subtitle="Видна на вашей публичной странице" C={C}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
           <SettingsField label="Специализация" C={C}>
             <input style={inputStyle} value={specialization} onChange={(e) => setSpecialization(e.target.value)} placeholder={t('specializationPlaceholder')} />
@@ -613,7 +613,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
 
       <SettingsBlock
         title="Язык интерфейса"
-        subtitle="На каком языке для тебя показываются меню, кнопки и тексты в системе. Сохраняется и подхватывается на телефоне (Mini App)."
+        subtitle="На каком языке для вас показываются меню, кнопки и тексты в системе. Сохраняется и подхватывается на телефоне (Mini App)."
         C={C}
       >
         <UiLanguagePicker C={C} />
@@ -621,7 +621,7 @@ function ProfileTab({ master, userId, onSaved }: { master: NonNullable<ReturnTyp
 
       <SettingsBlock
         title="Язык исходящих уведомлений"
-        subtitle="На этом языке клиенты получают рассылки/напоминания, поставщики — PDF-заказы. Может отличаться от языка твоего интерфейса."
+        subtitle="На этом языке клиенты получают рассылки/напоминания, поставщики — PDF-заказы. Может отличаться от языка вашего интерфейса."
         C={C}
       >
         <SettingsSegmented
@@ -944,7 +944,7 @@ function InviteLinkTab({ master }: { master: NonNullable<ReturnType<typeof useMa
 
   return (
     <SettingsBlock title={t('inviteLink')} subtitle="Поделись со знакомым мастером — оба получите бонус, когда он зарегистрируется" C={C}>
-      <SettingsField label={t('inviteCode')} hint="Уникальный код твоей мастерской" C={C}>
+      <SettingsField label={t('inviteCode')} hint="Уникальный код вашей мастерской" C={C}>
         <code style={{
           display: 'block', padding: '10px 12px', borderRadius: 10,
           background: C.surfaceElevated, border: `1px solid ${C.border}`,
@@ -1885,16 +1885,16 @@ function LoyaltyTab({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <SettingsBlock
         title="Программа лояльности"
-        subtitle="Один общий тумблер на 3 механики: баллы за визиты, реферальную программу и подарок на ДР. Все баллы привязаны лично к тебе — клиент не может потратить их у другого мастера."
+        subtitle="Один общий тумблер на 3 механики: баллы за визиты, реферальную программу и подарок на ДР. Все баллы привязаны лично к вам — клиент не может потратить их у другого мастера."
         C={C}
         right={(
           <HelpHint title="Как работают баллы лояльности">
-            <p><b>1 балл = 1 ₴ скидки</b> у тебя. Это не настоящие деньги — это твоя внутренняя «валюта скидки», возвращающая клиента к тебе.</p>
-            <p><b>Кто кому начисляет:</b> ты клиенту. Например 5% с чека: стрижка за 600 ₴ → 30 баллов на счёт у тебя (не у Маши, не у Ивана).</p>
-            <p><b>Где видны баллы:</b> клиент видит per-master список в Mini App «Бонусы» («У Маши: 30, у Ивана: 50»). При записи к тебе появится галочка «Списать N баллов» — но только если ты включил это в блоке ниже.</p>
-            <p><b>Что в финансах у тебя:</b> запись с применёнными баллами помечается «списано: N ₴». Доход — за вычетом бонусов.</p>
+            <p><b>1 балл = 1 ₴ скидки</b> у вас. Это не настоящие деньги — это ваша внутренняя «валюта скидки», возвращающая клиента к вам.</p>
+            <p><b>Кто кому начисляет:</b> вы клиенту. Например 5% с чека: стрижка за 600 ₴ → 30 баллов на счёт у вас (не у Маши, не у Ивана).</p>
+            <p><b>Где видны баллы:</b> клиент видит per-master список в Mini App «Бонусы» («У Маши: 30, у Ивана: 50»). При записи к вам появится галочка «Списать N баллов» — но только если вы включил это в блоке ниже.</p>
+            <p><b>Что в финансах у вас:</b> запись с применёнными баллами помечается «списано: N ₴». Доход — за вычетом бонусов.</p>
             <p><b>Защита экономики (5 правил, ниже отдельный блок):</b></p>
-            <p>1. Тумблер «Списание разрешено» — на старте можешь выключить и клиенты только копят.</p>
+            <p>1. Тумблер «Списание разрешено» — на старте можете выключить и клиенты только копят.</p>
             <p>2. Cap % от чека (default 50%) — клиент не оплатит весь визит баллами.</p>
             <p>3. Cap ₴ за визит (default 200) — абсолютный потолок.</p>
             <p>4. Минимум визитов (default 1) — анти-фрод от реферал-бонусов на первой записи.</p>
@@ -1925,7 +1925,7 @@ function LoyaltyTab({
       </SettingsBlock>
 
       <div style={{ ...dim, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <SettingsBlock title="💎 Баллы за визиты" subtitle="Клиент копит % от чека и тратит как скидку у тебя" C={C}>
+        <SettingsBlock title="💎 Баллы за визиты" subtitle="Клиент копит % от чека и тратит как скидку у вас" C={C}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
             <SettingsField label="% от стоимости визита" hint="1 балл = 1 ₴ скидки. Рекомендуем 3-5%." C={C}>
               <input
@@ -1983,7 +1983,7 @@ function LoyaltyTab({
                 style={settingsInputStyle(C)}
               />
             </SettingsField>
-            <SettingsField label="Минимум визитов для списания" hint="Сколько выполненных визитов клиент должен иметь у тебя прежде чем сможет тратить баллы. 1 = после первого, 0 = можно сразу (рискованно), 3 = только постоянные." C={C}>
+            <SettingsField label="Минимум визитов для списания" hint="Сколько выполненных визитов клиент должен иметь у вас прежде чем сможет тратить баллы. 1 = после первого, 0 = можно сразу (рискованно), 3 = только постоянные." C={C}>
               <input
                 type="number" min={0} max={20}
                 value={redeemMinVisits}
@@ -2001,7 +2001,7 @@ function LoyaltyTab({
 
         <SettingsBlock
           title="🤝 Реферальная программа"
-          subtitle="Когда твой клиент приведёт нового и тот сделает первый оплаченный визит — ты автоматически начисляешь реферреру баллы. Поставь сумму меньше среднего чека первого визита, чтобы привлечение нового клиента было в плюс."
+          subtitle="Когда ваш клиент приведёт нового и тот сделает первый оплаченный визит — вы автоматически начисляешь реферреру баллы. Поставь сумму меньше среднего чека первого визита, чтобы привлечение нового клиента было в плюс."
           C={C}
         >
           <div style={{ maxWidth: 320 }}>
@@ -2018,7 +2018,7 @@ function LoyaltyTab({
 
         <SettingsBlock
           title="🎂 Подарок на День Рождения"
-          subtitle="Утром в ДР клиента ты автоматически генерируешь ему персональный промокод на скидку. Это не накопительные баллы — клиент должен прийти в течение N дней или промо сгорит."
+          subtitle="Утром в ДР клиента вы автоматически генерируешь ему персональный промокод на скидку. Это не накопительные баллы — клиент должен прийти в течение N дней или промо сгорит."
           C={C}
           right={<SettingsSwitch checked={bdayEnabled} onChange={setBdayEnabled} C={C} />}
         >

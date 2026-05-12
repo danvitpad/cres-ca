@@ -124,8 +124,8 @@ export function SalonInlineContactsBlock({ salonId, salonOwnerId, initialPhone, 
             <Plus className="size-4" />
           </span>
           <span className="flex-1">
-            <span className="block text-[14px] font-bold text-neutral-900">Добавь контакты</span>
-            <span className="mt-0.5 block text-[12px] text-neutral-500">Телефон или email — клиент будет знать как с тобой связаться.</span>
+            <span className="block text-[14px] font-bold text-neutral-900">Добавьте контакты</span>
+            <span className="mt-0.5 block text-[12px] text-neutral-500">Телефон или email — клиент будет знать как с вами связаться.</span>
           </span>
         </button>
         {sheet}

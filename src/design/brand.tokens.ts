@@ -2,7 +2,7 @@
  * name: Brand tokens — source of truth
  * description: >
  *   Все visual-значения проекта в одном файле. Редактируя этот файл,
- *   ты меняешь визуал ВСЕГО проекта (через CSS vars + Tailwind).
+ *   вы меняешь визуал ВСЕГО проекта (через CSS vars + Tailwind).
  *   Запрещено hardcoded'ить hex/px в components.
  *
  * HOW TO EDIT:

@@ -659,9 +659,9 @@ function CreateBusinessWizard() {
               <StepWrapper key="step1">
                 <p className="text-sm text-muted-foreground">{t('setupAccount')}</p>
                 <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
-                  {userRole === 'master' ? 'Как тебя зовут?' : `Как называется ${copy.businessNomPossessive}?`}
+                  {userRole === 'master' ? 'Как вас зовут?' : `Как называется ${copy.businessNomPossessive}?`}
                 </h1>
-                <p className="mt-2 text-muted-foreground">{userRole === 'master' ? 'Имя, которое будут видеть клиенты на твоей странице.' : t('businessNameDesc')}</p>
+                <p className="mt-2 text-muted-foreground">{userRole === 'master' ? 'Имя, которое будут видеть клиенты на вашей странице.' : t('businessNameDesc')}</p>
 
                 <div className="mt-8 space-y-5">
                   {/* Cover + avatar uploaders */}
@@ -769,7 +769,7 @@ function CreateBusinessWizard() {
                   Категории и услуги
                 </h1>
                 <p className="mt-2 text-muted-foreground">
-                  Выбери одну или несколько категорий — это то, по чему тебя будут искать клиенты.
+                  Выберите одну или несколько категорий — это то, по чему вас будут искать клиенты.
                 </p>
                 <div className="mt-6">
                   <CategoriesEditor

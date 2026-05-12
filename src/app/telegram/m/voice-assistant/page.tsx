@@ -38,7 +38,7 @@ type ActionLog = {
 
 const COMMANDS = [
   { icon: Bell, title: 'Напоминание', example: '«Напомни позвонить Ане завтра в 10»' },
-  { icon: Calendar, title: 'Новая запись', example: '«Запиши Марию на окрашивание в пятницу в 3»' },
+  { icon: Calendar, title: 'Новая запись', example: '«Запишите Марию на окрашивание в пятницу в 3»' },
   { icon: Receipt, title: 'Расход', example: '«Потратил 500 грн на краску»' },
   { icon: Coins, title: 'Выручка', example: '«Сегодня Аня стрижка 1200»' },
   { icon: NotebookPen, title: 'Заметка', example: '«У Марии чихуа-хуа Буся»' },

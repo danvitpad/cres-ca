@@ -70,7 +70,7 @@ export function SalonInlineBioBlock({ salonId, salonOwnerId, initialBio }: Props
             <Plus className="size-5" />
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-bold text-neutral-900">Добавь описание салона</span>
+            <span className="block text-[15px] font-bold text-neutral-900">Добавьте описание салона</span>
             <span className="mt-1 block text-[13px] text-neutral-500">
               История, философия, атмосфера. Что отличает вашу команду.
             </span>
@@ -135,7 +135,7 @@ function BioSheet({
     >
       <p className="mb-3 inline-flex items-center gap-1.5 text-[12px] text-neutral-500">
         <Bot className="size-3.5 text-blue-500" />
-        Расскажи коротко: атмосфера, специализация, что важно вашей команде.
+        Расскажите коротко: атмосфера, специализация, что важно вашей команде.
       </p>
       <textarea
         value={draft}

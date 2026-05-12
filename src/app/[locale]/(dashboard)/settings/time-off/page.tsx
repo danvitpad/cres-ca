@@ -49,7 +49,7 @@ export default function TimeOffPage() {
 
   async function add() {
     if (!master?.id || !startDate || !endDate) {
-      toast.error('Укажи даты');
+      toast.error('Укажите даты');
       return;
     }
     setSaving(true);
@@ -86,7 +86,7 @@ export default function TimeOffPage() {
           Отпуска и выходные
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Добавь периоды когда ты недоступен — слоты автоматически исчезнут из онлайн-записи.
+          Добавьте периоды когда вы недоступен — слоты автоматически исчезнут из онлайн-записи.
         </p>
       </div>
 

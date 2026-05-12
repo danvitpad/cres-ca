@@ -61,7 +61,7 @@ export default function RecommendPage() {
 
   async function handleSend() {
     if (!master?.id || !targetId) {
-      toast.error('Выбери коллегу');
+      toast.error('Выберите коллегу');
       return;
     }
     setSubmitting(true);
@@ -88,7 +88,7 @@ export default function RecommendPage() {
         profile_id: client.profile_id,
         channel: 'telegram',
         title: '✨ Рекомендация',
-        body: `${master.profile.full_name} советует тебе ${targetName}. [rec:${rec.id}]`,
+        body: `${master.profile.full_name} советует вам ${targetName}. [rec:${rec.id}]`,
         scheduled_for: new Date().toISOString(),
       });
     }

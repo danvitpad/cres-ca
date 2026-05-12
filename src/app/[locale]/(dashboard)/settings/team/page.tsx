@@ -292,7 +292,7 @@ export default function TeamPage() {
       const aps = j.mode === 'kept_with_salon'
         ? `Отменено записей: ${j.cancelled_appointments ?? 0}. Клиенты получили уведомление.`
         : `Перенесено записей в соло-календарь: ${j.moved_appointments ?? 0}.`;
-      toast.success(`Ты вышел из команды. ${aps}`);
+      toast.success(`Вы вышел из команды. ${aps}`);
       setLeaveDialogOpen(false);
       setMemberSalon(null);
     }
@@ -307,7 +307,7 @@ export default function TeamPage() {
           <CardContent className="p-6 flex items-center justify-between gap-4">
             <div>
               <div className="text-lg font-semibold">{memberSalon.name}</div>
-              <div className="text-sm text-muted-foreground mt-1">Ты — мастер этой команды.</div>
+              <div className="text-sm text-muted-foreground mt-1">Вы — мастер этой команды.</div>
             </div>
             <Button variant="destructive" onClick={() => setLeaveDialogOpen(true)}>
               Выйти из команды
@@ -322,7 +322,7 @@ export default function TeamPage() {
             </DialogHeader>
             <div className="space-y-4 text-sm">
               <p className="text-muted-foreground">
-                Что сделать с твоими будущими записями?
+                Что сделать с вашими будущими записями?
               </p>
               <div className="space-y-2">
                 <label className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/40">
@@ -335,7 +335,7 @@ export default function TeamPage() {
                   <div>
                     <div className="font-medium">Записи переходят со мной</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Будущие записи перейдут в твой соло-календарь. Ты обслужишь клиентов сам.
+                      Будущие записи перейдут в ваш соло-календарь. Вы обслужишь клиентов сам.
                     </div>
                   </div>
                 </label>
@@ -349,7 +349,7 @@ export default function TeamPage() {
                   <div>
                     <div className="font-medium">Остаются у салона</div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Будущие записи будут отменены. Клиенты получат уведомление выбрать другого мастера команды или записаться к тебе напрямую.
+                      Будущие записи будут отменены. Клиенты получат уведомление выбрать другого мастера команды или записаться к вам напрямую.
                     </div>
                   </div>
                 </label>

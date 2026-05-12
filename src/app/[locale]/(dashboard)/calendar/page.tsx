@@ -1329,7 +1329,7 @@ export default function CalendarPage() {
         >
           <div style={{ padding: 20 }}>
             <p style={{ marginBottom: 16, fontSize: 13, color: F.textMuted }}>
-              Когда тебе можно записаться. Клиенты увидят свободные слоты только в эти часы.
+              Когда вам можно записаться. Клиенты увидят свободные слоты только в эти часы.
               Можно добавить несколько окон в один день — например, до обеда и после.
             </p>
             <WorkingHoursEditor

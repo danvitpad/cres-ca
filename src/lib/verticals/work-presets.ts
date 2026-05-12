@@ -123,7 +123,7 @@ export const AI_TONE_PER_VERTICAL: Record<VerticalKey, {
   tone: string;
   example: string;
 }> = {
-  beauty:    { tone: 'warm',         example: 'Привет! Смотрю, у тебя сегодня плотный день — 8 записей. Круто!' },
+  beauty:    { tone: 'warm',         example: 'Привет! Смотрю, у вас сегодня плотный день — 8 записей. Круто!' },
   health:    { tone: 'clinical',     example: 'Анализ приёмов: 12 визитов, средняя продолжительность 35 минут.' },
   auto:      { tone: 'direct',       example: '12 выездов на этой неделе. Загрузка высокая — стоит рассмотреть рост цен.' },
   tattoo:    { tone: 'casual',       example: 'Бро, загрузка топ — 4 сеанса в неделю. Депозитов на 8000.' },

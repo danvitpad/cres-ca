@@ -162,7 +162,7 @@ export default function AuthPage() {
     const e = params.get('error');
     if (e !== 'auth') return;
     const id = window.setTimeout(() => {
-      toast.error('Не удалось войти. Попробуй ещё раз.', { duration: 7000 });
+      toast.error('Не удалось войти. Попробуйте ещё раз.', { duration: 7000 });
     }, 100);
     return () => window.clearTimeout(id);
   }, []);
@@ -501,7 +501,7 @@ export default function AuthPage() {
         ? 'Этот email уже подтверждён. Войди под своим паролем.'
         : /expired/i.test(error.message)
         ? 'Код истёк. Запроси новый ниже.'
-        : 'Неверный код. Если запрашивал несколько раз — введи последний.';
+        : 'Неверный код. Если запрашивал несколько раз — введите последний.';
       toast.error(msg);
       setOtp('');
       return;
@@ -555,7 +555,7 @@ export default function AuthPage() {
       // на «Сессия истекла. Войди заново», что неверно по контексту.
       const msg = /expired/i.test(error.message)
         ? 'Код истёк. Запроси новый ниже.'
-        : 'Неверный код. Если запрашивал несколько раз — введи последний.';
+        : 'Неверный код. Если запрашивал несколько раз — введите последний.';
       toast.error(msg);
       setOtp('');
       return;
@@ -1198,7 +1198,7 @@ function DobInput({ value, onChange }: { value: string; onChange: (isoOrEmpty: s
     }
     // Sanity: can't be born in the future or younger than 5 years old
     if (candidate.getTime() > Date.now()) {
-      setError('Дата в будущем — проверь');
+      setError('Дата в будущем — проверьте');
       onChange('');
       return;
     }

@@ -163,7 +163,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ brief: null, empty: true });
   }
 
-  const prompt = `Ты AI-ассистент мастера в CRM CRES-CA. Напиши КОРОТКИЙ дневной бриф для мастера по имени ${firstName}.
+  const prompt = `Вы AI-ассистент мастера в CRM CRES-CA. Напишите КОРОТКИЙ дневной бриф для мастера по имени ${firstName}.
 
 ДАННЫЕ НА СЕГОДНЯ:
 - Записей всего: ${todayCount} (выполнено ${todayDone}, осталось ${todayUpcoming.length})
