@@ -1,4 +1,4 @@
-/** --- YAML
+﻿/** --- YAML
  * name: MasterMiniAppMoreTab
  * description: Таб «Ещё» — список разделов которые не получили отдельного слота
  *              в нижней навигации. Маркетинг / Партнёры / Расписание / Команда /
@@ -12,6 +12,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Megaphone,
+  Users as UsersIcon,
+  Scissors,
   Users2,
   Building2,
   Bot,
@@ -41,14 +43,16 @@ interface MoreLinkRaw {
   icon: LucideIcon;
   labelKey: keyof typeof I18N['ru'];
   hintKey: keyof typeof I18N['ru'];
-  /** OD цветовая раскраска иконки: cobalt/emerald/amber/danger/info/purple */
-  iconColor: 'cobalt' | 'emerald' | 'amber' | 'danger' | 'info' | 'purple';
+  /** OD цветовая раскраска иконки: cobalt/emerald/amber/danger/info/purple/neutral */
+  iconColor: 'cobalt' | 'emerald' | 'amber' | 'danger' | 'info' | 'purple' | 'neutral';
   /** true → открывать во внешнем браузере (web-страница, не Mini App page). */
   external?: boolean;
 }
 
 const I18N: Record<MiniAppLang, {
   title: string;
+  clients: string; clientsHint: string;
+  services: string; servicesHint: string;
   marketing: string; marketingHint: string;
   partners: string; partnersHint: string;
   team: string; teamHint: string;
@@ -66,11 +70,13 @@ const I18N: Record<MiniAppLang, {
 }> = {
   uk: {
     title: 'Ще',
+    clients: 'Клієнти', clientsHint: 'Ваша база клієнтів',
+    services: 'Послуги і ціни', servicesHint: 'Каталог, тривалість, вартість',
     marketing: 'Маркетинг', marketingHint: 'Розсилки, акції, промокоди',
     partners: 'Партнери', partnersHint: 'Реферали та взаємні рекомендації',
     team: 'Команда', teamHint: 'Салон та колеги',
     ai: 'AI-помічник', aiHint: 'Запитай — я відповім',
-    profile: 'Профіль', profileHint: 'Ім’я, аватар, тариф',
+    profile: 'Профіль', profileHint: "Ім'я, аватар, тариф",
     settings: 'Налаштування', settingsHint: 'Тариф, сповіщення, мова',
     queue: 'Жива черга', queueHint: 'Walk-in клієнти без запису',
     inventory: 'Склад', inventoryHint: 'Матеріали, залишки, поріг',
@@ -83,6 +89,8 @@ const I18N: Record<MiniAppLang, {
   },
   ru: {
     title: 'Ещё',
+    clients: 'Клиенты', clientsHint: 'Ваша база клиентов',
+    services: 'Услуги и цены', servicesHint: 'Каталог, длительность, стоимость',
     marketing: 'Маркетинг', marketingHint: 'Рассылки, акции, промокоды',
     partners: 'Партнёры', partnersHint: 'Рефералы и взаимные рекомендации',
     team: 'Команда', teamHint: 'Салон и коллеги',
@@ -100,10 +108,12 @@ const I18N: Record<MiniAppLang, {
   },
   en: {
     title: 'More',
+    clients: 'Clients', clientsHint: 'Your client base',
+    services: 'Services & prices', servicesHint: 'Catalog, duration, price',
     marketing: 'Marketing', marketingHint: 'Broadcasts, deals, promo codes',
     partners: 'Partners', partnersHint: 'Referrals and mutual recommendations',
     team: 'Team', teamHint: 'Salon and colleagues',
-    ai: 'AI assistant', aiHint: 'Ask — I’ll answer',
+    ai: 'AI assistant', aiHint: "Ask — I'll answer",
     profile: 'Profile', profileHint: 'Name, avatar, plan',
     settings: 'Settings', settingsHint: 'Plan, notifications, language',
     queue: 'Live queue', queueHint: 'Walk-in clients without appointment',
@@ -175,17 +185,19 @@ export default function MasterMiniAppMore() {
   // тариф, био, контакты) живёт на публичной странице (открывается тапом
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
-    { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', iconColor: 'purple' },
-    { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint', iconColor: 'cobalt' },
-    { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint', iconColor: 'emerald' },
-    { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint', iconColor: 'amber' },
+    { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, labelKey: 'clients', hintKey: 'clientsHint', iconColor: 'neutral' },
+    { key: 'services', href: '/telegram/m/services', icon: Scissors, labelKey: 'services', hintKey: 'servicesHint', iconColor: 'neutral' },
+    { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', iconColor: 'neutral' },
+    { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint', iconColor: 'neutral' },
+    { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint', iconColor: 'neutral' },
+    { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint', iconColor: 'neutral' },
     // 'Живая очередь' убрана 2026-05-10 — фича оказалась не нужна.
-    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'info' },
-    { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint', iconColor: 'cobalt' },
-    ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const, iconColor: 'purple' as const }] : []),
-    { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint', iconColor: 'cobalt' },
-    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint', iconColor: 'amber' },
-    { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint', iconColor: 'emerald' },
+    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'neutral' },
+    { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint', iconColor: 'neutral' },
+    ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const, iconColor: 'neutral' as const }] : []),
+    { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint', iconColor: 'neutral' },
+    { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint', iconColor: 'neutral' },
+    { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint', iconColor: 'neutral' },
   ];
 
   function openExternal(href: string) {

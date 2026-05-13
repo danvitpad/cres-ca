@@ -432,7 +432,7 @@ export default function MasterMiniAppSettings() {
           <p className="settings-section-label" style={{ margin: '4px 4px 8px' }}>{t.sectionProfile}</p>
           <div className="settings-card">
             <button type="button" onClick={openContactEdit} className="settings-row">
-              <div className="settings-row-icon icon-cobalt"><Mail size={16} color={T.text} /></div>
+              <div className="settings-row-icon icon-neutral"><Mail size={16} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.emailLabel}</p>
                 <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email ?? t.notSet}</p>
@@ -441,7 +441,7 @@ export default function MasterMiniAppSettings() {
             </button>
             {/* divider handled by .settings-row:not(:last-child)::after */}
             <button type="button" onClick={openContactEdit} className="settings-row">
-              <div className="settings-row-icon icon-cobalt"><PhoneIcon size={16} color={T.text} /></div>
+              <div className="settings-row-icon icon-neutral"><PhoneIcon size={16} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.phoneLabel}</p>
                 <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone ?? t.notSet}</p>
@@ -459,7 +459,7 @@ export default function MasterMiniAppSettings() {
               }}
               className="settings-row"
             >
-              <div className="settings-row-icon icon-cobalt"><KeyRound size={16} color={T.text} /></div>
+              <div className="settings-row-icon icon-neutral"><KeyRound size={16} /></div>
               <div style={{ flex: 1 }}>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.changePassword}</p>
               </div>
@@ -471,7 +471,7 @@ export default function MasterMiniAppSettings() {
               onClick={() => { haptic('light'); setSpecSheetOpen(true); }}
               className="settings-row"
             >
-              <div className="settings-row-icon icon-cobalt"><Briefcase size={16} color={T.text} /></div>
+              <div className="settings-row-icon icon-neutral"><Briefcase size={16} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{t.specTitle}</p>
                 <p style={{ ...TYPE.caption, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -489,19 +489,19 @@ export default function MasterMiniAppSettings() {
             <p className="settings-section-label" style={{ margin: '4px 4px 8px' }}>{t.visibilityTitle}</p>
             <div className="settings-card">
               <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} className="settings-row">
-                <div className="settings-row-icon icon-cobalt"><PhoneIcon size={16} color={T.text} /></div>
+                <div className="settings-row-icon icon-neutral"><PhoneIcon size={16} /></div>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showPhone}</p>
                 <MiniToggle on={phonePublic} />
               </button>
               {/* divider handled by .settings-row:not(:last-child)::after */}
               <button type="button" onClick={() => toggleVisibility('email_public', !emailPublic)} className="settings-row">
-                <div className="settings-row-icon icon-cobalt"><Mail size={16} color={T.text} /></div>
+                <div className="settings-row-icon icon-neutral"><Mail size={16} /></div>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showEmail}</p>
                 <MiniToggle on={emailPublic} />
               </button>
               {/* divider handled by .settings-row:not(:last-child)::after */}
               <button type="button" onClick={() => toggleVisibility('dob_public', !dobPublic)} className="settings-row">
-                <div className="settings-row-icon icon-cobalt"><Cake size={16} color={T.text} /></div>
+                <div className="settings-row-icon icon-neutral"><Cake size={16} /></div>
                 <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showDob}</p>
                 <MiniToggle on={dobPublic} />
               </button>
@@ -525,7 +525,7 @@ export default function MasterMiniAppSettings() {
                   onClick={() => haptic('light')}
                   className="settings-row"
                 >
-                  <div className="settings-row-icon icon-cobalt"><Icon size={16} color={T.text} /></div>
+                  <div className="settings-row-icon icon-neutral"><Icon size={16} /></div>
                   <span style={{ flex: 1, ...TYPE.bodyStrong, color: T.text }}>
                     {t[item.labelKey]}
                   </span>
@@ -549,13 +549,8 @@ export default function MasterMiniAppSettings() {
               onClick={() => { haptic('light'); setOverride(theme === 'dark' ? 'light' : 'dark'); }}
               className="settings-row"
             >
-              <div className="settings-row-icon icon-cobalt"><Moon size={16} color={T.text} /></div>
-              <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', ...TYPE.bodyStrong, color: T.text }}>{t.themeDark}</span>
-                <span style={{ display: 'block', ...TYPE.caption, marginTop: 1 }}>
-                  {override ? t.themeManual : t.themeAsTelegram}
-                </span>
-              </span>
+              <div className="settings-row-icon icon-neutral"><Moon size={16} color={T.textSecondary} /></div>
+              <span style={{ flex: 1, ...TYPE.bodyStrong, color: T.text }}>{t.themeDark}</span>
               <MiniToggle on={theme === 'dark'} />
             </button>
             {/* divider handled by .settings-row:not(:last-child)::after */}
@@ -570,11 +565,8 @@ export default function MasterMiniAppSettings() {
               disabled={!hapticLoaded}
               className="settings-row"
             >
-              <div className="settings-row-icon icon-cobalt"><Vibrate size={16} color={T.text} /></div>
-              <span style={{ flex: 1 }}>
-                <span style={{ display: 'block', ...TYPE.bodyStrong, color: T.text }}>{t.hapticLabel}</span>
-                <span style={{ display: 'block', ...TYPE.caption, marginTop: 1 }}>{t.hapticHint}</span>
-              </span>
+              <div className="settings-row-icon icon-neutral"><Vibrate size={16} color={T.textSecondary} /></div>
+              <span style={{ flex: 1, ...TYPE.bodyStrong, color: T.text }}>{t.hapticLabel}</span>
               <MiniToggle on={hapticEnabled} />
             </button>
           </div>
@@ -646,7 +638,7 @@ export default function MasterMiniAppSettings() {
                   }}
                   aria-label={t.close}
                 >
-                  <X size={16} color={T.text} />
+                  <X size={16} />
                 </button>
               </div>
 
@@ -759,7 +751,7 @@ export default function MasterMiniAppSettings() {
                   }}
                   aria-label={t.close}
                 >
-                  <X size={16} color={T.text} />
+                  <X size={16} />
                 </button>
               </div>
 

@@ -13,9 +13,9 @@
 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Megaphone, Send, Tag, Ticket, MessageSquareHeart, ChevronRight } from 'lucide-react';
+import { Send, Tag, Ticket, MessageSquareHeart, ChevronRight } from 'lucide-react';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
-import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import '@/styles/od-master-marketing.css';
@@ -86,37 +86,6 @@ export default function MasterMiniAppMarketing() {
         style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
       >
         <PageHeader title={t.title} subtitle={t.subtitle} />
-
-        {/* In-works hero */}
-        <div
-          style={{
-            margin: `0 ${PAGE_PADDING_X}px`,
-            padding: 20,
-            borderRadius: R.lg,
-            background: `linear-gradient(135deg, ${T.gradientFrom}20, ${T.gradientTo}20)`,
-            border: `1px solid ${T.borderSubtle}`,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            gap: 12,
-            boxShadow: SHADOW.card,
-          }}
-        >
-          <div
-            style={{
-              width: 56, height: 56, borderRadius: 18,
-              background: `linear-gradient(135deg, ${T.gradientFrom}, ${T.gradientTo})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <Megaphone size={26} color="#fff" strokeWidth={2.2} />
-          </div>
-          <div>
-            <p style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{t.inWorks}</p>
-            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '4px 0 0', maxWidth: 320 }}>{t.inWorksHint}</p>
-          </div>
-        </div>
 
         {/* Литерально .mkt-grid + .mkt-card из OD master-marketing.html.
             2-колоночная сетка с иконкой в кружке наверху, title + sub
