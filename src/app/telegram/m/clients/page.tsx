@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, Check, SlidersHorizontal } from 'lucide-react';
+import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, Check, SlidersHorizontal, X, Bell } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
@@ -38,7 +38,8 @@ const I18N: Record<MiniAppLang, {
   manualName: string; manualPhone: string; manualEmail: string;
   cancelBtn: string; saveBtn: string;
   statTotal: string; statVip: string; statSleeping: string;
-  filterAll: string; filterVip: string; filterNew: string; filterSleeping: string;
+  filterAll: string; filterVip: string; filterNew: string; filterSleeping: string; filterPending: string;
+  pendingTitle: string; pendingDesc: string; followBack: string; dismissAria: string;
   daysAgoLabels: DaysAgoLabels;
 }> = {
   uk: {
@@ -72,7 +73,9 @@ const I18N: Record<MiniAppLang, {
     manualName: 'Імʼя', manualPhone: 'Телефон', manualEmail: 'Email',
     cancelBtn: 'Скасувати', saveBtn: 'Записати',
     statTotal: 'Всього', statVip: 'VIP', statSleeping: 'Сплячі',
-    filterAll: 'Всі', filterVip: 'VIP', filterNew: 'Нові', filterSleeping: 'Сплячі',
+    filterAll: 'Всі', filterVip: 'VIP', filterNew: 'Нові', filterSleeping: 'Сплячі', filterPending: 'Нові підписники',
+    pendingTitle: 'Нові підписники', pendingDesc: 'Підписалися на вас',
+    followBack: 'Підписатися у відповідь', dismissAria: 'Сховати',
     daysAgoLabels: {
       today: 'сьогодні', yesterday: 'вчора',
       daysAgo: (n) => `${n} дн. тому`,
@@ -112,7 +115,9 @@ const I18N: Record<MiniAppLang, {
     manualName: 'Имя', manualPhone: 'Телефон', manualEmail: 'Email',
     cancelBtn: 'Отмена', saveBtn: 'Записать',
     statTotal: 'Всего', statVip: 'VIP', statSleeping: 'Спящие',
-    filterAll: 'Все', filterVip: 'VIP', filterNew: 'Новые', filterSleeping: 'Спящие',
+    filterAll: 'Все', filterVip: 'VIP', filterNew: 'Новые', filterSleeping: 'Спящие', filterPending: 'Новые подписчики',
+    pendingTitle: 'Новые подписчики', pendingDesc: 'Подписались на вас',
+    followBack: 'Подписаться в ответ', dismissAria: 'Скрыть',
     daysAgoLabels: {
       today: 'сегодня', yesterday: 'вчера',
       daysAgo: (n) => `${n} дн. назад`,
@@ -142,7 +147,9 @@ const I18N: Record<MiniAppLang, {
     manualName: 'Name', manualPhone: 'Phone', manualEmail: 'Email',
     cancelBtn: 'Cancel', saveBtn: 'Add',
     statTotal: 'Total', statVip: 'VIP', statSleeping: 'Sleeping',
-    filterAll: 'All', filterVip: 'VIP', filterNew: 'New', filterSleeping: 'Sleeping',
+    filterAll: 'All', filterVip: 'VIP', filterNew: 'New', filterSleeping: 'Sleeping', filterPending: 'New subscribers',
+    pendingTitle: 'New subscribers', pendingDesc: 'Followed you',
+    followBack: 'Follow back', dismissAria: 'Hide',
     daysAgoLabels: {
       today: 'today', yesterday: 'yesterday',
       daysAgo: (n) => `${n}d ago`,
@@ -244,7 +251,10 @@ export default function MasterMiniAppClientsPage() {
   const [systemResults, setSystemResults] = useState<SystemCard[]>([]);
   const [searching, setSearching] = useState(false);
   const [adding, setAdding] = useState<Set<string>>(new Set());
-  const [filter, setFilter] = useState<'all' | 'vip' | 'new' | 'sleeping'>('all');
+  const [filter, setFilter] = useState<'all' | 'vip' | 'new' | 'sleeping' | 'pending'>('all');
+  interface PendingClient { profileId: string; name: string; avatar: string | null; phone: string | null; }
+  const [pendingClients, setPendingClients] = useState<PendingClient[]>([]);
+  const [busyPending, setBusyPending] = useState<string | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
@@ -261,16 +271,21 @@ export default function MasterMiniAppClientsPage() {
       const initData = getInitData();
       // initData необязателен — API принимает и cookie session (browser users)
       try {
-        const res = await fetch('/api/telegram/m/clients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ initData: initData ?? null }),
-        });
-        if (!res.ok) {
+        const headers: HeadersInit = {};
+        if (initData) headers['X-TG-Init-Data'] = initData;
+        const [listRes, pendingRes] = await Promise.all([
+          fetch('/api/telegram/m/clients', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ initData: initData ?? null }),
+          }),
+          fetch('/api/master/pending-clients', { headers }),
+        ]);
+        if (!listRes.ok) {
           setLoading(false);
           return;
         }
-        const json = await res.json();
+        const json = await listRes.json();
         const fresh: CachedList = {
           masterId: json.masterId ?? null,
           rows: (json.clients ?? []) as ClientRow[],
@@ -278,10 +293,49 @@ export default function MasterMiniAppClientsPage() {
         setMasterId(fresh.masterId);
         setRows(fresh.rows);
         setCached<CachedList>(cacheKey, fresh);
+        if (pendingRes.ok) {
+          const pj = await pendingRes.json() as { clients: PendingClient[] };
+          setPendingClients(pj.clients ?? []);
+        }
       } catch { /* network error */ }
       setLoading(false);
     })();
   }, [userId, reloadKey, cacheKey]);
+
+  async function followBackClient(profileId: string) {
+    if (busyPending) return;
+    setBusyPending(profileId);
+    haptic('selection');
+    try {
+      const res = await fetch('/api/follow/crm/back', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientProfileId: profileId }),
+      });
+      if (res.ok) {
+        setPendingClients((prev) => prev.filter((c) => c.profileId !== profileId));
+        setReloadKey((k) => k + 1);
+      }
+    } finally {
+      setBusyPending(null);
+    }
+  }
+
+  async function dismissPendingClient(profileId: string) {
+    if (busyPending) return;
+    setBusyPending(profileId);
+    haptic('light');
+    try {
+      const res = await fetch('/api/follow/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ side: 'master', clientProfileId: profileId }),
+      });
+      if (res.ok) setPendingClients((prev) => prev.filter((c) => c.profileId !== profileId));
+    } finally {
+      setBusyPending(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -448,7 +502,7 @@ export default function MasterMiniAppClientsPage() {
 
       {/* Литерально .ip-chips / .chip / .chip.on из OD. 4 чипа Все / VIP /
           Новые / Спящие. */}
-      {rows.length > 0 && !loading && (
+      {(rows.length > 0 || pendingClients.length > 0) && !loading && (
         <div className="ip-chips">
           {([
             ['all', t.filterAll],
@@ -465,6 +519,30 @@ export default function MasterMiniAppClientsPage() {
               {label}
             </button>
           ))}
+          {pendingClients.length > 0 && (
+            <button
+              type="button"
+              className={`chip${filter === 'pending' ? ' on' : ''}`}
+              onClick={() => { haptic('selection'); setFilter('pending'); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+            >
+              <Bell size={12} />
+              {t.filterPending}
+              <span
+                style={{
+                  marginLeft: 4,
+                  background: 'var(--m-accent)',
+                  color: '#fff',
+                  borderRadius: 999,
+                  padding: '1px 6px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
+                {pendingClients.length}
+              </span>
+            </button>
+          )}
         </div>
       )}
 
@@ -501,6 +579,85 @@ export default function MasterMiniAppClientsPage() {
             icon={<span style={{ fontSize: 48 }}>👥</span>}
             title={t.noMasterTitle}
           />
+        ) : filter === 'pending' ? (
+          <>
+            {pendingClients.length === 0 ? (
+              <EmptyState
+                icon={<span style={{ fontSize: 48 }}>🔔</span>}
+                title={t.pendingTitle}
+              />
+            ) : (
+              <div className="client-list">
+                {pendingClients.map((p, i) => {
+                  const AV_COLORS = ['c-av-blue', 'c-av-green', 'c-av-amber', 'c-av-purple', 'c-av-red'] as const;
+                  const avClass = AV_COLORS[i % AV_COLORS.length];
+                  const initial = (initials(p.name) || '—').slice(0, 2).toUpperCase();
+                  const busy = busyPending === p.profileId;
+                  return (
+                    <div key={p.profileId} className="client-row" style={{ alignItems: 'center' }}>
+                      <div className={`c-av ${avClass}`}>
+                        {p.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.avatar} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                        ) : initial}
+                      </div>
+                      <div className="c-body">
+                        <p className="c-name">{p.name}</p>
+                        <p className="c-sub">{t.pendingDesc}{p.phone ? ` · ${p.phone}` : ''}</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => followBackClient(p.profileId)}
+                          disabled={busy}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: 'var(--m-accent)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 999,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: busy ? 'default' : 'pointer',
+                            opacity: busy ? 0.5 : 1,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {busy ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+                          {t.followBack}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => dismissPendingClient(p.profileId)}
+                          disabled={busy}
+                          aria-label={t.dismissAria}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            background: 'transparent',
+                            border: 'none',
+                            borderRadius: 16,
+                            color: T.textTertiary,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: busy ? 'default' : 'pointer',
+                            opacity: busy ? 0.5 : 1,
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
         ) : (
           <>
           {/* Section: Existing clients (filtered) */}

@@ -1,7 +1,11 @@
 /** --- YAML
- * name: CRM Follow Toggle
- * description: POST {masterId} → toggles client↔master follow. Creates notification on follow. Returns {following, mutual}.
+ * name: CRM Follow Toggle (client → master)
+ * description: POST {masterId} — клиент подписывается / отписывается от мастера.
+ *              Работа с симметричной моделью (00155): UPSERT row, тогглим
+ *              client_follows. Триггер удаляет row если обе стороны false.
+ *              Side effects: auto-create clients row in master CRM + notify master.
  * created: 2026-04-16
+ * updated: 2026-05-13
  * --- */
 
 import { NextResponse } from 'next/server';
@@ -9,10 +13,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { notifyUser } from '@/lib/notifications/notify';
 
-// Service-role client used after auth validation to bypass RLS for the
-// auto-create-client + notification side-effects. The primary follow toggle
-// (client_master_links) runs as the user via cookies, so RLS still enforces
-// that they can only toggle their own row.
 function admin() {
   return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,44 +30,51 @@ export async function POST(req: Request) {
   const masterId = body.masterId?.trim();
   if (!masterId) return NextResponse.json({ error: 'invalid_master' }, { status: 400 });
 
-  const { data: existing } = await supabase
+  const adm = admin();
+
+  const { data: existing } = await adm
     .from('client_master_links')
-    .select('profile_id, master_follows_back')
+    .select('profile_id, client_follows, master_follows_back')
     .eq('profile_id', user.id)
     .eq('master_id', masterId)
     .maybeSingle();
 
-  if (existing) {
-    await supabase
+  // Toggle off: клиент уже подписан → снимаем client_follows.
+  if (existing && existing.client_follows === true) {
+    await adm
       .from('client_master_links')
-      .delete()
+      .update({ client_follows: false, client_dismissed_back_request: false })
       .eq('profile_id', user.id)
       .eq('master_id', masterId);
     return NextResponse.json({ following: false, mutual: false });
   }
 
-  const { error } = await supabase
-    .from('client_master_links')
-    .insert({ profile_id: user.id, master_id: masterId });
-
-  if (error) {
-    return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+  // Toggle on. Если row есть (мастер подписан, клиент нет) → UPDATE.
+  // Иначе INSERT.
+  let isMutual = false;
+  if (existing) {
+    isMutual = existing.master_follows_back === true;
+    await adm
+      .from('client_master_links')
+      .update({ client_follows: true, client_dismissed_back_request: false })
+      .eq('profile_id', user.id)
+      .eq('master_id', masterId);
+  } else {
+    const { error } = await adm
+      .from('client_master_links')
+      .insert({ profile_id: user.id, master_id: masterId, client_follows: true });
+    if (error) {
+      return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+    }
   }
 
-  // Auto-create clients record so master can select this person in calendar/appointments.
-  // RLS on `clients` only allows the master to insert — a client following their own
-  // future master can't insert their own clients row directly. Use admin (post auth-check)
-  // to mirror the link into the master's CRM.
-  const adm = admin();
+  // Auto-create clients record so master can select this person.
   const [{ data: profile }, { data: master }] = await Promise.all([
     adm.from('profiles').select('full_name, phone, email, date_of_birth').eq('id', user.id).maybeSingle(),
     adm.from('masters').select('id, profile_id').eq('id', masterId).maybeSingle(),
   ]);
 
   if (profile) {
-    // Use SELECT + INSERT (not upsert) since clients has a partial unique index
-    // (profile_id, master_id) WHERE profile_id IS NOT NULL — Postgres ON CONFLICT
-    // can't target partial indexes with simple onConflict spec.
     const { data: existingClient } = await adm
       .from('clients')
       .select('id')
@@ -90,13 +97,13 @@ export async function POST(req: Request) {
     const clientName = profile?.full_name || 'Клиент';
     await notifyUser(adm, {
       profileId: master.profile_id,
-      title: 'Новый контакт',
-      body: `${clientName} добавил вас в контакты`,
-      data: { type: 'new_follower', follower_profile_id: user.id },
+      title: isMutual ? 'Подписка стала взаимной' : 'Новый подписчик',
+      body: `${clientName} подписался на вас`,
+      data: { type: 'client_followed_you', follower_profile_id: user.id, mutual: isMutual },
       deepLinkPath: '/telegram/m/clients',
       deepLinkLabel: 'Открыть клиентов',
     });
   }
 
-  return NextResponse.json({ following: true, mutual: false });
+  return NextResponse.json({ following: true, mutual: isMutual });
 }

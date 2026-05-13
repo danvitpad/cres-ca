@@ -60,6 +60,10 @@ export async function POST(req: Request) {
   const adm = admin();
 
   // Mode 1: profile_id передан напрямую (search → + flow).
+  // Семантика: мастер инициирует одностороннюю подписку на клиента.
+  // Создаём row в client_master_links с master_follows_back=true, client_follows=false
+  // (если row уже есть от клиентской стороны — UPDATE master_follows_back=true,
+  // получаем взаимную подписку).
   if (body.profile_id) {
     const { data: profile } = await adm
       .from('profiles')
@@ -96,23 +100,57 @@ export async function POST(req: Request) {
       clientId = inserted.id;
     }
 
-    // Notify client
-    if (profile.id !== userId) {
-      await notifyUser(adm, {
-        profileId: profile.id,
-        title: 'Вас добавили в контакты',
-        body: `${master.display_name || 'Мастер'} добавил вас в свои контакты`,
-        data: {
-          type: 'added_to_contacts',
-          master_id: master.id,
-          action_url: `/m/${master.id}`,
-        },
-        deepLinkPath: `/telegram/search/${master.id}`,
-        deepLinkLabel: 'Открыть мастера',
+    // Follow-graph: мастер подписывается на клиента (master_follows_back=true).
+    // Сначала пробуем UPDATE существующей row (на случай если клиент уже подписан).
+    const { data: existingLink } = await adm
+      .from('client_master_links')
+      .select('profile_id, client_follows, master_follows_back')
+      .eq('profile_id', profile.id)
+      .eq('master_id', master.id)
+      .maybeSingle();
+
+    let isMutual = false;
+    if (existingLink) {
+      isMutual = existingLink.client_follows === true;
+      if (!existingLink.master_follows_back) {
+        await adm
+          .from('client_master_links')
+          .update({
+            master_follows_back: true,
+            master_followed_back_at: new Date().toISOString(),
+            master_dismissed_back_request: false,
+          })
+          .eq('profile_id', profile.id)
+          .eq('master_id', master.id);
+      }
+    } else {
+      await adm.from('client_master_links').insert({
+        profile_id: profile.id,
+        master_id: master.id,
+        client_follows: false,
+        master_follows_back: true,
+        master_followed_back_at: new Date().toISOString(),
       });
     }
 
-    return NextResponse.json({ id: clientId, linked: true });
+    // Notify client. Deep-link на раздел "Мои мастера" — там клиент увидит
+    // карточку "X подписался на вас" с кнопкой "Подписаться в ответ".
+    if (profile.id !== userId) {
+      await notifyUser(adm, {
+        profileId: profile.id,
+        title: isMutual ? 'Подписка стала взаимной' : 'Новый подписчик',
+        body: `${master.display_name || 'Мастер'} подписался на вас`,
+        data: {
+          type: 'master_followed_you',
+          master_id: master.id,
+          mutual: isMutual,
+        },
+        deepLinkPath: `/telegram/profile`,
+        deepLinkLabel: 'Открыть',
+      });
+    }
+
+    return NextResponse.json({ id: clientId, linked: true, mutual: isMutual });
   }
 
   // Mode 2: ручное добавление (full_name + опц. phone/email).
@@ -176,19 +214,50 @@ export async function POST(req: Request) {
       clientId = inserted.id;
     }
 
-    // Уведомляем клиента: «Мастер X добавил вас в свои контакты».
+    // Follow-graph: мастер подписывается на клиента (как в Mode 1).
+    const { data: existingLink } = await adm
+      .from('client_master_links')
+      .select('profile_id, client_follows, master_follows_back')
+      .eq('profile_id', linkedProfileId)
+      .eq('master_id', master.id)
+      .maybeSingle();
+
+    let isMutual = false;
+    if (existingLink) {
+      isMutual = existingLink.client_follows === true;
+      if (!existingLink.master_follows_back) {
+        await adm
+          .from('client_master_links')
+          .update({
+            master_follows_back: true,
+            master_followed_back_at: new Date().toISOString(),
+            master_dismissed_back_request: false,
+          })
+          .eq('profile_id', linkedProfileId)
+          .eq('master_id', master.id);
+      }
+    } else {
+      await adm.from('client_master_links').insert({
+        profile_id: linkedProfileId,
+        master_id: master.id,
+        client_follows: false,
+        master_follows_back: true,
+        master_followed_back_at: new Date().toISOString(),
+      });
+    }
+
     if (linkedProfileId !== userId) {
       await notifyUser(adm, {
         profileId: linkedProfileId,
-        title: 'Вас добавили в контакты',
-        body: `${master.display_name || 'Мастер'} добавил вас в свои контакты`,
+        title: isMutual ? 'Подписка стала взаимной' : 'Новый подписчик',
+        body: `${master.display_name || 'Мастер'} подписался на вас`,
         data: {
-          type: 'added_to_contacts',
+          type: 'master_followed_you',
           master_id: master.id,
-          action_url: `/m/${master.id}`,
+          mutual: isMutual,
         },
-        deepLinkPath: `/telegram/search/${master.id}`,
-        deepLinkLabel: 'Открыть мастера',
+        deepLinkPath: `/telegram/profile`,
+        deepLinkLabel: 'Открыть',
       });
     }
   } else {

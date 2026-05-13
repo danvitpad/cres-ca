@@ -189,6 +189,23 @@ export function AddContactDialog({
               className="w-full h-11 pl-9 pr-3 rounded-lg border border-border bg-background text-sm"
             />
           </div>
+
+          {/* Manual-create CTA — always visible at top */}
+          {!showManual && (
+            <button
+              type="button"
+              onClick={() => setShowManual(true)}
+              className="mt-3 flex w-full items-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 p-3 text-left hover:bg-muted transition-colors"
+            >
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-background border border-border">
+                <UserPlus className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Записать вручную</p>
+                <p className="text-xs text-muted-foreground">Для тех, кого нет в CRES-CA</p>
+              </div>
+            </button>
+          )}
         </div>
 
         {/* Results */}
@@ -254,17 +271,9 @@ export function AddContactDialog({
           )}
         </div>
 
-        {/* Manual fallback */}
-        <div className="border-t border-border px-5 pb-5 pt-3">
-          {!showManual ? (
-            <button
-              type="button"
-              onClick={() => setShowManual(true)}
-              className="text-sm text-muted-foreground underline hover:text-foreground"
-            >
-              Этот человек не в CRES-CA → записать вручную
-            </button>
-          ) : (
+        {/* Manual entry form (toggled from top CTA card) */}
+        {showManual && (
+          <div className="border-t border-border px-5 pb-5 pt-3">
             <form onSubmit={submitManual} className="space-y-2">
               <p className="text-xs text-muted-foreground">Записать вручную (для тех, кто не в CRES-CA)</p>
               <input
@@ -308,8 +317,8 @@ export function AddContactDialog({
                 </button>
               </div>
             </form>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

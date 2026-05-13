@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, UserMinus } from 'lucide-react';
+import { User, Building2, Users, Star, MapPin, ChevronRight, Loader2, Search as SearchIcon, Clock, UserMinus, UserPlus, X } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 
@@ -75,6 +75,10 @@ const STR = {
     confirmRemoveMaster: (name: string) => `Видалити ${name} з контактів?`,
     confirmRemoveSalon: (name: string) => `Видалити салон "${name}" з контактів?`,
     confirmUnfollow: (name: string) => `Відписатися від ${name}?`,
+    pendingTitle: 'Нові підписники',
+    pendingDesc: 'Підписалися на вас',
+    followBack: 'Підписатися у відповідь',
+    dismiss: 'Сховати',
   },
   ru: {
     title: 'Мои мастера',
@@ -99,6 +103,10 @@ const STR = {
     confirmRemoveMaster: (name: string) => `Удалить ${name} из контактов?`,
     confirmRemoveSalon: (name: string) => `Удалить салон "${name}" из контактов?`,
     confirmUnfollow: (name: string) => `Отписаться от ${name}?`,
+    pendingTitle: 'Новые подписчики',
+    pendingDesc: 'Подписались на вас',
+    followBack: 'Подписаться в ответ',
+    dismiss: 'Скрыть',
   },
   en: {
     title: 'My masters',
@@ -123,6 +131,10 @@ const STR = {
     confirmRemoveMaster: (name: string) => `Remove ${name} from contacts?`,
     confirmRemoveSalon: (name: string) => `Remove salon "${name}" from contacts?`,
     confirmUnfollow: (name: string) => `Unfollow ${name}?`,
+    pendingTitle: 'New subscribers',
+    pendingDesc: 'Followed you',
+    followBack: 'Follow back',
+    dismiss: 'Hide',
   },
 } as const;
 
@@ -172,6 +184,8 @@ export default function MiniAppContactsPage() {
   const [masters, setMasters] = useState<MasterItem[]>([]);
   const [salons, setSalons] = useState<SalonItem[]>([]);
   const [friends, setFriends] = useState<FriendItem[]>([]);
+  const [pendingMasters, setPendingMasters] = useState<MasterItem[]>([]);
+  const [busyPending, setBusyPending] = useState<string | null>(null);
   const [nextSlots, setNextSlots] = useState<NextSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -247,9 +261,12 @@ export default function MiniAppContactsPage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch('/api/me/contacts', { headers: authHeaders() });
-        if (res.ok) {
-          const data = await res.json() as {
+        const [contactsRes, pendingRes] = await Promise.all([
+          fetch('/api/me/contacts', { headers: authHeaders() }),
+          fetch('/api/me/pending-masters', { headers: authHeaders() }),
+        ]);
+        if (contactsRes.ok) {
+          const data = await contactsRes.json() as {
             masters: MasterItem[];
             salons: SalonItem[];
             friends: FriendItem[];
@@ -258,11 +275,51 @@ export default function MiniAppContactsPage() {
           setSalons(data.salons ?? []);
           setFriends(data.friends ?? []);
         }
+        if (pendingRes.ok) {
+          const data = await pendingRes.json() as { masters: MasterItem[] };
+          setPendingMasters(data.masters ?? []);
+        }
       } finally {
         setLoading(false);
       }
     })();
   }, [userId]);
+
+  async function followBackMaster(masterId: string) {
+    if (busyPending) return;
+    setBusyPending(masterId);
+    haptic('selection');
+    try {
+      const res = await fetch('/api/follow/crm/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ masterId }),
+      });
+      if (res.ok) {
+        const moved = pendingMasters.find((m) => m.id === masterId);
+        setPendingMasters((prev) => prev.filter((m) => m.id !== masterId));
+        if (moved) setMasters((prev) => [moved, ...prev]);
+      }
+    } finally {
+      setBusyPending(null);
+    }
+  }
+
+  async function dismissPendingMaster(masterId: string) {
+    if (busyPending) return;
+    setBusyPending(masterId);
+    haptic('light');
+    try {
+      const res = await fetch('/api/follow/dismiss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ side: 'client', masterId }),
+      });
+      if (res.ok) setPendingMasters((prev) => prev.filter((m) => m.id !== masterId));
+    } finally {
+      setBusyPending(null);
+    }
+  }
 
   // Load nearest slots in parallel (independent of the three main lists)
   useEffect(() => {
@@ -303,7 +360,60 @@ export default function MiniAppContactsPage() {
             <Loader2 className="size-5 animate-spin text-neutral-400" />
           </div>
         ) : (
-          masters.length === 0 ? (
+          <>
+            {/* New subscribers (masters who followed you, you haven't followed back) */}
+            {pendingMasters.length > 0 && (
+              <div className="mb-5">
+                <div className="mb-2 flex items-baseline gap-2 px-1">
+                  <h2 className="text-[14px] font-bold">{t.pendingTitle}</h2>
+                  <span className="text-[11px] text-neutral-500">· {pendingMasters.length}</span>
+                </div>
+                <ul className="space-y-2">
+                  {pendingMasters.map((m) => {
+                    const busy = busyPending === m.id;
+                    return (
+                      <li key={m.id}>
+                        <div className="flex items-center gap-3 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] px-3 py-3">
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/search/${m.id}`); }}
+                            className="flex min-w-0 flex-1 items-center gap-3 cursor-pointer"
+                          >
+                            <Avatar src={m.avatar} name={m.name} />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[14px] font-semibold">{m.name ?? t.masterFallback}</p>
+                              <p className="truncate text-[11px] text-neutral-600">{t.pendingDesc}</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => followBackMaster(m.id)}
+                            disabled={busy}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--m-accent)] px-3 py-1.5 text-[12px] font-bold text-white active:opacity-80 disabled:opacity-50"
+                          >
+                            {busy ? <Loader2 className="size-3 animate-spin" /> : <UserPlus className="size-3" />}
+                            {t.followBack}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => dismissPendingMaster(m.id)}
+                            disabled={busy}
+                            aria-label={t.dismiss}
+                            className="flex size-8 shrink-0 items-center justify-center rounded-full text-neutral-500 active:bg-neutral-200 disabled:opacity-50"
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
+            {masters.length === 0 && pendingMasters.length === 0 ? (
             <EmptyState
               icon={User}
               title={t.emptyMastersTitle}
@@ -311,7 +421,7 @@ export default function MiniAppContactsPage() {
               ctaLabel={t.findMaster}
               ctaHref="/telegram/search"
             />
-          ) : (
+          ) : masters.length === 0 ? null : (
             <>
               {/* Nearest free slots among followed masters */}
               {!slotsLoading && nextSlots.length > 0 && (
@@ -394,7 +504,8 @@ export default function MiniAppContactsPage() {
               ))}
               </ul>
             </>
-          )
+          )}
+          </>
         )}
       </div>
     </motion.div>

@@ -232,6 +232,48 @@ export function ContactSearchSheet({
           />
         </div>
 
+        {/* Manual-create CTA — always visible at top */}
+        {!showManual && (
+          <button
+            type="button"
+            onClick={() => setShowManual(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: 12,
+              marginBottom: 10,
+              background: T.bgSubtle,
+              border: `1px dashed ${T.border}`,
+              borderRadius: R.md,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              width: '100%',
+              textAlign: 'left',
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                background: T.surface,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                color: T.text,
+              }}
+            >
+              <UserPlus size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>Записать вручную</p>
+              <p style={{ ...TYPE.micro, color: T.textTertiary, margin: 0 }}>Для тех, кого нет в CRES-CA</p>
+            </div>
+          </button>
+        )}
+
         {/* Results */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: 12 }}>
           {query.trim().length < 2 ? (
@@ -331,26 +373,8 @@ export function ContactSearchSheet({
           )}
         </div>
 
-        {/* Manual entry fallback */}
-        {!showManual ? (
-          <button
-            type="button"
-            onClick={() => setShowManual(true)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: T.textSecondary,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              padding: '8px 0',
-              textDecoration: 'underline',
-            }}
-          >
-            Этот человек не в CRES-CA → записать вручную
-          </button>
-        ) : (
+        {/* Manual entry form (toggled from top CTA card) */}
+        {showManual && (
           <form onSubmit={submitManual} style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8, borderTop: `1px solid ${T.borderSubtle}` }}>
             <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0 }}>
               Записать вручную (для тех, кто не в CRES-CA)
