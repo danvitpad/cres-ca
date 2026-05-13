@@ -47,11 +47,14 @@ export async function GET(req: Request) {
 
   const supabase = viewer.admin;
 
-  // Followed masters via client_master_links
+  // Only masters the CLIENT actively follows (client_follows=true).
+  // Rows where master added client first (master_follows_back=true, client_follows=false)
+  // appear in pending-masters instead — not here.
   const { data: cmls } = await supabase
     .from('client_master_links')
     .select('master_id')
-    .eq('profile_id', viewer.id);
+    .eq('profile_id', viewer.id)
+    .eq('client_follows', true);
 
   const masterIds = ((cmls ?? []) as Array<{ master_id: string }>).map((c) => c.master_id);
 

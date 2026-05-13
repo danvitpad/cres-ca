@@ -43,13 +43,14 @@ export async function GET(req: Request) {
     { auth: { persistSession: false, autoRefreshToken: false } },
   );
 
-  // Followed masters
+  // Only masters the client actively follows (client_follows=true).
   const { data: links } = await supabase
     .from('client_master_links')
     .select(
       'master_id, masters:masters!client_master_links_master_id_fkey(id, display_name, avatar_url, working_hours, is_busy, busy_until, profiles:profiles!masters_profile_id_fkey(full_name, avatar_url))',
     )
     .eq('profile_id', profileId)
+    .eq('client_follows', true)
     .limit(MAX_MASTERS);
 
   if (!links || links.length === 0) return NextResponse.json({ items: [] });

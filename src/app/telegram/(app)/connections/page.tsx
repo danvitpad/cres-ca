@@ -373,38 +373,42 @@ export default function MiniAppContactsPage() {
                     const busy = busyPending === m.id;
                     return (
                       <li key={m.id}>
-                        <div className="flex items-center gap-3 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] px-3 py-3">
-                          <div
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/search/${m.id}`); }}
-                            className="flex min-w-0 flex-1 items-center gap-3 cursor-pointer"
-                          >
-                            <Avatar src={m.avatar} name={m.name} />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-[14px] font-semibold">{m.name ?? t.masterFallback}</p>
-                              <p className="truncate text-[11px] text-neutral-600">{t.pendingDesc}</p>
+                        <div className="rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] px-3 py-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => { haptic('light'); router.push(`/telegram/search/${m.id}`); }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/telegram/search/${m.id}`); }}
+                              className="flex min-w-0 flex-1 items-center gap-3 cursor-pointer"
+                            >
+                              <Avatar src={m.avatar} name={m.name} />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[14px] font-semibold">{m.name ?? t.masterFallback}</p>
+                                <p className="text-[11px] text-neutral-600">{t.pendingDesc}</p>
+                              </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => dismissPendingMaster(m.id)}
+                              disabled={busy}
+                              aria-label={t.dismiss}
+                              className="flex size-8 shrink-0 items-center justify-center rounded-full text-neutral-400 active:bg-neutral-200 disabled:opacity-50"
+                            >
+                              <X className="size-4" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => followBackMaster(m.id)}
-                            disabled={busy}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--m-accent)] px-3 py-1.5 text-[12px] font-bold text-white active:opacity-80 disabled:opacity-50"
-                          >
-                            {busy ? <Loader2 className="size-3 animate-spin" /> : <UserPlus className="size-3" />}
-                            {t.followBack}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => dismissPendingMaster(m.id)}
-                            disabled={busy}
-                            aria-label={t.dismiss}
-                            className="flex size-8 shrink-0 items-center justify-center rounded-full text-neutral-500 active:bg-neutral-200 disabled:opacity-50"
-                          >
-                            <X className="size-4" />
-                          </button>
+                          <div className="mt-2.5 pl-14">
+                            <button
+                              type="button"
+                              onClick={() => followBackMaster(m.id)}
+                              disabled={busy}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--m-accent)] px-4 py-1.5 text-[12px] font-bold text-white active:opacity-80 disabled:opacity-50"
+                            >
+                              {busy ? <Loader2 className="size-3 animate-spin" /> : <UserPlus className="size-3" />}
+                              {t.followBack}
+                            </button>
+                          </div>
                         </div>
                       </li>
                     );
