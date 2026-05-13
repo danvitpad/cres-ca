@@ -13,7 +13,7 @@
 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Send, Tag, Ticket, MessageSquareHeart, ChevronRight } from 'lucide-react';
+import { Send, Ticket, MessageSquareHeart } from 'lucide-react';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
@@ -22,38 +22,27 @@ import '@/styles/od-master-marketing.css';
 
 const I18N: Record<MiniAppLang, {
   title: string; subtitle: string;
-  inWorks: string; inWorksHint: string;
   broadcasts: string; broadcastsHint: string;
-  deals: string; dealsHint: string;
   promo: string; promoHint: string;
   reviews: string; reviewsHint: string;
 }> = {
   uk: {
-    title: 'Маркетинг', subtitle: 'Розсилки, акції, промокоди',
-    inWorks: 'Скоро у Mini App',
-    inWorksHint: 'Готуємо нативний редактор. Поки що повні налаштування — у веб-кабінеті cres-ca.com',
-    broadcasts: 'Розсилки', broadcastsHint: 'Шаблони + сегменти клієнтів',
-    deals: 'Акції', dealsHint: 'Скидки, бонуси, абонементи',
-    promo: 'Промокоди', promoHint: 'Унікальні коди для клієнтів',
-    reviews: 'Відгуки', reviewsHint: 'Запити після візиту',
+    title: 'Маркетинг', subtitle: 'Розсилки, промокоди, відгуки',
+    broadcasts: 'Розсилки', broadcastsHint: 'Повідомлення клієнтам',
+    promo: 'Промокоди', promoHint: 'Знижки та акційні коди',
+    reviews: 'Відгуки', reviewsHint: 'Що клієнти кажуть про вас',
   },
   ru: {
-    title: 'Маркетинг', subtitle: 'Рассылки, акции, промокоды',
-    inWorks: 'Скоро в Mini App',
-    inWorksHint: 'Готовим нативный редактор. Пока полные настройки — в веб-кабинете cres-ca.com',
-    broadcasts: 'Рассылки', broadcastsHint: 'Шаблоны + сегменты клиентов',
-    deals: 'Акции', dealsHint: 'Скидки, бонусы, абонементы',
-    promo: 'Промокоды', promoHint: 'Уникальные коды для клиентов',
-    reviews: 'Отзывы', reviewsHint: 'Запросы после визита',
+    title: 'Маркетинг', subtitle: 'Рассылки, промокоды, отзывы',
+    broadcasts: 'Рассылки', broadcastsHint: 'Сообщения клиентам',
+    promo: 'Промокоды', promoHint: 'Скидки и акционные коды',
+    reviews: 'Отзывы', reviewsHint: 'Что клиенты говорят о вас',
   },
   en: {
-    title: 'Marketing', subtitle: 'Broadcasts, deals, promo codes',
-    inWorks: 'Coming to Mini App',
-    inWorksHint: 'Native editor in the works. For now, full settings are in the web dashboard cres-ca.com',
-    broadcasts: 'Broadcasts', broadcastsHint: 'Templates + client segments',
-    deals: 'Deals', dealsHint: 'Discounts, bonuses, memberships',
-    promo: 'Promo codes', promoHint: 'Unique codes for clients',
-    reviews: 'Reviews', reviewsHint: 'Requests after visits',
+    title: 'Marketing', subtitle: 'Broadcasts, promo codes, reviews',
+    broadcasts: 'Broadcasts', broadcastsHint: 'Messages to clients',
+    promo: 'Promo codes', promoHint: 'Discounts and promo codes',
+    reviews: 'Reviews', reviewsHint: 'What clients say about you',
   },
 };
 
@@ -65,14 +54,16 @@ export default function MasterMiniAppMarketing() {
 
   // Внутри Mini App — навигация router.push на нативную подстраницу.
   // Никаких openLink (это бы вышло в Chrome).
-  function goTo(tab: 'broadcasts' | 'deals' | 'promo' | 'reviews') {
+  function goTo(tab: 'broadcasts' | 'promo' | 'reviews') {
     haptic('selection');
     router.push(`/telegram/m/marketing/${tab}`);
   }
 
-  const sections: Array<{ icon: typeof Send; title: string; hint: string; tab: 'broadcasts' | 'deals' | 'promo' | 'reviews' }> = [
+  // «Акции» убраны 2026-05-13 — концептуально это были те же промокоды
+  // (deals/page.tsx читал promo_codes таблицу). Чтобы не путать мастера
+  // дублирующей вкладкой, оставили 3 чётких раздела.
+  const sections: Array<{ icon: typeof Send; title: string; hint: string; tab: 'broadcasts' | 'promo' | 'reviews' }> = [
     { icon: Send, title: t.broadcasts, hint: t.broadcastsHint, tab: 'broadcasts' },
-    { icon: Tag, title: t.deals, hint: t.dealsHint, tab: 'deals' },
     { icon: Ticket, title: t.promo, hint: t.promoHint, tab: 'promo' },
     { icon: MessageSquareHeart, title: t.reviews, hint: t.reviewsHint, tab: 'reviews' },
   ];

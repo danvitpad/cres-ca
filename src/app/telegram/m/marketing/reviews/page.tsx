@@ -23,10 +23,41 @@ interface Review {
   reviewer_id: string | null;
 }
 
-const I18N: Record<MiniAppLang, { title: string; subtitle: string; empty: string; anon: string }> = {
-  uk: { title: 'Відгуки', subtitle: 'Що клієнти кажуть про вас', empty: 'Відгуків ще немає.', anon: 'Анонімно' },
-  ru: { title: 'Отзывы', subtitle: 'Что клиенты говорят о вас', empty: 'Отзывов пока нет.', anon: 'Аноним' },
-  en: { title: 'Reviews', subtitle: 'What clients say about you', empty: 'No reviews yet.', anon: 'Anonymous' },
+const I18N: Record<MiniAppLang, {
+  title: string; subtitle: string; empty: string; anon: string;
+  avgRating: string; reviewsCount: (n: number) => string;
+}> = {
+  uk: {
+    title: 'Відгуки', subtitle: 'Що клієнти кажуть про вас',
+    empty: 'Відгуків ще немає. Вони з\'являться після першого виконаного візиту.',
+    anon: 'Анонімно',
+    avgRating: 'Середній рейтинг',
+    reviewsCount: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'відгук'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'відгуки' : 'відгуків';
+      return `${n} ${w}`;
+    },
+  },
+  ru: {
+    title: 'Отзывы', subtitle: 'Что клиенты говорят о вас',
+    empty: 'Отзывов пока нет. Они появятся после первого выполненного визита.',
+    anon: 'Аноним',
+    avgRating: 'Средний рейтинг',
+    reviewsCount: (n) => {
+      const m10 = n % 10, m100 = n % 100;
+      const w = m10 === 1 && m100 !== 11 ? 'отзыв'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) ? 'отзыва' : 'отзывов';
+      return `${n} ${w}`;
+    },
+  },
+  en: {
+    title: 'Reviews', subtitle: 'What clients say about you',
+    empty: 'No reviews yet. They will appear after your first completed visit.',
+    anon: 'Anonymous',
+    avgRating: 'Average rating',
+    reviewsCount: (n) => `${n} ${n === 1 ? 'review' : 'reviews'}`,
+  },
 };
 
 export default function ReviewsPage() {
@@ -57,16 +88,51 @@ export default function ReviewsPage() {
     return () => { cancelled = true; };
   }, [userId]);
 
+  const scored = items.filter((r) => typeof r.score === 'number' && (r.score ?? 0) > 0);
+  const avgScore = scored.length > 0
+    ? scored.reduce((sum, r) => sum + (r.score ?? 0), 0) / scored.length
+    : 0;
+
   return (
     <MobilePage>
       <PageHeader title={t.title} subtitle={t.subtitle} />
-      <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ padding: `8px ${PAGE_PADDING_X}px 0`, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Сводка: средний рейтинг + количество отзывов. */}
+        {!loading && scored.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: 16, borderRadius: R.md,
+            border: `1px solid ${T.borderSubtle}`,
+            background: T.surface,
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 64 }}>
+              <span style={{ fontSize: 32, fontWeight: 800, color: T.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+                {avgScore.toFixed(1)}
+              </span>
+              <div style={{ display: 'flex', gap: 1, marginTop: 4 }}>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star
+                    key={i}
+                    size={10}
+                    fill={i <= Math.round(avgScore) ? '#fbbf24' : 'none'}
+                    color={i <= Math.round(avgScore) ? '#fbbf24' : T.textTertiary}
+                  />
+                ))}
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: T.text, margin: 0 }}>{t.avgRating}</p>
+              <p style={{ fontSize: 12, color: T.textTertiary, margin: '2px 0 0' }}>{t.reviewsCount(scored.length)}</p>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <Loader2 className="mx-auto my-8 size-5 animate-spin" color={T.textTertiary} />
         ) : items.length === 0 ? (
-          <div style={{ padding: 24, borderRadius: R.md, border: `1px dashed ${T.border}`, textAlign: 'center' }}>
-            <Star size={20} color={T.textTertiary} style={{ margin: '0 auto 8px' }} />
-            <p style={{ fontSize: 13, color: T.textTertiary, margin: 0 }}>{t.empty}</p>
+          <div style={{ padding: 28, borderRadius: R.md, border: `1px dashed ${T.border}`, textAlign: 'center', background: T.surface }}>
+            <Star size={22} color={T.textTertiary} style={{ margin: '0 auto 10px' }} />
+            <p style={{ fontSize: 13, color: T.textTertiary, margin: 0, lineHeight: 1.4 }}>{t.empty}</p>
           </div>
         ) : (
           items.map((r) => (
