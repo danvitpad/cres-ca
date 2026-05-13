@@ -496,16 +496,6 @@ export default function MasterMiniAppCalendar() {
           )}
         </div>
 
-        {/* Литерально .ip-fab из OD master-calendar.html. */}
-        <Link
-          href="/telegram/m/slot/new"
-          onClick={() => haptic('light')}
-          aria-label={t.newBooking}
-          className="ip-fab"
-        >
-          <Plus size={22} strokeWidth={2.5} />
-        </Link>
-
         {/* Drawer */}
         <AnimatePresence>
           {active && (

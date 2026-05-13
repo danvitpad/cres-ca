@@ -49,6 +49,34 @@ export default function MasterMiniAppLayout({ children }: { children: React.Reac
   // иначе они перекрывают нижние поля формы (ввод дохода/расхода, заметки
   // в карточке клиента и т.п.). Когда клавиатура закрывается, элементы
   // возвращаются автоматически.
+  // Красим html+body цветом фона Mini App, чтобы при overscroll bounce
+  // (iOS pull-to-refresh / pull-up) не проступал тёмный body — body использует
+  // shadcn bg-background, который в системной dark-теме iOS становится чёрным,
+  // даже если сам Mini App в light. См. правило 11 в CLAUDE.md.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const body = document.body;
+    const prevHtml = root.style.backgroundColor;
+    const prevBody = body.style.backgroundColor;
+    function paint() {
+      const bg = getComputedStyle(root).getPropertyValue('--m-bg').trim() || '#ffffff';
+      // Берём системную тему для honest fallback (если CSS-переменная пустая
+      // на первом frame до hydration). Telegram сам применит keyword-цвет
+      // через theme.tsx — нам важно убрать ТВОЙ body bg.
+      root.style.backgroundColor = bg;
+      body.style.backgroundColor = bg;
+    }
+    paint();
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    mql.addEventListener('change', paint);
+    return () => {
+      mql.removeEventListener('change', paint);
+      root.style.backgroundColor = prevHtml;
+      body.style.backgroundColor = prevBody;
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const vv = window.visualViewport;
