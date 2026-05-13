@@ -98,11 +98,12 @@ export function TelegramProvider({ children }: { children: React.ReactNode }) {
       // Telegram-темы пользователя, который не совпадал с нашим --m-bg
       // (#141417), и было видно «горб» при переходе welcome → m/layout.
       try {
-        const isDark = (webapp as { colorScheme?: 'light' | 'dark' }).colorScheme === 'dark';
-        const bg = isDark ? '#141417' : '#ffffff';
-        webapp.setHeaderColor(bg);
-        webapp.setBackgroundColor(bg);
-        webapp.setBottomBarColor(bg);
+        // Мастерский Mini App всегда светлый — нативный chrome Telegram
+        // тоже красим белым, иначе при overscroll/MainButton видно тёмный зазор
+        // когда у пользователя Telegram в dark-mode.
+        webapp.setHeaderColor('#ffffff');
+        webapp.setBackgroundColor('#ffffff');
+        webapp.setBottomBarColor('#ffffff');
       } catch {}
 
       syncSafeArea(webapp);
