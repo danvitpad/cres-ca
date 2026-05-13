@@ -266,7 +266,7 @@ export default function MasterMiniAppStats() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.05 }}
-        className="space-y-5 px-5 pt-2 pb-10"
+        className="space-y-4 px-5 pt-2 pb-10"
       >
         {/* Литерально .period-strip / .period-pill / .period-pill.on из OD */}
         <div className="period-strip" style={{ padding: 0 }}>
@@ -285,8 +285,7 @@ export default function MasterMiniAppStats() {
           ))}
         </div>
 
-        {/* Литерально .ip-summary из OD master-finances. Доход / Расход
-            (две колонки) + divider + ПРИБЫЛЬ большой суммой. */}
+        {/* Сводная карточка: Доход / Расход → Прибыль → кнопки + Доход / − Расход */}
         <div className="ip-summary" style={{ margin: 0 }}>
           <div className="summary-row">
             <div className="summary-half">
@@ -299,26 +298,25 @@ export default function MasterMiniAppStats() {
             </div>
           </div>
           <div className="summary-divider" />
-          <div className="summary-profit">
+          <div className="summary-profit" style={{ marginBottom: '0.875rem' }}>
             <span className="summary-profit-lbl">{t.profit}</span>
             <span className="summary-profit-val">{kpi.profit.toFixed(0)} ₴</span>
           </div>
-        </div>
-
-        {/* + Доход / + Расход — быстрые actions */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => { haptic('selection'); setSheetOpen('income'); }}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 py-3 text-[13px] font-semibold text-emerald-700 active:bg-emerald-100 transition-colors"
-          >
-            <Plus className="size-4" /> {t.income}
-          </button>
-          <button
-            onClick={() => { haptic('selection'); setSheetOpen('expense'); }}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-rose-50 py-3 text-[13px] font-semibold text-rose-700 active:bg-rose-100 transition-colors"
-          >
-            <Minus className="size-4" /> {t.expense}
-          </button>
+          <div className="summary-divider" style={{ marginBottom: 0 }} />
+          <div className="grid grid-cols-2 gap-2" style={{ paddingTop: 12 }}>
+            <button
+              onClick={() => { haptic('selection'); setSheetOpen('income'); }}
+              className="flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 py-2.5 text-[13px] font-semibold text-emerald-700 active:bg-emerald-100 transition-colors"
+            >
+              <Plus className="size-3.5" /> {t.income}
+            </button>
+            <button
+              onClick={() => { haptic('selection'); setSheetOpen('expense'); }}
+              className="flex items-center justify-center gap-2 rounded-xl border border-rose-300 bg-rose-50 py-2.5 text-[13px] font-semibold text-rose-700 active:bg-rose-100 transition-colors"
+            >
+              <Minus className="size-3.5" /> {t.expense}
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -492,10 +490,10 @@ function StatCard({
     sky: 'text-sky-600',
   };
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-4">
-      <Icon className={`size-4 ${accents[accent]}`} />
-      <p className="mt-3 text-xl font-bold text-neutral-900 tabular-nums">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</p>
+    <div className="rounded-xl border border-neutral-200 bg-white p-3">
+      <Icon className={`size-3.5 ${accents[accent]}`} />
+      <p className="mt-2 text-[18px] font-bold text-neutral-900 tabular-nums leading-none">{value}</p>
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-neutral-500">{label}</p>
       {sub && <p className="mt-0.5 text-[10px] text-neutral-400">{sub}</p>}
     </div>
   );
