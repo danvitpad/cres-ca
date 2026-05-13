@@ -14,7 +14,7 @@ import { Search, AlertTriangle, Star, Crown, Loader2, UserPlus, Check, SlidersHo
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { MobilePage, AvatarCircle, EmptyState } from '@/components/miniapp/shells';
-import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
+import { T, R, TYPE, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import { getCached, setCached } from '@/lib/miniapp/cache';
 import '@/styles/od-master-clients.css';
@@ -359,19 +359,23 @@ export default function MasterMiniAppClientsPage() {
     });
   }, [rows, query, filter]);
 
-  // Stats: VIP = ≥10 visits, Спящий = не было ≥90 дней (или never)
+  // Stats: VIP = ≥10 visits, Спящий = не было ≥90 дней (или never), Новый = ≤1 визита.
+  // Цифры подставляются прямо в чипы-фильтры (Все 1 · VIP 0 · Новые 0 · Спящие 0).
   const stats = useMemo(() => {
-    let vip = 0, sleeping = 0;
+    let vip = 0, sleeping = 0, fresh = 0;
     const now = Date.now();
     const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
     for (const r of rows) {
       if (r.total_visits >= 10) vip++;
+      if (r.total_visits <= 1) fresh++;
       if (r.last_visit_at) {
         const last = new Date(r.last_visit_at).getTime();
         if (now - last >= NINETY_DAYS) sleeping++;
+      } else if (r.total_visits === 0) {
+        sleeping++;
       }
     }
-    return { total: rows.length, vip, sleeping };
+    return { total: rows.length, vip, sleeping, fresh };
   }, [rows]);
 
   // Live API search: 200ms debounce, only when query >= 2 chars
@@ -500,23 +504,24 @@ export default function MasterMiniAppClientsPage() {
         )}
       </div>
 
-      {/* Литерально .ip-chips / .chip / .chip.on из OD. 4 чипа Все / VIP /
-          Новые / Спящие. */}
+      {/* Чипы-фильтры с inline-счётчиками. Раньше отдельный блок
+          «Всего / VIP / Спящие» давал двойной просмотр тех же цифр —
+          убрали по запросу Данила 2026-05-13, цифры теперь в чипах. */}
       {(rows.length > 0 || pendingClients.length > 0) && !loading && (
         <div className="ip-chips">
           {([
-            ['all', t.filterAll],
-            ['vip', t.filterVip],
-            ['new', t.filterNew],
-            ['sleeping', t.filterSleeping],
-          ] as const).map(([key, label]) => (
+            ['all', t.filterAll, stats.total],
+            ['vip', t.filterVip, stats.vip],
+            ['new', t.filterNew, stats.fresh],
+            ['sleeping', t.filterSleeping, stats.sleeping],
+          ] as const).map(([key, label, count]) => (
             <button
               key={key}
               type="button"
               className={`chip${filter === key ? ' on' : ''}`}
               onClick={() => { haptic('selection'); setFilter(key); }}
             >
-              {label}
+              {label} {count}
             </button>
           ))}
           {pendingClients.length > 0 && (
@@ -527,40 +532,9 @@ export default function MasterMiniAppClientsPage() {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Bell size={12} />
-              {t.filterPending}
-              <span
-                style={{
-                  marginLeft: 4,
-                  background: 'var(--m-accent)',
-                  color: '#fff',
-                  borderRadius: 999,
-                  padding: '1px 6px',
-                  fontSize: 10,
-                  fontWeight: 700,
-                }}
-              >
-                {pendingClients.length}
-              </span>
+              {t.filterPending} {pendingClients.length}
             </button>
           )}
-        </div>
-      )}
-
-      {/* Литерально .ip-stats / .ip-stat / .ip-stat-val / .ip-stat-lbl */}
-      {rows.length > 0 && !loading && (
-        <div className="ip-stats">
-          <div className="ip-stat">
-            <div className="ip-stat-val">{stats.total}</div>
-            <div className="ip-stat-lbl">{t.statTotal}</div>
-          </div>
-          <div className="ip-stat">
-            <div className="ip-stat-val" style={{ color: 'var(--m-accent)' }}>{stats.vip}</div>
-            <div className="ip-stat-lbl">{t.statVip}</div>
-          </div>
-          <div className="ip-stat">
-            <div className="ip-stat-val" style={{ color: 'var(--m-danger, #ef4444)' }}>{stats.sleeping}</div>
-            <div className="ip-stat-lbl">{t.statSleeping}</div>
-          </div>
         </div>
       )}
 
@@ -914,38 +888,6 @@ export default function MasterMiniAppClientsPage() {
         </button>
       )}
     </MobilePage>
-  );
-}
-
-function ClientStatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div style={{
-      padding: 12,
-      borderRadius: R.md,
-      background: T.surface,
-      border: `1px solid ${T.borderSubtle}`,
-      boxShadow: SHADOW.card,
-      textAlign: 'center',
-      fontVariantNumeric: 'tabular-nums',
-    }}>
-      <div style={{
-        fontSize: 20,
-        fontWeight: 800,
-        letterSpacing: '-0.02em',
-        color,
-        lineHeight: 1.1,
-      }}>
-        {value}
-      </div>
-      <div style={{
-        fontSize: 11,
-        color: T.textTertiary,
-        marginTop: 3,
-        fontWeight: 600,
-      }}>
-        {label}
-      </div>
-    </div>
   );
 }
 

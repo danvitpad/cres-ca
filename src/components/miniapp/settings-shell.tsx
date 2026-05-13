@@ -9,7 +9,6 @@
 import Link from 'next/link';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
-import { motion } from 'framer-motion';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 const BACK_LABEL: Record<'uk' | 'ru' | 'en', string> = {
@@ -30,11 +29,9 @@ export function SettingsShell({
   const { haptic } = useTelegram();
   const lang = useMiniAppLocale();
   return (
-    <motion.div
-      initial={{ opacity: 0, x: 16 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25 }}
+    <div
       className="px-5 pt-4 pb-[calc(8rem+env(safe-area-inset-bottom,0px))]"
+      style={{ overflowX: 'hidden' }}
     >
       <Link
         href={back}
@@ -47,6 +44,6 @@ export function SettingsShell({
       <h1 className="text-[22px] font-bold leading-tight">{title}</h1>
       {subtitle && <p className="mt-1 text-[13px] text-neutral-500">{subtitle}</p>}
       <div className="mt-5 space-y-4">{children}</div>
-    </motion.div>
+    </div>
   );
 }

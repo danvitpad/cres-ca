@@ -326,7 +326,7 @@ export default function MasterMiniAppStats() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <StatCard icon={TrendingUp} label={t.kpiRevenue} value={`${kpi.revenue.toFixed(0)}₴`} accent="emerald" />
               <StatCard icon={Calendar} label={t.kpiBookings} value={kpi.total.toString()} accent="violet" />
               <StatCard icon={Target} label={t.kpiAvgCheck} value={`${kpi.avg.toFixed(0)}₴`} accent="amber" />
@@ -490,11 +490,11 @@ function StatCard({
     sky: 'text-sky-600',
   };
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-3">
-      <Icon className={`size-3.5 ${accents[accent]}`} />
-      <p className="mt-2 text-[18px] font-bold text-neutral-900 tabular-nums leading-none">{value}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-wide text-neutral-500">{label}</p>
-      {sub && <p className="mt-0.5 text-[10px] text-neutral-400">{sub}</p>}
+    <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+      <Icon className={`size-4 ${accents[accent]}`} />
+      <p className="mt-3 text-[22px] font-bold text-neutral-900 tabular-nums leading-none">{value}</p>
+      <p className="mt-2 text-[11px] uppercase tracking-wide text-neutral-500">{label}</p>
+      {sub && <p className="mt-1 text-[10px] text-neutral-400">{sub}</p>}
     </div>
   );
 }

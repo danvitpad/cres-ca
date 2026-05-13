@@ -90,6 +90,15 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
   // системную полоску (белую/чёрную в зависимости от темы Telegram),
   // которая отличалась от нашего фона. По запросу 2026-05-08 — везде
   // цвет нашего сервиса, никаких системных полосок.
+  //
+  // Параллельно красим html+body тем же hex'ом — иначе при системной
+  // dark-теме iOS body остаётся shadcn-белым, и по краям floating
+  // bottom-nav / при сворачивании Mini App / overscroll bounce видны
+  // белые полоски и углы (правило 11 в CLAUDE.md). Раньше эту покраску
+  // делал отдельный useEffect в layout.tsx через
+  // getComputedStyle(root).getPropertyValue('--m-bg'), но переменная
+  // живёт на data-theme div'е (ребёнке body) и наверх не наследуется —
+  // fallback всегда #ffffff, dark-тема белела по краям.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     type TG = { WebApp?: {
@@ -99,15 +108,28 @@ export function MiniAppThemeProvider({ children, style, className }: Props) {
     }};
     const w = window as { Telegram?: TG };
     const wa = w.Telegram?.WebApp;
-    if (!wa) return;
 
     // Hex ТОЧНО совпадает с --m-bg (см. globals.css). Раньше стоял
     // #0f0f0f в dark, а реальный --m-bg = #141417 — из-за этого шапка
     // казалась темнее body.
     const hex = theme === 'dark' ? '#141417' : '#ffffff';
-    try { wa.setHeaderColor?.(hex); } catch {}
-    try { wa.setBackgroundColor?.(hex); } catch {}
-    try { wa.setBottomBarColor?.(hex); } catch {}
+
+    if (wa) {
+      try { wa.setHeaderColor?.(hex); } catch {}
+      try { wa.setBackgroundColor?.(hex); } catch {}
+      try { wa.setBottomBarColor?.(hex); } catch {}
+    }
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.backgroundColor;
+    const prevBody = body.style.backgroundColor;
+    html.style.backgroundColor = hex;
+    body.style.backgroundColor = hex;
+    return () => {
+      html.style.backgroundColor = prevHtml;
+      body.style.backgroundColor = prevBody;
+    };
   }, [theme]);
 
   return (

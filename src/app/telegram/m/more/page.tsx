@@ -18,7 +18,6 @@ import {
   Building2,
   Bot,
   Settings as SettingsIcon,
-  Bell,
   ChevronRight,
   ArrowUpRight,
   Package,
@@ -38,12 +37,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 import '@/styles/od-master-settings.css';
 
+type MoreI18NKeys = keyof typeof I18N['ru'];
+
 interface MoreLinkRaw {
   key: string;
   href: string;
   icon: LucideIcon;
-  labelKey: keyof typeof I18N['ru'];
-  hintKey: keyof typeof I18N['ru'];
+  labelKey: MoreI18NKeys;
+  hintKey: MoreI18NKeys;
   /** OD цветовая раскраска иконки: cobalt/emerald/amber/danger/info/purple/neutral */
   iconColor: 'cobalt' | 'emerald' | 'amber' | 'danger' | 'info' | 'purple' | 'neutral';
   /** true → открывать во внешнем браузере (web-страница, не Mini App page). */
@@ -59,7 +60,6 @@ const I18N: Record<MiniAppLang, {
   team: string; teamHint: string;
   ai: string; aiHint: string;
   profile: string; profileHint: string;
-  notifications: string; notificationsHint: string;
   settings: string; settingsHint: string;
   queue: string; queueHint: string;
   inventory: string; inventoryHint: string;
@@ -79,8 +79,7 @@ const I18N: Record<MiniAppLang, {
     team: 'Команда', teamHint: 'Салон та колеги',
     ai: 'AI-помічник', aiHint: 'Запитай — я відповім',
     profile: 'Профіль', profileHint: "Ім'я, аватар, тариф",
-    notifications: 'Сповіщення', notificationsHint: 'Що і коли надсилати в Telegram',
-    settings: 'Налаштування', settingsHint: 'Тариф, мова та інше',
+    settings: 'Налаштування', settingsHint: 'Тариф, сповіщення, мова та інше',
     queue: 'Жива черга', queueHint: 'Walk-in клієнти без запису',
     inventory: 'Склад', inventoryHint: 'Матеріали, залишки, поріг',
     suppliers: 'Постачальники', suppliersHint: 'Контакти, замовлення',
@@ -99,8 +98,7 @@ const I18N: Record<MiniAppLang, {
     team: 'Команда', teamHint: 'Салон и коллеги',
     ai: 'AI-помощник', aiHint: 'Спроси — отвечу',
     profile: 'Профиль', profileHint: 'Имя, аватар, тариф',
-    notifications: 'Уведомления', notificationsHint: 'Что и когда присылать в Telegram',
-    settings: 'Настройки', settingsHint: 'Тариф, язык и прочее',
+    settings: 'Настройки', settingsHint: 'Тариф, уведомления, язык и прочее',
     queue: 'Живая очередь', queueHint: 'Walk-in клиенты без записи',
     inventory: 'Склад', inventoryHint: 'Материалы, остатки, порог',
     suppliers: 'Поставщики', suppliersHint: 'Контакты, заказы',
@@ -119,8 +117,7 @@ const I18N: Record<MiniAppLang, {
     team: 'Team', teamHint: 'Salon and colleagues',
     ai: 'AI assistant', aiHint: "Ask — I'll answer",
     profile: 'Profile', profileHint: 'Name, avatar, plan',
-    notifications: 'Notifications', notificationsHint: 'What and when to send in Telegram',
-    settings: 'Settings', settingsHint: 'Plan, language and more',
+    settings: 'Settings', settingsHint: 'Plan, notifications, language and more',
     queue: 'Live queue', queueHint: 'Walk-in clients without appointment',
     inventory: 'Inventory', inventoryHint: 'Materials, stock, low threshold',
     suppliers: 'Suppliers', suppliersHint: 'Contacts, orders',
@@ -191,18 +188,19 @@ export default function MasterMiniAppMore() {
   // на кружок аватара справа сверху). Sign out — в Настройках.
   const links: MoreLinkRaw[] = [
     { key: 'clients', href: '/telegram/m/clients', icon: UsersIcon, labelKey: 'clients', hintKey: 'clientsHint', iconColor: 'neutral' },
+    // Лист ожидания поднят сразу после Клиентов 2026-05-13 — раньше был
+    // на 7-й позиции и его не замечали. Концептуально это «клиенты,
+    // которые ждут окошко» — логически рядом с базой клиентов.
+    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'neutral' },
     { key: 'services', href: '/telegram/m/services', icon: Scissors, labelKey: 'services', hintKey: 'servicesHint', iconColor: 'neutral' },
     { key: 'marketing', href: '/telegram/m/marketing', icon: Megaphone, labelKey: 'marketing', hintKey: 'marketingHint', iconColor: 'neutral' },
     { key: 'templates', href: '/telegram/m/templates', icon: MessageSquare, labelKey: 'templates', hintKey: 'templatesHint', iconColor: 'neutral' },
     { key: 'inventory', href: '/telegram/m/inventory', icon: Package, labelKey: 'inventory', hintKey: 'inventoryHint', iconColor: 'neutral' },
     { key: 'suppliers', href: '/telegram/m/suppliers', icon: Truck, labelKey: 'suppliers', hintKey: 'suppliersHint', iconColor: 'neutral' },
-    // 'Живая очередь' убрана 2026-05-10 — фича оказалась не нужна.
-    { key: 'waitlist', href: '/telegram/m/waitlist', icon: Hourglass, labelKey: 'waitlist', hintKey: 'waitlistHint', iconColor: 'neutral' },
     { key: 'partners', href: '/telegram/m/partners', icon: Users2, labelKey: 'partners', hintKey: 'partnersHint', iconColor: 'neutral' },
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const, iconColor: 'neutral' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint', iconColor: 'neutral' },
     { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint', iconColor: 'neutral' },
-    { key: 'notifications', href: '/telegram/m/settings/notifications', icon: Bell, labelKey: 'notifications', hintKey: 'notificationsHint', iconColor: 'neutral' },
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint', iconColor: 'neutral' },
   ];
 

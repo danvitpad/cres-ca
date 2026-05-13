@@ -19,17 +19,13 @@ import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface Prefs {
   notif_birthdays: boolean;
-  notif_appointments: boolean;
   notif_new_clients: boolean;
-  notif_payments: boolean;
   notif_marketing_tips: boolean;
 }
 
 const DEFAULT_PREFS: Prefs = {
   notif_birthdays: true,
-  notif_appointments: true,
   notif_new_clients: true,
-  notif_payments: true,
   notif_marketing_tips: false,
 };
 
@@ -47,9 +43,7 @@ const I18N: Record<MiniAppLang, {
     footer: 'Клієнтські розсилки — у «Маркетинг → Автоматика» (веб-кабінет).',
     items: {
       notif_birthdays:      { label: 'Дні народження клієнтів', hint: 'Ранковий пуш з ДН клієнтів і партнерів' },
-      notif_appointments:   { label: 'Нагадування про візит',   hint: 'Перед записом (час — нижче)' },
       notif_new_clients:    { label: 'Новий підписник',         hint: 'Коли хтось додав вас в обране' },
-      notif_payments:       { label: 'Платежі та скасування',   hint: 'Новий платіж, скасування з поверненням' },
       notif_marketing_tips: { label: 'Поради від AI',            hint: 'Раз на тиждень — як заробити більше' },
     },
   },
@@ -60,9 +54,7 @@ const I18N: Record<MiniAppLang, {
     footer: 'Клиентские рассылки — в «Маркетинг → Автоматика» (веб-кабинет).',
     items: {
       notif_birthdays:      { label: 'Дни рождения клиентов',  hint: 'Утренний пуш с ДР клиентов и партнёров' },
-      notif_appointments:   { label: 'Напоминание о визите',    hint: 'Перед записью (время — ниже)' },
       notif_new_clients:    { label: 'Новый клиент подписался', hint: 'Когда кто-то добавил вас в избранное' },
-      notif_payments:       { label: 'Платежи и отмены',        hint: 'Новый платёж, отмена с возмещением' },
       notif_marketing_tips: { label: 'Советы от AI',            hint: 'Раз в неделю — как заработать больше' },
     },
   },
@@ -73,9 +65,7 @@ const I18N: Record<MiniAppLang, {
     footer: 'Client broadcasts — in «Marketing → Automation» (web cabinet).',
     items: {
       notif_birthdays:      { label: 'Client birthdays',     hint: 'Morning push with client/partner birthdays' },
-      notif_appointments:   { label: 'Visit reminder',       hint: 'Before each appointment (timing — below)' },
       notif_new_clients:    { label: 'New follower',         hint: 'When someone adds you to favorites' },
-      notif_payments:       { label: 'Payments & cancels',   hint: 'New payment, cancel with refund' },
       notif_marketing_tips: { label: 'AI tips',              hint: 'Weekly — how to earn more' },
     },
   },
@@ -83,9 +73,7 @@ const I18N: Record<MiniAppLang, {
 
 const ITEM_ORDER: Array<keyof Prefs> = [
   'notif_birthdays',
-  'notif_appointments',
   'notif_new_clients',
-  'notif_payments',
   'notif_marketing_tips',
 ];
 

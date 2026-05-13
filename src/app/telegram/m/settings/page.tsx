@@ -179,11 +179,13 @@ export default function MasterMiniAppSettings() {
   const [pwSuccess, setPwSuccess] = useState(false);
 
   // Visibility flags для публичной страницы — мастер решает показывать ли
-  // клиентам телефон / email / ДР. null = ещё не загружено (скрываем
-  // тумблеры до загрузки, иначе flash «выключено → включено»).
-  const [phonePublic, setPhonePublic] = useState<boolean | null>(null);
-  const [emailPublic, setEmailPublic] = useState<boolean | null>(null);
-  const [dobPublic, setDobPublic] = useState<boolean | null>(null);
+  // клиентам телефон / email / ДР. Стартуем с false чтобы layout страницы
+  // сразу содержал секцию «Видимость для клиентов» — иначе она всплывает
+  // после async-загрузки и страница «дёргается» вниз.
+  const [phonePublic, setPhonePublic] = useState<boolean>(false);
+  const [emailPublic, setEmailPublic] = useState<boolean>(false);
+  const [dobPublic, setDobPublic] = useState<boolean>(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   // Направление мастера (specialization). Редактируется тут, а не на публичке.
   const [specialization, setSpecialization] = useState<string>('');
@@ -219,6 +221,7 @@ export default function MasterMiniAppSettings() {
         setDobPublic(!!masterQ.data.dob_public);
         setSpecialization(masterQ.data.headline || masterQ.data.specialization || '');
       }
+      setProfileLoaded(true);
     })();
   }, [userId]);
 
@@ -483,34 +486,35 @@ export default function MasterMiniAppSettings() {
           </div>
         </div>
 
-        {/* ─── ВИДИМОСТЬ ДЛЯ КЛИЕНТОВ — что показывать на публичной странице ─── */}
-        {phonePublic !== null && emailPublic !== null && dobPublic !== null && (
-          <div>
-            <p className="settings-section-label" style={{ margin: '4px 4px 8px' }}>{t.visibilityTitle}</p>
-            <div className="settings-card">
-              <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} className="settings-row">
-                <div className="settings-row-icon icon-neutral"><PhoneIcon size={16} /></div>
-                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showPhone}</p>
-                <MiniToggle on={phonePublic} />
-              </button>
-              {/* divider handled by .settings-row:not(:last-child)::after */}
-              <button type="button" onClick={() => toggleVisibility('email_public', !emailPublic)} className="settings-row">
-                <div className="settings-row-icon icon-neutral"><Mail size={16} /></div>
-                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showEmail}</p>
-                <MiniToggle on={emailPublic} />
-              </button>
-              {/* divider handled by .settings-row:not(:last-child)::after */}
-              <button type="button" onClick={() => toggleVisibility('dob_public', !dobPublic)} className="settings-row">
-                <div className="settings-row-icon icon-neutral"><Cake size={16} /></div>
-                <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showDob}</p>
-                <MiniToggle on={dobPublic} />
-              </button>
-            </div>
-            <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
-              {t.visibilityHint}
-            </p>
+        {/* ─── ВИДИМОСТЬ ДЛЯ КЛИЕНТОВ — что показывать на публичной странице.
+            Раньше блок рендерился только когда все три флага загрузились —
+            страница «дёргалась» когда секция всплывала. Теперь рендерим
+            всегда; пока profileLoaded=false тумблеры в нейтральном off
+            состоянии и блок задизейблен, чтобы пользователь не успел
+            тыкнуть до получения реальных значений. */}
+        <div style={{ opacity: profileLoaded ? 1 : 0.55, pointerEvents: profileLoaded ? 'auto' : 'none' }}>
+          <p className="settings-section-label" style={{ margin: '4px 4px 8px' }}>{t.visibilityTitle}</p>
+          <div className="settings-card">
+            <button type="button" onClick={() => toggleVisibility('phone_public', !phonePublic)} className="settings-row">
+              <div className="settings-row-icon icon-neutral"><PhoneIcon size={16} /></div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showPhone}</p>
+              <MiniToggle on={phonePublic} />
+            </button>
+            <button type="button" onClick={() => toggleVisibility('email_public', !emailPublic)} className="settings-row">
+              <div className="settings-row-icon icon-neutral"><Mail size={16} /></div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showEmail}</p>
+              <MiniToggle on={emailPublic} />
+            </button>
+            <button type="button" onClick={() => toggleVisibility('dob_public', !dobPublic)} className="settings-row">
+              <div className="settings-row-icon icon-neutral"><Cake size={16} /></div>
+              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, flex: 1 }}>{t.showDob}</p>
+              <MiniToggle on={dobPublic} />
+            </button>
           </div>
-        )}
+          <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '6px 4px 0' }}>
+            {t.visibilityHint}
+          </p>
+        </div>
 
         {/* ─── АККАУНТ — уведомления + подписка ─── */}
         <div>

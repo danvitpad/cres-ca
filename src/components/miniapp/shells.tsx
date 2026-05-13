@@ -35,6 +35,11 @@ export function MobilePage({
         background: bg,
         color: T.text,
         paddingBottom: hideTabBar ? 0 : 0,
+        // Защита от случайного горизонтального скролла на любой Mini App
+        // странице — pill-tabs/чипы/ряды могут вылазить из 16px-сетки
+        // на 1-2px и появляется bouncy скролл влево-вправо. Mini App
+        // никогда не должен скроллиться по горизонтали.
+        overflowX: 'hidden',
       }}
     >
       {children}
