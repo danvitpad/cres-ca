@@ -598,13 +598,14 @@ const labelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  background: 'transparent',
-  border: 'none',
+  background: T.bgSubtle,
+  border: `1px solid ${T.borderSubtle}`,
+  borderRadius: 12,
   outline: 'none',
   fontSize: 16,
   fontWeight: 500,
   lineHeight: 1.4,
   color: T.text,
   fontFamily: 'inherit',
-  padding: 0,
+  padding: '12px 14px',
 };

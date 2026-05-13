@@ -70,6 +70,24 @@ function MasterMiniAppQuickBookingInner() {
 
   const preClientId = params.get('client_id');
 
+  // Эта страница всегда рендерится в light Mini App-теме. При системной dark
+  // у iOS html-овский --m-bg резолвится в #141417 через prefers-color-scheme,
+  // и body окрашивается тёмным — overscroll под MainButton показывает чёрный
+  // зазор. Принудительно красим body+html в светлый на время жизни страницы.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.backgroundColor;
+    const prevBody = body.style.backgroundColor;
+    html.style.backgroundColor = '#ffffff';
+    body.style.backgroundColor = '#ffffff';
+    return () => {
+      html.style.backgroundColor = prevHtml;
+      body.style.backgroundColor = prevBody;
+    };
+  }, []);
+
   useEffect(() => {
     if (!userId) return;
     (async () => {
