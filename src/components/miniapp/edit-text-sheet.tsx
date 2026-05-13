@@ -89,7 +89,7 @@ export function MiniAppEditTextSheet({
               padding: `20px ${PAGE_PADDING_X}px`,
               paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
               boxShadow: SHADOW.elevated,
-              maxHeight: '90dvh', overflowY: 'auto',
+              maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))', overflowY: 'auto',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

@@ -443,9 +443,7 @@ function TemplateSheet({ spec, saved, onClose, onSaved }: {
           padding: 0,
           paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
-          // 85dvh оставляет ~15% сверху на TG chrome (Mini App close-bar) —
-          // иначе заголовок шторки залезает под Telegram-хедер на iOS.
-          maxHeight: '85dvh', overflowY: 'auto',
+          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))', overflowY: 'auto',
         }}
       >
         {/* Header */}

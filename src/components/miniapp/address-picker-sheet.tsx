@@ -184,7 +184,7 @@ export function AddressPickerSheet({
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               boxShadow: SHADOW.elevated,
-              maxHeight: '92dvh',
+              maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
               display: 'flex',
               flexDirection: 'column',
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',

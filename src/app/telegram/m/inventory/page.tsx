@@ -409,7 +409,7 @@ function ItemSheet({ mode, item, t, suppliers, onClose, onSaved }: {
           padding: 0,
           paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
           boxShadow: SHADOW.elevated,
-          maxHeight: '90dvh', overflowY: 'auto',
+          maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))', overflowY: 'auto',
         }}
       >
         <div style={{
