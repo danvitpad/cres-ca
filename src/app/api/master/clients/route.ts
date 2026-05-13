@@ -275,3 +275,31 @@ export async function POST(req: Request) {
     linked: Boolean(linkedProfileId),
   });
 }
+
+export async function DELETE(req: Request) {
+  const userId = await resolveUserId(req);
+  if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const supabase = admin();
+
+  const { data: master } = await supabase
+    .from('masters')
+    .select('id')
+    .eq('profile_id', userId)
+    .maybeSingle();
+  if (!master) return NextResponse.json({ error: 'not_a_master' }, { status: 403 });
+
+  const { searchParams } = new URL(req.url);
+  const clientId = searchParams.get('id');
+  if (!clientId) return NextResponse.json({ error: 'missing_id' }, { status: 400 });
+
+  const { data: client } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('id', clientId)
+    .eq('master_id', master.id)
+    .maybeSingle();
+  if (!client) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+
+  await supabase.from('clients').delete().eq('id', clientId);
+  return NextResponse.json({ ok: true });
+}

@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Phone, Calendar, AlertTriangle, FileText,
   Loader2, Crown, BarChart3, Bot, Send, Pencil, Trash2,
-  Plus, Check, X, User as UserIcon, Heart, Mic,
+  Plus, Check, X, User as UserIcon, Heart, Mic, UserMinus,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
@@ -109,6 +109,7 @@ function getInitData(): string | null {
 
 interface ClientFull {
   id: string;
+  profile_id: string | null;
   full_name: string;
   phone: string | null;
   email: string | null;
@@ -172,6 +173,8 @@ export default function MasterMiniAppClientCard() {
   // список — иначе на browser-mode (без TG) тоже редиректило, и клиент
   // моментально возвращался на /clients после тапа.
   const [notFound, setNotFound] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [unfollowing, setUnfollowing] = useState(false);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const reload = useCallback(async () => {
@@ -253,12 +256,48 @@ export default function MasterMiniAppClientCard() {
   const allergies = asArray(client.allergies);
   const contraindications = asArray(client.contraindications);
 
+  async function tgConfirm(message: string): Promise<boolean> {
+    const tg = window as unknown as { Telegram?: { WebApp?: { showConfirm?: (m: string, cb: (ok: boolean) => void) => void } } };
+    if (tg?.Telegram?.WebApp?.showConfirm) {
+      return new Promise((resolve) => tg.Telegram!.WebApp!.showConfirm!(message, resolve));
+    }
+    return window.confirm(message);
+  }
+
+  async function handleUnfollow() {
+    if (!client?.profile_id || unfollowing) return;
+    const ok = await tgConfirm('Отписаться от этого клиента?\nОн останется в CRM, но подписка будет снята.');
+    if (!ok) return;
+    setUnfollowing(true);
+    haptic('warning');
+    try {
+      await fetch(`/api/follow/crm/back?clientProfileId=${client.profile_id}`, { method: 'DELETE' });
+    } finally {
+      setUnfollowing(false);
+    }
+  }
+
+  async function handleDeleteClient() {
+    if (!client || deleting) return;
+    const ok = await tgConfirm(`Удалить ${client.full_name} из CRM?\nЭто действие нельзя отменить.`);
+    if (!ok) return;
+    setDeleting(true);
+    haptic('error');
+    try {
+      const res = await fetch(`/api/master/clients?id=${client.id}`, { method: 'DELETE' });
+      if (res.ok) router.replace('/telegram/m/clients');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className="space-y-3 px-4 pt-4 pb-56"
+      style={{ minHeight: '100vh', backgroundColor: 'var(--m-bg, #fff)' }}
     >
       <button
         onClick={() => { haptic('light'); router.back(); }}
@@ -355,6 +394,30 @@ export default function MasterMiniAppClientCard() {
         >
           <Calendar className="size-3.5" /> {t.bookBtn}
         </Link>
+      </div>
+
+      {/* Actions: unfollow + delete */}
+      <div className="flex gap-2">
+        {client.profile_id && (
+          <button
+            type="button"
+            onClick={handleUnfollow}
+            disabled={unfollowing}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 py-2 text-[12px] font-semibold text-neutral-600 active:bg-neutral-100 disabled:opacity-50"
+          >
+            {unfollowing ? <Loader2 className="size-3.5 animate-spin" /> : <UserMinus className="size-3.5" />}
+            Отписаться
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleDeleteClient}
+          disabled={deleting}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-200 py-2 text-[12px] font-semibold text-rose-600 active:bg-rose-50 disabled:opacity-50"
+        >
+          {deleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+          Удалить клиента
+        </button>
       </div>
 
       {/* 1. Personal data + Health */}
