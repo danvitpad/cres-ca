@@ -899,6 +899,7 @@ function Step3Workplace({
                         outline: 'none',
                         fontSize: 14,
                         color: THEME.text,
+                        caretColor: THEME.accent,
                       }}
                     />
                     {query && (
@@ -1105,6 +1106,7 @@ function Step4Services({
                     border: `1.5px solid ${THEME.border}`,
                     background: THEME.bgSubtle,
                     color: THEME.text,
+                    caretColor: THEME.accent,
                     fontSize: 14, fontWeight: 600,
                     textAlign: 'right', outline: 'none',
                   }}

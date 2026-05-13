@@ -1203,6 +1203,7 @@ const inputStyle: React.CSSProperties = {
   fontWeight: 500,
   lineHeight: 1.3,
   color: T.text,
+  caretColor: T.accent,
   fontFamily: 'inherit',
   padding: 0,
 };
