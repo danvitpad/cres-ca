@@ -232,9 +232,14 @@ export default function MasterMiniAppHome() {
 
   const visibleRows = useMemo(
     () => rows
-      .filter((r) => r.status !== 'cancelled' && r.status !== 'cancelled_by_client')
+      .filter((r) => {
+        if (r.status === 'cancelled' || r.status === 'cancelled_by_client' || r.status === 'no_show') return false;
+        // Скрываем записи, которые уже закончились (кроме тех что сейчас идут)
+        if (r.status !== 'in_progress' && new Date(r.ends_at).getTime() < now) return false;
+        return true;
+      })
       .sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
-    [rows],
+    [rows, now],
   );
 
   // Время-диапазон рабочего дня по факту записей: первое начало → последнее
