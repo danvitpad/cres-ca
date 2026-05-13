@@ -86,11 +86,11 @@ export async function GET(request: Request) {
     const nowMs = Date.now();
     const hoursSinceEnd = (nowMs - endMs) / (1000 * 60 * 60);
     const mode = row.master.appointment_close_mode || 'auto';
-    const graceHours = row.master.appointment_auto_close_hours || 1;
+    // Грейс 0.25 ч (15 мин) — даёт мастеру время отметить «Не пришёл»,
+    // но доход + расходники засчитываются быстро. Fallback 0.25 а не 1.
+    const graceHours = row.master.appointment_auto_close_hours || 0.25;
 
-    // Case 1: auto mode — close after grace window expired (default 1h after ends_at).
-    // Грейс нужен чтобы мастер успел поставить «Не пришёл» если клиент действительно
-    // не появился. По умолчанию 1 час после конца.
+    // Case 1: auto mode — close after grace window expired (default 15 min after ends_at).
     if (mode === 'auto') {
       if (hoursSinceEnd < graceHours) continue;
       await supabase.from('appointments')
