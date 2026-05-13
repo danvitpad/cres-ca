@@ -13,6 +13,7 @@ import { Crown, Clock, ArrowSquareOut, Check } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 interface SubRow {
   tier: string;
@@ -44,6 +45,7 @@ const FEATURES: Record<string, string[]> = {
 
 export default function MiniAppBillingPage() {
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
   const [sub, setSub] = useState<SubRow | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -111,7 +113,7 @@ export default function MiniAppBillingPage() {
       </div>
 
       <Link
-        href="/ru/settings/billing"
+        href={`/${lang}/settings/billing`}
         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] py-3.5 text-[14px] font-semibold text-[var(--m-accent)] active:bg-[var(--m-accent-soft)] transition-colors"
       >
         {tier === 'trial' ? 'Выбрать тариф' : 'Управление подпиской'}

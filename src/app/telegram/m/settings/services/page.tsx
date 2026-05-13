@@ -13,6 +13,7 @@ import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
 import { SettingsShell } from '@/components/miniapp/settings-shell';
+import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 interface Service {
   id: string;
@@ -26,6 +27,7 @@ interface Service {
 
 export default function MiniAppServicesPage() {
   const { userId } = useAuthStore();
+  const lang = useMiniAppLocale();
   const [items, setItems] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -101,7 +103,7 @@ export default function MiniAppServicesPage() {
       )}
 
       <Link
-        href="/ru/services"
+        href={`/${lang}/services`}
         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--m-accent)]/30 bg-[var(--m-accent-soft)] py-3.5 text-[14px] font-semibold text-[var(--m-accent)] active:bg-[var(--m-accent-soft)] transition-colors"
       >
         <Plus size={15} weight="bold" />

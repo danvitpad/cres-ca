@@ -1,8 +1,9 @@
 /** --- YAML
  * name: MasterMiniAppSettings/Notifications
  * description: Настройки уведомлений для самого мастера — какие TG-пуши получать
- *              и за сколько времени приходит напоминание о записи (30 мин / 2 ч /
- *              24 ч / 2 дня). Два источника: profiles.notif_* + notification_preferences.
+ *              + кастомное время напоминаний о записи (дни/часы/минуты, до 10).
+ *              Использует общий NotificationPreferencesEditor с темой "miniapp"
+ *              для паритета с клиентом.
  * created: 2026-04-26
  * updated: 2026-05-13
  * --- */
@@ -10,11 +11,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Check } from 'lucide-react';
 import { MobilePage, PageHeader } from '@/components/miniapp/shells';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
+import { NotificationPreferencesEditor } from '@/components/notifications/notification-preferences-editor';
 import { T, R, TYPE, SHADOW, PAGE_PADDING_X } from '@/components/miniapp/design';
-import { getInitData } from '@/lib/telegram/webapp';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
 interface Prefs {
@@ -33,33 +33,21 @@ const DEFAULT_PREFS: Prefs = {
   notif_marketing_tips: false,
 };
 
-// Стандартные смещения в минутах и их метки
-const OFFSET_OPTIONS = [
-  { minutes: 30,   labelKey: 'offset30m' as const },
-  { minutes: 120,  labelKey: 'offset2h'  as const },
-  { minutes: 1440, labelKey: 'offset24h' as const },
-  { minutes: 2880, labelKey: 'offset2d'  as const },
-];
-
 const I18N: Record<MiniAppLang, {
   title: string;
   sectionToggles: string;
   sectionTiming: string;
-  timingHint: string;
   footer: string;
-  offset30m: string; offset2h: string; offset24h: string; offset2d: string;
   items: Record<keyof Prefs, { label: string; hint: string }>;
 }> = {
   uk: {
     title: 'Сповіщення',
     sectionToggles: 'Що надсилати',
-    sectionTiming: 'Нагадування про запис',
-    timingHint: 'За скільки часу до візиту прийде нагадування в Telegram',
-    footer: 'Клієнтські розсилки та автоматизації — «Маркетинг → Автоматика» у веб-кабінеті.',
-    offset30m: 'За 30 хв', offset2h: 'За 2 год', offset24h: 'За добу', offset2d: 'За 2 дні',
+    sectionTiming: 'Коли нагадувати про візит',
+    footer: 'Клієнтські розсилки — у «Маркетинг → Автоматика» (веб-кабінет).',
     items: {
       notif_birthdays:      { label: 'Дні народження клієнтів', hint: 'Ранковий пуш з ДН клієнтів і партнерів' },
-      notif_appointments:   { label: 'Нагадування про візит',   hint: 'Перед кожним записом (час — нижче)' },
+      notif_appointments:   { label: 'Нагадування про візит',   hint: 'Перед записом (час — нижче)' },
       notif_new_clients:    { label: 'Новий підписник',         hint: 'Коли хтось додав вас в обране' },
       notif_payments:       { label: 'Платежі та скасування',   hint: 'Новий платіж, скасування з поверненням' },
       notif_marketing_tips: { label: 'Поради від AI',            hint: 'Раз на тиждень — як заробити більше' },
@@ -68,13 +56,11 @@ const I18N: Record<MiniAppLang, {
   ru: {
     title: 'Уведомления',
     sectionToggles: 'Что присылать',
-    sectionTiming: 'Напоминания о записи',
-    timingHint: 'За сколько до визита придёт напоминание в Telegram',
-    footer: 'Клиентские рассылки и автоматизации — «Маркетинг → Автоматика» в веб-кабинете.',
-    offset30m: 'За 30 мин', offset2h: 'За 2 часа', offset24h: 'За сутки', offset2d: 'За 2 дня',
+    sectionTiming: 'Когда напоминать о визите',
+    footer: 'Клиентские рассылки — в «Маркетинг → Автоматика» (веб-кабинет).',
     items: {
       notif_birthdays:      { label: 'Дни рождения клиентов',  hint: 'Утренний пуш с ДР клиентов и партнёров' },
-      notif_appointments:   { label: 'Напоминание о визите',    hint: 'Перед каждой записью (время — ниже)' },
+      notif_appointments:   { label: 'Напоминание о визите',    hint: 'Перед записью (время — ниже)' },
       notif_new_clients:    { label: 'Новый клиент подписался', hint: 'Когда кто-то добавил вас в избранное' },
       notif_payments:       { label: 'Платежи и отмены',        hint: 'Новый платёж, отмена с возмещением' },
       notif_marketing_tips: { label: 'Советы от AI',            hint: 'Раз в неделю — как заработать больше' },
@@ -83,10 +69,8 @@ const I18N: Record<MiniAppLang, {
   en: {
     title: 'Notifications',
     sectionToggles: 'What to send',
-    sectionTiming: 'Appointment reminders',
-    timingHint: 'How far in advance to send a reminder to Telegram',
-    footer: 'Client broadcasts and automations — «Marketing → Automation» in the web cabinet.',
-    offset30m: '30 min before', offset2h: '2 hours before', offset24h: '1 day before', offset2d: '2 days before',
+    sectionTiming: 'When to remind about visits',
+    footer: 'Client broadcasts — in «Marketing → Automation» (web cabinet).',
     items: {
       notif_birthdays:      { label: 'Client birthdays',     hint: 'Morning push with client/partner birthdays' },
       notif_appointments:   { label: 'Visit reminder',       hint: 'Before each appointment (timing — below)' },
@@ -113,31 +97,13 @@ export default function MiniAppNotificationsPage() {
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
   const [prefsBusy, setPrefsBusy] = useState(false);
 
-  // offsets_minutes из notification_preferences
-  const [offsets, setOffsets] = useState<number[]>([1440, 120]);
-  const [offsetsBusy, setOffsetsBusy] = useState(false);
-  const [offsetsLoaded, setOffsetsLoaded] = useState(false);
-
   useEffect(() => {
-    // Загружаем notif_* toggles
     fetch('/api/me/notif-prefs')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: Partial<Prefs> | null) => {
         if (data) setPrefs((p) => ({ ...p, ...data }));
       })
       .catch(() => { /* tolerant */ });
-
-    // Загружаем offsets из notification_preferences
-    const initData = getInitData();
-    fetch('/api/me/notification-preferences', {
-      headers: initData ? { 'X-TG-Init-Data': initData } : {},
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { offsets_minutes?: number[] } | null) => {
-        if (data?.offsets_minutes) setOffsets(data.offsets_minutes);
-        setOffsetsLoaded(true);
-      })
-      .catch(() => { setOffsetsLoaded(true); });
   }, []);
 
   async function togglePref(key: keyof Prefs) {
@@ -156,36 +122,13 @@ export default function MiniAppNotificationsPage() {
     setPrefsBusy(false);
   }
 
-  async function toggleOffset(minutes: number) {
-    if (offsetsBusy) return;
-    haptic('selection');
-    const isOn = offsets.includes(minutes);
-    // Нельзя выключить последний активный
-    if (isOn && offsets.length === 1) return;
-    const next = isOn ? offsets.filter((m) => m !== minutes) : [...offsets, minutes];
-    setOffsets(next);
-    setOffsetsBusy(true);
-    try {
-      const initData = getInitData();
-      await fetch('/api/me/notification-preferences', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(initData ? { 'X-TG-Init-Data': initData } : {}),
-        },
-        body: JSON.stringify({ offsets_minutes: next }),
-      });
-    } catch { /* tolerant */ }
-    setOffsetsBusy(false);
-  }
-
   return (
     <MobilePage>
       <PageHeader title={t.title} />
 
       <div style={{ padding: `0 ${PAGE_PADDING_X}px 32px`, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* ─── Что присылать ─── */}
+        {/* ─── Что присылать (notif_* toggles) ─── */}
         <div>
           <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.textTertiary, margin: '4px 4px 8px' }}>
             {t.sectionToggles}
@@ -219,45 +162,12 @@ export default function MiniAppNotificationsPage() {
           </div>
         </div>
 
-        {/* ─── Время напоминаний о записи ─── */}
+        {/* ─── Кастомное время напоминаний (offsets_minutes) ─── */}
         <div>
           <p style={{ ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: T.textTertiary, margin: '4px 4px 8px' }}>
             {t.sectionTiming}
           </p>
-          <div style={{ background: T.surface, borderRadius: R.md, border: `1px solid ${T.borderSubtle}`, boxShadow: SHADOW.card, padding: '14px 16px' }}>
-            <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '0 0 12px', lineHeight: 1.5 }}>
-              {t.timingHint}
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {OFFSET_OPTIONS.map(({ minutes, labelKey }) => {
-                const on = offsetsLoaded && offsets.includes(minutes);
-                const isLast = on && offsets.length === 1;
-                return (
-                  <button
-                    key={minutes}
-                    type="button"
-                    onClick={() => toggleOffset(minutes)}
-                    disabled={offsetsBusy || !offsetsLoaded || isLast}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '8px 14px', borderRadius: R.pill,
-                      border: `1.5px solid ${on ? T.accent : T.border}`,
-                      background: on ? T.accentSoft : T.surface,
-                      color: on ? T.accent : T.textSecondary,
-                      fontSize: 13, fontWeight: on ? 600 : 400,
-                      cursor: isLast ? 'default' : 'pointer',
-                      fontFamily: 'inherit',
-                      opacity: !offsetsLoaded ? 0.4 : isLast ? 0.5 : 1,
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {on && <Check size={12} strokeWidth={2.5} />}
-                    {t[labelKey]}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <NotificationPreferencesEditor theme="miniapp" />
         </div>
 
         <p style={{ ...TYPE.micro, color: T.textTertiary, margin: '0 4px', lineHeight: 1.5 }}>
