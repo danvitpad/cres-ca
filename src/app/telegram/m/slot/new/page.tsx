@@ -178,6 +178,7 @@ function MasterMiniAppQuickBookingInner() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className="space-y-4 px-5 pt-6 pb-10"
+      style={{ minHeight: '100dvh', background: 'var(--m-bg, #ffffff)' }}
     >
       <button
         onClick={() => {
