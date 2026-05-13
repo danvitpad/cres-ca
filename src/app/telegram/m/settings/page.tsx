@@ -31,6 +31,7 @@ import {
   Vibrate,
   X,
   Check,
+  Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -41,7 +42,6 @@ import { getInitData, showConfirm } from '@/lib/telegram/webapp';
 import { T, R, FONT_BASE, SHADOW, PAGE_PADDING_X, TYPE, SPRING } from '@/components/miniapp/design';
 import { useMiniAppTheme } from '@/components/miniapp/theme';
 import { useHapticPrefs } from '@/components/miniapp/haptic-provider';
-import { MiniAppEditTextSheet } from '@/components/miniapp/edit-text-sheet';
 import { Briefcase } from 'lucide-react';
 import { useMiniAppLocale, type MiniAppLang } from '@/lib/miniapp/use-locale';
 
@@ -830,24 +830,200 @@ export default function MasterMiniAppSettings() {
         )}
       </AnimatePresence>
 
-      {/* Edit specialization sheet */}
-      <MiniAppEditTextSheet
+      {/* Direction picker sheet */}
+      <SpecPickerSheet
         open={specSheetOpen}
-        title={t.specEdit}
-        initialValue={specialization}
-        multiline={false}
-        maxLength={120}
+        lang={lang}
+        initial={specialization}
+        saving={specSaving}
         onClose={() => !specSaving && setSpecSheetOpen(false)}
-        onSave={async (v) => { await saveSpecialization(v); }}
+        onSave={saveSpecialization}
       />
     </div>
   );
 }
 
 function MiniToggle({ on }: { on: boolean }) {
-  // Литерально .ios-switch (.on) из OD master-settings.html — стили в
-  // od-master-settings.css. Размер 50×30 (OD), белый thumb 26px, переезд
-  // 20px вправо в состоянии on. Не интерактивный сам по себе — оборачивается
-  // в кнопку.
   return <span className={`ios-switch${on ? ' on' : ''}`} aria-hidden />;
+}
+
+const DIRECTIONS: Record<MiniAppLang, string[]> = {
+  uk: [
+    'Манікюр та педикюр', 'Нарощування нігтів', 'Майстер манікюру',
+    'Перукар', 'Стрижки та фарбування', 'Колорист', 'Кератинове випрямлення',
+    'Косметолог', 'Дерматолог-косметолог', 'Масаж обличчя',
+    'Брови та вії', 'Лешмейкер', 'Мікроблейдинг', 'Татуаж брів',
+    'Масаж', 'Лімфодренажний масаж', 'Масаж спини',
+    'Епіляція', 'Шугарінг', 'Воскова депіляція', 'Лазерна епіляція',
+    'Татуаж та пірсинг', 'Тату-майстер', 'Пірсинг',
+    'Візажист', 'Весільний макіяж', 'Стиліст',
+    'Стоматолог', 'Психолог', 'Нутриціолог', 'Дієтолог',
+    'Персональний тренер', 'Йога-інструктор', 'Фітнес-тренер',
+    'Грумінг', 'Ветеринар',
+    'Фотограф', 'Відеограф', 'Репетитор',
+    'Сантехнік', 'Електрик', 'Прибирання',
+    'Автомеханік', 'Детейлінг',
+  ],
+  ru: [
+    'Маникюр и педикюр', 'Наращивание ногтей', 'Мастер маникюра',
+    'Парикмахер', 'Стрижки и окрашивание', 'Колорист', 'Кератиновое выпрямление',
+    'Косметолог', 'Дерматолог-косметолог', 'Массаж лица',
+    'Брови и ресницы', 'Лешмейкер', 'Микроблейдинг', 'Татуаж бровей',
+    'Массаж', 'Лимфодренажный массаж', 'Массаж спины',
+    'Эпиляция', 'Шугаринг', 'Восковая депиляция', 'Лазерная эпиляция',
+    'Татуаж и пирсинг', 'Тату-мастер', 'Пирсинг',
+    'Визажист', 'Свадебный макияж', 'Стилист',
+    'Стоматолог', 'Психолог', 'Нутрициолог', 'Диетолог',
+    'Персональный тренер', 'Йога-инструктор', 'Фитнес-тренер',
+    'Груминг', 'Ветеринар',
+    'Фотограф', 'Видеограф', 'Репетитор',
+    'Сантехник', 'Электрик', 'Уборка',
+    'Автомеханик', 'Детейлинг',
+  ],
+  en: [
+    'Nail technician', 'Nail extensions', 'Manicurist',
+    'Hairdresser', 'Hair styling & coloring', 'Hair colorist', 'Keratin treatment',
+    'Cosmetologist', 'Esthetician', 'Facial massage',
+    'Brow & lash artist', 'Lash extensions', 'Microblading', 'Brow tattoo',
+    'Massage therapist', 'Lymphatic massage', 'Back massage',
+    'Hair removal', 'Sugaring', 'Waxing', 'Laser hair removal',
+    'Tattoo & piercing', 'Tattoo artist', 'Piercing',
+    'Makeup artist', 'Bridal makeup', 'Stylist',
+    'Dentist', 'Psychologist', 'Nutritionist', 'Dietitian',
+    'Personal trainer', 'Yoga instructor', 'Fitness coach',
+    'Pet groomer', 'Veterinarian',
+    'Photographer', 'Videographer', 'Tutor',
+    'Plumber', 'Electrician', 'Cleaning',
+    'Auto mechanic', 'Car detailing',
+  ],
+};
+
+function SpecPickerSheet({ open, lang, initial, saving, onClose, onSave }: {
+  open: boolean;
+  lang: MiniAppLang;
+  initial: string;
+  saving: boolean;
+  onClose: () => void;
+  onSave: (v: string) => Promise<void>;
+}) {
+  const [query, setQuery] = useState('');
+  const directions = DIRECTIONS[lang];
+  const q = query.trim().toLowerCase();
+  const filtered = q.length === 0
+    ? directions
+    : directions.filter((d) => d.toLowerCase().includes(q));
+  const exactMatch = filtered.some((d) => d.toLowerCase() === q);
+
+  async function pick(value: string) {
+    if (saving) return;
+    await onSave(value);
+  }
+
+  useEffect(() => {
+    if (open) setQuery('');
+  }, [open]);
+
+  const LABELS: Record<MiniAppLang, { title: string; placeholder: string; custom: string; save: string }> = {
+    uk: { title: 'Напрямок', placeholder: 'Пошук або введіть власний', custom: 'Додати', save: 'Зберегти' },
+    ru: { title: 'Направление', placeholder: 'Поиск или введите свой', custom: 'Добавить', save: 'Сохранить' },
+    en: { title: 'Direction', placeholder: 'Search or type your own', custom: 'Add', save: 'Save' },
+  };
+  const l = LABELS[lang];
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            key="overlay"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            onClick={() => !saving && onClose()}
+            style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          />
+          <motion.div
+            key="sheet"
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={SPRING.default}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 60,
+              background: T.bg,
+              borderTopLeftRadius: R.lg, borderTopRightRadius: R.lg,
+              boxShadow: SHADOW.elevated,
+              display: 'flex', flexDirection: 'column',
+              maxHeight: 'calc(100dvh - max(var(--tg-content-top, 0px), 12px))',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            }}
+          >
+            {/* Drag handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: T.borderSubtle, margin: '10px auto 0' }} />
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `12px ${PAGE_PADDING_X}px 10px` }}>
+              <h3 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{l.title}</h3>
+              <button type="button" onClick={() => !saving && onClose()} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: T.bgSubtle, color: T.textSecondary, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={14} />
+              </button>
+            </div>
+            {/* Search */}
+            <div style={{ padding: `0 ${PAGE_PADDING_X}px 8px` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: R.md, border: `1.5px solid ${T.border}`, background: T.surface }}>
+                <Search size={15} color={T.textTertiary} style={{ flexShrink: 0 }} />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value.slice(0, 80))}
+                  placeholder={l.placeholder}
+                  style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: T.text, caretColor: T.accent, fontFamily: 'inherit' }}
+                />
+                {query && (
+                  <button type="button" onClick={() => setQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    <X size={13} color={T.textTertiary} />
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: `0 ${PAGE_PADDING_X}px 12px` }}>
+              {filtered.map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => pick(d)}
+                  disabled={saving}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    width: '100%', padding: '12px 4px',
+                    background: 'none', border: 'none', borderBottom: `1px solid ${T.borderSubtle}`,
+                    cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                    color: d === initial ? T.accent : T.text,
+                  }}
+                >
+                  <span style={{ ...TYPE.body, fontWeight: d === initial ? 600 : 400 }}>{d}</span>
+                  {d === initial && <Check size={14} color={T.accent} />}
+                </button>
+              ))}
+              {/* Custom entry button — only if typed something not in the filtered list */}
+              {query.trim() && !exactMatch && (
+                <button
+                  type="button"
+                  onClick={() => pick(query.trim())}
+                  disabled={saving}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    width: '100%', padding: '12px 4px',
+                    background: 'none', border: 'none',
+                    cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: T.accent,
+                  }}
+                >
+                  {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                  <span style={{ ...TYPE.body }}>{l.custom}: «{query.trim()}»</span>
+                </button>
+              )}
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
 }

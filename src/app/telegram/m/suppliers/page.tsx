@@ -24,6 +24,7 @@ import '@/styles/od-master-suppliers.css';
 interface Supplier {
   id: string;
   name: string;
+  entity_type: 'individual' | 'company';
   contact_person: string | null;
   phone: string | null;
   email: string | null;
@@ -39,8 +40,11 @@ const I18N: Record<MiniAppLang, {
   add: string; back: string;
   archived: string;
   sheetCreate: string; sheetEdit: string;
-  fieldName: string; fieldContact: string; fieldPhone: string; fieldEmail: string; fieldTelegram: string; fieldNote: string;
-  placeholderName: string; placeholderContact: string; placeholderPhone: string; placeholderEmail: string; placeholderTelegram: string; placeholderNote: string;
+  typeIndividual: string; typeCompany: string;
+  fieldName: string; fieldNameIndividual: string; fieldNameCompany: string;
+  fieldContact: string; fieldPhone: string; fieldEmail: string; fieldTelegram: string; fieldNote: string;
+  placeholderName: string; placeholderNameIndividual: string; placeholderNameCompany: string;
+  placeholderContact: string; placeholderPhone: string; placeholderEmail: string; placeholderTelegram: string; placeholderNote: string;
   save: string; saving: string;
   archiveBtn: string; restoreBtn: string;
   errName: string; errSave: string;
@@ -49,17 +53,20 @@ const I18N: Record<MiniAppLang, {
   uk: {
     title: 'Постачальники',
     subtitle: (a, ar) => ar > 0 ? `${a} активних · ${ar} в архіві` : `${a} активних`,
-    empty: 'Поки немає постачальників', emptyHint: 'Додайте першого — тапните «+ Додати»',
+    empty: 'Поки немає постачальників', emptyHint: 'Додайте першого — тапніть «+ Додати»',
     add: 'Додати постачальника', back: 'Назад',
     archived: 'В архіві',
     sheetCreate: 'Новий постачальник', sheetEdit: 'Редагувати постачальника',
-    fieldName: 'Назва', fieldContact: 'Контактна особа', fieldPhone: 'Телефон', fieldEmail: 'Email',
+    typeIndividual: 'Фізична особа', typeCompany: 'Юридична особа',
+    fieldName: 'Назва', fieldNameIndividual: 'ПІБ', fieldNameCompany: 'Назва компанії',
+    fieldContact: 'Контактна особа', fieldPhone: 'Телефон', fieldEmail: 'Email',
     fieldTelegram: 'Telegram chat ID', fieldNote: 'Нотатка',
-    placeholderName: 'Salon Pro, Beauty Mart…', placeholderContact: 'Олена', placeholderPhone: '+380...',
+    placeholderName: 'Salon Pro, Beauty Mart…', placeholderNameIndividual: 'Олена Іванівна Коваль', placeholderNameCompany: 'ТОВ «Salon Pro»',
+    placeholderContact: 'Олена', placeholderPhone: '+380...',
     placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'Графік, умови, мінімум…',
     save: 'Зберегти', saving: 'Зберігаємо…',
     archiveBtn: 'В архів', restoreBtn: 'Активувати',
-    errName: 'Введите назву', errSave: 'Не вдалось зберегти',
+    errName: 'Введіть назву', errSave: 'Не вдалось зберегти',
     noContact: 'без контактів',
   },
   ru: {
@@ -69,9 +76,12 @@ const I18N: Record<MiniAppLang, {
     add: 'Добавить поставщика', back: 'Назад',
     archived: 'В архиве',
     sheetCreate: 'Новый поставщик', sheetEdit: 'Редактировать поставщика',
-    fieldName: 'Название', fieldContact: 'Контактное лицо', fieldPhone: 'Телефон', fieldEmail: 'Email',
+    typeIndividual: 'Физическое лицо', typeCompany: 'Юридическое лицо',
+    fieldName: 'Название', fieldNameIndividual: 'ФИО', fieldNameCompany: 'Название компании',
+    fieldContact: 'Контактное лицо', fieldPhone: 'Телефон', fieldEmail: 'Email',
     fieldTelegram: 'Telegram chat ID', fieldNote: 'Заметка',
-    placeholderName: 'Salon Pro, Beauty Mart…', placeholderContact: 'Елена', placeholderPhone: '+380...',
+    placeholderName: 'Salon Pro, Beauty Mart…', placeholderNameIndividual: 'Елена Ивановна Ковалёва', placeholderNameCompany: 'ООО «Salon Pro»',
+    placeholderContact: 'Елена', placeholderPhone: '+380...',
     placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'График, условия, минимум…',
     save: 'Сохранить', saving: 'Сохраняем…',
     archiveBtn: 'В архив', restoreBtn: 'Активировать',
@@ -85,9 +95,12 @@ const I18N: Record<MiniAppLang, {
     add: 'Add supplier', back: 'Back',
     archived: 'Archived',
     sheetCreate: 'New supplier', sheetEdit: 'Edit supplier',
-    fieldName: 'Name', fieldContact: 'Contact person', fieldPhone: 'Phone', fieldEmail: 'Email',
+    typeIndividual: 'Individual', typeCompany: 'Company',
+    fieldName: 'Name', fieldNameIndividual: 'Full name', fieldNameCompany: 'Company name',
+    fieldContact: 'Contact person', fieldPhone: 'Phone', fieldEmail: 'Email',
     fieldTelegram: 'Telegram chat ID', fieldNote: 'Note',
-    placeholderName: 'Salon Pro, Beauty Mart…', placeholderContact: 'Helen', placeholderPhone: '+380...',
+    placeholderName: 'Salon Pro, Beauty Mart…', placeholderNameIndividual: 'Helen Smith', placeholderNameCompany: 'Salon Pro LLC',
+    placeholderContact: 'Helen', placeholderPhone: '+380...',
     placeholderEmail: 'order@example.com', placeholderTelegram: '123456789', placeholderNote: 'Schedule, terms, min order…',
     save: 'Save', saving: 'Saving…',
     archiveBtn: 'Archive', restoreBtn: 'Activate',
@@ -277,6 +290,7 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [entityType, setEntityType] = useState<'individual' | 'company'>(supplier?.entity_type ?? 'individual');
   const [name, setName] = useState(supplier?.name ?? '');
   const [contact, setContact] = useState(supplier?.contact_person ?? '');
   const [phone, setPhone] = useState(supplier?.phone ?? '');
@@ -321,9 +335,9 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
         note: note.trim() || null,
       };
       if (mode === 'create') {
-        await callMutate({ action: 'create', ...common });
+        await callMutate({ action: 'create', entity_type: entityType, ...common });
       } else if (supplier) {
-        await callMutate({ action: 'update', id: supplier.id, ...common });
+        await callMutate({ action: 'update', id: supplier.id, entity_type: entityType, ...common });
       }
       onSaved();
     } catch (e) {
@@ -417,26 +431,60 @@ function SupplierSheet({ mode, supplier, t, onClose, onSaved }: {
 
         <FullDivider />
 
+        {/* Тип: физ. лицо / юр. лицо */}
+        <div style={{ padding: `14px ${PAGE_PADDING_X}px` }}>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr',
+            gap: 6, background: T.bgSubtle, borderRadius: R.md, padding: 4,
+          }}>
+            {(['individual', 'company'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setEntityType(type)}
+                style={{
+                  padding: '9px 4px',
+                  borderRadius: R.sm,
+                  border: 'none',
+                  background: entityType === type ? T.surface : 'transparent',
+                  color: entityType === type ? T.text : T.textSecondary,
+                  fontSize: 13, fontWeight: entityType === type ? 600 : 400,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  boxShadow: entityType === type ? SHADOW.card : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {type === 'individual' ? t.typeIndividual : t.typeCompany}
+              </button>
+            ))}
+          </div>
+        </div>
+        <FullDivider />
+
         {/* Поля — плоский iOS-список без дополнительной карточки */}
-        <FlatRow label={t.fieldName}>
+        <FlatRow label={entityType === 'individual' ? t.fieldNameIndividual : t.fieldNameCompany}>
           <input
             autoFocus={mode === 'create'}
             value={name}
             onChange={(e) => setName(e.target.value.slice(0, 120))}
-            placeholder={t.placeholderName}
+            placeholder={entityType === 'individual' ? t.placeholderNameIndividual : t.placeholderNameCompany}
             style={inputStyle}
           />
         </FlatRow>
         <FullDivider />
-        <FlatRow label={t.fieldContact}>
-          <input
-            value={contact}
-            onChange={(e) => setContact(e.target.value.slice(0, 120))}
-            placeholder={t.placeholderContact}
-            style={inputStyle}
-          />
-        </FlatRow>
-        <FullDivider />
+        {entityType === 'company' && (
+          <>
+            <FlatRow label={t.fieldContact}>
+              <input
+                value={contact}
+                onChange={(e) => setContact(e.target.value.slice(0, 120))}
+                placeholder={t.placeholderContact}
+                style={inputStyle}
+              />
+            </FlatRow>
+            <FullDivider />
+          </>
+        )}
         <FlatRow label={t.fieldPhone} icon={<Phone size={12} color={T.textTertiary} />}>
           <input
             type="tel"

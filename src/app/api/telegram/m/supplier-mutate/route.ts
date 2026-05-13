@@ -14,6 +14,7 @@ interface MutateBody {
   action?: 'create' | 'update' | 'delete';
   id?: string;
   name?: string;
+  entity_type?: 'individual' | 'company';
   contact_person?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -54,6 +55,7 @@ export async function POST(req: Request) {
     const { data, error } = await admin.from('suppliers').insert({
       master_id: master.id,
       name,
+      entity_type: body.entity_type === 'company' ? 'company' : 'individual',
       contact_person: clean(body.contact_person),
       phone: clean(body.phone),
       email: clean(body.email),
@@ -81,6 +83,7 @@ export async function POST(req: Request) {
       if (!n) return NextResponse.json({ error: 'missing_name' }, { status: 400 });
       patch.name = n;
     }
+    if (body.entity_type === 'individual' || body.entity_type === 'company') patch.entity_type = body.entity_type;
     if (body.contact_person !== undefined) patch.contact_person = clean(body.contact_person);
     if (body.phone !== undefined) patch.phone = clean(body.phone);
     if (body.email !== undefined) patch.email = clean(body.email);
