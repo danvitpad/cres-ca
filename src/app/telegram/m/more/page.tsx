@@ -18,6 +18,7 @@ import {
   Building2,
   Bot,
   Settings as SettingsIcon,
+  Bell,
   ChevronRight,
   ArrowUpRight,
   Package,
@@ -58,6 +59,7 @@ const I18N: Record<MiniAppLang, {
   team: string; teamHint: string;
   ai: string; aiHint: string;
   profile: string; profileHint: string;
+  notifications: string; notificationsHint: string;
   settings: string; settingsHint: string;
   queue: string; queueHint: string;
   inventory: string; inventoryHint: string;
@@ -77,7 +79,8 @@ const I18N: Record<MiniAppLang, {
     team: 'Команда', teamHint: 'Салон та колеги',
     ai: 'AI-помічник', aiHint: 'Запитай — я відповім',
     profile: 'Профіль', profileHint: "Ім'я, аватар, тариф",
-    settings: 'Налаштування', settingsHint: 'Тариф, сповіщення, мова',
+    notifications: 'Сповіщення', notificationsHint: 'Що і коли надсилати в Telegram',
+    settings: 'Налаштування', settingsHint: 'Тариф, мова та інше',
     queue: 'Жива черга', queueHint: 'Walk-in клієнти без запису',
     inventory: 'Склад', inventoryHint: 'Матеріали, залишки, поріг',
     suppliers: 'Постачальники', suppliersHint: 'Контакти, замовлення',
@@ -96,7 +99,8 @@ const I18N: Record<MiniAppLang, {
     team: 'Команда', teamHint: 'Салон и коллеги',
     ai: 'AI-помощник', aiHint: 'Спроси — отвечу',
     profile: 'Профиль', profileHint: 'Имя, аватар, тариф',
-    settings: 'Настройки', settingsHint: 'Тариф, уведомления, язык',
+    notifications: 'Уведомления', notificationsHint: 'Что и когда присылать в Telegram',
+    settings: 'Настройки', settingsHint: 'Тариф, язык и прочее',
     queue: 'Живая очередь', queueHint: 'Walk-in клиенты без записи',
     inventory: 'Склад', inventoryHint: 'Материалы, остатки, порог',
     suppliers: 'Поставщики', suppliersHint: 'Контакты, заказы',
@@ -115,7 +119,8 @@ const I18N: Record<MiniAppLang, {
     team: 'Team', teamHint: 'Salon and colleagues',
     ai: 'AI assistant', aiHint: "Ask — I'll answer",
     profile: 'Profile', profileHint: 'Name, avatar, plan',
-    settings: 'Settings', settingsHint: 'Plan, notifications, language',
+    notifications: 'Notifications', notificationsHint: 'What and when to send in Telegram',
+    settings: 'Settings', settingsHint: 'Plan, language and more',
     queue: 'Live queue', queueHint: 'Walk-in clients without appointment',
     inventory: 'Inventory', inventoryHint: 'Materials, stock, low threshold',
     suppliers: 'Suppliers', suppliersHint: 'Contacts, orders',
@@ -197,6 +202,7 @@ export default function MasterMiniAppMore() {
     ...(salonId ? [{ key: 'team', href: `/telegram/m/salon/${salonId}/dashboard`, icon: Building2, labelKey: 'team' as const, hintKey: 'teamHint' as const, iconColor: 'neutral' as const }] : []),
     { key: 'ai', href: '/telegram/m/ai', icon: Bot, labelKey: 'ai', hintKey: 'aiHint', iconColor: 'neutral' },
     { key: 'schedule', href: '/telegram/m/settings/schedule', icon: Clock, labelKey: 'schedule', hintKey: 'scheduleHint', iconColor: 'neutral' },
+    { key: 'notifications', href: '/telegram/m/settings/notifications', icon: Bell, labelKey: 'notifications', hintKey: 'notificationsHint', iconColor: 'neutral' },
     { key: 'settings', href: '/telegram/m/settings', icon: SettingsIcon, labelKey: 'settings', hintKey: 'settingsHint', iconColor: 'neutral' },
   ];
 
