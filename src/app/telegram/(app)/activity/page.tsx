@@ -12,6 +12,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -24,7 +25,6 @@ import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { resolveCardDisplay, type SalonRef } from '@/lib/client/display-mode';
-import { formatMoney } from '@/lib/format/money';
 import {
   MobilePage,
   PageHeader,
@@ -613,6 +613,7 @@ interface CardProps {
 }
 
 function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: CardProps) {
+  const router = useRouter();
   void List; // отключаем unused-warning, импорт пригодится позже
   const masterRef = a.master_id
     ? {
@@ -662,23 +663,19 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
           </div>
           <span className="bk-time">{timeStr}</span>
         </Link>
-        {a.price > 0 && (
-          <div
-            style={{
-              padding: '8px 14px',
-              borderTop: '1px solid var(--m-border, #e2e8f0)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontSize: 13,
-              color: 'var(--m-text-secondary, #475569)',
-              background: 'var(--m-bg-subtle, #f2f4f7)',
-            }}
-          >
-            <span>{a.service_name}</span>
-            <span style={{ fontWeight: 700, color: 'var(--m-text, #0f172a)' }}>
-              {formatMoney(a.price, a.currency)}
-            </span>
+        {statusVariant !== 'cancelled' && (
+          <div className="bk-actions">
+            {statusVariant === 'upcoming' ? (
+              <>
+                <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Скасувати</button>
+                <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Перенести</button>
+              </>
+            ) : (
+              <>
+                <button className="bk-act-btn" onClick={() => { haptic('light'); router.push(a.master_id ? `/telegram/book?master_id=${a.master_id}` : '/telegram/search'); }}>Повторити</button>
+                <button className="bk-act-btn primary" onClick={() => { haptic('light'); router.push(`/telegram/activity/${a.id}`); }}>Відгук</button>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -22,6 +22,7 @@ import {
   Users,
   MessageCircle,
   QrCode,
+  Gift,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -362,7 +363,7 @@ export default function MiniAppProfilePage() {
             QR-кнопка справа вверху открывает QR-код профиля (TODO в будущей задаче). */}
         <div
           style={{
-            background: 'linear-gradient(150deg, var(--m-accent-soft, rgba(37,99,235,0.10)), var(--m-surface, #fff))',
+            background: 'linear-gradient(150deg,var(--accent-2),var(--surface))',
             padding: '28px 20px 20px',
             textAlign: 'center',
             position: 'relative',
@@ -423,14 +424,30 @@ export default function MiniAppProfilePage() {
               </span>
             )}
           </button>
-          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--m-text, #0f172a)', letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--fg)', letterSpacing: '-0.01em' }}>
             {displayName || t.guest}
           </div>
           {phone && (
-            <div style={{ fontSize: 14, color: 'var(--m-text-secondary, #475569)', marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: 'var(--fg-2)', marginTop: 4 }}>
               {phone}
             </div>
           )}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>0</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{lang === 'en' ? 'visits' : lang === 'uk' ? 'відвідувань' : 'посещений'}</div>
+            </div>
+            <div style={{ width: 1, background: 'var(--border)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>{followingCount}</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{lang === 'en' ? 'masters' : lang === 'uk' ? 'майстри' : 'мастера'}</div>
+            </div>
+            <div style={{ width: 1, background: 'var(--border)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent)' }}>₴0</div>
+              <div style={{ fontSize: 12, color: 'var(--fg-3)' }}>{lang === 'en' ? 'spent' : lang === 'uk' ? 'витрачено' : 'потрачено'}</div>
+            </div>
+          </div>
           {/* Личные данные — три row под hero (Имя/Телефон/Email тап = edit) */}
         </div>
 
@@ -456,36 +473,36 @@ export default function MiniAppProfilePage() {
         <div className="card-block" style={{ marginTop: 14 }}>
           <button type="button" className="setting-row" onClick={openEdit}>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {t.labelName}
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text, #0f172a)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {displayName || t.notSet}
               </div>
             </div>
-            <ChevronRight size={14} className="setting-arrow" color="var(--m-text-tertiary, #94a3b8)" />
+            <ChevronRight size={14} className="setting-arrow" color="var(--fg-3)" />
           </button>
           <button type="button" className="setting-row" onClick={openEdit}>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {t.labelPhone}
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text, #0f172a)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {phone || t.notSet}
               </div>
             </div>
-            <ChevronRight size={14} color="var(--m-text-tertiary, #94a3b8)" />
+            <ChevronRight size={14} color="var(--fg-3)" />
           </button>
           <button type="button" className="setting-row" onClick={openEdit}>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
-              <div style={{ fontSize: 11, color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <div style={{ fontSize: 11, color: 'var(--fg-3)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {t.labelEmail}
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text, #0f172a)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {email || t.notSet}
               </div>
             </div>
-            <ChevronRight size={14} color="var(--m-text-tertiary, #94a3b8)" />
+            <ChevronRight size={14} color="var(--fg-3)" />
           </button>
         </div>
 
@@ -496,12 +513,12 @@ export default function MiniAppProfilePage() {
             className="pmenu-item"
             onClick={() => { haptic('selection'); router.push('/telegram/connections'); }}
           >
-            <div className="pmenu-icon" style={{ background: 'var(--m-accent-soft, rgba(37,99,235,0.10))', color: 'var(--m-accent, #2563eb)' }}>
+            <div className="pmenu-icon" style={{ background: 'var(--accent-2)', color: 'var(--accent)' }}>
               <Users size={20} strokeWidth={1.8} />
             </div>
             <span className="pmenu-label">{t.myMasters}</span>
             {followingCount > 0 && (
-              <span style={{ fontSize: 13, color: 'var(--m-text-tertiary, #94a3b8)', marginRight: 6 }}>
+              <span style={{ fontSize: 13, color: 'var(--fg-3)', marginRight: 6 }}>
                 {followingCount}
               </span>
             )}
@@ -512,7 +529,7 @@ export default function MiniAppProfilePage() {
             className="pmenu-item"
             onClick={() => { haptic('selection'); router.push('/telegram/settings'); }}
           >
-            <div className="pmenu-icon" style={{ background: 'var(--m-bg-subtle, #f2f4f7)', color: 'var(--m-text-secondary, #475569)' }}>
+            <div className="pmenu-icon" style={{ background: 'var(--surface2)', color: 'var(--m-text-secondary, #475569)' }}>
               <Settings size={20} strokeWidth={1.8} />
             </div>
             <span className="pmenu-label">{t.menuSettings}</span>
@@ -523,7 +540,7 @@ export default function MiniAppProfilePage() {
             className="pmenu-item"
             onClick={() => { haptic('selection'); window.open('https://t.me/crescacom_bot?start=support', '_blank'); }}
           >
-            <div className="pmenu-icon" style={{ background: 'rgba(16,185,129,0.10)', color: 'var(--m-success, #10b981)' }}>
+            <div className="pmenu-icon" style={{ background: 'rgba(16,185,129,0.10)', color: '#10b981' }}>
               <MessageCircle size={20} strokeWidth={1.8} />
             </div>
             <span className="pmenu-label">{t.menuSupport}</span>
@@ -542,6 +559,29 @@ export default function MiniAppProfilePage() {
               {signingOut ? t.loggingOut : t.logout}
             </span>
           </button>
+        </div>
+
+        {/* Loyalty card */}
+        <div style={{ margin: '12px 16px 0', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#f97316)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Gift size={18} color="#fff" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)' }}>
+                {lang === 'en' ? 'Loyalty program' : lang === 'uk' ? 'Програма лояльності' : 'Программа лояльности'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>
+                {lang === 'en' ? 'Your bonus points' : lang === 'uk' ? 'Бонусна програма' : 'Бонусная программа'}
+              </div>
+            </div>
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => { haptic('selection'); router.push('/telegram/bonuses'); }}
+            >
+              {lang === 'en' ? 'Details' : lang === 'uk' ? 'Деталі' : 'Детали'}
+            </button>
+          </div>
         </div>
 
         <div style={{ height: 12 }} />
