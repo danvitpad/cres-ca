@@ -1,255 +1,710 @@
 /** --- YAML
  * name: ODClientMiniAppStyles
- * description: Дословный перенос CSS из Open Design client-mini-app.html
- *   мобильного экрана (строки 90-186). Скоуп — `.od-client-mini-app`.
+ * description: Полный портированный CSS из Open Design эталона
+ *   client-mini-app-spa.html. Все классы заскоупленны через
+ *   `.od-client-mini-app` чтобы не конфликтовать с web-кабинетом.
+ *   Цветовые токены мапятся на --m-* (см. theme.tsx).
+ * updated: 2026-05-14
  * --- */
 
 .od-client-mini-app {
-  --od-accent: var(--m-accent, #2563eb);
-  --od-accent-h: var(--m-accent-hover, #1d4ed8);
-  --od-accent-soft: var(--m-accent-soft, rgba(37, 99, 235, 0.08));
-  --od-accent-fg: #ffffff;
-  --od-success: #10b981;
-  --od-success-soft: rgba(16, 185, 129, 0.1);
-  --od-fg: var(--m-text, #0f172a);
-  --od-fg-2: var(--m-text-secondary, #475569);
-  --od-fg-3: var(--m-text-tertiary, #94a3b8);
-  --od-surface: var(--m-surface, #ffffff);
-  --od-border: var(--m-border, #e2e8f0);
-  --od-cs-bg: var(--m-bg, #f5f7fa);
-  --od-r-md: 0.5rem;
-  --od-r-full: 9999px;
-  --od-dur-fast: 140ms;
-  --od-dur-base: 240ms;
-  --od-ease-out: cubic-bezier(.16, 1, .3, 1);
-  --od-sh-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  /* Light theme variables — наследуются от глобальных miniapp токенов */
+  --bg: var(--m-bg, #f5f7fa);
+  --surface: var(--m-surface, #ffffff);
+  --surface2: var(--m-bg-subtle, #f2f4f7);
+  --fg: var(--m-text, #0f172a);
+  --fg-2: var(--m-text-secondary, #475569);
+  --fg-3: var(--m-text-tertiary, #94a3b8);
+  --border: var(--m-border, #e2e8f0);
+  --accent: var(--m-accent, #2563eb);
+  --accent-2: var(--m-accent-soft, rgba(37, 99, 235, 0.10));
+  --a-600: var(--m-accent-hover, #1d4ed8);
+  --success: var(--m-success, #10b981);
+  --success-2: var(--m-success-soft, rgba(16, 185, 129, 0.10));
+  --n-100: var(--m-bg-subtle, #f2f4f7);
+  --n-300: #d0d5dd;
+  --n-800: #1d2939;
+  --s-50: rgba(132, 204, 22, 0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  --spring-default: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 180ms;
+  --dur-mid: 280ms;
+  --dur-slow: 360ms;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.10);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.14);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
 }
 
-/* Screen header */
-.od-client-mini-app .sc-hd {
+/* ── HERO SCENARIO ── */
+.od-client-mini-app .hero-scenario {
+  margin: 12px 16px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--a-600) 100%);
+  position: relative;
+  padding: 20px;
+  color: #fff;
+}
+.od-client-mini-app .hero-label {
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.od-client-mini-app .hero-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 4px 0 2px;
+  letter-spacing: -0.01em;
+}
+.od-client-mini-app .hero-sub {
+  font-size: 14px;
+  opacity: 0.85;
+}
+.od-client-mini-app .hero-action {
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+  height: 40px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  font-family: inherit;
+  text-decoration: none;
+}
+.od-client-mini-app .hero-action:hover { background: rgba(255, 255, 255, 0.3); }
+.od-client-mini-app .hero-action svg { width: 15px; height: 15px; }
+.od-client-mini-app .hero-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+}
+
+/* ── FEED SECTION ── */
+.od-client-mini-app .feed-section { padding: 16px 16px 0; }
+.od-client-mini-app .feed-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--fg);
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.od-client-mini-app .feed-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px 8px;
+  gap: 12px;
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  text-decoration: none;
+  color: inherit;
 }
-.od-client-mini-app .sc-hd-title {
-  font-size: 1.0625rem;
-  font-weight: 700;
-  color: var(--od-fg);
-  letter-spacing: -0.015em;
+.od-client-mini-app .feed-card:active { background: var(--surface2); }
+.od-client-mini-app .fc-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--accent-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
 }
-.od-client-mini-app .sc-hd-sub {
-  font-size: 0.6875rem;
-  color: var(--od-fg-3);
+.od-client-mini-app .fc-icon svg { width: 20px; height: 20px; }
+.od-client-mini-app .fc-info { flex: 1; min-width: 0; }
+.od-client-mini-app .fc-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .fc-sub {
+  font-size: 12px;
+  color: var(--fg-2);
   margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .fc-cta {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+  text-align: right;
 }
 
-/* Avatars */
-.od-client-mini-app .av {
+/* ── HORIZONTAL SCROLL CARDS ── */
+.od-client-mini-app .h-scroll {
+  display: flex;
+  gap: 12px;
+  padding: 0 16px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.od-client-mini-app .h-scroll::-webkit-scrollbar { display: none; }
+.od-client-mini-app .h-card {
+  flex-shrink: 0;
+  width: 160px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--spring-bounce);
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-mini-app .h-card:active { transform: scale(0.96); }
+.od-client-mini-app .h-card-img {
+  height: 90px;
+  background: linear-gradient(135deg, var(--accent-2), var(--s-50));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.od-client-mini-app .h-card-img svg { width: 32px; height: 32px; }
+.od-client-mini-app .h-card-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.od-client-mini-app .h-card-body { padding: 10px; }
+.od-client-mini-app .h-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .h-card-sub {
+  font-size: 11px;
+  color: var(--fg-2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .h-card-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 4px;
+}
+
+/* ── AVATAR ── */
+.od-client-mini-app .avatar {
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  background: var(--accent-2);
+  color: var(--accent);
   flex-shrink: 0;
+  overflow: hidden;
 }
-.od-client-mini-app .av-sm { width: 28px; height: 28px; font-size: 0.5625rem; }
-.od-client-mini-app .av-md { width: 40px; height: 40px; font-size: 0.75rem; }
-.od-client-mini-app .av-lg { width: 56px; height: 56px; font-size: 0.9375rem; }
-.od-client-mini-app .av-xl { width: 72px; height: 72px; font-size: 1.125rem; }
-.od-client-mini-app .av-cobalt {
-  background: var(--od-accent-soft);
-  color: var(--od-accent);
-  border: 2px solid var(--od-surface);
-}
+.od-client-mini-app .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.od-client-mini-app .av-xs { width: 28px; height: 28px; font-size: 11px; }
+.od-client-mini-app .av-sm { width: 36px; height: 36px; font-size: 13px; }
+.od-client-mini-app .av-md { width: 44px; height: 44px; font-size: 16px; }
+.od-client-mini-app .av-lg { width: 56px; height: 56px; font-size: 20px; }
+.od-client-mini-app .av-xl { width: 72px; height: 72px; font-size: 26px; }
 
-/* Section label */
-.od-client-mini-app .sec-lbl {
-  display: flex;
+/* ── CHIPS ── */
+.od-client-mini-app .chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 20px 6px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  color: var(--od-fg-3);
-}
-.od-client-mini-app .sec-lbl-link {
-  color: var(--od-accent);
-  font-size: 0.6875rem;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
   font-weight: 500;
-  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--fg-2);
+  transition: all var(--dur-fast) var(--spring-default);
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-family: inherit;
 }
-
-/* Next visit hero */
-.od-client-mini-app .vh-card {
-  margin: 4px 16px 0;
-  padding: 18px;
-  border-radius: 20px;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+.od-client-mini-app .chip.active {
+  background: var(--accent-2);
+  border-color: var(--accent);
+  color: var(--accent);
 }
-.od-client-mini-app .vh-label {
-  font-size: 0.5625rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.65;
-  margin-bottom: 12px;
-}
-.od-client-mini-app .vh-master {
+.od-client-mini-app .chip:active { transform: scale(0.94); }
+.od-client-mini-app .chip svg { width: 13px; height: 13px; }
+.od-client-mini-app .chips-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px;
+  padding: 0 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
-.od-client-mini-app .vh-master .av {
-  border-color: rgba(255, 255, 255, 0.3);
-}
-.od-client-mini-app .vh-name {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.od-client-mini-app .vh-svc {
-  font-size: 0.75rem;
-  opacity: 0.75;
-  margin-top: 2px;
-}
-.od-client-mini-app .vh-details {
+.od-client-mini-app .chips-row::-webkit-scrollbar { display: none; }
+
+/* ── SEARCH BAR ── */
+.od-client-mini-app .search-bar {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
+  margin: 12px 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 0 16px;
+  height: 48px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast);
 }
-.od-client-mini-app .vh-pill {
+.od-client-mini-app .search-bar:hover { border-color: var(--accent); }
+.od-client-mini-app .search-bar svg { width: 18px; height: 18px; color: var(--fg-2); }
+.od-client-mini-app .search-placeholder { flex: 1; font-size: 15px; color: var(--fg-3); }
+.od-client-mini-app .search-ai {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-2);
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.6875rem;
-  opacity: 0.85;
-  font-weight: 500;
-}
-.od-client-mini-app .vh-actions {
-  display: flex;
-  gap: 8px;
-}
-.od-client-mini-app .vh-btn {
-  flex: 1;
-  padding: 9px;
-  border-radius: 10px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border: none;
-  font-family: inherit;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
   cursor: pointer;
 }
-.od-client-mini-app .vh-btn:active { transform: scale(0.97); }
-.od-client-mini-app .vh-btn.primary {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
-}
-.od-client-mini-app .vh-btn.secondary {
-  background: rgba(255, 255, 255, 0.95);
-  color: #2563eb;
-}
+.od-client-mini-app .search-ai svg { width: 16px; height: 16px; }
 
-/* Horizontal scroll */
-.od-client-mini-app .hscroll {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 4px 20px 8px;
-  scrollbar-width: none;
+/* ── CATEGORY GRID ── */
+.od-client-mini-app .cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 12px 16px;
 }
-.od-client-mini-app .hscroll::-webkit-scrollbar { display: none; }
-
-/* Master circle card */
-.od-client-mini-app .mcard {
+.od-client-mini-app .cat-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  min-width: 72px;
   cursor: pointer;
-  text-decoration: none;
-  color: inherit;
+  transition: transform var(--dur-fast) var(--spring-bounce);
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
 }
-.od-client-mini-app .mcard-name {
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: var(--od-fg);
-  text-align: center;
-  max-width: 72px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.od-client-mini-app .mcard-niche {
-  font-size: 0.5625rem;
-  color: var(--od-fg-3);
-  text-align: center;
-}
-
-/* Slot card */
-.od-client-mini-app .slot-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0 16px 8px;
-  padding: 14px 16px;
-  background: var(--od-surface);
-  border: 1px solid var(--od-border);
-  border-radius: 14px;
-  cursor: pointer;
-  text-decoration: none;
-  color: inherit;
-}
-.od-client-mini-app .sc-name {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--od-fg);
-}
-.od-client-mini-app .sc-sub {
-  font-size: 0.6875rem;
-  color: var(--od-fg-3);
-  margin-top: 2px;
-}
-.od-client-mini-app .sc-price {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--od-accent);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.od-client-mini-app .sc-book {
-  font-size: 0.625rem;
-  color: var(--od-success);
-  text-align: right;
-  margin-top: 2px;
-  font-weight: 500;
-}
-
-/* FAB */
-.od-client-mini-app .fab {
-  position: fixed;
-  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-  right: 16px;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--od-accent);
-  color: var(--od-accent-fg);
+.od-client-mini-app .cat-item:active { transform: scale(0.88); }
+.od-client-mini-app .cat-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: var(--surface2);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
-  border: none;
-  -webkit-tap-highlight-color: transparent;
+  transition: background var(--dur-fast);
+  border: 1.5px solid var(--border);
+  color: var(--fg-2);
 }
-.od-client-mini-app .fab:active { transform: scale(0.93); }
+.od-client-mini-app .cat-icon svg { width: 22px; height: 22px; }
+.od-client-mini-app .cat-item.active .cat-icon {
+  background: var(--accent-2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.od-client-mini-app .cat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-2);
+  text-align: center;
+}
+
+/* ── MASTER CARD (Знайти list) ── */
+.od-client-mini-app .master-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-mini-app .master-card:active { background: var(--surface2); }
+.od-client-mini-app .mc-info { flex: 1; min-width: 0; }
+.od-client-mini-app .mc-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .mc-meta {
+  font-size: 13px;
+  color: var(--fg-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.od-client-mini-app .mc-meta svg { width: 12px; height: 12px; }
+.od-client-mini-app .mc-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── BOOKING ITEM ── */
+.od-client-mini-app .bk-item {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  margin: 0 16px 10px;
+  overflow: hidden;
+}
+.od-client-mini-app .bk-item-head {
+  padding: 14px 14px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+}
+.od-client-mini-app .bk-date-block {
+  min-width: 48px;
+  background: var(--accent-2);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+.od-client-mini-app .bk-date-day {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+.od-client-mini-app .bk-date-mon {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.od-client-mini-app .bk-info { flex: 1; min-width: 0; }
+.od-client-mini-app .bk-service {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .bk-master {
+  font-size: 13px;
+  color: var(--fg-2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.od-client-mini-app .bk-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-3);
+  background: var(--surface2);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.od-client-mini-app .bk-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  margin-top: 4px;
+}
+.od-client-mini-app .bk-status.upcoming { background: var(--accent-2); color: var(--accent); }
+.od-client-mini-app .bk-status.done { background: var(--success-2); color: var(--success); }
+.od-client-mini-app .bk-status.cancelled { background: var(--n-100); color: var(--fg-3); }
+[data-theme=dark] .od-client-mini-app .bk-status.cancelled { background: var(--n-800); }
+.od-client-mini-app .bk-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+.od-client-mini-app .bk-act-btn {
+  flex: 1;
+  height: 36px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: var(--surface);
+  color: var(--fg-2);
+  transition: all var(--dur-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+}
+.od-client-mini-app .bk-act-btn svg { width: 14px; height: 14px; }
+.od-client-mini-app .bk-act-btn:active { transform: scale(0.95); }
+.od-client-mini-app .bk-act-btn.primary { background: var(--accent); color: #fff; }
+
+/* ── PROFILE MENU ── */
+.od-client-mini-app .pmenu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: inherit;
+  text-decoration: none;
+}
+.od-client-mini-app .pmenu-item:last-child { border-bottom: none; }
+.od-client-mini-app .pmenu-item:active { background: var(--surface2); }
+.od-client-mini-app .pmenu-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.od-client-mini-app .pmenu-icon svg { width: 20px; height: 20px; }
+.od-client-mini-app .pmenu-label { flex: 1; font-size: 15px; font-weight: 500; color: var(--fg); }
+.od-client-mini-app .pmenu-arrow { color: var(--fg-3); }
+.od-client-mini-app .pmenu-arrow svg { width: 16px; height: 16px; }
+
+/* ── SEGMENT ── */
+.od-client-mini-app .segment {
+  display: flex;
+  background: var(--surface2);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  margin: 0 16px;
+}
+.od-client-mini-app .segment-btn {
+  flex: 1;
+  height: 34px;
+  border-radius: calc(var(--radius-md) - 2px);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--fg-2);
+  transition: all var(--dur-fast) var(--spring-default);
+  font-family: inherit;
+}
+.od-client-mini-app .segment-btn.active {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── BUTTONS ── */
+.od-client-mini-app .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--dur-fast) var(--spring-default);
+  padding: 0 20px;
+  font-family: inherit;
+  text-decoration: none;
+}
+.od-client-mini-app .btn:active { transform: scale(0.95); }
+.od-client-mini-app .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+.od-client-mini-app .btn-primary:hover { opacity: 0.9; }
+.od-client-mini-app .btn-ghost { background: var(--surface2); color: var(--fg); width: 100%; }
+.od-client-mini-app .btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1.5px solid var(--accent);
+}
+.od-client-mini-app .btn-sm {
+  height: 36px;
+  font-size: 13px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+}
+.od-client-mini-app .btn-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  color: var(--fg-2);
+  transition: all var(--dur-fast) var(--spring-default);
+  flex-shrink: 0;
+}
+.od-client-mini-app .btn-icon:active { transform: scale(0.88); }
+.od-client-mini-app .btn-icon svg { width: 16px; height: 16px; }
+
+/* ── EMPTY STATE ── */
+.od-client-mini-app .empty-state { text-align: center; padding: 48px 32px; color: var(--fg-2); }
+.od-client-mini-app .empty-state svg {
+  width: 48px;
+  height: 48px;
+  color: var(--fg-3);
+  margin: 0 auto 16px;
+  display: block;
+}
+.od-client-mini-app .empty-state p {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--fg-2);
+  margin-bottom: 6px;
+}
+.od-client-mini-app .empty-state span { font-size: 13px; color: var(--fg-3); }
+
+/* ── HEADER (page-title) ── */
+.od-client-mini-app .page-hello {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 4px;
+}
+.od-client-mini-app .page-hello-greet { font-size: 13px; color: var(--fg-2); }
+.od-client-mini-app .page-hello-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+.od-client-mini-app .page-title {
+  padding: 10px 16px 4px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--fg);
+  letter-spacing: -0.01em;
+}
+
+/* ── SETTINGS ROWS ── */
+.od-client-mini-app .setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--dur-fast);
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  color: inherit;
+}
+.od-client-mini-app .setting-row:last-child { border-bottom: none; }
+.od-client-mini-app .setting-row:active { background: var(--surface2); }
+.od-client-mini-app .setting-label { flex: 1; font-size: 14px; color: var(--fg); font-weight: 500; }
+.od-client-mini-app .setting-value { font-size: 13px; font-weight: 500; color: var(--fg-3); margin-right: 4px; }
+.od-client-mini-app .setting-arrow svg { width: 14px; height: 14px; color: var(--fg-3); }
+
+/* ── CARDS / SECTION LABEL ── */
+.od-client-mini-app .section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg-3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 16px 16px 6px;
+}
+.od-client-mini-app .card-block {
+  margin: 6px 16px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* ── UTILS ── */
+.od-client-mini-app .flex { display: flex; }
+.od-client-mini-app .flex-col { flex-direction: column; }
+.od-client-mini-app .items-center { align-items: center; }
+.od-client-mini-app .justify-between { justify-content: space-between; }
+.od-client-mini-app .gap-8 { gap: 8px; }
+.od-client-mini-app .gap-12 { gap: 12px; }
+.od-client-mini-app .w-full { width: 100%; }
+.od-client-mini-app .mt-2 { margin-top: 8px; }
+.od-client-mini-app .mt-3 { margin-top: 12px; }
+.od-client-mini-app .mt-4 { margin-top: 16px; }
+.od-client-mini-app .text-sm { font-size: 13px; }
+.od-client-mini-app .text-xs { font-size: 11px; }
+.od-client-mini-app .text-fg2 { color: var(--fg-2); }
+.od-client-mini-app .text-fg3 { color: var(--fg-3); }
+.od-client-mini-app .text-accent { color: var(--accent); }
+.od-client-mini-app .text-success { color: var(--success); }
+.od-client-mini-app .font-bold { font-weight: 700; }
+.od-client-mini-app .font-semibold { font-weight: 600; }
+.od-client-mini-app .font-medium { font-weight: 500; }

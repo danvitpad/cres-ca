@@ -19,14 +19,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import '@/styles/od-client-mini-app.css';
 import { useTelegram } from '@/components/miniapp/telegram-provider';
 import { formatMoney } from '@/lib/format/money';
-import {
-  MobilePage,
-  PageHeader,
-  SectionHeader,
-  AvatarCircle,
-} from '@/components/miniapp/shells';
-import { TapButton } from '@/components/miniapp/tap-press';
-import { T, R, TYPE, SHADOW, PAGE_PADDING_X, HERO_GRADIENT } from '@/components/miniapp/design';
+import { MobilePage } from '@/components/miniapp/shells';
 import { getCached, setCached } from '@/lib/miniapp/cache';
 import { HomeScreenBanner } from '@/components/miniapp/home-screen-banner';
 
@@ -266,242 +259,142 @@ export default function MiniAppHomePage() {
     return t.eveningHi;
   }, [t]);
 
+  const userInitials = (firstName || fullName || '').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   return (
     <MobilePage className="od-client-mini-app">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
       >
-        <PageHeader
-          title={firstName ? `${t.title}, ${firstName}` : t.title}
-          subtitle={greeting}
-          /* AI-консьерж переехал в Tab «Найти» как главный CTA сверху —
-             на личной главной шапка чистая. Аватар справа — личный акцент. */
-          right={fullName ? <AvatarCircle url={null} name={fullName} size={44} /> : undefined}
-        />
+        {/* Hello row — «Привіт, Имя» + аватар справа */}
+        <div className="page-hello">
+          <div>
+            <div className="page-hello-greet">{firstName ? `${t.title},` : greeting}</div>
+            <div className="page-hello-name">{firstName ? `${firstName} 👋` : t.title}</div>
+          </div>
+          <div className="avatar av-md">{userInitials || '👤'}</div>
+        </div>
 
-        <div style={{ paddingLeft: PAGE_PADDING_X, paddingRight: PAGE_PADDING_X }}>
+        <div style={{ padding: '4px 16px 0' }}>
           <HomeScreenBanner />
         </div>
 
-        {/* Next appointment hero — Open Design layout:
-            label · master block (avatar+name+service) · pills row · Подробнее CTA */}
+        {/* Hero «Найближчий запис» — gradient cobalt + бейдж + время + услуга + кнопка */}
         {next ? (
           <Link
             href={`/telegram/activity/${next.id}`}
             onClick={() => haptic('light')}
-            style={{
-              ...HERO_GRADIENT,
-              margin: `0 ${PAGE_PADDING_X}px`,
-              padding: 22,
-              borderRadius: R.lg,
-              color: '#fff',
-              boxShadow: SHADOW.elevated,
-              textDecoration: 'none',
-              display: 'block',
-            }}
+            className="hero-scenario"
+            style={{ textDecoration: 'none', display: 'block' }}
           >
-            <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.82, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              {t.upcoming}
+            <div className="hero-badge">{t.upcoming}</div>
+            <div className="hero-label">{formatDateTime(next.starts_at, lang)}</div>
+            <div className="hero-title">{next.service_name}</div>
+            <div className="hero-sub">
+              {t.atMaster} {next.master_name}
+              {next.price > 0 ? ` · ${formatMoney(next.price, next.currency)}` : ''}
+              {next.salon?.name ? ` · ${next.salon.name}` : ''}
             </div>
-
-            {/* Master block */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
-              <AvatarCircle url={next.master_avatar} name={next.master_name} size={48} />
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {next.master_name}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.92, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {next.service_name}
-                </div>
-              </div>
-            </div>
-
-            {/* Pills row */}
-            <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '6px 12px', borderRadius: R.pill,
-                background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)',
-                fontSize: 12, fontWeight: 600, letterSpacing: '-0.005em',
-              }}>
-                <Calendar size={12} strokeWidth={2.25} />
-                {formatDateTime(next.starts_at, lang)}
-              </span>
-              {next.price > 0 && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center',
-                  padding: '6px 12px', borderRadius: R.pill,
-                  background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)',
-                  fontSize: 12, fontWeight: 700, letterSpacing: '-0.005em',
-                }}>
-                  {formatMoney(next.price, next.currency)}
-                </span>
-              )}
-              {next.salon?.name && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center',
-                  padding: '6px 12px', borderRadius: R.pill,
-                  background: 'rgba(255,255,255,0.16)', backdropFilter: 'blur(8px)',
-                  fontSize: 12, fontWeight: 600, letterSpacing: '-0.005em',
-                  maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {next.salon.name}
-                </span>
-              )}
-            </div>
-
-            {/* CTA */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              marginTop: 18, fontSize: 13, fontWeight: 700,
-            }}>
-              {t.details} <ChevronRight size={14} />
-            </div>
+            <span className="hero-action">
+              <Calendar size={15} strokeWidth={2.25} />
+              {t.details}
+            </span>
           </Link>
         ) : null}
 
-        {/* Ваши постоянные — мастер+услуга где было ≥3 визитов.
-            paddingX добавлен чтобы заголовок и первая карточка не лепились
-            к левому краю экрана (раньше прилипало в Mini App клиента). */}
+        {/* Постоянные мастер+услуга — карусель карточек как .h-card */}
         {regulars.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <SectionHeader title={t.regulars} rightLabel="" />
-            <div
-              style={{
-                display: 'flex',
-                gap: 8,
-                overflowX: 'auto',
-                padding: `0 ${PAGE_PADDING_X}px 4px`,
-                scrollSnapType: 'x mandatory',
-                WebkitOverflowScrolling: 'touch',
-              }}
-            >
+          <div style={{ marginTop: 16 }}>
+            <div className="feed-section" style={{ paddingBottom: 0 }}>
+              <div className="feed-title">{t.regulars}</div>
+            </div>
+            <div className="h-scroll">
               {regulars.map((r) => (
-                <TapButton
+                <button
                   key={`${r.master_id}-${r.service_id}`}
+                  type="button"
                   onClick={() => {
                     haptic('light');
                     router.push(`/telegram/book?master=${r.master_id}&service=${r.service_id}`);
                   }}
-                  style={{
-                    minWidth: 196,
-                    flex: '0 0 auto',
-                    border: `1px solid ${T.borderSubtle}`,
-                    borderRadius: R.md,
-                    background: T.surface,
-                    padding: '12px 14px',
-                    textAlign: 'left',
-                    scrollSnapAlign: 'start',
-                    boxShadow: SHADOW.card,
-                  }}
+                  className="h-card"
+                  style={{ border: 'none', textAlign: 'left', fontFamily: 'inherit', padding: 0 }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <AvatarCircle url={r.master_avatar} name={r.master_name} size={30} />
-                    <span style={{ fontSize: 12, fontWeight: 500, color: T.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.master_name}</span>
+                  <div className="h-card-img">
+                    {r.master_avatar
+                      ? <img src={r.master_avatar} alt="" />
+                      : <Calendar size={32} strokeWidth={1.5} />}
                   </div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: T.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '-0.01em' }}>{r.service_name}</div>
-                  <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: T.accent }}>{formatMoney(r.service_price, 'UAH')}</span>
-                    {r.service_duration && <span style={{ fontSize: 12, color: T.textTertiary }}>· {r.service_duration} {t.minSuffix}</span>}
+                  <div className="h-card-body">
+                    <div className="h-card-name">{r.service_name}</div>
+                    <div className="h-card-sub">{t.atMaster} {r.master_name}</div>
+                    <div className="h-card-price">
+                      {formatMoney(r.service_price, 'UAH')}
+                      {r.service_duration ? ` · ${r.service_duration} ${t.minSuffix}` : ''}
+                    </div>
                   </div>
-                </TapButton>
+                </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Свободные окна у моих контактов */}
+        {/* Свободные слоты — feed-card list */}
         {slots.length > 0 && (
-          <div>
-            <SectionHeader title={t.freeSlots} href="/telegram/connections" rightLabel={t.allContacts} />
-            <ul
-              style={{
-                listStyle: 'none',
-                padding: `0 ${PAGE_PADDING_X}px`,
-                margin: 0,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}
-            >
-              {slots.slice(0, 4).map((s) => (
-                <li key={s.masterId + s.iso}>
-                  <Link
-                    href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
-                    onClick={() => haptic('light')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: 12,
-                      background: T.surface,
-                      border: `1px solid ${T.borderSubtle}`,
-                      borderRadius: R.md,
-                      textDecoration: 'none',
-                      color: T.text,
-                      boxShadow: SHADOW.card,
-                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}
-                  >
-                    <AvatarCircle url={s.avatar} name={s.name ?? t.masterFallback} size={44} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {s.name ?? t.masterFallback}
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, ...TYPE.caption }}>
-                        <Clock size={13} />
-                        {formatSlotDate(s.date, s.time, lang)}
-                      </div>
-                    </div>
-                    <div style={{
-                      fontSize: 12, fontWeight: 700, color: T.accent,
-                      display: 'inline-flex', alignItems: 'center', gap: 2,
-                      whiteSpace: 'nowrap',
-                    }}>
-                      {t.bookCta} <ChevronRight size={13} strokeWidth={2.5} />
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          <div className="feed-section">
+            <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+              <div className="feed-title" style={{ margin: 0 }}>{t.freeSlots}</div>
+              <Link
+                href="/telegram/connections"
+                onClick={() => haptic('light')}
+                style={{ fontSize: 13, color: 'var(--m-accent, #2563eb)', textDecoration: 'none', fontWeight: 500 }}
+              >
+                {t.allContacts}
+              </Link>
+            </div>
+            {slots.slice(0, 4).map((s) => (
+              <Link
+                key={s.masterId + s.iso}
+                href={`/telegram/book?master_id=${s.masterId}&date=${s.date}&time=${encodeURIComponent(s.time)}`}
+                onClick={() => haptic('light')}
+                className="feed-card"
+              >
+                <div className="fc-icon">
+                  {s.avatar
+                    ? <img src={s.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }} />
+                    : <Clock size={20} />}
+                </div>
+                <div className="fc-info">
+                  <div className="fc-title">{s.name ?? t.masterFallback}</div>
+                  <div className="fc-sub">{formatSlotDate(s.date, s.time, lang)}</div>
+                </div>
+                <div className="fc-cta">
+                  {t.bookCta} <ChevronRight size={13} strokeWidth={2.5} style={{ display: 'inline', verticalAlign: '-2px' }} />
+                </div>
+              </Link>
+            ))}
           </div>
         )}
 
-        {/* Empty state — показываем ТОЛЬКО когда все три fetch'а уже
-            отработали и реально нечего показать. Без флага loaded
-            empty-state мигает в первую секунду до прихода данных. */}
+        {/* Empty state — hero-scenario без бейджа */}
         {loaded && !next && regulars.length === 0 && slots.length === 0 && (
           <Link
             href="/telegram/search"
             onClick={() => haptic('light')}
-            style={{
-              ...HERO_GRADIENT,
-              margin: `12px ${PAGE_PADDING_X}px 0`,
-              padding: 24,
-              borderRadius: R.lg,
-              color: '#fff',
-              boxShadow: SHADOW.elevated,
-              textDecoration: 'none',
-              display: 'block',
-            }}
+            className="hero-scenario"
+            style={{ textDecoration: 'none', display: 'block', marginTop: 12 }}
           >
-            <p style={{ fontSize: 18, fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>
-              {t.emptyTitle}
-            </p>
-            <p style={{ fontSize: 14, marginTop: 8, marginBottom: 0, opacity: 0.92, lineHeight: 1.4 }}>
-              {t.emptyText}
-            </p>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 14, fontSize: 13, fontWeight: 700 }}>
-              {t.emptyCta} <ChevronRight size={14} />
-            </div>
+            <div className="hero-title">{t.emptyTitle}</div>
+            <div className="hero-sub" style={{ marginTop: 6 }}>{t.emptyText}</div>
+            <span className="hero-action">
+              {t.emptyCta}
+              <ChevronRight size={15} strokeWidth={2.25} />
+            </span>
           </Link>
         )}
 
-        <div style={{ height: 8 }} />
+        <div style={{ height: 12 }} />
       </motion.div>
 
     </MobilePage>

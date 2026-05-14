@@ -15,7 +15,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  Calendar,
   CheckCircle2,
   XCircle,
   Clock3,
@@ -32,7 +31,6 @@ import {
   MobilePage,
   PageHeader,
   EmptyState,
-  AvatarCircle,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X } from '@/components/miniapp/design';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
@@ -649,11 +647,16 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
         salon_id: a.master_salon_id,
       }
     : null;
-  const d = resolveCardDisplay(masterRef, a.salon, cardLabels);
+  const display = resolveCardDisplay(masterRef, a.salon, cardLabels);
   const dateLocale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
-  const date = new Date(a.starts_at).toLocaleString(dateLocale, {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  });
+  const dt = new Date(a.starts_at);
+  const dayNum = dt.getDate();
+  // toLocaleDateString для коротких месяцев в украинском/русском возвращает «трав.», «мая»
+  // — точку режем, цвет/uppercase решает каркас.
+  const monthShort = dt
+    .toLocaleDateString(dateLocale, { month: 'short' })
+    .replace(/\./g, '');
+  const timeStr = dt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
   return (
     <motion.li
       initial={{ opacity: 0, y: 6 }}
@@ -665,7 +668,7 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
         onClick={() => haptic('light')}
         style={{
           display: 'flex',
-          alignItems: 'flex-start',
+          alignItems: 'stretch',
           gap: 12,
           padding: 14,
           background: T.surface,
@@ -675,17 +678,42 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
           color: T.text,
         }}
       >
-        <AvatarCircle url={a.master_avatar} name={d.primary || 'M'} size={48} />
+        {/* Date-block — крупно день, мелко месяц-коротко, ниже HH:MM (как в эталоне Open Design). */}
+        <div
+          style={{
+            flexShrink: 0,
+            width: 60,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingRight: 12,
+            borderRight: `1px solid ${T.borderSubtle}`,
+            gap: 1,
+          }}
+        >
+          <span style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: T.text, letterSpacing: '-0.02em' }}>
+            {dayNum}
+          </span>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              color: T.textTertiary,
+              marginTop: 2,
+            }}
+          >
+            {monthShort}
+          </span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: T.textSecondary, marginTop: 4 }}>
+            {timeStr}
+          </span>
+        </div>
+
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {d.primary}
-          </p>
-          {d.secondary && (
-            <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {d.secondary}
-            </p>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span
               style={{
                 display: 'inline-block',
@@ -693,26 +721,24 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
                 height: 8,
                 borderRadius: '50%',
                 background: a.service_color ?? T.accent,
+                flexShrink: 0,
               }}
             />
-            <span style={{ ...TYPE.caption, fontWeight: 600, color: T.textSecondary }}>
+            <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {a.service_name}
-            </span>
+            </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, ...TYPE.caption }}>
-            <Calendar size={13} />
-            <span>{date}</span>
-            {a.price > 0 && (
-              <>
-                <span style={{ color: T.textTertiary }}>·</span>
-                <span style={{ fontWeight: 600, color: T.text }}>
-                  {formatMoney(a.price, a.currency)}
-                </span>
-              </>
-            )}
-          </div>
+          <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {display.primary}
+            {display.secondary ? ` · ${display.secondary}` : ''}
+          </p>
+          {a.price > 0 && (
+            <p style={{ ...TYPE.caption, fontWeight: 700, color: T.text, margin: '4px 0 0' }}>
+              {formatMoney(a.price, a.currency)}
+            </p>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, flexShrink: 0 }}>
           <StatusChip status={a.status} labels={t.status} />
           <ChevronRight size={18} color={T.textTertiary} />
         </div>
