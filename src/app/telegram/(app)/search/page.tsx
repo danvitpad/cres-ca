@@ -1282,64 +1282,44 @@ function SearchLanding({ lang, onCategory, onAi }: {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18, padding: '12px 0 32px' }}>
-      <h2 style={{ ...TYPE.h3, color: T.text, margin: 0 }}>{heading}</h2>
+    <div className="od-client-mini-app" style={{ padding: '12px 0 32px' }}>
+      <div style={{ padding: '0 16px 12px', fontSize: 17, fontWeight: 700, color: 'var(--m-text, #0f172a)' }}>
+        {heading}
+      </div>
 
-      {/* AI prompt card */}
-      <button
-        type="button"
-        onClick={onAi}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: 14, borderRadius: R.lg,
-          border: `1px solid ${T.borderSubtle}`,
-          background: T.surface,
-          boxShadow: SHADOW.card,
-          cursor: 'pointer',
-          fontFamily: 'inherit',
-          textAlign: 'left',
-          width: '100%',
-        }}
-      >
-        <div style={{
-          width: 40, height: 40, borderRadius: '50%',
-          background: T.accentSoft, color: T.accent,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <Bot size={20} strokeWidth={2.2} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0 }}>{aiTitle}</p>
-          <p style={{ ...TYPE.caption, color: T.textSecondary, margin: '2px 0 0' }}>{aiDesc}</p>
-        </div>
-        <ChevronRight size={16} color={T.textTertiary} />
-      </button>
+      {/* AI prompt — feed-card стиль эталона */}
+      <div style={{ padding: '0 16px' }}>
+        <button
+          type="button"
+          onClick={onAi}
+          className="feed-card"
+          style={{ width: '100%', fontFamily: 'inherit', border: '1px solid var(--m-border)', textAlign: 'left' }}
+        >
+          <div className="fc-icon">
+            <Bot size={20} strokeWidth={2.2} />
+          </div>
+          <div className="fc-info">
+            <div className="fc-title">{aiTitle}</div>
+            <div className="fc-sub">{aiDesc}</div>
+          </div>
+          <ChevronRight size={16} color="var(--m-text-tertiary, #94a3b8)" />
+        </button>
+      </div>
 
       {/* Quick category chips */}
-      <div>
-        <p style={{
-          ...TYPE.micro, fontWeight: 700, textTransform: 'uppercase',
-          letterSpacing: '0.08em', color: T.textTertiary,
-          margin: '0 4px 10px',
-        }}>{popular}</p>
+      <div style={{ padding: '8px 16px 4px' }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+          letterSpacing: '0.08em', color: 'var(--m-text-tertiary, #94a3b8)',
+          margin: '0 0 10px',
+        }}>{popular}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {QUICK[lang].map((label) => (
             <button
               key={label}
               type="button"
               onClick={() => onCategory(label)}
-              style={{
-                padding: '10px 16px',
-                borderRadius: R.pill,
-                border: `1px solid ${T.borderSubtle}`,
-                background: T.surface,
-                color: T.text,
-                ...TYPE.bodyStrong,
-                fontWeight: 500,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                boxShadow: SHADOW.card,
-              }}
+              className="chip"
             >
               {label}
             </button>
@@ -1362,78 +1342,59 @@ interface MiniResultCardProps {
 
 function MiniResultCard({ master, salon, onClick, isAdded, addBusy, onAdd, labels }: MiniResultCardProps) {
   const d = resolveCardDisplay(master, salon, MINIAPP_CARD_LABELS);
-  const Icon = d.mode === 'solo' ? UserIcon : Building2;
+  const initials = (d.avatarName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: 12,
-        background: T.surface,
-        border: `1px solid ${T.borderSubtle}`,
-        borderRadius: R.md,
-        textAlign: 'left',
-        width: '100%',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        boxShadow: SHADOW.card,
-      }}
+      className="od-client-mini-app"
+      style={{ cursor: 'pointer' }}
     >
-      <AvatarCircle url={d.avatarSrc} name={d.avatarName} size={56} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Icon size={13} color={T.textTertiary} />
-          <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {d.primary}
-          </p>
+      <div className="master-card" style={{ borderRadius: 16, border: '1px solid var(--m-border, #e2e8f0)', marginBottom: 8 }}>
+        <div className="avatar av-md" style={{ flexShrink: 0 }}>
+          {d.avatarSrc ? <img src={d.avatarSrc} alt="" /> : initials}
         </div>
-        {d.secondary && (
-          <p style={{ ...TYPE.caption, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {d.secondary}
-          </p>
-        )}
-        {d.rating != null && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 4, fontSize: 12, fontWeight: 600 }}>
-            <Star size={12} fill="#f59e0b" color="#f59e0b" />
-            <span style={{ color: T.text }}>{d.rating.toFixed(1)}</span>
+        <div className="mc-info">
+          <div className="mc-name">{d.primary}</div>
+          <div className="mc-meta">
+            {d.rating != null && (
+              <>
+                <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                <span>{d.rating.toFixed(1)}</span>
+              </>
+            )}
+            {d.secondary && (
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {d.rating != null ? ` · ${d.secondary}` : d.secondary}
+              </span>
+            )}
           </div>
+        </div>
+        {onAdd ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); if (!isAdded && !addBusy) onAdd(); }}
+            disabled={isAdded || addBusy}
+            className="btn btn-sm"
+            style={{
+              flexShrink: 0,
+              background: isAdded ? 'var(--m-bg-subtle, #f2f4f7)' : 'var(--m-accent, #2563eb)',
+              color: isAdded ? 'var(--m-text-tertiary, #94a3b8)' : '#fff',
+              cursor: isAdded ? 'default' : 'pointer',
+              opacity: addBusy ? 0.6 : 1,
+              minHeight: 32,
+            }}
+          >
+            {addBusy ? <Loader2 size={12} className="animate-spin" />
+              : isAdded ? labels.added
+              : labels.add}
+          </button>
+        ) : (
+          <ChevronRight size={18} color="var(--m-text-tertiary, #94a3b8)" />
         )}
       </div>
-      {onAdd ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); if (!isAdded && !addBusy) onAdd(); }}
-          disabled={isAdded || addBusy}
-          style={{
-            flexShrink: 0,
-            padding: '8px 12px',
-            borderRadius: R.pill,
-            border: 'none',
-            background: isAdded ? T.bgSubtle : T.text,
-            color: isAdded ? T.textTertiary : T.bg,
-            fontSize: 12,
-            fontWeight: 700,
-            cursor: isAdded ? 'default' : 'pointer',
-            fontFamily: 'inherit',
-            opacity: addBusy ? 0.6 : 1,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            minHeight: 32,
-          }}
-        >
-          {addBusy ? <Loader2 size={12} className="animate-spin" />
-            : isAdded ? labels.added
-            : labels.add}
-        </button>
-      ) : (
-        <ChevronRight size={18} color={T.textTertiary} />
-      )}
     </div>
   );
 }

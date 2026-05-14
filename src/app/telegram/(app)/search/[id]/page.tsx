@@ -630,7 +630,10 @@ export default function MiniAppMasterDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-transparent to-black/35" />
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-[#2563eb] via-[#14b8a6] to-[#93c5fd]" />
+          <div
+            className="absolute inset-0"
+            style={{ background: 'linear-gradient(135deg, var(--m-accent, #2563eb) 0%, var(--m-accent-hover, #1d4ed8) 100%)' }}
+          />
         )}
 
         {/* Top action row */}
