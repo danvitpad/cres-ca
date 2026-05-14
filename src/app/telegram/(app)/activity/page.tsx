@@ -15,9 +15,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  CheckCircle2,
-  XCircle,
-  Clock3,
   ChevronRight,
   CalendarDays,
   List,
@@ -379,42 +376,20 @@ function ListView({ filter, setFilter, upcoming, past, listVisible, t, lang, car
   const pastCount = past.length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Sub-filter chip */}
-      <div style={{ display: 'flex', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Segment toggle Майбутні / Минулі — стиль эталона (.segment) */}
+      <div className="segment">
         {(['upcoming', 'past'] as const).map((f) => {
           const active = filter === f;
           const count = f === 'upcoming' ? upcomingCount : pastCount;
           return (
             <button
               key={f}
+              type="button"
+              className={`segment-btn${active ? ' active' : ''}`}
               onClick={() => { setFilter(f); haptic('selection'); }}
-              style={{
-                flex: 1,
-                padding: '8px 14px',
-                borderRadius: R.pill,
-                border: `1px solid ${active ? T.text : T.borderSubtle}`,
-                background: active ? T.text : 'transparent',
-                color: active ? T.bg : T.textSecondary,
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: 'inherit',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-              }}
             >
-              {f === 'upcoming' ? t.filterUpcoming : t.filterPast}
-              <span style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: active ? T.bg : T.textTertiary,
-                opacity: active ? 0.7 : 1,
-              }}>
-                {count}
-              </span>
+              {f === 'upcoming' ? t.filterUpcoming : t.filterPast} {count}
             </button>
           );
         })}
@@ -429,7 +404,7 @@ function ListView({ filter, setFilter, upcoming, past, listVisible, t, lang, car
           ctaHref="/telegram/search"
         />
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {listVisible.map((a, i) => (
             <AppointmentCard key={a.id} appt={a} index={i} t={t} lang={lang} cardLabels={cardLabels} haptic={haptic} />
           ))}
@@ -651,98 +626,61 @@ function AppointmentCard({ appt: a, index: i, t, lang, cardLabels, haptic }: Car
   const dateLocale = lang === 'en' ? 'en-GB' : lang === 'uk' ? 'uk-UA' : 'ru-RU';
   const dt = new Date(a.starts_at);
   const dayNum = dt.getDate();
-  // toLocaleDateString для коротких месяцев в украинском/русском возвращает «трав.», «мая»
-  // — точку режем, цвет/uppercase решает каркас.
   const monthShort = dt
     .toLocaleDateString(dateLocale, { month: 'short' })
     .replace(/\./g, '');
   const timeStr = dt.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
+  // Статус как в эталоне: upcoming / done / cancelled
+  const isDone = STATUS_DONE.includes(a.status);
+  const isCancelled = a.status.startsWith('cancelled') || a.status === 'no_show';
+  const statusVariant = isCancelled ? 'cancelled' : isDone ? 'done' : 'upcoming';
+  const statusLabel = t.status[a.status] ?? t.status.booked;
   return (
     <motion.li
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: i * 0.02 }}
     >
-      <Link
-        href={`/telegram/activity/${a.id}`}
-        onClick={() => haptic('light')}
-        style={{
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: 12,
-          padding: 14,
-          background: T.surface,
-          border: `1px solid ${T.borderSubtle}`,
-          borderRadius: R.md,
-          textDecoration: 'none',
-          color: T.text,
-        }}
-      >
-        {/* Date-block — крупно день, мелко месяц-коротко, ниже HH:MM (как в эталоне Open Design). */}
-        <div
-          style={{
-            flexShrink: 0,
-            width: 60,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingRight: 12,
-            borderRight: `1px solid ${T.borderSubtle}`,
-            gap: 1,
-          }}
+      <div className="bk-item">
+        <Link
+          href={`/telegram/activity/${a.id}`}
+          onClick={() => haptic('light')}
+          className="bk-item-head"
         >
-          <span style={{ fontSize: 24, fontWeight: 800, lineHeight: 1, color: T.text, letterSpacing: '-0.02em' }}>
-            {dayNum}
-          </span>
-          <span
+          <div className="bk-date-block">
+            <div className="bk-date-day">{dayNum}</div>
+            <div className="bk-date-mon">{monthShort}</div>
+          </div>
+          <div className="bk-info">
+            <div className="bk-service">{a.service_name}</div>
+            <div className="bk-master">
+              {display.primary}
+              {display.secondary ? ` · ${display.secondary}` : ''}
+            </div>
+            <span className={`bk-status ${statusVariant}`}>{statusLabel}</span>
+          </div>
+          <span className="bk-time">{timeStr}</span>
+        </Link>
+        {a.price > 0 && (
+          <div
             style={{
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: T.textTertiary,
-              marginTop: 2,
+              padding: '8px 14px',
+              borderTop: '1px solid var(--m-border, #e2e8f0)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 13,
+              color: 'var(--m-text-secondary, #475569)',
+              background: 'var(--m-bg-subtle, #f2f4f7)',
             }}
           >
-            {monthShort}
-          </span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: T.textSecondary, marginTop: 4 }}>
-            {timeStr}
-          </span>
-        </div>
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: a.service_color ?? T.accent,
-                flexShrink: 0,
-              }}
-            />
-            <p style={{ ...TYPE.bodyStrong, color: T.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {a.service_name}
-            </p>
-          </div>
-          <p style={{ ...TYPE.caption, color: T.textSecondary, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {display.primary}
-            {display.secondary ? ` · ${display.secondary}` : ''}
-          </p>
-          {a.price > 0 && (
-            <p style={{ ...TYPE.caption, fontWeight: 700, color: T.text, margin: '4px 0 0' }}>
+            <span>{a.service_name}</span>
+            <span style={{ fontWeight: 700, color: 'var(--m-text, #0f172a)' }}>
               {formatMoney(a.price, a.currency)}
-            </p>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, flexShrink: 0 }}>
-          <StatusChip status={a.status} labels={t.status} />
-          <ChevronRight size={18} color={T.textTertiary} />
-        </div>
-      </Link>
+            </span>
+          </div>
+        )}
+      </div>
     </motion.li>
   );
 }
@@ -765,35 +703,3 @@ function CalendarDaysIcon() {
   );
 }
 
-function StatusChip({ status, labels }: { status: string; labels: Record<string, string> }) {
-  const baseMap: Record<string, { bg: string; color: string; icon: React.ElementType }> = {
-    booked: { bg: '#dbeafe', color: '#1d4ed8', icon: Clock3 },
-    confirmed: { bg: T.successSoft, color: T.success, icon: CheckCircle2 },
-    in_progress: { bg: T.accentSoft, color: T.accent, icon: Clock3 },
-    completed: { bg: T.successSoft, color: T.success, icon: CheckCircle2 },
-    cancelled: { bg: T.dangerSoft, color: T.danger, icon: XCircle },
-    cancelled_by_client: { bg: T.dangerSoft, color: T.danger, icon: XCircle },
-    cancelled_by_master: { bg: T.dangerSoft, color: T.danger, icon: XCircle },
-    no_show: { bg: T.warningSoft, color: T.warning, icon: XCircle },
-  };
-  const base = baseMap[status] ?? baseMap.booked;
-  const info = { ...base, label: labels[status] ?? labels.booked ?? status };
-  const Icon = info.icon;
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 3,
-        padding: '3px 8px',
-        borderRadius: R.pill,
-        background: info.bg,
-        color: info.color,
-        fontSize: 10,
-        fontWeight: 700,
-      }}
-    >
-      <Icon size={11} /> {info.label}
-    </span>
-  );
-}

@@ -19,9 +19,9 @@ import {
   Loader2,
   Settings,
   LogOut,
-  User as UserIcon,
   Users,
   MessageCircle,
+  QrCode,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/stores/auth-store';
@@ -31,12 +31,10 @@ import { mapError } from '@/lib/errors';
 import { getInitData, showConfirm } from '@/lib/telegram/webapp';
 import {
   MobilePage,
-  PageHeader,
-  MenuList,
   AvatarCircle,
-  type MenuItem,
 } from '@/components/miniapp/shells';
 import { T, R, TYPE, PAGE_PADDING_X, SHADOW } from '@/components/miniapp/design';
+import '@/styles/od-client-mini-app.css';
 import { useMiniAppLocale } from '@/lib/miniapp/use-locale';
 
 type Lang = 'uk' | 'ru' | 'en';
@@ -351,130 +349,90 @@ export default function MiniAppProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileLoaded]);
 
-  // Меню «Мои мастера + Настройки» (вместо старых дублирующих
-  // «Профиль / Контакты / Настройки» — теперь личные данные показаны прямо
-  // в карточке выше).
-  const navMenu: MenuItem[] = [
-    {
-      key: 'connections',
-      icon: <Users size={22} strokeWidth={1.8} />,
-      label: t.myMasters,
-      href: '/telegram/connections',
-      rightSlot: (
-        <>
-          {followingCount > 0 && (
-            <span style={{ ...TYPE.caption, fontWeight: 600 }}>{followingCount}</span>
-          )}
-          <ChevronRight size={20} color={T.textTertiary} />
-        </>
-      ),
-    },
-    {
-      key: 'settings',
-      icon: <Settings size={22} strokeWidth={1.8} />,
-      label: t.menuSettings,
-      href: '/telegram/settings',
-      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
-    },
-  ];
-
-  const supportMenu: MenuItem[] = [
-    {
-      key: 'support',
-      icon: <MessageCircle size={22} strokeWidth={1.8} />,
-      label: t.menuSupport,
-      onClick: () => window.open('https://t.me/crescacom_bot?start=support', '_blank'),
-      rightSlot: <ChevronRight size={20} color={T.textTertiary} />,
-    },
-  ];
-
-  const logoutMenu: MenuItem[] = [
-    {
-      key: 'logout',
-      icon: <LogOut size={22} strokeWidth={1.8} />,
-      label: signingOut ? t.loggingOut : t.logout,
-      onClick: signOut,
-      danger: true,
-    },
-  ];
-
-  // Стили для блока «Личные данные» — карточка с тремя строками,
-  // каждая строка тапается и открывает edit modal. Горизонтальный margin
-  // совпадает с MenuList (PAGE_PADDING_X), иначе карточка прижимается к краю.
-  const dataCardStyle: React.CSSProperties = {
-    margin: `0 ${PAGE_PADDING_X}px`,
-    borderRadius: R.lg,
-    border: `1px solid ${T.borderSubtle}`,
-    background: T.surface,
-    boxShadow: SHADOW.card,
-    overflow: 'hidden',
-  };
-  const dataRowStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    padding: '14px 16px',
-    background: 'transparent',
-    border: 'none',
-    width: '100%',
-    textAlign: 'left',
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    color: T.text,
-  };
-  const dataDivider: React.CSSProperties = {
-    height: 1,
-    background: T.borderSubtle,
-    margin: '0 16px',
-  };
+  const userInitials = (displayName || '').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <MobilePage>
+    <MobilePage className="od-client-mini-app">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        style={{ display: 'flex', flexDirection: 'column', gap: 24 }}
       >
-        <PageHeader
-          title={displayName || ' '}
-          right={
+        {/* Hero — gradient cobalt-soft → surface, аватар по центру + name + phone + stats row.
+            QR-кнопка справа вверху открывает QR-код профиля (TODO в будущей задаче). */}
+        <div
+          style={{
+            background: 'linear-gradient(150deg, var(--m-accent-soft, rgba(37,99,235,0.10)), var(--m-surface, #fff))',
+            padding: '28px 20px 20px',
+            textAlign: 'center',
+            position: 'relative',
+          }}
+        >
+          <div style={{ position: 'absolute', top: 14, right: 14 }}>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={avatarBusy}
-              style={{
-                position: 'relative',
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                background: 'transparent',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-              aria-label={t.avatarLabel}
+              className="btn-icon"
+              onClick={() => haptic('selection')}
+              aria-label="QR"
             >
-              <AvatarCircle url={avatarUrl} name={displayName} size={56} />
-              {avatarBusy && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    borderRadius: '50%',
-                    background: 'rgba(0,0,0,0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Loader2 size={20} color="#fff" className="animate-spin" />
-                </span>
-              )}
+              <QrCode size={16} />
             </button>
-          }
-        />
+          </div>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={avatarBusy}
+            style={{
+              position: 'relative',
+              width: 72,
+              height: 72,
+              borderRadius: '50%',
+              background: 'transparent',
+              border: 'none',
+              padding: 0,
+              cursor: 'pointer',
+              margin: '0 auto 12px',
+              display: 'block',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            aria-label={t.avatarLabel}
+          >
+            {avatarUrl
+              ? (
+                <div className="avatar av-xl">
+                  <img src={avatarUrl} alt="" />
+                </div>
+              )
+              : (
+                <div className="avatar av-xl">{userInitials || '👤'}</div>
+              )
+            }
+            {avatarBusy && (
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  background: 'rgba(0,0,0,0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Loader2 size={20} color="#fff" className="animate-spin" />
+              </span>
+            )}
+          </button>
+          <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--m-text, #0f172a)', letterSpacing: '-0.01em' }}>
+            {displayName || t.guest}
+          </div>
+          {phone && (
+            <div style={{ fontSize: 14, color: 'var(--m-text-secondary, #475569)', marginTop: 4 }}>
+              {phone}
+            </div>
+          )}
+          {/* Личные данные — три row под hero (Имя/Телефон/Email тап = edit) */}
+        </div>
 
         <input
           ref={fileInputRef}
@@ -494,46 +452,99 @@ export default function MiniAppProfilePage() {
           onCropped={onAvatarCropped}
         />
 
-        {/* GradientHeroCard (wallet balance) — hidden: loyalty/bonuses temporarily disabled */}
-
-        {/* Личные данные — имя / телефон / email прямо в профиле, тап → редактировать */}
-        <div style={dataCardStyle}>
-          <button type="button" onClick={openEdit} style={dataRowStyle}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.labelName}</p>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {/* Личные данные — карточка с тремя rows как .setting-row */}
+        <div className="card-block" style={{ marginTop: 14 }}>
+          <button type="button" className="setting-row" onClick={openEdit}>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: 11, color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {t.labelName}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text, #0f172a)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {displayName || t.notSet}
-              </p>
+              </div>
             </div>
-            <ChevronRight size={16} color={T.textTertiary} />
+            <ChevronRight size={14} className="setting-arrow" color="var(--m-text-tertiary, #94a3b8)" />
           </button>
-          <div style={dataDivider} />
-          <button type="button" onClick={openEdit} style={dataRowStyle}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.labelPhone}</p>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <button type="button" className="setting-row" onClick={openEdit}>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: 11, color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {t.labelPhone}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text, #0f172a)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {phone || t.notSet}
-              </p>
+              </div>
             </div>
-            <ChevronRight size={16} color={T.textTertiary} />
+            <ChevronRight size={14} color="var(--m-text-tertiary, #94a3b8)" />
           </button>
-          <div style={dataDivider} />
-          <button type="button" onClick={openEdit} style={dataRowStyle}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ ...TYPE.caption, color: T.textTertiary, margin: 0 }}>{t.labelEmail}</p>
-              <p style={{ ...TYPE.bodyStrong, color: T.text, margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <button type="button" className="setting-row" onClick={openEdit}>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div style={{ fontSize: 11, color: 'var(--m-text-tertiary, #94a3b8)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {t.labelEmail}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--m-text, #0f172a)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {email || t.notSet}
-              </p>
+              </div>
             </div>
-            <ChevronRight size={16} color={T.textTertiary} />
+            <ChevronRight size={14} color="var(--m-text-tertiary, #94a3b8)" />
           </button>
         </div>
 
-        <MenuList items={navMenu} />
-        <MenuList items={supportMenu} />
-        <MenuList items={logoutMenu} />
+        {/* Меню — pmenu-item стиль эталона: иконка квадратная цветная + label + arrow */}
+        <div className="card-block">
+          <button
+            type="button"
+            className="pmenu-item"
+            onClick={() => { haptic('selection'); router.push('/telegram/connections'); }}
+          >
+            <div className="pmenu-icon" style={{ background: 'var(--m-accent-soft, rgba(37,99,235,0.10))', color: 'var(--m-accent, #2563eb)' }}>
+              <Users size={20} strokeWidth={1.8} />
+            </div>
+            <span className="pmenu-label">{t.myMasters}</span>
+            {followingCount > 0 && (
+              <span style={{ fontSize: 13, color: 'var(--m-text-tertiary, #94a3b8)', marginRight: 6 }}>
+                {followingCount}
+              </span>
+            )}
+            <span className="pmenu-arrow"><ChevronRight size={16} /></span>
+          </button>
+          <button
+            type="button"
+            className="pmenu-item"
+            onClick={() => { haptic('selection'); router.push('/telegram/settings'); }}
+          >
+            <div className="pmenu-icon" style={{ background: 'var(--m-bg-subtle, #f2f4f7)', color: 'var(--m-text-secondary, #475569)' }}>
+              <Settings size={20} strokeWidth={1.8} />
+            </div>
+            <span className="pmenu-label">{t.menuSettings}</span>
+            <span className="pmenu-arrow"><ChevronRight size={16} /></span>
+          </button>
+          <button
+            type="button"
+            className="pmenu-item"
+            onClick={() => { haptic('selection'); window.open('https://t.me/crescacom_bot?start=support', '_blank'); }}
+          >
+            <div className="pmenu-icon" style={{ background: 'rgba(16,185,129,0.10)', color: 'var(--m-success, #10b981)' }}>
+              <MessageCircle size={20} strokeWidth={1.8} />
+            </div>
+            <span className="pmenu-label">{t.menuSupport}</span>
+            <span className="pmenu-arrow"><ChevronRight size={16} /></span>
+          </button>
+          <button
+            type="button"
+            className="pmenu-item"
+            onClick={signOut}
+            disabled={signingOut}
+          >
+            <div className="pmenu-icon" style={{ background: 'rgba(239,68,68,0.10)', color: '#ef4444' }}>
+              <LogOut size={20} strokeWidth={1.8} />
+            </div>
+            <span className="pmenu-label" style={{ color: '#ef4444' }}>
+              {signingOut ? t.loggingOut : t.logout}
+            </span>
+          </button>
+        </div>
 
-        <div style={{ height: 8 }} />
+        <div style={{ height: 12 }} />
       </motion.div>
 
       {/* Edit profile bottom sheet */}
